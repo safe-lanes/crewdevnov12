@@ -1042,13 +1042,358 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         );
     };
 
+    // ============================================================
+    // TERMINATED SCREEN — UI-only with mock data.
+    // TODO: remove MOCK_TERMINATED_CREW and switch terminatedRowData
+    // to real backend results when termination persistence lands
+    // (proposed task #16). The columns, filters, and renderers below
+    // can stay as-is.
+    // ============================================================
+    const MOCK_TERMINATED_CREW = useMemo(() => [
+        {
+            id: 'term-001', employeeId: 'A000123', firstName: 'hngf', familyName: 'cre',
+            dob: '2026-01-01', age: 0, presentRank: 'Chief Officer', nationality: 'AMERICAN SAMOA',
+            lastVessel: 'Vessel 7', signOffDate: '2026-03-04',
+            terminationDate: '2026-03-04', terminationInitiatedBy: 'Company',
+            terminationReason: 'Poor Performance', notForHire: true,
+        },
+        {
+            id: 'term-002', employeeId: 'A000456', firstName: 'Dattatray', familyName: 'Khade',
+            dob: '1990-01-14', age: 36, presentRank: 'Chief Officer', nationality: 'ALGERIA',
+            lastVessel: 'Vessel 7', signOffDate: '2026-04-06',
+            terminationDate: '2026-04-06', terminationInitiatedBy: 'Crew Member (resignation)',
+            terminationReason: 'Resignation', notForHire: false,
+        },
+        {
+            id: 'term-003', employeeId: 'A000789', firstName: 'test', familyName: 'Naveel',
+            dob: '', age: null, presentRank: '', nationality: '',
+            lastVessel: '', signOffDate: '',
+            terminationDate: '2026-02-18', terminationInitiatedBy: 'Company',
+            terminationReason: 'Disciplinary', notForHire: true,
+        },
+        {
+            id: 'term-004', employeeId: 'A000234', firstName: '4unhtn', familyName: 'yhu6j',
+            dob: '2025-09-18', age: 0, presentRank: '', nationality: 'ANGUILLA',
+            lastVessel: '', signOffDate: '',
+            terminationDate: '2025-12-01', terminationInitiatedBy: 'Crew Member (resignation)',
+            terminationReason: 'Resignation', notForHire: false,
+        },
+        {
+            id: 'term-005', employeeId: 'A000345', firstName: 'TestName', familyName: 'gdfg',
+            dob: '', age: null, presentRank: '', nationality: '',
+            lastVessel: '', signOffDate: '',
+            terminationDate: '2025-11-12', terminationInitiatedBy: 'Company',
+            terminationReason: 'No suitable vessel', notForHire: false,
+        },
+        {
+            id: 'term-006', employeeId: 'A000567', firstName: 'Ghazi', familyName: 'Test',
+            dob: '', age: null, presentRank: 'Electrical Officer', nationality: 'ANGOLA',
+            lastVessel: '', signOffDate: '',
+            terminationDate: '2025-10-04', terminationInitiatedBy: 'Company',
+            terminationReason: 'Unresponsive', notForHire: true,
+        },
+        {
+            id: 'term-007', employeeId: 'A000678', firstName: 'E2E', familyName: 'User',
+            dob: '', age: null, presentRank: '', nationality: '',
+            lastVessel: '', signOffDate: '',
+            terminationDate: '2025-09-21', terminationInitiatedBy: 'Crew Member (resignation)',
+            terminationReason: 'Resignation', notForHire: false,
+        },
+        {
+            id: 'term-008', employeeId: 'A000890', firstName: 'ki', familyName: 'kh',
+            dob: '2025-06-09', age: 21, presentRank: '', nationality: '',
+            lastVessel: '', signOffDate: '',
+            terminationDate: '2025-08-15', terminationInitiatedBy: 'Company',
+            terminationReason: 'Other', notForHire: false,
+        },
+    ].map(r => ({ ...r, status: r.notForHire ? 'Terminated - NFR' : 'Terminated' })), []);
+
+    const [terminatedFilters, setTerminatedFilters] = useState({
+        searchName: "",
+        vessel: "",
+        rank: "",
+        nationality: "",
+        pool: "",
+        manningAgent: "",
+        terminationBy: "",
+        nfr: "",
+    });
+
+    const [terminatedGridApi, setTerminatedGridApi] = useState<GridApi | null>(null);
+
+    const terminatedRowData = useMemo(() => {
+        return MOCK_TERMINATED_CREW.filter((row: any) => {
+            const fullName = `${row.firstName || ''} ${row.familyName || ''}`.toLowerCase();
+            const matchesName = terminatedFilters.searchName === "" || fullName.includes(terminatedFilters.searchName.toLowerCase());
+            const matchesVessel = terminatedFilters.vessel === "" || row.lastVessel === terminatedFilters.vessel;
+            const matchesRank = terminatedFilters.rank === "" || row.presentRank === terminatedFilters.rank;
+            const matchesNationality = terminatedFilters.nationality === "" || row.nationality === terminatedFilters.nationality;
+            const matchesPool = terminatedFilters.pool === "" || row.crewPool === terminatedFilters.pool;
+            const matchesManningAgent = terminatedFilters.manningAgent === "" || row.manningAgent === terminatedFilters.manningAgent;
+            const matchesTerminationBy = terminatedFilters.terminationBy === "" || row.terminationInitiatedBy === terminatedFilters.terminationBy;
+            let matchesNfr = true;
+            if (terminatedFilters.nfr === "nfr-only") matchesNfr = !!row.notForHire;
+            else if (terminatedFilters.nfr === "excluding-nfr") matchesNfr = !row.notForHire;
+            return matchesName && matchesVessel && matchesRank && matchesNationality && matchesPool && matchesManningAgent && matchesTerminationBy && matchesNfr;
+        });
+    }, [MOCK_TERMINATED_CREW, terminatedFilters]);
+
+    const TerminatedActionsCellRenderer = useCallback((params: ICellRendererParams) => {
+        const handleEditClick = () => {
+            setSelectedCrewMember(params.data);
+            setIsCrewInfoFormOpen(true);
+        };
+        if (permissions.length > 0 && !canEdit("Terminated") && !canEdit("Crew Database")) return null;
+        return (
+            <div className="flex items-center justify-center gap-1 h-full">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 hover:bg-gray-100"
+                    onClick={handleEditClick}
+                    data-testid={`button-edit-terminated-${params.data.id}`}
+                >
+                    <EditIcon className="h-4 w-4 text-gray-600" />
+                </Button>
+            </div>
+        );
+    }, [permissions, canEdit]);
+
+    const terminatedColumnDefs: ColDef[] = useMemo(() => [
+        {
+            headerName: 'ID', field: 'employeeId',
+            width: viewportConfig.isDesktopOrLaptop ? undefined : 80, minWidth: 80,
+            cellStyle: { fontSize: '13px', color: '#4f5863' },
+            filter: 'agTextColumnFilter', floatingFilter: viewportConfig.showFloatingFilters,
+            sortable: true, resizable: true, headerClass: 'ag-header-cell-text-wrap',
+        },
+        {
+            headerName: 'General Particulars of Seafarer',
+            headerClass: 'center-group-header',
+            children: [
+                { headerName: 'First\nName', field: 'firstName', width: viewportConfig.isDesktopOrLaptop ? undefined : 90, minWidth: 90, cellStyle: { fontSize: '13px', color: '#4f5863' }, filter: 'agTextColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, headerClass: 'ag-header-cell-text-wrap' },
+                { headerName: 'Family\nName', field: 'familyName', width: viewportConfig.isDesktopOrLaptop ? undefined : 95, minWidth: 95, cellStyle: { fontSize: '13px', color: '#4f5863' }, filter: 'agTextColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, headerClass: 'ag-header-cell-text-wrap' },
+                { headerName: 'DOB', field: 'dob', width: viewportConfig.isDesktopOrLaptop ? undefined : 90, minWidth: 90, cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' }, filter: 'agDateColumnFilter', filterParams: { comparator: dateFilterComparator }, floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, valueFormatter: (p: any) => formatCompactDate(p.value) },
+                { headerName: 'Age', field: 'age', width: viewportConfig.isDesktopOrLaptop ? undefined : 50, minWidth: 50, cellStyle: { fontSize: '13px', color: '#4f5863' }, filter: 'agNumberColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true },
+                { headerName: 'Rank', field: 'presentRank', width: viewportConfig.isDesktopOrLaptop ? undefined : 100, minWidth: 100, cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap' },
+                { headerName: 'Nation', field: 'nationality', width: viewportConfig.isDesktopOrLaptop ? undefined : 85, minWidth: 85, cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap' },
+                {
+                    headerName: 'Status', field: 'status',
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 130, minWidth: 130,
+                    wrapText: true, autoHeight: true,
+                    cellRenderer: (params: any) => {
+                        const isNfr = !!params.data?.notForHire;
+                        const label = isNfr ? 'Terminated - NFR' : 'Terminated';
+                        return (
+                            <span style={{
+                                display: 'inline-block', padding: '4px 10px', borderRadius: '4px',
+                                fontSize: '11px', fontWeight: 500,
+                                backgroundColor: '#f47171', color: '#ffffff',
+                                lineHeight: '1.2', whiteSpace: 'normal',
+                            }}>
+                                {label}
+                            </span>
+                        );
+                    },
+                    filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters,
+                    sortable: true, resizable: true, headerClass: 'ag-header-cell-text-wrap',
+                },
+            ],
+        },
+        {
+            headerName: 'Previous Assignment',
+            children: [
+                { headerName: 'Last\nVessel', field: 'lastVessel', width: viewportConfig.isDesktopOrLaptop ? undefined : 100, minWidth: 100, cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueGetter: (p: any) => { if (!p.data?.lastVessel) return null; return getVesselName(p.data.lastVessel) || p.data.lastVessel; } },
+                { headerName: 'S/O', field: 'signOffDate', width: viewportConfig.isDesktopOrLaptop ? undefined : 90, minWidth: 90, cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' }, filter: 'agDateColumnFilter', filterParams: { comparator: dateFilterComparator }, floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => formatCompactDate(p.value) },
+            ],
+        },
+        {
+            headerName: 'Details of Termination',
+            headerClass: 'center-group-header',
+            children: [
+                { headerName: 'Date', field: 'terminationDate', width: viewportConfig.isDesktopOrLaptop ? undefined : 90, minWidth: 90, cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' }, filter: 'agDateColumnFilter', filterParams: { comparator: dateFilterComparator }, floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => formatCompactDate(p.value) || '—' },
+                { headerName: 'By', field: 'terminationInitiatedBy', width: viewportConfig.isDesktopOrLaptop ? undefined : 130, minWidth: 130, cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => p.value || '—' },
+                { headerName: 'Reason', field: 'terminationReason', width: viewportConfig.isDesktopOrLaptop ? undefined : 140, minWidth: 140, cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => p.value || '—' },
+            ],
+        },
+        {
+            headerName: '', field: 'actions', width: 45, minWidth: 45, maxWidth: 50,
+            cellRenderer: TerminatedActionsCellRenderer,
+            sortable: false, filter: false,
+            cellClass: 'flex items-center justify-center',
+            suppressHeaderMenuButton: true, suppressColumnsToolPanel: true,
+        },
+    ], [TerminatedActionsCellRenderer, viewportConfig, getVesselName]);
+
+    const onTerminatedGridReady = useCallback((params: GridReadyEvent) => {
+        setTerminatedGridApi(params.api);
+    }, []);
+
+    const renderTerminatedFiltersAndTable = () => {
+        const clearTerminated = () => setTerminatedFilters({ searchName: "", vessel: "", rank: "", nationality: "", pool: "", manningAgent: isManningAgentUser ? userManningAgent || "" : "", terminationBy: "", nfr: "" });
+        return (
+            <>
+                {showFilters && (
+                    <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
+                        {!isSmallScreen && (
+                            <div className="flex flex-nowrap items-center gap-2">
+                                <div className="shrink-0 w-40">
+                                    <Input placeholder="Search Name..." className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full" value={terminatedFilters.searchName} onChange={(e) => setTerminatedFilters(p => ({ ...p, searchName: e.target.value }))} data-testid="input-terminated-search-name" />
+                                </div>
+                                <div className="shrink-0 w-[110px]">
+                                    <Select value={terminatedFilters.vessel} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, vessel: v }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-terminated-vessel"><SelectValue placeholder="Vessel" /></SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {vesselsLoading ? <SelectItem value="loading" disabled>Loading vessels...</SelectItem> : vesselMasterData.map(v => (<SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="shrink-0 w-[100px]">
+                                    <Select value={terminatedFilters.rank} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, rank: v }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-terminated-rank"><SelectValue placeholder="Rank" /></SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {ranksLoading ? <SelectItem value="loading" disabled>Loading ranks...</SelectItem> : rankOptions.map(o => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="shrink-0 w-[110px]">
+                                    <Select value={terminatedFilters.nationality} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, nationality: v }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-terminated-nationality"><SelectValue placeholder="Nationality" /></SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {nationalitiesLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> : nationalityMasterData.map(n => (<SelectItem key={n} value={n}>{n}</SelectItem>))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="shrink-0 w-[100px]">
+                                    <Select value={terminatedFilters.pool} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, pool: v }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-terminated-pool"><SelectValue placeholder="Pool" /></SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {poolLoading ? <SelectItem value="loading" disabled>Loading...</SelectItem> : crewPoolMasterData.map((pool: any) => (<SelectItem key={pool.id || pool.name} value={pool.name}>{pool.name}</SelectItem>))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="min-w-[120px]">
+                                    <Select value={terminatedFilters.manningAgent} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, manningAgent: v }))} disabled={isManningAgentUser}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-terminated-manning-agent"><SelectValue placeholder="Manning Agent" /></SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">
+                                            {manningAgentOptions.map((a: string) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="shrink-0 w-[140px]">
+                                    <Select value={terminatedFilters.terminationBy} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, terminationBy: v }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-terminated-by"><SelectValue placeholder="Termination By" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Company">Company</SelectItem>
+                                            <SelectItem value="Crew Member (resignation)">Crew Member (resignation)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="shrink-0 w-[110px]">
+                                    <Select value={terminatedFilters.nfr} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, nfr: v }))}>
+                                        <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-terminated-nfr"><SelectValue placeholder="All / NFR" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="nfr-only">NFR Only</SelectItem>
+                                            <SelectItem value="excluding-nfr">Excluding NFR</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] px-4 shrink-0" data-testid="button-terminated-apply">Apply</Button>
+                                <Button variant="outline" className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0" onClick={clearTerminated} data-testid="button-terminated-clear">Clear</Button>
+                            </div>
+                        )}
+                        {isSmallScreen && (
+                            <div className="space-y-3">
+                                <div className={isPhone ? "grid grid-cols-2 gap-2" : "grid grid-cols-3 lg:grid-cols-4 gap-3"}>
+                                    <Input placeholder="Search Name..." className={`h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full ${isPhone ? 'col-span-2' : ''}`} value={terminatedFilters.searchName} onChange={(e) => setTerminatedFilters(p => ({ ...p, searchName: e.target.value }))} data-testid="input-terminated-search-name" />
+                                    <Select value={terminatedFilters.vessel} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, vessel: v }))}>
+                                        <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Vessel" /></SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">{vesselMasterData.map(v => (<SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>))}</SelectContent>
+                                    </Select>
+                                    <Select value={terminatedFilters.rank} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, rank: v }))}>
+                                        <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Rank" /></SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">{rankOptions.map(o => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}</SelectContent>
+                                    </Select>
+                                    <Select value={terminatedFilters.nationality} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, nationality: v }))}>
+                                        <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Nationality" /></SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">{nationalityMasterData.map(n => (<SelectItem key={n} value={n}>{n}</SelectItem>))}</SelectContent>
+                                    </Select>
+                                    <Select value={terminatedFilters.pool} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, pool: v }))}>
+                                        <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Pool" /></SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">{crewPoolMasterData.map((pool: any) => (<SelectItem key={pool.id || pool.name} value={pool.name}>{pool.name}</SelectItem>))}</SelectContent>
+                                    </Select>
+                                    <Select value={terminatedFilters.terminationBy} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, terminationBy: v }))}>
+                                        <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Termination By" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Company">Company</SelectItem>
+                                            <SelectItem value="Crew Member (resignation)">Crew Member (resignation)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Select value={terminatedFilters.nfr} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, nfr: v }))}>
+                                        <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="All / NFR" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="nfr-only">NFR Only</SelectItem>
+                                            <SelectItem value="excluding-nfr">Excluding NFR</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <Select value={terminatedFilters.manningAgent} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, manningAgent: v }))} disabled={isManningAgentUser}>
+                                        <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Manning Agent" /></SelectTrigger>
+                                        <SelectContent className="max-h-[200px]">{manningAgentOptions.map((a: string) => (<SelectItem key={a} value={a}>{a}</SelectItem>))}</SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-[11px] flex-1" data-testid="button-terminated-apply">Apply</Button>
+                                    <Button variant="outline" className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] flex-1" onClick={clearTerminated} data-testid="button-terminated-clear">Clear</Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+                <div className="flex flex-col flex-1">
+                    <AgGridTable
+                        rowData={terminatedRowData}
+                        columnDefs={terminatedColumnDefs}
+                        onGridReady={onTerminatedGridReady}
+                        width="100%"
+                        enableExport={!isPhone}
+                        enableSideBar={!isSmallScreen}
+                        enableStatusBar={false}
+                        enableRowGrouping={!isSmallScreen}
+                        enablePivoting={!isSmallScreen}
+                        enableAdvancedFilter={false}
+                        rowSelection={false}
+                        fillAvailableHeight={true}
+                        bottomPadding={isPhone ? 10 : 80}
+                    />
+                    <div className="bg-white border-t border-gray-200 px-4 py-3 flex justify-between items-center" style={{ marginTop: '-1px' }}>
+                        <div className="text-xs font-normal font-['Mulish',Helvetica] text-black" data-testid="text-terminated-rows">
+                            Rows: {terminatedRowData.length}
+                        </div>
+                        <div>
+                            <AgGridTableActions
+                                gridApi={terminatedGridApi}
+                                exportFilename="crew-terminated"
+                                showExportButtons={true}
+                                showFilterButtons={true}
+                                showGroupButtons={true}
+                                showSelectionButtons={false}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
+    };
+
     const renderContent = () => {
         if (selectedCrewPoolPage === "crew-database") {
             return renderFiltersAndTable();
         }
 
         if (selectedCrewPoolPage === "terminated") {
-            return <div className="flex-1" data-testid="page-terminated" />;
+            return <div className="flex flex-col flex-1" data-testid="page-terminated">{renderTerminatedFiltersAndTable()}</div>;
         }
 
         return (
