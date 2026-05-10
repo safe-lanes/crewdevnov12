@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import { format as formatDateFns } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
@@ -2516,7 +2517,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     
                     <div className="space-y-2 text-sm">
                       {/* Vessel - only show when On Board */}
-                      {statusData?.status === 'On Board' && statusData?.status !== 'Terminated' && (
+                      {statusData?.status === 'On Board' && (
                         <div>
                           <div className="text-gray-600 text-xs">Vessel</div>
                           <div className="font-medium text-lg" data-testid="text-vessel">
@@ -2526,7 +2527,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       )}
                       
                       {/* Next Availability - show for both On Leave and On Board (crew may take short leave and return) */}
-                      {(statusData?.status === 'On Leave' || statusData?.status === 'On Board') && statusData?.status !== 'Terminated' && (
+                      {(statusData?.status === 'On Leave' || statusData?.status === 'On Board') && (
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="text-gray-600 text-xs">Next Availability</div>
@@ -2549,7 +2550,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       )}
                       
                       {/* Vessel field (when On Leave - shows as dash since not on vessel) */}
-                      {statusData?.status === 'On Leave' && statusData?.status !== 'Terminated' && (
+                      {statusData?.status === 'On Leave' && (
                         <div>
                           <div className="text-gray-600 text-xs">Vessel</div>
                           <div className="font-medium text-lg" data-testid="text-vessel">
@@ -2559,7 +2560,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       )}
                       
                       {/* Signed On and Relief Due - only show when On Board */}
-                      {statusData?.status === 'On Board' && statusData?.status !== 'Terminated' && (
+                      {statusData?.status === 'On Board' && (
                         <div className="grid grid-cols-2 gap-4 mt-3">
                           <div>
                             <div className="text-gray-600 text-xs">Signed On</div>
@@ -8017,10 +8018,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
           <DialogFooter className="flex !justify-between items-center sm:!justify-between">
             <div className="text-xs text-gray-500" data-testid="text-termination-submitted-by">
-              {`Submitted by: ${userId || 'Unknown User'}, ${roleName || 'Unknown Position'} on ${(() => {
-                const t = new Date();
-                return `${String(t.getDate()).padStart(2, '0')}/${String(t.getMonth() + 1).padStart(2, '0')}/${t.getFullYear()}`;
-              })()}`}
+              {`Submitted by: ${userId || 'Unknown User'}, ${roleName || 'Unknown Position'} on ${formatDateFns(new Date(), 'dd/MM/yyyy')}`}
             </div>
             <Button
               className="h-8 px-6 bg-[#5dc86f] hover:bg-[#218838] text-white"
