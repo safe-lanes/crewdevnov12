@@ -1,4 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import {
+  ReportResultsTable,
+  type ReportColumn as ReportTableColumn,
+  type ReportRow as ReportTableRow,
+} from "@/components/reports/ReportResultsTable";
 import {
   ChevronDown,
   ChevronRight,
@@ -437,14 +444,32 @@ function ReportsSideBar(): JSX.Element {
   );
 }
 
+// Captured filter values are normalised by FilterKind.
+// Single-select filters store a string; dateRange stores {from,to};
+// numeric "within/by days" stores a number.
+export type FilterValue =
+  | string
+  | number
+  | { from: string; to: string }
+  | undefined;
+
 interface FilterControlProps {
   filter: FilterDescriptor;
   reportId: string;
   index: number;
   options: DynamicOptions;
+  value: FilterValue;
+  onChange: (value: FilterValue) => void;
 }
 
-function FilterControl({ filter, reportId, index, options }: FilterControlProps): JSX.Element {
+function FilterControl({
+  filter,
+  reportId,
+  index,
+  options,
+  value,
+  onChange,
+}: FilterControlProps): JSX.Element {
   const testIdBase = `filter-${reportId}-${index}`;
 
   const renderSelect = (
@@ -459,8 +484,13 @@ function FilterControl({ filter, reportId, index, options }: FilterControlProps)
       : isEmpty
         ? (emptyLabel ?? "No options available")
         : placeholder;
+    const current = typeof value === "string" ? value : undefined;
     return (
-      <Select disabled={loading || isEmpty}>
+      <Select
+        value={current}
+        onValueChange={(v) => onChange(v)}
+        disabled={loading || isEmpty}
+      >
         <SelectTrigger className="h-9 w-[180px]" data-testid={testIdBase}>
           <SelectValue placeholder={computedPlaceholder} />
         </SelectTrigger>
@@ -490,25 +520,38 @@ function FilterControl({ filter, reportId, index, options }: FilterControlProps)
       return renderSelect(filter.label, SOURCE_OPTIONS);
     case "status":
       return renderSelect(filter.label, STATUS_OPTIONS);
-    case "dateRange":
+    case "dateRange": {
+      const range =
+        value && typeof value === "object" && "from" in value
+          ? (value as { from: string; to: string })
+          : { from: "", to: "" };
       return (
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-600 whitespace-nowrap">{filter.label}:</span>
           <Input
             type="date"
+            value={range.from}
+            onChange={(e) => onChange({ from: e.target.value, to: range.to })}
             className="h-9 w-[150px]"
             data-testid={`${testIdBase}-from`}
           />
           <span className="text-xs text-gray-500">to</span>
           <Input
             type="date"
+            value={range.to}
+            onChange={(e) => onChange({ from: range.from, to: e.target.value })}
             className="h-9 w-[150px]"
             data-testid={`${testIdBase}-to`}
           />
         </div>
       );
+    }
     case "withinDays":
-    case "byDays":
+    case "byDays": {
+      const num =
+        typeof value === "number"
+          ? value
+          : Number(filter.defaultValue ?? 30);
       return (
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-600 whitespace-nowrap font-medium">
@@ -516,16 +559,19 @@ function FilterControl({ filter, reportId, index, options }: FilterControlProps)
           </span>
           <Input
             type="number"
-            defaultValue={filter.defaultValue ?? 30}
+            value={Number.isFinite(num) ? num : 0}
+            onChange={(e) => onChange(Number(e.target.value))}
             className="h-9 w-[80px] bg-yellow-50"
             data-testid={`${testIdBase}-days`}
           />
           <span className="text-xs text-gray-600">Days</span>
         </div>
       );
-    case "onBoard":
+    }
+    case "onBoard": {
+      const current = typeof value === "string" ? value : undefined;
       return (
-        <Select>
+        <Select value={current} onValueChange={(v) => onChange(v)}>
           <SelectTrigger className="h-9 w-[140px]" data-testid={testIdBase}>
             <SelectValue placeholder={filter.label} />
           </SelectTrigger>
@@ -536,6 +582,7 @@ function FilterControl({ filter, reportId, index, options }: FilterControlProps)
           </SelectContent>
         </Select>
       );
+    }
     case "onLeave":
       return renderSelect(filter.label, ["All", "On Leave", "On Board"]);
     default:
@@ -543,11 +590,78 @@ function FilterControl({ filter, reportId, index, options }: FilterControlProps)
   }
 }
 
+// Build the filters object that goes to /api/v2/reports/run.
+// Maps positional FilterDescriptors to a kind-keyed payload that
+// the server-side report handlers' Zod schemas understand.
+function buildFiltersPayload(
+  descriptors: FilterDescriptor[],
+  values: Record<number, FilterValue>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  descriptors.forEach((d, idx) => {
+    const v = values[idx];
+    if (v === undefined || v === null || v === "") return;
+    switch (d.kind) {
+      case "dateRange": {
+        const range = v as { from: string; to: string };
+        if (range.from) out.dateFrom = range.from;
+        if (range.to) out.dateTo = range.to;
+        break;
+      }
+      case "withinDays":
+        out.withinDays = v;
+        break;
+      case "byDays":
+        out.byDays = v;
+        break;
+      case "rank":
+      case "vessel":
+      case "nationality":
+      case "source":
+      case "status":
+      case "onBoard":
+      case "onLeave":
+        out[d.kind] = v;
+        break;
+    }
+  });
+  return out;
+}
+
+interface RunReportResponse {
+  reportId: string;
+  title: string;
+  columns: ReportTableColumn[];
+  rows: ReportTableRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 function ReportsContent(): JSX.Element {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  // Filter values keyed by report id, then positional descriptor index.
+  const [filterValuesByReport, setFilterValuesByReport] = useState<
+    Record<string, Record<number, FilterValue>>
+  >({});
+  // Per-report results cache so switching back to a report keeps its last result.
+  const [resultsByReport, setResultsByReport] = useState<
+    Record<string, RunReportResponse>
+  >({});
+  // Per-report sort + pagination, persisted across runs of the same report.
+  const [tableStateByReport, setTableStateByReport] = useState<
+    Record<
+      string,
+      {
+        page: number;
+        pageSize: number;
+        sort: { key: string; direction: "asc" | "desc" } | null;
+      }
+    >
+  >({});
 
   const filter = useMemo(() => computeFilter(searchQuery), [searchQuery]);
 
@@ -646,12 +760,103 @@ function ReportsContent(): JSX.Element {
     ? REPORT_FILTERS[selected.leaf.id] ?? DEFAULT_FILTERS
     : [];
 
-  const handleGenerate = () => {
-    toast({
-      title: "Report generation will be wired later",
-      description: selected ? `"${selected.leaf.label}" filters captured (mock).` : undefined,
+  const currentTableState = selectedReportId
+    ? tableStateByReport[selectedReportId] ?? {
+        page: 1,
+        pageSize: 50,
+        sort: null,
+      }
+    : { page: 1, pageSize: 50, sort: null as null | { key: string; direction: "asc" | "desc" } };
+
+  const currentFilterValues = selectedReportId
+    ? filterValuesByReport[selectedReportId] ?? {}
+    : {};
+
+  const setFilterValue = (idx: number, value: FilterValue) => {
+    if (!selectedReportId) return;
+    setFilterValuesByReport((prev) => ({
+      ...prev,
+      [selectedReportId]: {
+        ...(prev[selectedReportId] ?? {}),
+        [idx]: value,
+      },
+    }));
+  };
+
+  const setTableState = (
+    reportId: string,
+    next: Partial<{
+      page: number;
+      pageSize: number;
+      sort: { key: string; direction: "asc" | "desc" } | null;
+    }>,
+  ) => {
+    setTableStateByReport((prev) => {
+      const base = prev[reportId] ?? { page: 1, pageSize: 50, sort: null };
+      return { ...prev, [reportId]: { ...base, ...next } };
     });
   };
+
+  const runReportMutation = useMutation<
+    RunReportResponse,
+    Error,
+    {
+      reportId: string;
+      filters: Record<string, unknown>;
+      page: number;
+      pageSize: number;
+      sort: { key: string; direction: "asc" | "desc" } | null;
+    }
+  >({
+    mutationFn: async (payload) => {
+      const res = await apiRequest("POST", "/api/v2/reports/run", payload);
+      return (await res.json()) as RunReportResponse;
+    },
+    onSuccess: (data) => {
+      setResultsByReport((prev) => ({ ...prev, [data.reportId]: data }));
+    },
+    onError: (err) => {
+      toast({
+        title: "Failed to generate report",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const runReport = (
+    overrides?: Partial<{
+      page: number;
+      pageSize: number;
+      sort: { key: string; direction: "asc" | "desc" } | null;
+    }>,
+  ) => {
+    if (!selected) return;
+    const reportId = selected.leaf.id;
+    const filters = buildFiltersPayload(selectedFilters, currentFilterValues);
+    const ts = { ...currentTableState, ...overrides };
+    if (overrides) setTableState(reportId, overrides);
+    runReportMutation.mutate({
+      reportId,
+      filters,
+      page: ts.page,
+      pageSize: ts.pageSize,
+      sort: ts.sort,
+    });
+  };
+
+  const handleGenerate = () => {
+    if (!selected) return;
+    // New Generate click resets pagination to page 1 but keeps current sort.
+    runReport({ page: 1 });
+  };
+
+  const currentResult = selectedReportId
+    ? resultsByReport[selectedReportId]
+    : undefined;
+  const isRunningCurrent =
+    runReportMutation.isPending &&
+    runReportMutation.variables?.reportId === selectedReportId;
 
   return (
     <div data-testid="page-reports">
@@ -843,28 +1048,61 @@ function ReportsContent(): JSX.Element {
                     reportId={selected.leaf.id}
                     index={idx}
                     options={dynamicOptions}
+                    value={currentFilterValues[idx]}
+                    onChange={(v) => setFilterValue(idx, v)}
                   />
                 ))}
                 <div className="ml-auto">
                   <Button
                     type="button"
                     onClick={handleGenerate}
+                    disabled={isRunningCurrent}
                     className="h-9 bg-[#52baf3] hover:bg-[#16569e] text-white"
                     data-testid="button-reports-generate"
                   >
-                    Generate
+                    {isRunningCurrent ? "Generating…" : "Generate"}
                   </Button>
                 </div>
               </div>
 
-              {/* Placeholder helper line */}
-              <div
-                className="text-sm text-gray-500 text-center py-12 border border-dashed border-gray-200 rounded"
-                data-testid="text-reports-results-placeholder"
-              >
-                Set the filters above and click Generate to view the report.
-                Results UI will be added later.
-              </div>
+              {/* Results area */}
+              {currentResult ? (
+                <ReportResultsTable
+                  title={currentResult.title}
+                  columns={currentResult.columns}
+                  rows={currentResult.rows}
+                  total={currentResult.total}
+                  page={currentResult.page}
+                  pageSize={currentResult.pageSize}
+                  sort={currentTableState.sort}
+                  onSortChange={(s) => runReport({ sort: s, page: 1 })}
+                  onPageChange={(p) => runReport({ page: p })}
+                  onPageSizeChange={(ps) => runReport({ pageSize: ps, page: 1 })}
+                  isLoading={isRunningCurrent && !currentResult}
+                  isFetching={isRunningCurrent}
+                  exportFilename={currentResult.title}
+                />
+              ) : isRunningCurrent ? (
+                <ReportResultsTable
+                  title={selected.leaf.label}
+                  columns={[]}
+                  rows={[]}
+                  total={0}
+                  page={1}
+                  pageSize={currentTableState.pageSize}
+                  sort={null}
+                  onSortChange={() => undefined}
+                  onPageChange={() => undefined}
+                  isLoading
+                />
+              ) : (
+                <div
+                  className="text-sm text-gray-500 text-center py-12 border border-dashed border-gray-200 rounded"
+                  data-testid="text-reports-results-placeholder"
+                >
+                  Set the filters above and click Generate to view the report.
+                </div>
+              )}
             </div>
           )}
         </div>

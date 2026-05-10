@@ -1,0 +1,273 @@
+import { useMemo, useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { downloadCsv, rowsToCsv } from "@/lib/csvExport";
+
+export type ReportColumnType =
+  | "text"
+  | "number"
+  | "date"
+  | "boolean"
+  | "status";
+
+export interface ReportColumn {
+  key: string;
+  label: string;
+  type?: ReportColumnType;
+  width?: number;
+  align?: "left" | "right" | "center";
+}
+
+export type ReportRow = Record<string, string | number | boolean | null | undefined>;
+
+interface ReportResultsTableProps {
+  title: string;
+  columns: ReportColumn[];
+  rows: ReportRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
+  sort: { key: string; direction: "asc" | "desc" } | null;
+  onSortChange: (sort: { key: string; direction: "asc" | "desc" } | null) => void;
+  isLoading?: boolean;
+  isFetching?: boolean;
+  exportFilename?: string;
+}
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200];
+
+function formatCell(value: unknown, type?: ReportColumnType): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (type === "boolean") return value ? "Yes" : "No";
+  if (type === "number" && typeof value === "number") {
+    return value.toLocaleString();
+  }
+  return String(value);
+}
+
+export function ReportResultsTable({
+  title,
+  columns,
+  rows,
+  total,
+  page,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  sort,
+  onSortChange,
+  isLoading,
+  isFetching,
+  exportFilename,
+}: ReportResultsTableProps): JSX.Element {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const end = Math.min(page * pageSize, total);
+
+  const handleSort = (key: string) => {
+    if (!sort || sort.key !== key) {
+      onSortChange({ key, direction: "asc" });
+    } else if (sort.direction === "asc") {
+      onSortChange({ key, direction: "desc" });
+    } else {
+      onSortChange(null);
+    }
+  };
+
+  const handleExport = () => {
+    const csv = rowsToCsv(
+      columns.map((c) => ({ key: c.key, label: c.label })),
+      rows,
+    );
+    const fname = (exportFilename || title || "report")
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+    downloadCsv(fname, csv);
+  };
+
+  const skeletonRows = useMemo(
+    () => Array.from({ length: Math.min(8, pageSize) }, (_, i) => i),
+    [pageSize],
+  );
+
+  return (
+    <div className="border border-gray-200 rounded bg-white" data-testid="report-results-table">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-gray-50">
+        <div className="text-sm text-gray-700" data-testid="text-report-result-summary">
+          {isLoading ? (
+            <span>Loading…</span>
+          ) : total === 0 ? (
+            <span>No results</span>
+          ) : (
+            <span>
+              Showing <span className="font-medium">{start}</span>–
+              <span className="font-medium">{end}</span> of{" "}
+              <span className="font-medium">{total.toLocaleString()}</span>
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={isLoading || rows.length === 0}
+            className="h-8"
+            data-testid="button-report-export-csv"
+          >
+            <Download size={14} className="mr-1" />
+            Export CSV
+          </Button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" data-testid="table-report-results">
+          <thead className="bg-[#f4f8fb] text-gray-700">
+            <tr>
+              {columns.map((col) => {
+                const isSorted = sort?.key === col.key;
+                const Icon = !isSorted
+                  ? ArrowUpDown
+                  : sort.direction === "asc"
+                    ? ArrowUp
+                    : ArrowDown;
+                return (
+                  <th
+                    key={col.key}
+                    style={col.width ? { width: col.width } : undefined}
+                    className={`px-3 py-2 font-semibold border-b border-gray-200 select-none cursor-pointer ${
+                      col.align === "right"
+                        ? "text-right"
+                        : col.align === "center"
+                          ? "text-center"
+                          : "text-left"
+                    }`}
+                    onClick={() => handleSort(col.key)}
+                    data-testid={`th-report-${col.key}`}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      <span>{col.label}</span>
+                      <Icon
+                        size={12}
+                        className={isSorted ? "text-[#16569e]" : "text-gray-400"}
+                      />
+                    </span>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              skeletonRows.map((i) => (
+                <tr key={`sk-${i}`} className="border-b border-gray-100">
+                  {columns.map((col) => (
+                    <td key={col.key} className="px-3 py-2">
+                      <div className="h-4 bg-gray-100 rounded w-3/4 animate-pulse" />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={columns.length}
+                  className="px-3 py-12 text-center text-gray-500"
+                  data-testid="text-report-empty"
+                >
+                  No data matches the selected filters.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, idx) => (
+                <tr
+                  key={idx}
+                  className={`border-b border-gray-100 ${
+                    isFetching ? "opacity-60" : ""
+                  } hover:bg-blue-50/30`}
+                  data-testid={`row-report-${idx}`}
+                >
+                  {columns.map((col) => (
+                    <td
+                      key={col.key}
+                      className={`px-3 py-2 ${
+                        col.align === "right"
+                          ? "text-right"
+                          : col.align === "center"
+                            ? "text-center"
+                            : "text-left"
+                      }`}
+                      data-testid={`cell-report-${col.key}-${idx}`}
+                    >
+                      {formatCell(row[col.key], col.type)}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between px-4 py-2 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center gap-2 text-xs text-gray-600">
+          <span>Rows per page:</span>
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange?.(Number(e.target.value))}
+            disabled={!onPageSizeChange || isLoading}
+            className="h-7 border border-gray-300 rounded px-1 text-xs bg-white"
+            data-testid="select-report-page-size"
+          >
+            {PAGE_SIZE_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-600" data-testid="text-report-page-indicator">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 w-7 p-0"
+            disabled={page <= 1 || isLoading}
+            onClick={() => onPageChange(page - 1)}
+            data-testid="button-report-page-prev"
+          >
+            <ChevronLeft size={14} />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 w-7 p-0"
+            disabled={page >= totalPages || isLoading}
+            onClick={() => onPageChange(page + 1)}
+            data-testid="button-report-page-next"
+          >
+            <ChevronRight size={14} />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
