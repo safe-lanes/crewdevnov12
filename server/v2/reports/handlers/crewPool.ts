@@ -14,15 +14,6 @@ const baseCrewConditions = (): SQL[] => [
   isNull(crewMembersV2.archivedAt),
 ];
 
-// IMPORTANT: drizzle's sql`` interpolation renders ${table.column} as the
-// bare "column" name without table qualification. Inside a correlated
-// subquery whose FROM has multiple tables sharing a column name (e.g.
-// vessel_planning_v2 + master_vessels both have vessel_uuid), this produces
-// either an ambiguous-column ERROR or worse, a silent tautology like
-// `crew_uuid = crew_uuid` that resolves to inner.crew_uuid = inner.crew_uuid
-// and returns the wrong row. So we write these correlated subqueries with
-// fully-qualified raw column references.
-// "Current" = active assignment with no sign-off recorded yet.
 const currentVesselNameExpr = sql<string | null>`(
   SELECT master_vessels.vessel
   FROM vessel_planning_v2
@@ -369,11 +360,6 @@ const contactCols: ReportColumn[] = [
   { key: "vesselName", label: "Vessel", type: "text" },
 ];
 
-// Correlated single-row subqueries avoid one-to-many fan-out from
-// crew_addresses (no UNIQUE on crew_uuid in schema). Use fully-qualified
-// raw column refs so the outer crew_members_v2.crew_uuid correlation is
-// not shadowed by the inner crew_addresses.crew_uuid (drizzle would render
-// both as bare "crew_uuid" and the comparison would become a tautology).
 const mobileExpr = sql<string | null>`(
   SELECT crew_addresses.mobile FROM crew_addresses
   WHERE crew_addresses.crew_uuid = crew_members_v2.crew_uuid

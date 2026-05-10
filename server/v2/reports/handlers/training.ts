@@ -12,10 +12,6 @@ import { dateExpr, fullNameExpr } from "./_shared";
 const nameExpr = fullNameExpr(crewMembersV2.firstName, crewMembersV2.middleName, crewMembersV2.familyName);
 const expiryDate = dateExpr(crewLicenses.expiry);
 
-// Fully-qualified raw column refs: drizzle's sql`` interpolation drops table
-// qualifications, which would either cause "column reference X is ambiguous"
-// errors or silently shadow the outer correlation. See crewPool.ts for the
-// detailed explanation.
 const currentVesselNameExpr = sql<string | null>`(
   SELECT master_vessels.vessel
   FROM vessel_planning_v2

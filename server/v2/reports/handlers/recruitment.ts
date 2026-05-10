@@ -66,9 +66,6 @@ function makeStatusReport(
       const lowered = matchStatuses.map((s) => s.toLowerCase());
       const conds: SQL[] = [
         eq(recruitmentCandidatesV2.isDeleted, false),
-        // Parameterized IN-list: every value is bound, never interpolated
-        // into the SQL text. Safe even if matchStatuses ever becomes
-        // user-controlled in the future.
         inArray(
           sql<string>`LOWER(COALESCE(${recruitmentCandidatesV2.status}, ''))`,
           lowered,
@@ -169,9 +166,6 @@ const sourceCols: ReportColumn[] = [
   { key: "applications", label: "Applications", type: "number", align: "right", width: 140 },
 ];
 
-// Correlated single-row subquery: cand_personal_details may have multiple
-// (or soft-deleted) rows per candidate; pick exactly one to avoid fan-out.
-// Use fully-qualified raw column refs (see crewPool.ts comment for why).
 const candidateSourceExpr = sql<string>`COALESCE(NULLIF(TRIM((
   SELECT cand_personal_details.manning_agent
   FROM cand_personal_details
@@ -304,8 +298,6 @@ function makePendingReport(
   };
 }
 
-// Fully-qualified raw column refs (see crewPool.ts for the underlying drizzle
-// quirk that otherwise turns these into inner-table tautologies).
 const noB5TestExists = sql`NOT EXISTS (
   SELECT 1 FROM screening_b5_tests
   WHERE screening_b5_tests.rec_can_uuid = recruitment_candidates_v2.rec_can_uuid
