@@ -29,7 +29,7 @@ const COLUMNS: ReportColumn[] = [
   { key: "presentRank", label: "Rank", type: "text" },
   { key: "nationalityName", label: "Nationality", type: "text" },
   { key: "vesselName", label: "Vessel", type: "text" },
-  { key: "status", label: "Status", type: "status", width: 110 },
+  { key: "status", label: "Status", type: "status", width: 110, sortable: false },
 ];
 
 // Correlated subquery: pick a single vessel name per crew (no row fan-out).

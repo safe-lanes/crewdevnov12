@@ -143,7 +143,9 @@ export function ReportResultsTable({
           <thead className="bg-[#f4f8fb] text-gray-700">
             <tr>
               {displayColumns.map((col) => {
-                const isSorted = showHeaderInteractions && sort?.key === col.key;
+                const colSortable = col.sortable !== false;
+                const headerClickable = showHeaderInteractions && colSortable;
+                const isSorted = headerClickable && sort?.key === col.key;
                 const Icon = !isSorted
                   ? ArrowUpDown
                   : sort?.direction === "asc"
@@ -154,7 +156,7 @@ export function ReportResultsTable({
                     key={col.key}
                     style={col.width ? { width: col.width } : undefined}
                     className={`px-3 py-2 font-semibold border-b border-gray-200 select-none ${
-                      showHeaderInteractions ? "cursor-pointer" : ""
+                      headerClickable ? "cursor-pointer" : ""
                     } ${
                       col.align === "right"
                         ? "text-right"
@@ -163,9 +165,7 @@ export function ReportResultsTable({
                           : "text-left"
                     }`}
                     onClick={
-                      showHeaderInteractions
-                        ? () => handleSort(col.key)
-                        : undefined
+                      headerClickable ? () => handleSort(col.key) : undefined
                     }
                     data-testid={`th-report-${col.key}`}
                   >
@@ -174,7 +174,7 @@ export function ReportResultsTable({
                     ) : (
                       <span className="inline-flex items-center gap-1">
                         <span>{col.label}</span>
-                        {showHeaderInteractions && (
+                        {headerClickable && (
                           <Icon
                             size={12}
                             className={isSorted ? "text-[#16569e]" : "text-gray-400"}

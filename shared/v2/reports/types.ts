@@ -13,6 +13,7 @@ export interface ReportColumn {
   type?: ReportColumnType;
   width?: number;
   align?: "left" | "right" | "center";
+  sortable?: boolean;
 }
 
 export type ReportCellValue = string | number | boolean | null;
