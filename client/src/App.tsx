@@ -24,7 +24,7 @@ const RestHoursModuleComponent = lazy(() => import("./modules/rest-hours").then(
 const RestHoursVesselOverviewComponent = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursVesselOverview })));
 const TrainingRetentionModuleComponent = lazy(() => import("./modules/training-retention").then(m => ({ default: m.TrainingRetentionModule })));
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
-const ReportsComingSoon = lazy(() => import("./pages/ReportsComingSoon").then(m => ({ default: m.ReportsComingSoon })));
+const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const AccountsModule = lazy(() => import("./modules/accounts/AccountsModule").then(m => ({ default: m.AccountsModule })));
 const NotFound = lazy(() => import("./modules/not-found"));
 
@@ -138,7 +138,7 @@ function AuthenticatedApp() {
                     <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
                   </Route>
                   <Route path="/reports">
-                    <ProtectedRoute menuName="Reports"><ReportsComingSoon /></ProtectedRoute>
+                    <ProtectedRoute menuName="Reports"><ReportsPage /></ProtectedRoute>
                   </Route>
                   <Route path="/admin/*">
                     <ProtectedRoute menuName="Admin"><AdminRouter /></ProtectedRoute>
