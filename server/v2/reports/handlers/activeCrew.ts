@@ -33,15 +33,22 @@ const COLUMNS: ReportColumn[] = [
 ];
 
 // Correlated subquery: pick a single vessel name per crew (no row fan-out).
-// Whitespace formatting kept tight for readability of the generated SQL.
+// IMPORTANT: drizzle's sql`` interpolation renders ${table.column} as the
+// bare "column" without qualification, which inside a subquery whose FROM
+// has tables sharing column names (vessel_planning_v2 + master_vessels both
+// have vessel_uuid; the outer crew_members_v2 also has crew_uuid) either
+// raises "ambiguous" or silently shadows the outer correlation
+// (crew_uuid = crew_uuid becomes a tautology that returns the wrong row).
+// We therefore write the subquery body with fully-qualified raw refs.
 const vesselNameExpr = sql<string | null>`(
-  SELECT ${masterVessels.vessel}
-  FROM ${vesselPlanningV2}
-  LEFT JOIN ${masterVessels}
-    ON ${masterVessels.vesselUuid} = ${vesselPlanningV2.vesselUuid}
-  WHERE ${vesselPlanningV2.crewUuid} = ${crewMembersV2.crewUuid}
-    AND ${vesselPlanningV2.isDeleted} = FALSE
-    AND ${vesselPlanningV2.isArchived} = FALSE
+  SELECT master_vessels.vessel
+  FROM vessel_planning_v2
+  LEFT JOIN master_vessels
+    ON master_vessels.vessel_uuid = vessel_planning_v2.vessel_uuid
+  WHERE vessel_planning_v2.crew_uuid = crew_members_v2.crew_uuid
+    AND vessel_planning_v2.is_deleted = FALSE
+    AND vessel_planning_v2.is_archived = FALSE
+    AND vessel_planning_v2.sign_off_date IS NULL
   LIMIT 1
 )`;
 

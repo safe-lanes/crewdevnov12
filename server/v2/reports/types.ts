@@ -20,7 +20,9 @@ export interface ReportHandler<TFilters> {
   reportId: string;
   title: string;
   columns: ReportColumn[];
-  filterSchema: z.ZodType<TFilters>;
+  // Loosened input/def variance so handlers can use `.coerce`, `.default`,
+  // `.transform`, etc. Filters always arrive as `unknown` from the request body.
+  filterSchema: z.ZodType<TFilters, z.ZodTypeDef, unknown>;
   run: (
     filters: TFilters,
     ctx: ReportHandlerContext,
