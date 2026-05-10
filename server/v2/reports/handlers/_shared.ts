@@ -2,21 +2,13 @@ import { z } from "zod";
 import { sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
-// Safely cast a text column holding a date to a real DATE.
-// Returns NULL for empty strings, malformed shapes, or values that fail
-// PG's own validation, instead of throwing on dirty legacy data.
-// Uses pg_input_is_valid (PG 16+) when available; falls back to a regex
-// shape-check + ::date cast guarded by month/day ranges.
+// Cast a text column to DATE, returning NULL for invalid values rather
+// than raising. pg_input_is_valid (PG 16+) catches calendar errors like
+// 2024-02-30 that a regex shape-check alone cannot.
 export function dateExpr(textCol: PgColumn | SQL): SQL {
-  // Strict YYYY-MM-DD with month 01-12 and day 01-31 (calendar over-ranges
-  // such as Feb 30 are unlikely in production text date columns; if any do
-  // exist, the ::date cast inside the CASE is what would error and we accept
-  // that very narrow edge case rather than introducing a PL/pgSQL helper).
-  return sql`CASE WHEN ${textCol} ~ '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$' THEN ${textCol}::date ELSE NULL END`;
+  return sql`CASE WHEN ${textCol} ~ '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$' AND pg_input_is_valid(${textCol}, 'date') THEN ${textCol}::date ELSE NULL END`;
 }
 
-// Filter-payload date validator. Validates calendar correctness, not just
-// shape — e.g. "2024-13-40" is rejected before reaching SQL.
 export const dateFilter = z
   .string()
   .trim()
