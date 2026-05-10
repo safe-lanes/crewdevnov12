@@ -10,6 +10,7 @@ import { formatDate } from '@/utils/format';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
@@ -585,6 +586,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const isCreatingCrewRef = useRef(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [isStatusEditOpen, setIsStatusEditOpen] = useState(false);
+  const [isTerminateOpen, setIsTerminateOpen] = useState(false);
+  const initialTerminationDraft = useMemo(() => {
+    const t = new Date();
+    const yyyy = t.getFullYear();
+    const mm = String(t.getMonth() + 1).padStart(2, '0');
+    const dd = String(t.getDate()).padStart(2, '0');
+    return { date: `${yyyy}-${mm}-${dd}`, initiatedBy: '', reason: '', notForHire: false, comments: '' };
+  }, []);
+  const [terminationDraft, setTerminationDraft] = useState(initialTerminationDraft);
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
@@ -631,7 +641,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { canView, canEdit, permissions } = usePermissions();
+  const { canView, canEdit, permissions, roleName, userId } = usePermissions();
 
   const sectionMenuMap: Record<string, string | null> = {
     A: 'CP Dashboard',
@@ -2490,12 +2500,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </div>
                 ) : (
                   <>
-                    {/* Status Badge with color coding: On Board=orange, On Leave=green, Inactive=gray */}
+                    {/* Status Badge with color coding: On Board=orange, On Leave=green, Inactive=gray, Terminated=red */}
                     <div 
                       className={`${
                         statusData?.status === 'On Board' ? 'bg-orange-500' : 
                         statusData?.status === 'On Leave' ? 'bg-green-500' : 
                         statusData?.status === 'Inactive' ? 'bg-gray-500' :
+                        statusData?.status === 'Terminated' ? 'bg-[#f47171]' :
                         'bg-gray-400'
                       } text-white p-3 rounded text-center`} 
                       data-testid="status-badge"
@@ -2505,7 +2516,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     
                     <div className="space-y-2 text-sm">
                       {/* Vessel - only show when On Board */}
-                      {statusData?.status === 'On Board' && (
+                      {statusData?.status === 'On Board' && statusData?.status !== 'Terminated' && (
                         <div>
                           <div className="text-gray-600 text-xs">Vessel</div>
                           <div className="font-medium text-lg" data-testid="text-vessel">
@@ -2515,7 +2526,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       )}
                       
                       {/* Next Availability - show for both On Leave and On Board (crew may take short leave and return) */}
-                      {(statusData?.status === 'On Leave' || statusData?.status === 'On Board') && (
+                      {(statusData?.status === 'On Leave' || statusData?.status === 'On Board') && statusData?.status !== 'Terminated' && (
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="text-gray-600 text-xs">Next Availability</div>
@@ -2538,7 +2549,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       )}
                       
                       {/* Vessel field (when On Leave - shows as dash since not on vessel) */}
-                      {statusData?.status === 'On Leave' && (
+                      {statusData?.status === 'On Leave' && statusData?.status !== 'Terminated' && (
                         <div>
                           <div className="text-gray-600 text-xs">Vessel</div>
                           <div className="font-medium text-lg" data-testid="text-vessel">
@@ -2548,7 +2559,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       )}
                       
                       {/* Signed On and Relief Due - only show when On Board */}
-                      {statusData?.status === 'On Board' && (
+                      {statusData?.status === 'On Board' && statusData?.status !== 'Terminated' && (
                         <div className="grid grid-cols-2 gap-4 mt-3">
                           <div>
                             <div className="text-gray-600 text-xs">Signed On</div>
@@ -7908,10 +7919,129 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <div className="w-3 h-3 rounded-full bg-gray-500 mr-3"></div>
               Inactive
             </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => {
+                setIsStatusEditOpen(false);
+                setTerminationDraft(initialTerminationDraft);
+                setIsTerminateOpen(true);
+              }}
+              data-testid="button-open-terminate-employment"
+            >
+              <div className="w-3 h-3 rounded-full bg-orange-500 mr-3"></div>
+              Terminate Employment
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
-      
+
+      {/* Terminate Employment Dialog - UI only (no backend wiring) */}
+      <Dialog
+        open={isTerminateOpen}
+        onOpenChange={(open) => {
+          setIsTerminateOpen(open);
+          if (!open) setTerminationDraft(initialTerminationDraft);
+        }}
+      >
+        <DialogContent className="sm:max-w-[560px]" data-testid="dialog-terminate-employment">
+          <DialogHeader>
+            <DialogTitle>Terminate Employment</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs text-gray-600">Termination Date</Label>
+                <FormattedDateInput
+                  value={terminationDraft.date}
+                  onChange={(e) => setTerminationDraft(prev => ({ ...prev, date: e.target.value }))}
+                  className="mt-1"
+                  data-testid="input-termination-date"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-gray-600">Termination Initiated by</Label>
+                <Select
+                  value={terminationDraft.initiatedBy}
+                  onValueChange={(value) => setTerminationDraft(prev => ({ ...prev, initiatedBy: value }))}
+                >
+                  <SelectTrigger className="mt-1" data-testid="select-termination-initiated-by">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Company">Company</SelectItem>
+                    <SelectItem value="Crew Member (resignation)">Crew Member (resignation)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-600">Reason for Termination</Label>
+                <Select
+                  value={terminationDraft.reason}
+                  onValueChange={(value) => setTerminationDraft(prev => ({ ...prev, reason: value }))}
+                >
+                  <SelectTrigger className="mt-1" data-testid="select-termination-reason">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Resignation">Resignation</SelectItem>
+                    <SelectItem value="Poor Performance">Poor Performance</SelectItem>
+                    <SelectItem value="Disciplinary">Disciplinary</SelectItem>
+                    <SelectItem value="No suitable vessel">No suitable vessel</SelectItem>
+                    <SelectItem value="Unresponsive">Unresponsive</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end pb-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={terminationDraft.notForHire}
+                    onCheckedChange={(checked) => setTerminationDraft(prev => ({ ...prev, notForHire: checked === true }))}
+                    data-testid="checkbox-not-for-hire"
+                  />
+                  <span className="text-sm font-medium text-red-500">Not for Hire</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-600">Comments</Label>
+              <Textarea
+                value={terminationDraft.comments}
+                onChange={(e) => setTerminationDraft(prev => ({ ...prev, comments: e.target.value }))}
+                rows={4}
+                className="mt-1 resize-none"
+                data-testid="textarea-termination-comments"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex !justify-between items-center sm:!justify-between">
+            <div className="text-xs text-gray-500" data-testid="text-termination-submitted-by">
+              {`Submitted by: ${userId || 'Unknown User'}, ${roleName || 'Unknown Position'} on ${(() => {
+                const t = new Date();
+                return `${String(t.getDate()).padStart(2, '0')}/${String(t.getMonth() + 1).padStart(2, '0')}/${t.getFullYear()}`;
+              })()}`}
+            </div>
+            <Button
+              className="h-8 px-6 bg-[#5dc86f] hover:bg-[#218838] text-white"
+              disabled={!terminationDraft.initiatedBy || !terminationDraft.reason}
+              onClick={() => {
+                toast({
+                  title: "Termination saved (UI only)",
+                  description: "Backend wiring pending.",
+                  duration: 3000,
+                });
+                setIsTerminateOpen(false);
+                setTerminationDraft(initialTerminationDraft);
+              }}
+              data-testid="button-submit-termination"
+            >
+              Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Next Availability Edit Dialog */}
       <Dialog open={isNextAvailabilityEditOpen} onOpenChange={setIsNextAvailabilityEditOpen}>
         <DialogContent className="sm:max-w-[350px]">
