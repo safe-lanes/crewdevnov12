@@ -136,7 +136,7 @@ export function ReportResultsTable({
             variant="outline"
             size="sm"
             onClick={handleExportCsv}
-            disabled={isLoading || rows.length === 0}
+            disabled={isLoading || columns.length === 0}
             className="h-8"
             data-testid="button-report-export-csv"
           >
