@@ -44,7 +44,10 @@ export function downloadXlsx(
   }
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName.slice(0, 31));
+  const safeSheetName =
+    (sheetName || "Report").replace(/[:\\/?*[\]]/g, "_").slice(0, 31).trim() ||
+    "Report";
+  XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
 
   const out = filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`;
   XLSX.writeFile(wb, out);
