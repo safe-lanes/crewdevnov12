@@ -17,7 +17,6 @@ interface DbTrainingComboboxProps {
   isLoading?: boolean;
   isError?: boolean;
   testId?: string;
-  className?: string;
   triggerClassName?: string;
 }
 
