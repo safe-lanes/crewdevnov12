@@ -58,7 +58,7 @@ export function DbTrainingCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          disabled={isLoading || isError}
+          disabled={isLoading}
           className={cn(
             'h-8 w-full justify-between text-xs font-normal px-2',
             !matched && !isUnknown && 'text-muted-foreground',
