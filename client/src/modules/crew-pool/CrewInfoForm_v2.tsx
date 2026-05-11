@@ -593,7 +593,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const yyyy = t.getFullYear();
     const mm = String(t.getMonth() + 1).padStart(2, '0');
     const dd = String(t.getDate()).padStart(2, '0');
-    return { date: `${yyyy}-${mm}-${dd}`, initiatedBy: '', reason: '', notForHire: false, comments: '' };
+    return { date: `${yyyy}-${mm}-${dd}`, initiatedBy: '', reason: '', category: '', notForHire: false, comments: '' };
   }, []);
   const [terminationDraft, setTerminationDraft] = useState(initialTerminationDraft);
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
@@ -7994,6 +7994,22 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label className="text-xs text-gray-600">Termination Category</Label>
+                <Select
+                  value={terminationDraft.category}
+                  onValueChange={(value) => setTerminationDraft(prev => ({ ...prev, category: value }))}
+                >
+                  <SelectTrigger className="mt-1" data-testid="select-termination-category">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="General">General</SelectItem>
+                    <SelectItem value="Unavoidable Termination (UT)">Unavoidable Termination (UT)</SelectItem>
+                    <SelectItem value="Beneficial Termination (BT)">Beneficial Termination (BT)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex items-end pb-1">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
@@ -8022,7 +8038,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </div>
             <Button
               className="h-8 px-6 bg-[#5dc86f] hover:bg-[#218838] text-white"
-              disabled={!terminationDraft.initiatedBy || !terminationDraft.reason}
+              disabled={!terminationDraft.initiatedBy || !terminationDraft.reason || !terminationDraft.category}
               onClick={() => {
                 toast({
                   title: "Termination saved (UI only)",
