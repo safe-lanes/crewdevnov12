@@ -49,6 +49,7 @@ interface ChecklistComment {
   rank: string;
   text: string;
   date: string;
+  verificationId?: string;
 }
 
 interface ChecklistVerification {
@@ -180,14 +181,25 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
           title: configSection.title,
           assessmentPoints: configSection.assessmentPoints.map((configPoint) => {
             const savedPoint = savedSection?.assessmentPoints?.find(p => p.id === configPoint.id);
-            
+            const verifications = savedPoint?.verifications ?? [];
+            const savedComments = savedPoint?.comments ?? [];
+
+            let verifIdx = 0;
+            const comments = savedComments.map((c) => {
+              const isVerificationComment = (c.text ?? '') === '';
+              if (!isVerificationComment) return c;
+              if (c.verificationId) return c;
+              const linked = verifications[verifIdx++];
+              return linked ? { ...c, verificationId: linked.id } : c;
+            });
+
             return {
               id: configPoint.id,
               number: configPoint.id,
               text: configPoint.text,
               completed: savedPoint?.completed ?? false,
-              verifications: savedPoint?.verifications ?? [],
-              comments: savedPoint?.comments ?? [],
+              verifications,
+              comments,
               attachments: savedPoint?.attachments ?? [],
             };
           }),
@@ -420,19 +432,21 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     const now = new Date();
     const formattedDate = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, ' ');
 
+    const verificationId = `verify-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const newVerification: ChecklistVerification = {
-      id: `verify-${Date.now()}`,
+      id: verificationId,
       verifierName: currentUser.name,
       rank: currentUser.rank,
       date: formattedDate
     };
 
     const verificationComment: ChecklistComment = {
-      id: `vcomment-${Date.now()}`,
+      id: `vcomment-${verificationId}`,
       userName: currentUser.name,
       rank: currentUser.rank,
       text: '',
-      date: formattedDate
+      date: formattedDate,
+      verificationId,
     };
 
     setChecklistSections(prev => prev.map(section =>
@@ -481,11 +495,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                 ? {
                     ...p,
                     verifications: p.verifications.filter(v => v.id !== verificationId),
-                    comments: p.comments.filter(c => 
-                      !(c.userName === verification.verifierName && 
-                        c.date === verification.date && 
-                        c.text === '')
-                    )
+                    comments: p.comments.filter(c => c.verificationId !== verificationId)
                   }
                 : p
             )
@@ -690,10 +700,8 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                         
                         {point.comments.map((comment) => {
                           const isVerificationComment = comment.text === '';
-                          const associatedVerification = isVerificationComment 
-                            ? point.verifications.find(v => 
-                                v.verifierName === comment.userName && v.date === comment.date
-                              )
+                          const associatedVerification = isVerificationComment && comment.verificationId
+                            ? point.verifications.find(v => v.id === comment.verificationId)
                             : null;
                           const canCancel = isVerificationComment && 
                             associatedVerification && 
