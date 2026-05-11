@@ -651,6 +651,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     D: 'CP Training Certificates',
     E: 'CP Sea Service',
     F: 'CP Medical',
+    G: null,
   };
 
   const canViewSection = useCallback((sectionId: string): boolean => {
@@ -675,7 +676,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     { id: 'C', title: 'Travel & ID Documents', number: 'C' },
     { id: 'D', title: 'Training & Certificates', number: 'D' },
     { id: 'E', title: 'Sea Service', number: 'E' },
-    { id: 'F', title: 'Medical', number: 'F' }
+    { id: 'F', title: 'Medical', number: 'F' },
+    { id: 'G', title: 'Brief & Debrief', number: 'G' }
   ];
 
   const sections = useMemo(() =>
@@ -690,6 +692,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const sectionDRef = useRef<HTMLDivElement>(null);
   const sectionERef = useRef<HTMLDivElement>(null);
   const sectionFRef = useRef<HTMLDivElement>(null);
+  const sectionGRef = useRef<HTMLDivElement>(null);
   const isBatchSavingRef = useRef(false);
   const deletingContextRef = useRef<{ crewId: string; count: number } | null>(null);
   const [isBatchSaving, setIsBatchSaving] = useState(false);
@@ -5598,6 +5601,156 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     );
   };
 
+  // Part G — Briefing & De briefing (UI only, dummy data)
+  // Final dynamic form will be configurable from Admin (like Appraisals).
+  const briefingDummyRows = [
+    { id: 'BR-1', vessel: 'MV Atlantic Star', joiningRank: 'Chief Officer', joiningDate: '12/03/2025' },
+    { id: 'BR-2', vessel: 'MV Pacific Dawn', joiningRank: '2nd Officer', joiningDate: '05/11/2024' },
+  ];
+
+  const debriefingDummyRows = [
+    { id: 'DB-1', vessel: 'MV Atlantic Star', rankServed: 'Chief Officer', dateJoined: '12/03/2025', dateSignedOff: '20/09/2025', reasonForSignOff: 'End of contract' },
+    { id: 'DB-2', vessel: 'MV Pacific Dawn', rankServed: '2nd Officer', dateJoined: '05/11/2024', dateSignedOff: '18/05/2025', reasonForSignOff: 'Medical' },
+  ];
+
+  const handleBriefingPlaceholder = () => {
+    toast({
+      title: 'Form coming soon',
+      description: 'The briefing/debriefing form will be configurable from Admin (like Appraisals).',
+      duration: 3000,
+    });
+  };
+
+  const renderG1Briefing = () => {
+    return (
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>G1. Briefing</h3>
+          {canEditSection('G') && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleBriefingPlaceholder}
+              className="flex items-center gap-2"
+              data-testid="button-add-briefing"
+            >
+              <Plus className="h-4 w-4" />
+              ADD
+            </Button>
+          )}
+        </div>
+
+        <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px]">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Joining Rank</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Joining Date</th>
+                  {canEditSection('G') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {briefingDummyRows.map((row) => (
+                  <tr key={row.id} className="border-t">
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-briefing-vessel-${row.id}`}>{row.vessel}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-briefing-rank-${row.id}`}>{row.joiningRank}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-briefing-date-${row.id}`}>{row.joiningDate}</td>
+                    {canEditSection('G') && (
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-gray-400 hover:text-blue-600"
+                            onClick={handleBriefingPlaceholder}
+                            data-testid={`button-edit-briefing-${row.id}`}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderG2DeBriefing = () => {
+    return (
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>G2. De briefing</h3>
+          {canEditSection('G') && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleBriefingPlaceholder}
+              className="flex items-center gap-2"
+              data-testid="button-add-debriefing"
+            >
+              <Plus className="h-4 w-4" />
+              ADD
+            </Button>
+          )}
+        </div>
+
+        <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank Served</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date Joined</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date Signed off</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Reason for Sign off</th>
+                  {canEditSection('G') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {debriefingDummyRows.map((row) => (
+                  <tr key={row.id} className="border-t">
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-vessel-${row.id}`}>{row.vessel}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-rank-${row.id}`}>{row.rankServed}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-joined-${row.id}`}>{row.dateJoined}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-signedoff-${row.id}`}>{row.dateSignedOff}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-reason-${row.id}`}>{row.reasonForSignOff}</td>
+                    {canEditSection('G') && (
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-gray-400 hover:text-blue-600"
+                            onClick={handleBriefingPlaceholder}
+                            data-testid={`button-edit-debriefing-${row.id}`}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Save Draft functionality
   const handleSaveDraft = () => {
     if (isBatchSavingRef.current) return;
@@ -7487,7 +7640,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     const sectionRefMap: Record<string, React.RefObject<HTMLDivElement | null>> = {
       A: sectionARef, B: sectionBRef, C: sectionCRef,
-      D: sectionDRef, E: sectionERef, F: sectionFRef,
+      D: sectionDRef, E: sectionERef, F: sectionFRef, G: sectionGRef,
     };
     sections.forEach((s) => {
       const ref = sectionRefMap[s.id];
@@ -7522,6 +7675,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         break;
       case 'F':
         targetRef = sectionFRef;
+        break;
+      case 'G':
+        targetRef = sectionGRef;
         break;
       default:
         return;
@@ -7884,6 +8040,23 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <div className="space-y-6">
                   {renderF1PreJoiningMedicals()}
                   {renderF2DoctorVisits()}
+                </div>
+              </CardContent>
+            </Card>
+            )}
+
+            {/* G - Briefing & De briefing */}
+            {canViewSection('G') && (
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionGRef} data-section="G">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="pb-4 mb-6">
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G - Briefing &amp; De briefing</h2>
+                  <div style={{ color: '#16569e' }} className="text-sm">Add briefing &amp; debriefing records</div>
+                  <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                </div>
+                <div className="space-y-6">
+                  {renderG1Briefing()}
+                  {renderG2DeBriefing()}
                 </div>
               </CardContent>
             </Card>
