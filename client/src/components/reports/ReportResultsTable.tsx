@@ -148,7 +148,7 @@ export function ReportResultsTable({
             variant="outline"
             size="sm"
             onClick={handleExportXlsx}
-            disabled={isLoading || rows.length === 0}
+            disabled={isLoading || columns.length === 0}
             className="h-8"
             data-testid="button-report-export-xlsx"
           >
@@ -160,7 +160,7 @@ export function ReportResultsTable({
             variant="outline"
             size="sm"
             onClick={handleExportPdf}
-            disabled={isLoading || rows.length === 0}
+            disabled={isLoading || columns.length === 0}
             className="h-8"
             data-testid="button-report-export-pdf"
           >
