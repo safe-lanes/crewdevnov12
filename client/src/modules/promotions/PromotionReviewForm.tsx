@@ -100,6 +100,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     queryKey: ['/api/v2/masters/vessels'],
   });
 
+  const { data: companyTrainingsData = [], isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useQuery<Array<{ id: number; trainingLabel: string }>>({
+    queryKey: ['/api/v2/admin/company-trainings'],
+    retry: false,
+  });
+
+  const dbTrainings = useMemo(
+    () => companyTrainingsData.map(t => ({ id: t.id.toString(), name: t.trainingLabel })),
+    [companyTrainingsData]
+  );
+
   const vesselOptions = useMemo(() => {
     if (!vesselMasterData) return [];
     return vesselMasterData.map((vessel: any) => ({
@@ -1425,6 +1435,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   editingTrainingComment={editingTrainingComment}
                   onSetEditingTrainingComment={setEditingTrainingComment}
                   onSetTrainingComments={setTrainingComments}
+                  dbTrainings={dbTrainings}
+                  isLoadingDbTrainings={isLoadingDbTrainings}
+                  isErrorDbTrainings={isErrorDbTrainings}
                 />
 
                 <div className="border border-[#EAEBEF] rounded-lg p-4">

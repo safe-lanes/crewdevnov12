@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, MessageSquare } from 'lucide-react';
 import type { TrainingRow, Comment } from './types';
+import { DbTrainingCombobox, type DbTrainingOption } from './DbTrainingCombobox';
 
 interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   trainingNeeds: TrainingRow[];
@@ -18,6 +19,9 @@ interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   editingTrainingComment: string | null;
   onSetEditingTrainingComment: React.Dispatch<React.SetStateAction<string | null>>;
   onSetTrainingComments: React.Dispatch<React.SetStateAction<Record<string, Comment[]>>>;
+  dbTrainings: DbTrainingOption[];
+  isLoadingDbTrainings?: boolean;
+  isErrorDbTrainings?: boolean;
 }
 
 const getCurrentUserDisplay = (): string => {
@@ -38,6 +42,9 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
   editingTrainingComment,
   onSetEditingTrainingComment,
   onSetTrainingComments,
+  dbTrainings,
+  isLoadingDbTrainings = false,
+  isErrorDbTrainings = false,
   ...restProps
 }: PartATrainingNeedsProps) {
   const currentUserDisplay = getCurrentUserDisplay();
@@ -98,12 +105,13 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                     />
                   </TableCell>
                   <TableCell>
-                    <Input
+                    <DbTrainingCombobox
                       value={training.correspondingInDB}
-                      onChange={(e) => onUpdateTraining(training.id, 'correspondingInDB', e.target.value)}
-                      placeholder="Enter corresponding DB entry..."
-                      className="h-8 text-xs"
-                      data-testid={`input-training-db-${training.id}`}
+                      options={dbTrainings}
+                      onChange={(value) => onUpdateTraining(training.id, 'correspondingInDB', value)}
+                      isLoading={isLoadingDbTrainings}
+                      isError={isErrorDbTrainings}
+                      testId={`select-training-db-${training.id}`}
                     />
                   </TableCell>
                   <TableCell>
