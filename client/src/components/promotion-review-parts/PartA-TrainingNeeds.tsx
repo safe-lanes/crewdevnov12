@@ -88,7 +88,15 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
               <React.Fragment key={training.id}>
                 <TableRow>
                   <TableCell className="text-sm" data-testid={`cell-training-sno-${training.id}`}>{index + 1}</TableCell>
-                  <TableCell className="text-sm" data-testid={`cell-training-name-${training.id}`}>{training.training}</TableCell>
+                  <TableCell>
+                    <Input
+                      value={training.training}
+                      onChange={(e) => onUpdateTraining(training.id, 'training', e.target.value)}
+                      placeholder="Enter training name..."
+                      className="h-8 text-xs"
+                      data-testid={`input-training-name-${training.id}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <Input
                       value={training.correspondingInDB}
@@ -104,7 +112,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                       onValueChange={(value) => onUpdateTraining(training.id, 'category', value)}
                     >
                       <SelectTrigger className="h-8 text-xs" data-testid={`select-training-category-${training.id}`}>
-                        <SelectValue />
+                        <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1. Competence">1. Competence</SelectItem>
@@ -118,7 +126,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                       onValueChange={(value) => onUpdateTraining(training.id, 'status', value)}
                     >
                       <SelectTrigger className="h-8 text-xs" data-testid={`select-training-status-${training.id}`}>
-                        <SelectValue />
+                        <SelectValue placeholder="Select Status" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Proposed">Proposed</SelectItem>

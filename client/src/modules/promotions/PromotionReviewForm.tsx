@@ -630,10 +630,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [newCriteriaComment, setNewCriteriaComment] = useState<Record<string, string>>({});
   const [editingCriteriaComment, setEditingCriteriaComment] = useState<string | null>(null);
 
-  const [trainingNeeds, setTrainingNeeds] = useState<TrainingRow[]>([
-    { id: '1', training: 'LT Endorsement', correspondingInDB: '', category: '1. Competence', status: 'Proposed', completionDate: 'dd-mm-yy' },
-    { id: '2', training: 'Crowd Control', correspondingInDB: '', category: '1. Competence', status: 'Proposed', completionDate: 'dd-mm-yy' },
-  ]);
+  const [trainingNeeds, setTrainingNeeds] = useState<TrainingRow[]>([]);
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
 
   const [trainingComments, setTrainingComments] = useState<Record<string, Comment[]>>({});
@@ -656,7 +653,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const nextApproverIdRef = useRef(3);
   const nextCesTestIdRef = useRef(2);
   const nextCommentIdRef = useRef(3);
-  const nextTrainingIdRef = useRef(6);
+  const nextTrainingIdRef = useRef(1);
 
   const [vesselTypes, setVesselTypes] = useState<string[]>(['Product Tankers', 'Crude Oil Tankers']);
   const [vesselClasses, setVesselClasses] = useState<string[]>(['MR Class1 Tankers', 'Chemical JP 20']);
@@ -750,6 +747,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             : existingReviewData.trainingNeeds;
           if (Array.isArray(training) && training.length > 0) {
             setTrainingNeeds(training);
+            const maxId = training.reduce((max: number, t: TrainingRow) => {
+              const n = parseInt(t.id, 10);
+              return Number.isFinite(n) && n > max ? n : max;
+            }, 0);
+            nextTrainingIdRef.current = maxId + 1;
           }
         } catch {}
       }
@@ -1125,10 +1127,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     nextTrainingIdRef.current += 1;
     setTrainingNeeds(prev => [...prev, {
       id: newId,
-      training: `Training ${newId}`,
+      training: '',
       correspondingInDB: '',
-      category: '1. Competence',
-      status: 'Proposed',
+      category: '',
+      status: '',
       completionDate: 'dd-mm-yy'
     }]);
   }, []);
@@ -1147,13 +1149,12 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const newTrainings = selectedTemplates.map((template) => {
       const newId = nextTrainingIdRef.current.toString();
       nextTrainingIdRef.current += 1;
-      const templateWithCategory = template as TrainingCourseTemplate & { category?: string };
       return {
         id: newId,
         training: template.name,
         correspondingInDB: template.id,
-        category: templateWithCategory.category === 'S' ? '1. Competence' : '2. Soft Skills',
-        status: 'Proposed',
+        category: '',
+        status: '',
         completionDate: 'dd-mm-yy'
       };
     });
