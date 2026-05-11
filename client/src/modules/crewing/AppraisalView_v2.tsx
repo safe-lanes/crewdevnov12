@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 
 interface TrainingEntry { id: string; training?: string; evaluation?: string; comment?: string }
 interface TargetEntry { id: string; targetSetting?: string; evaluation?: string; comment?: string }
@@ -237,6 +238,8 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
     queryKey: [`/api/v2/appraisals/${appraisalId}`],
     enabled: !!appraisalId,
   });
+
+  const { getName: getDbTrainingName } = useCompanyTrainings();
 
   const formVersionId = existingAppraisal?.formVersionId ?? null;
 
@@ -558,7 +561,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                   sectionId="G2"
                   columns={[
                     { header: "Training", render: (r) => r.training, width: "25%" },
-                    { header: "DB Mapping", render: (r) => r.correspondingInDB, width: "20%" },
+                    { header: "DB Mapping", render: (r) => (r.correspondingInDB ? (getDbTrainingName(r.correspondingInDB) ?? r.correspondingInDB) : ""), width: "20%" },
                     { header: "Category", render: (r) => r.category, width: "15%" },
                     { header: "Status", render: (r) => r.status, width: "12%" },
                     { header: "Target Date", render: (r) => formatDate(r.targetDate), width: "15%" },

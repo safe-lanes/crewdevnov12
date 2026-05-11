@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/select";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import { PartGProps } from "./types";
+import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
+import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 
 const PartGComponent: React.FC<PartGProps> = ({
   form,
@@ -37,6 +39,8 @@ const PartGComponent: React.FC<PartGProps> = ({
   stage3Mutation,
   saveAppraisalMutation,
 }) => {
+  const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
+
   const deleteTrainingFollowupComment = (id: string) => {
     showConfirmDialog(
       "Delete Comment",
@@ -144,11 +148,13 @@ const PartGComponent: React.FC<PartGProps> = ({
                             <Input value={followup.training} onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)} placeholder="Training name" className="h-8" />
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Input
+                            <DbTrainingCombobox
                               value={followup.correspondingInDB || ""}
-                              onChange={(e) => updateTrainingFollowup(followup.id, "correspondingInDB", e.target.value)}
-                              placeholder="Enter corresponding DB entry..."
-                              className="h-8"
+                              options={dbTrainings}
+                              onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
+                              isLoading={isLoadingDbTrainings}
+                              isError={isErrorDbTrainings}
+                              testId={`select-followup-db-${followup.id}`}
                             />
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">

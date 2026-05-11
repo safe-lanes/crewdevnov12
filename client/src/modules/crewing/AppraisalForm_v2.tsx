@@ -23,6 +23,8 @@ import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import { useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
+import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
+import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 
 // Import extracted Part components for code splitting
 import { PartA, PartB, PartC, PartD, PartE, PartF, PartG, RequiredMark } from "@/components/appraisal-form-parts";
@@ -392,6 +394,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     queryKey: ['/api/v2/admin/available-ranks'],
   });
   
+  // Company training catalogue used by the G2 "Corresponding in DB" combobox.
+  const { options: dbTrainingOptions, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
+
   // Fetch appraisal types from V2 Masters (Master 023)
   const { data: appraisalTypesRaw = [] } = useAppraisalTypesV2();
   const appraisalTypes = useMemo(() => {
@@ -646,7 +651,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         ? config.rankGroupConfig.trainingFollowups.map((f: any) => ({
             id: f.id,
             training: f.training ?? '',
-            correspondingInDB: f.correspondingInDB ?? 'Select Training from DB',
+            correspondingInDB: f.correspondingInDB ?? '',
             category: f.category ?? 'Select Rating',
             status: f.status ?? 'Proposed',
             targetDate: f.targetDate ?? '',
@@ -1599,7 +1604,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const newFollowup = {
       id: Date.now().toString(),
       training: "",
-      correspondingInDB: "Select Training from DB",
+      correspondingInDB: "",
       category: "Select Rating",
       status: "Proposed" as const,
       targetDate: "",
@@ -1661,7 +1666,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const newFollowup = {
       id: Date.now().toString(),
       training: "",
-      correspondingInDB: "Select Training from DB",
+      correspondingInDB: "",
       category: "Select Rating",
       status: "Proposed" as const,
       targetDate: "",
@@ -3757,11 +3762,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                         />
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <Input
-                                          value={followup.correspondingInDB}
-                                          onChange={(e) => updateTrainingFollowup(followup.id, "correspondingInDB", e.target.value)}
-                                          placeholder="Enter corresponding DB entry..."
-                                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                        <DbTrainingCombobox
+                                          value={followup.correspondingInDB || ""}
+                                          options={dbTrainingOptions}
+                                          onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
+                                          isLoading={isLoadingDbTrainings}
+                                          isError={isErrorDbTrainings}
+                                          testId={`select-followup-db-${followup.id}`}
                                         />
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
