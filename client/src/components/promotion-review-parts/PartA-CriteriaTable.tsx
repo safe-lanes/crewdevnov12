@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Eye, Plus, Info, MessageSquare, Trash2 } from 'lucide-react';
+import { Eye, Info, MessageSquare, Trash2 } from 'lucide-react';
 import type { CriteriaRow, Comment } from './types';
 import { calculateChecklistProgressFromJson, type ChecklistProgressResult } from '@/modules/promotions/checklistProgressUtils';
 
@@ -201,18 +201,6 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
                 data-testid={`button-criteria-comment-${row.id}`}
               >
                 <MessageSquare className="h-4 w-4 text-gray-400" />
-              </Button>
-            )}
-            {row.id === 'a2.7' && (
-              <Button 
-                type="button"
-                variant="ghost" 
-                size="sm" 
-                className="h-7 w-7 p-0"
-                onClick={onAddCesTest}
-                data-testid="button-add-ces-test-inline"
-              >
-                <Plus className="h-4 w-4 text-gray-600" />
               </Button>
             )}
           </div>
