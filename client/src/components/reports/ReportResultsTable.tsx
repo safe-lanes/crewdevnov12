@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { downloadCsv, rowsToCsv } from "@/lib/csvExport";
+import { downloadXlsx } from "@/lib/xlsxExport";
+import { downloadPdf } from "@/lib/pdfExport";
 import type {
   ReportColumn,
   ReportColumnType,
@@ -82,15 +84,22 @@ export function ReportResultsTable({
     }
   };
 
-  const handleExport = () => {
-    const csv = rowsToCsv(
-      columns.map((c) => ({ key: c.key, label: c.label })),
-      rows,
-    );
-    const fname = (exportFilename || title || "report")
-      .toLowerCase()
-      .replace(/\s+/g, "-");
-    downloadCsv(fname, csv);
+  const exportColumns = columns.map((c) => ({ key: c.key, label: c.label }));
+  const baseFilename = (exportFilename || title || "report")
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+
+  const handleExportCsv = () => {
+    const csv = rowsToCsv(exportColumns, rows);
+    downloadCsv(baseFilename, csv);
+  };
+
+  const handleExportXlsx = () => {
+    downloadXlsx(baseFilename, exportColumns, rows, title || "Report");
+  };
+
+  const handleExportPdf = () => {
+    downloadPdf(baseFilename, title || "Report", exportColumns, rows);
   };
 
   // When loading without known columns, show placeholder skeleton columns
@@ -126,13 +135,37 @@ export function ReportResultsTable({
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleExport}
+            onClick={handleExportCsv}
             disabled={isLoading || rows.length === 0}
             className="h-8"
             data-testid="button-report-export-csv"
           >
             <Download size={14} className="mr-1" />
             Export CSV
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleExportXlsx}
+            disabled={isLoading || rows.length === 0}
+            className="h-8"
+            data-testid="button-report-export-xlsx"
+          >
+            <Download size={14} className="mr-1" />
+            Export Excel
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleExportPdf}
+            disabled={isLoading || rows.length === 0}
+            className="h-8"
+            data-testid="button-report-export-pdf"
+          >
+            <Download size={14} className="mr-1" />
+            Export PDF
           </Button>
         </div>
       </div>
