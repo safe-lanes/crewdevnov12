@@ -130,6 +130,25 @@ export const rankGroupsController = {
     }
   },
 
+  async releaseConfiguration(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid rank group ID" });
+      }
+      const { configuration } = req.body;
+      const configStr = typeof configuration === "string" ? configuration : JSON.stringify(configuration);
+      const rankGroup = await rankGroupsService.releaseConfigurationById(id, configStr);
+      res.json(rankGroup);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error releasing rank group configuration:", error);
+      res.status(500).json({ error: "Failed to release rank group configuration" });
+    }
+  },
+
   async archive(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);

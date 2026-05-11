@@ -3368,7 +3368,9 @@ const AdminModuleInner = (): JSX.Element => {
     const getLatestVersionForRankGroup = (rankGroupName: string, formId: number): { versionNo: string; versionDate: string } | null => {
       const rg = allRankGroups.find(r => r.name === rankGroupName && r.formId === formId);
       if (!rg) return null;
-      const versions = allFormVersions.filter(v => v.formId === formId && v.rankGroupId === rg.id);
+      const versions = allFormVersions.filter(
+        v => v.formId === formId && v.rankGroupId === rg.id && v.status === 'released'
+      );
       if (versions.length === 0) return null;
       const latest = versions.reduce((max, v) => {
         const vNo = parseInt(v.versionNo, 10);
@@ -3376,6 +3378,14 @@ const AdminModuleInner = (): JSX.Element => {
         return vNo > maxNo ? v : max;
       }, versions[0]);
       return { versionNo: latest.versionNo, versionDate: latest.versionDate };
+    };
+
+    const hasDraftForRankGroup = (rankGroupName: string, formId: number): boolean => {
+      const rg = allRankGroups.find(r => r.name === rankGroupName && r.formId === formId);
+      if (!rg) return false;
+      return allFormVersions.some(
+        v => v.formId === formId && v.rankGroupId === rg.id && v.status === 'draft'
+      );
     };
 
     // Group forms by category first
@@ -3396,6 +3406,7 @@ const AdminModuleInner = (): JSX.Element => {
       categoryRowSpan?: number;
       isFirstInCategory?: boolean;
       isPlaceholderRow?: boolean;
+      hasDraft?: boolean;
     }> = [];
 
     // Process each category in order (appraisal first, then promotion)
@@ -3430,14 +3441,20 @@ const AdminModuleInner = (): JSX.Element => {
           if (activeRankGroups.length > 0) {
             activeRankGroups.forEach((rankGroup, index) => {
               const rgVersion = getLatestVersionForRankGroup(rankGroup, form.id);
+              const hasDraft = hasDraftForRankGroup(rankGroup, form.id);
               expanded.push({
                 ...form,
                 id: form.id * 1000 + index,
                 originalFormId: form.id,
                 expandedRankGroup: rankGroup,
                 rankGroup: rankGroup,
-                versionNo: rgVersion?.versionNo || form.versionNo,
-                versionDate: rgVersion?.versionDate || form.versionDate,
+                versionNo: rgVersion?.versionNo || '00',
+                versionDate: rgVersion?.versionDate || (() => {
+                  const d = new Date();
+                  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                  return `${String(d.getDate()).padStart(2,'0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
+                })(),
+                hasDraft,
                 isFirstInGroup: index === 0,
                 groupSize: activeRankGroups.length,
                 category: form.category || 'appraisal',
@@ -3800,6 +3817,40 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
+  // Promotion Review Form does not yet have a draft → release UI. Each Save
+  // creates a new released form-version directly and mirrors the config back
+  // onto the rank group so existing runtime readers keep working.
+  const releaseRankGroupConfigMutation = useMutation({
+    mutationFn: async ({rankGroupId, configuration}: {rankGroupId: number; configuration: string}) => {
+      return apiRequest('POST', `/api/v2/admin/rank-groups/${rankGroupId}/release-configuration`, { configuration });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/rank-groups'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
+      queryClient.invalidateQueries({ predicate: (query) => {
+        const key = query.queryKey[0];
+        return typeof key === 'string' && (
+          key.startsWith('/api/v2/admin/forms/for-rank') ||
+          key === '/api/v2/admin/form-versions-all' ||
+          /^\/api\/v2\/admin\/forms\/\d+\/versions$/.test(key)
+        );
+      }});
+      toast({
+        title: "Success",
+        description: "Form configuration released successfully",
+      });
+      setEditingForm(null);
+      setEditingRankGroup(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to release form configuration: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleFormSave = (formData: any) => {
     if (!formData.formId) return;
 
@@ -3809,9 +3860,9 @@ const AdminModuleInner = (): JSX.Element => {
 
     // Check if this is a Promotion form (has pre-serialized configuration)
     if (formData.configuration && typeof formData.configuration === 'string') {
-      // Promotion form data - save directly to rank group
+      // Promotion form data - save as a released form version directly
       if (rankGroup) {
-        updateRankGroupConfigMutation.mutate({
+        releaseRankGroupConfigMutation.mutate({
           rankGroupId: rankGroup.id,
           configuration: formData.configuration,
         });
@@ -3826,9 +3877,13 @@ const AdminModuleInner = (): JSX.Element => {
 
     // Appraisal form data - assemble rank group config
     const rankGroupConfig = {
+      trainings: formData.trainings || [],
+      targets: formData.targets || [],
       competenceAssessments: formData.competenceAssessments || [],
       behaviouralAssessments: formData.behaviouralAssessments || [],
+      trainingNeeds: formData.trainingNeeds || [],
       recommendations: formData.recommendations || [],
+      trainingFollowups: formData.trainingFollowups || [],
       hiddenFields: formData.hiddenFields || [],
       hiddenSections: formData.hiddenSections || [],
     };
@@ -8148,6 +8203,8 @@ const AdminModuleInner = (): JSX.Element => {
     <div>
       <SectionTitleComponents title={"Forms Configuration"}>
         <div className="flex items-center gap-2 ml-[19px] mr-[19px]">
+          {/* Create Form button hidden per Task #333. Kept commented in case
+              this entry point is restored later.
           {(permissions.length === 0 || canCreate("Forms")) && (
           <Button
             variant="outline"
@@ -8158,6 +8215,7 @@ const AdminModuleInner = (): JSX.Element => {
             <span className="text-xs">Create Form</span>
           </Button>
           )}
+          */}
           <Button
             variant="outline"
             className="h-8 border-[#e1e8ed] text-[#16569e] flex items-center gap-2"
@@ -8285,7 +8343,17 @@ const AdminModuleInner = (): JSX.Element => {
                       </div>
                     </TableCell>
                     <TableCell className="text-[#4f5863] text-xs font-normal">
-                      {form.versionNo}
+                      <div className="flex items-center gap-2">
+                        <span>{form.versionNo}</span>
+                        {form.hasDraft && (
+                          <span
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200"
+                            data-testid={`badge-draft-${form.id}`}
+                          >
+                            Draft
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-[#4f5863] text-xs font-normal">
                       {form.versionDate}

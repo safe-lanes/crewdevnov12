@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import { PartEProps } from "./types";
+import { RequiredMark } from "./RequiredMark";
 
 const PartEComponent: React.FC<PartEProps> = ({
   form,
@@ -71,8 +72,8 @@ const PartEComponent: React.FC<PartEProps> = ({
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training<RequiredMark /></th>
+                    <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -94,7 +95,7 @@ const PartEComponent: React.FC<PartEProps> = ({
                               <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                             </Button>
                             <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTrainingNeed(need.id)}>
-                              <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                              <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                             </Button>
                           </div>
                         </td>
@@ -120,7 +121,7 @@ const PartEComponent: React.FC<PartEProps> = ({
                                 </div>
                                 <div className="ml-2">
                                   <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTrainingNeedsComment(need.id); }}>
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                   </Button>
                                 </div>
                               </div>

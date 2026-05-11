@@ -163,6 +163,8 @@ export function assembleV1Response(
     id: appraisal.id,
     crewMemberId: appraisal.crewMemberId,
     formId: appraisal.formIdLegacy ?? (parseInt(appraisal.formUuid || "") || 1),
+    formVersionId: appraisal.formVersionId ?? null,
+    formVersionUuid: appraisal.formVersionUuid ?? null,
     appraisalType: appraisal.appraisalType,
     appraisalDate: appraisal.appraisalDate,
     appraisalData: JSON.stringify(appraisalDataObj),

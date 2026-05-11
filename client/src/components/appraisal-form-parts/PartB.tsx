@@ -57,6 +57,9 @@ const PartBComponent: React.FC<PartBProps> = ({
   };
 
   if (!isSectionVisible('partB')) return null;
+  const showB1 = isSectionVisible('partB1');
+  const showB2 = isSectionVisible('partB2');
+  if (!showB1 && !showB2) return null;
 
   return (
     <div ref={partRef} data-section-id="B">
@@ -68,7 +71,8 @@ const PartBComponent: React.FC<PartBProps> = ({
             <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
           </div>
           <div className="space-y-8">
-            <div>
+            {showB1 && (
+            <div data-testid="section-b1">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-medium text-[16px]" style={{ color: '#16569e' }}>B1. Trainings conducted prior joining vessel (To Assess Effectiveness)</h3>
                 <Button type="button" onClick={addTraining} variant="outline" size="sm" className="text-gray-600 border-gray-300">
@@ -85,7 +89,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                         <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                         <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
                         {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white">
@@ -123,7 +127,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                                   <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                                 </Button>
                                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTraining(training.id)}>
-                                  <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                  <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                                 </Button>
                               </div>
                             </td>
@@ -149,7 +153,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                                     </div>
                                     <div className="ml-2">
                                       <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTrainingComment(training.id); }}>
-                                        <Trash2 className="h-4 w-4" />
+                                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                       </Button>
                                     </div>
                                   </div>
@@ -171,8 +175,10 @@ const PartBComponent: React.FC<PartBProps> = ({
                 </div>
               </div>
             </div>
+            )}
 
-            <div>
+            {showB2 && (
+            <div data-testid="section-b2">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-medium text-[16px]" style={{ color: '#16569e' }}>B2. Target Setting</h3>
                 <Button type="button" onClick={addTarget} variant="outline" size="sm" className="text-gray-600 border-gray-300">
@@ -188,7 +194,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting</th>
                       {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white">
@@ -226,7 +232,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                                 <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                               </Button>
                               <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTarget(target.id)}>
-                                <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                               </Button>
                             </div>
                           </td>
@@ -252,7 +258,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                                   </div>
                                   <div className="ml-2">
                                     <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTargetComment(target.id); }}>
-                                      <Trash2 className="h-4 w-4" />
+                                      <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                     </Button>
                                   </div>
                                 </div>
@@ -273,6 +279,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                 </table>
               </div>
             </div>
+            )}
           </div>
         </CardContent>
       </Card>

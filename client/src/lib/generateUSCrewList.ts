@@ -137,7 +137,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
     const stampWidth = textWidth + paddingX * 2;
     const stampHeight = textHeight + paddingY * 2;
     const stampX = pageWidth - margin - stampWidth - 5;
-    const stampY = pageHeight - margin - stampHeight - 5;
+    const stampY = pageHeight - margin + 3;
     const redColor = rgb(0.8, 0, 0);
     
     page.drawRectangle({
@@ -183,109 +183,112 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   y -= 12;
   
   // Row 1: Vessel Name | Nationality | Official Number
-  const row1Height = 28;
+  const row1Height = 30;
   const col3Width = contentWidth / 3;
+  const labelOffsetY = 7;
+  const fieldHeight = 12;
+  const fieldBottomPad = 2;
   
   drawRect(page1, margin, y - row1Height, col3Width, row1Height);
-  drawText(page1, 'Vessel Name:', margin + 2, y - 8, font, 6);
+  drawText(page1, 'Vessel Name:', margin + 3, y - labelOffsetY, font, 6);
   const vesselNameField = form.createTextField('vesselName');
   vesselNameField.setText(data.vessel.name || '');
-  vesselNameField.addToPage(page1, { x: margin + 2, y: y - row1Height + 2, width: col3Width - 6, height: 14 });
+  vesselNameField.addToPage(page1, { x: margin + 3, y: y - row1Height + fieldBottomPad, width: col3Width - 8, height: fieldHeight });
   
   drawRect(page1, margin + col3Width, y - row1Height, col3Width, row1Height);
-  drawText(page1, 'Nationality:', margin + col3Width + 2, y - 8, font, 6);
+  drawText(page1, 'Nationality:', margin + col3Width + 3, y - labelOffsetY, font, 6);
   const nationalityField = form.createTextField('vesselNationality');
   nationalityField.setText(data.vessel.nationality || '');
-  nationalityField.addToPage(page1, { x: margin + col3Width + 2, y: y - row1Height + 2, width: col3Width - 6, height: 14 });
+  nationalityField.addToPage(page1, { x: margin + col3Width + 3, y: y - row1Height + fieldBottomPad, width: col3Width - 8, height: fieldHeight });
   
   drawRect(page1, margin + col3Width * 2, y - row1Height, col3Width, row1Height);
-  drawText(page1, 'Official Number:', margin + col3Width * 2 + 2, y - 8, font, 6);
+  drawText(page1, 'Official Number:', margin + col3Width * 2 + 3, y - labelOffsetY, font, 6);
   const officialNumField = form.createTextField('officialNumber');
   officialNumField.setText(data.vessel.officialNumber || '');
-  officialNumField.addToPage(page1, { x: margin + col3Width * 2 + 2, y: y - row1Height + 2, width: col3Width - 6, height: 14 });
+  officialNumField.addToPage(page1, { x: margin + col3Width * 2 + 3, y: y - row1Height + fieldBottomPad, width: col3Width - 8, height: fieldHeight });
   
   y -= row1Height;
   
   // Row 2: Last Foreign Port | Date Sailed | Date of Arrival | Arrival Port
-  const row2Height = 28;
+  const row2Height = 30;
   const lastPortWidth = contentWidth * 0.40;
   const dateSailedWidth = contentWidth * 0.20;
   const dateArrivalWidth = contentWidth * 0.20;
   const arrivalPortWidth = contentWidth * 0.20;
   
   drawRect(page1, margin, y - row2Height, lastPortWidth, row2Height);
-  drawText(page1, 'Last Foreign Port (Place and Country):', margin + 2, y - 8, font, 6);
+  drawText(page1, 'Last Foreign Port (Place and Country):', margin + 3, y - labelOffsetY, font, 6);
   const lastPortField = form.createTextField('lastForeignPort');
   lastPortField.setText(data.lastForeignPort || '');
-  lastPortField.addToPage(page1, { x: margin + 2, y: y - row2Height + 2, width: lastPortWidth - 6, height: 14 });
+  lastPortField.addToPage(page1, { x: margin + 3, y: y - row2Height + fieldBottomPad, width: lastPortWidth - 8, height: fieldHeight });
   
   drawRect(page1, margin + lastPortWidth, y - row2Height, dateSailedWidth, row2Height);
-  drawText(page1, 'Date Sailed from Foreign Port:', margin + lastPortWidth + 2, y - 8, font, 5);
+  drawText(page1, 'Date Sailed from Foreign Port:', margin + lastPortWidth + 3, y - labelOffsetY, font, 5);
   const dateSailedField = form.createTextField('dateSailed');
   dateSailedField.setText(data.dateSailedFromForeignPort || '');
-  dateSailedField.addToPage(page1, { x: margin + lastPortWidth + 2, y: y - row2Height + 2, width: dateSailedWidth - 6, height: 14 });
+  dateSailedField.addToPage(page1, { x: margin + lastPortWidth + 3, y: y - row2Height + fieldBottomPad, width: dateSailedWidth - 8, height: fieldHeight });
   
   drawRect(page1, margin + lastPortWidth + dateSailedWidth, y - row2Height, dateArrivalWidth, row2Height);
-  drawText(page1, 'Date of Arrival in U.S.:', margin + lastPortWidth + dateSailedWidth + 2, y - 8, font, 5);
+  drawText(page1, 'Date of Arrival in U.S.:', margin + lastPortWidth + dateSailedWidth + 3, y - labelOffsetY, font, 5);
   const dateArrivalField = form.createTextField('dateOfArrival');
   dateArrivalField.setText(data.dateOfArrival || '');
-  dateArrivalField.addToPage(page1, { x: margin + lastPortWidth + dateSailedWidth + 2, y: y - row2Height + 2, width: dateArrivalWidth - 6, height: 14 });
+  dateArrivalField.addToPage(page1, { x: margin + lastPortWidth + dateSailedWidth + 3, y: y - row2Height + fieldBottomPad, width: dateArrivalWidth - 8, height: fieldHeight });
   
   drawRect(page1, margin + lastPortWidth + dateSailedWidth + dateArrivalWidth, y - row2Height, arrivalPortWidth, row2Height);
-  drawText(page1, 'Arrival Port:', margin + lastPortWidth + dateSailedWidth + dateArrivalWidth + 2, y - 8, font, 6);
+  drawText(page1, 'Arrival Port:', margin + lastPortWidth + dateSailedWidth + dateArrivalWidth + 3, y - labelOffsetY, font, 6);
   const arrivalPortField = form.createTextField('arrivalPort');
   arrivalPortField.setText(data.arrivalPort || '');
-  arrivalPortField.addToPage(page1, { x: margin + lastPortWidth + dateSailedWidth + dateArrivalWidth + 2, y: y - row2Height + 2, width: arrivalPortWidth - 6, height: 14 });
+  arrivalPortField.addToPage(page1, { x: margin + lastPortWidth + dateSailedWidth + dateArrivalWidth + 3, y: y - row2Height + fieldBottomPad, width: arrivalPortWidth - 8, height: fieldHeight });
   
   y -= row2Height;
   
   // Row 3: No. of Crew | No. of Passengers | Agent at Arrival
-  const row3Height = 28;
+  const row3Height = 30;
   const crewCountWidth = contentWidth * 0.18;
   const passengerCountWidth = contentWidth * 0.15;
   const agentWidth = contentWidth * 0.67;
   
   drawRect(page1, margin, y - row3Height, crewCountWidth, row3Height);
-  drawText(page1, 'No. of Crew (including Master):', margin + 2, y - 8, font, 5);
+  drawText(page1, 'No. of Crew (including Master):', margin + 3, y - labelOffsetY, font, 5);
   const crewCountField = form.createTextField('crewCount');
   crewCountField.setText(totalCrew.toString());
-  crewCountField.addToPage(page1, { x: margin + 2, y: y - row3Height + 2, width: crewCountWidth - 6, height: 14 });
+  crewCountField.addToPage(page1, { x: margin + 3, y: y - row3Height + fieldBottomPad, width: crewCountWidth - 8, height: fieldHeight });
   
   drawRect(page1, margin + crewCountWidth, y - row3Height, passengerCountWidth, row3Height);
-  drawText(page1, 'No. of Passengers:', margin + crewCountWidth + 2, y - 8, font, 5);
+  drawText(page1, 'No. of Passengers:', margin + crewCountWidth + 3, y - labelOffsetY, font, 5);
   const passengerCountField = form.createTextField('passengerCount');
   passengerCountField.setText('');
-  passengerCountField.addToPage(page1, { x: margin + crewCountWidth + 2, y: y - row3Height + 2, width: passengerCountWidth - 6, height: 14 });
+  passengerCountField.addToPage(page1, { x: margin + crewCountWidth + 3, y: y - row3Height + fieldBottomPad, width: passengerCountWidth - 8, height: fieldHeight });
   
   drawRect(page1, margin + crewCountWidth + passengerCountWidth, y - row3Height, agentWidth, row3Height);
-  drawText(page1, 'Agent at Arrival (Name & Address):', margin + crewCountWidth + passengerCountWidth + 2, y - 8, font, 5);
+  drawText(page1, 'Agent at Arrival (Name & Address):', margin + crewCountWidth + passengerCountWidth + 3, y - labelOffsetY, font, 5);
   const agentField = form.createTextField('agentAtArrival');
   agentField.setText(data.agentAtArrival || '');
-  agentField.addToPage(page1, { x: margin + crewCountWidth + passengerCountWidth + 2, y: y - row3Height + 2, width: agentWidth - 6, height: 14 });
+  agentField.addToPage(page1, { x: margin + crewCountWidth + passengerCountWidth + 3, y: y - row3Height + fieldBottomPad, width: agentWidth - 8, height: fieldHeight });
   
   y -= row3Height;
   
   // Row 4: Longshore work question
   const row4Height = 18;
   drawRect(page1, margin, y - row4Height, contentWidth, row4Height);
-  drawText(page1, 'Will crew perform longshore work while vessel is in the United States?', margin + 2, y - 11, font, 6);
-  drawText(page1, 'NO', margin + 270, y - 11, fontBold, 6);
-  drawCheckbox(page1, margin + 285, y - 13, 8, false);
-  drawText(page1, 'YES', margin + 305, y - 11, fontBold, 6);
-  drawCheckbox(page1, margin + 325, y - 13, 8, false);
-  drawText(page1, '(Provide applicable INA Section 258 Exemption):', margin + 345, y - 11, font, 5);
+  drawText(page1, 'Will crew perform longshore work while vessel is in the United States?', margin + 3, y - 12, font, 6);
+  drawText(page1, 'NO', margin + 270, y - 12, fontBold, 6);
+  drawCheckbox(page1, margin + 285, y - 14, 8, false);
+  drawText(page1, 'YES', margin + 305, y - 12, fontBold, 6);
+  drawCheckbox(page1, margin + 325, y - 14, 8, false);
+  drawText(page1, '(Provide applicable INA Section 258 Exemption):', margin + 345, y - 12, font, 5);
   const exemptionField = form.createTextField('inaExemption');
-  exemptionField.addToPage(page1, { x: margin + 495, y: y - row4Height + 3, width: 60, height: 12 });
+  exemptionField.addToPage(page1, { x: margin + 530, y: y - row4Height + 3, width: contentWidth - 530 - 5, height: 12 });
   
   y -= row4Height;
   
   // Proposed Itinerary Section
-  y -= 5;
+  y -= 8;
   drawText(page1, 'PROPOSED ITINERARY', pageWidth / 2 - 40, y, fontBold, 7);
-  y -= 10;
+  y -= 4;
   
-  const itineraryHeaderHeight = 14;
-  const itineraryRowHeight = 14;
+  const itineraryHeaderHeight = 16;
+  const itineraryRowHeight = 16;
   const itineraryRows = 3;
   const nextPortWidth = contentWidth * 0.30;
   const arrivalDateWidth = contentWidth * 0.15;
@@ -293,13 +296,13 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   
   // Itinerary header
   drawRect(page1, margin, y - itineraryHeaderHeight, nextPortWidth, itineraryHeaderHeight);
-  drawText(page1, 'Next U.S. Port(s)', margin + 20, y - 10, fontBold, 6);
+  drawText(page1, 'Next U.S. Port(s)', margin + 20, y - 11, fontBold, 6);
   
   drawRect(page1, margin + nextPortWidth, y - itineraryHeaderHeight, arrivalDateWidth, itineraryHeaderHeight);
-  drawText(page1, 'Arrival Date', margin + nextPortWidth + 15, y - 10, fontBold, 6);
+  drawText(page1, 'Arrival Date', margin + nextPortWidth + 15, y - 11, fontBold, 6);
   
   drawRect(page1, margin + nextPortWidth + arrivalDateWidth, y - itineraryHeaderHeight, vesselAgentWidth, itineraryHeaderHeight);
-  drawText(page1, 'Vessel Agent (Name and Address)', margin + nextPortWidth + arrivalDateWidth + 80, y - 10, fontBold, 6);
+  drawText(page1, 'Vessel Agent (Name and Address)', margin + nextPortWidth + arrivalDateWidth + 80, y - 11, fontBold, 6);
   
   y -= itineraryHeaderHeight;
   
@@ -308,31 +311,31 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
     drawRect(page1, margin, y - itineraryRowHeight, nextPortWidth, itineraryRowHeight);
     const nextPortFieldName = `nextPort_${i}`;
     const nextPortF = form.createTextField(nextPortFieldName);
-    nextPortF.addToPage(page1, { x: margin + 2, y: y - itineraryRowHeight + 2, width: nextPortWidth - 6, height: 10 });
+    nextPortF.addToPage(page1, { x: margin + 2, y: y - itineraryRowHeight + 2, width: nextPortWidth - 6, height: 12 });
     
     drawRect(page1, margin + nextPortWidth, y - itineraryRowHeight, arrivalDateWidth, itineraryRowHeight);
     const arrDateFieldName = `arrivalDate_${i}`;
     const arrDateF = form.createTextField(arrDateFieldName);
-    arrDateF.addToPage(page1, { x: margin + nextPortWidth + 2, y: y - itineraryRowHeight + 2, width: arrivalDateWidth - 6, height: 10 });
+    arrDateF.addToPage(page1, { x: margin + nextPortWidth + 2, y: y - itineraryRowHeight + 2, width: arrivalDateWidth - 6, height: 12 });
     
     drawRect(page1, margin + nextPortWidth + arrivalDateWidth, y - itineraryRowHeight, vesselAgentWidth, itineraryRowHeight);
     const vesselAgentFieldName = `vesselAgent_${i}`;
     const vesselAgentF = form.createTextField(vesselAgentFieldName);
-    vesselAgentF.addToPage(page1, { x: margin + nextPortWidth + arrivalDateWidth + 2, y: y - itineraryRowHeight + 2, width: vesselAgentWidth - 6, height: 10 });
+    vesselAgentF.addToPage(page1, { x: margin + nextPortWidth + arrivalDateWidth + 2, y: y - itineraryRowHeight + 2, width: vesselAgentWidth - 6, height: 12 });
     
     y -= itineraryRowHeight;
   }
   
-  y -= 8;
+  y -= 10;
   
   // PASSENGER LIST / CREW LIST checkboxes
-  drawText(page1, 'PASSENGER LIST', margin + 20, y, fontBold, 7);
   drawCheckbox(page1, margin + 5, y - 2, 10, false);
+  drawText(page1, 'PASSENGER LIST', margin + 20, y, fontBold, 7);
   
-  drawText(page1, 'CREW LIST', margin + 120, y, fontBold, 7);
   drawCheckbox(page1, margin + 105, y - 2, 10, true);
+  drawText(page1, 'CREW LIST', margin + 120, y, fontBold, 7);
   
-  y -= 12;
+  y -= 14;
   
   // List instruction text
   const listInstr1 = 'List individuals alphabetically. Crew who join the vessel subsequent to its arrival while in the United States must be added to the original list and the appropriate date recorded in the "Date Joined" column.';
@@ -444,48 +447,47 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   y -= 5;
   
   // RECEIPT FOR CREW LIST section
-  drawText(page1, 'RECEIPT FOR CREW LIST (CBP Use Only).', margin, y, fontBold, 6);
-  drawText(page1, ' I-418 Receipt Number at right indicates that the U.S. Customs and Border Protection (CBP)', margin + 135, y, font, 5.5);
-  drawText(page1, 'I-418 Receipt Number (POE - YYMMDD - Badge # - Military Time):', margin + 380, y, font, 5);
-  y -= 8;
-  drawText(page1, 'has received the CREW LIST containing the names of all members of crew, including Master, on board said vessel at time of its arrival.', margin, y, font, 5.5);
+  const receiptBoxHeight = 38;
+  drawRect(page1, margin, y - receiptBoxHeight, contentWidth, receiptBoxHeight);
+  drawText(page1, 'RECEIPT FOR CREW LIST (CBP Use Only).', margin + 3, y - 7, fontBold, 6);
+  drawText(page1, 'I-418 Receipt Number at right indicates that the U.S. Customs and Border Protection (CBP)', margin + 138, y - 7, font, 5.5);
+  drawText(page1, 'has received the CREW LIST containing the names of all members of crew, including Master, on board said vessel at time of its arrival.', margin + 3, y - 15, font, 5.5);
+  drawText(page1, 'I-418 Receipt Number (POE - YYMMDD - Badge # - Military Time):', margin + 380, y - 7, font, 5);
   const receiptField = form.createTextField('receiptNumber');
-  receiptField.addToPage(page1, { x: margin + 380, y: y - 2, width: 170, height: 12 });
-  y -= 14;
-  
-  drawText(page1, 'CBP Port of Arrival (address):', margin, y, font, 6);
+  receiptField.addToPage(page1, { x: margin + 380, y: y - receiptBoxHeight + 14, width: contentWidth - 380 - 5, height: 10 });
+  drawText(page1, 'CBP Port of Arrival (address):', margin + 3, y - receiptBoxHeight + 4, font, 6);
   const cbpPortField = form.createTextField('cbpPortAddress');
-  cbpPortField.addToPage(page1, { x: margin + 110, y: y - 3, width: 200, height: 12 });
-  y -= 18;
+  cbpPortField.addToPage(page1, { x: margin + 120, y: y - receiptBoxHeight + 2, width: 250, height: 10 });
+  y -= receiptBoxHeight + 3;
   
   // SUMMARY OF DEPARTURE section
-  const summaryHeight = 50;
+  const summaryHeight = 55;
   drawRect(page1, margin, y - summaryHeight, contentWidth, summaryHeight);
   
-  drawText(page1, 'SUMMARY OF DEPARTURE.', margin + 2, y - 8, fontBold, 6);
-  drawText(page1, ' Vessel Agent (at Departure): Following this vessel\'s departure from the United States, ensure that crew', margin + 100, y - 8, font, 5);
-  drawText(page1, 'Date of Departure:', margin + 380, y - 8, font, 5);
+  drawText(page1, 'SUMMARY OF DEPARTURE.', margin + 3, y - 8, fontBold, 6);
+  drawText(page1, 'Vessel Agent (at Departure): Following this vessel\'s departure from the United States, ensure that crew', margin + 103, y - 8, font, 5);
+  drawText(page1, 'list reflects all crew additions and separations and is promptly submitted to the U.S. Customs and Border Protection office at the port of', margin + 3, y - 16, font, 5);
+  drawText(page1, 'departure. Summarize the departure circumstances by providing the following information:', margin + 3, y - 24, font, 5);
+  
+  drawText(page1, 'Date of Departure:', margin + 400, y - 16, font, 5);
   const depDateField = form.createTextField('departureDate');
-  depDateField.addToPage(page1, { x: margin + 450, y: y - 11, width: 60, height: 10 });
+  depDateField.addToPage(page1, { x: margin + 470, y: y - 19, width: contentWidth - 470 - 5, height: 10 });
   
-  drawText(page1, 'Port of Departure:', margin + 380, y - 20, font, 5);
+  drawText(page1, 'Port of Departure:', margin + 400, y - 28, font, 5);
   const depPortField = form.createTextField('departurePort');
-  depPortField.addToPage(page1, { x: margin + 450, y: y - 23, width: 60, height: 10 });
+  depPortField.addToPage(page1, { x: margin + 470, y: y - 31, width: contentWidth - 470 - 5, height: 10 });
   
-  drawText(page1, 'list reflects all crew additions and separations and is promptly submitted to the U.S. Customs and Border Protection office at the port of', margin + 2, y - 18, font, 5);
-  drawText(page1, 'departure. Summarize the departure circumstances by providing the following information:', margin + 2, y - 26, font, 5);
-  
-  drawText(page1, 'Total Added Crew:', margin + 380, y - 35, font, 5);
-  const addedCrewField = form.createTextField('totalAddedCrew');
-  addedCrewField.addToPage(page1, { x: margin + 445, y: y - 38, width: 30, height: 10 });
-  
-  drawText(page1, 'Total Separated Crew:', margin + 485, y - 35, font, 5);
-  const separatedCrewField = form.createTextField('totalSeparatedCrew');
-  separatedCrewField.addToPage(page1, { x: margin + 555, y: y - 38, width: 25, height: 10 });
-  
-  drawText(page1, 'Agent at Departure (Name & Address):', margin + 2, y - 40, font, 5);
+  drawText(page1, 'Agent at Departure (Name & Address):', margin + 3, y - 36, font, 5);
   const agentDepartureField = form.createTextField('agentAtDeparture');
-  agentDepartureField.addToPage(page1, { x: margin + 130, y: y - 48, width: 200, height: 12 });
+  agentDepartureField.addToPage(page1, { x: margin + 140, y: y - 39, width: 230, height: 10 });
+  
+  drawText(page1, 'Total Added Crew:', margin + 400, y - 40, font, 5);
+  const addedCrewField = form.createTextField('totalAddedCrew');
+  addedCrewField.addToPage(page1, { x: margin + 465, y: y - 43, width: 40, height: 10 });
+  
+  drawText(page1, 'Total Separated Crew:', margin + 520, y - 40, font, 5);
+  const separatedCrewField = form.createTextField('totalSeparatedCrew');
+  separatedCrewField.addToPage(page1, { x: margin + 595, y: y - 43, width: 40, height: 10 });
   
   // Page 1 footer
   drawText(page1, 'CBP Form I-418 (09/24)', margin, margin - 5, font, 6);
@@ -523,20 +525,25 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   y -= 30;
   
   // CERTIFICATION OF COPY
-  drawRect(page2, margin, y - 45, contentWidth, 45);
+  const certBoxHeight = 55;
+  drawRect(page2, margin, y - certBoxHeight, contentWidth, certBoxHeight);
   drawText(page2, 'CERTIFICATION OF COPY OF CREW LIST OF UNITED STATES FLAG VESSEL', pageWidth / 2 - 140, y - 10, fontBold, 7);
-  y -= 18;
   
   const certCopyText1 = 'I certify that this is a true copy of the original crew list of the named American vessel, which original crew list is on file in this office. Given under my hand and seal of office at the customhouse at';
-  drawText(page2, certCopyText1, margin + 2, y - 5, font, 5.5);
+  drawText(page2, certCopyText1, margin + 2, y - 22, font, 5.5);
+  const certFieldY = y - certBoxHeight + 2;
+  const certFieldH = 12;
+  const certLocWidth = 200;
+  const certGap = 30;
+  const certDateWidth = 150;
   const certLocationField = form.createTextField('certLocation');
-  certLocationField.addToPage(page2, { x: margin + 2, y: y - 30, width: 200, height: 12 });
-  drawText(page2, 'on', margin + 210, y - 22, font, 6);
+  certLocationField.addToPage(page2, { x: margin + 2, y: certFieldY, width: certLocWidth, height: certFieldH });
+  drawText(page2, 'on', margin + 2 + certLocWidth + (certGap - 8) / 2, certFieldY + 3, font, 6);
   const certDateField = form.createTextField('certDate');
-  certDateField.addToPage(page2, { x: margin + 225, y: y - 30, width: 80, height: 12 });
-  drawText(page2, '.', margin + 310, y - 22, font, 6);
+  certDateField.addToPage(page2, { x: margin + 2 + certLocWidth + certGap, y: certFieldY, width: certDateWidth, height: certFieldH });
+  drawText(page2, '.', margin + 2 + certLocWidth + certGap + certDateWidth + 3, certFieldY + 3, font, 6);
   
-  y -= 55;
+  y -= certBoxHeight + 15;
   
   drawText(page2, 'Signature of CBP Officer:', pageWidth / 2 - 60, y, font, 7);
   drawLine(page2, pageWidth / 2, y - 2, pageWidth / 2 + 150, y - 2);
@@ -576,8 +583,9 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   }
   y -= tableHeaderHeight;
   
-  // Continuation crew rows
-  const page2CrewRows = 20;
+  // Continuation crew rows — calculate how many fit above footer
+  const page2FooterReserve = margin + 15;
+  const page2CrewRows = Math.floor((y - page2FooterReserve) / rowHeight);
   for (let row = 0; row < page2CrewRows; row++) {
     drawRect(page2, margin, y - rowHeight, contentWidth, rowHeight);
     
@@ -631,9 +639,10 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   }
   
   // I-418 Receipt Number at bottom of page 2
-  y -= 5;
-  drawText(page2, 'I-418 Receipt Number (DHS Use Only)', pageWidth / 2 - 70, y, font, 6);
-  drawLine(page2, pageWidth / 2 - 75, y - 2, pageWidth / 2 + 75, y - 2);
+  y -= 10;
+  const receiptLabelX2 = margin + contentWidth / 2;
+  drawText(page2, 'I-418 Receipt Number (DHS Use Only)', receiptLabelX2, y, font, 6);
+  drawLine(page2, receiptLabelX2 + 145, y - 2, margin + contentWidth, y - 2);
   
   // Page 2 footer
   drawText(page2, 'CBP Form I-418 (09/24)', margin, margin - 5, font, 6);
@@ -678,8 +687,9 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   }
   y -= tableHeaderHeight;
   
-  // Page 3 crew rows
-  const page3CrewRows = 35;
+  // Page 3 crew rows — calculate how many fit above footer
+  const page3FooterReserve = margin + 15;
+  const page3CrewRows = Math.floor((y - page3FooterReserve) / rowHeight);
   for (let row = 0; row < page3CrewRows; row++) {
     drawRect(page3, margin, y - rowHeight, contentWidth, rowHeight);
     
@@ -731,6 +741,12 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
     if (crewIndex < totalCrew) crewIndex++;
     y -= rowHeight;
   }
+  
+  // I-418 Receipt Number at bottom of page 3
+  y -= 10;
+  const receiptLabelX3 = margin + contentWidth / 2;
+  drawText(page3, 'I-418 Receipt Number (DHS Use Only)', receiptLabelX3, y, font, 6);
+  drawLine(page3, receiptLabelX3 + 145, y - 2, margin + contentWidth, y - 2);
   
   // Page 3 footer
   drawText(page3, 'CBP Form I-418 (09/24)', margin, margin - 5, font, 6);

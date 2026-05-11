@@ -25,7 +25,7 @@ import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplate
 import { useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
 
 // Import extracted Part components for code splitting
-import { PartA, PartB, PartC, PartD, PartE, PartF, PartG } from "@/components/appraisal-form-parts";
+import { PartA, PartB, PartC, PartD, PartE, PartF, PartG, RequiredMark } from "@/components/appraisal-form-parts";
 
 // Comprehensive list of world nationalities
 const NATIONALITIES = [
@@ -269,6 +269,8 @@ interface ExistingAppraisal {
   id: number;
   appraisalData: string | AppraisalFormData;
   status: 'draft' | 'preliminary' | 'submitted' | 'reviewed';
+  formVersionId?: number | null;
+  formVersionUuid?: string | null;
 }
 
 interface AppraisalFormProps {
@@ -378,6 +380,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     return !hiddenSections.includes(sectionName);
   }, [hiddenSections]);
 
+  // Stage 1 captures Part B data only. If Part B (or all of its sub-sections)
+  // is hidden by admin config, hide every Stage 1 control (header Save Draft
+  // and the floating Save Draft / Submit Stage 1 row).
+  const isStage1Available = isSectionVisible('partB')
+    && (isSectionVisible('partB1') || isSectionVisible('partB2'));
+
   // Fetch vessels and ranks from persistent storage
   const { vessels } = useVesselLookup();
   const { data: availableRanks = [] } = useQuery<Array<{ id: number; name: string; category: string }>>({
@@ -394,26 +402,65 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     }));
   }, [appraisalTypesRaw]);
 
-  // Fetch form configuration based on crew member's rank
-  // Note: queryKey[0] is used as the URL by the default fetcher, so include full URL path
-  const { data: formConfig, isLoading: isLoadingFormConfig } = useQuery({
-    queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(crewMember?.rank || '')}?category=appraisal`],
-    enabled: !!crewMember?.rank,
-  });
-
-  // Log form configuration for debugging
-  useEffect(() => {
-    if (formConfig) {
-      console.log('✅ Form configuration loaded for rank:', crewMember?.rank, formConfig);
-    }
-  }, [formConfig, crewMember?.rank]);
-
   // Fetch existing appraisal data when editing
   // Note: queryKey must include full URL since default fetcher uses queryKey[0] as the URL
   const { data: existingAppraisal } = useQuery<ExistingAppraisal | undefined>({
     queryKey: [`/api/v2/appraisals/${appraisalId}`],
     enabled: !!appraisalId,
   });
+
+  // Form-config fetching strategy:
+  // - New appraisal (no appraisalId): load the latest released version for the rank.
+  // - Existing appraisal with a pinned formVersionId: load that exact version's
+  //   configuration so layout matches the version it was saved against.
+  // - Existing appraisal with NO pinned formVersionId (historical row): fall back
+  //   to the latest released version for the rank.
+  type FormForRankResponse = {
+    rankGroupConfig?: any;
+    noReleasedVersion?: boolean;
+    noReleasedVersionReason?: string;
+  };
+  type FormVersionConfigResponse = {
+    rankGroupName: string | null;
+    rankGroupConfig: any | null;
+    formVersionId: number;
+    formVersionUuid: string;
+  };
+
+  const isEditing = !!appraisalId;
+  const pinnedFormVersionId = existingAppraisal?.formVersionId ?? null;
+  // Wait for existingAppraisal before deciding whether to fall back to latest.
+  const useLatestForEditing = isEditing && existingAppraisal !== undefined && !pinnedFormVersionId;
+  const useLatestForNew = !isEditing;
+  const useLatest = useLatestForNew || useLatestForEditing;
+  const usePinned = isEditing && !!pinnedFormVersionId;
+
+  const { data: latestFormConfig, isLoading: isLoadingLatestConfig } = useQuery<FormForRankResponse>({
+    queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(crewMember?.rank || '')}?category=appraisal`],
+    enabled: !!crewMember?.rank && useLatest,
+  });
+
+  const { data: pinnedFormConfig, isLoading: isLoadingPinnedConfig } = useQuery<FormVersionConfigResponse>({
+    queryKey: [`/api/v2/admin/form-versions/${pinnedFormVersionId}/configuration`],
+    enabled: usePinned,
+  });
+
+  const formConfig: FormForRankResponse | undefined = usePinned
+    ? (pinnedFormConfig
+        ? { rankGroupConfig: pinnedFormConfig.rankGroupConfig, noReleasedVersion: false }
+        : undefined)
+    : latestFormConfig;
+  const isLoadingFormConfig = usePinned ? isLoadingPinnedConfig : isLoadingLatestConfig;
+
+  // Log form configuration for debugging
+  useEffect(() => {
+    if (formConfig) {
+      console.log('✅ Form configuration loaded for rank:', crewMember?.rank, {
+        source: usePinned ? `pinned version ${pinnedFormVersionId}` : 'latest released',
+        formConfig,
+      });
+    }
+  }, [formConfig, crewMember?.rank, usePinned, pinnedFormVersionId]);
 
   const { toast } = useToast();
 
@@ -443,13 +490,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         { id: "seafarer", name: "", rank: "", comment: "" }
       ],
       officeReviews: [],
-      trainingFollowups: [
-        { id: "1", training: "Training 1", correspondingInDB: "Select Training from DB", category: "Select Rating", status: "Proposed", targetDate: "", comment: "" },
-        { id: "2", training: "Training 2", correspondingInDB: "Select Training from DB", category: "1. Competence", status: "Approved", targetDate: "", comment: "" },
-        { id: "3", training: "Training 3", correspondingInDB: "Select Training from DB", category: "2- Soft Skills", status: "Planned", targetDate: "", comment: "" },
-        { id: "4", training: "Training 4", correspondingInDB: "Select Training from DB", category: "1. Competence", status: "Declined", targetDate: "", comment: "The officer will no longer be sent on this type of vessel, so this training is not required." },
-        { id: "5", training: "Training 5", correspondingInDB: "Select Training from DB", category: "2- Soft Skills", status: "Completed", targetDate: "", comment: "" }
-      ],
+      trainingFollowups: [],
     },
   });
 
@@ -534,41 +575,86 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       const currentValues = form.getValues();
       const updates: Partial<AppraisalFormData> = {};
       
+      // Load Part B trainings from rank group config (always set to guarantee
+      // clear-on-empty semantics even if form state is reused across navigations)
+      updates.trainings = Array.isArray(config.rankGroupConfig.trainings)
+        ? config.rankGroupConfig.trainings.map((t: any) => ({
+            id: t.id,
+            training: t.training ?? '',
+            evaluation: t.evaluation ?? '',
+            comment: t.comment ?? '',
+          }))
+        : [];
+
+      // Load Part B targets from rank group config
+      updates.targets = Array.isArray(config.rankGroupConfig.targets)
+        ? config.rankGroupConfig.targets.map((t: any) => ({
+            id: t.id,
+            targetSetting: t.targetSetting ?? '',
+            evaluation: t.evaluation ?? '',
+            comment: t.comment ?? '',
+          }))
+        : [];
+
+      // Load Part E training needs from rank group config
+      updates.trainingNeeds = Array.isArray(config.rankGroupConfig.trainingNeeds)
+        ? config.rankGroupConfig.trainingNeeds.map((t: any) => ({
+            id: t.id,
+            training: t.training ?? '',
+            comment: t.comment ?? '',
+          }))
+        : [];
+
       // Load competence assessments from rank group config
-      if (config.rankGroupConfig.competenceAssessments && config.rankGroupConfig.competenceAssessments.length > 0) {
-        updates.competenceAssessments = config.rankGroupConfig.competenceAssessments.map((ca: any) => ({
-          id: ca.id,
-          assessmentCriteria: ca.assessmentCriteria,
-          weight: ca.weight,
-          effectiveness: ca.effectiveness || '',
-          comment: ca.comment || '',
-        }));
-        console.log('📋 Will set competenceAssessments:', updates.competenceAssessments.length, 'items');
-      }
-      
+      updates.competenceAssessments = Array.isArray(config.rankGroupConfig.competenceAssessments)
+        ? config.rankGroupConfig.competenceAssessments.map((ca: any) => ({
+            id: ca.id,
+            assessmentCriteria: ca.assessmentCriteria,
+            weight: ca.weight,
+            effectiveness: ca.effectiveness || '',
+            comment: ca.comment || '',
+          }))
+        : [];
+      console.log('📋 Will set competenceAssessments:', updates.competenceAssessments.length, 'items');
+
       // Load behavioural assessments from rank group config
-      if (config.rankGroupConfig.behaviouralAssessments && config.rankGroupConfig.behaviouralAssessments.length > 0) {
-        updates.behaviouralAssessments = config.rankGroupConfig.behaviouralAssessments.map((ba: any) => ({
-          id: ba.id,
-          assessmentCriteria: ba.assessmentCriteria,
-          weight: ba.weight,
-          effectiveness: ba.effectiveness || '',
-          comment: ba.comment || '',
-        }));
-        console.log('📋 Will set behaviouralAssessments:', updates.behaviouralAssessments.length, 'items');
-      }
-      
+      updates.behaviouralAssessments = Array.isArray(config.rankGroupConfig.behaviouralAssessments)
+        ? config.rankGroupConfig.behaviouralAssessments.map((ba: any) => ({
+            id: ba.id,
+            assessmentCriteria: ba.assessmentCriteria,
+            weight: ba.weight,
+            effectiveness: ba.effectiveness || '',
+            comment: ba.comment || '',
+          }))
+        : [];
+      console.log('📋 Will set behaviouralAssessments:', updates.behaviouralAssessments.length, 'items');
+
       // Load recommendations from rank group config
-      if (config.rankGroupConfig.recommendations && config.rankGroupConfig.recommendations.length > 0) {
-        updates.recommendations = config.rankGroupConfig.recommendations.map((rec: any) => ({
-          id: rec.id,
-          question: rec.recommendation || rec.question,
-          answer: rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : '',
-          comment: rec.comment || '',
-        }));
-        console.log('📋 Will set recommendations:', updates.recommendations.length, 'items');
-      }
-      
+      updates.recommendations = Array.isArray(config.rankGroupConfig.recommendations)
+        ? config.rankGroupConfig.recommendations.map((rec: any) => ({
+            id: rec.id,
+            question: rec.recommendation || rec.question,
+            answer: rec.answer ?? (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : ''),
+            comment: rec.comment || '',
+            isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
+          }))
+        : [];
+      console.log('📋 Will set recommendations:', updates.recommendations.length, 'items');
+
+      // Load training followups (G2) from rank group config
+      updates.trainingFollowups = Array.isArray(config.rankGroupConfig.trainingFollowups)
+        ? config.rankGroupConfig.trainingFollowups.map((f: any) => ({
+            id: f.id,
+            training: f.training ?? '',
+            correspondingInDB: f.correspondingInDB ?? 'Select Training from DB',
+            category: f.category ?? 'Select Rating',
+            status: f.status ?? 'Proposed',
+            targetDate: f.targetDate ?? '',
+            comment: f.comment ?? '',
+          }))
+        : [];
+      console.log('📋 Will set trainingFollowups:', updates.trainingFollowups.length, 'items');
+
       // Use form.reset() to apply all updates at once - this triggers proper re-renders
       if (Object.keys(updates).length > 0) {
         console.log('📋 Resetting form with config values');
@@ -592,7 +678,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Mutation for saving appraisal (uses PUT for existing, POST for new)
   const saveAppraisalMutation = useMutation({
-    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null }) => {
+    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null; closeAfter?: boolean }) => {
       if (!crewMember?.id) {
         throw new Error('Crew member ID is required to save appraisal');
       }
@@ -684,7 +770,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           ? 'Your appraisal draft has been saved successfully. You can now submit stages.' 
           : 'Your appraisal has been submitted successfully.',
       });
-      if (variables.status !== 'draft') {
+      if (variables.closeAfter) {
         onClose();
       }
     },
@@ -861,20 +947,65 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const handleStageSubmission = async (stage: 'stage1' | 'stage2' | 'stage3') => {
     // Get form data with synced comments from useState hooks
     const formData = getFormDataWithSyncedComments();
-    
+
+    // Build a sanitized copy for client-side validation that respects the
+    // active form config: clear all array payloads belonging to hidden
+    // sections so their per-row schemas don't block submission.
+    type ArrayFieldKey =
+      | 'trainings'
+      | 'targets'
+      | 'competenceAssessments'
+      | 'behaviouralAssessments'
+      | 'trainingNeeds'
+      | 'recommendations'
+      | 'appraiserComments'
+      | 'seafarerComments'
+      | 'officeReviews'
+      | 'trainingFollowups';
+    const hiddenSectionArrayKeys: Record<string, ArrayFieldKey[]> = {
+      partB: ['trainings', 'targets'],
+      partB1: ['trainings'],
+      partB2: ['targets'],
+      partC: ['competenceAssessments'],
+      partD: ['behaviouralAssessments'],
+      partE: ['trainingNeeds'],
+      partF: ['recommendations', 'appraiserComments', 'seafarerComments'],
+      partG: ['officeReviews', 'trainingFollowups'],
+    };
+    const dataForValidation: AppraisalFormData = { ...formData };
+    for (const section of hiddenSections) {
+      const keys = hiddenSectionArrayKeys[section];
+      if (!keys) continue;
+      for (const key of keys) {
+        (dataForValidation[key] as unknown[]) = [];
+      }
+    }
+
+    // Build a stage schema that omits any hidden Part A field (so required
+    // fields in `hiddenFields` like appraisalType don't trip min(1) errors).
+    const omitForStage = (baseSchema: z.AnyZodObject): z.AnyZodObject => {
+      const shapeKeys = Object.keys(baseSchema.shape);
+      const mask: { [key: string]: true } = {};
+      for (const f of hiddenFields) {
+        if (shapeKeys.includes(f)) mask[f] = true;
+      }
+      return Object.keys(mask).length ? baseSchema.omit(mask) : baseSchema;
+    };
+
     // Validate stage-specific data
     try {
       if (stage === 'stage1') {
-        stage1Schema.parse(formData);
+        omitForStage(stage1Schema).parse(dataForValidation);
       } else if (stage === 'stage2') {
-        stage2Schema.parse(formData);
+        omitForStage(stage2Schema).parse(dataForValidation);
       } else if (stage === 'stage3') {
-        stage3Schema.parse(formData);
+        omitForStage(stage3Schema).parse(dataForValidation);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { errors?: Array<{ message?: string }> };
       toast({ 
         title: 'Validation Error', 
-        description: error.errors?.[0]?.message || 'Please complete all required fields for this stage.', 
+        description: err.errors?.[0]?.message || 'Please complete all required fields for this stage.', 
         variant: 'destructive' 
       });
       return;
@@ -885,7 +1016,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     // If no appraisalId, save as draft first
     if (!idToUse) {
       try {
-        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft' });
+        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft', closeAfter: false });
         if (result && result.id) {
           idToUse = result.id;
           setAppraisalId(result.id);
@@ -920,7 +1051,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     console.log('🔵 Mutation isPending:', saveAppraisalMutation.isPending);
     // Get form data with synced comments from useState hooks
     const syncedData = getFormDataWithSyncedComments();
-    saveAppraisalMutation.mutate({ data: syncedData, status: 'draft' });
+    saveAppraisalMutation.mutate({ data: syncedData, status: 'draft', closeAfter: false });
   };
 
   const handleSaveDraft = () => {
@@ -933,7 +1064,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     // Only use 'draft' status before Stage 1 has been submitted
     const statusToSave = appraisalStatus === 'draft' ? 'draft' : appraisalStatus;
     console.log('💾 Preserving status:', statusToSave);
-    saveAppraisalMutation.mutate({ data, status: statusToSave });
+    saveAppraisalMutation.mutate({ data, status: statusToSave, closeAfter: false });
   };
 
   const onSubmitAppraisal = () => {
@@ -943,7 +1074,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       // Get form data with synced comments from useState hooks
       const syncedData = getFormDataWithSyncedComments();
       console.log('🟢 Submit handler called with synced data:', syncedData);
-      saveAppraisalMutation.mutate({ data: syncedData, status: 'submitted' });
+      saveAppraisalMutation.mutate({ data: syncedData, status: 'submitted', closeAfter: true });
     })();
   };
 
@@ -1280,6 +1411,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
     return {
       ...data,
+      signOn: data.signOn ?? "",
+      appraisalPeriodFrom: data.appraisalPeriodFrom ?? "",
+      appraisalPeriodTo: data.appraisalPeriodTo ?? "",
+      personalityIndexCategory: data.personalityIndexCategory ?? "",
+      primaryAppraiser: data.primaryAppraiser ?? "",
       trainings: updatedTrainings,
       targets: updatedTargets,
       competenceAssessments: updatedCompetenceAssessments,
@@ -1620,7 +1756,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       if (!canViewSection(section.id)) return false;
       const hiddenKey = sectionIdToHiddenKey[section.id];
       if (hiddenKey) {
-        return isSectionVisible(hiddenKey);
+        if (!isSectionVisible(hiddenKey)) return false;
+      }
+      // Part B is also effectively hidden if both B1 and B2 sub-sections are hidden
+      if (section.id === "B" && !isSectionVisible('partB1') && !isSectionVisible('partB2')) {
+        return false;
       }
       return true;
     });
@@ -1823,21 +1963,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         )}
 
         {/* Stage 1 Action Buttons - kept in parent for form-level control */}
-        {isSectionVisible('partB') && (
-          <div className="flex justify-end gap-4">
-            <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
-              Save Draft
-            </Button>
-            <Button 
-              type="button"
-              className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
-              onClick={() => handleStageSubmission('stage1')}
-              disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
-            >
-              {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
-            </Button>
-          </div>
-        )}
+        <div className="flex justify-end gap-4">
+          <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+            Save Draft
+          </Button>
+          <Button 
+            type="button"
+            className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+            onClick={() => handleStageSubmission('stage1')}
+            disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
+          >
+            {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
+          </Button>
+        </div>
       </div>
     );
   };
@@ -1944,6 +2082,30 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     );
   };
 
+  const noReleasedVersion = !!formConfig?.noReleasedVersion;
+  if (noReleasedVersion && !appraisalId) {
+    const reason = formConfig?.noReleasedVersionReason || 'No released form version is available for this rank.';
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
+        <div className="bg-white rounded-lg w-full max-w-md p-6 flex flex-col gap-4" data-testid="banner-no-released-version">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Form Not Available</h2>
+            <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close-no-released">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="text-sm text-gray-700">{reason}</p>
+          <p className="text-xs text-gray-500">
+            An administrator must release a form version for this rank group before appraisals can be started.
+          </p>
+          <div className="flex justify-end">
+            <Button onClick={onClose} data-testid="button-dismiss-no-released">Close</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
       <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
@@ -1956,23 +2118,29 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             <h1 className="text-lg sm:text-xl font-bold">Crew Appraisal Form</h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleSaveDraft}
-              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Draft
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleSaveDraft}
-              className="sm:hidden"
-            >
-              <Save className="h-4 w-4" />
-            </Button>
+            {isStage1Available && (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSaveDraft}
+                  className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+                  data-testid="button-save-draft-header"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Draft
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSaveDraft}
+                  className="sm:hidden"
+                  data-testid="button-save-draft-header-mobile"
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -2143,7 +2311,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="seafarersName"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Name</FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Name<RequiredMark /></FormLabel>
                               <FormControl>
                                 <Input {...field} placeholder="Enter seafarer's name" className="bg-[#ffffff]" />
                               </FormControl>
@@ -2156,7 +2324,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="seafarersRank"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank</FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank<RequiredMark /></FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="bg-[#ffffff]">
@@ -2185,7 +2353,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="nationality"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality</FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality<RequiredMark /></FormLabel>
                               <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
                                 <PopoverTrigger asChild>
                                   <FormControl>
@@ -2250,7 +2418,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="vessel"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel</FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel<RequiredMark /></FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="bg-[#ffffff]">
@@ -2292,7 +2460,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="appraisalType"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type</FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type<RequiredMark /></FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="bg-[#ffffff]">
@@ -2416,7 +2584,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                 )}
 
                 {/* Part B: Information at Start of Appraisal Period */}
-                {activeSection === "information" && isSectionVisible('partB') && (
+                {activeSection === "information" && isSectionVisible('partB') && (isSectionVisible('partB1') || isSectionVisible('partB2')) && (
                   <Card className="bg-white">
                     <CardContent className="p-6">
                       <div className="pb-4 mb-6">
@@ -2426,6 +2594,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
                       <div className="space-y-8">
                       {/* B1. Trainings conducted prior joining vessel */}
+                      {isSectionVisible('partB1') && (
                       <div>
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>B1. Trainings conducted prior joining vessel (To Assess Effectiveness)</h3>
@@ -2449,7 +2618,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
                                   {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                                 </tr>
                               </thead>
                               <tbody className="bg-white">
@@ -2506,7 +2675,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           className="h-6 w-6"
                                           onClick={() => deleteTraining(training.id)}
                                         >
-                                          <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                          <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                                         </Button>
                                       </div>
                                     </td>
@@ -2546,7 +2715,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                                 size="sm"
                                                 onClick={(e) => { e.stopPropagation(); deleteTrainingComment(training.id); }}
                                               >
-                                                <Trash2 className="h-4 w-4" />
+                                                <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                               </Button>
                                             </div>
                                           </div>
@@ -2568,8 +2737,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           </div>
                         </div>
                       </div>
+                      )}
 
                       {/* B2. Target Setting */}
+                      {isSectionVisible('partB2') && (
                       <div>
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>B2. Target Setting</h3>
@@ -2592,7 +2763,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                 <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                                 <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting</th>
                                 {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                                <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                               </tr>
                             </thead>
                             <tbody className="bg-white">
@@ -2649,7 +2820,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           className="h-6 w-6"
                                           onClick={() => deleteTarget(target.id)}
                                         >
-                                          <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                          <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                                         </Button>
                                       </div>
                                     </td>
@@ -2689,7 +2860,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                                 size="sm"
                                                 onClick={(e) => { e.stopPropagation(); deleteTargetComment(target.id); }}
                                               >
-                                                <Trash2 className="h-4 w-4" />
+                                                <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                               </Button>
                                             </div>
                                           </div>
@@ -2710,6 +2881,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           </table>
                         </div>
                       </div>
+                      )}
 
                       <div className="flex justify-end gap-4 mt-6">
                         <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
@@ -2745,8 +2917,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness<RequiredMark /></th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2794,7 +2966,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                         size="icon"
                                         className="h-6 w-6"
                                       >
-                                        <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                        <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                                       </Button>
                                     </div>
                                   </td>
@@ -2834,7 +3006,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                               size="sm"
                                               onClick={(e) => { e.stopPropagation(); deleteCompetenceComment(assessment.id); }}
                                             >
-                                              <Trash2 className="h-4 w-4" />
+                                              <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                             </Button>
                                           </div>
                                         </div>
@@ -2882,8 +3054,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness<RequiredMark /></th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -2930,7 +3102,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       size="icon"
                                       className="h-6 w-6"
                                     >
-                                      <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                      <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                                     </Button>
                                   </div>
                                 </td>
@@ -2970,7 +3142,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                             size="sm"
                                             onClick={(e) => { e.stopPropagation(); deleteBehaviouralComment(assessment.id); }}
                                           >
-                                            <Trash2 className="h-4 w-4" />
+                                            <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                           </Button>
                                         </div>
                                       </div>
@@ -3038,8 +3210,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           <thead className="bg-gray-100">
                             <tr>
                               <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training<RequiredMark /></th>
+                              <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -3076,7 +3248,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       className="h-6 w-6"
                                       onClick={() => deleteTrainingNeed(trainingNeed.id)}
                                     >
-                                      <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                      <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                                     </Button>
                                   </div>
                                 </td>
@@ -3116,7 +3288,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                             size="sm"
                                             onClick={(e) => { e.stopPropagation(); deleteTrainingNeedsComment(trainingNeed.id); }}
                                           >
-                                            <Trash2 className="h-4 w-4" />
+                                            <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                           </Button>
                                         </div>
                                       </div>
@@ -3174,12 +3346,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             <table className="w-full">
                               <thead className="bg-gray-100">
                                 <tr>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
+                                  <th rowSpan={2} className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                                  <th rowSpan={2} className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Recommendations</th>
+                                  <th colSpan={3} className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Recommendation Answer<RequiredMark /></th>
+                                  <th rowSpan={2} className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                                </tr>
+                                <tr>
                                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Yes</th>
                                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">No</th>
                                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">NA</th>
-                                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -3282,7 +3457,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                                   size="sm"
                                                   onClick={(e) => { e.stopPropagation(); deleteRecommendationComment(recommendation.id); }}
                                                 >
-                                                  <Trash2 className="h-4 w-4" />
+                                                  <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                                 </Button>
                                               </div>
                                             </div>
@@ -3350,7 +3525,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                         size="sm"
                                         onClick={(e) => { e.stopPropagation(); deleteAppraiserComment(appraiser.id); }}
                                       >
-                                        <Trash2 className="h-4 w-4" />
+                                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                       </Button>
                                     )}
                                   </div>
@@ -3522,7 +3697,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       size="sm"
                                       onClick={() => deleteOfficeReview(review.id)}
                                     >
-                                      <Trash2 className="h-4 w-4" />
+                                      <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                     </Button>
                                   </div>
                                 </div>
@@ -3648,7 +3823,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                             className="h-6 w-6"
                                             onClick={() => deleteTrainingFollowup(followup.id)}
                                           >
-                                            <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                                            <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
                                           </Button>
                                         </div>
                                       </td>
@@ -3688,7 +3863,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                                   size="sm"
                                                   onClick={(e) => { e.stopPropagation(); deleteTrainingFollowupComment(followup.id); }}
                                                 >
-                                                  <Trash2 className="h-4 w-4" />
+                                                  <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                                 </Button>
                                               </div>
                                             </div>
@@ -3698,6 +3873,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     )}
                                   </React.Fragment>
                                 ))}
+                                {form.watch("trainingFollowups").length === 0 && (
+                                  <tr>
+                                    <td colSpan={7} className="p-8 text-center text-gray-500 text-[13px]">
+                                      No training followups added yet. Click "Add New Training" to get started.
+                                    </td>
+                                  </tr>
+                                )}
                               </tbody>
                             </table>
                           </div>

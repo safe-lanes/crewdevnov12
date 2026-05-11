@@ -49,6 +49,7 @@ const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
     vuid: 'vesselUuid',
     vessel: 'vessel',
     imoNumber: 'imoNumber',
+    flag: 'flag',
     vesselType: 'vesselType',
   },
   vesselTypes: {

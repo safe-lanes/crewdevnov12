@@ -266,37 +266,73 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     };
   }, [promotionData?.promotionToRank, formsData, rankGroupsData, normalizeRank, parseRanksArray]);
 
-  const a2Config = useMemo<PromotionA2Config | null>(() => {
+  // Resolve the matching rank group for the target promotion rank.
+  const matchingRankGroupForA2 = useMemo<{ formId: number; rankGroupId: number; configuration: string | null } | null>(() => {
     if (!promotionData?.promotionToRank || !formsData || !rankGroupsData) return null;
     const promotionReviewForm = formsData.find(f => f.name === 'Promotion Review Form');
     if (!promotionReviewForm) return null;
-    const formRankGroups = rankGroupsData.filter(rg => 
+    const formRankGroups = rankGroupsData.filter(rg =>
       rg.formId === promotionReviewForm.id && !rg.archivedAt
     );
-    const targetRank = promotionData.promotionToRank;
-    const normalizedTarget = normalizeRank(targetRank);
-    const matchingRankGroup = formRankGroups.find(rg => {
+    const normalizedTarget = normalizeRank(promotionData.promotionToRank);
+    const matching = formRankGroups.find(rg => {
       const groupRanks = parseRanksArray(rg.ranks);
       return groupRanks.some((rank: string) => normalizeRank(rank) === normalizedTarget);
     });
-    if (!matchingRankGroup) return null;
-    try {
-      const config = matchingRankGroup.configuration;
-      if (!config) return null;
-      const parsed = typeof config === 'string' ? JSON.parse(config) : config;
+    if (!matching) return null;
+    return { formId: promotionReviewForm.id, rankGroupId: matching.id, configuration: matching.configuration ?? null };
+  }, [promotionData?.promotionToRank, formsData, rankGroupsData, normalizeRank, parseRanksArray]);
+
+  // Fetch versions for the matched form so we can prefer the latest released
+  // form-version over the legacy adm_rank_groups_v2.configuration column.
+  const { data: a2FormVersions = [] } = useQuery<Array<{ id: number; rankGroupId: number | null; versionNo: string; status: string; configuration: string | null; releasedAt: string | null }>>({
+    queryKey: [`/api/v2/admin/forms/${matchingRankGroupForA2?.formId}/versions`],
+    enabled: !!matchingRankGroupForA2?.formId,
+  });
+
+  const a2Config = useMemo<PromotionA2Config | null>(() => {
+    if (!matchingRankGroupForA2) return null;
+    const extractKnown = (parsed: any): any | null => {
       const promotionConfig = parsed?.promotionA2 ?? parsed;
       if (promotionConfig && typeof promotionConfig === 'object') {
-        const knownFields = ['higherLicenseIds', 'ageMin', 'ageMax', 'experienceMonths', 
-          'minRecommendations', 'minChecklistVerifications', 'minChecklistCompletionPercent', 
+        const knownFields = ['higherLicenseIds', 'ageMin', 'ageMax', 'experienceMonths',
+          'minRecommendations', 'minChecklistVerifications', 'minChecklistCompletionPercent',
           'otherCriteria', 'cesTests'];
-        const hasKnownField = knownFields.some(field => field in promotionConfig);
-        if (hasKnownField) return promotionConfig;
+        if (knownFields.some(field => field in promotionConfig)) return promotionConfig;
       }
       return null;
+    };
+
+    // 1. Latest released form-version for this rank group (preferred).
+    const released = a2FormVersions.filter(v =>
+      v.rankGroupId === matchingRankGroupForA2.rankGroupId && v.status === 'released' && v.configuration
+    );
+    if (released.length > 0) {
+      const latest = released.reduce((max, v) => {
+        const vNo = parseInt(v.versionNo, 10);
+        const maxNo = parseInt(max.versionNo, 10);
+        if (!isNaN(vNo) && !isNaN(maxNo) && vNo !== maxNo) return vNo > maxNo ? v : max;
+        const vAt = v.releasedAt ? new Date(v.releasedAt).getTime() : 0;
+        const maxAt = max.releasedAt ? new Date(max.releasedAt).getTime() : 0;
+        return vAt > maxAt ? v : max;
+      }, released[0]);
+      try {
+        const parsed = typeof latest.configuration === 'string' ? JSON.parse(latest.configuration!) : latest.configuration;
+        const known = extractKnown(parsed);
+        if (known) return known;
+      } catch { /* fall through to legacy */ }
+    }
+
+    // 2. Legacy adm_rank_groups_v2.configuration fallback.
+    const legacyConfig = matchingRankGroupForA2.configuration;
+    if (!legacyConfig) return null;
+    try {
+      const parsed = typeof legacyConfig === 'string' ? JSON.parse(legacyConfig) : legacyConfig;
+      return extractKnown(parsed);
     } catch {
       return null;
     }
-  }, [promotionData?.promotionToRank, formsData, rankGroupsData, normalizeRank, parseRanksArray]);
+  }, [matchingRankGroupForA2, a2FormVersions]);
 
   const licenseDataByEntryId = useMemo(() => {
     if (!licenseEntriesData) return {};

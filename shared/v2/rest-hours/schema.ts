@@ -83,6 +83,7 @@ export const rhDailyRecordsV2 = pgTable("rh_daily_records_v2", {
   dailyRecords: text("daily_records").notNull(),
   showPlanning: boolean("show_planning").default(false),
   opaMode: boolean("opa_mode").default(false),
+  watchkeeper: boolean("watchkeeper").default(false),
   ...auditColumns,
 }, (table) => ({
   uniqueCrewVesselMonth: uniqueIndex("rh_daily_records_v2_unique_idx").on(

@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
+import { useManningAgentsV2, useCrewPoolsV2, useVesselTypesV2, useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
 import { ComplianceMatrixDialog_v2 as ComplianceMatrixDialog } from '@/modules/vessel/ComplianceMatrixDialog_v2';
 
 // Format date as DD-MMM-YY (e.g., "15 Dec 25")
@@ -284,7 +284,10 @@ function CrewFilterDialog({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-60 p-2" align="start">
-          <div className="max-h-48 overflow-y-auto">
+          <div
+            className="max-h-60 overflow-y-auto overscroll-contain"
+            onWheel={(e) => e.stopPropagation()}
+          >
             {options.length === 0 ? (
               <div className="text-sm text-gray-500 text-center py-2">No options available</div>
             ) : (
@@ -523,15 +526,17 @@ function CrewColumn({
   currentlyDeployedCrewIds,
   allDeployedAssignments,
   planDateRange,
-  selectedVesselIds
+  selectedVesselIds,
+  focusedVesselId
 }: { 
   rank: string; 
   onCrewSelect: (crew: { crewUuid: string; name: string; rank: string }) => void; // V2 uses crewUuid
   assignments: Assignment[];
-  currentlyDeployedCrewIds: Set<string>;
+  currentlyDeployedCrewIds: Map<string, string[]>;
   allDeployedAssignments: DeployedCrewAssignment[];
   planDateRange: { start: Date; end: Date };
   selectedVesselIds: string[]; // V2 uses vessel UUIDs
+  focusedVesselId: string; // UUID of the vessel currently radio-selected in the timeline
 }) {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [filters, setFilters] = useState<CrewFilters>({
@@ -581,6 +586,12 @@ function CrewColumn({
   // Fetch Crew Pools from V2 dedicated table
   const { data: crewPoolsData } = useCrewPoolsV2();
 
+  // Fetch Vessel Types and Nationalities masters so the Ship Type and
+  // Nationality dropdowns are populated from master data (not from the
+  // crew result set, which only contains values for the current rank).
+  const { data: vesselTypesData } = useVesselTypesV2();
+  const { data: nationalitiesData } = useNationalitiesV2();
+
   // Extract unique values for filter options
   const availableOptions = useMemo(() => {
     // Use Crew Pools from Master 022 instead of extracting from crew data
@@ -594,9 +605,20 @@ function CrewColumn({
       .filter((agent: any) => agent.name && !agent.isDeleted)
       .map((agent: any) => agent.country ? `${agent.name} (${agent.country})` : agent.name)
       .sort() as string[];
-    
-    const shipTypes = Array.from(new Set(crewMembers.map(c => c.shipType).filter(Boolean))).sort() as string[];
-    const nationalities = Array.from(new Set(crewMembers.map(c => c.nationality).filter(Boolean))).sort() as string[];
+
+    // Source Ship Type from Vessel Types master (not from crew rows)
+    const shipTypes = Array.from(new Set(
+      (vesselTypesData || [])
+        .filter((vt: any) => vt.vesselType && !vt.isDeleted)
+        .map((vt: any) => vt.vesselType as string)
+    )).sort() as string[];
+
+    // Source Nationality from Nationalities master (not from crew rows)
+    const nationalities = Array.from(new Set(
+      (nationalitiesData || [])
+        .filter((n: any) => n.nationality && !n.isDeleted)
+        .map((n: any) => n.nationality as string)
+    )).sort() as string[];
     const travelStatuses = Array.from(new Set(crewMembers.map(c => c.travelStatus).filter(Boolean))).sort() as string[];
     const higherCerts = Array.from(new Set(crewMembers.map(c => c.higherCert).filter(Boolean))).sort() as string[];
     const performances = Array.from(new Set(crewMembers.map(c => c.performance).filter(Boolean))).sort() as string[];
@@ -618,7 +640,7 @@ function CrewColumn({
       higherCerts,
       performances,
     };
-  }, [crewMembers, manningAgentsData, crewPoolsData]);
+  }, [crewMembers, manningAgentsData, crewPoolsData, vesselTypesData, nationalitiesData]);
 
   // Apply filters to crew members
   const filteredCrewMembers = useMemo(() => {
@@ -627,14 +649,14 @@ function CrewColumn({
       if (filters.pools.length > 0 && !filters.pools.includes(crew.crewPool || crew.pool || '')) return false;
       
       // Manning agent filter - compare agent names (filter options are "Name (Country)" format)
+      // Tolerant compare: trim, lowercase, accept both display ("Name (Country)") and bare name forms.
       if (filters.manningAgents.length > 0) {
-        const crewAgent = crew.manningAgent || '';
-        // Check if any selected filter matches the crew's manning agent
-        // Filter format is "Name (Country)", crew data might just be the name
+        const crewAgent = (crew.manningAgent || '').trim().toLowerCase();
+        if (!crewAgent) return false;
         const matches = filters.manningAgents.some(filterAgent => {
-          // Extract just the name from "Name (Country)" format if present
-          const agentName = filterAgent.replace(/\s*\([^)]*\)$/, '');
-          return crewAgent === filterAgent || crewAgent === agentName;
+          const fullForm = filterAgent.trim().toLowerCase();
+          const nameOnly = filterAgent.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+          return crewAgent === fullForm || crewAgent === nameOnly;
         });
         if (!matches) return false;
       }
@@ -725,10 +747,39 @@ function CrewColumn({
   // intersects with the client-side filters above. Query key intentionally
   // excludes `assignments` and `localFilters`-style state so this never
   // re-fetches on timeline drags or unrelated filter toggles.
+  //
+  // When more than one vessel is picked in the dropdown, the timeline shows
+  // one card per vessel with a radio button so planners focus on a single
+  // vessel at a time. Evaluating compliance against every selected vessel
+  // (strict-AND) is too aggressive in that case — it hides candidates that
+  // are perfectly valid for the focused vessel just because they fail on
+  // another vessel. So when multi-select is active, narrow the filter to
+  // the focused vessel only. With exactly one vessel selected the focused
+  // vessel is identical to that vessel, so behavior is unchanged.
   // ---------------------------------------------------------------------------
+  // Guard against a one-render window where the focused vessel UUID is no
+  // longer in `selectedVesselIds` (e.g. the planner just removed it from the
+  // dropdown but the parent's auto-select effect hasn't promoted a new focus
+  // yet). Treat focus as valid only when it points to a still-selected vessel.
+  const hasValidMultiVesselFocus =
+    selectedVesselIds.length > 1 &&
+    !!focusedVesselId &&
+    selectedVesselIds.includes(focusedVesselId);
+  // When 2+ vessels are selected we *must* have a valid focus to evaluate
+  // compliance — otherwise we'd revert to the old strict-AND behavior across
+  // every selected vessel and recreate the exact "empty crew list" failure
+  // mode this task fixes. In that brief no-focus window we yield an empty
+  // list, which disables the query and surfaces the existing
+  // "Select a vessel to apply Compliance Check" hint.
+  const effectiveComplianceVesselIds = useMemo(() => {
+    if (selectedVesselIds.length > 1) {
+      return hasValidMultiVesselFocus ? [focusedVesselId] : [];
+    }
+    return selectedVesselIds;
+  }, [hasValidMultiVesselFocus, focusedVesselId, selectedVesselIds]);
   const sortedComplianceVesselIds = useMemo(
-    () => [...selectedVesselIds].sort(),
-    [selectedVesselIds]
+    () => [...effectiveComplianceVesselIds].sort(),
+    [effectiveComplianceVesselIds]
   );
   const sortedComplianceRuleNames = useMemo(
     () => [...filters.oilMajorCompliance].sort(),
@@ -737,6 +788,11 @@ function CrewColumn({
   const complianceFilterActive = sortedComplianceRuleNames.length > 0;
   const complianceFilterSkippedNoVessel =
     complianceFilterActive && sortedComplianceVesselIds.length === 0;
+  const focusedVesselName = hasValidMultiVesselFocus
+    ? getVesselName(focusedVesselId)
+    : undefined;
+  const showFocusedVesselHint =
+    complianceFilterActive && hasValidMultiVesselFocus && !!focusedVesselName;
   const complianceCandidateUuids = useMemo(
     () => crewMembers.map((c) => c.crewUuid).sort(),
     [crewMembers]
@@ -958,15 +1014,55 @@ function CrewColumn({
       return vesselNames.join(', ');
     }
 
-    // Check draft assignments (blue color reason)
-    const draftVessels = new Set(
-      assignments
-        .filter(a => a.crewUuid === crewUuid)
-        .map(a => a.vessel)
-    );
-    
-    if (draftVessels.size > 0) {
-      return Array.from(draftVessels).join(', ');
+    // Current-incumbent on a selected vessel (red color reason).
+    // `getCrewNameColor` paints this row red via `currentlyDeployedCrewIds`,
+    // but every branch above this point explicitly skips selected vessels —
+    // so without this branch the tooltip would be `null` and silently
+    // suppressed by the `vesselInfo && hasColoredStatus` guard. Re-scan
+    // `allDeployedAssignments` for an active sign-on on any selected vessel
+    // and surface those vessel names.
+    const incumbentMapVessels = currentlyDeployedCrewIds.get(crewUuid);
+    if (incumbentMapVessels) {
+      // Prefer the crew-specific vessel name(s) already returned by the
+      // /due-crew endpoint (keyed on this crewUuid) — O(1) lookup, no scan.
+      if (incumbentMapVessels.length > 0) {
+        return incumbentMapVessels.join(', ');
+      }
+      // Fall back to scanning `allDeployedAssignments` for an active sign-on
+      // on any selected vessel if the map entry exists but carries no name.
+      const incumbentVessels: string[] = [];
+      allDeployedAssignments.forEach(assignment => {
+        if (!selectedVesselIds.includes(assignment.vesselUuid)) return;
+        const isSignedOn = assignment.crewMemberId === crewUuid && assignment.signOnDate && !assignment.joiningStatus;
+        if (!isSignedOn) return;
+        const vesselName = getVesselName(assignment.vesselUuid);
+        if (vesselName && !incumbentVessels.includes(vesselName)) {
+          incumbentVessels.push(vesselName);
+        }
+      });
+      if (incumbentVessels.length > 0) {
+        return incumbentVessels.join(', ');
+      }
+      return 'Currently deployed';
+    }
+
+    // Check draft assignments (blue/brown color reason).
+    // Fall back to the vessel master lookup when `a.vessel` is missing/empty
+    // so a colored row never produces a null tooltip and gets silently
+    // suppressed by the `vesselInfo && hasColoredStatus` guard below.
+    const draftAssignments = assignments.filter(a => a.crewUuid === crewUuid);
+    if (draftAssignments.length > 0) {
+      const draftVesselNames = new Set<string>();
+      draftAssignments.forEach(a => {
+        const name = (a.vessel && a.vessel.trim()) || (a.vesselUuid ? getVesselName(a.vesselUuid) : '');
+        if (name) draftVesselNames.add(name);
+      });
+      if (draftVesselNames.size > 0) {
+        return Array.from(draftVesselNames).join(', ');
+      }
+      // Colored because of a draft assignment but we couldn't resolve a vessel
+      // name — still return a non-null label so the tooltip renders.
+      return 'Assigned in current draft';
     }
 
     return null;
@@ -1024,79 +1120,96 @@ function CrewColumn({
               Select a vessel to apply Compliance Check
             </div>
           )}
+          {showFocusedVesselHint && (
+            <div
+              className="px-3 py-2 text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/30 border-b"
+              data-testid={`hint-compliance-focused-vessel-${rank}`}
+            >
+              Compliance Check: for{' '}
+              <span className="font-semibold">{focusedVesselName}</span>
+            </div>
+          )}
           {displayedCrewMembers.length === 0 ? (
             <div className="p-4 text-center text-gray-500 text-sm">
               {hasActiveFilters ? 'No crew match the filters' : 'No crew available'}
             </div>
           ) : (
-            displayedCrewMembers.map((crew) => (
-              <div
-                key={crew.crewUuid}
-                className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2 cursor-pointer"
-                onClick={() => onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.presentRank })}
-              >
-                <Checkbox 
-                  data-testid={`checkbox-crew-${crew.crewUuid}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.presentRank });
-                  }}
-                />
-                <div className="flex-1">
-                  {(() => {
-                    const nameColor = getCrewNameColor(crew.crewUuid);
-                    const vesselInfo = getCrewVesselInfo(crew.crewUuid);
-                    // Show tooltip for purple (deployed awaiting sign on), red (deployed), blue (1 vessel planned), and brown (2+ vessels planned)
-                    const hasColoredStatus = nameColor === 'text-purple-600' || nameColor === 'text-red-600' || nameColor === 'text-blue-600' || nameColor === 'text-[#814C02]';
-                    const showVesselTooltip = vesselInfo && hasColoredStatus;
-                    
-                    if (showVesselTooltip) {
-                      return (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className={`font-medium text-sm cursor-help ${nameColor}`}>
-                                {crew.fullName}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="max-w-xs">
-                              <div className="text-xs">
-                                <span className="font-medium">Vessel: </span>{vesselInfo}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      );
-                    }
-                    
-                    return (
-                      <div className={`font-medium text-sm ${nameColor}`}>
-                        {crew.fullName}
-                      </div>
-                    );
-                  })()}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="text-xs text-gray-500 mt-1 cursor-help">
-                          {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}{crew.nextAvailability ? ` / ${formatAvailabilityDate(crew.nextAvailability)}` : ' / —'}
+            // Single TooltipProvider for the whole crew list. Previously each
+            // row mounted its own provider, which caused inconsistent open/close
+            // behaviour when hovering between adjacent colored rows of the same
+            // rank (e.g. tooltip would fire for the first colored row but not
+            // for the next one). Hoisting to one provider lets Radix manage
+            // shared delay/skip-delay state across all triggers in the column.
+            <TooltipProvider delayDuration={300} skipDelayDuration={100}>
+              {displayedCrewMembers.map((crew) => {
+                const nameColor = getCrewNameColor(crew.crewUuid);
+                const vesselInfo = getCrewVesselInfo(crew.crewUuid);
+                // Show tooltip for purple (deployed awaiting sign on), red (deployed), blue (1 vessel planned), and brown (2+ vessels planned)
+                const hasColoredStatus = nameColor === 'text-purple-600' || nameColor === 'text-red-600' || nameColor === 'text-blue-600' || nameColor === 'text-[#814C02]';
+                const showVesselTooltip = !!vesselInfo && hasColoredStatus;
+                const selectCrew = () => onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.presentRank });
+                return (
+                  <div
+                    key={crew.crewUuid}
+                    className="p-3 border-b hover:bg-gray-50 dark:hover:bg-gray-800 flex items-start gap-2 cursor-pointer"
+                    onClick={selectCrew}
+                  >
+                    <Checkbox
+                      data-testid={`checkbox-crew-${crew.crewUuid}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        selectCrew();
+                      }}
+                    />
+                    <div className="flex-1">
+                      {showVesselTooltip ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                selectCrew();
+                              }}
+                              data-testid={`button-crew-name-${crew.crewUuid}`}
+                              className={`block w-full text-left font-medium text-sm cursor-help bg-transparent p-0 m-0 border-0 ${nameColor}`}
+                            >
+                              {crew.fullName}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="max-w-xs">
+                            <div className="text-xs">
+                              <span className="font-medium">Vessel: </span>{vesselInfo}
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <div className={`font-medium text-sm ${nameColor}`}>
+                          {crew.fullName}
                         </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" className="max-w-xs">
-                        <div className="text-xs space-y-1">
-                          <div><span className="font-medium">Company (Yrs):</span> {crew.experience.company}</div>
-                          <div><span className="font-medium">Rank (Yrs):</span> {crew.experience.rank}</div>
-                          <div><span className="font-medium">Tankers (Yrs):</span> {crew.experience.tankers}</div>
-                          <div><span className="font-medium">OOW (Yrs):</span> {crew.experience.oow}</div>
-                          <div><span className="font-medium">Endorsements:</span> {crew.experience.endorsements || '—'}</div>
-                          <div><span className="font-medium">Next Availability:</span> {crew.nextAvailability ? formatAvailabilityDate(crew.nextAvailability) : '—'}</div>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </div>
-            ))
+                      )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="text-xs text-gray-500 mt-1 cursor-help">
+                            {crew.experience.company} / {crew.experience.rank} / {crew.experience.tankers} / {crew.experience.oow} / {crew.experience.endorsements}{crew.nextAvailability ? ` / ${formatAvailabilityDate(crew.nextAvailability)}` : ' / —'}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs">
+                          <div className="text-xs space-y-1">
+                            <div><span className="font-medium">Company (Yrs):</span> {crew.experience.company}</div>
+                            <div><span className="font-medium">Rank (Yrs):</span> {crew.experience.rank}</div>
+                            <div><span className="font-medium">Tankers (Yrs):</span> {crew.experience.tankers}</div>
+                            <div><span className="font-medium">OOW (Yrs):</span> {crew.experience.oow}</div>
+                            <div><span className="font-medium">Endorsements:</span> {crew.experience.endorsements || '—'}</div>
+                            <div><span className="font-medium">Next Availability:</span> {crew.nextAvailability ? formatAvailabilityDate(crew.nextAvailability) : '—'}</div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                );
+              })}
+            </TooltipProvider>
           )}
         </div>
       </div>
@@ -2290,9 +2403,22 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     queryKey: ['/api/v2/vessel/planning'],
   });
 
-  // Create Set of currently deployed crew UUIDs for O(1) lookup
+  // Map currently deployed crew UUID → vessel name(s) on the selected vessels.
+  // A Map (instead of a plain Set) lets the tooltip branch in `CrewColumn`
+  // surface the *specific* vessel(s) a red incumbent is on, not just the
+  // fact that they are deployed somewhere among the selected vessels.
+  // `Map.has` works like `Set.has`, so the existing red-coloring lookup
+  // in `getCrewNameColor` is unchanged.
   const currentlyDeployedCrewIds = useMemo(() => {
-    return new Set(existingCrew.map(crew => crew.crewUuid));
+    const map = new Map<string, string[]>();
+    existingCrew.forEach(crew => {
+      const vessels = map.get(crew.crewUuid) ?? [];
+      if (crew.vessel && !vessels.includes(crew.vessel)) {
+        vessels.push(crew.vessel);
+      }
+      map.set(crew.crewUuid, vessels);
+    });
+    return map;
   }, [existingCrew]);
 
   // Vessel UUIDs currently picked in the planning area. `selectedVessels`
@@ -3205,6 +3331,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                     allDeployedAssignments={allVesselPlanning}
                     planDateRange={dateRange}
                     selectedVesselIds={selectedVesselIds}
+                    focusedVesselId={selectedVessel}
                   />
                 ))}
               </div>

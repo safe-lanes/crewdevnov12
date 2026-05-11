@@ -43,7 +43,39 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+interface RankGroupTraining {
+  id: string;
+  training: string;
+  evaluation: string;
+  comment?: string;
+}
+
+interface RankGroupTarget {
+  id: string;
+  targetSetting: string;
+  evaluation: string;
+  comment?: string;
+}
+
+interface RankGroupTrainingNeed {
+  id: string;
+  training: string;
+  comment?: string;
+}
+
+interface RankGroupTrainingFollowup {
+  id: string;
+  training: string;
+  correspondingInDB: string;
+  category: string;
+  status: 'Proposed' | 'Approved' | 'Planned' | 'Declined' | 'Completed';
+  targetDate?: string;
+  comment?: string;
+}
+
 interface RankGroupConfiguration {
+  trainings?: RankGroupTraining[];
+  targets?: RankGroupTarget[];
   competenceAssessments?: Array<{
     id: string;
     assessmentCriteria: string;
@@ -58,14 +90,21 @@ interface RankGroupConfiguration {
     effectiveness: string;
     comment?: string;
   }>;
+  trainingNeeds?: RankGroupTrainingNeed[];
+  // Recommendations accept both legacy ({recommendation, yes/no/na}) and
+  // current FormEditor save shape ({question, answer, isCustom}).
   recommendations?: Array<{
     id: string;
-    recommendation: string;
+    recommendation?: string;
+    question?: string;
+    answer?: 'Yes' | 'No' | 'NA';
     yes?: boolean;
     no?: boolean;
     na?: boolean;
+    isCustom?: boolean;
     comment?: string;
   }>;
+  trainingFollowups?: RankGroupTrainingFollowup[];
   hiddenFields?: string[];
   hiddenSections?: string[];
 }
@@ -349,7 +388,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const [selectedVersionDate, setSelectedVersionDate] = useState<Date | undefined>(
     form.versionDate ? new Date(form.versionDate) : undefined
   );
-  const [activeVersion, setActiveVersion] = useState<string>(form.versionNo || "00"); // Track which version is currently being viewed
+  // activeVersion = the version row currently being viewed in the editor.
+  // Defaults to the latest released version once versionsData loads (see effect below).
+  const [activeVersion, setActiveVersion] = useState<string>(form.versionNo || "00");
   const [versionExplicitlySelected, setVersionExplicitlySelected] = useState(false); // Track if user explicitly clicked a version
   
   // Confirmation dialog state
@@ -420,6 +461,51 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const hasDraftVersion = React.useMemo(() => {
     return versionsData?.some(v => v.status === 'draft') ?? false;
   }, [versionsData]);
+
+  // Latest released version (highest numeric versionNo with status=released)
+  const latestReleasedVersion = React.useMemo(() => {
+    const released = (versionsData || []).filter(v => v.status === 'released');
+    if (released.length === 0) return null;
+    return released.reduce((max, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      const maxNo = parseInt(max.versionNo, 10);
+      if (isNaN(vNo)) return max;
+      if (isNaN(maxNo)) return v;
+      return vNo > maxNo ? v : max;
+    }, released[0]);
+  }, [versionsData]);
+
+  // Default activeVersion once data loads:
+  //  - prefer the LATEST SAVED version overall (highest versionNo across
+  //    drafts and releases) so reopen always lands on the most recent
+  //    saved content. If the latest is a draft, also enter edit mode.
+  //  - tie-break: when a draft and a released share the same versionNo,
+  //    prefer the draft (it has the newer in-progress edits).
+  // Skipped once the user has explicitly clicked a version row.
+  useEffect(() => {
+    if (versionExplicitlySelected) return;
+    const all = versionsData || [];
+    if (all.length === 0) return;
+
+    const latest = all.reduce((best, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      const bNo = parseInt(best.versionNo, 10);
+      if (isNaN(vNo)) return best;
+      if (isNaN(bNo)) return v;
+      if (vNo > bNo) return v;
+      if (vNo === bNo && v.status === 'draft' && best.status !== 'draft') return v;
+      return best;
+    }, all[0]);
+
+    if (activeVersion !== latest.versionNo) {
+      setActiveVersion(latest.versionNo);
+    }
+    if (latest.status === 'draft') {
+      setSelectedVersionNo(latest.versionNo);
+      setSelectedVersionDate(latest.versionDate ? new Date(latest.versionDate) : new Date());
+      setIsConfigMode(true);
+    }
+  }, [versionsData, versionExplicitlySelected]);
   
   // Compute next version number and available options dynamically
   const { nextVersionNo, availableVersionOptions } = React.useMemo(() => {
@@ -439,6 +525,34 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   }, [versionsData]);
   
   const versionsPostUrl = useV2 ? `/api/v2/admin/forms/${realFormId}/versions` : `/api/forms/${realFormId}/versions`;
+  const deleteDraftMutation = useMutation({
+    mutationFn: async (draftId: number) => {
+      const url = useV2
+        ? `/api/v2/admin/form-versions/${draftId}`
+        : `/api/form-versions/${draftId}`;
+      const response = await apiRequest('DELETE', url);
+      return response;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [versionsQueryKey] });
+      if (useV2) {
+        queryClient.invalidateQueries({ predicate: (q) => {
+          const key = q.queryKey[0];
+          return typeof key === 'string' && key === '/api/v2/admin/form-versions-all';
+        }});
+      }
+      setHasSavedDraft(false);
+      setIsConfigMode(false);
+      setSelectedVersionNo("");
+      setSelectedVersionDate(undefined);
+      setVersionExplicitlySelected(false);
+      setActiveVersion("");
+      toast({ title: "Draft discarded", description: "The draft has been deleted." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
   const createDraftMutation = useMutation({
     mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string }) => {
       const response = await apiRequest('POST', versionsPostUrl, {
@@ -480,7 +594,11 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         }});
       }
       setHasSavedDraft(false);
-      setActiveVersion("00");
+      setIsConfigMode(false);
+      setVersionExplicitlySelected(false);
+      // The latest-released auto-select effect will pick up the newly released version
+      // once versionsData refreshes; clear the active version so it doesn't stick.
+      setActiveVersion("");
       toast({ title: "Version released", description: "The version has been released successfully." });
     },
     onError: (error: Error) => {
@@ -522,11 +640,14 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       });
     });
     
-    // If no versions exist, show a default released version placeholder
+    // If no released version exists yet for this rank group, show the
+    // canonical "00 / today" placeholder (NOT the parent form's versionDate,
+    // which mirrors the max released across all rank groups and would leak
+    // an unrelated number/date onto a fresh rank group).
     if (result.length === 0 || !result.some(v => v.status === 'Released')) {
       result.push({
         versionNo: "00",
-        versionDate: form.versionDate || "01-Jan-2025",
+        versionDate: format(new Date(), "dd-MMM-yyyy"),
         status: "Released"
       });
     }
@@ -535,16 +656,76 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     result.sort((a, b) => b.versionNo.localeCompare(a.versionNo));
     
     return result;
-  }, [versionsData, hasSavedDraft, hasDraftVersion, selectedVersionNo, selectedVersionDate, form.versionDate]);
+  }, [versionsData, hasSavedDraft, hasDraftVersion, selectedVersionNo, selectedVersionDate]);
   
-  // Handler to release the current draft version
-  const handleReleaseVersion = () => {
-    const draftVersion = versions.find(v => v.status === 'Draft' && v.id);
-    if (draftVersion && draftVersion.id) {
-      releaseVersionMutation.mutate(draftVersion.id);
-    } else {
-      toast({ title: "No draft to release", description: "Save a draft first before releasing.", variant: "destructive" });
+  // Build the Save Draft payload from the current in-memory form state.
+  // Single source of truth shared by the "Save Draft" button and the
+  // save-then-release flow so the two paths can never drift.
+  const buildDraftPayload = () => {
+    const formData = formMethods.getValues();
+    const sharedConfig = { appraisalTypeOptions };
+    const hiddenFields = Object.entries(fieldVisibility)
+      .filter(([, visible]) => !visible)
+      .map(([field]) => field);
+    const hiddenSections = Object.entries(sectionVisibility)
+      .filter(([, visible]) => !visible)
+      .map(([section]) => section);
+    const versionNo = selectedVersionNo || "01";
+    const versionDate = selectedVersionDate
+      ? format(selectedVersionDate, "dd-MMM-yyyy")
+      : format(new Date(), "dd-MMM-yyyy");
+    return {
+      versionNo,
+      versionDate,
+      configuration: JSON.stringify({ ...formData, hiddenFields, hiddenSections }),
+      sharedConfig: JSON.stringify(sharedConfig),
+    };
+  };
+
+  // Run the same gates that Save Draft enforces in config mode.
+  // Returns true if the form is OK to persist; false if a dialog was raised.
+  const runConfigModeValidation = (): boolean => {
+    const validationResult = validateAssessmentCriteria();
+    if (!validationResult.isValid) {
+      setValidationErrors(validationResult.errors);
+      setShowValidationDialog(true);
+      return false;
     }
+    const competenceAssessments = formMethods.getValues("competenceAssessments");
+    const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
+    if (competenceAssessments.length > 0 && calculateTotalWeight() !== 100) {
+      setShowWeightWarning(true);
+      return false;
+    }
+    if (behaviouralAssessments.length > 0 && calculateBehaviouralTotalWeight() !== 100) {
+      setShowWeightWarning(true);
+      return false;
+    }
+    return true;
+  };
+
+  // Handler to release the current draft version.
+  // When the editor is in config mode we MUST first persist the in-memory
+  // form state to the draft — otherwise rows just added in Parts B–F1 are
+  // lost because /release only flips status on whatever the server holds.
+  const handleReleaseVersion = async () => {
+    const draftVersion = versions.find(v => v.status === 'Draft' && v.id);
+    if (!draftVersion?.id) {
+      toast({ title: "No draft to release", description: "Save a draft first before releasing.", variant: "destructive" });
+      return;
+    }
+    if (isConfigMode) {
+      if (!runConfigModeValidation()) return;
+      try {
+        const saved = await createDraftMutation.mutateAsync(buildDraftPayload());
+        const draftId = (saved && typeof saved.id === 'number') ? saved.id : draftVersion.id;
+        releaseVersionMutation.mutate(draftId);
+      } catch {
+        // createDraftMutation.onError already surfaced a toast; abort release.
+      }
+      return;
+    }
+    releaseVersionMutation.mutate(draftVersion.id);
   };
 
   // Configuration helper functions
@@ -613,40 +794,44 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const recommendations = useWatch({ control: formMethods.control, name: "recommendations" });
   const trainingFollowups = useWatch({ control: formMethods.control, name: "trainingFollowups" });
 
-  // Load rank group configuration when available (only if no version explicitly selected)
+  // Load rank group configuration when available.
+  // Acts as a FALLBACK only — when there are no saved versions (released or draft)
+  // for this form/rank-group. When versions exist, the version-load effect below
+  // is the source of truth so adds/deletes in Parts B–F1 are not overwritten.
   useEffect(() => {
-    if (rankGroupConfig && !versionExplicitlySelected) {
-      console.log('[FormEditor] Loading rank group configuration:', rankGroupConfig);
-      
-      // Load competence assessments from rank group config
-      if (rankGroupConfig.competenceAssessments && rankGroupConfig.competenceAssessments.length > 0) {
-        formMethods.setValue('competenceAssessments', rankGroupConfig.competenceAssessments.map(ca => ({
-          ...ca,
-          effectiveness: ca.effectiveness || '',
-          comment: ca.comment || '',
-        })));
-      }
-      
-      // Load behavioural assessments from rank group config
-      if (rankGroupConfig.behaviouralAssessments && rankGroupConfig.behaviouralAssessments.length > 0) {
-        formMethods.setValue('behaviouralAssessments', rankGroupConfig.behaviouralAssessments.map(ba => ({
-          ...ba,
-          effectiveness: ba.effectiveness || '',
-          comment: ba.comment || '',
-        })));
-      }
-      
-      // Load recommendations from rank group config
-      if (rankGroupConfig.recommendations && rankGroupConfig.recommendations.length > 0) {
-        formMethods.setValue('recommendations', rankGroupConfig.recommendations.map(rec => ({
-          id: rec.id,
-          question: rec.recommendation,
-          answer: (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes') as 'Yes' | 'No' | 'NA',
-          comment: rec.comment || '',
-          isCustom: true,
-        })));
-      }
-      
+    const hasAnyVersion = (versionsData || []).length > 0;
+    if (rankGroupConfig && !versionExplicitlySelected && !hasAnyVersion) {
+      // Always set all configurable arrays (default to []) so reopening
+      // the editor accurately reflects the persisted state — including
+      // intentional deletions that empty a section.
+      formMethods.setValue('trainings', rankGroupConfig.trainings ?? []);
+      formMethods.setValue('targets', rankGroupConfig.targets ?? []);
+
+      formMethods.setValue('competenceAssessments', (rankGroupConfig.competenceAssessments ?? []).map(ca => ({
+        ...ca,
+        effectiveness: ca.effectiveness || '',
+        comment: ca.comment || '',
+      })));
+
+      formMethods.setValue('behaviouralAssessments', (rankGroupConfig.behaviouralAssessments ?? []).map(ba => ({
+        ...ba,
+        effectiveness: ba.effectiveness || '',
+        comment: ba.comment || '',
+      })));
+
+      // Recommendations: accept both legacy ({recommendation, yes/no/na})
+      // and current ({question, answer, isCustom}) shapes.
+      formMethods.setValue('recommendations', (rankGroupConfig.recommendations ?? []).map(rec => ({
+        id: rec.id,
+        question: rec.question || rec.recommendation || '',
+        answer: (rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes')) as 'Yes' | 'No' | 'NA',
+        comment: rec.comment || '',
+        isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
+      })));
+
+      formMethods.setValue('trainingNeeds', rankGroupConfig.trainingNeeds ?? []);
+      formMethods.setValue('trainingFollowups', rankGroupConfig.trainingFollowups ?? []);
+
       // Load hidden fields/sections
       if (rankGroupConfig.hiddenFields) {
         const newFieldVisibility = { ...fieldVisibility };
@@ -668,7 +853,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         setSectionVisibility(newSectionVisibility);
       }
     }
-  }, [rankGroupConfig, versionExplicitlySelected]);
+  }, [rankGroupConfig, versionExplicitlySelected, versionsData]);
 
   // Load version configuration when activeVersion changes
   useEffect(() => {
@@ -693,41 +878,36 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       if (config.primaryAppraiser !== undefined) formMethods.setValue('primaryAppraiser', config.primaryAppraiser || '');
       if (config.officeReviewComments !== undefined) formMethods.setValue('officeReviewComments', config.officeReviewComments || '');
       
-      if (config.trainings && Array.isArray(config.trainings)) {
-        formMethods.setValue('trainings', config.trainings);
-      }
-      if (config.targets && Array.isArray(config.targets)) {
-        formMethods.setValue('targets', config.targets);
-      }
-      if (config.competenceAssessments && Array.isArray(config.competenceAssessments)) {
-        formMethods.setValue('competenceAssessments', config.competenceAssessments.map((ca: any) => ({
-          ...ca,
-          effectiveness: ca.effectiveness || '',
-          comment: ca.comment || '',
-        })));
-      }
-      if (config.behaviouralAssessments && Array.isArray(config.behaviouralAssessments)) {
-        formMethods.setValue('behaviouralAssessments', config.behaviouralAssessments.map((ba: any) => ({
-          ...ba,
-          effectiveness: ba.effectiveness || '',
-          comment: ba.comment || '',
-        })));
-      }
-      if (config.trainingNeeds && Array.isArray(config.trainingNeeds)) {
-        formMethods.setValue('trainingNeeds', config.trainingNeeds);
-      }
-      if (config.recommendations && Array.isArray(config.recommendations)) {
-        formMethods.setValue('recommendations', config.recommendations.map((rec: any) => ({
-          id: rec.id,
-          question: rec.question || rec.recommendation || '',
-          answer: rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes'),
-          comment: rec.comment || '',
-          isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
-        })));
-      }
-      if (config.trainingFollowups && Array.isArray(config.trainingFollowups)) {
-        formMethods.setValue('trainingFollowups', config.trainingFollowups);
-      }
+      // Always set arrays from version config (default to []) so switching
+      // versions accurately reflects each revision's content — including
+      // versions that intentionally have empty sections.
+      formMethods.setValue('trainings', Array.isArray(config.trainings) ? config.trainings : []);
+      formMethods.setValue('targets', Array.isArray(config.targets) ? config.targets : []);
+      formMethods.setValue('competenceAssessments', Array.isArray(config.competenceAssessments)
+        ? config.competenceAssessments.map((ca: any) => ({
+            ...ca,
+            effectiveness: ca.effectiveness || '',
+            comment: ca.comment || '',
+          }))
+        : []);
+      formMethods.setValue('behaviouralAssessments', Array.isArray(config.behaviouralAssessments)
+        ? config.behaviouralAssessments.map((ba: any) => ({
+            ...ba,
+            effectiveness: ba.effectiveness || '',
+            comment: ba.comment || '',
+          }))
+        : []);
+      formMethods.setValue('trainingNeeds', Array.isArray(config.trainingNeeds) ? config.trainingNeeds : []);
+      formMethods.setValue('recommendations', Array.isArray(config.recommendations)
+        ? config.recommendations.map((rec: any) => ({
+            id: rec.id,
+            question: rec.question || rec.recommendation || '',
+            answer: rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes'),
+            comment: rec.comment || '',
+            isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
+          }))
+        : []);
+      formMethods.setValue('trainingFollowups', Array.isArray(config.trainingFollowups) ? config.trainingFollowups : []);
       
       // Restore field visibility - reset to defaults then apply hidden from config
       const defaultFieldVis = { personalityIndexCategory: true };
@@ -1833,37 +2013,52 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
             )}
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            {!isConfigMode ? (
-              <Button
-                variant={(hasSavedDraft || hasDraftVersion) ? "default" : "outline"}
-                size="sm"
-                className={`flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
-                  (hasSavedDraft || hasDraftVersion)
-                    ? 'bg-green-600 hover:bg-green-700 text-white' 
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-                disabled={!(hasSavedDraft || hasDraftVersion) || releaseVersionMutation.isPending}
-                onClick={handleReleaseVersion}
-                data-testid="button-release-version"
-              >
-                <span className="hidden sm:inline">{releaseVersionMutation.isPending ? 'Releasing...' : 'Release Ver'}</span>
-                <span className="sm:hidden">{releaseVersionMutation.isPending ? '...' : 'Release'}</span>
-              </Button>
-            ) : (
+            {/* Release Ver is always available when a draft exists (in or out of config mode). */}
+            <Button
+              variant={(hasSavedDraft || hasDraftVersion) ? "default" : "outline"}
+              size="sm"
+              className={`flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ${
+                (hasSavedDraft || hasDraftVersion)
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+              disabled={!(hasSavedDraft || hasDraftVersion) || releaseVersionMutation.isPending || (isConfigMode && createDraftMutation.isPending)}
+              onClick={handleReleaseVersion}
+              data-testid="button-release-version"
+            >
+              <span className="hidden sm:inline">{(releaseVersionMutation.isPending || (isConfigMode && createDraftMutation.isPending)) ? 'Releasing...' : 'Release Ver'}</span>
+              <span className="sm:hidden">{(releaseVersionMutation.isPending || (isConfigMode && createDraftMutation.isPending)) ? '...' : 'Release'}</span>
+            </Button>
+            {isConfigMode && (
               <Button
                 variant="destructive"
                 size="sm"
                 className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                disabled={deleteDraftMutation.isPending}
                 onClick={() => {
-                  setIsConfigMode(false);
-                  setHasSavedDraft(false);
-                  setSelectedVersionNo("");
-                  setSelectedVersionDate(undefined);
-                  setActiveVersion("00"); // Return to released version
+                  // If a real draft row exists on the server for this rank group,
+                  // confirm + DELETE it. Otherwise (user just entered edit mode
+                  // and never persisted anything) just exit locally.
+                  const persistedDraft = (versionsData || []).find(v => v.status === 'draft');
+                  if (persistedDraft?.id) {
+                    showConfirmDialog(
+                      `Discard draft v${persistedDraft.versionNo}?`,
+                      "This will permanently delete the unreleased draft for this rank group. This cannot be undone.",
+                      () => deleteDraftMutation.mutate(persistedDraft.id as number),
+                    );
+                  } else {
+                    setIsConfigMode(false);
+                    setHasSavedDraft(false);
+                    setSelectedVersionNo("");
+                    setSelectedVersionDate(undefined);
+                    setVersionExplicitlySelected(false);
+                    setActiveVersion("");
+                  }
                 }}
+                data-testid="button-discard-ver"
               >
-                <span className="hidden sm:inline">Discard Ver</span>
-                <span className="sm:hidden">Discard</span>
+                <span className="hidden sm:inline">{deleteDraftMutation.isPending ? 'Discarding...' : 'Discard Ver'}</span>
+                <span className="sm:hidden">{deleteDraftMutation.isPending ? '...' : 'Discard'}</span>
               </Button>
             )}
             <Button
@@ -1879,10 +2074,54 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   }
                   setIsConfigMode(false);
                 } else {
-                  // Entering config mode - use pre-computed next version number
-                  setSelectedVersionNo(nextVersionNo);
-                  setSelectedVersionDate(new Date());
-                  setActiveVersion(nextVersionNo);
+                  // Entering edit mode = "Edit as new draft".
+                  // One draft per rank group:
+                  //  - If a draft exists, jump selection to it (with toast if user was
+                  //    viewing a different version) and resume editing.
+                  //  - Otherwise immediately POST to seed a new draft from the currently
+                  //    loaded configuration (released config if viewing released).
+                  const existingDraft = versionsData?.find(v => v.status === 'draft');
+                  if (existingDraft) {
+                    if (existingDraft.versionNo !== activeVersion) {
+                      toast({
+                        title: "Draft already exists",
+                        description: `A draft already exists for this rank group. Release or discard it before creating a new draft from v${existingDraft.versionNo}.`,
+                        variant: "destructive",
+                      });
+                    }
+                    setSelectedVersionNo(existingDraft.versionNo);
+                    setSelectedVersionDate(existingDraft.versionDate ? new Date(existingDraft.versionDate) : new Date());
+                    setActiveVersion(existingDraft.versionNo);
+                    setVersionExplicitlySelected(true);
+                  } else {
+                    setSelectedVersionNo(nextVersionNo);
+                    setSelectedVersionDate(new Date());
+                    setActiveVersion(nextVersionNo);
+                    // Persist the seed draft right away so the grid + dropdown reflect
+                    // it immediately and the "one draft per rank group" guarantee is
+                    // enforced server-side from the moment the user enters edit mode.
+                    // Seed strictly from the immutable latest released version's
+                    // configuration (not the on-screen form state) so released remains
+                    // the canonical baseline.
+                    if (currentRankGroup) {
+                      // Seed strictly from the currently selected released version
+                      // (the one the user is viewing), falling back to latest released
+                      // if no specific row is selected yet.
+                      const selectedReleased = (versionsData || []).find(
+                        v => v.versionNo === activeVersion && v.status === 'released',
+                      ) || latestReleasedVersion;
+                      const releasedSrc = selectedReleased as
+                        | { configuration?: string | null; sharedConfig?: string | null }
+                        | null;
+                      createDraftMutation.mutate({
+                        versionNo: nextVersionNo,
+                        versionDate: format(new Date(), "dd-MMM-yyyy"),
+                        configuration: releasedSrc?.configuration ?? '{}',
+                        sharedConfig: releasedSrc?.sharedConfig ?? JSON.stringify({ appraisalTypeOptions }),
+                      });
+                      setHasSavedDraft(true);
+                    }
+                  }
                   setIsConfigMode(true);
                 }
               }}
@@ -1890,70 +2129,30 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               size="sm"
             >
               <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">{isConfigMode ? "Exit Config" : "Configure Fields"}</span>
-              <span className="sm:hidden">{isConfigMode ? "Exit" : "Config"}</span>
+              <span className="hidden sm:inline">{isConfigMode ? "Exit Config" : "Edit as new draft"}</span>
+              <span className="sm:hidden">{isConfigMode ? "Exit" : "Edit Draft"}</span>
             </Button>
+            {(() => {
+              const activeVersionStatus = versions.find(v => v.versionNo === activeVersion)?.status;
+              const isViewingReleased = !isConfigMode && activeVersionStatus === 'Released';
+              if (isViewingReleased) return null;
+              return (
             <Button 
               onClick={() => {
-                // Validate assessment criteria fields
-                const validationResult = validateAssessmentCriteria();
-                if (!validationResult.isValid) {
-                  setValidationErrors(validationResult.errors);
-                  setShowValidationDialog(true);
-                  return;
-                }
-                
-                // Manual weight validation check before submitting
-                if (isConfigMode) {
-                  const competenceAssessments = formMethods.getValues("competenceAssessments");
-                  const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
-                  
-                  if (competenceAssessments.length > 0) {
-                    const totalWeight = calculateTotalWeight();
-                    console.log("Manual validation - Competence total weight:", totalWeight, "Assessments:", competenceAssessments);
-                    if (totalWeight !== 100) {
-                      setShowWeightWarning(true);
-                      return;
-                    }
-                  }
-                  
-                  if (behaviouralAssessments.length > 0) {
-                    const totalWeight = calculateBehaviouralTotalWeight();
-                    console.log("Manual validation - Behavioural total weight:", totalWeight, "Assessments:", behaviouralAssessments);
-                    if (totalWeight !== 100) {
-                      setShowWeightWarning(true);
-                      return;
-                    }
+                // Same validation gates as the save-then-release flow.
+                if (isConfigMode && !runConfigModeValidation()) return;
+                if (!isConfigMode) {
+                  const validationResult = validateAssessmentCriteria();
+                  if (!validationResult.isValid) {
+                    setValidationErrors(validationResult.errors);
+                    setShowValidationDialog(true);
+                    return;
                   }
                 }
-                // Create draft version via API
-                const versionNo = selectedVersionNo || "01";
-                const versionDate = selectedVersionDate 
-                  ? format(selectedVersionDate, "dd-MMM-yyyy") 
-                  : format(new Date(), "dd-MMM-yyyy");
-                
-                // Get the current form data for the version
-                const formData = formMethods.getValues();
-                const sharedConfig = {
-                  appraisalTypeOptions: appraisalTypeOptions,
-                };
-                
-                const hiddenFields = Object.entries(fieldVisibility)
-                  .filter(([, visible]) => !visible)
-                  .map(([field]) => field);
-                const hiddenSections = Object.entries(sectionVisibility)
-                  .filter(([, visible]) => !visible)
-                  .map(([section]) => section);
-                
-                createDraftMutation.mutate({
-                  versionNo,
-                  versionDate,
-                  configuration: JSON.stringify({ ...formData, hiddenFields, hiddenSections }),
-                  sharedConfig: JSON.stringify(sharedConfig),
-                });
-                
+                const payload = buildDraftPayload();
+                createDraftMutation.mutate(payload);
                 setHasSavedDraft(true);
-                setActiveVersion(versionNo);
+                setActiveVersion(payload.versionNo);
                 formMethods.handleSubmit(onSubmit)();
               }}
               className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
@@ -1966,6 +2165,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               <span className="hidden sm:inline">{createDraftMutation.isPending ? 'Saving...' : 'Save Draft'}</span>
               <span className="sm:hidden">{createDraftMutation.isPending ? '...' : 'Save'}</span>
             </Button>
+              );
+            })()}
           </div>
         </div>
 
@@ -1978,19 +2179,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6 w-full sm:w-auto">
                   <div className="flex items-center gap-2">
                     <span className="text-xs sm:text-sm font-medium text-gray-700">Version No:</span>
-                    <Select
-                      value={selectedVersionNo || nextVersionNo}
-                      onValueChange={setSelectedVersionNo}
+                    <span
+                      className="text-xs sm:text-sm font-semibold text-gray-900"
+                      data-testid="text-draft-version-no"
                     >
-                      <SelectTrigger className="w-20 sm:w-24 h-8 text-xs sm:text-sm">
-                        <SelectValue placeholder={nextVersionNo} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableVersionOptions.map(option => (
-                          <SelectItem key={option} value={option}>{option}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {selectedVersionNo || nextVersionNo}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs sm:text-sm font-medium text-gray-700">Version Date:</span>
@@ -2021,9 +2215,54 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                 </div>
               </div>
             </div>
-          ) : (
-            // Outside configuration mode, show version history (both draft and released if draft exists)
-            versions.map((version, index) => (
+          ) : versions.length > 0 ? (
+            <div>
+              <div className="px-3 sm:px-4 py-3 bg-white border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-6">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm font-medium text-gray-700">Viewing version:</span>
+                  <Select
+                    value={activeVersion}
+                    onValueChange={(val) => {
+                      setActiveVersion(val);
+                      setVersionExplicitlySelected(true);
+                      const picked = versions.find(v => v.versionNo === val);
+                      if (picked?.status === 'Draft') {
+                        setSelectedVersionNo(picked.versionNo);
+                        setSelectedVersionDate(picked.versionDate ? new Date(picked.versionDate) : new Date());
+                        setIsConfigMode(true);
+                      } else {
+                        setIsConfigMode(false);
+                      }
+                    }}
+                  >
+                    <SelectTrigger
+                      className="w-40 sm:w-52 h-8 text-xs sm:text-sm"
+                      data-testid="select-form-version"
+                    >
+                      <SelectValue placeholder="Select version" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {versions.map(v => (
+                        <SelectItem
+                          key={`${v.versionNo}-${v.status}`}
+                          value={v.versionNo}
+                          data-testid={`option-version-${v.versionNo}`}
+                        >
+                          v{v.versionNo} — {v.versionDate || '—'} ({v.status})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {latestReleasedVersion && (
+                  <span className="text-xs text-gray-500">
+                    Latest released: v{latestReleasedVersion.versionNo}
+                  </span>
+                )}
+              </div>
+              {/* Per-version stacked rows hidden — dropdown above already shows
+                  "vNN — DD-MMM-YYYY (Status)" for each version, making this list redundant. */}
+              {/* {versions.map((version, index) => (
               <div
                 key={version.id ?? `${version.versionNo}-${version.status}-${index}`}
                 className={`px-3 sm:px-4 py-3 cursor-pointer transition-colors hover:bg-gray-100 ${
@@ -2054,8 +2293,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                   </div>
                 </div>
               </div>
-            ))
-          )}
+              ))} */}
+            </div>
+          ) : null}
         </div>
 
         {/* Mobile Horizontal Stepper */}
@@ -2154,7 +2394,19 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
           <div className="flex-1 overflow-hidden bg-[#f8fafc]">
             <div className="p-3 sm:p-4 md:p-6 h-full">
               <div ref={continuousScrollContainerRef} className="h-full overflow-y-auto">
-                {renderContinuousScroll()}
+                {(() => {
+                  const activeVersionStatus = versions.find(v => v.versionNo === activeVersion)?.status;
+                  const isViewingReleased = !isConfigMode && activeVersionStatus === 'Released';
+                  return (
+                    <fieldset
+                      disabled={isViewingReleased}
+                      className={isViewingReleased ? 'opacity-90 pointer-events-none' : ''}
+                      data-testid={isViewingReleased ? 'fieldset-readonly-released' : 'fieldset-editable'}
+                    >
+                      {renderContinuousScroll()}
+                    </fieldset>
+                  );
+                })()}
               </div>
             </div>
           </div>

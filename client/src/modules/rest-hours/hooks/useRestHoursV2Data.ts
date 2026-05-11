@@ -6,6 +6,7 @@ export interface V2Vessel {
   vesselUuid: string | null;
   vessel: string | null;
   imoNumber: string | null;
+  flag: string | null;
   vesselType: string | null;
 }
 

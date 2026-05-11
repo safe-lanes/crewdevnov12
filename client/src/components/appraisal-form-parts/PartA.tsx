@@ -16,6 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PartAProps } from "./types";
+import { RequiredMark } from "./RequiredMark";
+import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 
 const PartAComponent: React.FC<PartAProps> = ({
   form,
@@ -25,6 +27,10 @@ const PartAComponent: React.FC<PartAProps> = ({
   appraisalTypes,
   isFieldVisible,
 }) => {
+  const { isLoading: ranksLoading, error: ranksError, rankOptions } = useCompanyRanks();
+  const currentRank = form.watch("seafarersRank");
+  const hasLegacyRank =
+    !!currentRank && !rankOptions.some((option) => option.value === currentRank);
   return (
     <div ref={partRef} data-section-id="A">
       <Card className="bg-white">
@@ -41,9 +47,9 @@ const PartAComponent: React.FC<PartAProps> = ({
                 name="seafarersName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Name</FormLabel>
+                    <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Name<RequiredMark /></FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Enter seafarer's name" className="bg-[#ffffff]" data-testid="input-seafarers-name" />
+                      <Input {...field} readOnly tabIndex={-1} placeholder="Enter seafarer's name" className="bg-gray-50 text-gray-700 cursor-not-allowed focus-visible:ring-0 focus-visible:ring-offset-0" data-testid="input-seafarers-name" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -54,19 +60,27 @@ const PartAComponent: React.FC<PartAProps> = ({
                 name="seafarersRank"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <FormLabel className="text-xs text-gray-500 tracking-wide">Seafarer's Rank<RequiredMark /></FormLabel>
+                    <Select onValueChange={field.onChange} value={hasLegacyRank ? "" : field.value} disabled>
                       <FormControl>
-                        <SelectTrigger className="bg-[#ffffff]" data-testid="select-seafarers-rank">
-                          <SelectValue placeholder="Select rank" />
+                        <SelectTrigger className="bg-gray-50 text-gray-700 cursor-not-allowed disabled:opacity-100" data-testid="select-seafarers-rank">
+                          <SelectValue placeholder={hasLegacyRank ? currentRank : "Select rank"} />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
-                        {availableRanks.map((rank) => (
-                          <SelectItem key={rank.id} value={rank.name}>
-                            {rank.name}
-                          </SelectItem>
-                        ))}
+                      <SelectContent className="max-h-[200px]">
+                        {ranksLoading ? (
+                          <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                        ) : ranksError ? (
+                          <SelectItem value="error" disabled>Failed to load ranks</SelectItem>
+                        ) : rankOptions.length === 0 ? (
+                          <SelectItem value="empty" disabled>No ranks available</SelectItem>
+                        ) : (
+                          rankOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -78,9 +92,9 @@ const PartAComponent: React.FC<PartAProps> = ({
                 name="nationality"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality</FormLabel>
+                    <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality<RequiredMark /></FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Enter nationality" className="bg-[#ffffff]" data-testid="input-nationality" />
+                      <Input {...field} readOnly tabIndex={-1} placeholder="Enter nationality" className="bg-gray-50 text-gray-700 cursor-not-allowed focus-visible:ring-0 focus-visible:ring-offset-0" data-testid="input-nationality" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -94,10 +108,10 @@ const PartAComponent: React.FC<PartAProps> = ({
                 name="vessel"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel<RequiredMark /></FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled>
                       <FormControl>
-                        <SelectTrigger className="bg-[#ffffff]" data-testid="select-vessel">
+                        <SelectTrigger className="bg-gray-50 text-gray-700 cursor-not-allowed disabled:opacity-100" data-testid="select-vessel">
                           <SelectValue placeholder="Select vessel" />
                         </SelectTrigger>
                       </FormControl>
@@ -120,7 +134,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                   <FormItem>
                     <FormLabel className="text-xs text-gray-500 tracking-wide">Sign On Date</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="dd/mm/yyyy" type="date" className="bg-[#ffffff]" data-testid="input-sign-on" />
+                      <Input {...field} readOnly tabIndex={-1} placeholder="dd/mm/yyyy" type="date" className="bg-gray-50 text-gray-700 cursor-not-allowed focus-visible:ring-0 focus-visible:ring-offset-0" data-testid="input-sign-on" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -131,7 +145,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                 name="appraisalType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type</FormLabel>
+                    <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type<RequiredMark /></FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="bg-[#ffffff]" data-testid="select-appraisal-type">

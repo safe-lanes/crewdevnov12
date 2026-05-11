@@ -1,5 +1,15 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -254,7 +264,7 @@ export const RHRecordingForm = ({
     name: v.vessel ?? '',
     vesselType: v.vesselType ?? '',
     imoNumber: v.imoNumber ?? '',
-    flagState: v.flagState ?? '',
+    flag: v.flag ?? '',
   })), [v2Vessels]);
   
   // Dropdown selections state
@@ -267,12 +277,16 @@ export const RHRecordingForm = ({
   const [showPlanning, setShowPlanning] = useState(true);
   const [complianceMode, setComplianceMode] = useState<'Rest' | 'Work'>('Rest');
   const [opaMode, setOpaMode] = useState(false);
+  const [watchkeeper, setWatchkeeper] = useState(false);
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
   const [previousMonthRecords, setPreviousMonthRecords] = useState<DailyRecord[]>([]);
   const [formId, setFormId] = useState<string | null>(null);
   
   // Track if user has made changes that need auto-save
   const [isDirty, setIsDirty] = useState(false);
+
+  // Confirmation dialog for the Clear button
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   
   // Ref to track if template has been applied (prevents re-running on recordMode changes)
   const templateAppliedRef = useRef(false);
@@ -483,6 +497,7 @@ export const RHRecordingForm = ({
     setRecordMode('Rec');
     setShowPlanning(true);
     setOpaMode(false);
+    setWatchkeeper(false);
     setIsDirty(false); // Reset dirty flag on form initialization
     
     // Reset template applied flag so template can be re-applied for new crew/vessel/month
@@ -805,6 +820,40 @@ export const RHRecordingForm = ({
     return cellsMap;
   }, [crewVariableTasks, selectedPeriod]);
 
+  // Compute variable task comments map for each day
+  // This extracts comments from variable tasks to display in the RH Recording Form
+  const variableTaskCommentsMap = useMemo(() => {
+    if (!selectedPeriod || crewVariableTasks.length === 0) return new Map<number, string[]>();
+
+    const commentsMap = new Map<number, string[]>();
+    const tasksInCommentOrder = [...crewVariableTasks].sort((a, b) => {
+      const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+      if (aCreated !== bCreated) {
+        return aCreated - bCreated;
+      }
+
+      return String(a.startDateTimeSort || '').localeCompare(String(b.startDateTimeSort || ''));
+    });
+
+    for (const task of tasksInCommentOrder) {
+      // Parse the task to get the day(s) it applies to
+      const cells = parseVariableTaskToCells(task, selectedPeriod);
+      for (const cell of cells) {
+        const comment = task.comments?.trim();
+        if (comment) {
+          const existing = commentsMap.get(cell.day) || [];
+          const alreadyExists = existing.some(c => c.trim().toLowerCase() === comment.toLowerCase());
+          if (!alreadyExists) {
+            commentsMap.set(cell.day, [...existing, comment]);
+          }
+        }
+      }
+    }
+    return commentsMap;
+  }, [crewVariableTasks, selectedPeriod]);
+
   // Apply fixed tasks template and variable tasks overlay to daily records when available (for new forms)
   // Note: isPlan is set to true (Plan mode) since new records default to planning mode
   useEffect(() => {
@@ -835,16 +884,38 @@ export const RHRecordingForm = ({
         
         const restHours = newHours.filter(h => h === '').length / 2;
         const workHours = 24 - restHours;
+
+        // Get comments from variable tasks if available
+        const variableTaskComments = variableTaskCommentsMap.get(record.day) || [];
+
+        // apply strict isolation
+        const baseComments = (record.comments || '')
+          .split(',')
+          .map(c => c.trim())
+          .filter(Boolean);
+
+        // Remove variable task comments if already present (case-insensitive)
+        const normalizedVars = new Set(variableTaskComments.map(c => c.trim().toLowerCase()));
+
+        const cleanedBase = normalizedVars.size > 0
+          ? baseComments.filter(c => !normalizedVars.has(c.toLowerCase()))
+          : baseComments;
+
+        const finalComments = [...cleanedBase, ...variableTaskComments]
+          .filter(Boolean)
+          .join(', ');
+
         return {
           ...record,
           hours: newHours,
           isPlan: true,
           hoursOfRest24hr: restHours,
           hoursOfWork24hr: workHours,
+          comments: finalComments,
         };
       });
     });
-  }, [fixedTask, open, existingRecord, variableTaskCellsMap]);
+  }, [fixedTask, open, existingRecord, variableTaskCellsMap, variableTaskCommentsMap, signOnDate, signOffDate]);
 
   // Load existing record data or explicitly maintain clean state
   useEffect(() => {
@@ -855,6 +926,7 @@ export const RHRecordingForm = ({
       setFormId((existingRecord as any).rhDailyUuid || (existingRecord as any).rh_daily_uuid);
       setShowPlanning(true); // Always show planning by default
       setOpaMode(existingRecord.opaMode || false);
+      setWatchkeeper((existingRecord as any).watchkeeper || false);
       
       lastViolationsHashRef.current = '';
       
@@ -889,7 +961,27 @@ export const RHRecordingForm = ({
           
           const restHours = hours ? hours.filter((h: string) => h === '').length / 2 : 24;
           const workHours = 24 - restHours;
-          
+
+          // Get comments from variable tasks if available
+          const variableTaskComments = variableTaskCommentsMap.get(record.day) || [];
+
+          // apply strict isolation
+          const baseComments = (record.comments || '')
+            .split(',')
+            .map(c => c.trim())
+            .filter(Boolean);
+
+          // Remove variable task comments if already present (case-insensitive)
+          const normalizedVars = new Set(variableTaskComments.map(c => c.trim().toLowerCase()));
+
+          const cleanedBase = normalizedVars.size > 0
+            ? baseComments.filter(c => !normalizedVars.has(c.toLowerCase()))
+            : baseComments;
+
+          const finalComments = [...cleanedBase, ...variableTaskComments]
+            .filter(Boolean)
+            .join(', ');
+
           return {
             ...record,
             hours,
@@ -903,6 +995,7 @@ export const RHRecordingForm = ({
             anyPeriodWork7day: 0,
             violations: [],
             violationDiagnostics: [],
+            comments: finalComments,
           };
         });
         
@@ -914,7 +1007,7 @@ export const RHRecordingForm = ({
     } else if (isError || existingRecord === undefined) {
       console.log('No existing record found - using clean initialized state');
     }
-  }, [existingRecord, isError, open, parsedDateLineAdjustments, fixedTask, variableTaskCellsMap]);
+  }, [existingRecord, isError, open, parsedDateLineAdjustments, fixedTask, variableTaskCellsMap, variableTaskCommentsMap, signOnDate, signOffDate]);
 
   // Helper function to compute violatingRanges for hover highlighting
   const computeViolatingRanges = (
@@ -1523,6 +1616,7 @@ export const RHRecordingForm = ({
       dailyRecords: JSON.stringify(recordsWithViolations),
       showPlanning,
       opaMode,
+      watchkeeper,
     };
     
     saveMutation.mutate(payload);
@@ -1566,6 +1660,7 @@ export const RHRecordingForm = ({
         dailyRecords: JSON.stringify(recordsWithViolations),
         showPlanning,
         opaMode,
+        watchkeeper,
       };
       
       saveMutation.mutate(payload);
@@ -1573,7 +1668,7 @@ export const RHRecordingForm = ({
       // No unsaved changes, just close
       onOpenChange(false);
     }
-  }, [isDirty, dailyRecords, timelineViolations, selectedCrewMemberId, selectedVesselId, rank, crewMemberName, selectedPeriod, showPlanning, opaMode, saveMutation, onOpenChange]);
+  }, [isDirty, dailyRecords, timelineViolations, selectedCrewMemberId, selectedVesselId, rank, crewMemberName, selectedPeriod, showPlanning, opaMode, watchkeeper, saveMutation, onOpenChange]);
   
   // Handle Dialog's onOpenChange - intercept close requests to trigger auto-save
   const handleDialogOpenChange = useCallback((isOpen: boolean) => {
@@ -1616,7 +1711,7 @@ export const RHRecordingForm = ({
       const selectedVessel = vessels.find((v: any) => v.entryId === selectedVesselId) as any;
       const vesselName = selectedVessel?.name || '';
       const imoNumber = selectedVessel?.description || selectedVessel?.imoNumber || '';
-      const flagOfShip = selectedVessel?.countryName || selectedVessel?.country || selectedVessel?.flagState || '';
+      const flagOfShip = selectedVessel?.flag || selectedVessel?.countryName || selectedVessel?.country || selectedVessel?.flagState || '';
       
       // Get crew member data
       const selectedCrewMember = filteredCrewMembers.find((cm: any) => cm.crewMemberId === selectedCrewMemberId || cm.empNo === selectedCrewMemberId);
@@ -1626,10 +1721,6 @@ export const RHRecordingForm = ({
       const familyName = selectedCrewMember?.familyName || '';
       const fullName = `${firstName}${middleName ? ' ' + middleName : ''} ${familyName}`.toUpperCase();
       const seafarerFullName = `${rank}-${fullName}`;
-      
-      // Determine if watchkeeper based on rank (officers typically are)
-      const watchkeeperRanks = ['Master', 'Chief Officer', 'Second Officer', 'Third Officer', 'Chief Engineer', 'Second Engineer', 'Third Engineer', 'Fourth Engineer', 'Electrical Officer'];
-      const watchkeeper = watchkeeperRanks.some(r => rank.toLowerCase().includes(r.toLowerCase()));
       
       // Format month/year display (e.g., "Dec-2025")
       const [year, month] = selectedPeriod.split('-');
@@ -1929,7 +2020,7 @@ export const RHRecordingForm = ({
               {!isLocked && (
                 <Button
                   variant="outline"
-                  onClick={handleClear}
+                  onClick={() => setClearConfirmOpen(true)}
                   className="h-8 px-3 text-xs"
                   data-testid="button-clear-form"
                 >
@@ -2082,6 +2173,30 @@ export const RHRecordingForm = ({
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs text-sm">
               Click to enable 'OPA' category Violations.
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 cursor-help">
+                <Checkbox
+                  id="watchkeeper"
+                  checked={watchkeeper}
+                  disabled={isLocked}
+                  onCheckedChange={(checked) => {
+                    if (isLocked) return;
+                    setWatchkeeper(checked as boolean);
+                    setIsDirty(true);
+                  }}
+                  data-testid="checkbox-watchkeeper"
+                />
+                <Label htmlFor="watchkeeper" className="text-xs cursor-pointer">
+                  Watchkeeper
+                </Label>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-sm">
+              Mark this seafarer as a watchkeeper. Reflected on the exported PDF.
             </TooltipContent>
           </Tooltip>
 
@@ -2411,7 +2526,7 @@ export const RHRecordingForm = ({
                   <td className="border border-gray-300" style={{ padding: '2px' }}>
                     <input
                       type="text"
-                      value={record.comments}
+                      value={isDisabled ? '' : record.comments}
                       onChange={(e) => !isNonEditable && handleCommentsChange(baseIndex, e.target.value)}
                       className={`w-full outline-none bg-transparent px-1 ${isDisabled ? 'cursor-not-allowed' : ''}`}
                       disabled={isNonEditable}
@@ -2527,6 +2642,28 @@ export const RHRecordingForm = ({
           </div>
         </div>
       </DialogContent>
+      <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+        <AlertDialogContent data-testid="dialog-confirm-clear">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear form?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to clear the form? All entered data will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-clear">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                handleClear();
+                setClearConfirmOpen(false);
+              }}
+              data-testid="button-confirm-clear"
+            >
+              Yes, clear
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };

@@ -4816,6 +4816,7 @@ export class PersistentFileStorage implements IStorage {
       dailyRecords: insertRecord.dailyRecords,
       showPlanning: insertRecord.showPlanning ?? null,
       opaMode: insertRecord.opaMode ?? null,
+      watchkeeper: insertRecord.watchkeeper ?? null,
       createdAt: null,
       updatedAt: null
     };

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { MessageSquare, Trash2 } from "lucide-react";
 import { PartDProps } from "./types";
+import { RequiredMark } from "./RequiredMark";
 
 const PartDComponent: React.FC<PartDProps> = ({
   form,
@@ -57,8 +58,8 @@ const PartDComponent: React.FC<PartDProps> = ({
                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Assessment Criteria</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Weight %</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Actions</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Effectiveness<RequiredMark /></th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -111,7 +112,7 @@ const PartDComponent: React.FC<PartDProps> = ({
                               </div>
                               <div className="ml-2">
                                 <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteBehaviouralComment(assessment.id); }}>
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                                 </Button>
                               </div>
                             </div>

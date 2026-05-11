@@ -34,6 +34,7 @@ router.delete("/forms/:id", formsController.delete);
 router.get("/forms/:id/versions", formsController.getVersions);
 router.post("/forms/:id/versions", formsController.createVersion);
 
+router.get("/form-versions/:versionId/configuration", formsController.getVersionConfiguration);
 router.get("/form-versions/:id", formsController.getVersionById);
 router.put("/form-versions/:id", formsController.updateVersion);
 router.post("/form-versions/:id/release", formsController.releaseVersion);
@@ -47,6 +48,7 @@ router.get("/rank-groups/:id", rankGroupsController.getById);
 router.post("/rank-groups", rankGroupsController.create);
 router.put("/rank-groups/:id", rankGroupsController.update);
 router.put("/rank-groups/:id/configuration", rankGroupsController.updateConfiguration);
+router.post("/rank-groups/:id/release-configuration", rankGroupsController.releaseConfiguration);
 router.post("/rank-groups/:id/archive", rankGroupsController.archive);
 router.post("/rank-groups/:id/unarchive", rankGroupsController.unarchive);
 router.delete("/rank-groups/:id", rankGroupsController.delete);

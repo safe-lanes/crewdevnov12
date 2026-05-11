@@ -24,6 +24,9 @@ const PartAComponent: React.FC<PartAProps> = ({
       <div className="pb-3 sm:pb-4 mb-4 sm:mb-6">
         <h3 className="text-lg sm:text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part A: Seafarer's Information</h3>
         <div style={{ color: '#16569e' }} className="text-xs sm:text-sm">Enter details as applicable</div>
+        <p className="text-xs text-gray-500 italic mt-2" data-testid="text-part-a-runtime-only-note">
+          Runtime-only — filled at appraisal time
+        </p>
         <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
       </div>
       
@@ -36,6 +39,8 @@ const PartAComponent: React.FC<PartAProps> = ({
             {...formMethods.register("seafarersName")}
             className="text-sm"
             data-testid="input-seafarers-name"
+            disabled
+            aria-disabled
           />
         </div>
         
@@ -44,8 +49,9 @@ const PartAComponent: React.FC<PartAProps> = ({
           <Select
             value={formMethods.watch("seafarersRank") || ""}
             onValueChange={(value) => formMethods.setValue("seafarersRank", value)}
+            disabled
           >
-            <SelectTrigger className="text-sm" data-testid="select-seafarers-rank">
+            <SelectTrigger className="text-sm" data-testid="select-seafarers-rank" aria-disabled>
               <SelectValue placeholder="Select rank" />
             </SelectTrigger>
             <SelectContent>
@@ -70,8 +76,9 @@ const PartAComponent: React.FC<PartAProps> = ({
           <Select
             value={formMethods.watch("nationality") || ""}
             onValueChange={(value) => formMethods.setValue("nationality", value)}
+            disabled
           >
-            <SelectTrigger className="text-sm" data-testid="select-nationality">
+            <SelectTrigger className="text-sm" data-testid="select-nationality" aria-disabled>
               <SelectValue placeholder="Select nationality..." />
             </SelectTrigger>
             <SelectContent>
@@ -91,8 +98,9 @@ const PartAComponent: React.FC<PartAProps> = ({
           <Select
             value={formMethods.watch("vessel") || ""}
             onValueChange={(value) => formMethods.setValue("vessel", value)}
+            disabled
           >
-            <SelectTrigger className="text-sm" data-testid="select-vessel">
+            <SelectTrigger className="text-sm" data-testid="select-vessel" aria-disabled>
               <SelectValue placeholder="Select vessel" />
             </SelectTrigger>
             <SelectContent>
@@ -112,6 +120,8 @@ const PartAComponent: React.FC<PartAProps> = ({
             {...formMethods.register("signOn")}
             className="text-sm"
             data-testid="input-sign-on"
+            disabled
+            aria-disabled
           />
         </div>
         
@@ -120,8 +130,9 @@ const PartAComponent: React.FC<PartAProps> = ({
           <Select
             value={formMethods.watch("appraisalType") || ""}
             onValueChange={(value) => formMethods.setValue("appraisalType", value)}
+            disabled
           >
-            <SelectTrigger className="text-sm" data-testid="select-appraisal-type">
+            <SelectTrigger className="text-sm" data-testid="select-appraisal-type" aria-disabled>
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
@@ -144,6 +155,8 @@ const PartAComponent: React.FC<PartAProps> = ({
             {...formMethods.register("appraisalPeriodFrom")}
             className="text-sm"
             data-testid="input-appraisal-period-from"
+            disabled
+            aria-disabled
           />
         </div>
         
@@ -155,6 +168,8 @@ const PartAComponent: React.FC<PartAProps> = ({
             {...formMethods.register("appraisalPeriodTo")}
             className="text-sm"
             data-testid="input-appraisal-period-to"
+            disabled
+            aria-disabled
           />
         </div>
         
@@ -163,8 +178,9 @@ const PartAComponent: React.FC<PartAProps> = ({
           <Select
             value={formMethods.watch("primaryAppraiser") || ""}
             onValueChange={(value) => formMethods.setValue("primaryAppraiser", value)}
+            disabled
           >
-            <SelectTrigger className="text-sm" data-testid="select-primary-appraiser">
+            <SelectTrigger className="text-sm" data-testid="select-primary-appraiser" aria-disabled>
               <SelectValue placeholder="Select appraiser" />
             </SelectTrigger>
             <SelectContent>

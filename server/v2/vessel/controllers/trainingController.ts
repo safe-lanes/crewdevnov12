@@ -34,7 +34,7 @@ export const trainingController = {
             eq(vesselPlanningV2.isDeleted, false),
             eq(vesselPlanningV2.isArchived, false),
             eq(vesselPlanningV2.crewStatus, 'primary'),
-            isNull(vesselPlanningV2.signOffDate),
+            // isNull(vesselPlanningV2.signOffDate),
             isNotNull(vesselPlanningV2.crewUuid)
           )
         );

@@ -15,6 +15,8 @@ export const appraisalResultsV2 = pgTable("appraisal_results_v2", {
   crewMemberId: text("crew_member_id").notNull(),
   formUuid: text("form_uuid"),
   formIdLegacy: integer("form_id_legacy"),
+  formVersionId: integer("form_version_id"),
+  formVersionUuid: text("form_version_uuid"),
   appraisalType: text("appraisal_type").notNull(),
   appraisalDate: text("appraisal_date").notNull(),
   seafarersName: text("seafarers_name"),

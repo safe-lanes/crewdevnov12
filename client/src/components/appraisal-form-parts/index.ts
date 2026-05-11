@@ -6,3 +6,4 @@ export { PartD } from './PartD';
 export { PartE } from './PartE';
 export { PartF } from './PartF';
 export { PartG } from './PartG';
+export { RequiredMark } from './RequiredMark';

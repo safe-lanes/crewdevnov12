@@ -1,8 +1,13 @@
+import { eq, and, sql } from "drizzle-orm";
+import { v4 as uuidv4 } from "uuid";
+import { getDb } from "../../db";
+import { admFormVersionsV2, admRankGroupsV2 } from "../../../../shared/v2/admin/schema";
 import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { FormsRepository } from "../repositories/formsRepository";
 import { FormVersionsRepository } from "../repositories/formVersionsRepository";
 import { applyAuditUser } from "../utils/auditUser";
 import type { AdmRankGroupV2, InsertAdmRankGroupV2 } from "../../../../shared/v2/admin/types";
+import { getBaseRank } from "../../../../shared/crew-mapping";
 
 const rankGroupsRepo = new RankGroupsRepository();
 const formsRepo = new FormsRepository();
@@ -14,18 +19,64 @@ async function syncFormRankGroup(formId: number): Promise<void> {
   await formsRepo.updateById(formId, { rankGroup: rankGroupNames || "" });
 }
 
-async function createFormVersionOnConfigSave(formId: number, rankGroupId: number, configuration: string): Promise<void> {
-  try {
-    const form = await formsRepo.findById(formId);
-    if (!form) return;
+async function upsertDraftVersion(formId: number, rankGroupId: number, configuration: string): Promise<void> {
+  const form = await formsRepo.findById(formId);
+  if (!form) throw new Error(`Form not found: ${formId}`);
 
-    const existingVersions = await formVersionsRepo.findByFormId(formId);
-    const rgVersions = existingVersions.filter(v => v.rankGroupId === rankGroupId);
-    const maxVersionNo = rgVersions.reduce((max, v) => {
-      const vNo = parseInt(v.versionNo, 10);
-      return isNaN(vNo) ? max : Math.max(max, vNo);
-    }, 0);
-    const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
+  const now = new Date();
+  const versionDate = now.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).replace(/ /g, "-");
+
+  const existingDraft = await formVersionsRepo.findDraftByRankGroupId(rankGroupId);
+  if (existingDraft) {
+    await formVersionsRepo.updateById(existingDraft.id, applyAuditUser({ configuration, versionDate }));
+    console.log(`✏️  [V2 DRAFT] Updated existing draft v${existingDraft.versionNo} for form ${formId}, rankGroup ${rankGroupId}`);
+    return;
+  }
+
+  const rgVersions = await formVersionsRepo.findByFormId(formId, rankGroupId);
+  const maxVersionNo = rgVersions.reduce((max, v) => {
+    const vNo = parseInt(v.versionNo, 10);
+    return isNaN(vNo) ? max : Math.max(max, vNo);
+  }, 0);
+  const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
+
+  await formVersionsRepo.create(applyAuditUser({
+    formId,
+    rankGroupId,
+    versionNo: nextVersionNo,
+    versionDate,
+    status: "draft",
+    configuration,
+    releasedAt: null,
+  }, true));
+
+  console.log(`✅ [V2 DRAFT] Created draft v${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId}`);
+}
+
+// Transactionally creates a new released form-version, soft-deletes ALL
+// lingering drafts for the rank group, and mirrors the configuration back to
+// adm_rank_groups_v2. A SELECT … FOR UPDATE on the rank-group row serializes
+// concurrent saves so versionNo allocation is race-safe.
+async function releaseAndMirrorConfiguration(
+  rankGroupId: number,
+  configuration: string,
+): Promise<{ formId: number; rankGroupName: string; versionNo: string }> {
+  const db = getDb();
+  return db.transaction(async (tx: any) => {
+    const lockedRows = await tx.execute(sql`
+      SELECT id, form_id, name
+      FROM ${admRankGroupsV2}
+      WHERE id = ${rankGroupId} AND is_deleted = false
+      FOR UPDATE
+    `);
+    const locked = (lockedRows.rows ?? lockedRows)[0];
+    if (!locked) throw new Error(`Rank group not found: ${rankGroupId}`);
+    const formId = Number(locked.form_id);
+    const rankGroupName = String(locked.name);
 
     const now = new Date();
     const versionDate = now.toLocaleDateString("en-GB", {
@@ -34,30 +85,53 @@ async function createFormVersionOnConfigSave(formId: number, rankGroupId: number
       year: "numeric",
     }).replace(/ /g, "-");
 
-    await formVersionsRepo.create({
-      formId,
-      rankGroupId,
-      versionNo: nextVersionNo,
-      versionDate,
-      status: "released",
-      configuration,
-      releasedAt: now,
-    });
-
-    const globalMax = existingVersions.reduce((max, v) => {
+    const existingVersions = await tx
+      .select({ versionNo: admFormVersionsV2.versionNo })
+      .from(admFormVersionsV2)
+      .where(and(
+        eq(admFormVersionsV2.formId, formId),
+        eq(admFormVersionsV2.rankGroupId, rankGroupId),
+      ));
+    const maxVersionNo = existingVersions.reduce((max: number, v: { versionNo: string }) => {
       const vNo = parseInt(v.versionNo, 10);
       return isNaN(vNo) ? max : Math.max(max, vNo);
     }, 0);
-    const globalNextVersion = String(Math.max(globalMax + 1, parseInt(nextVersionNo, 10))).padStart(2, "0");
-    await formsRepo.updateById(formId, {
-      versionNo: globalNextVersion,
-      versionDate,
-    });
+    const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
 
-    console.log(`✅ [V2 VERSION] Created version ${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId} (global form version: ${globalNextVersion})`);
-  } catch (error) {
-    console.error(`⚠️ [V2 VERSION] Failed to create version for form ${formId}:`, error);
-  }
+    await tx
+      .insert(admFormVersionsV2)
+      .values(applyAuditUser({
+        fvUuid: uuidv4(),
+        formId,
+        rankGroupId,
+        versionNo: nextVersionNo,
+        versionDate,
+        status: "released",
+        configuration,
+        releasedAt: now,
+      }, true));
+
+    const deletedDrafts = await tx
+      .update(admFormVersionsV2)
+      .set({ isDeleted: true, updatedAt: new Date() })
+      .where(and(
+        eq(admFormVersionsV2.rankGroupId, rankGroupId),
+        eq(admFormVersionsV2.status, "draft"),
+        eq(admFormVersionsV2.isDeleted, false),
+      ))
+      .returning({ id: admFormVersionsV2.id, versionNo: admFormVersionsV2.versionNo });
+    if (deletedDrafts.length > 0) {
+      console.log(`🧹 [V2 RELEASE] Removed ${deletedDrafts.length} lingering draft(s) [${deletedDrafts.map((d: any) => `v${d.versionNo}`).join(", ")}] for form ${formId}, rankGroup ${rankGroupId}`);
+    }
+
+    await tx
+      .update(admRankGroupsV2)
+      .set(applyAuditUser({ configuration, updatedAt: new Date() }))
+      .where(and(eq(admRankGroupsV2.id, rankGroupId), eq(admRankGroupsV2.isDeleted, false)));
+
+    console.log(`✅ [V2 RELEASE] Created released v${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId} ("${rankGroupName}")`);
+    return { formId, rankGroupName, versionNo: nextVersionNo };
+  });
 }
 
 function checkRankConflicts(
@@ -116,23 +190,41 @@ export const rankGroupsService = {
     if (!form) return { hasAssignment: false };
 
     const activeGroups = await rankGroupsRepo.findByFormId(form.id, false);
-    for (const group of activeGroups) {
-      let ranks: string[] = [];
-      try {
-        ranks = typeof group.ranks === "string" ? JSON.parse(group.ranks) : group.ranks;
-      } catch (e) { ranks = []; }
-      if (ranks.some(r => r.toLowerCase() === rankLabel.toLowerCase())) {
-        return {
-          hasAssignment: true,
-          rankGroupId: group.id,
-          rankGroupUuid: group.rgUuid,
-          rankGroupName: group.name,
-          formId: form.id,
-          formUuid: form.formUuid,
-          formName: form.name,
-        };
+    const literal = rankLabel.toLowerCase();
+    const baseRank = getBaseRank(rankLabel).toLowerCase();
+
+    const matchGroup = (predicate: (rank: string) => boolean) => {
+      for (const group of activeGroups) {
+        let ranks: string[] = [];
+        try {
+          ranks = typeof group.ranks === "string" ? JSON.parse(group.ranks) : group.ranks;
+        } catch (e) { ranks = []; }
+        if (ranks.some(r => predicate(r.toLowerCase()))) {
+          return {
+            hasAssignment: true,
+            rankGroupId: group.id,
+            rankGroupUuid: group.rgUuid,
+            rankGroupName: group.name,
+            formId: form.id,
+            formUuid: form.formUuid,
+            formName: form.name,
+          };
+        }
       }
+      return null;
+    };
+
+    // Prefer an exact (literal) match so admins who explicitly listed a
+    // suffixed rank (e.g. "AB_1") keep their current behavior.
+    const literalMatch = matchGroup(r => r === literal);
+    if (literalMatch) return literalMatch;
+
+    // Fall back to base-rank match: crew "AB_1" matches a group containing "AB".
+    if (baseRank && baseRank !== literal) {
+      const baseMatch = matchGroup(r => r === baseRank);
+      if (baseMatch) return baseMatch;
     }
+
     return { hasAssignment: false };
   },
 
@@ -203,19 +295,35 @@ export const rankGroupsService = {
   },
 
   async updateConfigurationById(id: number, configuration: string): Promise<AdmRankGroupV2> {
-    console.log(`📝 [V2 CONFIG SAVE] Saving configuration for rank group id=${id}, config length=${configuration.length}`);
-    const result = await rankGroupsRepo.updateById(id, applyAuditUser({ configuration }));
-    if (!result) throw new Error(`Rank group not found: ${id}`);
-    console.log(`✅ [V2 CONFIG SAVE] Configuration saved for rank group "${result.name}" (id=${id}, formId=${result.formId})`);
-    await createFormVersionOnConfigSave(result.formId, id, configuration);
-    return result;
+    console.log(`📝 [V2 CONFIG SAVE] Saving draft configuration for rank group id=${id}, config length=${configuration.length}`);
+    // Per spec: draft path must NOT write to adm_rank_groups_v2.configuration.
+    // Released form versions are the sole source of truth for runtime.
+    const existing = await rankGroupsRepo.findById(id);
+    if (!existing) throw new Error(`Rank group not found: ${id}`);
+    await upsertDraftVersion(existing.formId, id, configuration);
+    console.log(`✅ [V2 CONFIG SAVE] Draft saved for rank group "${existing.name}" (id=${id}, formId=${existing.formId})`);
+    return existing;
   },
 
   async updateConfiguration(rgUuid: string, configuration: string): Promise<AdmRankGroupV2> {
-    const result = await rankGroupsRepo.update(rgUuid, applyAuditUser({ configuration }));
-    if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
-    await createFormVersionOnConfigSave(result.formId, result.id, configuration);
-    return result;
+    const existing = await rankGroupsRepo.findByUuid(rgUuid);
+    if (!existing) throw new Error(`Rank group not found: ${rgUuid}`);
+    await upsertDraftVersion(existing.formId, existing.id, configuration);
+    return existing;
+  },
+
+  // Used by the Promotion Review Form editor while it does not yet support
+  // the full draft → release lifecycle. Saves the supplied configuration as a
+  // brand-new released form-version AND mirrors it back onto
+  // adm_rank_groups_v2.configuration so legacy runtime readers keep working.
+  // A future task will switch the Promotion editor to the appraisal-style
+  // draft list and remove the legacy snapshot.
+  async releaseConfigurationById(id: number, configuration: string): Promise<AdmRankGroupV2> {
+    console.log(`📝 [V2 RELEASE SAVE] Releasing configuration for rank group id=${id}, config length=${configuration.length}`);
+    await releaseAndMirrorConfiguration(id, configuration);
+    const updated = await rankGroupsRepo.findById(id);
+    if (!updated) throw new Error(`Rank group not found: ${id}`);
+    return updated;
   },
 
   async archiveById(id: number): Promise<AdmRankGroupV2> {

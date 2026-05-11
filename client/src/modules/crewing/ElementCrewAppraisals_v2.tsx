@@ -5,7 +5,21 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { appraisalsApiV2 } from "./api/appraisalsApiV2";
+import { AppraisalView } from "./AppraisalView_v2";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useViewport } from "@/hooks/useViewport";
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
@@ -28,7 +42,7 @@ import SideBarComponent from "@/components/Navbar/SideBarComponent";
 import MainLayout from "@/components/main/MainLayout";
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { useVesselLookup } from "@/hooks/useVesselLookup";
-import { useVesselsV2, useVesselTypesV2, useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
+import { useVesselsV2, useVesselTypesV2, useNationalitiesV2, useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
 import { useCompanyRanksV2 } from "@/modules/admin/hooks/useAdminV2";
 
 
@@ -128,12 +142,19 @@ const RatingCellRenderer = (params: ICellRendererParams) => {
   return <RatingBadge value={params.value} color={params.data.competenceRating.color} />;
 };
 
-const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEditClick: (data: CrewAppraisalData) => void; canEditPerm: boolean; canDeletePerm: boolean } }) => {
+const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEditClick: (data: CrewAppraisalData) => void; handleViewClick: (data: CrewAppraisalData) => void; handleDeleteClick: (data: CrewAppraisalData) => void; canEditPerm: boolean; canDeletePerm: boolean } }) => {
   if (!params.colDef || !params.data) return null;
-  
+  const appraisalId = params.data.appraisalId;
+
   return (
     <div className="flex gap-2 justify-center">
-      <Button variant="ghost" size="icon" className="h-6 w-6">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        onClick={() => params.context.handleViewClick(params.data)}
+        data-testid={`button-view-appraisal-${appraisalId}`}
+      >
         <EyeIcon className="h-[18px] w-[18px] text-gray-500" />
       </Button>
       {params.context.canEditPerm && (
@@ -142,13 +163,20 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
         size="icon"
         className="h-6 w-6"
         onClick={() => params.context.handleEditClick(params.data)}
+        data-testid={`button-edit-appraisal-${appraisalId}`}
       >
         <EditIcon className="h-[18px] w-[18px] text-gray-500" />
       </Button>
       )}
       {params.context.canDeletePerm && (
-      <Button variant="ghost" size="icon" className="h-6 w-6">
-        <Trash2Icon className="h-[18px] w-[18px] text-gray-500" />
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6"
+        onClick={() => params.context.handleDeleteClick(params.data)}
+        data-testid={`button-delete-appraisal-${appraisalId}`}
+      >
+        <Trash2Icon className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
       </Button>
       )}
     </div>
@@ -163,9 +191,12 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
   const isTablet = viewport === 'tablet';
   const isSmallScreen = isPhone || isTablet;
 
+  const { toast } = useToast();
   const [selectedAdminPage, setSelectedAdminPage] = useState("all");
   const [selectedCrewMember, setSelectedCrewMember] = useState<CrewAppraisalData | null>(null);
   const [showAppraisalForm, setShowAppraisalForm] = useState(false);
+  const [viewingAppraisal, setViewingAppraisal] = useState<CrewAppraisalData | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CrewAppraisalData | null>(null);
   const [showFilters, setShowFilters] = useState(true);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -183,6 +214,34 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
 
   // Vessel lookup for ID to name translation
   const { getVesselName } = useVesselLookup();
+
+  // Appraisal Types for filter dropdown (sourced from same master as the form)
+  const { data: appraisalTypesRaw = [], isLoading: isLoadingAppraisalTypes } = useAppraisalTypesV2();
+  const appraisalTypeOptions = useMemo<{ value: string; label: string }[]>(() => {
+    const entries = appraisalTypesRaw as Array<{ name?: unknown }>;
+    const names = entries
+      .map((entry) => entry?.name)
+      .filter((name): name is string => typeof name === "string" && name.length > 0);
+    if (names.length > 0) {
+      return names.map((name) => ({ value: name, label: name }));
+    }
+    // Fallback mirrors the appraisal form (PartA.tsx) when master is empty
+    return [
+      { value: "End of Contract", label: "End of Contract" },
+      { value: "Mid Term", label: "Mid Term" },
+      { value: "Special", label: "Special" },
+      { value: "Probation", label: "Probation" },
+    ];
+  }, [appraisalTypesRaw]);
+
+  const renderAppraisalTypeOptions = () => {
+    if (isLoadingAppraisalTypes) {
+      return <SelectItem value="loading" disabled>Loading...</SelectItem>;
+    }
+    return appraisalTypeOptions.map((option) => (
+      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+    ));
+  };
 
   const { data: appraisalResults = [], isLoading: isLoadingAppraisals } = useQuery<AppraisalResult[]>({
     queryKey: ["/api/v2/appraisals"],
@@ -276,6 +335,45 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     setShowAppraisalForm(false);
     setSelectedCrewMember(null);
   }, []);
+
+  const handleViewClick = useCallback((crewMember: CrewAppraisalData) => {
+    setViewingAppraisal(crewMember);
+  }, []);
+
+  const handleDeleteClick = useCallback((crewMember: CrewAppraisalData) => {
+    setDeleteTarget(crewMember);
+  }, []);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (vars: { id: number; name: string }) => {
+      await appraisalsApiV2.delete(vars.id);
+      return vars;
+    },
+    onSuccess: (vars) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
+      toast({
+        title: 'Appraisal deleted',
+        description: vars.name ? `Removed appraisal for ${vars.name}.` : 'The appraisal was removed.',
+      });
+      setDeleteTarget(null);
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      toast({
+        title: 'Failed to delete appraisal',
+        description: message,
+        variant: 'destructive',
+      });
+      setDeleteTarget(null);
+    },
+  });
+
+  const confirmDelete = useCallback(() => {
+    if (deleteTarget?.appraisalId == null) return;
+    const name = `${deleteTarget.name.first} ${deleteTarget.name.middle} ${deleteTarget.name.last}`
+      .replace(/\s+/g, ' ').trim();
+    deleteMutation.mutate({ id: deleteTarget.appraisalId, name });
+  }, [deleteTarget, deleteMutation]);
 
 
   // Helper function to get rating color based on value
@@ -407,8 +505,9 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
       }
 
       // Rating filter
-      if (filters.rating && crew.overallRating.value !== "N/A") {
+      if (filters.rating) {
         const rating = parseFloat(crew.overallRating.value);
+        if (crew.overallRating.value === "N/A" || Number.isNaN(rating)) return false;
         if (filters.rating === "high" && rating < 4.0) return false;
         if (filters.rating === "medium" && (rating < 3.0 || rating >= 4.0)) return false;
         if (filters.rating === "low" && rating >= 3.0) return false;
@@ -629,11 +728,13 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
           <div className="flex items-center gap-3">
             <Button
               variant="outline"
-              className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
+              size="sm"
               onClick={() => setShowFilters(!showFilters)}
+              className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
+              data-testid="button-toggle-filters"
             >
-              <FilterIcon className="h-3 w-3 mr-1" />
-              Toggle Filters
+              <FilterIcon className="h-4 w-4" />
+              Filters
             </Button>
           </div>
         </SectionTitleComponents>
@@ -706,10 +807,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                     <SelectValue placeholder="Appraisal Type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
-                    <SelectItem value="End-Contract">End-Contract</SelectItem>
-                    <SelectItem value="Annual">Annual</SelectItem>
-                    <SelectItem value="Promotion">Promotion</SelectItem>
+                    {renderAppraisalTypeOptions()}
                   </SelectContent>
                 </Select>
 
@@ -806,10 +904,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                       <SelectValue placeholder="Appraisal Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
-                      <SelectItem value="End-Contract">End-Contract</SelectItem>
-                      <SelectItem value="Annual">Annual</SelectItem>
-                      <SelectItem value="Promotion">Promotion</SelectItem>
+                      {renderAppraisalTypeOptions()}
                     </SelectContent>
                   </Select>
                 </div>
@@ -911,10 +1006,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                       <SelectValue placeholder="App. Type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Mid-Contract">Mid-Contract</SelectItem>
-                      <SelectItem value="End-Contract">End-Contract</SelectItem>
-                      <SelectItem value="Annual">Annual</SelectItem>
-                      <SelectItem value="Promotion">Promotion</SelectItem>
+                      {renderAppraisalTypeOptions()}
                     </SelectContent>
                   </Select>
 
@@ -953,7 +1045,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
               rowData={crewData}
               columnDefs={columnDefs}
               onGridReady={onGridReady}
-              context={{ handleEditClick, canEditPerm: permissions.length === 0 || canEdit("Crewing"), canDeletePerm: permissions.length === 0 || canDelete("Crewing") }}
+              context={{ handleEditClick, handleViewClick, handleDeleteClick, canEditPerm: permissions.length === 0 || canEdit("Crewing"), canDeletePerm: permissions.length === 0 || canDelete("Crewing") }}
               fillAvailableHeight={true}
               bottomPadding={80}
               width="100%"
@@ -994,6 +1086,46 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
             onClose={handleCloseForm}
           />
         )}
+
+        {/* Read-only View Modal */}
+        {viewingAppraisal && viewingAppraisal.appraisalId != null && (
+          <AppraisalView
+            appraisalId={viewingAppraisal.appraisalId}
+            rank={viewingAppraisal.rank}
+            seafarerNameFallback={`${viewingAppraisal.name.first} ${viewingAppraisal.name.middle} ${viewingAppraisal.name.last}`.replace(/\s+/g, ' ').trim()}
+            onClose={() => setViewingAppraisal(null)}
+          />
+        )}
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog
+          open={!!deleteTarget || deleteMutation.isPending}
+          onOpenChange={(open) => { if (!open && !deleteMutation.isPending) setDeleteTarget(null); }}
+        >
+          <AlertDialogContent data-testid="dialog-delete-appraisal">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete appraisal</AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteTarget
+                  ? `Delete the ${deleteTarget.appraisalType || 'appraisal'} for ${`${deleteTarget.name.first} ${deleteTarget.name.middle} ${deleteTarget.name.last}`.replace(/\s+/g, ' ').trim() || 'this seafarer'}? This action cannot be undone.`
+                  : 'This action cannot be undone.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteMutation.isPending} data-testid="button-cancel-delete">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+                disabled={deleteMutation.isPending}
+                className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                data-testid="button-confirm-delete"
+              >
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </MainLayout>
     </div>
   );
