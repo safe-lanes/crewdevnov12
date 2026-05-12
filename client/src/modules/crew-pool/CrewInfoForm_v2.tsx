@@ -2574,13 +2574,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </div>
                 ) : (
                   <>
-                    {/* Status Badge with color coding: On Board=orange, On Leave=green, Inactive=gray, Terminated=red */}
+                    {/* Status Badge with color coding: On Board=orange, On Leave=green, Inactive=gray, Terminated=orange */}
                     <div 
                       className={`${
                         statusData?.status === 'On Board' ? 'bg-orange-500' : 
                         statusData?.status === 'On Leave' ? 'bg-green-500' : 
                         statusData?.status === 'Inactive' ? 'bg-gray-500' :
-                        statusData?.status === 'Terminated' ? 'bg-[#f47171]' :
+                        (statusData?.status as string) === 'Terminated' ? 'bg-[#fb923c]' :
                         'bg-gray-400'
                       } text-white p-3 rounded text-center`} 
                       data-testid="status-badge"
