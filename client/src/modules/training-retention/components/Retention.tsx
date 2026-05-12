@@ -325,16 +325,15 @@ export const Retention = (): JSX.Element => {
           onChange={setSelectedAgents}
           testId="filter-manning-agent"
         />
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
+          type="button"
           disabled={!hasActiveFilters}
           onClick={clearFilters}
+          className="min-h-8 rounded-md border border-input bg-background px-3 py-1 text-xs text-[#16569e] hover:bg-accent/30 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:text-[#8899ae] disabled:opacity-60"
           data-testid="button-clear-retention-filters"
         >
-          <X className="mr-1 h-4 w-4" />
           Clear
-        </Button>
+        </button>
       </div>
 
       {/* Calculated rate headline */}
