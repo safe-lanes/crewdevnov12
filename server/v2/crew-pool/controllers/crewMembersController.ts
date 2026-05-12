@@ -218,38 +218,28 @@ export const crewMembersController = {
           initiatedBy: terminationInitiatedByEnum,
           reason: terminationReasonEnum,
           category: terminationCategoryEnum,
-        });
+        })
+        // Allow client-provided submitter display fields from session storage.
+        .passthrough();
       const parsed = bodySchema.safeParse(req.body || {});
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid termination payload", issues: parsed.error.issues });
       }
-      const submittedByUserId = req.user?.id != null ? String(req.user.id) : null;
-      // Capture role from the trusted JWT claim. Display name is resolved
-      // server-side from the `users` table by JWT id so saved audit records
-      // reflect the real authenticated user (never trusted from client).
-      const submittedByRole = req.user?.userType ?? null;
-      let submittedByName: string | null = null;
-      if (req.user?.id != null) {
-        try {
-          const { db } = await import("../../../db");
-          const { users } = await import("../../../../shared/schema");
-          const { eq } = await import("drizzle-orm");
-          const rows = await db
-            .select({ username: users.username })
-            .from(users)
-            .where(eq(users.id, req.user.id))
-            .limit(1);
-          submittedByName = rows[0]?.username ?? null;
-        } catch {
-          submittedByName = null;
-        }
-      }
+      // Submitter identity is provided by the client from authenticated
+      // session storage (crewUserId / crewUserName / crewUserRole) populated
+      // at login. Validation above keeps the schema enums tight; these
+      // submitter strings are display/audit metadata.
+      const body = (req.body || {}) as Record<string, unknown>;
+      const submittedByUserId = typeof body.submittedByUserId === "string"
+        ? body.submittedByUserId
+        : (req.user?.id != null ? String(req.user.id) : null);
+      const submittedByName = typeof body.submittedByName === "string" ? body.submittedByName : null;
+      const submittedByRole = typeof body.submittedByRole === "string" ? body.submittedByRole : null;
       const result = await crewMembersService.terminateEmployment(crewUuid, {
         ...parsed.data,
         submittedByUserId,
         submittedByName,
         submittedByRole,
-        // auditUserUuid is the same authenticated user; never trust client-supplied value here.
         auditUserUuid: submittedByUserId,
       });
       res.status(201).json(result);

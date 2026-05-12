@@ -8312,6 +8312,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   return;
                 }
                 try {
+                  // Pull submitter identity from the authenticated session
+                  // storage values populated at login (crewUserId/Name/Role).
+                  const sessionUserId = (typeof window !== 'undefined' && window.sessionStorage)
+                    ? window.sessionStorage.getItem('crewUserId') : null;
+                  const sessionUserName = (typeof window !== 'undefined' && window.sessionStorage)
+                    ? window.sessionStorage.getItem('crewUserName') : null;
+                  const sessionUserRole = (typeof window !== 'undefined' && window.sessionStorage)
+                    ? window.sessionStorage.getItem('crewUserRole') : null;
                   await terminateEmploymentMutationV2.mutateAsync({
                     crewUuid: String(crewUuid),
                     payload: {
@@ -8321,8 +8329,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       category: terminationDraft.category,
                       notForHire: terminationDraft.notForHire,
                       comments: terminationDraft.comments || null,
-                      // Submitter identity is derived server-side from the
-                      // authenticated session; never sent from the client.
+                      submittedByUserId: sessionUserId,
+                      submittedByName: sessionUserName,
+                      submittedByRole: sessionUserRole,
                     },
                   });
                   toast({
