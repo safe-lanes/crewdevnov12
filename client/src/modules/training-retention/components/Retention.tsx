@@ -263,6 +263,7 @@ export const Retention = (): JSX.Element => {
   });
 
   const isLoading = retentionQuery.isLoading || retentionQuery.isFetching;
+  const isError = retentionQuery.isError;
   const data = retentionQuery.data;
   const aeIsZero = !!data && data.AE === 0;
 
@@ -351,7 +352,16 @@ export const Retention = (): JSX.Element => {
         </TooltipProvider>
       </div>
 
-      {aeIsZero && !isLoading && (
+      {isError && !isLoading && (
+        <div
+          className="mb-4 rounded-md border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm text-[#991b1b]"
+          data-testid="error-retention-load"
+        >
+          Couldn't load retention metrics. Please try again.
+        </div>
+      )}
+
+      {aeIsZero && !isLoading && !isError && (
         <div
           className="mb-4 rounded-md border border-dashed border-[#e1e8ed] bg-[#f8fafc] px-4 py-3 text-sm text-[#475569]"
           data-testid="empty-retention-no-cohort"

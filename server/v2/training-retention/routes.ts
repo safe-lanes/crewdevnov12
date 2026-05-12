@@ -10,13 +10,23 @@ import {
 
 const router = Router();
 
-const querySchema = z.object({
-  periodFrom: z.string().min(1, "periodFrom required (YYYY-MM-DD)"),
-  periodTo: z.string().min(1, "periodTo required (YYYY-MM-DD)"),
-  rankIds: z.array(z.string()).optional().default([]),
-  poolIds: z.array(z.string()).optional().default([]),
-  agentIds: z.array(z.string()).optional().default([]),
-});
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "must be YYYY-MM-DD")
+  .refine((s) => !Number.isNaN(Date.parse(s)), "invalid calendar date");
+
+const querySchema = z
+  .object({
+    periodFrom: isoDate,
+    periodTo: isoDate,
+    rankIds: z.array(z.string()).optional().default([]),
+    poolIds: z.array(z.string()).optional().default([]),
+    agentIds: z.array(z.string()).optional().default([]),
+  })
+  .refine((d) => d.periodFrom <= d.periodTo, {
+    message: "periodFrom must be <= periodTo",
+    path: ["periodFrom"],
+  });
 
 function toArrayParam(v: unknown): string[] {
   if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
