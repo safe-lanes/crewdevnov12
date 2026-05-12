@@ -8214,8 +8214,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="company">Company</SelectItem>
-                    <SelectItem value="crew_member">Crew Member (resignation)</SelectItem>
+                    <SelectItem value="Company">Company</SelectItem>
+                    <SelectItem value="Crew Member (resignation)">Crew Member (resignation)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -8303,9 +8303,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   });
                   return;
                 }
-                if (!submittedByName || !roleName) {
-                  console.warn('[Terminate Employment] Submitting without resolved name/role', { submittedByName, roleName, userId });
-                }
                 try {
                   await terminateEmploymentMutationV2.mutateAsync({
                     crewUuid: String(crewUuid),
@@ -8316,8 +8313,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       category: terminationDraft.category,
                       notForHire: terminationDraft.notForHire,
                       comments: terminationDraft.comments || null,
-                      submittedByName: submittedByName || null,
-                      submittedByRole: roleName || null,
+                      // Submitter identity is derived server-side from the
+                      // authenticated session; never sent from the client.
                     },
                   });
                   toast({

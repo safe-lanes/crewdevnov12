@@ -192,18 +192,27 @@ export const crewMembersController = {
   async terminateEmployment(req: Request, res: Response) {
     try {
       const { crewUuid } = req.params;
-      const { z } = await import("zod");
-      const bodySchema = z.object({
-        terminationDate: z.string().nullable().optional(),
-        initiatedBy: z.string().min(1),
-        reason: z.string().min(1),
-        category: z.string().min(1),
-        notForHire: z.boolean().optional().default(false),
-        comments: z.string().nullable().optional(),
-        // Display-only strings; the trusted submitter identity is taken from req.user.
-        submittedByName: z.string().nullable().optional(),
-        submittedByRole: z.string().nullable().optional(),
-      });
+      const { insertCrewTerminationSchema } = await import(
+        "../../../../shared/v2/crew-pool/types"
+      );
+      // Build the request schema from the canonical Drizzle-derived insert
+      // schema. Only client-meaningful fields are accepted; submitter identity
+      // and audit fields are server-derived and stripped here so a malicious
+      // client cannot spoof "Submitted by".
+      const bodySchema = insertCrewTerminationSchema
+        .pick({
+          terminationDate: true,
+          initiatedBy: true,
+          reason: true,
+          category: true,
+          notForHire: true,
+          comments: true,
+        })
+        .extend({
+          initiatedBy: z.string().min(1),
+          reason: z.string().min(1),
+          category: z.string().min(1),
+        });
       const parsed = bodySchema.safeParse(req.body || {});
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid termination payload", issues: parsed.error.issues });

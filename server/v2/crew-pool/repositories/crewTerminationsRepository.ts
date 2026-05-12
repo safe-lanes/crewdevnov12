@@ -20,6 +20,20 @@ export class CrewTerminationsRepository {
     return results[0];
   }
 
+  async listByCrew(crewUuid: string): Promise<CrewTermination[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(crewTerminations)
+      .where(
+        and(
+          eq(crewTerminations.crewUuid, crewUuid),
+          eq(crewTerminations.isDeleted, false),
+        ),
+      )
+      .orderBy(desc(crewTerminations.createdAt));
+  }
+
   async listAll(): Promise<CrewTermination[]> {
     const db = getDb();
     return db
