@@ -387,8 +387,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                             status === 'Terminated Employment - NFR' ||
                             status === 'Terminated - NFR'
                         ) {
-                            bgColor = '#fed7aa';
-                            textColor = '#9a3412';
+                            bgColor = '#ef4444';
+                            textColor = '#ffffff';
                         }
                         
                         return (
@@ -1137,12 +1137,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     wrapText: true, autoHeight: true,
                     cellRenderer: (params: any) => {
                         const isNfr = !!params.data?.notForHire;
-                        const label = isNfr ? 'Terminated Employment - NFR' : 'Terminated Employment';
+                        const label = isNfr ? 'Terminated - NFR' : 'Terminated';
                         return (
                             <span style={{
                                 display: 'inline-block', padding: '4px 10px', borderRadius: '4px',
-                                fontSize: '11px', fontWeight: 500,
-                                backgroundColor: '#fed7aa', color: '#9a3412',
+                                fontSize: '11px', fontWeight: 600,
+                                backgroundColor: '#ef4444', color: '#ffffff',
                                 lineHeight: '1.2', whiteSpace: 'normal',
                             }}>
                                 {label}
