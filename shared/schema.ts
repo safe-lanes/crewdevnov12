@@ -789,7 +789,7 @@ export type InsertVesselDateLineAdjustment = any;
 
 // Dashboard Types
 export const dashboardStatusSchema = z.object({
-  status: z.enum(["On Board", "On Leave", "Available", "In Transit", "Inactive"]),
+  status: z.enum(["On Board", "On Leave", "Available", "In Transit", "Inactive", "Terminated", "Terminated - NFR"]),
   isActive: z.boolean().optional(),
   vessel: z.string().nullable(),
   joinedDate: z.string().nullable(),
