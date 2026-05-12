@@ -58,6 +58,10 @@ export const crewTerminations = pgTable("crew_terminations", {
   category: text("category"),
   notForHire: boolean("not_for_hire").default(false),
   comments: text("comments"),
+  // Server-derived submitter identity (from auth context). Display strings
+  // are retained for historical reporting since name/role are looked up
+  // outside of this DB (SAIL Audits) and may change over time.
+  submittedByUserId: text("submitted_by_user_id"),
   submittedByName: text("submitted_by_name"),
   submittedByRole: text("submitted_by_role"),
   // Snapshots of identifiers at the time of termination (for retention reporting)

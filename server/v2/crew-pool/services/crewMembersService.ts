@@ -702,6 +702,7 @@ export const crewMembersService = {
       category?: string | null;
       notForHire?: boolean;
       comments?: string | null;
+      submittedByUserId?: string | null;
       submittedByName?: string | null;
       submittedByRole?: string | null;
       auditUserUuid?: string | null;
@@ -733,6 +734,7 @@ export const crewMembersService = {
           category: payload.category ?? null,
           notForHire: !!payload.notForHire,
           comments: payload.comments ?? null,
+          submittedByUserId: payload.submittedByUserId ?? null,
           submittedByName: payload.submittedByName ?? null,
           submittedByRole: payload.submittedByRole ?? null,
           rankIdSnapshot: crew.presentRank ?? null,

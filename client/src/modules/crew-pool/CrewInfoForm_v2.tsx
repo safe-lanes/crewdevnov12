@@ -2580,7 +2580,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         statusData?.status === 'On Board' ? 'bg-orange-500' : 
                         statusData?.status === 'On Leave' ? 'bg-green-500' : 
                         statusData?.status === 'Inactive' ? 'bg-gray-500' :
-                        (statusData?.status as string) === 'Terminated' ? 'bg-[#fb923c]' :
+                        ((statusData?.status as string) === 'Terminated' || (statusData?.status as string) === 'Terminated Employment') ? 'bg-[#fb923c]' :
                         'bg-gray-400'
                       } text-white p-3 rounded text-center`} 
                       data-testid="status-badge"
@@ -8181,7 +8181,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         </DialogContent>
       </Dialog>
 
-      {/* Terminate Employment Dialog - UI only (no backend wiring) */}
+      {/* Terminate Employment Dialog */}
       <Dialog
         open={isTerminateOpen}
         onOpenChange={(open) => {
@@ -8278,7 +8278,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
           <DialogFooter className="flex !justify-between items-center sm:!justify-between">
             <div className="text-xs text-gray-500" data-testid="text-termination-submitted-by">
-              {`Submitted by: ${submittedByName || 'Unknown User'}, ${roleName || 'Unknown Position'} on ${formatDateFns(new Date(), 'dd/MM/yyyy')}`}
+              {submittedByName && roleName
+                ? `Submitted by: ${submittedByName}, ${roleName} on ${formatDateFns(new Date(), 'dd/MM/yyyy')}`
+                : `Submitted on ${formatDateFns(new Date(), 'dd/MM/yyyy')}`}
             </div>
             <Button
               className="h-8 px-6 bg-[#5dc86f] hover:bg-[#218838] text-white"

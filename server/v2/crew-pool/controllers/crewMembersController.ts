@@ -192,7 +192,29 @@ export const crewMembersController = {
   async terminateEmployment(req: Request, res: Response) {
     try {
       const { crewUuid } = req.params;
-      const result = await crewMembersService.terminateEmployment(crewUuid, req.body || {});
+      const { z } = await import("zod");
+      const bodySchema = z.object({
+        terminationDate: z.string().nullable().optional(),
+        initiatedBy: z.string().min(1),
+        reason: z.string().min(1),
+        category: z.string().min(1),
+        notForHire: z.boolean().optional().default(false),
+        comments: z.string().nullable().optional(),
+        // Display-only strings; the trusted submitter identity is taken from req.user.
+        submittedByName: z.string().nullable().optional(),
+        submittedByRole: z.string().nullable().optional(),
+      });
+      const parsed = bodySchema.safeParse(req.body || {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid termination payload", issues: parsed.error.issues });
+      }
+      const submittedByUserId = req.user?.id != null ? String(req.user.id) : null;
+      const result = await crewMembersService.terminateEmployment(crewUuid, {
+        ...parsed.data,
+        submittedByUserId,
+        // auditUserUuid is the same authenticated user; never trust client-supplied value here.
+        auditUserUuid: submittedByUserId,
+      });
       res.status(201).json(result);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

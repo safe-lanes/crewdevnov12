@@ -381,7 +381,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         } else if (status === 'Inactive') {
                             bgColor = '#e5e7eb';
                             textColor = '#4b5563';
-                        } else if (status === 'Terminated' || status === 'Terminated Employment') {
+                        } else if (
+                            status === 'Terminated' ||
+                            status === 'Terminated Employment' ||
+                            status === 'Terminated Employment - NFR' ||
+                            status === 'Terminated - NFR'
+                        ) {
                             bgColor = '#fed7aa';
                             textColor = '#9a3412';
                         }
@@ -1067,77 +1072,10 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             notForHire: !!c.notForHire,
             crewPool: c.crewPool || '',
             manningAgent: c.manningAgent || '',
-            status: c.notForHire ? 'Terminated - NFR' : 'Terminated',
+            status: c.notForHire ? 'Terminated Employment - NFR' : 'Terminated Employment',
             crewUuid: c.crewUuid,
         }));
     }, [terminatedCrewData]);
-
-    const MOCK_TERMINATED_CREW = useMemo(() => [
-        {
-            id: 'term-001', employeeId: 'A000123', firstName: 'hngf', familyName: 'cre',
-            dob: '2026-01-01', age: 0, presentRank: 'Chief Officer', nationality: 'AMERICAN SAMOA',
-            lastVessel: 'Vessel 7', signOffDate: '2026-03-04',
-            terminationDate: '2026-03-04', terminationInitiatedBy: 'Company',
-            terminationReason: 'Poor Performance', notForHire: true,
-            crewPool: 'Pool A', manningAgent: '',
-        },
-        {
-            id: 'term-002', employeeId: 'A000456', firstName: 'Dattatray', familyName: 'Khade',
-            dob: '1990-01-14', age: 36, presentRank: 'Chief Officer', nationality: 'ALGERIA',
-            lastVessel: 'Vessel 7', signOffDate: '2026-04-06',
-            terminationDate: '2026-04-06', terminationInitiatedBy: 'Crew Member (resignation)',
-            terminationReason: 'Resignation', notForHire: false,
-            crewPool: 'Pool B', manningAgent: '',
-        },
-        {
-            id: 'term-003', employeeId: 'A000789', firstName: 'test', familyName: 'Naveel',
-            dob: '', age: null, presentRank: '', nationality: '',
-            lastVessel: '', signOffDate: '',
-            terminationDate: '2026-02-18', terminationInitiatedBy: 'Company',
-            terminationReason: 'Disciplinary', notForHire: true,
-            crewPool: 'Pool A', manningAgent: '',
-        },
-        {
-            id: 'term-004', employeeId: 'A000234', firstName: '4unhtn', familyName: 'yhu6j',
-            dob: '2025-09-18', age: 0, presentRank: '', nationality: 'ANGUILLA',
-            lastVessel: '', signOffDate: '',
-            terminationDate: '2025-12-01', terminationInitiatedBy: 'Crew Member (resignation)',
-            terminationReason: 'Resignation', notForHire: false,
-            crewPool: 'Pool B', manningAgent: '',
-        },
-        {
-            id: 'term-005', employeeId: 'A000345', firstName: 'TestName', familyName: 'gdfg',
-            dob: '', age: null, presentRank: '', nationality: '',
-            lastVessel: '', signOffDate: '',
-            terminationDate: '2025-11-12', terminationInitiatedBy: 'Company',
-            terminationReason: 'No suitable vessel', notForHire: false,
-            crewPool: 'Pool A', manningAgent: '',
-        },
-        {
-            id: 'term-006', employeeId: 'A000567', firstName: 'Ghazi', familyName: 'Test',
-            dob: '', age: null, presentRank: 'Electrical Officer', nationality: 'ANGOLA',
-            lastVessel: '', signOffDate: '',
-            terminationDate: '2025-10-04', terminationInitiatedBy: 'Company',
-            terminationReason: 'Unresponsive', notForHire: true,
-            crewPool: 'Pool C', manningAgent: '',
-        },
-        {
-            id: 'term-007', employeeId: 'A000678', firstName: 'E2E', familyName: 'User',
-            dob: '', age: null, presentRank: '', nationality: '',
-            lastVessel: '', signOffDate: '',
-            terminationDate: '2025-09-21', terminationInitiatedBy: 'Crew Member (resignation)',
-            terminationReason: 'Resignation', notForHire: false,
-            crewPool: 'Pool B', manningAgent: '',
-        },
-        {
-            id: 'term-008', employeeId: 'A000890', firstName: 'ki', familyName: 'kh',
-            dob: '2025-06-09', age: 21, presentRank: '', nationality: '',
-            lastVessel: '', signOffDate: '',
-            terminationDate: '2025-08-15', terminationInitiatedBy: 'Company',
-            terminationReason: 'Other', notForHire: false,
-            crewPool: 'Pool C', manningAgent: '',
-        },
-    ].map(r => ({ ...r, status: r.notForHire ? 'Terminated - NFR' : 'Terminated' })), []);
 
     const [terminatedFilters, setTerminatedFilters] = useState({
         searchName: "",
@@ -1199,12 +1137,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     wrapText: true, autoHeight: true,
                     cellRenderer: (params: any) => {
                         const isNfr = !!params.data?.notForHire;
-                        const label = isNfr ? 'Terminated - NFR' : 'Terminated';
+                        const label = isNfr ? 'Terminated Employment - NFR' : 'Terminated Employment';
                         return (
                             <span style={{
                                 display: 'inline-block', padding: '4px 10px', borderRadius: '4px',
                                 fontSize: '11px', fontWeight: 500,
-                                backgroundColor: '#f47171', color: '#ffffff',
+                                backgroundColor: '#fed7aa', color: '#9a3412',
                                 lineHeight: '1.2', whiteSpace: 'normal',
                             }}>
                                 {label}

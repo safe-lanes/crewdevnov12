@@ -112,8 +112,9 @@ export function useTerminateEmploymentV2() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ crewUuid, payload }: { crewUuid: string; payload: any }) => {
-      const auditUserUuid = getCrewUserId();
-      return crewPoolApiV2.terminateEmployment(crewUuid, { ...payload, auditUserUuid });
+      // Submitter identity is derived server-side from the authenticated session.
+      // Only display strings (name/role) are sent from the client.
+      return crewPoolApiV2.terminateEmployment(crewUuid, payload);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
