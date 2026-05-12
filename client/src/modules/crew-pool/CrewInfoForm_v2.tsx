@@ -159,6 +159,27 @@ interface CrewInfoFormProps {
   onCrewMemberChange?: (crewMember: CrewMember) => void;
 }
 
+type TerminationInitiatedBy = '' | 'company' | 'crew_member';
+type TerminationCategory = '' | 'general' | 'UT' | 'BT';
+
+interface TerminationDraft {
+  terminationDate: string;
+  initiatedBy: TerminationInitiatedBy;
+  reason: string;
+  category: TerminationCategory;
+  notForHire: boolean;
+  comments: string;
+}
+
+interface TerminationPayload {
+  terminationDate: string;
+  initiatedBy: Exclude<TerminationInitiatedBy, ''>;
+  reason: string;
+  category: Exclude<TerminationCategory, ''>;
+  notForHire: boolean;
+  comments: string;
+}
+
 interface FormData {
   // A1.1 General Particulars
   firstName: string;
@@ -588,14 +609,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [isStatusEditOpen, setIsStatusEditOpen] = useState(false);
   const [isTerminateOpen, setIsTerminateOpen] = useState(false);
-  const initialTerminationDraft = useMemo(() => {
+  const initialTerminationDraft = useMemo<TerminationDraft>(() => {
     const t = new Date();
     const yyyy = t.getFullYear();
     const mm = String(t.getMonth() + 1).padStart(2, '0');
     const dd = String(t.getDate()).padStart(2, '0');
-    return { date: `${yyyy}-${mm}-${dd}`, initiatedBy: '', reason: '', category: '', notForHire: false, comments: '' };
+    return {
+      terminationDate: `${yyyy}-${mm}-${dd}`,
+      initiatedBy: '',
+      reason: '',
+      category: '',
+      notForHire: false,
+      comments: '',
+    };
   }, []);
-  const [terminationDraft, setTerminationDraft] = useState(initialTerminationDraft);
+  const [terminationDraft, setTerminationDraft] = useState<TerminationDraft>(initialTerminationDraft);
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
@@ -643,6 +671,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
   const { canView, canEdit, permissions, roleName, userId } = usePermissions();
+
+  useEffect(() => {
+    if (isTerminateOpen && (!userId || !roleName)) {
+      console.warn('[Terminate Employment] Submitted-by falling back to "Unknown" — userId/roleName not resolved', { userId, roleName });
+    }
+  }, [isTerminateOpen, userId, roleName]);
 
   const sectionMenuMap: Record<string, string | null> = {
     A: 'CP Dashboard',
@@ -8127,8 +8161,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <div>
                 <Label className="text-xs text-gray-600">Termination Date</Label>
                 <FormattedDateInput
-                  value={terminationDraft.date}
-                  onChange={(e) => setTerminationDraft(prev => ({ ...prev, date: e.target.value }))}
+                  value={terminationDraft.terminationDate}
+                  onChange={(e) => setTerminationDraft(prev => ({ ...prev, terminationDate: e.target.value }))}
                   className="mt-1"
                   data-testid="input-termination-date"
                 />
@@ -8137,14 +8171,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <Label className="text-xs text-gray-600">Termination Initiated by</Label>
                 <Select
                   value={terminationDraft.initiatedBy}
-                  onValueChange={(value) => setTerminationDraft(prev => ({ ...prev, initiatedBy: value }))}
+                  onValueChange={(value) => setTerminationDraft(prev => ({ ...prev, initiatedBy: value as TerminationInitiatedBy }))}
                 >
                   <SelectTrigger className="mt-1" data-testid="select-termination-initiated-by">
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Company">Company</SelectItem>
-                    <SelectItem value="Crew Member (resignation)">Crew Member (resignation)</SelectItem>
+                    <SelectItem value="company">Company</SelectItem>
+                    <SelectItem value="crew_member">Crew Member (resignation)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -8171,15 +8205,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <Label className="text-xs text-gray-600">Termination Category</Label>
                 <Select
                   value={terminationDraft.category}
-                  onValueChange={(value) => setTerminationDraft(prev => ({ ...prev, category: value }))}
+                  onValueChange={(value) => setTerminationDraft(prev => ({ ...prev, category: value as TerminationCategory }))}
                 >
                   <SelectTrigger className="mt-1" data-testid="select-termination-category">
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="General">General</SelectItem>
-                    <SelectItem value="Unavoidable Termination (UT)">Unavoidable Termination (UT)</SelectItem>
-                    <SelectItem value="Beneficial Termination (BT)">Beneficial Termination (BT)</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                    <SelectItem value="UT">Unavoidable Termination (UT)</SelectItem>
+                    <SelectItem value="BT">Beneficial Termination (BT)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -8213,6 +8247,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               className="h-8 px-6 bg-[#5dc86f] hover:bg-[#218838] text-white"
               disabled={!terminationDraft.initiatedBy || !terminationDraft.reason || !terminationDraft.category}
               onClick={() => {
+                if (!terminationDraft.initiatedBy || !terminationDraft.reason || !terminationDraft.category) {
+                  return;
+                }
+                const payload: TerminationPayload = {
+                  terminationDate: terminationDraft.terminationDate,
+                  initiatedBy: terminationDraft.initiatedBy,
+                  reason: terminationDraft.reason,
+                  category: terminationDraft.category,
+                  notForHire: terminationDraft.notForHire,
+                  comments: terminationDraft.comments,
+                };
+                if (!userId || !roleName) {
+                  console.warn('[Terminate Employment] Submitting without resolved user/role', { userId, roleName });
+                }
+                console.debug('[Terminate Employment] payload (UI only, backend pending)', payload);
                 toast({
                   title: "Termination saved (UI only)",
                   description: "Backend wiring pending.",
