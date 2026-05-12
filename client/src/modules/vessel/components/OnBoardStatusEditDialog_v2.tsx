@@ -166,6 +166,12 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         }
     }, [open, planningData, form]);
 
+    // Takeover is a Secondary-only operation (Primary only hands over).
+    // Single-crew rows are always crewStatus === 'primary' (see schema default
+    // + service insert paths), so this single check also covers the
+    // "only one crew onboard" scenario.
+    const isTakeoverApplicable = planningData?.crewStatus === "secondary";
+
     const watchedReliefStatus = form.watch('reliefStatus');
     const watchedContractPeriod = form.watch('contractPeriodMonths');
     
@@ -476,65 +482,69 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             </div>
                         </div>
 
-                        <FormField
-                            control={form.control}
-                            name="takeOverDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Take Over Date</FormLabel>
-                                        <Popover open={takeOverDateOpen} onOpenChange={setTakeOverDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className="w-full justify-start text-left font-normal"
-                                                        data-testid="button-take-over-date"
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDate(field.value) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setTakeOverDateOpen(false);
-                                                        }
-                                                    }}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="takeOverConfirmation"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Take Over Confirmation</FormLabel>
-                                        <FormControl>
-                                            <div className="flex items-center">
-                                                <Checkbox 
-                                                    checked={field.value || false}
-                                                    onCheckedChange={field.onChange}
-                                                    data-testid="checkbox-take-over-confirmation"
-                                                />
+                        {isTakeoverApplicable && (
+                            <>
+                                <FormField
+                                    control={form.control}
+                                    name="takeOverDate"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                                <FormLabel className="text-sm text-gray-700">Take Over Date</FormLabel>
+                                                <Popover open={takeOverDateOpen} onOpenChange={setTakeOverDateOpen}>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button
+                                                                variant="outline"
+                                                                className="w-full justify-start text-left font-normal"
+                                                                data-testid="button-take-over-date"
+                                                            >
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                        <Calendar
+                                                            mode="single"
+                                                            selected={field.value ? parseDate(field.value) : undefined}
+                                                            onSelect={(date) => {
+                                                                if (date) {
+                                                                    field.onChange(format(date, 'yyyy-MM-dd'));
+                                                                    setTakeOverDateOpen(false);
+                                                                }
+                                                            }}
+                                                            initialFocus
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
                                             </div>
-                                        </FormControl>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="takeOverConfirmation"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                                <FormLabel className="text-sm text-gray-700">Take Over Confirmation</FormLabel>
+                                                <FormControl>
+                                                    <div className="flex items-center">
+                                                        <Checkbox 
+                                                            checked={field.value || false}
+                                                            onCheckedChange={field.onChange}
+                                                            data-testid="checkbox-take-over-confirmation"
+                                                        />
+                                                    </div>
+                                                </FormControl>
+                                            </div>
+                                        </FormItem>
+                                    )}
+                                />
+                            </>
+                        )}
 
                         <div className="border border-[#16569e] rounded-md p-4 space-y-4">
                             <FormField
