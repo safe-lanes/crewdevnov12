@@ -120,7 +120,9 @@ export function useTerminateEmploymentV2() {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid, 'full-profile'] });
-      // Dashboard widgets (counts/lists) that aggregate crew status.
+      // Per-crew dashboard cache (exact key used by crew dashboard widgets).
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', variables.crewUuid, 'dashboard'] });
+      // Aggregated dashboard widgets that count crew by status.
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
     },

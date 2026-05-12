@@ -224,12 +224,26 @@ export const crewMembersController = {
         return res.status(400).json({ error: "Invalid termination payload", issues: parsed.error.issues });
       }
       const submittedByUserId = req.user?.id != null ? String(req.user.id) : null;
-      // Capture role from the trusted JWT claim. Display name has no
-      // server-side source in this codebase (no user-directory table keyed
-      // by JWT id), so we record the user id as the canonical identifier
-      // and let read-side resolve the human-readable name later.
+      // Capture role from the trusted JWT claim. Display name is resolved
+      // server-side from the `users` table by JWT id so saved audit records
+      // reflect the real authenticated user (never trusted from client).
       const submittedByRole = req.user?.userType ?? null;
-      const submittedByName = submittedByUserId != null ? `User #${submittedByUserId}` : null;
+      let submittedByName: string | null = null;
+      if (req.user?.id != null) {
+        try {
+          const { db } = await import("../../../db");
+          const { users } = await import("../../../../shared/schema");
+          const { eq } = await import("drizzle-orm");
+          const rows = await db
+            .select({ username: users.username })
+            .from(users)
+            .where(eq(users.id, req.user.id))
+            .limit(1);
+          submittedByName = rows[0]?.username ?? null;
+        } catch {
+          submittedByName = null;
+        }
+      }
       const result = await crewMembersService.terminateEmployment(crewUuid, {
         ...parsed.data,
         submittedByUserId,
