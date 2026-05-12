@@ -199,6 +199,19 @@ export const Retention = (): JSX.Element => {
   const [selectedPools, setSelectedPools] = useState<string[]>([]);
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
 
+  const hasActiveFilters =
+    periodValue !== undefined ||
+    selectedRanks.length > 0 ||
+    selectedPools.length > 0 ||
+    selectedAgents.length > 0;
+
+  const clearFilters = () => {
+    setPeriodValue(undefined);
+    setSelectedRanks([]);
+    setSelectedPools([]);
+    setSelectedAgents([]);
+  };
+
   const { rankOptions } = useCompanyRanks();
   const { data: crewPoolsData } = useCrewPoolsV2();
   const { data: manningAgentsData } = useManningAgentsV2();
@@ -312,6 +325,16 @@ export const Retention = (): JSX.Element => {
           onChange={setSelectedAgents}
           testId="filter-manning-agent"
         />
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={!hasActiveFilters}
+          onClick={clearFilters}
+          data-testid="button-clear-retention-filters"
+        >
+          <X className="mr-1 h-4 w-4" />
+          Clear
+        </Button>
       </div>
 
       {/* Calculated rate headline */}
