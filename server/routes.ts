@@ -12,6 +12,7 @@ import mastersV2Routes from "./v2/masters/routes";
 import promotionsV2Routes from "./v2/promotions/routes";
 import appraisalsV2Routes from "./v2/appraisals/routes";
 import trainingNeedsV2Routes from "./v2/training-needs/routes";
+import trainingRetentionV2Routes from "./v2/training-retention/routes";
 import reportsV2Routes from "./v2/reports/routes";
 import { setupSwagger } from "./swagger";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
@@ -99,6 +100,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount v2 training needs routes (Training & Ret. > Training)
   app.use("/api/v2/training-needs", trainingNeedsV2Routes);
+
+  // Mount v2 training retention routes (Training & Ret. > Retention)
+  app.use("/api/v2/training-retention", trainingRetentionV2Routes);
 
   // Mount v2 reports routes (Reports Generator framework)
   app.use("/api/v2/reports", reportsV2Routes);

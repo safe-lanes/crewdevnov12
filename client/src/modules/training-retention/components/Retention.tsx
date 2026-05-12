@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Check, ChevronDown, X } from "lucide-react";
+import { Check, ChevronDown, Info, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -11,6 +12,13 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PeriodFilter, type PeriodFilterValue } from "@/components/filters/PeriodFilter";
 import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import { useCrewPoolsV2, useManningAgentsV2 } from "@/hooks/v2/useMasterDataV2";
@@ -121,10 +129,8 @@ const ChipMultiSelect = ({
 };
 
 type FormulaRow = {
-  criteria: string;
+  criteria: "S" | "UT" | "BT" | "AE";
   description: string;
-  value: string;
-  formula?: boolean;
 };
 
 const FORMULA_ROWS: FormulaRow[] = [
@@ -132,25 +138,60 @@ const FORMULA_ROWS: FormulaRow[] = [
     criteria: "S",
     description:
       "Total Number of terminations from whatever cause (In effect this means the total number employees that have left the company for whatever reason)",
-    value: "100",
   },
   {
     criteria: "UT",
     description: "Unavoidable Terminations (i.e., retirements or long-term illness)",
-    value: "20",
   },
   {
     criteria: "BT",
     description:
       "Beneficial Terminations (i.e., sometimes those staff that do leave provide benefit to the company by virtue of leaving, for example under performers)",
-    value: "10",
   },
   {
     criteria: "AE",
     description: "The average number of employees working for the company during the Selection period",
-    value: "2000",
   },
 ];
+
+interface RetentionResponse {
+  S: number;
+  UT: number;
+  BT: number;
+  AE: number;
+  retentionRate: number | null;
+}
+
+// Convert PeriodFilterValue → inclusive [from, to] ISO date strings.
+function periodToRange(p: PeriodFilterValue | undefined): { from: string; to: string } {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const today = new Date();
+  if (!p) {
+    const y = today.getFullYear();
+    return { from: `${y}-01-01`, to: `${y}-12-31` };
+  }
+  if (p.mode === "year" && p.year) {
+    return { from: `${p.year}-01-01`, to: `${p.year}-12-31` };
+  }
+  if (p.mode === "year-quarter" && p.year && p.quarter) {
+    const startMonth = (p.quarter - 1) * 3; // 0,3,6,9
+    const start = new Date(p.year, startMonth, 1);
+    const end = new Date(p.year, startMonth + 3, 0);
+    return { from: fmt(start), to: fmt(end) };
+  }
+  if (p.mode === "year-month" && p.year && p.month) {
+    const start = new Date(p.year, p.month - 1, 1);
+    const end = new Date(p.year, p.month, 0);
+    return { from: fmt(start), to: fmt(end) };
+  }
+  if (p.mode === "date-range" && p.dateFrom && p.dateTo) {
+    return { from: fmt(p.dateFrom), to: fmt(p.dateTo) };
+  }
+  const y = today.getFullYear();
+  return { from: `${y}-01-01`, to: `${y}-12-31` };
+}
 
 export const Retention = (): JSX.Element => {
   const [periodValue, setPeriodValue] = useState<PeriodFilterValue | undefined>(undefined);
@@ -173,14 +214,69 @@ export const Retention = (): JSX.Element => {
     [crewPoolsData]
   );
 
-  const agentList = useMemo(
+  // Manning agents: keep `name` only as the matching key for snapshot lookup,
+  // and a separate display label (with country) for the chip.
+  const agentItems = useMemo(
     () =>
       ((manningAgentsData || []) as Array<{ name?: string; country?: string; isDeleted?: boolean }>)
         .filter((a) => a.name && !a.isDeleted)
-        .map((a) => (a.country ? `${a.name} (${a.country})` : (a.name as string)))
-        .sort(),
+        .map((a) => ({
+          value: a.name as string,
+          label: a.country ? `${a.name} (${a.country})` : (a.name as string),
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
     [manningAgentsData]
   );
+  const agentLabelList = useMemo(() => agentItems.map((a) => a.label), [agentItems]);
+  const agentLabelToValue = useMemo(() => {
+    const m = new Map<string, string>();
+    agentItems.forEach((a) => m.set(a.label, a.value));
+    return m;
+  }, [agentItems]);
+
+  const { from: periodFrom, to: periodTo } = useMemo(() => periodToRange(periodValue), [periodValue]);
+
+  const queryKey = useMemo(
+    () => [
+      "/api/v2/training-retention/retention",
+      { periodFrom, periodTo, ranks: selectedRanks, pools: selectedPools, agents: selectedAgents },
+    ],
+    [periodFrom, periodTo, selectedRanks, selectedPools, selectedAgents]
+  );
+
+  const retentionQuery = useQuery<RetentionResponse>({
+    queryKey,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      params.set("periodFrom", periodFrom);
+      params.set("periodTo", periodTo);
+      selectedRanks.forEach((r) => params.append("rankIds", r));
+      selectedPools.forEach((p) => params.append("poolIds", p));
+      selectedAgents.forEach((labelOrValue) => {
+        const v = agentLabelToValue.get(labelOrValue) ?? labelOrValue;
+        params.append("agentIds", v);
+      });
+      const res = await fetch(`/api/v2/training-retention/retention?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to load retention metrics");
+      return res.json();
+    },
+  });
+
+  const isLoading = retentionQuery.isLoading || retentionQuery.isFetching;
+  const data = retentionQuery.data;
+  const aeIsZero = !!data && data.AE === 0;
+
+  const valueFor = (criteria: FormulaRow["criteria"]): string => {
+    if (isLoading || !data) return "…";
+    return String(data[criteria] ?? 0);
+  };
+
+  const headlineValue: string = (() => {
+    if (isLoading) return "…";
+    if (!data) return "—";
+    if (data.AE === 0 || data.retentionRate === null) return "—";
+    return `${data.retentionRate.toFixed(1)}%`;
+  })();
 
   return (
     <div className="flex flex-col h-full" data-testid="page-retention">
@@ -210,7 +306,7 @@ export const Retention = (): JSX.Element => {
         />
         <ChipMultiSelect
           placeholder="Manning Agent"
-          options={agentList}
+          options={agentLabelList}
           selected={selectedAgents}
           onChange={setSelectedAgents}
           testId="filter-manning-agent"
@@ -225,13 +321,44 @@ export const Retention = (): JSX.Element => {
         >
           Calculated Retention Rate:
         </span>
-        <span
-          className="text-2xl font-bold text-[#16569e]"
-          data-testid="text-calculated-retention-value"
-        >
-          96%
-        </span>
+        {isLoading ? (
+          <Skeleton className="h-7 w-20" data-testid="skeleton-retention-headline" />
+        ) : (
+          <span
+            className="text-2xl font-bold text-[#16569e]"
+            data-testid="text-calculated-retention-value"
+          >
+            {headlineValue}
+          </span>
+        )}
+        <TooltipProvider delayDuration={150}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="text-[#16569e] hover:opacity-80"
+                aria-label="About S"
+                data-testid="tooltip-trigger-retention-info"
+              >
+                <Info className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs text-xs" data-testid="tooltip-retention-info">
+              S includes all terminations in the period — UT (Unavoidable) + BT
+              (Beneficial) + General — for the filtered cohort.
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
+
+      {aeIsZero && !isLoading && (
+        <div
+          className="mb-4 rounded-md border border-dashed border-[#e1e8ed] bg-[#f8fafc] px-4 py-3 text-sm text-[#475569]"
+          data-testid="empty-retention-no-cohort"
+        >
+          No data for the selected filters.
+        </div>
+      )}
 
       {/* Definitions / formula table */}
       <div className="overflow-hidden rounded-md border border-[#e1e8ed] bg-white">
@@ -258,7 +385,11 @@ export const Retention = (): JSX.Element => {
                   className="px-4 py-3 text-right font-semibold text-[#0f172a]"
                   data-testid={`value-retention-${row.criteria}`}
                 >
-                  {row.value}
+                  {isLoading ? (
+                    <Skeleton className="ml-auto h-4 w-10" />
+                  ) : (
+                    valueFor(row.criteria)
+                  )}
                 </td>
               </tr>
             ))}
