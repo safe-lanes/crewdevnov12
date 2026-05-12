@@ -14,7 +14,7 @@ import { crewSeaServiceService } from "./crewSeaServiceService";
 import { addMonths, format } from "date-fns";
 
 export interface CrewDashboardStatus {
-  status: "On Board" | "On Leave" | "Inactive";
+  status: "On Board" | "On Leave" | "Inactive" | "Terminated" | "Terminated - NFR";
   isActive: boolean;
   vessel: string | null;
   joinedDate: string | null;
@@ -150,11 +150,14 @@ export const dashboardService = {
     const primaryAssignment = assignments.find((a: any) => a.isCurrent) || assignments[0];
 
     const isActive = crew.isActive !== false;
-    const calculatedStatus: "On Board" | "On Leave" | "Inactive" = isActive
-      ? hasActiveAssignment
-        ? "On Board"
-        : "On Leave"
-      : "Inactive";
+    const isTerminated = crew.status === "Terminated";
+    const calculatedStatus: CrewDashboardStatus["status"] = isTerminated
+      ? (crew.notForHire ? "Terminated - NFR" : "Terminated")
+      : isActive
+        ? hasActiveAssignment
+          ? "On Board"
+          : "On Leave"
+        : "Inactive";
 
     const serviceTimeline = this.buildServiceTimeline(companySeaService, externalSeaService, vesselPlanning, crewUuid);
 
@@ -238,6 +241,7 @@ export const dashboardService = {
         presentRank: crewMembersV2.presentRank,
         isActive: crewMembersV2.isActive,
         status: crewMembersV2.status,
+        notForHire: crewMembersV2.notForHire,
         nextAvailability: crewMembersV2.nextAvailability,
         nationalityName: masterNationalities.nationality,
       })
