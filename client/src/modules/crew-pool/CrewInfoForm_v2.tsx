@@ -596,6 +596,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Data mappings with proper nullish coalescing
   const statusData = dashboardData?.status;
+  const isTerminatedStatus = (s: string | undefined | null): boolean =>
+    s === 'Terminated' ||
+    s === 'Terminated - NFR' ||
+    s === 'Terminated Employment' ||
+    s === 'Terminated Employment - NFR';
   const experienceData = dashboardData?.experience;
   const shipTypesData = dashboardData?.shipTypes;
   const rankExperienceData = dashboardData?.rankExperience;
@@ -2589,12 +2594,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-status">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Status</h3>
-                {canEditSection('A') && (
+                {canEditSection('A') && !isDashboardLoading && !isTerminatedStatus(statusData?.status) && (
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  onClick={() => setIsStatusEditOpen(true)}
+                  onClick={() => {
+                    if (isTerminatedStatus(statusData?.status)) return;
+                    setIsStatusEditOpen(true);
+                  }}
                   data-testid="button-edit-status"
                 >
                   <Pencil className="h-3 w-3" />
@@ -2628,12 +2636,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         statusData?.status === 'On Board' ? 'bg-orange-500' : 
                         statusData?.status === 'On Leave' ? 'bg-green-500' : 
                         statusData?.status === 'Inactive' ? 'bg-gray-500' :
-                        (
-                          (statusData?.status as string) === 'Terminated' ||
-                          (statusData?.status as string) === 'Terminated - NFR' ||
-                          (statusData?.status as string) === 'Terminated Employment' ||
-                          (statusData?.status as string) === 'Terminated Employment - NFR'
-                        ) ? 'bg-[#ef4444]' :
+                        isTerminatedStatus(statusData?.status) ? 'bg-[#ef4444]' :
                         'bg-gray-400'
                       } text-white p-3 rounded text-center`} 
                       data-testid="status-badge"
