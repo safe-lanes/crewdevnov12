@@ -25,7 +25,7 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useNationalitiesV2, useVesselsV2, useCrewPoolsV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
-import { useCrewListV2, useDeleteCrewV2 } from './hooks/useCrewPoolV2';
+import { useCrewListV2, useDeleteCrewV2, useTerminatedCrewListV2 } from './hooks/useCrewPoolV2';
 
 const formatCompactDate = (value: any): string => {
     if (!value) return '';
@@ -381,6 +381,9 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         } else if (status === 'Inactive') {
                             bgColor = '#e5e7eb';
                             textColor = '#4b5563';
+                        } else if (status === 'Terminated' || status === 'Terminated Employment') {
+                            bgColor = '#fed7aa';
+                            textColor = '#9a3412';
                         }
                         
                         return (
@@ -1043,12 +1046,32 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     };
 
     // ============================================================
-    // TERMINATED SCREEN — UI-only with mock data.
-    // TODO: remove MOCK_TERMINATED_CREW and switch terminatedRowData
-    // to real backend results when termination persistence lands
-    // (proposed task #16). The columns, filters, and renderers below
-    // can stay as-is.
+    // TERMINATED SCREEN — backed by real crew_terminations data.
     // ============================================================
+    const { data: terminatedCrewData = [] } = useTerminatedCrewListV2();
+    const realTerminatedRows = useMemo(() => {
+        return (terminatedCrewData || []).map((c: any) => ({
+            id: c.crewUuid || c.id,
+            employeeId: c.employeeId || c.empNo || '',
+            firstName: c.firstName || '',
+            familyName: c.familyName || '',
+            dob: c.dob || c.dateOfBirth || '',
+            age: c.age ?? null,
+            presentRank: c.presentRank || '',
+            nationality: c.nationality || '',
+            lastVessel: c.lastVessel || '',
+            signOffDate: c.signOffDate || '',
+            terminationDate: c.lastTerminationDate || '',
+            terminationInitiatedBy: c.terminationInitiatedBy || '',
+            terminationReason: c.lastTerminationReason || '',
+            notForHire: !!c.notForHire,
+            crewPool: c.crewPool || '',
+            manningAgent: c.manningAgent || '',
+            status: c.notForHire ? 'Terminated - NFR' : 'Terminated',
+            crewUuid: c.crewUuid,
+        }));
+    }, [terminatedCrewData]);
+
     const MOCK_TERMINATED_CREW = useMemo(() => [
         {
             id: 'term-001', employeeId: 'A000123', firstName: 'hngf', familyName: 'cre',
@@ -1136,7 +1159,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     }, [isManningAgentUser, userManningAgent]);
 
     const terminatedRowData = useMemo(() => {
-        return MOCK_TERMINATED_CREW.filter((row: any) => {
+        return realTerminatedRows.filter((row: any) => {
             const fullName = `${row.firstName || ''} ${row.familyName || ''}`.toLowerCase();
             const matchesName = terminatedFilters.searchName === "" || fullName.includes(terminatedFilters.searchName.toLowerCase());
             const matchesVessel = terminatedFilters.vessel === "" || row.lastVessel === terminatedFilters.vessel;
@@ -1150,7 +1173,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             else if (terminatedFilters.nfr === "excluding-nfr") matchesNfr = !row.notForHire;
             return matchesName && matchesVessel && matchesRank && matchesNationality && matchesPool && matchesManningAgent && matchesTerminationBy && matchesNfr;
         });
-    }, [MOCK_TERMINATED_CREW, terminatedFilters]);
+    }, [realTerminatedRows, terminatedFilters]);
 
     const terminatedColumnDefs: ColDef[] = useMemo(() => [
         {

@@ -36,7 +36,11 @@ export const crewMembersController = {
 
   async getAllWithDetails(req: Request, res: Response) {
     try {
-      const { rank, nationality, status, search, vesselUuid, limit, offset } = req.query;
+      const { rank, nationality, status, search, vesselUuid, limit, offset, view } = req.query;
+      if (view === "terminated") {
+        const data = await crewMembersService.getTerminated();
+        return res.json({ data, pagination: { total: data.length, limit: data.length, offset: 0, pages: 1, currentPage: 1 } });
+      }
       const result = await crewMembersService.getAllWithDetails({
         rank: rank as string | undefined,
         nationality: nationality as string | undefined,
@@ -182,6 +186,20 @@ export const crewMembersController = {
       }
       console.error("Error deleting crew:", error);
       res.status(500).json({ error: "Failed to delete crew member" });
+    }
+  },
+
+  async terminateEmployment(req: Request, res: Response) {
+    try {
+      const { crewUuid } = req.params;
+      const result = await crewMembersService.terminateEmployment(crewUuid, req.body || {});
+      res.status(201).json(result);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error terminating employment:", error);
+      res.status(500).json({ error: "Failed to terminate employment" });
     }
   },
 

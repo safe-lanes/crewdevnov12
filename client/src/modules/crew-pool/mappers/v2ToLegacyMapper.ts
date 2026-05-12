@@ -28,6 +28,13 @@ export interface LegacyCrewMember {
   assignmentReason: string;
   reason: string;
   manningAgent?: string;
+  // Termination mirror fields (populated for Terminated crew)
+  lastTerminationDate?: string;
+  lastTerminationReason?: string;
+  lastTerminationCategory?: string;
+  terminationInitiatedBy?: string;
+  notForHire?: boolean;
+  crewPool?: string;
 }
 
 function calculateAge(dob: string): string {
@@ -75,6 +82,12 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     assignmentReason: v2Crew.assignmentReason || '',
     reason: v2Crew.reason || '',
     manningAgent: v2Crew.manningAgentName || v2Crew.manningAgent || '',
+    lastTerminationDate: v2Crew.lastTerminationDate || '',
+    lastTerminationReason: v2Crew.lastTerminationReason || '',
+    lastTerminationCategory: v2Crew.lastTerminationCategory || '',
+    terminationInitiatedBy: v2Crew.terminationInitiatedBy || '',
+    notForHire: v2Crew.notForHire ?? false,
+    crewPool: v2Crew.crewPool || '',
   };
 }
 

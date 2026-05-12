@@ -35,6 +35,7 @@ router.patch("/crew/:crewUuid", crewMembersController.update);
 router.patch("/crew/:crewUuid/protected", crewMembersController.updateWithProtection);
 router.delete("/crew/:crewUuid", crewMembersController.delete);
 router.post("/crew/:crewUuid/unarchive", crewMembersController.unarchive);
+router.post("/crew/:crewUuid/terminations", crewMembersController.terminateEmployment);
 
 // ============================================
 // ASSIGNMENTS

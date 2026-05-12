@@ -25,6 +25,21 @@ export const crewPoolApiV2 = {
     return response.json();
   },
 
+  async getTerminatedCrewList(signal?: AbortSignal) {
+    const response = await fetch(`${V2_BASE}/crew/details?view=terminated`, { signal });
+    if (!response.ok) throw new Error('Failed to fetch terminated crew list');
+    return response.json();
+  },
+
+  async terminateEmployment(crewUuid: string, payload: any) {
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/terminations`, payload);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || error.error || 'Failed to terminate employment');
+    }
+    return response.json();
+  },
+
   async getCrewById(crewUuid: string) {
     const response = await fetch(`${V2_BASE}/crew/${crewUuid}`);
     if (!response.ok) throw new Error('Failed to fetch crew member');

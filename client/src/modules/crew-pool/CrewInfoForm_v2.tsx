@@ -84,7 +84,8 @@ import {
   useAddMedicalAttachmentV2,
   useRemoveMedicalAttachmentV2,
   useAddDoctorVisitAttachmentV2,
-  useRemoveDoctorVisitAttachmentV2
+  useRemoveDoctorVisitAttachmentV2,
+  useTerminateEmploymentV2
 } from './hooks/useCrewPoolV2';
 import type { LegacySeaService, LegacyPreJoiningMedical, LegacyDoctorVisit } from './mappers/v2ToLegacyMapper';
 import { 
@@ -7378,6 +7379,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   // V2 Update crew member mutation  
   const updateCrewMutationV2 = useUpdateCrewV2();
+  const terminateEmploymentMutationV2 = useTerminateEmploymentV2();
   
   // V2 Section save mutations
   const savePersonalDetailsMutationV2 = useSavePersonalDetailsV2();
@@ -8280,33 +8282,62 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </div>
             <Button
               className="h-8 px-6 bg-[#5dc86f] hover:bg-[#218838] text-white"
-              disabled={!terminationDraft.initiatedBy || !terminationDraft.reason || !terminationDraft.category}
-              onClick={() => {
+              disabled={
+                !terminationDraft.initiatedBy ||
+                !terminationDraft.reason ||
+                !terminationDraft.category ||
+                terminateEmploymentMutationV2.isPending
+              }
+              onClick={async () => {
                 if (!terminationDraft.initiatedBy || !terminationDraft.reason || !terminationDraft.category) {
                   return;
                 }
-                const payload: TerminationPayload = {
-                  terminationDate: terminationDraft.terminationDate,
-                  initiatedBy: terminationDraft.initiatedBy,
-                  reason: terminationDraft.reason,
-                  category: terminationDraft.category,
-                  notForHire: terminationDraft.notForHire,
-                  comments: terminationDraft.comments,
-                };
+                if (!crewUuid) {
+                  toast({
+                    title: "Cannot terminate",
+                    description: "Crew member must be saved before termination.",
+                    variant: "destructive",
+                    duration: 3000,
+                  });
+                  return;
+                }
                 if (!submittedByName || !roleName) {
                   console.warn('[Terminate Employment] Submitting without resolved name/role', { submittedByName, roleName, userId });
                 }
-                toast({
-                  title: "Termination saved (UI only)",
-                  description: "Backend wiring pending.",
-                  duration: 3000,
-                });
-                setIsTerminateOpen(false);
-                setTerminationDraft(initialTerminationDraft);
+                try {
+                  await terminateEmploymentMutationV2.mutateAsync({
+                    crewUuid: String(crewUuid),
+                    payload: {
+                      terminationDate: terminationDraft.terminationDate || null,
+                      initiatedBy: terminationDraft.initiatedBy,
+                      reason: terminationDraft.reason,
+                      category: terminationDraft.category,
+                      notForHire: terminationDraft.notForHire,
+                      comments: terminationDraft.comments || null,
+                      submittedByName: submittedByName || null,
+                      submittedByRole: roleName || null,
+                    },
+                  });
+                  toast({
+                    title: "Employment terminated",
+                    description: "Crew member moved to Terminated tab.",
+                    duration: 3000,
+                  });
+                  setIsTerminateOpen(false);
+                  setTerminationDraft(initialTerminationDraft);
+                  onClose();
+                } catch (err: any) {
+                  toast({
+                    title: "Failed to terminate employment",
+                    description: err?.message || "An unexpected error occurred.",
+                    variant: "destructive",
+                    duration: 4000,
+                  });
+                }
               }}
               data-testid="button-submit-termination"
             >
-              Submit
+              {terminateEmploymentMutationV2.isPending ? 'Submitting…' : 'Submit'}
             </Button>
           </DialogFooter>
         </DialogContent>

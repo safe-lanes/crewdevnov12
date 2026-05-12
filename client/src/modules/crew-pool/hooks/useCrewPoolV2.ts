@@ -96,6 +96,32 @@ export function useCrewListV2(params?: {
   });
 }
 
+export function useTerminatedCrewListV2() {
+  return useQuery({
+    queryKey: [V2_QUERY_KEY, 'crew', 'list', { view: 'terminated' }],
+    queryFn: async ({ signal }) => {
+      const response = await crewPoolApiV2.getTerminatedCrewList(signal);
+      const rawData = Array.isArray(response) ? response : (response.data || []);
+      return rawData.map(mapV2CrewToLegacy);
+    },
+    staleTime: V2_STALE_TIME,
+  });
+}
+
+export function useTerminateEmploymentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, payload }: { crewUuid: string; payload: any }) => {
+      const auditUserUuid = getCrewUserId();
+      return crewPoolApiV2.terminateEmployment(crewUuid, { ...payload, auditUserUuid });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
 export function useCrewByIdV2(crewUuid: string | null) {
   return useQuery({
     queryKey: [V2_QUERY_KEY, 'crew', crewUuid],
