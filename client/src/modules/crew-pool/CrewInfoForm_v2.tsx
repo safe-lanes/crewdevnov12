@@ -32,6 +32,7 @@ import { TravelDocumentSelectionDialog } from './TravelDocumentSelectionDialog';
 import { VisaSelectionDialog } from './VisaSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem, deepParseJson } from '@/lib/encryptionService';
 import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
@@ -672,11 +673,45 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   const { canView, canEdit, permissions, roleName, userId } = usePermissions();
 
-  useEffect(() => {
-    if (isTerminateOpen && (!userId || !roleName)) {
-      console.warn('[Terminate Employment] Submitted-by falling back to "Unknown" — userId/roleName not resolved', { userId, roleName });
+  const submittedByName = useMemo<string>(() => {
+    const extractStringValue = (val: any): string => {
+      if (!val) return '';
+      if (typeof val === 'string') return val;
+      if (typeof val === 'object') {
+        return val.name || val.userName || val.fullName || val.displayName || '';
+      }
+      return String(val);
+    };
+    try {
+      const rawProfile = getDecryptedLocalStorageItem('userProfile', true);
+      const profile = deepParseJson(rawProfile);
+      if (profile && typeof profile === 'object') {
+        const first = profile.firstname || profile.firstName || '';
+        const last = profile.lastname || profile.lastName || '';
+        const composed = `${first} ${last}`.trim();
+        if (composed) return composed;
+        const direct = profile.fullName || profile.fullname || profile.displayName || profile.name || profile.userName;
+        if (direct) return String(direct);
+      }
+      const decryptedSession = getDecryptedSessionStorageItem('crewUserName', true);
+      const fromSession = extractStringValue(decryptedSession);
+      if (fromSession) return fromSession;
+      const plainSession = sessionStorage.getItem('crewUserName');
+      if (plainSession) return plainSession;
+      const decryptedLS = getDecryptedLocalStorageItem('userName', true);
+      const fromLS = extractStringValue(decryptedLS);
+      if (fromLS) return fromLS;
+      return localStorage.getItem('userName') || '';
+    } catch {
+      return sessionStorage.getItem('crewUserName') || localStorage.getItem('userName') || '';
     }
-  }, [isTerminateOpen, userId, roleName]);
+  }, [isTerminateOpen]);
+
+  useEffect(() => {
+    if (isTerminateOpen && (!submittedByName || !roleName)) {
+      console.warn('[Terminate Employment] Submitted-by falling back to "Unknown" — display name or role not resolved', { submittedByName, roleName, userId });
+    }
+  }, [isTerminateOpen, submittedByName, roleName, userId]);
 
   const sectionMenuMap: Record<string, string | null> = {
     A: 'CP Dashboard',
@@ -8241,7 +8276,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
           <DialogFooter className="flex !justify-between items-center sm:!justify-between">
             <div className="text-xs text-gray-500" data-testid="text-termination-submitted-by">
-              {`Submitted by: ${userId || 'Unknown User'}, ${roleName || 'Unknown Position'} on ${formatDateFns(new Date(), 'dd/MM/yyyy')}`}
+              {`Submitted by: ${submittedByName || 'Unknown User'}, ${roleName || 'Unknown Position'} on ${formatDateFns(new Date(), 'dd/MM/yyyy')}`}
             </div>
             <Button
               className="h-8 px-6 bg-[#5dc86f] hover:bg-[#218838] text-white"
@@ -8258,10 +8293,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   notForHire: terminationDraft.notForHire,
                   comments: terminationDraft.comments,
                 };
-                if (!userId || !roleName) {
-                  console.warn('[Terminate Employment] Submitting without resolved user/role', { userId, roleName });
+                if (!submittedByName || !roleName) {
+                  console.warn('[Terminate Employment] Submitting without resolved name/role', { submittedByName, roleName, userId });
                 }
-                console.debug('[Terminate Employment] payload (UI only, backend pending)', payload);
                 toast({
                   title: "Termination saved (UI only)",
                   description: "Backend wiring pending.",
