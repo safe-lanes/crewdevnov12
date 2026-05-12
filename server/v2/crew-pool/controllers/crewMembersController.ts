@@ -224,9 +224,17 @@ export const crewMembersController = {
         return res.status(400).json({ error: "Invalid termination payload", issues: parsed.error.issues });
       }
       const submittedByUserId = req.user?.id != null ? String(req.user.id) : null;
+      // Capture role from the trusted JWT claim. Display name has no
+      // server-side source in this codebase (no user-directory table keyed
+      // by JWT id), so we record the user id as the canonical identifier
+      // and let read-side resolve the human-readable name later.
+      const submittedByRole = req.user?.userType ?? null;
+      const submittedByName = submittedByUserId != null ? `User #${submittedByUserId}` : null;
       const result = await crewMembersService.terminateEmployment(crewUuid, {
         ...parsed.data,
         submittedByUserId,
+        submittedByName,
+        submittedByRole,
         // auditUserUuid is the same authenticated user; never trust client-supplied value here.
         auditUserUuid: submittedByUserId,
       });

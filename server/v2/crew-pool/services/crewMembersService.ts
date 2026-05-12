@@ -719,6 +719,8 @@ export const crewMembersService = {
       notForHire?: boolean;
       comments?: string | null;
       submittedByUserId?: string | null;
+      submittedByName?: string | null;
+      submittedByRole?: string | null;
       auditUserUuid?: string | null;
     },
   ): Promise<{ crew: CrewMemberV2; termination: any }> {
@@ -748,13 +750,12 @@ export const crewMembersService = {
           category: payload.category ?? null,
           notForHire: !!payload.notForHire,
           comments: payload.comments ?? null,
-          // Submitter identity is stored as the trusted user id only.
-          // Display name/role are intentionally NOT persisted from the
-          // client to prevent forging audit metadata; they can be resolved
-          // on read from the user directory.
+          // Submitter identity comes from the trusted authenticated session
+          // (JWT). Client-supplied submitter strings are never accepted by
+          // the controller, so the values here originate server-side only.
           submittedByUserId: payload.submittedByUserId ?? null,
-          submittedByName: null,
-          submittedByRole: null,
+          submittedByName: payload.submittedByName ?? null,
+          submittedByRole: payload.submittedByRole ?? null,
           rankIdSnapshot: crew.presentRank ?? null,
           poolIdSnapshot: personal?.crewPool ?? null,
           manningAgentIdSnapshot: personal?.manningAgent ?? null,

@@ -420,10 +420,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use unified status calculation logic:
         // isActive=false → "Inactive", else check vessel assignment → "On Board"/"On Leave"
         const isActive = crew.isActive !== false; // Default to active if null/undefined
+        const rawCrewStatus =
+          typeof (crew as { status?: unknown }).status === "string"
+            ? ((crew as { status?: string }).status ?? null)
+            : null;
         normalized.status = calculateCrewStatus(
           isActive ? true : false,
           hasVesselAssignment,
-          (crew as any).status ?? null,
+          rawCrewStatus,
         );
         normalized.isActive = isActive;
         normalized.nextAvailability = crew.nextAvailability || null;
