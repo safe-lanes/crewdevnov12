@@ -653,9 +653,11 @@ export const crewMembersService = {
         signOffDate: prevAssignment?.signOffDate || null,
         reason: prevAssignment?.reason || null,
         manningAgentName: r.manningAgentName || '',
-        status: r.crew.status === 'Terminated'
-          ? 'Terminated'
-          : this.calculateCrewStatus(r.crew.isActive !== false, !!effectiveVessel),
+        status: this.calculateCrewStatus(
+          r.crew.isActive !== false,
+          !!effectiveVessel,
+          r.crew.status ?? null,
+        ),
         timeOnBoardMonths: this.calculateTimeOnBoard(effectiveSignOnDate),
       };
     });
@@ -679,7 +681,12 @@ export const crewMembersService = {
    * - isActive=true + vessel assignment → "On Board"
    * - isActive=true + no vessel → "On Leave"
    */
-  calculateCrewStatus(isActive: boolean, hasVesselAssignment: boolean): string {
+  calculateCrewStatus(
+    isActive: boolean,
+    hasVesselAssignment: boolean,
+    rawStatus?: string | null,
+  ): string {
+    if (rawStatus === "Terminated") return "Terminated";
     if (!isActive) return "Inactive";
     return hasVesselAssignment ? "On Board" : "On Leave";
   },

@@ -195,10 +195,15 @@ export const crewMembersController = {
       const { insertCrewTerminationSchema } = await import(
         "../../../../shared/v2/crew-pool/types"
       );
+      const {
+        terminationInitiatedByEnum,
+        terminationReasonEnum,
+        terminationCategoryEnum,
+      } = await import("../../../../shared/v2/crew-pool/terminationConstants");
       // Build the request schema from the canonical Drizzle-derived insert
-      // schema. Only client-meaningful fields are accepted; submitter identity
-      // and audit fields are server-derived and stripped here so a malicious
-      // client cannot spoof "Submitted by".
+      // schema, narrowed to the controlled enums shared with the client.
+      // Submitter identity and audit fields are server-derived and stripped
+      // here so a malicious client cannot spoof "Submitted by".
       const bodySchema = insertCrewTerminationSchema
         .pick({
           terminationDate: true,
@@ -209,9 +214,9 @@ export const crewMembersController = {
           comments: true,
         })
         .extend({
-          initiatedBy: z.string().min(1),
-          reason: z.string().min(1),
-          category: z.string().min(1),
+          initiatedBy: terminationInitiatedByEnum,
+          reason: terminationReasonEnum,
+          category: terminationCategoryEnum,
         });
       const parsed = bodySchema.safeParse(req.body || {});
       if (!parsed.success) {

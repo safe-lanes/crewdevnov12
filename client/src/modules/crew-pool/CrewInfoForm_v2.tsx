@@ -161,8 +161,16 @@ interface CrewInfoFormProps {
   onCrewMemberChange?: (crewMember: CrewMember) => void;
 }
 
-type TerminationInitiatedBy = '' | 'company' | 'crew_member';
-type TerminationCategory = '' | 'general' | 'UT' | 'BT';
+import {
+  TERMINATION_INITIATED_BY,
+  TERMINATION_REASONS,
+  TERMINATION_CATEGORIES,
+  type TerminationInitiatedBy as CanonicalTerminationInitiatedBy,
+  type TerminationCategory as CanonicalTerminationCategory,
+} from '@shared/v2/crew-pool/terminationConstants';
+
+type TerminationInitiatedBy = '' | CanonicalTerminationInitiatedBy;
+type TerminationCategory = '' | CanonicalTerminationCategory;
 
 interface TerminationDraft {
   terminationDate: string;
@@ -8214,8 +8222,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Company">Company</SelectItem>
-                    <SelectItem value="Crew Member (resignation)">Crew Member (resignation)</SelectItem>
+                    {TERMINATION_INITIATED_BY.map((v) => (
+                      <SelectItem key={v} value={v}>{v}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -8229,12 +8238,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Resignation">Resignation</SelectItem>
-                    <SelectItem value="Poor Performance">Poor Performance</SelectItem>
-                    <SelectItem value="Disciplinary">Disciplinary</SelectItem>
-                    <SelectItem value="No suitable vessel">No suitable vessel</SelectItem>
-                    <SelectItem value="Unresponsive">Unresponsive</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                    {TERMINATION_REASONS.map((v) => (
+                      <SelectItem key={v} value={v}>{v}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -8248,9 +8254,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="general">General</SelectItem>
-                    <SelectItem value="UT">Unavoidable Termination (UT)</SelectItem>
-                    <SelectItem value="BT">Beneficial Termination (BT)</SelectItem>
+                    {TERMINATION_CATEGORIES.map((v) => (
+                      <SelectItem key={v} value={v}>
+                        {v === 'general' ? 'General' : v === 'UT' ? 'Unavoidable Termination (UT)' : 'Beneficial Termination (BT)'}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
