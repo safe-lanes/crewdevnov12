@@ -1166,7 +1166,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             headerClass: 'center-group-header',
             children: [
                 { headerName: 'Date', field: 'terminationDate', width: viewportConfig.isDesktopOrLaptop ? undefined : 90, minWidth: 90, cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' }, filter: 'agDateColumnFilter', filterParams: { comparator: dateFilterComparator }, floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => formatCompactDate(p.value) || '—' },
-                { headerName: 'By', field: 'terminationInitiatedBy', width: viewportConfig.isDesktopOrLaptop ? undefined : 130, minWidth: 130, cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => p.value || '—' },
+                { headerName: 'By', field: 'terminationInitiatedBy', width: viewportConfig.isDesktopOrLaptop ? undefined : 130, minWidth: 130, cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => (p.value === 'company' ? 'Company' : p.value === 'crew_member' ? 'Crew Member (resignation)' : p.value || '—') },
                 { headerName: 'Reason', field: 'terminationReason', width: viewportConfig.isDesktopOrLaptop ? undefined : 140, minWidth: 140, cellStyle: { fontSize: '13px', color: '#4f5863', whiteSpace: 'normal', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap', valueFormatter: (p: any) => p.value || '—' },
             ],
         },
@@ -1238,8 +1238,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                     <Select value={terminatedFilters.terminationBy} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, terminationBy: v }))}>
                                         <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-terminated-by"><SelectValue placeholder="Termination By" /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Company">Company</SelectItem>
-                                            <SelectItem value="Crew Member (resignation)">Crew Member (resignation)</SelectItem>
+                                            <SelectItem value="company">Company</SelectItem>
+                                            <SelectItem value="crew_member">Crew Member (resignation)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -1279,8 +1279,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                                     <Select value={terminatedFilters.terminationBy} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, terminationBy: v }))}>
                                         <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Termination By" /></SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Company">Company</SelectItem>
-                                            <SelectItem value="Crew Member (resignation)">Crew Member (resignation)</SelectItem>
+                                            <SelectItem value="company">Company</SelectItem>
+                                            <SelectItem value="crew_member">Crew Member (resignation)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <Select value={terminatedFilters.nfr} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, nfr: v }))}>

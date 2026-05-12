@@ -165,6 +165,8 @@ import {
   TERMINATION_INITIATED_BY,
   TERMINATION_REASONS,
   TERMINATION_CATEGORIES,
+  TERMINATION_INITIATED_BY_LABELS,
+  TERMINATION_CATEGORY_LABELS,
   type TerminationInitiatedBy as CanonicalTerminationInitiatedBy,
   type TerminationCategory as CanonicalTerminationCategory,
 } from '@shared/v2/crew-pool/terminationConstants';
@@ -8223,7 +8225,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </SelectTrigger>
                   <SelectContent>
                     {TERMINATION_INITIATED_BY.map((v) => (
-                      <SelectItem key={v} value={v}>{v}</SelectItem>
+                      <SelectItem key={v} value={v}>{TERMINATION_INITIATED_BY_LABELS[v]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -8255,9 +8257,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </SelectTrigger>
                   <SelectContent>
                     {TERMINATION_CATEGORIES.map((v) => (
-                      <SelectItem key={v} value={v}>
-                        {v === 'general' ? 'General' : v === 'UT' ? 'Unavoidable Termination (UT)' : 'Beneficial Termination (BT)'}
-                      </SelectItem>
+                      <SelectItem key={v} value={v}>{TERMINATION_CATEGORY_LABELS[v]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -119,6 +119,10 @@ export function useTerminateEmploymentV2() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid, 'full-profile'] });
+      // Dashboard widgets (counts/lists) that aggregate crew status.
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
     },
   });
 }
