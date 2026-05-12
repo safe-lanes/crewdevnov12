@@ -447,6 +447,14 @@ export const crewMembersService = {
     vesselUuid?: string;
     limit?: number;
     offset?: number;
+    /**
+     * Explicit view filter from the request:
+     *  - 'active'  : exclude status='Terminated' (Crew Database tab)
+     *  - 'all'     : include everything
+     *  - undefined : honour `filters.status` if present, otherwise behave
+     *                like 'active' for backwards-compatible Crew Database UI.
+     */
+    view?: "active" | "all";
   }): Promise<{ data: any[]; pagination: PaginationMeta }> {
     const db = getDb();
     const limit = Math.min(filters?.limit || 1000, 1000);
@@ -467,8 +475,9 @@ export const crewMembersService = {
 
     if (filters?.status) {
       conditions.push(eq(crewMembersV2.status, filters.status));
-    } else {
-      // Default: exclude Terminated crew (they appear under the dedicated Terminated tab)
+    } else if (filters?.view !== "all") {
+      // Crew Database view explicitly excludes Terminated crew; the
+      // Terminated tab uses getTerminated(). Pass view='all' to opt out.
       conditions.push(
         or(
           isNull(crewMembersV2.status),

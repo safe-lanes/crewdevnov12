@@ -49,6 +49,7 @@ export const crewMembersController = {
         vesselUuid: vesselUuid as string | undefined,
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
+        view: view === "all" ? "all" : "active",
       });
       res.json(result);
     } catch (error) {
