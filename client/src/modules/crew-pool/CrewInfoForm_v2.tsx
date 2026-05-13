@@ -687,7 +687,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { canView, canEdit, permissions, roleName, userId } = usePermissions();
+  const { canView, canEdit, permissions, roleName, userId, manningAgent: userManningAgent } = usePermissions();
+  const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
 
   const submitter = useMemo<{ name: string; role: string; userId: string }>(() => {
     const extractStringValue = (val: any): string => {
@@ -1343,6 +1344,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     createdCrewIdRef.current = null;
     setCreatedCrewId(null);
   }, [crewMember?.id]);
+
+  useEffect(() => {
+    if (isManningAgentUser && userManningAgent && formData.manningAgent !== userManningAgent) {
+      setFormData(prev => ({ ...prev, manningAgent: userManningAgent }));
+    }
+  }, [isManningAgentUser, userManningAgent, formData.manningAgent]);
 
   // Reset form data when opening for a NEW crew member (crewMember is null)
   // This ensures the form starts with empty values instead of stale data from previous selection
@@ -3595,8 +3602,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Manning Agent</Label>
             {isEditing ? (
-              <Select value={formData.manningAgent} onValueChange={(value) => updateFormData('manningAgent', value)}>
-                <SelectTrigger className="mt-1" data-testid="select-manning-agent-crew">
+              <Select value={formData.manningAgent} onValueChange={(value) => updateFormData('manningAgent', value)} disabled={isManningAgentUser}>
+                <SelectTrigger className="mt-1" data-testid="select-manning-agent-crew" disabled={isManningAgentUser}>
                   <SelectValue placeholder="Select manning agent" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
