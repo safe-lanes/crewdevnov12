@@ -274,9 +274,9 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 }
                 
                 if (primaryCrew) {
-                    if (primaryCrew.signOffDate || primaryCrew.reliefStatus === "Signed Off") {
+                    if (primaryCrew.reliefStatus === "Signed Off" && primaryCrew.signOffDate) {
                         await apiRequest('POST', `/api/v2/vessel/planning/${primaryCrew.planUuid}/sign-off`, {
-                            signOffDate: primaryCrew.signOffDate || new Date().toISOString().split('T')[0],
+                            signOffDate: primaryCrew.signOffDate,
                             signOffReason: primaryCrew.signOffReason || 'Take Over',
                             signOffPortUuid: primaryCrew.signOffPortUuid,
                         });
