@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { rhCrewRecordsV2 } from "../../../../shared/v2/rest-hours/schema";
 import type {
@@ -10,8 +10,10 @@ import { v4 as uuidv4 } from "uuid";
 export class CrewRecordsRepository {
   async findAll(filters?: {
     vesselId?: string;
+    vesselIds?: string[];
     crewMemberId?: string;
     monthValue?: string;
+    monthValues?: string[];
   }): Promise<RhCrewRecordV2[]> {
     const db = getDb();
     let conditions = [eq(rhCrewRecordsV2.isDeleted, false)];
@@ -19,11 +21,17 @@ export class CrewRecordsRepository {
     if (filters?.vesselId) {
       conditions.push(eq(rhCrewRecordsV2.vesselId, filters.vesselId));
     }
+    if (filters?.vesselIds && filters.vesselIds.length > 0) {
+      conditions.push(inArray(rhCrewRecordsV2.vesselId, filters.vesselIds));
+    }
     if (filters?.crewMemberId) {
       conditions.push(eq(rhCrewRecordsV2.crewMemberId, filters.crewMemberId));
     }
     if (filters?.monthValue) {
       conditions.push(eq(rhCrewRecordsV2.monthValue, filters.monthValue));
+    }
+    if (filters?.monthValues && filters.monthValues.length > 0) {
+      conditions.push(inArray(rhCrewRecordsV2.monthValue, filters.monthValues));
     }
 
     const results = await db

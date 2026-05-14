@@ -291,7 +291,7 @@ export const RankWiseViolationsChart = ({
   if (error) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <div className="text-sm text-red-500">Failed to load violations data</div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">No data available</div>
       </div>
     );
   }

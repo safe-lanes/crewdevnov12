@@ -111,21 +111,14 @@ export const PerformanceOverviewCard = ({
     queryKey: ['v2', 'rest-hours', 'crew-records-performance', vesselIds, complianceMode, opaMode, monthsToFetch],
     queryFn: async () => {
       if (monthsToFetch.length === 0) return [];
-      
-      const fetchPromises = monthsToFetch.map(async (monthValue) => {
-        // Single backend call with multi-vessel filter (server splits comma-separated vesselId)
-        const crewRecords = await restHoursApiV2.crewRecords.getAll({
-          vesselId: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
-          monthValue,
-        });
-        return crewRecords.map((cr: any) => ({
-          ...cr,
-          monthValue,
-        }));
-      });
 
-      const allResults = await Promise.all(fetchPromises);
-      return allResults.flat();
+      // Single batched backend call across all months and selected vessels.
+      return await restHoursApiV2.crewRecords.getAll({
+        vesselId: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
+        monthValues: monthsToFetch,
+        complianceMode,
+        opaMode,
+      });
     },
     enabled: monthsToFetch.length > 0,
   });
@@ -224,7 +217,7 @@ export const PerformanceOverviewCard = ({
   if (isError) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <div className="text-sm text-red-500">Error loading data: {error instanceof Error ? error.message : 'Unknown error'}</div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">No data available</div>
       </div>
     );
   }

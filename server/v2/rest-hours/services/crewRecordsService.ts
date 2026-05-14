@@ -382,6 +382,23 @@ export const crewRecordsService = {
     return record;
   },
 
+  async getBulkByMonths(params: {
+    vesselIds?: string[];
+    monthValues: string[];
+    complianceMode?: 'Rest' | 'Work';
+    opaMode?: boolean;
+  }): Promise<EnrichedCrewRecord[]> {
+    const { vesselIds, monthValues, complianceMode, opaMode } = params;
+    if (!monthValues || monthValues.length === 0) return [];
+
+    const records = await crewRecordsRepository.findAll({
+      vesselIds: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
+      monthValues,
+    });
+
+    return enrichRecordsWithComputedFields(records, complianceMode, opaMode);
+  },
+
   async getByFilters(params: {
     vesselIds?: string[];
     monthValue?: string;

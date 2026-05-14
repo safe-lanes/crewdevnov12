@@ -95,21 +95,14 @@ export const VesselAnalysisChart = ({
     queryKey: ['v2', 'rest-hours', 'crew-records-vessel-analysis', vesselIds, complianceMode, opaMode, monthsToFetch],
     queryFn: async () => {
       if (monthsToFetch.length === 0) return [];
-      
-      const fetchPromises = monthsToFetch.map(async (monthValue) => {
-        // Single backend call with multi-vessel filter
-        const crewRecords = await restHoursApiV2.crewRecords.getAll({
-          vesselId: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
-          monthValue,
-        });
-        return crewRecords.map((cr: any) => ({
-          ...cr,
-          monthValue,
-        }));
-      });
 
-      const allResults = await Promise.all(fetchPromises);
-      return allResults.flat();
+      // Single batched backend call across all 12 months and selected vessels.
+      return await restHoursApiV2.crewRecords.getAll({
+        vesselId: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
+        monthValues: monthsToFetch,
+        complianceMode,
+        opaMode,
+      });
     },
     enabled: monthsToFetch.length > 0,
   });

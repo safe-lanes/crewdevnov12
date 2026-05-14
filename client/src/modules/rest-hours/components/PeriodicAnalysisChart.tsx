@@ -177,23 +177,16 @@ export const PeriodicAnalysisChart = ({
       } else {
         monthsToFetchList = monthlyMonthsToFetch;
       }
-      
-      if (monthsToFetchList.length === 0) return [];
-      
-      // Single backend call per month with multi-vessel filter
-      const fetchPromises = monthsToFetchList.map(async (monthValue) => {
-        const crewRecords = await restHoursApiV2.crewRecords.getAll({
-          vesselId: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
-          monthValue,
-        });
-        return crewRecords;
-      });
 
-      // Wait for all requests to complete
-      const allResults = await Promise.all(fetchPromises);
-      
-      // Flatten the array of arrays into a single array
-      return allResults.flat();
+      if (monthsToFetchList.length === 0) return [];
+
+      // Single batched backend call across all months and selected vessels.
+      return await restHoursApiV2.crewRecords.getAll({
+        vesselId: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
+        monthValues: monthsToFetchList,
+        complianceMode,
+        opaMode,
+      });
     },
     enabled: periodType === 'years' || 
              (periodType === 'quarters' && quarterlyMonthsToFetch.length > 0) ||

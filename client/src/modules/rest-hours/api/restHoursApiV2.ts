@@ -48,7 +48,7 @@ export const restHoursApiV2 = {
       if (params?.opaMode) searchParams.set('opaMode', 'true');
       const url = `${V2_BASE}/vessel-records${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch vessel records');
+      if (!response.ok) throw new Error(`${response.status}: Failed to fetch vessel records`);
       return response.json();
     },
 
@@ -116,13 +116,17 @@ export const restHoursApiV2 = {
   },
 
   crewRecords: {
-    async getAll(params?: { vesselId?: string | string[]; monthValue?: string; ranks?: string[]; search?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
+    async getAll(params?: { vesselId?: string | string[]; monthValue?: string; monthValues?: string[]; ranks?: string[]; search?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
       const searchParams = new URLSearchParams();
       if (params?.vesselId) {
         const v = Array.isArray(params.vesselId) ? params.vesselId.filter(Boolean).join(',') : params.vesselId;
         if (v) searchParams.set('vesselId', v);
       }
       if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
+      if (params?.monthValues && params.monthValues.length > 0) {
+        const mv = params.monthValues.filter(Boolean).join(',');
+        if (mv) searchParams.set('monthValues', mv);
+      }
       if (params?.ranks && params.ranks.length > 0) {
         params.ranks.forEach(rank => searchParams.append('ranks', rank));
       }
@@ -131,7 +135,7 @@ export const restHoursApiV2 = {
       if (params?.opaMode) searchParams.set('opaMode', 'true');
       const url = `${V2_BASE}/crew-records${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch crew records');
+      if (!response.ok) throw new Error(`${response.status}: Failed to fetch crew records`);
       return response.json();
     },
 
@@ -180,7 +184,7 @@ export const restHoursApiV2 = {
       if (params?.opaMode) searchParams.set('opaMode', 'true');
       const url = `${V2_BASE}/violations-by-rank${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch violations by rank');
+      if (!response.ok) throw new Error(`${response.status}: Failed to fetch violations by rank`);
       return response.json();
     },
 
@@ -196,7 +200,7 @@ export const restHoursApiV2 = {
       if (params?.opaMode) searchParams.set('opaMode', 'true');
       const url = `${V2_BASE}/ncs-by-rank${searchParams.toString() ? '?' + searchParams : ''}`;
       const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch NCs by rank');
+      if (!response.ok) throw new Error(`${response.status}: Failed to fetch NCs by rank`);
       return response.json();
     },
   },
