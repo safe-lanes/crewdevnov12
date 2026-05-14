@@ -1143,6 +1143,7 @@ export const vesselPlanningService = {
             and(
               eq(vesselPlanningV2.vesselUuid, vesselUuid),
               eq(vesselPlanningV2.rankId, planning.rankId),
+              eq(vesselPlanningV2.rank, planning.rank),
               eq(vesselPlanningV2.crewStatus, "secondary"),
               eq(vesselPlanningV2.isDeleted, false),
               eq(vesselPlanningV2.isArchived, false)
