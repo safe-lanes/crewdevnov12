@@ -570,6 +570,7 @@ export const crewMembersService = {
         vesselType: masterVesselTypes.vesselType,
         currentVesselName: masterVessels.vessel,
         manningAgentName: crewPersonalDetails.manningAgent,
+        crewPool: crewPersonalDetails.crewPool,
       })
       .from(crewPage)
       .innerJoin(crewMembersV2, eq(crewMembersV2.id, crewPage.id))
@@ -662,6 +663,7 @@ export const crewMembersService = {
         signOffDate: prevAssignment?.signOffDate || null,
         reason: prevAssignment?.reason || null,
         manningAgentName: r.manningAgentName || '',
+        crewPool: r.crewPool || null,
         status: this.calculateCrewStatus(
           r.crew.isActive !== false,
           !!effectiveVessel,

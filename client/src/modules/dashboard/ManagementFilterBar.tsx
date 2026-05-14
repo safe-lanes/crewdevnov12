@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,29 +83,39 @@ const MultiSelect = ({
   );
 };
 
+export interface ManagementFilters {
+  ranks: string[];
+  vessels: string[];
+  crewPools: string[];
+  manningAgents: string[];
+  nationalities: string[];
+}
+
+export const EMPTY_MANAGEMENT_FILTERS: ManagementFilters = {
+  ranks: [],
+  vessels: [],
+  crewPools: [],
+  manningAgents: [],
+  nationalities: [],
+};
+
 export interface ManagementFilterBarProps {
   period: PeriodFilterValue;
   onPeriodChange: (value: PeriodFilterValue) => void;
+  filters: ManagementFilters;
+  onFiltersChange: (next: ManagementFilters) => void;
   onClear: () => void;
 }
 
 export const ManagementFilterBar = ({
   period,
   onPeriodChange,
+  filters,
+  onFiltersChange,
   onClear,
 }: ManagementFilterBarProps) => {
-  const [ranks, setRanks] = useState<string[]>([]);
-  const [crewPools, setCrewPools] = useState<string[]>([]);
-  const [manningAgents, setManningAgents] = useState<string[]>([]);
-  const [nationalities, setNationalities] = useState<string[]>([]);
-
-  const handleClear = () => {
-    setRanks([]);
-    setCrewPools([]);
-    setManningAgents([]);
-    setNationalities([]);
-    onClear();
-  };
+  const update = (key: keyof ManagementFilters) => (next: string[]) =>
+    onFiltersChange({ ...filters, [key]: next });
 
   return (
     <div
@@ -118,34 +127,34 @@ export const ManagementFilterBar = ({
         label="Rank"
         testId="rank"
         options={[]}
-        selected={ranks}
-        onChange={setRanks}
+        selected={filters.ranks}
+        onChange={update("ranks")}
       />
       <MultiSelect
         label="Crew Pool"
         testId="crew-pool"
         options={[]}
-        selected={crewPools}
-        onChange={setCrewPools}
+        selected={filters.crewPools}
+        onChange={update("crewPools")}
       />
       <MultiSelect
         label="Manning Agent"
         testId="manning-agent"
         options={[]}
-        selected={manningAgents}
-        onChange={setManningAgents}
+        selected={filters.manningAgents}
+        onChange={update("manningAgents")}
       />
       <MultiSelect
         label="Nationality"
         testId="nationality"
         options={[]}
-        selected={nationalities}
-        onChange={setNationalities}
+        selected={filters.nationalities}
+        onChange={update("nationalities")}
       />
       <div className="ml-auto">
         <Button
           variant="outline"
-          onClick={handleClear}
+          onClick={onClear}
           className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
           data-testid="button-clear-filters"
         >

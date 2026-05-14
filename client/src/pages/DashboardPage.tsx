@@ -2,19 +2,22 @@ import { useMemo, useState } from "react";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardCard } from "@/modules/dashboard/DashboardCard";
-import { ManagementFilterBar } from "@/modules/dashboard/ManagementFilterBar";
+import {
+  ManagementFilterBar,
+  EMPTY_MANAGEMENT_FILTERS,
+  type ManagementFilters,
+} from "@/modules/dashboard/ManagementFilterBar";
 import { CrewRecruitmentRankChart } from "@/modules/dashboard/CrewRecruitmentRankChart";
 import { CrewPromotionsRankChart } from "@/modules/dashboard/CrewPromotionsRankChart";
 import { CrewAppraisalsRankChart } from "@/modules/dashboard/CrewAppraisalsRankChart";
+import { CrewPoolRankChart } from "@/modules/dashboard/CrewPoolRankChart";
 import { CrewRetentionMetrics } from "@/modules/dashboard/CrewRetentionMetrics";
 import { DAAnalysisMetrics } from "@/modules/dashboard/DAAnalysisMetrics";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 type DashboardTab = "management" | "operation";
 
-const PLACEHOLDER_CARDS: { label: string; testId: string }[] = [
-  { label: "Crew Pool", testId: "crew-pool" },
-];
+const PLACEHOLDER_CARDS: { label: string; testId: string }[] = [];
 
 export const DashboardPage = () => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("management");
@@ -25,6 +28,9 @@ export const DashboardPage = () => {
   }, []);
 
   const [period, setPeriod] = useState<PeriodFilterValue>(defaultPeriod);
+  const [filters, setFilters] = useState<ManagementFilters>(
+    EMPTY_MANAGEMENT_FILTERS,
+  );
 
   return (
     <div
@@ -71,7 +77,12 @@ export const DashboardPage = () => {
           <ManagementFilterBar
             period={period}
             onPeriodChange={setPeriod}
-            onClear={() => setPeriod(defaultPeriod)}
+            filters={filters}
+            onFiltersChange={setFilters}
+            onClear={() => {
+              setPeriod(defaultPeriod);
+              setFilters(EMPTY_MANAGEMENT_FILTERS);
+            }}
           />
           <div
             className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
@@ -88,6 +99,10 @@ export const DashboardPage = () => {
                 selected === "rank" ? (
                   <CrewRecruitmentRankChart
                     period={period}
+                    ranks={filters.ranks}
+                    crewPools={filters.crewPools}
+                    manningAgents={filters.manningAgents}
+                    nationalities={filters.nationalities}
                     chartRef={chartRef}
                   />
                 ) : null
@@ -130,6 +145,27 @@ export const DashboardPage = () => {
               label="Crew Retention"
               testId="crew-retention"
               renderContent={() => <CrewRetentionMetrics period={period} />}
+            />
+            <DashboardCard
+              key="crew-pool"
+              label="Crew Pool"
+              testId="crew-pool"
+              options={[{ value: "rank", label: "Rank" }]}
+              defaultOption="rank"
+              downloadFileName="crew_pool_rank.png"
+              renderContent={(selected, chartRef) =>
+                selected === "rank" ? (
+                  <CrewPoolRankChart
+                    period={period}
+                    ranks={filters.ranks}
+                    vessels={filters.vessels}
+                    crewPools={filters.crewPools}
+                    manningAgents={filters.manningAgents}
+                    nationalities={filters.nationalities}
+                    chartRef={chartRef}
+                  />
+                ) : null
+              }
             />
             <DashboardCard
               key="da-analysis"
