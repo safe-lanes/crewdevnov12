@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardCard } from "@/modules/dashboard/DashboardCard";
 import { ManagementFilterBar } from "@/modules/dashboard/ManagementFilterBar";
+import { CrewRecruitmentRankChart } from "@/modules/dashboard/CrewRecruitmentRankChart";
+import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 type DashboardTab = "management" | "operation";
 
-const MANAGEMENT_CARDS: { label: string; testId: string }[] = [
-  { label: "Crew Recruitment", testId: "crew-recruitment" },
+const PLACEHOLDER_CARDS: { label: string; testId: string }[] = [
   { label: "Crew Promotions", testId: "crew-promotions" },
   { label: "Crew Retention", testId: "crew-retention" },
   { label: "Crew Pool", testId: "crew-pool" },
@@ -17,6 +18,13 @@ const MANAGEMENT_CARDS: { label: string; testId: string }[] = [
 
 export const DashboardPage = () => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("management");
+
+  const defaultPeriod = useMemo<PeriodFilterValue>(() => {
+    const now = new Date();
+    return { mode: "year-month", year: now.getFullYear(), month: now.getMonth() + 1 };
+  }, []);
+
+  const [period, setPeriod] = useState<PeriodFilterValue>(defaultPeriod);
 
   return (
     <div
@@ -60,12 +68,32 @@ export const DashboardPage = () => {
           data-testid="panel-management"
           className="mt-0 space-y-4"
         >
-          <ManagementFilterBar />
+          <ManagementFilterBar
+            period={period}
+            onPeriodChange={setPeriod}
+            onClear={() => setPeriod(defaultPeriod)}
+          />
           <div
             className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
             style={{ gridAutoRows: "minmax(300px, 1fr)" }}
           >
-            {MANAGEMENT_CARDS.map((card) => (
+            <DashboardCard
+              key="crew-recruitment"
+              label="Crew Recruitment"
+              testId="crew-recruitment"
+              options={[{ value: "rank", label: "Rank" }]}
+              defaultOption="rank"
+              downloadFileName="crew_recruitment_rank.png"
+              renderContent={(selected, chartRef) =>
+                selected === "rank" ? (
+                  <CrewRecruitmentRankChart
+                    period={period}
+                    chartRef={chartRef}
+                  />
+                ) : null
+              }
+            />
+            {PLACEHOLDER_CARDS.map((card) => (
               <DashboardCard
                 key={card.testId}
                 label={card.label}

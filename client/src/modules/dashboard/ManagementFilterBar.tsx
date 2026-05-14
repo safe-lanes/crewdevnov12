@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,27 +84,28 @@ const MultiSelect = ({
   );
 };
 
-export const ManagementFilterBar = () => {
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
+export interface ManagementFilterBarProps {
+  period: PeriodFilterValue;
+  onPeriodChange: (value: PeriodFilterValue) => void;
+  onClear: () => void;
+}
 
-  const defaultPeriod = useMemo<PeriodFilterValue>(
-    () => ({ mode: "year-month", year: currentYear, month: currentMonth }),
-    [currentYear, currentMonth],
-  );
-
-  const [period, setPeriod] = useState<PeriodFilterValue>(defaultPeriod);
+export const ManagementFilterBar = ({
+  period,
+  onPeriodChange,
+  onClear,
+}: ManagementFilterBarProps) => {
   const [ranks, setRanks] = useState<string[]>([]);
   const [crewPools, setCrewPools] = useState<string[]>([]);
   const [manningAgents, setManningAgents] = useState<string[]>([]);
   const [nationalities, setNationalities] = useState<string[]>([]);
 
   const handleClear = () => {
-    setPeriod(defaultPeriod);
     setRanks([]);
     setCrewPools([]);
     setManningAgents([]);
     setNationalities([]);
+    onClear();
   };
 
   return (
@@ -112,7 +113,7 @@ export const ManagementFilterBar = () => {
       className="flex flex-wrap items-center gap-3 mb-4 bg-transparent"
       data-testid="management-filter-bar"
     >
-      <PeriodFilter value={period} onChange={setPeriod} />
+      <PeriodFilter value={period} onChange={onPeriodChange} />
       <MultiSelect
         label="Rank"
         testId="rank"
