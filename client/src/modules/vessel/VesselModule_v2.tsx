@@ -1447,11 +1447,12 @@ export function VesselModule_v2(): JSX.Element {
         
         const rankCrewMap = new Map<string, { primary: boolean; secondary: boolean }>();
         vesselCrew.forEach((planning: any) => {
-            const rankBase = planning.rank?.split('_')[0] || planning.rank;
-            if (!rankCrewMap.has(rankBase)) {
-                rankCrewMap.set(rankBase, { primary: false, secondary: false });
+            const slotKey = planning.rank;
+            if (!slotKey) return;
+            if (!rankCrewMap.has(slotKey)) {
+                rankCrewMap.set(slotKey, { primary: false, secondary: false });
             }
-            const entry = rankCrewMap.get(rankBase)!;
+            const entry = rankCrewMap.get(slotKey)!;
             if (planning.crewStatus === 'primary') entry.primary = true;
             if (planning.crewStatus === 'secondary') entry.secondary = true;
         });
@@ -1634,7 +1635,7 @@ export function VesselModule_v2(): JSX.Element {
                                                     </TableRow>
                                                 ) : vesselCrew.map((planning: any, index: number) => {
                                                     const rankBase = planning.rank?.split('_')[0] || planning.rank;
-                                                    const rankEntry = rankCrewMap.get(rankBase);
+                                                    const rankEntry = rankCrewMap.get(planning.rank);
                                                     const hasBothCrewTypes = !!(rankEntry?.primary && rankEntry?.secondary);
                                                     const statusBadge = (!showArchived && hasBothCrewTypes) ? (planning.crewStatus === 'secondary' ? ' (S)' : ' (P)') : '';
                                                     const displayRank = rankBase + statusBadge;
