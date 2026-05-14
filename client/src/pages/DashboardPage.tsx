@@ -4,12 +4,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardCard } from "@/modules/dashboard/DashboardCard";
 import { ManagementFilterBar } from "@/modules/dashboard/ManagementFilterBar";
 import { CrewRecruitmentRankChart } from "@/modules/dashboard/CrewRecruitmentRankChart";
+import { CrewPromotionsRankChart } from "@/modules/dashboard/CrewPromotionsRankChart";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 type DashboardTab = "management" | "operation";
 
 const PLACEHOLDER_CARDS: { label: string; testId: string }[] = [
-  { label: "Crew Promotions", testId: "crew-promotions" },
   { label: "Crew Retention", testId: "crew-retention" },
   { label: "Crew Pool", testId: "crew-pool" },
   { label: "Crew Appraisals", testId: "crew-appraisals" },
@@ -87,6 +87,22 @@ export const DashboardPage = () => {
               renderContent={(selected, chartRef) =>
                 selected === "rank" ? (
                   <CrewRecruitmentRankChart
+                    period={period}
+                    chartRef={chartRef}
+                  />
+                ) : null
+              }
+            />
+            <DashboardCard
+              key="crew-promotions"
+              label="Crew Promotions"
+              testId="crew-promotions"
+              options={[{ value: "rank", label: "Rank" }]}
+              defaultOption="rank"
+              downloadFileName="crew_promotions_rank.png"
+              renderContent={(selected, chartRef) =>
+                selected === "rank" ? (
+                  <CrewPromotionsRankChart
                     period={period}
                     chartRef={chartRef}
                   />
