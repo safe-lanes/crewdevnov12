@@ -211,7 +211,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
     const stampWidth = textWidth + paddingX * 2;
     const stampHeight = textHeight + paddingY * 2;
     const stampX = pageWidth - margin - stampWidth - 5;
-    const stampY = pageHeight - margin - stampHeight + 5;
+    const stampY = pageHeight - margin - stampHeight + 18;
     const redColor = rgb(0.8, 0, 0);
     
     page.drawRectangle({
