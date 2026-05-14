@@ -938,19 +938,19 @@ export const RHRecordingForm = ({
         
         const updatedRecords = parsedRecords.map((record: DailyRecord) => {
           let hours = record.hours;
-          
-          if (record.isPlan) {
+
+          // Only seed from the Fixed Task template when the saved row has no hours data.
+          // Saved data is the source of truth — do not re-project templates or
+          // variable-task overlays on top of user-edited hours.
+          if (record.isPlan && (!hours || hours.length === 0)) {
             if (hasLatestFixedTask) {
               hours = [...latestTemplate];
+            } else {
+              hours = Array(48).fill('');
             }
-            
+
             const dayCells = variableTaskCellsMap.get(record.day);
             if (dayCells && dayCells.length > 0) {
-              if (!hours || hours.length === 0) {
-                hours = Array(48).fill('');
-              } else {
-                hours = [...hours];
-              }
               for (const cellRange of dayCells) {
                 for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
                   hours[i] = 'a';
@@ -958,7 +958,7 @@ export const RHRecordingForm = ({
               }
             }
           }
-          
+
           const restHours = hours ? hours.filter((h: string) => h === '').length / 2 : 24;
           const workHours = 24 - restHours;
 
