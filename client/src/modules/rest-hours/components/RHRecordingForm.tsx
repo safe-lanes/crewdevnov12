@@ -1892,6 +1892,13 @@ export const RHRecordingForm = ({
       // Update the hour value (allow only 'w', 'd', 'a', or empty)
       const normalizedValue = value.toLowerCase();
       if (normalizedValue === 'w' || normalizedValue === 'd' || normalizedValue === 'a' || normalizedValue === '') {
+        const previousValue = record.hours[hourIndex];
+        if (previousValue === normalizedValue) {
+          // No actual change — focus/blur or no-op edit. Do not mark as edited
+          // or the row would stop refreshing from Fixed/Variable Tasks on reload.
+          return prevRecords;
+        }
+
         record.hours = [...record.hours];
         record.hours[hourIndex] = normalizedValue;
 
