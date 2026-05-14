@@ -1,5 +1,4 @@
 import { useState } from "react";
-import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 type DashboardTab = "management" | "operation";
@@ -17,28 +16,36 @@ export const DashboardPage = () => {
         onValueChange={(v) => setActiveTab(v as DashboardTab)}
         className="space-y-6"
       >
-        <SectionTitleComponents title="Dashboard">
-          <TabsList
-            className="h-auto bg-[#f1f1f1] p-1 rounded-md"
-            data-testid="tabs-dashboard"
+        <div className="grid grid-cols-3 items-center mb-4">
+          <h1
+            className="text-2xl font-bold text-black"
+            data-testid="text-page-title"
           >
-            <TabsTrigger
-              value="management"
-              data-testid="tab-management"
-              className="px-6 py-1.5 text-sm font-medium text-[#4f5863] data-[state=active]:bg-[#5DADE2] data-[state=active]:text-white data-[state=active]:shadow-sm"
+            Dashboard
+          </h1>
+          <div className="flex justify-center">
+            <TabsList
+              className="h-auto bg-[#f1f1f1] p-1 rounded-md"
+              data-testid="tabs-dashboard"
             >
-              Management
-            </TabsTrigger>
-            <TabsTrigger
-              value="operation"
-              data-testid="tab-operation"
-              className="px-6 py-1.5 text-sm font-medium text-[#4f5863] data-[state=active]:bg-[#5DADE2] data-[state=active]:text-white data-[state=active]:shadow-sm"
-            >
-              Operation
-            </TabsTrigger>
-          </TabsList>
-          <div className="w-[120px]" aria-hidden="true" />
-        </SectionTitleComponents>
+              <TabsTrigger
+                value="management"
+                data-testid="tab-management"
+                className="px-6 py-1.5 text-sm font-medium text-[#4f5863] data-[state=active]:bg-[#5DADE2] data-[state=active]:text-white data-[state=active]:shadow-sm"
+              >
+                Management
+              </TabsTrigger>
+              <TabsTrigger
+                value="operation"
+                data-testid="tab-operation"
+                className="px-6 py-1.5 text-sm font-medium text-[#4f5863] data-[state=active]:bg-[#5DADE2] data-[state=active]:text-white data-[state=active]:shadow-sm"
+              >
+                Operation
+              </TabsTrigger>
+            </TabsList>
+          </div>
+          <div aria-hidden="true" />
+        </div>
 
         <TabsContent
           value="management"
