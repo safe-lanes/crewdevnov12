@@ -97,7 +97,9 @@ function AuthenticatedApp() {
                   <Route path="/">
                     <ProtectedRoute menuName="Crewing"><AppraisalsRouter /></ProtectedRoute>
                   </Route>
-                  <Route path="/dashboard" component={DashboardPage} />
+                  <Route path="/dashboard">
+                    <ProtectedRoute menuName="Dashboard"><DashboardPage /></ProtectedRoute>
+                  </Route>
                   <Route path="/recruitment">
                     <ProtectedRoute menuName="Recruitment"><RecruitmentWrapper /></ProtectedRoute>
                   </Route>
