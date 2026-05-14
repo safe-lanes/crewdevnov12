@@ -1,8 +1,19 @@
 import { useState } from "react";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DashboardCard } from "@/modules/dashboard/DashboardCard";
+import { ManagementFilterBar } from "@/modules/dashboard/ManagementFilterBar";
 
 type DashboardTab = "management" | "operation";
+
+const MANAGEMENT_CARDS: { label: string; testId: string }[] = [
+  { label: "Crew Recruitment", testId: "crew-recruitment" },
+  { label: "Crew Promotions", testId: "crew-promotions" },
+  { label: "Crew Retention", testId: "crew-retention" },
+  { label: "Crew Pool", testId: "crew-pool" },
+  { label: "Crew Appraisals", testId: "crew-appraisals" },
+  { label: "D&A Analysis", testId: "da-analysis" },
+];
 
 export const DashboardPage = () => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("management");
@@ -47,8 +58,22 @@ export const DashboardPage = () => {
         <TabsContent
           value="management"
           data-testid="panel-management"
-          className="min-h-[200px] mt-0"
-        />
+          className="mt-0 space-y-4"
+        >
+          <ManagementFilterBar />
+          <div
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+            style={{ gridAutoRows: "minmax(300px, 1fr)" }}
+          >
+            {MANAGEMENT_CARDS.map((card) => (
+              <DashboardCard
+                key={card.testId}
+                label={card.label}
+                testId={card.testId}
+              />
+            ))}
+          </div>
+        </TabsContent>
 
         <TabsContent
           value="operation"
