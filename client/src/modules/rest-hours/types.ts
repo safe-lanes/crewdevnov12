@@ -26,6 +26,10 @@ export interface PersistedDailyRecord {
   isPlan: boolean;          // True if planned hours (grey), false if recorded
   comments: string;         // Daily comments
   violations: string[];     // Violation code letters (A, B, C, D, E, F, G, H, I)
+  userEdited?: boolean;     // True if the user manually edited this row's hours. Untouched
+                            // Plan rows (userEdited === false) re-seed from the latest Fixed
+                            // Task / Variable Tasks on reload. Legacy records (undefined) are
+                            // preserved as-is.
 }
 
 /**
@@ -107,6 +111,7 @@ export function createBlankDailyRecord(
     occurrence,
     hours: Array(48).fill(''),
     isPlan: false,
+    userEdited: false,
     comments: '',
     violations: [],
     violationDiagnostics: [],

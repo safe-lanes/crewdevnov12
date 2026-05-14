@@ -909,6 +909,7 @@ export const RHRecordingForm = ({
           ...record,
           hours: newHours,
           isPlan: true,
+          userEdited: false,
           hoursOfRest24hr: restHours,
           hoursOfWork24hr: workHours,
           comments: finalComments,
@@ -939,10 +940,21 @@ export const RHRecordingForm = ({
         const updatedRecords = parsedRecords.map((record: DailyRecord) => {
           let hours = record.hours;
 
-          // Only seed from the Fixed Task template when the saved row has no hours data.
-          // Saved data is the source of truth — do not re-project templates or
-          // variable-task overlays on top of user-edited hours.
-          if (record.isPlan && (!hours || hours.length === 0)) {
+          // Reload rules:
+          //  - Rec rows (!isPlan): always preserve saved hours.
+          //  - Plan rows the user has edited (userEdited === true): preserve saved hours.
+          //  - Plan rows the user has NOT edited (userEdited === false): re-seed from
+          //    the latest Fixed Task template + Variable Task overlay so changes to
+          //    Fixed/Variable Tasks reflect on still-untouched Plan days.
+          //  - Legacy rows (userEdited === undefined): preserve saved hours — we can't
+          //    tell whether they were user-edited, so we err on the side of not
+          //    silently overwriting saved data.
+          //  - Also seed when hours is empty/missing as a defensive fallback.
+          const shouldReseed =
+            record.isPlan &&
+            (record.userEdited === false || !hours || hours.length === 0);
+
+          if (shouldReseed) {
             if (hasLatestFixedTask) {
               hours = [...latestTemplate];
             } else {
@@ -1858,10 +1870,16 @@ export const RHRecordingForm = ({
       const record = { ...newRecords[dayIndex] };
       
       record.isPlan = !record.isPlan;
-      
+
       // If switching from Plan to Rec, keep the hours as-is (they're already set)
-      // The colors will change based on isPlan flag
-      
+      // The colors will change based on isPlan flag.
+      // When switching to Plan and the row was never marked, default to
+      // userEdited=false so the loader can reseed it from the latest Fixed/Variable
+      // Task template on the next open.
+      if (record.isPlan && record.userEdited === undefined) {
+        record.userEdited = false;
+      }
+
       newRecords[dayIndex] = record;
       return newRecords;
     });
@@ -1879,7 +1897,11 @@ export const RHRecordingForm = ({
       if (normalizedValue === 'w' || normalizedValue === 'd' || normalizedValue === 'a' || normalizedValue === '') {
         record.hours = [...record.hours];
         record.hours[hourIndex] = normalizedValue;
-        
+
+        // Mark this row as user-edited so the loader stops re-seeding it from
+        // the Fixed Task template / Variable Task overlay on reload.
+        record.userEdited = true;
+
         // Set isPlan based on the current recordMode toggle
         record.isPlan = (recordMode === 'Plan');
         
