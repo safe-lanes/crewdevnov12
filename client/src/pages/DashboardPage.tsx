@@ -1,76 +1,59 @@
 import { useState } from "react";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 type DashboardTab = "management" | "operation";
 
 export const DashboardPage = () => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("management");
 
-  const tabs: { value: DashboardTab; label: string }[] = [
-    { value: "management", label: "Management" },
-    { value: "operation", label: "Operation" },
-  ];
-
   return (
     <div
       className="p-6 space-y-6 bg-gray-50 min-h-[calc(100vh-67px)]"
       data-testid="dashboard-page"
     >
-      <SectionTitleComponents title="Dashboard">
-        <div
-          className="flex items-center gap-1 bg-[#f1f1f1] rounded-md p-1"
-          role="tablist"
-          aria-label="Dashboard view"
-          data-testid="tabs-dashboard"
-        >
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.value;
-            return (
-              <button
-                key={tab.value}
-                id={`tab-${tab.value}`}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                aria-controls={`panel-${tab.value}`}
-                tabIndex={isActive ? 0 : -1}
-                onClick={() => setActiveTab(tab.value)}
-                data-testid={`tab-${tab.value}`}
-                className={`px-6 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  isActive
-                    ? "bg-[#5DADE2] text-white shadow-sm"
-                    : "bg-transparent text-[#4f5863] hover:bg-white"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="w-[120px]" aria-hidden="true" />
-      </SectionTitleComponents>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as DashboardTab)}
+        className="space-y-6"
+      >
+        <SectionTitleComponents title="Dashboard">
+          <TabsList
+            className="h-auto bg-[#f1f1f1] p-1 rounded-md"
+            data-testid="tabs-dashboard"
+          >
+            <TabsTrigger
+              value="management"
+              data-testid="tab-management"
+              className="px-6 py-1.5 text-sm font-medium text-[#4f5863] data-[state=active]:bg-[#5DADE2] data-[state=active]:text-white data-[state=active]:shadow-sm"
+            >
+              Management
+            </TabsTrigger>
+            <TabsTrigger
+              value="operation"
+              data-testid="tab-operation"
+              className="px-6 py-1.5 text-sm font-medium text-[#4f5863] data-[state=active]:bg-[#5DADE2] data-[state=active]:text-white data-[state=active]:shadow-sm"
+            >
+              Operation
+            </TabsTrigger>
+          </TabsList>
+          <div className="w-[120px]" aria-hidden="true" />
+        </SectionTitleComponents>
 
-      {activeTab === "management" && (
-        <div
-          id="panel-management"
-          role="tabpanel"
-          aria-labelledby="tab-management"
+        <TabsContent
+          value="management"
           data-testid="panel-management"
-          className="min-h-[200px]"
+          className="min-h-[200px] mt-0"
         />
-      )}
 
-      {activeTab === "operation" && (
-        <div
-          id="panel-operation"
-          role="tabpanel"
-          aria-labelledby="tab-operation"
+        <TabsContent
+          value="operation"
           data-testid="panel-operation"
-          className="min-h-[200px] flex items-center justify-center text-sm text-gray-500"
+          className="min-h-[200px] mt-0 flex items-center justify-center text-sm text-gray-500"
         >
           Coming soon
-        </div>
-      )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
