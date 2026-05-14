@@ -126,6 +126,80 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
       drawText(page, 'X', x + 2, y + 1, fontBold, 7);
     }
   };
+
+  const wrapLines = (text: string, f: PDFFont, size: number, maxWidth: number): string[] => {
+    const words = text.replace(/\s+/g, ' ').trim().split(' ');
+    const lines: string[] = [];
+    let current = '';
+    for (const w of words) {
+      const candidate = current ? current + ' ' + w : w;
+      if (current && f.widthOfTextAtSize(candidate, size) > maxWidth) {
+        lines.push(current);
+        current = w;
+      } else {
+        current = candidate;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  };
+
+  const drawParagraph = (
+    page: PDFPage,
+    text: string,
+    x: number,
+    y: number,
+    f: PDFFont,
+    size: number,
+    maxWidth: number,
+    lineHeight: number
+  ): number => {
+    const lines = wrapLines(text, f, size, maxWidth);
+    let curY = y;
+    for (const line of lines) {
+      drawText(page, line, x, curY, f, size);
+      curY -= lineHeight;
+    }
+    return curY;
+  };
+
+  const drawLabeledParagraph = (
+    page: PDFPage,
+    label: string,
+    body: string,
+    x: number,
+    y: number,
+    labelFont: PDFFont,
+    bodyFont: PDFFont,
+    size: number,
+    maxWidth: number,
+    lineHeight: number
+  ): number => {
+    drawText(page, label, x, y, labelFont, size);
+    const labelWidth = labelFont.widthOfTextAtSize(label + ' ', size);
+    const firstLineWidth = maxWidth - labelWidth;
+    const words = body.replace(/\s+/g, ' ').trim().split(' ');
+    let firstLine = '';
+    let remainingStart = 0;
+    for (let i = 0; i < words.length; i++) {
+      const candidate = firstLine ? firstLine + ' ' + words[i] : words[i];
+      if (firstLine && bodyFont.widthOfTextAtSize(candidate, size) > firstLineWidth) {
+        remainingStart = i;
+        break;
+      }
+      firstLine = candidate;
+      remainingStart = i + 1;
+    }
+    if (firstLine) {
+      drawText(page, firstLine, x + labelWidth, y, bodyFont, size);
+    }
+    let curY = y - lineHeight;
+    if (remainingStart < words.length) {
+      const remaining = words.slice(remainingStart).join(' ');
+      curY = drawParagraph(page, remaining, x, curY, bodyFont, size, maxWidth, lineHeight) + lineHeight;
+    }
+    return curY;
+  };
   
   const drawStampWatermark = (page: PDFPage) => {
     const stampText = 'Replica';
@@ -175,12 +249,9 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   y -= 12;
   
   // Instructions paragraph
-  const instr1 = 'Prior to arrival in the United States, complete a separate form for a) working crew; and b) passengers and supernumeraries. In addition to its initial completion, the crew list shall be updated to reflect crew';
-  const instr2 = 'changes and other relevant activity (or lack thereof) until the vessel departs the United States.';
-  drawText(page1, instr1, margin, y, font, 5.5);
-  y -= 8;
-  drawText(page1, instr2, margin, y, font, 5.5);
-  y -= 12;
+  const instrFull = 'Prior to arrival in the United States, complete a separate form for a) working crew; and b) passengers and supernumeraries. In addition to its initial completion, the crew list shall be updated to reflect crew changes and other relevant activity (or lack thereof) until the vessel departs the United States.';
+  y = drawParagraph(page1, instrFull, margin, y, font, 5.5, contentWidth, 8);
+  y -= 4;
   
   // Row 1: Vessel Name | Nationality | Official Number
   const row1Height = 30;
@@ -338,15 +409,9 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   y -= 14;
   
   // List instruction text
-  const listInstr1 = 'List individuals alphabetically. Crew who join the vessel subsequent to its arrival while in the United States must be added to the original list and the appropriate date recorded in the "Date Joined" column.';
-  const listInstr2 = 'The "Date Separated" column must be used when a listed crewman is separated from the vessel while it is in the United States. Any crewman designated as "REFUSED" in the "DHS Use Only" column is to';
-  const listInstr3 = 'be detained on the vessel at all times.';
-  drawText(page1, listInstr1, margin, y, font, 5);
-  y -= 7;
-  drawText(page1, listInstr2, margin, y, font, 5);
-  y -= 7;
-  drawText(page1, listInstr3, margin, y, font, 5);
-  y -= 10;
+  const listInstrFull = 'List individuals alphabetically. Crew who join the vessel subsequent to its arrival while in the United States must be added to the original list and the appropriate date recorded in the "Date Joined" column. The "Date Separated" column must be used when a listed crewman is separated from the vessel while it is in the United States. Any crewman designated as "REFUSED" in the "DHS Use Only" column is to be detained on the vessel at all times.';
+  y = drawParagraph(page1, listInstrFull, margin, y, font, 5, contentWidth, 7);
+  y -= 3;
   
   // Crew Table Header
   const tableHeaderHeight = 38;
@@ -503,22 +568,13 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   drawText(page2, "MASTER'S CERTIFICATION", pageWidth / 2 - 50, y, fontBold, 9);
   y -= 15;
   
-  const masterCertText1 = 'MASTER: Execute the following oath before a U.S. Customs and Border Protection Officer as to all arriving passengers on all vessels and all departing crew on United States Flag Vessels, and before an';
-  const masterCertText2 = 'CBP Officer authorized to administer oaths as to all departing passengers on vessels:';
-  drawText(page2, masterCertText1, margin, y, font, 5.5);
-  y -= 8;
-  drawText(page2, masterCertText2, margin, y, font, 5.5);
-  y -= 12;
-  
-  const oathText1 = 'I certify that the U.S. Customs and Border Protection baggage declaration requirements have been made known to incoming passengers; that any required CBP baggage declarations have been or will';
-  const oathText2 = 'simultaneously herewith be filed as required by law and regulation with the proper CBP Officer; and that the responsibilities devolving upon this vessel in connection therewith, if any, have been or will be';
-  const oathText3 = 'discharged as required by law or regulation before the proper CBP Officer. I further certify that there are no steerage passengers on board this vessel (46 U.S.C. 151-163).';
-  drawText(page2, oathText1, margin, y, font, 5.5);
-  y -= 8;
-  drawText(page2, oathText2, margin, y, font, 5.5);
-  y -= 8;
-  drawText(page2, oathText3, margin, y, font, 5.5);
-  y -= 20;
+  const masterCertFull = 'MASTER: Execute the following oath before a U.S. Customs and Border Protection Officer as to all arriving passengers on all vessels and all departing crew on United States Flag Vessels, and before an CBP Officer authorized to administer oaths as to all departing passengers on vessels:';
+  y = drawParagraph(page2, masterCertFull, margin, y, font, 5.5, contentWidth, 8);
+  y -= 4;
+
+  const oathFull = 'I certify that the U.S. Customs and Border Protection baggage declaration requirements have been made known to incoming passengers; that any required CBP baggage declarations have been or will simultaneously herewith be filed as required by law and regulation with the proper CBP Officer; and that the responsibilities devolving upon this vessel in connection therewith, if any, have been or will be discharged as required by law or regulation before the proper CBP Officer. I further certify that there are no steerage passengers on board this vessel (46 U.S.C. 151-163).';
+  y = drawParagraph(page2, oathFull, margin, y, font, 5.5, contentWidth, 8);
+  y -= 16;
   
   drawText(page2, 'Signature of Master:', pageWidth - margin - 290, y, font, 7);
   drawLine(page2, pageWidth - margin - 220, y - 2, pageWidth - margin, y - 2);
@@ -766,55 +822,53 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   drawText(page4, 'ALL NAMES AND OTHER DATA INSCRIBED ON THIS FORM MUST BE IN THE ENGLISH LANGUAGE', pageWidth / 2 - 170, y, fontBold, 8);
   y -= 30;
   
+  const sectionLineHeight = 10;
+  const sectionGap = 14;
+  const sectionMaxWidth = contentWidth;
+
   // PASSENGERS section
-  drawText(page4, 'PASSENGERS:', margin, y, fontBold, 7);
-  drawText(page4, ' Deliver one complete alphabetical passenger list, regardless of nationality, to United States Public', margin + 60, y, font, 7);
-  y -= 10;
-  drawText(page4, 'Health Service, and three such lists to the United States Customs and Border Protection, on arrival at first port in the', margin, y, font, 7);
-  y -= 10;
-  drawText(page4, 'United States.', margin, y, font, 7);
-  y -= 25;
-  
+  y = drawLabeledParagraph(
+    page4,
+    'PASSENGERS:',
+    'Deliver one complete alphabetical passenger list, regardless of nationality, to United States Public Health Service, and three such lists to the United States Customs and Border Protection, on arrival at first port in the United States.',
+    margin, y, fontBold, font, 7, sectionMaxWidth, sectionLineHeight
+  );
+  y -= sectionGap;
+
   // CREW LIST VISA APPLICATION section
-  drawText(page4, 'CREW LIST VISA APPLICATION:', margin, y, fontBold, 7);
-  drawText(page4, ' Submit form in duplicate to U.S. consular officer, specifying each alien crewman', margin + 130, y, font, 7);
-  y -= 10;
-  drawText(page4, 'not in possession of a valid individual visa or lawful resident alien card.', margin, y, font, 7);
-  y -= 25;
-  
+  y = drawLabeledParagraph(
+    page4,
+    'CREW LIST VISA APPLICATION:',
+    'Submit form in duplicate to U.S. consular officer, specifying each alien crewman not in possession of a valid individual visa or lawful resident alien card.',
+    margin, y, fontBold, font, 7, sectionMaxWidth, sectionLineHeight
+  );
+  y -= sectionGap;
+
   // ARRIVING CREW section
-  drawText(page4, 'ARRIVING CREW:', margin, y, fontBold, 7);
-  drawText(page4, ' Deliver one complete alphabetical crew list, regardless of nationality, to United States Public', margin + 80, y, font, 7);
-  y -= 10;
-  drawText(page4, 'Health Service, and three such lists to the United States Customs and Border Protection on arrival at first port in the', margin, y, font, 7);
-  y -= 10;
-  drawText(page4, 'United States. Where a crewman is a returning resident, show his/her alien registration receipt number where', margin, y, font, 7);
-  y -= 10;
-  drawText(page4, 'prompted for a document number.', margin, y, font, 7);
-  y -= 25;
-  
+  y = drawLabeledParagraph(
+    page4,
+    'ARRIVING CREW:',
+    'Deliver one complete alphabetical crew list, regardless of nationality, to United States Public Health Service, and three such lists to the United States Customs and Border Protection on arrival at first port in the United States. Where a crewman is a returning resident, show his/her alien registration receipt number where prompted for a document number.',
+    margin, y, fontBold, font, 7, sectionMaxWidth, sectionLineHeight
+  );
+  y -= sectionGap;
+
   // CHANGES IN CREW section
-  drawText(page4, 'CHANGES IN CREW:', margin, y, fontBold, 7);
-  drawText(page4, ' If an alien crewman is separating from the vessel while in the United States (and will not be', margin + 95, y, font, 7);
-  y -= 10;
-  drawText(page4, 'returning), discharge authorization must first be obtained from the United States Customs and Border Protection via', margin, y, font, 7);
-  y -= 10;
-  drawText(page4, 'Form I-408 (Application to Pay Off or Discharge Alien Crewman) and the appropriate date of separation must be', margin, y, font, 7);
-  y -= 10;
-  drawText(page4, 'recorded in the "Date Separated" column of this form for that crew member. If a crew member joins the vessel while', margin, y, font, 7);
-  y -= 10;
-  drawText(page4, 'in the United States, add the crewman\'s name and other requested information at the next available blank line of the', margin, y, font, 7);
-  y -= 10;
-  drawText(page4, 'list and record the appropriate date in the "Date Joined" column.', margin, y, font, 7);
-  y -= 25;
-  
+  y = drawLabeledParagraph(
+    page4,
+    'CHANGES IN CREW:',
+    'If an alien crewman is separating from the vessel while in the United States (and will not be returning), discharge authorization must first be obtained from the United States Customs and Border Protection via Form I-408 (Application to Pay Off or Discharge Alien Crewman) and the appropriate date of separation must be recorded in the "Date Separated" column of this form for that crew member. If a crew member joins the vessel while in the United States, add the crewman\'s name and other requested information at the next available blank line of the list and record the appropriate date in the "Date Joined" column.',
+    margin, y, fontBold, font, 7, sectionMaxWidth, sectionLineHeight
+  );
+  y -= sectionGap;
+
   // DEPARTING CREW section
-  drawText(page4, 'DEPARTING CREW:', margin, y, fontBold, 7);
-  drawText(page4, ' When the vessel departs the United States, complete the SUMMARY OF DEPARTURE', margin + 95, y, font, 7);
-  y -= 10;
-  drawText(page4, 'section and deliver one complete list (whether or not there have been crew changes) to the United States Customs', margin, y, font, 7);
-  y -= 10;
-  drawText(page4, 'and Border Protection at the port of departure.', margin, y, font, 7);
+  y = drawLabeledParagraph(
+    page4,
+    'DEPARTING CREW:',
+    'When the vessel departs the United States, complete the SUMMARY OF DEPARTURE section and deliver one complete list (whether or not there have been crew changes) to the United States Customs and Border Protection at the port of departure.',
+    margin, y, fontBold, font, 7, sectionMaxWidth, sectionLineHeight
+  );
   
   // Page 4 footer
   drawText(page4, 'CBP Form I-418 (09/24)', margin, margin - 5, font, 6);
