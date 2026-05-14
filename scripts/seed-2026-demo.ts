@@ -151,16 +151,25 @@ async function main() {
       [TAG]
     );
 
-    const c = await client.query(
-      `DELETE FROM da_personnel_tested_v2 WHERE created_by_uuid = $1`,
+    const oldDaParents = await client.query(
+      `SELECT da_uuid FROM da_test_records_v2 WHERE created_by_uuid = $1`,
       [TAG]
     );
-    const delChildren = c.rowCount ?? 0;
-    const p = await client.query(
-      `DELETE FROM da_test_records_v2 WHERE created_by_uuid = $1`,
-      [TAG]
-    );
-    const delParents = p.rowCount ?? 0;
+    const oldUuids = oldDaParents.rows.map((r: any) => r.da_uuid);
+    let delChildren = 0;
+    let delParents = 0;
+    if (oldUuids.length > 0) {
+      const c = await client.query(
+        `DELETE FROM da_personnel_tested_v2 WHERE test_record_uuid = ANY($1::text[])`,
+        [oldUuids]
+      );
+      delChildren = c.rowCount ?? 0;
+      const p = await client.query(
+        `DELETE FROM da_test_records_v2 WHERE created_by_uuid = $1`,
+        [TAG]
+      );
+      delParents = p.rowCount ?? 0;
+    }
 
     const promotions = await buildPromotions(client);
     let promoInserted = 0;

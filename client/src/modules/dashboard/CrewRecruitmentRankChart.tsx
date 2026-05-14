@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AgCharts } from "@/lib/agCharts";
 import type { AgChartOptions, AgChartInstance } from "@/lib/agCharts";
 import { candidateApi } from "@/modules/recruitment/api/candidateApi";
+import { CrewRecruitmentDrilldownDialog } from "./CrewRecruitmentDrilldownDialog";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface CandidateRow {
@@ -88,6 +89,19 @@ export const CrewRecruitmentRankChart = ({
     return () => setIsMounted(false);
   }, []);
 
+  const [showDrillDown, setShowDrillDown] = useState(false);
+  const [selectedRank, setSelectedRank] = useState<string | null>(null);
+
+  const handleBarClick = useCallback((rank: string) => {
+    setSelectedRank(rank);
+    setShowDrillDown(true);
+  }, []);
+
+  const handleDrillDownChange = useCallback((open: boolean) => {
+    setShowDrillDown(open);
+    if (!open) setSelectedRank(null);
+  }, []);
+
   const range = useMemo(() => periodToRange(period), [period]);
 
   const { data: candidates = [], isLoading, error } = useQuery<CandidateRow[]>({
@@ -131,6 +145,17 @@ export const CrewRecruitmentRankChart = ({
       data: chartData,
       background: { fill: "#ffffff" },
       padding: { top: 10, right: 10, bottom: 30, left: 40 },
+      listeners: {
+        seriesNodeClick: (event: any) => {
+          try {
+            if (event?.datum?.rank) {
+              handleBarClick(String(event.datum.rank));
+            }
+          } catch (err) {
+            console.error("Error handling chart click:", err);
+          }
+        },
+      } as any,
       series: [
         {
           type: "bar" as any,
@@ -139,6 +164,7 @@ export const CrewRecruitmentRankChart = ({
           fill: "#52baf3",
           stroke: "#3a9fd9",
           strokeWidth: 1,
+          cursor: "pointer",
           tooltip: {
             renderer: ({ datum }: any) => {
               const rank = escapeHtml(String(datum?.rank ?? ""));
@@ -165,7 +191,7 @@ export const CrewRecruitmentRankChart = ({
         },
       ],
     }),
-    [chartData],
+    [chartData, handleBarClick],
   );
 
   if (isLoading) {
@@ -221,17 +247,29 @@ export const CrewRecruitmentRankChart = ({
   }
 
   return (
-    <div
-      className="w-full h-full min-h-0"
-      data-testid="chart-crew-recruitment-rank"
-    >
-      {isMounted && (
-        <AgCharts
-          ref={chartRef}
-          options={chartOptions}
-          style={{ width: "100%", height: "100%" }}
-        />
-      )}
-    </div>
+    <>
+      <div
+        className="w-full h-full min-h-0"
+        data-testid="chart-crew-recruitment-rank"
+      >
+        {isMounted && (
+          <AgCharts
+            ref={chartRef}
+            options={chartOptions}
+            style={{ width: "100%", height: "100%" }}
+          />
+        )}
+      </div>
+      <CrewRecruitmentDrilldownDialog
+        open={showDrillDown}
+        onOpenChange={handleDrillDownChange}
+        rank={selectedRank}
+        period={period}
+        ranks={ranks}
+        crewPools={_crewPools}
+        manningAgents={manningAgents}
+        nationalities={nationalities}
+      />
+    </>
   );
 };
