@@ -53,7 +53,7 @@ export const RankWiseNCsChart = ({
     return params;
   }, [vesselIds, monthValue, complianceMode, opaMode]);
 
-  const { data: ncsData = [], isLoading, error } = useQuery<NCByRank[]>({
+  const { data: ncsData = [], isLoading, isFetching, error } = useQuery<NCByRank[]>({
     queryKey: ['v2', 'rest-hours', 'ncs-by-rank', queryParams],
     queryFn: async () => {
       if (!queryParams.monthValue) return [];
@@ -288,10 +288,12 @@ export const RankWiseNCsChart = ({
     );
   }
 
-  if (error) {
+  // Only surface a hard error after retries have settled — transient 429s
+  // are retried by the query client and should not flash red.
+  if (error && !isFetching) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <div className="text-sm text-gray-500 dark:text-gray-400">No data available</div>
+        <div className="text-sm text-red-500">Failed to load NCs data</div>
       </div>
     );
   }

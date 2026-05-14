@@ -107,7 +107,7 @@ export const PerformanceOverviewCard = ({
   const isMultiMonthMode = monthsToFetch.length !== 1;
 
   // Fetch crew records data
-  const { data: allCrewRecords = [], isLoading, isError, error } = useQuery<any[]>({
+  const { data: allCrewRecords = [], isLoading, isError, isFetching, error } = useQuery<any[]>({
     queryKey: ['v2', 'rest-hours', 'crew-records-performance', vesselIds, complianceMode, opaMode, monthsToFetch],
     queryFn: async () => {
       if (monthsToFetch.length === 0) return [];
@@ -214,10 +214,12 @@ export const PerformanceOverviewCard = ({
     );
   }
 
-  if (isError) {
+  // Only surface a hard error after retries have settled (isFetching === false).
+  // Transient 429 bursts are retried by the query client and should not flash red.
+  if (isError && !isFetching) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <div className="text-sm text-gray-500 dark:text-gray-400">No data available</div>
+        <div className="text-sm text-red-500">Error loading data: {error instanceof Error ? error.message : 'Unknown error'}</div>
       </div>
     );
   }
