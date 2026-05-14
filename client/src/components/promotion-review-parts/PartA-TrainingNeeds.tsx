@@ -168,7 +168,6 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         className="h-7 w-7 p-0"
                         onClick={() => {
                           onSetEditingTrainingCommentId(null);
-                          onSetNewTrainingComment(prev => ({ ...prev, [training.id]: '' }));
                           onSetEditingTrainingComment(editingTrainingComment === training.id ? null : training.id);
                         }}
                         data-testid={`button-training-comment-${training.id}`}
