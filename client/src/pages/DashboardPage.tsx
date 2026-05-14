@@ -1,4 +1,5 @@
 import { useState } from "react";
+import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 type DashboardTab = "management" | "operation";
@@ -16,16 +17,13 @@ export const DashboardPage = () => {
         onValueChange={(v) => setActiveTab(v as DashboardTab)}
         className="space-y-6"
       >
-        <div className="grid grid-cols-3 items-center mb-4">
-          <h1
-            className="text-2xl font-bold text-black"
-            data-testid="text-page-title"
-          >
-            Dashboard
-          </h1>
-          <div className="flex justify-center">
+        <div className="relative">
+          <SectionTitleComponents title="Dashboard">
+            <span aria-hidden="true" />
+          </SectionTitleComponents>
+          <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
             <TabsList
-              className="h-auto bg-[#f1f1f1] p-1 rounded-md"
+              className="h-auto bg-[#f1f1f1] p-1 rounded-md pointer-events-auto"
               data-testid="tabs-dashboard"
             >
               <TabsTrigger
@@ -44,7 +42,6 @@ export const DashboardPage = () => {
               </TabsTrigger>
             </TabsList>
           </div>
-          <div aria-hidden="true" />
         </div>
 
         <TabsContent
