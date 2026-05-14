@@ -171,10 +171,18 @@ export const CrewRecruitmentRankChart = ({
   if (isLoading) {
     return (
       <div
-        className="w-full h-full flex items-center justify-center"
+        className="w-full h-full flex flex-col justify-end gap-2 px-2 pb-6"
         data-testid="state-loading-crew-recruitment-rank"
       >
-        <div className="text-sm text-gray-500">Loading...</div>
+        <div className="flex items-end gap-3 h-full">
+          {[60, 80, 45, 70, 35, 55].map((h, i) => (
+            <div
+              key={i}
+              className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-sm animate-pulse"
+              style={{ height: `${h}%` }}
+            />
+          ))}
+        </div>
       </div>
     );
   }
