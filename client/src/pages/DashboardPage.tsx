@@ -5,12 +5,12 @@ import { DashboardCard } from "@/modules/dashboard/DashboardCard";
 import { ManagementFilterBar } from "@/modules/dashboard/ManagementFilterBar";
 import { CrewRecruitmentRankChart } from "@/modules/dashboard/CrewRecruitmentRankChart";
 import { CrewPromotionsRankChart } from "@/modules/dashboard/CrewPromotionsRankChart";
+import { CrewRetentionMetrics } from "@/modules/dashboard/CrewRetentionMetrics";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 type DashboardTab = "management" | "operation";
 
 const PLACEHOLDER_CARDS: { label: string; testId: string }[] = [
-  { label: "Crew Retention", testId: "crew-retention" },
   { label: "Crew Pool", testId: "crew-pool" },
   { label: "Crew Appraisals", testId: "crew-appraisals" },
   { label: "D&A Analysis", testId: "da-analysis" },
@@ -108,6 +108,12 @@ export const DashboardPage = () => {
                   />
                 ) : null
               }
+            />
+            <DashboardCard
+              key="crew-retention"
+              label="Crew Retention"
+              testId="crew-retention"
+              renderContent={() => <CrewRetentionMetrics period={period} />}
             />
             {PLACEHOLDER_CARDS.map((card) => (
               <DashboardCard
