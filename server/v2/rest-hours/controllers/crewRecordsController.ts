@@ -92,8 +92,11 @@ export const crewRecordsController = {
       const { vesselId, monthValue, complianceMode, opaMode } = req.query;
       const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
       const opa = opaMode === 'true' || opaMode === '1';
+      const vesselIds = vesselId
+        ? (vesselId as string).split(",").filter(Boolean)
+        : undefined;
       const result = await crewRecordsService.getViolationsByRank({
-        vesselId: vesselId as string | undefined,
+        vesselIds,
         monthValue: monthValue as string | undefined,
         complianceMode: mode,
         opaMode: opa,
@@ -110,8 +113,11 @@ export const crewRecordsController = {
       const { vesselId, monthValue, complianceMode, opaMode } = req.query;
       const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
       const opa = opaMode === 'true' || opaMode === '1';
+      const vesselIds = vesselId
+        ? (vesselId as string).split(",").filter(Boolean)
+        : undefined;
       const result = await crewRecordsService.getNcsByRank({
-        vesselId: vesselId as string | undefined,
+        vesselIds,
         monthValue: monthValue as string | undefined,
         complianceMode: mode,
         opaMode: opa,

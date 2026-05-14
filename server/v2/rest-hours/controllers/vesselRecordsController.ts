@@ -5,10 +5,12 @@ import { enrichRecordWithReviewStatuses } from "../utils/reviewStatusUtils";
 export const vesselRecordsController = {
   async getAll(req: Request, res: Response) {
     try {
-      const { vesselId, monthValue, complianceMode, opaMode } = req.query;
+      const { vesselId, vesselUuid, monthValue, complianceMode, opaMode } = req.query;
 
-      const vesselIds = vesselId
-        ? (vesselId as string).split(",").filter(Boolean)
+      // Accept both `vesselId` and `vesselUuid` as aliases (legacy clients use vesselUuid)
+      const vesselIdParam = (vesselId ?? vesselUuid) as string | undefined;
+      const vesselIds = vesselIdParam
+        ? vesselIdParam.split(",").filter(Boolean)
         : undefined;
 
       const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';

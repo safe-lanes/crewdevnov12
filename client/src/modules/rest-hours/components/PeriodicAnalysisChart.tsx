@@ -180,35 +180,13 @@ export const PeriodicAnalysisChart = ({
       
       if (monthsToFetchList.length === 0) return [];
       
-      // Fetch vessel records for each month, then get crew records
+      // Single backend call per month with multi-vessel filter
       const fetchPromises = monthsToFetchList.map(async (monthValue) => {
-        const [year, month] = monthValue.split('-');
-        
-        // Get vessel records for this month
-        const vesselRecords = await restHoursApiV2.vesselRecords.getAll({ 
-          month, 
-          year 
+        const crewRecords = await restHoursApiV2.crewRecords.getAll({
+          vesselId: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
+          monthValue,
         });
-        
-        // Filter by vesselIds if provided
-        const filteredVesselRecords = vesselIds && vesselIds.length > 0
-          ? vesselRecords.filter((vr: any) => vesselIds.includes(vr.vesselId))
-          : vesselRecords;
-        
-        // Get crew records for each vessel record
-        const crewRecordsPromises = filteredVesselRecords.map(async (vr: any) => {
-          const crewRecords = await restHoursApiV2.crewRecords.getAll({ 
-            vesselId: vr.vesselId,
-            monthValue,
-          });
-          return crewRecords.map((cr: any) => ({
-            ...cr,
-            vesselId: vr.vesselId,
-          }));
-        });
-        
-        const allCrewRecords = await Promise.all(crewRecordsPromises);
-        return allCrewRecords.flat();
+        return crewRecords;
       });
 
       // Wait for all requests to complete

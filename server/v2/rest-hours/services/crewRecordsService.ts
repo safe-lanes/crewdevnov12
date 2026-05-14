@@ -608,11 +608,26 @@ export const crewRecordsService = {
 
   async getViolationsByRank(params: {
     vesselId?: string;
+    vesselIds?: string[];
     monthValue?: string;
     complianceMode?: 'Rest' | 'Work';
     opaMode?: boolean;
   }): Promise<Array<{ rank: string; violationDays: number }>> {
-    const records = await this.getAll(params);
+    const { vesselId, vesselIds, monthValue, complianceMode, opaMode } = params;
+
+    const effectiveVesselIds = vesselIds && vesselIds.length > 0
+      ? vesselIds
+      : (vesselId ? [vesselId] : undefined);
+
+    let records: EnrichedCrewRecord[] = [];
+    if (effectiveVesselIds && effectiveVesselIds.length > 0) {
+      for (const vId of effectiveVesselIds) {
+        const part = await this.getAll({ vesselId: vId, monthValue, complianceMode, opaMode });
+        records.push(...part);
+      }
+    } else {
+      records = await this.getAll({ monthValue, complianceMode, opaMode });
+    }
 
     const violationsByRank: Record<string, number> = {};
     for (const record of records) {
@@ -630,11 +645,26 @@ export const crewRecordsService = {
 
   async getNcsByRank(params: {
     vesselId?: string;
+    vesselIds?: string[];
     monthValue?: string;
     complianceMode?: 'Rest' | 'Work';
     opaMode?: boolean;
   }): Promise<Array<{ rank: string; ncCount: number }>> {
-    const records = await this.getAll(params);
+    const { vesselId, vesselIds, monthValue, complianceMode, opaMode } = params;
+
+    const effectiveVesselIds = vesselIds && vesselIds.length > 0
+      ? vesselIds
+      : (vesselId ? [vesselId] : undefined);
+
+    let records: EnrichedCrewRecord[] = [];
+    if (effectiveVesselIds && effectiveVesselIds.length > 0) {
+      for (const vId of effectiveVesselIds) {
+        const part = await this.getAll({ vesselId: vId, monthValue, complianceMode, opaMode });
+        records.push(...part);
+      }
+    } else {
+      records = await this.getAll({ monthValue, complianceMode, opaMode });
+    }
 
     const ncsByRank: Record<string, number> = {};
     for (const record of records) {

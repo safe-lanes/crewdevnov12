@@ -33,9 +33,12 @@ function withAuditUser<T>(data: T): T {
 
 export const restHoursApiV2 = {
   vesselRecords: {
-    async getAll(params?: { vesselUuid?: string; month?: string; year?: string; monthValue?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
+    async getAll(params?: { vesselUuid?: string | string[]; month?: string; year?: string; monthValue?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselUuid) searchParams.set('vesselUuid', params.vesselUuid);
+      if (params?.vesselUuid) {
+        const v = Array.isArray(params.vesselUuid) ? params.vesselUuid.filter(Boolean).join(',') : params.vesselUuid;
+        if (v) searchParams.set('vesselUuid', v);
+      }
       if (params?.monthValue) {
         searchParams.set('monthValue', params.monthValue);
       } else if (params?.month && params?.year) {
@@ -113,9 +116,12 @@ export const restHoursApiV2 = {
   },
 
   crewRecords: {
-    async getAll(params?: { vesselId?: string; monthValue?: string; ranks?: string[]; search?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
+    async getAll(params?: { vesselId?: string | string[]; monthValue?: string; ranks?: string[]; search?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
+      if (params?.vesselId) {
+        const v = Array.isArray(params.vesselId) ? params.vesselId.filter(Boolean).join(',') : params.vesselId;
+        if (v) searchParams.set('vesselId', v);
+      }
       if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
       if (params?.ranks && params.ranks.length > 0) {
         params.ranks.forEach(rank => searchParams.append('ranks', rank));
@@ -163,9 +169,12 @@ export const restHoursApiV2 = {
     },
 
     // V1 pattern: /api/rest-hours-violations-by-rank
-    async getViolationsByRank(params?: { vesselId?: string; monthValue?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
+    async getViolationsByRank(params?: { vesselId?: string | string[]; monthValue?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
+      if (params?.vesselId) {
+        const v = Array.isArray(params.vesselId) ? params.vesselId.filter(Boolean).join(',') : params.vesselId;
+        if (v) searchParams.set('vesselId', v);
+      }
       if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
       if (params?.complianceMode) searchParams.set('complianceMode', params.complianceMode);
       if (params?.opaMode) searchParams.set('opaMode', 'true');
@@ -176,9 +185,12 @@ export const restHoursApiV2 = {
     },
 
     // V1 pattern: /api/rest-hours-ncs-by-rank
-    async getNcsByRank(params?: { vesselId?: string; monthValue?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
+    async getNcsByRank(params?: { vesselId?: string | string[]; monthValue?: string; complianceMode?: 'Rest' | 'Work'; opaMode?: boolean }) {
       const searchParams = new URLSearchParams();
-      if (params?.vesselId) searchParams.set('vesselId', params.vesselId);
+      if (params?.vesselId) {
+        const v = Array.isArray(params.vesselId) ? params.vesselId.filter(Boolean).join(',') : params.vesselId;
+        if (v) searchParams.set('vesselId', v);
+      }
       if (params?.monthValue) searchParams.set('monthValue', params.monthValue);
       if (params?.complianceMode) searchParams.set('complianceMode', params.complianceMode);
       if (params?.opaMode) searchParams.set('opaMode', 'true');

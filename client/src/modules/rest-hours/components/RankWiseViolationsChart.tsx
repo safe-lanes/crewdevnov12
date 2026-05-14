@@ -57,45 +57,16 @@ export const RankWiseViolationsChart = ({
     queryKey: ['v2', 'rest-hours', 'violations-by-rank', queryParams],
     queryFn: async () => {
       if (!queryParams.monthValue) return [];
-      
-      const [year, month] = queryParams.monthValue.split('-');
-      
-      // Get vessel records for this month
-      const vesselRecords = await restHoursApiV2.vesselRecords.getAll({ month, year });
-      
-      // Filter by vesselIds if provided
-      const filteredVesselRecords = queryParams.vesselIds && queryParams.vesselIds.length > 0
-        ? vesselRecords.filter((vr: any) => queryParams.vesselIds.includes(vr.vesselId))
-        : vesselRecords;
-      
-      // Aggregate violations by rank across all vessel records
-      const rankViolationsMap = new Map<string, number>();
-      
-      for (const vr of filteredVesselRecords) {
-        try {
-          const violationsByRank = await restHoursApiV2.crewRecords.getViolationsByRank({ 
-            vesselId: vr.vesselId,
-            monthValue: queryParams.monthValue,
-            complianceMode: queryParams.complianceMode,
-            opaMode: queryParams.opaMode,
-          });
-          
-          violationsByRank.forEach((item: any) => {
-            const currentCount = rankViolationsMap.get(item.rank) || 0;
-            rankViolationsMap.set(item.rank, currentCount + (item.violationDays || 0));
-          });
-        } catch (e) {
-          console.warn('Failed to fetch violations for vessel record:', vr.vesselId);
-        }
-      }
-      
-      // Convert map to array
-      const result: ViolationByRank[] = Array.from(rankViolationsMap.entries()).map(([rank, violationDays]) => ({
-        rank,
-        violationDays,
-      }));
-      
-      return result.sort((a, b) => b.violationDays - a.violationDays);
+
+      // Single backend call — server aggregates across all selected vessels
+      const result: ViolationByRank[] = await restHoursApiV2.crewRecords.getViolationsByRank({
+        vesselId: queryParams.vesselIds && queryParams.vesselIds.length > 0 ? queryParams.vesselIds : undefined,
+        monthValue: queryParams.monthValue,
+        complianceMode: queryParams.complianceMode,
+        opaMode: queryParams.opaMode,
+      });
+
+      return result;
     },
     enabled: !!monthValue,
   });
