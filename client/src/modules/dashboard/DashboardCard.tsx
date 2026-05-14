@@ -24,7 +24,7 @@ export interface DashboardCardProps {
 export const DashboardCard = ({
   label,
   testId,
-  dropdownPlaceholder = "View",
+  dropdownPlaceholder = "Select",
   children,
 }: DashboardCardProps) => {
   const [expanded, setExpanded] = useState(false);
