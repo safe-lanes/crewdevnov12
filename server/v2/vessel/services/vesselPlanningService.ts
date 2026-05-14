@@ -954,7 +954,7 @@ export const vesselPlanningService = {
       : undefined;
 
     const secondaryCrew = (isPrimary && vesselUuid && rankId)
-      ? await vesselPlanningRepository.findSecondaryByVesselAndRank(vesselUuid, rankId, planUuid)
+      ? await vesselPlanningRepository.findSecondaryByVesselAndRank(vesselUuid, rankId, planUuid, planning.rank ?? undefined)
       : null;
 
     await db.transaction(async (tx) => {
