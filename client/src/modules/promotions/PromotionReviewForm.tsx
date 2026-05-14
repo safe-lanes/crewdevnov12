@@ -915,6 +915,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       criteriaMeetsStatus['a2.7'] = 'pending';
     }
 
+    const existingStatusRaw = (existingReviewData as any)?.status;
+    const existingStatusNormalized = typeof existingStatusRaw === 'string'
+      ? existingStatusRaw.trim().toLowerCase().replace(/\s+/g, '_')
+      : '';
+    const advancedStatuses = new Set(['submitted', 'approved', 'completed', 'in_progress']);
+    const statusToSend = advancedStatuses.has(existingStatusNormalized)
+      ? existingStatusRaw
+      : 'draft';
+
     return {
       crewMemberId: promotionData?.crewMemberId,
       promotionToRank: promotionData?.promotionToRank,
@@ -933,9 +942,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partBNotes: formData.partBNotes || null,
       partCNotes: formData.partCNotes || null,
       selectedApproversForSubmission: JSON.stringify(selectedApproversForSubmission),
-      status: 'draft',
+      status: statusToSend,
     };
-  }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission]);
+  }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData]);
 
   const handleSaveDraft = useCallback(() => {
     const reviewData = collectFormData({
