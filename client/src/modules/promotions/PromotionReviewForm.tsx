@@ -668,10 +668,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [vesselTypes, setVesselTypes] = useState<string[]>(['Product Tankers', 'Crude Oil Tankers']);
   const [vesselClasses, setVesselClasses] = useState<string[]>(['MR Class1 Tankers', 'Chemical JP 20']);
 
-  const [promotionConfirmed, setPromotionConfirmed] = useState<string>('yes');
+  const [promotionConfirmed, setPromotionConfirmed] = useState<string>('');
   const [vesselAssigned, setVesselAssigned] = useState<string>('');
   const [promotionDate, setPromotionDate] = useState<string>('');
-  const [promotionTiming, setPromotionTiming] = useState<string>('on-board');
+  const [promotionTiming, setPromotionTiming] = useState<string>('');
 
   const [showChecklistForm, setShowChecklistForm] = useState(promotionData?.initialSection === 'checklist');
 
@@ -1188,8 +1188,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       id: newId,
       date: currentDate,
       approver: '',
-      status: 'pending',
-      approval: 'yes',
+      status: '',
+      approval: '',
       comments: '',
       isFromPartA: false
     }]);
@@ -1278,7 +1278,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       id: approverObj.userUuid,
       date: currentDate,
       approver: approverObj.displayName,
-      status: 'pending',
+      status: '',
       approval: '',
       comments: '',
       isFromPartA: true,
