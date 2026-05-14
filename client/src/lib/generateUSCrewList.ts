@@ -137,7 +137,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
     const stampWidth = textWidth + paddingX * 2;
     const stampHeight = textHeight + paddingY * 2;
     const stampX = pageWidth - margin - stampWidth - 5;
-    const stampY = pageHeight - margin + 3;
+    const stampY = pageHeight - margin - stampHeight + 5;
     const redColor = rgb(0.8, 0, 0);
     
     page.drawRectangle({
@@ -457,7 +457,7 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   receiptField.addToPage(page1, { x: margin + 380, y: y - receiptBoxHeight + 14, width: contentWidth - 380 - 5, height: 10 });
   drawText(page1, 'CBP Port of Arrival (address):', margin + 3, y - receiptBoxHeight + 4, font, 6);
   const cbpPortField = form.createTextField('cbpPortAddress');
-  cbpPortField.addToPage(page1, { x: margin + 120, y: y - receiptBoxHeight + 2, width: 250, height: 10 });
+  cbpPortField.addToPage(page1, { x: margin + 120, y: y - receiptBoxHeight + 2, width: contentWidth - 120 - 5, height: 10 });
   y -= receiptBoxHeight + 3;
   
   // SUMMARY OF DEPARTURE section
@@ -479,15 +479,15 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   
   drawText(page1, 'Agent at Departure (Name & Address):', margin + 3, y - 36, font, 5);
   const agentDepartureField = form.createTextField('agentAtDeparture');
-  agentDepartureField.addToPage(page1, { x: margin + 140, y: y - 39, width: 230, height: 10 });
+  agentDepartureField.addToPage(page1, { x: margin + 140, y: y - 39, width: 280, height: 10 });
   
-  drawText(page1, 'Total Added Crew:', margin + 400, y - 40, font, 5);
+  drawText(page1, 'Total Added Crew:', margin + 440, y - 40, font, 5);
   const addedCrewField = form.createTextField('totalAddedCrew');
-  addedCrewField.addToPage(page1, { x: margin + 465, y: y - 43, width: 40, height: 10 });
+  addedCrewField.addToPage(page1, { x: margin + 510, y: y - 43, width: 60, height: 10 });
   
-  drawText(page1, 'Total Separated Crew:', margin + 520, y - 40, font, 5);
+  drawText(page1, 'Total Separated Crew:', margin + 590, y - 40, font, 5);
   const separatedCrewField = form.createTextField('totalSeparatedCrew');
-  separatedCrewField.addToPage(page1, { x: margin + 595, y: y - 43, width: 40, height: 10 });
+  separatedCrewField.addToPage(page1, { x: margin + 670, y: y - 43, width: contentWidth - 670 - 5, height: 10 });
   
   // Page 1 footer
   drawText(page1, 'CBP Form I-418 (09/24)', margin, margin - 5, font, 6);
@@ -520,8 +520,8 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   drawText(page2, oathText3, margin, y, font, 5.5);
   y -= 20;
   
-  drawText(page2, 'Signature of Master:', pageWidth / 2 - 50, y, font, 7);
-  drawLine(page2, pageWidth / 2, y - 2, pageWidth / 2 + 150, y - 2);
+  drawText(page2, 'Signature of Master:', pageWidth - margin - 290, y, font, 7);
+  drawLine(page2, pageWidth - margin - 220, y - 2, pageWidth - margin, y - 2);
   y -= 30;
   
   // CERTIFICATION OF COPY
@@ -533,9 +533,9 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   drawText(page2, certCopyText1, margin + 2, y - 22, font, 5.5);
   const certFieldY = y - certBoxHeight + 2;
   const certFieldH = 12;
-  const certLocWidth = 200;
+  const certLocWidth = 320;
   const certGap = 30;
-  const certDateWidth = 150;
+  const certDateWidth = 360;
   const certLocationField = form.createTextField('certLocation');
   certLocationField.addToPage(page2, { x: margin + 2, y: certFieldY, width: certLocWidth, height: certFieldH });
   drawText(page2, 'on', margin + 2 + certLocWidth + (certGap - 8) / 2, certFieldY + 3, font, 6);
@@ -545,8 +545,8 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   
   y -= certBoxHeight + 15;
   
-  drawText(page2, 'Signature of CBP Officer:', pageWidth / 2 - 60, y, font, 7);
-  drawLine(page2, pageWidth / 2, y - 2, pageWidth / 2 + 150, y - 2);
+  drawText(page2, 'Signature of CBP Officer:', pageWidth - margin - 300, y, font, 7);
+  drawLine(page2, pageWidth - margin - 220, y - 2, pageWidth - margin, y - 2);
   y -= 25;
   
   // Continuation Sheet Header
@@ -767,54 +767,54 @@ export async function generateUSCrewListDocument(data: USCrewListData): Promise<
   y -= 30;
   
   // PASSENGERS section
-  drawText(page4, 'PASSENGERS:', margin + 80, y, fontBold, 7);
-  drawText(page4, ' Deliver one complete alphabetical passenger list, regardless of nationality, to United States Public', margin + 140, y, font, 7);
+  drawText(page4, 'PASSENGERS:', margin, y, fontBold, 7);
+  drawText(page4, ' Deliver one complete alphabetical passenger list, regardless of nationality, to United States Public', margin + 60, y, font, 7);
   y -= 10;
-  drawText(page4, 'Health Service, and three such lists to the United States Customs and Border Protection, on arrival at first port in the', margin + 80, y, font, 7);
+  drawText(page4, 'Health Service, and three such lists to the United States Customs and Border Protection, on arrival at first port in the', margin, y, font, 7);
   y -= 10;
-  drawText(page4, 'United States.', margin + 80, y, font, 7);
+  drawText(page4, 'United States.', margin, y, font, 7);
   y -= 25;
   
   // CREW LIST VISA APPLICATION section
-  drawText(page4, 'CREW LIST VISA APPLICATION:', margin + 80, y, fontBold, 7);
-  drawText(page4, ' Submit form in duplicate to U.S. consular officer, specifying each alien crewman', margin + 210, y, font, 7);
+  drawText(page4, 'CREW LIST VISA APPLICATION:', margin, y, fontBold, 7);
+  drawText(page4, ' Submit form in duplicate to U.S. consular officer, specifying each alien crewman', margin + 130, y, font, 7);
   y -= 10;
-  drawText(page4, 'not in possession of a valid individual visa or lawful resident alien card.', margin + 80, y, font, 7);
+  drawText(page4, 'not in possession of a valid individual visa or lawful resident alien card.', margin, y, font, 7);
   y -= 25;
   
   // ARRIVING CREW section
-  drawText(page4, 'ARRIVING CREW:', margin + 80, y, fontBold, 7);
-  drawText(page4, ' Deliver one complete alphabetical crew list, regardless of nationality, to United States Public', margin + 160, y, font, 7);
+  drawText(page4, 'ARRIVING CREW:', margin, y, fontBold, 7);
+  drawText(page4, ' Deliver one complete alphabetical crew list, regardless of nationality, to United States Public', margin + 80, y, font, 7);
   y -= 10;
-  drawText(page4, 'Health Service, and three such lists to the United States Customs and Border Protection on arrival at first port in the', margin + 80, y, font, 7);
+  drawText(page4, 'Health Service, and three such lists to the United States Customs and Border Protection on arrival at first port in the', margin, y, font, 7);
   y -= 10;
-  drawText(page4, 'United States. Where a crewman is a returning resident, show his/her alien registration receipt number where', margin + 80, y, font, 7);
+  drawText(page4, 'United States. Where a crewman is a returning resident, show his/her alien registration receipt number where', margin, y, font, 7);
   y -= 10;
-  drawText(page4, 'prompted for a document number.', margin + 80, y, font, 7);
+  drawText(page4, 'prompted for a document number.', margin, y, font, 7);
   y -= 25;
   
   // CHANGES IN CREW section
-  drawText(page4, 'CHANGES IN CREW:', margin + 80, y, fontBold, 7);
-  drawText(page4, ' If an alien crewman is separating from the vessel while in the United States (and will not be', margin + 175, y, font, 7);
+  drawText(page4, 'CHANGES IN CREW:', margin, y, fontBold, 7);
+  drawText(page4, ' If an alien crewman is separating from the vessel while in the United States (and will not be', margin + 95, y, font, 7);
   y -= 10;
-  drawText(page4, 'returning), discharge authorization must first be obtained from the United States Customs and Border Protection via', margin + 80, y, font, 7);
+  drawText(page4, 'returning), discharge authorization must first be obtained from the United States Customs and Border Protection via', margin, y, font, 7);
   y -= 10;
-  drawText(page4, 'Form I-408 (Application to Pay Off or Discharge Alien Crewman) and the appropriate date of separation must be', margin + 80, y, font, 7);
+  drawText(page4, 'Form I-408 (Application to Pay Off or Discharge Alien Crewman) and the appropriate date of separation must be', margin, y, font, 7);
   y -= 10;
-  drawText(page4, 'recorded in the "Date Separated" column of this form for that crew member. If a crew member joins the vessel while', margin + 80, y, font, 7);
+  drawText(page4, 'recorded in the "Date Separated" column of this form for that crew member. If a crew member joins the vessel while', margin, y, font, 7);
   y -= 10;
-  drawText(page4, 'in the United States, add the crewman\'s name and other requested information at the next available blank line of the', margin + 80, y, font, 7);
+  drawText(page4, 'in the United States, add the crewman\'s name and other requested information at the next available blank line of the', margin, y, font, 7);
   y -= 10;
-  drawText(page4, 'list and record the appropriate date in the "Date Joined" column.', margin + 80, y, font, 7);
+  drawText(page4, 'list and record the appropriate date in the "Date Joined" column.', margin, y, font, 7);
   y -= 25;
   
   // DEPARTING CREW section
-  drawText(page4, 'DEPARTING CREW:', margin + 80, y, fontBold, 7);
-  drawText(page4, ' When the vessel departs the United States, complete the SUMMARY OF DEPARTURE', margin + 175, y, font, 7);
+  drawText(page4, 'DEPARTING CREW:', margin, y, fontBold, 7);
+  drawText(page4, ' When the vessel departs the United States, complete the SUMMARY OF DEPARTURE', margin + 95, y, font, 7);
   y -= 10;
-  drawText(page4, 'section and deliver one complete list (whether or not there have been crew changes) to the United States Customs', margin + 80, y, font, 7);
+  drawText(page4, 'section and deliver one complete list (whether or not there have been crew changes) to the United States Customs', margin, y, font, 7);
   y -= 10;
-  drawText(page4, 'and Border Protection at the port of departure.', margin + 80, y, font, 7);
+  drawText(page4, 'and Border Protection at the port of departure.', margin, y, font, 7);
   
   // Page 4 footer
   drawText(page4, 'CBP Form I-418 (09/24)', margin, margin - 5, font, 6);
