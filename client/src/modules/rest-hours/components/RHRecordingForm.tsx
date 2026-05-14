@@ -1872,13 +1872,10 @@ export const RHRecordingForm = ({
       record.isPlan = !record.isPlan;
 
       // If switching from Plan to Rec, keep the hours as-is (they're already set)
-      // The colors will change based on isPlan flag.
-      // When switching to Plan and the row was never marked, default to
-      // userEdited=false so the loader can reseed it from the latest Fixed/Variable
-      // Task template on the next open.
-      if (record.isPlan && record.userEdited === undefined) {
-        record.userEdited = false;
-      }
+      // The colors will change based on isPlan flag. Do NOT touch userEdited here —
+      // toggling Plan/Rec is metadata only, and changing the flag could convert a
+      // legacy row (userEdited undefined) into a reseed-eligible row and risk
+      // silently overwriting saved data on reload.
 
       newRecords[dayIndex] = record;
       return newRecords;
