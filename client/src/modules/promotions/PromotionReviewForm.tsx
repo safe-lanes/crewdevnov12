@@ -915,7 +915,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       criteriaMeetsStatus['a2.7'] = 'pending';
     }
 
-    const existingStatusRaw = (existingReviewData as any)?.status;
+    const existingStatusRaw = existingReviewData?.status;
     const existingStatusNormalized = typeof existingStatusRaw === 'string'
       ? existingStatusRaw.trim().toLowerCase().replace(/\s+/g, '_')
       : '';
