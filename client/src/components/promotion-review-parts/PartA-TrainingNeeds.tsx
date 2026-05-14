@@ -18,6 +18,8 @@ interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   onSetNewTrainingComment: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   editingTrainingComment: string | null;
   onSetEditingTrainingComment: React.Dispatch<React.SetStateAction<string | null>>;
+  editingTrainingCommentId: string | null;
+  onSetEditingTrainingCommentId: React.Dispatch<React.SetStateAction<string | null>>;
   onSetTrainingComments: React.Dispatch<React.SetStateAction<Record<string, Comment[]>>>;
   dbTrainings: DbTrainingOption[];
   isLoadingDbTrainings?: boolean;
@@ -41,6 +43,8 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
   onSetNewTrainingComment,
   editingTrainingComment,
   onSetEditingTrainingComment,
+  editingTrainingCommentId,
+  onSetEditingTrainingCommentId,
   onSetTrainingComments,
   dbTrainings,
   isLoadingDbTrainings = false,
@@ -162,7 +166,11 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         variant="ghost" 
                         size="sm" 
                         className="h-7 w-7 p-0"
-                        onClick={() => onSetEditingTrainingComment(editingTrainingComment === training.id ? null : training.id)}
+                        onClick={() => {
+                          onSetEditingTrainingCommentId(null);
+                          onSetNewTrainingComment(prev => ({ ...prev, [training.id]: '' }));
+                          onSetEditingTrainingComment(editingTrainingComment === training.id ? null : training.id);
+                        }}
                         data-testid={`button-training-comment-${training.id}`}
                       >
                         <MessageSquare className="h-4 w-4 text-gray-600" />
@@ -175,37 +183,45 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                   <TableRow>
                     <TableCell colSpan={6} className="bg-gray-50 p-3">
                       {trainingComments[training.id]?.map((comment) => (
-                        <div key={comment.id} className="mb-2">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="text-xs font-medium text-gray-700 mb-1">{comment.user}</div>
-                              <div 
-                                className="text-xs text-blue-600 italic cursor-pointer"
-                                onClick={() => {
-                                  onSetEditingTrainingComment(training.id);
-                                  onSetNewTrainingComment(prev => ({ ...prev, [training.id]: comment.text }));
-                                }}
-                              >
-                                Comment: {comment.text}
+                        editingTrainingCommentId === comment.id ? null : (
+                          <div key={comment.id} className="mb-2">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-xs font-medium text-gray-700 mb-1">{comment.user}</div>
+                                <div 
+                                  className="text-xs text-blue-600 italic cursor-pointer"
+                                  onClick={() => {
+                                    onSetEditingTrainingComment(training.id);
+                                    onSetEditingTrainingCommentId(comment.id);
+                                    onSetNewTrainingComment(prev => ({ ...prev, [training.id]: comment.text }));
+                                  }}
+                                >
+                                  Comment: {comment.text}
+                                </div>
                               </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => {
+                                  onSetTrainingComments(prev => ({
+                                    ...prev,
+                                    [training.id]: prev[training.id].filter(c => c.id !== comment.id)
+                                  }));
+                                  if (editingTrainingCommentId === comment.id) {
+                                    onSetEditingTrainingCommentId(null);
+                                    onSetEditingTrainingComment(null);
+                                    onSetNewTrainingComment(prev => ({ ...prev, [training.id]: '' }));
+                                  }
+                                }}
+                                data-testid={`button-delete-training-comment-${comment.id}`}
+                              >
+                                <Trash2 className="h-3 w-3 text-gray-600" />
+                              </Button>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={() => {
-                                onSetTrainingComments(prev => ({
-                                  ...prev,
-                                  [training.id]: prev[training.id].filter(c => c.id !== comment.id)
-                                }));
-                              }}
-                              data-testid={`button-delete-training-comment-${comment.id}`}
-                            >
-                              <Trash2 className="h-3 w-3 text-gray-600" />
-                            </Button>
                           </div>
-                        </div>
+                        )
                       ))}
                       
                       {editingTrainingComment === training.id && (
@@ -218,7 +234,17 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                             onChange={(e) => onSetNewTrainingComment(prev => ({ ...prev, [training.id]: e.target.value }))}
                             onBlur={() => {
                               const commentText = newTrainingComment[training.id]?.trim();
-                              if (commentText) {
+                              if (editingTrainingCommentId) {
+                                if (commentText) {
+                                  const editingId = editingTrainingCommentId;
+                                  onSetTrainingComments(prev => ({
+                                    ...prev,
+                                    [training.id]: (prev[training.id] || []).map(c =>
+                                      c.id === editingId ? { ...c, text: commentText } : c
+                                    ),
+                                  }));
+                                }
+                              } else if (commentText) {
                                 const newComment: Comment = {
                                   id: `training-comment-${Date.now()}`,
                                   user: currentUserDisplay,
@@ -231,6 +257,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                               }
                               onSetNewTrainingComment(prev => ({ ...prev, [training.id]: '' }));
                               onSetEditingTrainingComment(null);
+                              onSetEditingTrainingCommentId(null);
                             }}
                             data-testid={`textarea-training-comment-${training.id}`}
                           />

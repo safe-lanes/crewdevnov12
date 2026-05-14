@@ -646,6 +646,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [trainingComments, setTrainingComments] = useState<Record<string, Comment[]>>({});
   const [newTrainingComment, setNewTrainingComment] = useState<Record<string, string>>({});
   const [editingTrainingComment, setEditingTrainingComment] = useState<string | null>(null);
+  const [editingTrainingCommentId, setEditingTrainingCommentId] = useState<string | null>(null);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -1443,6 +1444,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   onSetNewTrainingComment={setNewTrainingComment}
                   editingTrainingComment={editingTrainingComment}
                   onSetEditingTrainingComment={setEditingTrainingComment}
+                  editingTrainingCommentId={editingTrainingCommentId}
+                  onSetEditingTrainingCommentId={setEditingTrainingCommentId}
                   onSetTrainingComments={setTrainingComments}
                   dbTrainings={dbTrainings}
                   isLoadingDbTrainings={isLoadingDbTrainings}
