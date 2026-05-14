@@ -98,6 +98,28 @@ export const testRecordsController = {
     }
   },
 
+  async getViolationCounts(req: Request, res: Response) {
+    try {
+      const { periodFrom, periodTo } = req.query;
+      if (typeof periodFrom !== "string" || typeof periodTo !== "string") {
+        return res.status(400).json({
+          error: "periodFrom and periodTo query params are required (YYYY-MM-DD)",
+        });
+      }
+      const result = await testRecordsService.getViolationCounts({
+        periodFrom,
+        periodTo,
+      });
+      res.json(result);
+    } catch (error: any) {
+      if (error.message?.includes("Invalid period")) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error computing violation counts:", error);
+      res.status(500).json({ error: "Failed to compute violation counts" });
+    }
+  },
+
   async delete(req: Request, res: Response) {
     try {
       const { uuid } = req.params;

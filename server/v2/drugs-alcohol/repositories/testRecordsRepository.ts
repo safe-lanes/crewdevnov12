@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, ne } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   daTestRecordsV2,
@@ -207,6 +207,41 @@ export class TestRecordsRepository {
       const match = record.dateTimeTestCompleted.match(dateRegex);
       return match && match[1] === dateStr;
     });
+  }
+
+  async findFinalizedWithViolatingPersonnel(): Promise<
+    Array<{
+      testType: string | null;
+      dateTimeTestCompleted: string | null;
+      incidentDateTime: string | null;
+      testDateTime: string | null;
+      alcoholViolation: boolean | null;
+      drugViolation: boolean | null;
+    }>
+  > {
+    const db = getDb();
+    const rows = await db
+      .select({
+        testType: daTestRecordsV2.testType,
+        dateTimeTestCompleted: daTestRecordsV2.dateTimeTestCompleted,
+        incidentDateTime: daTestRecordsV2.incidentDateTime,
+        testDateTime: daTestRecordsV2.testDateTime,
+        alcoholViolation: daPersonnelTestedV2.alcoholViolation,
+        drugViolation: daPersonnelTestedV2.drugViolation,
+      })
+      .from(daTestRecordsV2)
+      .innerJoin(
+        daPersonnelTestedV2,
+        eq(daPersonnelTestedV2.testRecordUuid, daTestRecordsV2.daUuid)
+      )
+      .where(
+        and(
+          eq(daTestRecordsV2.isDeleted, false),
+          ne(daTestRecordsV2.status, "draft"),
+          eq(daPersonnelTestedV2.isDeleted, false)
+        )
+      );
+    return rows;
   }
 
   async create(data: Omit<InsertDaTestRecordV2, "daUuid">): Promise<DaTestRecordV2> {

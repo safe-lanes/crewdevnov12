@@ -118,6 +118,55 @@ function transformToV1Response(record: TestRecordWithChildren): any {
   };
 }
 
+function isValidDateString(s: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+export function parseDateLeniently(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  }
+  const dmyMatch = trimmed.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const monthName = dmyMatch[2].toLowerCase().slice(0, 3);
+    const months: Record<string, number> = {
+      jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+      jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+    };
+    const month = months[monthName];
+    if (!month) return null;
+    const year = parseInt(dmyMatch[3], 10);
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  return null;
+}
+
+export function pickRelevantDate(
+  testType: string | null | undefined,
+  dates: {
+    dateTimeTestCompleted: string | null | undefined;
+    incidentDateTime: string | null | undefined;
+    testDateTime: string | null | undefined;
+  }
+): string | null {
+  const normalized = (testType || "").toLowerCase().trim();
+  if (normalized === "post-incident") {
+    return (
+      parseDateLeniently(dates.incidentDateTime) ??
+      parseDateLeniently(dates.dateTimeTestCompleted)
+    );
+  }
+  return (
+    parseDateLeniently(dates.dateTimeTestCompleted) ??
+    parseDateLeniently(dates.testDateTime)
+  );
+}
+
 function extractDateFromTestCompleted(dateTimeTestCompleted: string): string | null {
   if (!dateTimeTestCompleted) return null;
   const match = dateTimeTestCompleted.match(/^(\d{1,2}\s+\w+\s+\d{4})/);
@@ -253,6 +302,31 @@ export const testRecordsService = {
     await this._upsertChildren(daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid);
 
     return this.getByUuid(daUuid);
+  },
+
+  async getViolationCounts(params: {
+    periodFrom: string;
+    periodTo: string;
+  }): Promise<{ alcoholViolations: number; drugViolations: number }> {
+    const { periodFrom, periodTo } = params;
+    if (!isValidDateString(periodFrom) || !isValidDateString(periodTo)) {
+      throw new Error("Invalid period: periodFrom and periodTo must be YYYY-MM-DD");
+    }
+    const rows = await testRecordsRepository.findFinalizedWithViolatingPersonnel();
+    let alcoholViolations = 0;
+    let drugViolations = 0;
+    for (const row of rows) {
+      const dateStr = pickRelevantDate(row.testType, {
+        dateTimeTestCompleted: row.dateTimeTestCompleted,
+        incidentDateTime: row.incidentDateTime,
+        testDateTime: row.testDateTime,
+      });
+      if (!dateStr) continue;
+      if (dateStr < periodFrom || dateStr > periodTo) continue;
+      if (row.alcoholViolation) alcoholViolations++;
+      if (row.drugViolation) drugViolations++;
+    }
+    return { alcoholViolations, drugViolations };
   },
 
   async delete(daUuid: string): Promise<void> {

@@ -7,13 +7,13 @@ import { CrewRecruitmentRankChart } from "@/modules/dashboard/CrewRecruitmentRan
 import { CrewPromotionsRankChart } from "@/modules/dashboard/CrewPromotionsRankChart";
 import { CrewAppraisalsRankChart } from "@/modules/dashboard/CrewAppraisalsRankChart";
 import { CrewRetentionMetrics } from "@/modules/dashboard/CrewRetentionMetrics";
+import { DAAnalysisMetrics } from "@/modules/dashboard/DAAnalysisMetrics";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 type DashboardTab = "management" | "operation";
 
 const PLACEHOLDER_CARDS: { label: string; testId: string }[] = [
   { label: "Crew Pool", testId: "crew-pool" },
-  { label: "D&A Analysis", testId: "da-analysis" },
 ];
 
 export const DashboardPage = () => {
@@ -130,6 +130,12 @@ export const DashboardPage = () => {
               label="Crew Retention"
               testId="crew-retention"
               renderContent={() => <CrewRetentionMetrics period={period} />}
+            />
+            <DashboardCard
+              key="da-analysis"
+              label="D&A Analysis"
+              testId="da-analysis"
+              renderContent={() => <DAAnalysisMetrics period={period} />}
             />
             {PLACEHOLDER_CARDS.map((card) => (
               <DashboardCard
