@@ -472,7 +472,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
           color: appraisal.overallRating ? getRatingColor(appraisal.overallRating) : "bg-gray-400 text-white",
         },
         appraisalId: appraisal.id,
-        appraisalUuid: (appraisal as any).appraisalUuid,
+        appraisalUuid: appraisal.appraisalUuid,
       };
     }), [appraisalResults, getRatingColor, getVesselName, crewByUuid, vesselTypeByName, calculateAge]);
 
