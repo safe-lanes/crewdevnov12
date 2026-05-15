@@ -179,9 +179,16 @@ export const DAViolationsDrilldownDialog = ({
     return base;
   };
 
+  const isRowOpenable = (row: ViolationFormSummary): boolean =>
+    !!(row.testType && TEST_TYPE_TO_PAGE[row.testType]);
+
   const handleRowClick = (row: ViolationFormSummary) => {
-    const page =
-      (row.testType && TEST_TYPE_TO_PAGE[row.testType]) || "annual";
+    const page = row.testType ? TEST_TYPE_TO_PAGE[row.testType] : undefined;
+    if (!page) {
+      // Unknown / unmapped test type — refuse to navigate rather than
+      // silently opening the wrong sub-page.
+      return;
+    }
     const qp = new URLSearchParams();
     qp.set("recordUuid", row.daUuid);
     qp.set("page", page);
@@ -297,18 +304,34 @@ export const DAViolationsDrilldownDialog = ({
                           </td>
                         </tr>
                       ))
-                    : visibleRows.map((row) => (
+                    : visibleRows.map((row) => {
+                        const openable = isRowOpenable(row);
+                        return (
                         <tr
                           key={row.daUuid}
-                          className="border-t border-[#eef2f7] cursor-pointer hover:bg-[#f7fafc] focus:outline-none focus:bg-[#f7fafc]"
-                          tabIndex={0}
-                          onClick={() => handleRowClick(row)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              handleRowClick(row);
-                            }
-                          }}
+                          className={
+                            "border-t border-[#eef2f7] focus:outline-none " +
+                            (openable
+                              ? "cursor-pointer hover:bg-[#f7fafc] focus:bg-[#f7fafc]"
+                              : "cursor-not-allowed text-[#94a3b8]")
+                          }
+                          tabIndex={openable ? 0 : -1}
+                          onClick={openable ? () => handleRowClick(row) : undefined}
+                          onKeyDown={
+                            openable
+                              ? (e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    handleRowClick(row);
+                                  }
+                                }
+                              : undefined
+                          }
+                          title={
+                            openable
+                              ? undefined
+                              : "Cannot open: unsupported test type"
+                          }
                           data-testid={`row-da-drilldown-${row.daUuid}`}
                         >
                           <td
@@ -342,7 +365,8 @@ export const DAViolationsDrilldownDialog = ({
                             {row.drugViolations}
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                 </tbody>
               </table>
             </div>

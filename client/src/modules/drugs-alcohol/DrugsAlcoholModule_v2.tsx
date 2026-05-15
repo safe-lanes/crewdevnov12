@@ -59,15 +59,29 @@ export function DrugsAlcoholModule_v2() {
         ] as const;
         const isDATestType = (v: unknown): v is DATestType =>
             typeof v === 'string' && (allTestTypes as readonly string[]).includes(v);
-        if (page && allowedPages.includes(page)) {
-            setSelectedDrugsAlcoholPage(page);
-        }
 
         (async () => {
             try {
                 const record = await drugsAlcoholApiV2.testRecords.getByUuid(recordUuid);
                 if (cancelled || !record) return;
-                const testType: DATestType = isDATestType(record.testType) ? record.testType : 'annual';
+                if (!isDATestType(record.testType)) {
+                    // Unknown / unsupported test type — refuse to open a wrong
+                    // sub-page. The URL params will still be stripped below.
+                    console.warn(
+                        `Deep-linked D&A record ${recordUuid} has unsupported testType "${record.testType}"; ignoring.`,
+                    );
+                    return;
+                }
+                const testType: DATestType = record.testType;
+                // Authoritative sub-page comes from the record itself; the URL
+                // `page` hint is only used to switch the page early when it
+                // matches what we will end up opening.
+                const recordPage = testType;
+                if (allowedPages.includes(recordPage)) {
+                    setSelectedDrugsAlcoholPage(recordPage);
+                } else if (page && allowedPages.includes(page) && page === recordPage) {
+                    setSelectedDrugsAlcoholPage(page);
+                }
                 handleOpenForm(testType, record.vesselId ?? undefined, recordUuid);
             } catch (err) {
                 console.error('Failed to open deep-linked D&A record', err);
