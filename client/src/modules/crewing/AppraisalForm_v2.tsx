@@ -152,7 +152,10 @@ const trainingFollowupSchema = z.object({
   training: z.string(),
   correspondingInDB: z.string(),
   category: z.string(),
-  status: z.enum(["Proposed", "Approved", "Planned", "Declined", "Completed"]),
+  status: z.union([
+    z.enum(["Proposed", "Approved", "Planned", "Declined", "Completed"]),
+    z.literal(""),
+  ]),
   targetDate: z.string().optional(),
   comment: z.string().optional(),
 });
@@ -1606,8 +1609,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString(),
       training: "",
       correspondingInDB: "",
-      category: "Select Rating",
-      status: "Proposed" as const,
+      category: "",
+      status: "" as const,
       targetDate: "",
       comment: "",
     };
@@ -1668,8 +1671,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString(),
       training: "",
       correspondingInDB: "",
-      category: "Select Rating",
-      status: "Proposed" as const,
+      category: "",
+      status: "" as const,
       targetDate: "",
       comment: "",
     };
@@ -1682,8 +1685,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       training: template.name,
       correspondingInDB: template.id,
-      category: "Select Rating",
-      status: "Proposed" as const,
+      category: "",
+      status: "" as const,
       targetDate: "",
       comment: "",
     }));
@@ -3778,9 +3781,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           onChange={(e) => updateTrainingFollowup(followup.id, "category", e.target.value)}
                                           className="w-full p-1 border rounded text-[13px] h-6"
                                         >
-                                          <option>Select Rating</option>
-                                          <option>1. Competence</option>
-                                          <option>2- Soft Skills</option>
+                                          <option value="" disabled>Select Category</option>
+                                          <option value="1. Competence">1. Competence</option>
+                                          <option value="2- Soft Skills">2- Soft Skills</option>
                                         </select>
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
@@ -3795,6 +3798,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                             followup.status === "Completed" ? "bg-green-200" : ""
                                           }`}
                                         >
+                                          <option value="" disabled>Select Status</option>
                                           <option value="Proposed">Proposed</option>
                                           <option value="Approved">Approved</option>
                                           <option value="Planned">Planned</option>

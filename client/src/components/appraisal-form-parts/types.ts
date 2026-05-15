@@ -71,7 +71,10 @@ export const trainingFollowupSchema = z.object({
   training: z.string(),
   correspondingInDB: z.string(),
   category: z.string(),
-  status: z.enum(["Proposed", "Approved", "Planned", "Declined", "Completed"]),
+  status: z.union([
+    z.enum(["Proposed", "Approved", "Planned", "Declined", "Completed"]),
+    z.literal(""),
+  ]),
   targetDate: z.string().optional(),
   comment: z.string().optional(),
 });

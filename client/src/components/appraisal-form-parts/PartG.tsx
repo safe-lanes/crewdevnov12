@@ -158,8 +158,8 @@ const PartGComponent: React.FC<PartGProps> = ({
                             />
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Select value={followup.category} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)}>
-                              <SelectTrigger className="h-8"><SelectValue placeholder="Select Rating" /></SelectTrigger>
+                            <Select value={followup.category || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)}>
+                              <SelectTrigger className="h-8"><SelectValue placeholder="Select Category" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="1. Competence">1. Competence</SelectItem>
                                 <SelectItem value="2- Soft Skills">2- Soft Skills</SelectItem>
@@ -167,8 +167,8 @@ const PartGComponent: React.FC<PartGProps> = ({
                             </Select>
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Select value={followup.status} onValueChange={(value) => updateTrainingFollowup(followup.id, "status", value)}>
-                              <SelectTrigger className="h-8"><SelectValue placeholder="Status" /></SelectTrigger>
+                            <Select value={followup.status || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "status", value)}>
+                              <SelectTrigger className="h-8"><SelectValue placeholder="Select Status" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="Proposed">Proposed</SelectItem>
                                 <SelectItem value="Approved">Approved</SelectItem>
