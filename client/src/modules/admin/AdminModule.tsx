@@ -8825,7 +8825,7 @@ const AddRankGroupDialog = ({
 
   // Fetch rank conflicts for this form
   const { data: rankConflicts = {} } = useQuery<Record<string, string>>({
-    queryKey: ['/api/v2/admin/rank-groups/form', formId, 'rank-conflicts', editingRankGroup?.id],
+    queryKey: ['/api/v2/admin/rank-groups', 'form-conflicts', formId, editingRankGroup?.id],
     queryFn: async () => {
       if (!formId) return {};
       const url = editingRankGroup?.id 
