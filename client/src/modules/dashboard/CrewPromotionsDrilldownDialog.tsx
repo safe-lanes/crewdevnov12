@@ -35,6 +35,7 @@ interface CrewPromotionsDrilldownDialogProps {
   onOpenChange: (open: boolean) => void;
   rank: string | null;
   period: PeriodFilterValue;
+  ranks?: string[];
 }
 
 function periodToRange(period: PeriodFilterValue): { from: Date; to: Date } | null {
@@ -116,6 +117,7 @@ export const CrewPromotionsDrilldownDialog = ({
   onOpenChange,
   rank,
   period,
+  ranks = [],
 }: CrewPromotionsDrilldownDialogProps) => {
   const [, setLocation] = useLocation();
 
@@ -157,9 +159,11 @@ export const CrewPromotionsDrilldownDialog = ({
       if (date < range.from || date > range.to) return false;
 
       const rowRank = (r.promotionToRank || "").trim();
-      return rowRank === rank;
+      if (rowRank !== rank) return false;
+      if (ranks.length > 0 && !ranks.includes(rowRank)) return false;
+      return true;
     });
-  }, [reviews, range, rank]);
+  }, [reviews, range, rank, ranks]);
 
   const sorted = useMemo(
     () =>

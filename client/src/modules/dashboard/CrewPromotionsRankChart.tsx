@@ -29,6 +29,10 @@ interface RankCount {
 
 interface CrewPromotionsRankChartProps {
   period: PeriodFilterValue;
+  ranks?: string[];
+  crewPools?: string[];
+  manningAgents?: string[];
+  nationalities?: string[];
   chartRef: React.MutableRefObject<AgChartInstance | null>;
 }
 
@@ -73,6 +77,10 @@ function parseDate(value: unknown): Date | null {
 
 export const CrewPromotionsRankChart = ({
   period,
+  ranks = [],
+  crewPools: _crewPools = [],
+  manningAgents: _manningAgents = [],
+  nationalities: _nationalities = [],
   chartRef,
 }: CrewPromotionsRankChartProps) => {
   const [isMounted, setIsMounted] = useState(false);
@@ -122,12 +130,14 @@ export const CrewPromotionsRankChart = ({
       const rank = (r.promotionToRank || "").trim();
       if (!rank) continue;
 
+      if (ranks.length > 0 && !ranks.includes(rank)) continue;
+
       counts.set(rank, (counts.get(rank) || 0) + 1);
     }
     return Array.from(counts.entries())
       .map(([rank, count]) => ({ rank, count }))
       .sort((a, b) => b.count - a.count);
-  }, [reviews, range]);
+  }, [reviews, range, ranks]);
 
   const chartOptions = useMemo<AgChartOptions>(
     () => ({
@@ -252,6 +262,7 @@ export const CrewPromotionsRankChart = ({
         onOpenChange={handleDrillDownChange}
         rank={selectedRank}
         period={period}
+        ranks={ranks}
       />
     </>
   );
