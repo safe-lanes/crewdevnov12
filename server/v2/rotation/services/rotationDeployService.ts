@@ -64,7 +64,7 @@ export const rotationDeployService = {
 
       let existingPlan;
       if (entry.rankId) {
-        existingPlan = await vesselPlanningRepository.findByVesselAndRank(
+        existingPlan = await vesselPlanningRepository.findPrimaryByVesselAndRank(
           entry.vesselUuid,
           entry.rankId,
           entry.rank
@@ -72,10 +72,35 @@ export const rotationDeployService = {
       }
       if (!existingPlan) {
         const allPlans = await vesselPlanningRepository.findByVesselUuid(entry.vesselUuid);
-        const matchByRank = allPlans.find((p: any) => p.rank === entry.rank && !p.isArchived);
+        const matchByRank = allPlans.find((p: any) => p.rank === entry.rank && !p.isArchived && p.crewStatus === 'primary');
         if (matchByRank) {
           existingPlan = matchByRank;
         }
+      }
+
+      if (existingPlan?.relieverCrewUuid) {
+        return {
+          success: false,
+          error: "Reliever already exists. The existing reliever must either take over or be unassigned from vessel before deploying a new crew.",
+        };
+      }
+
+      let existingSecondary;
+      if (entry.rankId) {
+        existingSecondary = await vesselPlanningRepository.findSecondaryByVesselAndRank(
+          entry.vesselUuid,
+          entry.rankId
+        );
+      }
+      if (!existingSecondary) {
+        const allPlans = await vesselPlanningRepository.findByVesselUuid(entry.vesselUuid);
+        existingSecondary = allPlans.find((p: any) => p.rank === entry.rank && !p.isArchived && !p.isDeleted && p.crewStatus === 'secondary');
+      }
+      if (existingSecondary) {
+        return {
+          success: false,
+          error: "Secondary crew already exists. The secondary must take over before deploying a new crew.",
+        };
       }
 
       let planUuid: string;
