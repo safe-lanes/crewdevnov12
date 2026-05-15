@@ -161,6 +161,7 @@ export function assembleV1Response(
 
   return {
     id: appraisal.id,
+    appraisalUuid: appraisal.appraisalUuid,
     crewMemberId: appraisal.crewMemberId,
     formId: appraisal.formIdLegacy ?? (parseInt(appraisal.formUuid || "") || 1),
     formVersionId: appraisal.formVersionId ?? null,
