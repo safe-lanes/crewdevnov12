@@ -55,13 +55,6 @@ export const rotationDeployService = {
 
       const deployedDate = new Date().toISOString().split("T")[0];
 
-      await rotationEntriesRepository.update(entryUuid, {
-        proposalStatus: "Deployed",
-        deployedByUuid,
-        deployedDate,
-        updatedByUuid: effectiveAuditUser,
-      });
-
       let existingPlan;
       if (entry.rankId) {
         existingPlan = await vesselPlanningRepository.findPrimaryByVesselAndRank(
@@ -102,6 +95,13 @@ export const rotationDeployService = {
           error: "Secondary crew already exists. The secondary must take over before deploying a new crew.",
         };
       }
+
+      await rotationEntriesRepository.update(entryUuid, {
+        proposalStatus: "Deployed",
+        deployedByUuid,
+        deployedDate,
+        updatedByUuid: effectiveAuditUser,
+      });
 
       let planUuid: string;
       
