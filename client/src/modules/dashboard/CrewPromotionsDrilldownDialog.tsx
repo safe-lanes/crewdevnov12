@@ -36,6 +36,9 @@ interface CrewPromotionsDrilldownDialogProps {
   rank: string | null;
   period: PeriodFilterValue;
   ranks?: string[];
+  crewPools?: string[];
+  manningAgents?: string[];
+  nationalities?: string[];
 }
 
 function periodToRange(period: PeriodFilterValue): { from: Date; to: Date } | null {
@@ -118,6 +121,9 @@ export const CrewPromotionsDrilldownDialog = ({
   rank,
   period,
   ranks = [],
+  crewPools: _crewPools = [],
+  manningAgents: _manningAgents = [],
+  nationalities: _nationalities = [],
 }: CrewPromotionsDrilldownDialogProps) => {
   const [, setLocation] = useLocation();
 

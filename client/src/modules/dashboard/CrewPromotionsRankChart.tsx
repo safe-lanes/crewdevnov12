@@ -75,12 +75,17 @@ function parseDate(value: unknown): Date | null {
   return null;
 }
 
+// NOTE: `crewPools`, `manningAgents`, and `nationalities` are accepted to match
+// the dashboard filter-bar shape used by the other cards, but they are
+// currently no-ops here: `promotion_reviews_v2` rows do not carry those fields,
+// so applying them at the row level would either zero the chart out or require
+// a backend join. Tracked as follow-up task #59.
 export const CrewPromotionsRankChart = ({
   period,
   ranks = [],
-  crewPools: _crewPools = [],
-  manningAgents: _manningAgents = [],
-  nationalities: _nationalities = [],
+  crewPools = [],
+  manningAgents = [],
+  nationalities = [],
   chartRef,
 }: CrewPromotionsRankChartProps) => {
   const [isMounted, setIsMounted] = useState(false);
@@ -263,6 +268,9 @@ export const CrewPromotionsRankChart = ({
         rank={selectedRank}
         period={period}
         ranks={ranks}
+        crewPools={crewPools}
+        manningAgents={manningAgents}
+        nationalities={nationalities}
       />
     </>
   );
