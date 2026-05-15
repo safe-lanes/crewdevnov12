@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, Info, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
@@ -193,11 +193,87 @@ function periodToRange(p: PeriodFilterValue | undefined): { from: string; to: st
   return { from: `${y}-01-01`, to: `${y}-12-31` };
 }
 
+// Read deep-link params from the URL search string, if present. Returns null
+// when none of the consumable keys are present so the normal default flow runs.
+function readDeepLinkParams(): {
+  periodFrom?: string;
+  periodTo?: string;
+  rankIds: string[];
+  poolIds: string[];
+  agentIds: string[];
+} | null {
+  if (typeof window === "undefined") return null;
+  const sp = new URLSearchParams(window.location.search);
+  const has =
+    sp.has("periodFrom") ||
+    sp.has("periodTo") ||
+    sp.has("rankIds") ||
+    sp.has("poolIds") ||
+    sp.has("agentIds");
+  if (!has) return null;
+  return {
+    periodFrom: sp.get("periodFrom") || undefined,
+    periodTo: sp.get("periodTo") || undefined,
+    rankIds: sp.getAll("rankIds"),
+    poolIds: sp.getAll("poolIds"),
+    agentIds: sp.getAll("agentIds"),
+  };
+}
+
+function parseIsoDate(s: string | undefined): Date | null {
+  if (!s) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export const Retention = (): JSX.Element => {
-  const [periodValue, setPeriodValue] = useState<PeriodFilterValue | undefined>(undefined);
-  const [selectedRanks, setSelectedRanks] = useState<string[]>([]);
-  const [selectedPools, setSelectedPools] = useState<string[]>([]);
-  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+  // Capture deep-link params once on mount so reactively-set state below
+  // can pre-populate the filters before the page first renders. We also
+  // strip the URL params via `replaceState` so the page URL stays clean
+  // and a manual refresh shows the user the normal page.
+  const initialDeepLink = useMemo(() => readDeepLinkParams(), []);
+
+  const [periodValue, setPeriodValue] = useState<PeriodFilterValue | undefined>(() => {
+    if (!initialDeepLink) return undefined;
+    const from = parseIsoDate(initialDeepLink.periodFrom);
+    const to = parseIsoDate(initialDeepLink.periodTo);
+    if (from && to) {
+      return { mode: "date-range", dateFrom: from, dateTo: to };
+    }
+    return undefined;
+  });
+  const [selectedRanks, setSelectedRanks] = useState<string[]>(
+    () => initialDeepLink?.rankIds ?? [],
+  );
+  const [selectedPools, setSelectedPools] = useState<string[]>(
+    () => initialDeepLink?.poolIds ?? [],
+  );
+  // Agents are seeded as raw values; the effect below upgrades them to the
+  // "Name (Country)" display label once the manning agents list loads, so
+  // the chip UI matches what the user would see if they picked manually.
+  const [selectedAgents, setSelectedAgents] = useState<string[]>(
+    () => initialDeepLink?.agentIds ?? [],
+  );
+
+  // Strip deep-link params from the URL after they've been consumed.
+  useEffect(() => {
+    if (!initialDeepLink || typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    let changed = false;
+    for (const key of ["periodFrom", "periodTo", "rankIds", "poolIds", "agentIds"]) {
+      if (sp.has(key)) {
+        sp.delete(key);
+        changed = true;
+      }
+    }
+    if (changed) {
+      const qs = sp.toString();
+      const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [initialDeepLink]);
 
   const hasActiveFilters =
     periodValue !== undefined ||
@@ -246,6 +322,31 @@ export const Retention = (): JSX.Element => {
     agentItems.forEach((a) => m.set(a.label, a.value));
     return m;
   }, [agentItems]);
+  const agentValueToLabel = useMemo(() => {
+    const m = new Map<string, string>();
+    agentItems.forEach((a) => m.set(a.value, a.label));
+    return m;
+  }, [agentItems]);
+
+  // After the manning agents list loads, upgrade any deep-linked agent
+  // values (raw names from the dashboard) to their "Name (Country)" display
+  // labels so the chip UI matches what manual selection would produce.
+  useEffect(() => {
+    if (agentItems.length === 0) return;
+    setSelectedAgents((prev) => {
+      let changed = false;
+      const next = prev.map((v) => {
+        if (agentLabelToValue.has(v)) return v; // already a label
+        const label = agentValueToLabel.get(v);
+        if (label && label !== v) {
+          changed = true;
+          return label;
+        }
+        return v;
+      });
+      return changed ? next : prev;
+    });
+  }, [agentItems, agentLabelToValue, agentValueToLabel]);
 
   const { from: periodFrom, to: periodTo } = useMemo(() => periodToRange(periodValue), [periodValue]);
 
