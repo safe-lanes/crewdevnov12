@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,12 @@ import {
   PeriodFilter,
   type PeriodFilterValue,
 } from "@/components/filters/PeriodFilter";
+import { useCompanyRanks } from "@/hooks/useCompanyRanks";
+import {
+  useNationalitiesV2,
+  useCrewPoolsV2,
+  useManningAgentsV2,
+} from "@/hooks/v2/useMasterDataV2";
 
 interface MultiSelectProps {
   label: string;
@@ -117,6 +124,53 @@ export const ManagementFilterBar = ({
   const update = (key: keyof ManagementFilters) => (next: string[]) =>
     onFiltersChange({ ...filters, [key]: next });
 
+  const { rankLabels } = useCompanyRanks();
+  const { data: nationalitiesData = [] } = useNationalitiesV2();
+  const { data: crewPoolsData = [] } = useCrewPoolsV2();
+  const { data: manningAgentsData = [] } = useManningAgentsV2();
+
+  const rankOptions = useMemo(
+    () => Array.from(new Set(rankLabels.filter(Boolean))).sort(),
+    [rankLabels],
+  );
+
+  const nationalityOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (nationalitiesData as any[])
+            .map((n) => n?.nationality || n?.name)
+            .filter(Boolean),
+        ),
+      ).sort(),
+    [nationalitiesData],
+  );
+
+  const crewPoolOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (crewPoolsData as any[])
+            .filter((p) => !p?.isDeleted)
+            .map((p) => p?.name || p?.poolName)
+            .filter(Boolean),
+        ),
+      ).sort(),
+    [crewPoolsData],
+  );
+
+  const manningAgentOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (manningAgentsData as any[])
+            .filter((a) => a?.name && !a?.isDeleted)
+            .map((a) => a.name),
+        ),
+      ).sort(),
+    [manningAgentsData],
+  );
+
   return (
     <div
       className="flex flex-wrap items-center gap-3 mb-4 bg-transparent"
@@ -126,28 +180,28 @@ export const ManagementFilterBar = ({
       <MultiSelect
         label="Rank"
         testId="rank"
-        options={[]}
+        options={rankOptions}
         selected={filters.ranks}
         onChange={update("ranks")}
       />
       <MultiSelect
         label="Crew Pool"
         testId="crew-pool"
-        options={[]}
+        options={crewPoolOptions}
         selected={filters.crewPools}
         onChange={update("crewPools")}
       />
       <MultiSelect
         label="Manning Agent"
         testId="manning-agent"
-        options={[]}
+        options={manningAgentOptions}
         selected={filters.manningAgents}
         onChange={update("manningAgents")}
       />
       <MultiSelect
         label="Nationality"
         testId="nationality"
-        options={[]}
+        options={nationalityOptions}
         selected={filters.nationalities}
         onChange={update("nationalities")}
       />
