@@ -44,13 +44,47 @@ export function DrugsAlcoholModule_v2() {
     // Deep-link consumption: when the URL carries `recordUuid` and `page`
     // (e.g. from the Management Dashboard D&A Analysis drill-down), open the
     // matching test record in the form on mount and strip the params so a
-    // manual refresh shows the user the normal page.
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
+    // manual refresh shows the user the normal page, and so wouter's cached
+    // location is in sync with the visible URL (which lets the browser Back
+    // button restore the previous dashboard URL — including the drill-down
+    // popup state encoded there).
+    //
+    // Implementation mirrors the Crew Retention deep-link pattern: capture
+    // params once on mount via `useMemo`, then strip them in a synchronous
+    // `useEffect` (NOT inside an async fetch's `finally`, which would race
+    // with wouter's location cache and break the back button).
+    const initialDeepLink = useMemo(() => {
+        if (typeof window === 'undefined') return null;
         const sp = new URLSearchParams(window.location.search);
         const recordUuid = sp.get('recordUuid');
         const page = sp.get('page');
-        if (!recordUuid) return;
+        if (!recordUuid) return null;
+        return { recordUuid, page };
+    }, []);
+
+    // Strip deep-link params from the URL synchronously on mount, before any
+    // async work has a chance to run. This keeps wouter's cached location
+    // aligned with the visible URL.
+    useEffect(() => {
+        if (!initialDeepLink || typeof window === 'undefined') return;
+        const sp = new URLSearchParams(window.location.search);
+        let changed = false;
+        for (const key of ['recordUuid', 'page']) {
+            if (sp.has(key)) { sp.delete(key); changed = true; }
+        }
+        if (changed) {
+            const qs = sp.toString();
+            const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`;
+            window.history.replaceState({}, '', newUrl);
+        }
+    }, [initialDeepLink]);
+
+    // Fetch the deep-linked record and open it in the form. This runs once
+    // per mount; `allowedPages` is read but intentionally not in deps so a
+    // permissions re-render does not re-trigger the fetch.
+    useEffect(() => {
+        if (!initialDeepLink) return;
+        const { recordUuid, page } = initialDeepLink;
 
         let cancelled = false;
         type DATestType = 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others';
@@ -65,8 +99,6 @@ export function DrugsAlcoholModule_v2() {
                 const record = await drugsAlcoholApiV2.testRecords.getByUuid(recordUuid);
                 if (cancelled || !record) return;
                 if (!isDATestType(record.testType)) {
-                    // Unknown / unsupported test type — refuse to open a wrong
-                    // sub-page. The URL params will still be stripped below.
                     console.warn(
                         `Deep-linked D&A record ${recordUuid} has unsupported testType "${record.testType}"; ignoring.`,
                     );
@@ -85,25 +117,12 @@ export function DrugsAlcoholModule_v2() {
                 handleOpenForm(testType, record.vesselId ?? undefined, recordUuid);
             } catch (err) {
                 console.error('Failed to open deep-linked D&A record', err);
-            } finally {
-                if (typeof window !== 'undefined') {
-                    const sp2 = new URLSearchParams(window.location.search);
-                    let changed = false;
-                    for (const key of ['recordUuid', 'page']) {
-                        if (sp2.has(key)) { sp2.delete(key); changed = true; }
-                    }
-                    if (changed) {
-                        const qs = sp2.toString();
-                        const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`;
-                        window.history.replaceState({}, '', newUrl);
-                    }
-                }
             }
         })();
 
         return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [allowedPages]);
+    }, [initialDeepLink]);
     const daPageToMenu: Record<string, string> = { "annual": "Annual", "periodic": "Periodic", "monthly": "Monthly", "post-incident": "Post Incident", "others": "Others", "summary": "Summary" };
     const currentDAMenu = daPageToMenu[selectedDrugsAlcoholPage] || "Annual";
     const { toast } = useToast();
