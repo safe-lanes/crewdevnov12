@@ -166,6 +166,10 @@ export const DAViolationsDrilldownDialog = ({
     );
   }, [data, type]);
 
+  const ROW_CAP = 200;
+  const visibleRows = useMemo(() => data.slice(0, ROW_CAP), [data]);
+  const isTruncated = data.length > ROW_CAP;
+
   const formatTestType = (row: ViolationFormSummary): string => {
     const tt = row.testType ?? "";
     const base = TEST_TYPE_LABELS[tt] ?? (tt || "—");
@@ -233,6 +237,16 @@ export const DAViolationsDrilldownDialog = ({
             </div>
           )}
 
+          {!isLoading && !isError && isTruncated && (
+            <div
+              className="mb-3 rounded-md border border-[#fde68a] bg-[#fffbeb] px-4 py-2 text-xs text-[#92400e]"
+              data-testid="hint-da-drilldown-truncated"
+            >
+              Showing first {ROW_CAP} of {data.length} forms. Refine the
+              dashboard filters to narrow the results.
+            </div>
+          )}
+
           {!isLoading && !isError && data.length === 0 && (
             <div
               className="mb-2 rounded-md border border-dashed border-[#e1e8ed] bg-[#f8fafc] px-4 py-6 text-center text-sm text-[#475569]"
@@ -283,7 +297,7 @@ export const DAViolationsDrilldownDialog = ({
                           </td>
                         </tr>
                       ))
-                    : data.map((row) => (
+                    : visibleRows.map((row) => (
                         <tr
                           key={row.daUuid}
                           className="border-t border-[#eef2f7] cursor-pointer hover:bg-[#f7fafc] focus:outline-none focus:bg-[#f7fafc]"

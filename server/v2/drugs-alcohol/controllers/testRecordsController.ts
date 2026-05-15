@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { z } from "zod";
 import { testRecordsService } from "../services";
 
 function toArrayParam(v: unknown): string[] {
@@ -7,6 +8,29 @@ function toArrayParam(v: unknown): string[] {
     return v.split(",").map((s) => s.trim()).filter(Boolean);
   return [];
 }
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
+
+const violationFormSummariesQuerySchema = z
+  .object({
+    periodFrom: isoDate,
+    periodTo: isoDate,
+    type: z.enum(["alcohol", "drug"]),
+  })
+  .refine((v) => v.periodFrom <= v.periodTo, {
+    message: "periodFrom must be on or before periodTo",
+    path: ["periodFrom"],
+  });
+
+const violationCountsQuerySchema = z
+  .object({
+    periodFrom: isoDate,
+    periodTo: isoDate,
+  })
+  .refine((v) => v.periodFrom <= v.periodTo, {
+    message: "periodFrom must be on or before periodTo",
+    path: ["periodFrom"],
+  });
 
 export const testRecordsController = {
   async getAll(req: Request, res: Response) {
@@ -107,12 +131,17 @@ export const testRecordsController = {
 
   async getViolationCounts(req: Request, res: Response) {
     try {
-      const { periodFrom, periodTo } = req.query;
-      if (typeof periodFrom !== "string" || typeof periodTo !== "string") {
+      const parsed = violationCountsQuerySchema.safeParse({
+        periodFrom: req.query.periodFrom,
+        periodTo: req.query.periodTo,
+      });
+      if (!parsed.success) {
         return res.status(400).json({
-          error: "periodFrom and periodTo query params are required (YYYY-MM-DD)",
+          error: "Invalid query parameters",
+          details: parsed.error.flatten(),
         });
       }
+      const { periodFrom, periodTo } = parsed.data;
       const result = await testRecordsService.getViolationCounts({
         periodFrom,
         periodTo,
@@ -133,17 +162,18 @@ export const testRecordsController = {
 
   async getViolationFormSummaries(req: Request, res: Response) {
     try {
-      const { periodFrom, periodTo, type } = req.query;
-      if (typeof periodFrom !== "string" || typeof periodTo !== "string") {
+      const parsed = violationFormSummariesQuerySchema.safeParse({
+        periodFrom: req.query.periodFrom,
+        periodTo: req.query.periodTo,
+        type: req.query.type,
+      });
+      if (!parsed.success) {
         return res.status(400).json({
-          error: "periodFrom and periodTo query params are required (YYYY-MM-DD)",
+          error: "Invalid query parameters",
+          details: parsed.error.flatten(),
         });
       }
-      if (type !== "alcohol" && type !== "drug") {
-        return res.status(400).json({
-          error: "type query param is required and must be 'alcohol' or 'drug'",
-        });
-      }
+      const { periodFrom, periodTo, type } = parsed.data;
       const result = await testRecordsService.getViolationFormSummaries({
         periodFrom,
         periodTo,

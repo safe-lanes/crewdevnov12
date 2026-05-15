@@ -53,9 +53,12 @@ export function DrugsAlcoholModule_v2() {
         if (!recordUuid) return;
 
         let cancelled = false;
-        const allTestTypes: Array<'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others'> = [
+        type DATestType = 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others';
+        const allTestTypes: readonly DATestType[] = [
             'annual', 'periodic', 'monthly', 'post-incident', 'others',
-        ];
+        ] as const;
+        const isDATestType = (v: unknown): v is DATestType =>
+            typeof v === 'string' && (allTestTypes as readonly string[]).includes(v);
         if (page && allowedPages.includes(page)) {
             setSelectedDrugsAlcoholPage(page);
         }
@@ -64,9 +67,7 @@ export function DrugsAlcoholModule_v2() {
             try {
                 const record = await drugsAlcoholApiV2.testRecords.getByUuid(recordUuid);
                 if (cancelled || !record) return;
-                const tt = (record.testType ?? '').toString();
-                const testType = (allTestTypes.includes(tt as any) ? tt : 'annual') as
-                    'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others';
+                const testType: DATestType = isDATestType(record.testType) ? record.testType : 'annual';
                 handleOpenForm(testType, record.vesselId ?? undefined, recordUuid);
             } catch (err) {
                 console.error('Failed to open deep-linked D&A record', err);
