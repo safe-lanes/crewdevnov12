@@ -239,34 +239,66 @@ export const CrewRetentionMetrics = ({
   return (
     <>
       <div
-        className="w-full h-full grid grid-cols-3 gap-4 px-4 pt-6"
+        className="w-full h-full flex flex-col gap-6 px-6 py-6"
         data-testid="metrics-crew-retention"
       >
-        {CATEGORIES.map((cat, i) => {
-          const interactive = tileIsInteractive(i);
-          return (
-            <button
-              type="button"
-              key={cat.key}
-              onClick={() => handleTileClick(i)}
-              disabled={!interactive}
-              className={`flex flex-col items-center gap-2 rounded-md p-2 text-center transition-colors ${
-                interactive
-                  ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#52baf3]"
-                  : "cursor-default"
-              }`}
-              data-testid={`tile-retention-${cat.key}`}
-            >
-              <div
-                className="text-sm text-gray-500 dark:text-gray-400"
-                data-testid={`label-retention-${cat.key}`}
+        <div className="flex items-start justify-between gap-4">
+          {CATEGORIES.filter((c) => c.key !== "rating").map((cat) => {
+            const i = CATEGORIES.findIndex((c) => c.key === cat.key);
+            const interactive = tileIsInteractive(i);
+            return (
+              <button
+                type="button"
+                key={cat.key}
+                onClick={() => handleTileClick(i)}
+                disabled={!interactive}
+                className={`flex flex-col items-center gap-2 rounded-md p-2 text-center transition-colors ${
+                  interactive
+                    ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#52baf3]"
+                    : "cursor-default"
+                }`}
+                data-testid={`tile-retention-${cat.key}`}
               >
-                {cat.label}
-              </div>
-              {renderValue(i)}
-            </button>
-          );
-        })}
+                <div
+                  className="text-sm text-gray-500 dark:text-gray-400"
+                  data-testid={`label-retention-${cat.key}`}
+                >
+                  {cat.label}
+                </div>
+                {renderValue(i)}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-start justify-center">
+          {(() => {
+            const i = CATEGORIES.findIndex((c) => c.key === "rating");
+            const cat = CATEGORIES[i];
+            const interactive = tileIsInteractive(i);
+            return (
+              <button
+                type="button"
+                key={cat.key}
+                onClick={() => handleTileClick(i)}
+                disabled={!interactive}
+                className={`flex flex-col items-center gap-2 rounded-md p-2 text-center transition-colors ${
+                  interactive
+                    ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#52baf3]"
+                    : "cursor-default"
+                }`}
+                data-testid={`tile-retention-${cat.key}`}
+              >
+                <div
+                  className="text-sm text-gray-500 dark:text-gray-400"
+                  data-testid={`label-retention-${cat.key}`}
+                >
+                  {cat.label}
+                </div>
+                {renderValue(i)}
+              </button>
+            );
+          })()}
+        </div>
       </div>
       <CrewRetentionDrilldownDialog
         open={showDrillDown}
