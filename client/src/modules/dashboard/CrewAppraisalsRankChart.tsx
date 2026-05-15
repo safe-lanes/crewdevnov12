@@ -161,7 +161,7 @@ export const CrewAppraisalsRankChart = ({
     () => ({
       data: chartData,
       background: { fill: "#ffffff" },
-      padding: { top: 10, right: 10, bottom: 30, left: 40 },
+      padding: { top: 10, right: 10, bottom: 50, left: 40 },
       listeners: {
         seriesNodeClick: (event: any) => {
           try {
@@ -197,7 +197,7 @@ export const CrewAppraisalsRankChart = ({
         {
           type: "category" as any,
           position: "bottom",
-          label: { fontSize: 11, color: "#4b5563", rotation: 0 },
+          label: { fontSize: 11, color: "#4b5563", rotation: -30, autoRotate: false, avoidCollisions: false },
           paddingInner: 0.2,
           paddingOuter: 0.3,
         },
