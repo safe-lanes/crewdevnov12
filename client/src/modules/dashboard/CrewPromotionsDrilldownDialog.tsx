@@ -177,7 +177,10 @@ export const CrewPromotionsDrilldownDialog = ({
   const isLoading = reviewsLoading || crewLoading;
 
   const handleViewPromotion = (reviewUuid: string | null | undefined) => {
-    onOpenChange(false);
+    // Do NOT call onOpenChange(false) here. The dashboard encodes the open
+    // drill-down in the URL (?drilldown=crew-promotions&rank=…); pushing the
+    // promotions URL leaves that history entry intact so the browser back
+    // button returns the user to the dashboard with this popup re-opened.
     if (reviewUuid) {
       setLocation(`/promotions?review=${encodeURIComponent(reviewUuid)}`);
     } else {

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AgCharts } from "@/lib/agCharts";
 import type { AgChartOptions, AgChartInstance } from "@/lib/agCharts";
 import { CrewPromotionsDrilldownDialog } from "./CrewPromotionsDrilldownDialog";
+import { useDrilldownParam } from "./useDrilldownParam";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface PromotionReviewRow {
@@ -80,18 +81,23 @@ export const CrewPromotionsRankChart = ({
     return () => setIsMounted(false);
   }, []);
 
-  const [showDrillDown, setShowDrillDown] = useState(false);
-  const [selectedRank, setSelectedRank] = useState<string | null>(null);
+  const drilldown = useDrilldownParam("crew-promotions");
+  const showDrillDown = drilldown.isOpen;
+  const selectedRank = drilldown.state.rank;
 
-  const handleBarClick = useCallback((rank: string) => {
-    setSelectedRank(rank);
-    setShowDrillDown(true);
-  }, []);
+  const handleBarClick = useCallback(
+    (rank: string) => {
+      drilldown.open({ rank });
+    },
+    [drilldown],
+  );
 
-  const handleDrillDownChange = useCallback((open: boolean) => {
-    setShowDrillDown(open);
-    if (!open) setSelectedRank(null);
-  }, []);
+  const handleDrillDownChange = useCallback(
+    (open: boolean) => {
+      if (!open) drilldown.close();
+    },
+    [drilldown],
+  );
 
   const range = useMemo(() => periodToRange(period), [period]);
 

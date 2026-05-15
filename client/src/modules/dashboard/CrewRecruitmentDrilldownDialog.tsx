@@ -182,7 +182,8 @@ export const CrewRecruitmentDrilldownDialog = ({
   const title = `Crew Recruitment - ${rank ?? ""}${periodLabel ? ` - ${periodLabel}` : ""}`;
 
   const handleViewCandidate = () => {
-    onOpenChange(false);
+    // Do NOT call onOpenChange(false). The drill-down state lives in the
+    // dashboard URL, and we want the back button to restore this popup.
     setLocation("/recruitment");
   };
 
