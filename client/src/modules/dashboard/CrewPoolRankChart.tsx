@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AgCharts } from "@/lib/agCharts";
 import type { AgChartOptions, AgChartInstance } from "@/lib/agCharts";
+import { CrewPoolDrilldownDialog } from "./CrewPoolDrilldownDialog";
+import { useDrilldownParam } from "./useDrilldownParam";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface CrewRow {
@@ -96,6 +98,24 @@ export const CrewPoolRankChart = ({
     return () => setIsMounted(false);
   }, []);
 
+  const drilldown = useDrilldownParam("crew-pool");
+  const showDrillDown = drilldown.isOpen;
+  const selectedRank = drilldown.state.rank;
+
+  const handleBarClick = useCallback(
+    (rank: string) => {
+      drilldown.open({ rank });
+    },
+    [drilldown],
+  );
+
+  const handleDrillDownChange = useCallback(
+    (open: boolean) => {
+      if (!open) drilldown.close();
+    },
+    [drilldown],
+  );
+
   const snapshotDate = useMemo(() => periodToSnapshotDate(period), [period]);
 
   const { data: crew = [], isLoading, error } = useQuery<CrewRow[]>({
@@ -180,6 +200,17 @@ export const CrewPoolRankChart = ({
       data: chartData,
       background: { fill: "#ffffff" },
       padding: { top: 10, right: 10, bottom: 30, left: 40 },
+      listeners: {
+        seriesNodeClick: (event: any) => {
+          try {
+            if (event?.datum?.rank) {
+              handleBarClick(String(event.datum.rank));
+            }
+          } catch (err) {
+            console.error("Error handling chart click:", err);
+          }
+        },
+      } as any,
       series: [
         {
           type: "bar" as any,
@@ -188,6 +219,7 @@ export const CrewPoolRankChart = ({
           fill: "#52baf3",
           stroke: "#3a9fd9",
           strokeWidth: 1,
+          cursor: "pointer",
           tooltip: {
             renderer: ({ datum }: any) => {
               const rank = escapeHtml(String(datum?.rank ?? ""));
@@ -214,7 +246,7 @@ export const CrewPoolRankChart = ({
         },
       ],
     }),
-    [chartData],
+    [chartData, handleBarClick],
   );
 
   if (isLoading) {
@@ -270,17 +302,30 @@ export const CrewPoolRankChart = ({
   }
 
   return (
-    <div
-      className="w-full h-full min-h-0"
-      data-testid="chart-crew-pool-rank"
-    >
-      {isMounted && (
-        <AgCharts
-          ref={chartRef}
-          options={chartOptions}
-          style={{ width: "100%", height: "100%" }}
-        />
-      )}
-    </div>
+    <>
+      <div
+        className="w-full h-full min-h-0"
+        data-testid="chart-crew-pool-rank"
+      >
+        {isMounted && (
+          <AgCharts
+            ref={chartRef}
+            options={chartOptions}
+            style={{ width: "100%", height: "100%" }}
+          />
+        )}
+      </div>
+      <CrewPoolDrilldownDialog
+        open={showDrillDown}
+        onOpenChange={handleDrillDownChange}
+        rank={selectedRank}
+        period={period}
+        ranks={ranks}
+        vessels={vessels}
+        crewPools={crewPools}
+        manningAgents={manningAgents}
+        nationalities={nationalities}
+      />
+    </>
   );
 };

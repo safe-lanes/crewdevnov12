@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { FilterIcon, PlusIcon, EditIcon } from 'lucide-react';
@@ -580,11 +580,56 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         // Note: responsive behavior is handled by AgGridTable component
     }, []);
 
-    // Handle closing crew info form
+    // Track whether the currently open Crew Info form was opened via the
+    // dashboard drill-down deep-link. Held in a ref (not on the row object)
+    // so it survives crew switching inside the form via onCrewMemberChange.
+    const openedFromDeepLinkRef = useRef(false);
+
+    // Handle closing crew info form. If the form was opened via dashboard
+    // deep-link (?crew=<uuid>), we want closing to restore the dashboard
+    // drill-down popup, so we walk back one history entry instead of just
+    // dismissing the modal.
     const handleCloseCrewInfoForm = () => {
+        const wasDeepLink = openedFromDeepLinkRef.current;
+        openedFromDeepLinkRef.current = false;
         setIsCrewInfoFormOpen(false);
         setSelectedCrewMember(null);
+        if (wasDeepLink && typeof window !== "undefined") {
+            window.history.back();
+        }
     };
+
+    // Deep-link entry: dashboard's Crew Pool drill-down popup links to
+    // /crew-pool?crew=<crewUuid>. Find the matching row once crew data has
+    // loaded and open the Crew Info form, tagged so close can history.back()
+    // back into the popup. Strip the query param so the URL stays clean.
+    const [pendingCrewUuid, setPendingCrewUuid] = useState<string | null>(() => {
+        if (typeof window === "undefined") return null;
+        return new URLSearchParams(window.location.search).get("crew");
+    });
+
+    useEffect(() => {
+        if (!pendingCrewUuid) return;
+        if (isCrewLoading) return;
+        const found = (rawCrewData as any[]).find(
+            (c) => c && c.crewUuid === pendingCrewUuid,
+        );
+        if (found) {
+            openedFromDeepLinkRef.current = true;
+            setSelectedCrewMember(found);
+            setIsCrewInfoFormOpen(true);
+        }
+        setPendingCrewUuid(null);
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has("crew")) {
+                params.delete("crew");
+                const qs = params.toString();
+                const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
+                window.history.replaceState({}, "", newUrl);
+            }
+        }
+    }, [pendingCrewUuid, isCrewLoading, rawCrewData]);
 
     const getTitle = () => {
         switch (selectedCrewPoolPage) {
