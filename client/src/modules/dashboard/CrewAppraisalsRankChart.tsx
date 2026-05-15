@@ -1,29 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AgCharts } from "@/lib/agCharts";
 import type { AgChartOptions, AgChartInstance } from "@/lib/agCharts";
 import { appraisalsApiV2 } from "@/modules/crewing/api/appraisalsApiV2";
+import { CrewAppraisalsDrilldownDialog } from "./CrewAppraisalsDrilldownDialog";
+import { useDrilldownParam } from "./useDrilldownParam";
+import { extractRank } from "./appraisalRank";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface AppraisalRow {
+  id?: number;
+  appraisalUuid?: string | null;
+  seafarersName?: string | null;
   seafarersRank?: string | null;
+  vessel?: string | null;
+  appraisalType?: string | null;
   overallRating?: string | number | null;
   appraisalDate?: string | null;
   appraisalData?: string | null;
-}
-
-function extractRank(row: AppraisalRow): string {
-  const top = (row.seafarersRank || "").trim();
-  if (top) return top;
-  const raw = row.appraisalData;
-  if (!raw || typeof raw !== "string") return "";
-  try {
-    const parsed = JSON.parse(raw);
-    const r = parsed?.seafarersRank;
-    return typeof r === "string" ? r.trim() : "";
-  } catch {
-    return "";
-  }
 }
 
 function escapeHtml(value: string): string {
@@ -109,6 +103,24 @@ export const CrewAppraisalsRankChart = ({
     return () => setIsMounted(false);
   }, []);
 
+  const drilldown = useDrilldownParam("crew-appraisals");
+  const showDrillDown = drilldown.isOpen;
+  const selectedRank = drilldown.state.rank;
+
+  const handleBarClick = useCallback(
+    (rank: string) => {
+      drilldown.open({ rank });
+    },
+    [drilldown],
+  );
+
+  const handleDrillDownChange = useCallback(
+    (open: boolean) => {
+      if (!open) drilldown.close();
+    },
+    [drilldown],
+  );
+
   const range = useMemo(() => periodToRange(period), [period]);
 
   const { data: appraisals = [], isLoading, error } = useQuery<AppraisalRow[]>({
@@ -150,6 +162,17 @@ export const CrewAppraisalsRankChart = ({
       data: chartData,
       background: { fill: "#ffffff" },
       padding: { top: 10, right: 10, bottom: 30, left: 40 },
+      listeners: {
+        seriesNodeClick: (event: any) => {
+          try {
+            if (event?.datum?.rank) {
+              handleBarClick(String(event.datum.rank));
+            }
+          } catch (err) {
+            console.error("Error handling chart click:", err);
+          }
+        },
+      } as any,
       series: [
         {
           type: "bar" as any,
@@ -158,6 +181,7 @@ export const CrewAppraisalsRankChart = ({
           fill: "#52baf3",
           stroke: "#3a9fd9",
           strokeWidth: 1,
+          cursor: "pointer",
           tooltip: {
             renderer: ({ datum }: any) => {
               const rank = escapeHtml(String(datum?.rank ?? ""));
@@ -185,7 +209,7 @@ export const CrewAppraisalsRankChart = ({
         },
       ],
     }),
-    [chartData],
+    [chartData, handleBarClick],
   );
 
   if (isLoading) {
@@ -239,17 +263,29 @@ export const CrewAppraisalsRankChart = ({
   }
 
   return (
-    <div
-      className="w-full h-full min-h-0"
-      data-testid="chart-crew-appraisals-rank"
-    >
-      {isMounted && (
-        <AgCharts
-          ref={chartRef}
-          options={chartOptions}
-          style={{ width: "100%", height: "100%" }}
-        />
-      )}
-    </div>
+    <>
+      <div
+        className="w-full h-full min-h-0"
+        data-testid="chart-crew-appraisals-rank"
+      >
+        {isMounted && (
+          <AgCharts
+            ref={chartRef}
+            options={chartOptions}
+            style={{ width: "100%", height: "100%" }}
+          />
+        )}
+      </div>
+      <CrewAppraisalsDrilldownDialog
+        open={showDrillDown}
+        onOpenChange={handleDrillDownChange}
+        rank={selectedRank}
+        period={period}
+        ranks={_ranks}
+        crewPools={_crewPools}
+        manningAgents={_manningAgents}
+        nationalities={_nationalities}
+      />
+    </>
   );
 };

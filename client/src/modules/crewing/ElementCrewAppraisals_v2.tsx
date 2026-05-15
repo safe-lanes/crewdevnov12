@@ -64,6 +64,8 @@ interface CrewAppraisalData {
   behavioralRating: { value: string; color: string };
   overallRating: { value: string; color: string };
   appraisalId?: number;
+  appraisalUuid?: string;
+  _openedFromDeepLink?: boolean;
 }
 
 // Status badge component - moved outside component to avoid hooks issues
@@ -340,6 +342,16 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     setViewingAppraisal(crewMember);
   }, []);
 
+  const handleCloseView = useCallback(() => {
+    const wasDeepLink = viewingAppraisal?._openedFromDeepLink === true;
+    setViewingAppraisal(null);
+    if (wasDeepLink && typeof window !== "undefined") {
+      // Pop back to the dashboard URL with ?drilldown=crew-appraisals&rank=...
+      // so the popup re-opens itself from those params.
+      window.history.back();
+    }
+  }, [viewingAppraisal]);
+
   const handleDeleteClick = useCallback((crewMember: CrewAppraisalData) => {
     setDeleteTarget(crewMember);
   }, []);
@@ -460,8 +472,36 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
           color: appraisal.overallRating ? getRatingColor(appraisal.overallRating) : "bg-gray-400 text-white",
         },
         appraisalId: appraisal.id,
+        appraisalUuid: (appraisal as any).appraisalUuid,
       };
     }), [appraisalResults, getRatingColor, getVesselName, crewByUuid, vesselTypeByName, calculateAge]);
+
+  // Deep-link entry: dashboard's Crew Appraisals drill-down popup links to
+  // /?appraisal=<appraisalUuid>. Find the matching row and open the read-only
+  // AppraisalView, tagged so the close handler can history.back() to the popup.
+  const [pendingAppraisalUuid, setPendingAppraisalUuid] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("appraisal");
+  });
+
+  useEffect(() => {
+    if (!pendingAppraisalUuid) return;
+    if (isLoadingAppraisals) return;
+    const found = allCrewData.find((c) => c.appraisalUuid === pendingAppraisalUuid);
+    if (found && found.appraisalId != null) {
+      setViewingAppraisal({ ...found, _openedFromDeepLink: true });
+    }
+    setPendingAppraisalUuid(null);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("appraisal")) {
+        params.delete("appraisal");
+        const qs = params.toString();
+        const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
+        window.history.replaceState({}, "", newUrl);
+      }
+    }
+  }, [pendingAppraisalUuid, isLoadingAppraisals, allCrewData]);
 
   // Filter crew data based on filter state
   const crewData = useMemo(() =>
@@ -1093,7 +1133,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
             appraisalId={viewingAppraisal.appraisalId}
             rank={viewingAppraisal.rank}
             seafarerNameFallback={`${viewingAppraisal.name.first} ${viewingAppraisal.name.middle} ${viewingAppraisal.name.last}`.replace(/\s+/g, ' ').trim()}
-            onClose={() => setViewingAppraisal(null)}
+            onClose={handleCloseView}
           />
         )}
 
