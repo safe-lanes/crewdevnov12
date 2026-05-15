@@ -24,7 +24,7 @@ export const DashboardPage = () => {
 
   const defaultPeriod = useMemo<PeriodFilterValue>(() => {
     const now = new Date();
-    return { mode: "year-month", year: now.getFullYear(), month: now.getMonth() + 1 };
+    return { mode: "year", year: now.getFullYear() };
   }, []);
 
   const [period, setPeriod] = useState<PeriodFilterValue>(defaultPeriod);
