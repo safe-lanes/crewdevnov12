@@ -683,7 +683,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Mutation for saving appraisal (uses PUT for existing, POST for new)
   const saveAppraisalMutation = useMutation({
-    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null; closeAfter?: boolean }) => {
+    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null; closeAfter?: boolean; isDraftAction?: boolean }) => {
       if (!crewMember?.id) {
         throw new Error('Crew member ID is required to save appraisal');
       }
@@ -769,10 +769,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         queryClient.setQueryData([`/api/v2/appraisals/${data.id}`], data);
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
+      const isDraftAction = variables.isDraftAction === true || variables.status === 'draft';
       toast({
-        title: variables.status === 'draft' ? 'Draft Saved' : 'Appraisal Submitted',
-        description: variables.status === 'draft' 
-          ? 'Your appraisal draft has been saved successfully. You can now submit stages.' 
+        title: isDraftAction ? 'Draft Saved' : 'Appraisal Submitted',
+        description: isDraftAction
+          ? 'Your appraisal draft has been saved successfully. You can now submit stages.'
           : 'Your appraisal has been submitted successfully.',
       });
       if (variables.closeAfter) {
@@ -819,7 +820,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
       if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
-      toast({ title: appraisalStatus === 'draft' ? 'Stage 1 submitted' : 'Stage 1 saved' });
+      toast({ title: 'Stage 1 Submitted' });
       onClose();
     },
     onError: (error: any) => {
@@ -851,7 +852,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
       if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
-      toast({ title: (appraisalStatus === 'draft' || appraisalStatus === 'preliminary') ? 'Stage 2 Submitted' : 'Stage 2 saved', description: 'Performance assessment (Parts C-F) saved successfully.' });
+      toast({ title: 'Stage 2 Submitted', description: 'Performance assessment (Parts C-F) saved successfully.' });
       onClose();
     },
     onError: (error: any) => {
@@ -1069,7 +1070,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     // Only use 'draft' status before Stage 1 has been submitted
     const statusToSave = appraisalStatus === 'draft' ? 'draft' : appraisalStatus;
     console.log('💾 Preserving status:', statusToSave);
-    saveAppraisalMutation.mutate({ data, status: statusToSave, closeAfter: false });
+    saveAppraisalMutation.mutate({ data, status: statusToSave, closeAfter: false, isDraftAction: true });
   };
 
   const onSubmitAppraisal = () => {
