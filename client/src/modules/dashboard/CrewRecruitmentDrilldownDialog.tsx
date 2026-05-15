@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
 import { candidateApi } from "@/modules/recruitment/api/candidateApi";
+import { RECRUITED_STATUSES } from "@/modules/recruitment/RecruitmentModule_v2";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface CandidateRow {
@@ -148,6 +149,10 @@ export const CrewRecruitmentDrilldownDialog = ({
   const matchingCandidates = useMemo<CandidateRow[]>(() => {
     if (!rank || !range) return [];
     return candidates.filter((c) => {
+      // Match the chart: only candidates whose status is in the "Recruited"
+      // bucket. Without this, Waitlist / Draft / etc. show up here too.
+      if (!c.status || !RECRUITED_STATUSES.has(String(c.status))) return false;
+
       const recruited = parseDate(c.createdAt);
       if (!recruited) return false;
       if (recruited < range.from || recruited > range.to) return false;
@@ -181,10 +186,15 @@ export const CrewRecruitmentDrilldownDialog = ({
   const periodLabel = useMemo(() => formatPeriod(period), [period]);
   const title = `Crew Recruitment - ${rank ?? ""}${periodLabel ? ` - ${periodLabel}` : ""}`;
 
-  const handleViewCandidate = () => {
+  const handleViewCandidate = (candidate: CandidateRow) => {
     // Do NOT call onOpenChange(false). The drill-down state lives in the
     // dashboard URL, and we want the back button to restore this popup.
-    setLocation("/recruitment");
+    const uuid = candidate.recCanUuid;
+    if (uuid) {
+      setLocation(`/recruitment?candidate=${encodeURIComponent(uuid)}`);
+    } else {
+      setLocation("/recruitment");
+    }
   };
 
   return (
@@ -278,7 +288,7 @@ export const CrewRecruitmentDrilldownDialog = ({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={handleViewCandidate}
+                            onClick={() => handleViewCandidate(c)}
                             data-testid={`button-view-candidate-${key}`}
                             className="text-xs"
                           >

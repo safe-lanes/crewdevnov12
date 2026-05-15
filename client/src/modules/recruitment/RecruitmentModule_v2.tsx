@@ -27,12 +27,14 @@ import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import { useV2Candidates, useV2DeleteCandidate } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
 
-const STATUS_MAPPING = {
+export const STATUS_MAPPING = {
   "in-progress": ["draft", "Draft", "in-progress", "in_progress", "In Progress", "applied", "Applied", "screening", "Screening", "for_approval", "For Approval", "submitted", "Submitted"],
   "recruited": ["recruited", "Recruited", "RECRUITED"],
   "waitlist": ["waitlist", "Waitlist", "waitlisted", "Waitlisted", "WAITLIST", "WAITLISTED"],
   "rejected": ["rejected", "Rejected", "REJECTED"]
 };
+
+export const RECRUITED_STATUSES = new Set(STATUS_MAPPING.recruited);
 
 export const RecruitmentModuleV2 = (): JSX.Element => {
   const [selectedRecruitmentPage, setSelectedRecruitmentPage] = useState("in-progress");
@@ -123,6 +125,39 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   }, [isManningAgentUser, userManningAgent]);
 
   const { data: allCandidates = [], isLoading, error, refetch } = useV2Candidates();
+
+  // Deep-link entry: dashboard's Crew Recruitment drill-down popup links to
+  // /recruitment?candidate=<recCanUuid>. Open the matching candidate's form
+  // and tag it so the form's Back arrow can history.back() to the popup.
+  const [pendingCandidateUuid, setPendingCandidateUuid] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return new URLSearchParams(window.location.search).get('candidate');
+  });
+
+  useEffect(() => {
+    if (!pendingCandidateUuid) return;
+    if (isLoading) return;
+    const list = (allCandidates as V2CandidateListItem[]) || [];
+    const found = list.find((c) => c.recCanUuid === pendingCandidateUuid);
+    if (found) {
+      setSelectedCandidate({
+        ...found,
+        middleName: found.middleName || '',
+        _openedFromDeepLink: true,
+      } as V2CandidateListItem & { _openedFromDeepLink: boolean });
+      setShowApplicationForm(true);
+    }
+    setPendingCandidateUuid(null);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('candidate')) {
+        params.delete('candidate');
+        const qs = params.toString();
+        const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`;
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [pendingCandidateUuid, isLoading, allCandidates]);
 
   const deleteMutation = useV2DeleteCandidate();
   const allowedPages = useMemo(() => {
@@ -833,8 +868,16 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         <RecruitmentApplicationFormV2
           candidate={selectedCandidate}
           onClose={() => {
+            const wasDeepLinked =
+              (selectedCandidate as (V2CandidateListItem & { _openedFromDeepLink?: boolean }) | null)
+                ?._openedFromDeepLink === true;
             setShowApplicationForm(false);
             setSelectedCandidate(null);
+            // If we were opened via the dashboard drill-down deep link, walk
+            // one step back so the popup is restored on the dashboard.
+            if (wasDeepLinked && typeof window !== 'undefined') {
+              window.history.back();
+            }
           }}
         />
       )}

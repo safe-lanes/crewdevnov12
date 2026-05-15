@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AgCharts } from "@/lib/agCharts";
 import type { AgChartOptions, AgChartInstance } from "@/lib/agCharts";
 import { candidateApi } from "@/modules/recruitment/api/candidateApi";
+import { RECRUITED_STATUSES } from "@/modules/recruitment/RecruitmentModule_v2";
 import { CrewRecruitmentDrilldownDialog } from "./CrewRecruitmentDrilldownDialog";
 import { useDrilldownParam } from "./useDrilldownParam";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
@@ -11,6 +12,7 @@ interface CandidateRow {
   rankAppliedFor?: string | null;
   presentRank?: string | null;
   nationalityUuid?: string | null;
+  status?: string | null;
   createdAt?: string | Date | null;
 }
 
@@ -120,6 +122,11 @@ export const CrewRecruitmentRankChart = ({
     if (!range) return [];
     const counts = new Map<string, number>();
     for (const c of candidates) {
+      // Only count candidates whose status is in the "Recruited" bucket.
+      // Without this, Draft / Applied / Waitlist / Rejected candidates would
+      // also be counted as recruits on the chart.
+      if (!c.status || !RECRUITED_STATUSES.has(String(c.status))) continue;
+
       const recruited = parseDate(c.createdAt);
       if (!recruited) continue;
       if (recruited < range.from || recruited > range.to) continue;
