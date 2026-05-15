@@ -1,6 +1,13 @@
 import { Request, Response } from "express";
 import { testRecordsService } from "../services";
 
+function toArrayParam(v: unknown): string[] {
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
+  if (typeof v === "string" && v.length > 0)
+    return v.split(",").map((s) => s.trim()).filter(Boolean);
+  return [];
+}
+
 export const testRecordsController = {
   async getAll(req: Request, res: Response) {
     try {
@@ -109,6 +116,10 @@ export const testRecordsController = {
       const result = await testRecordsService.getViolationCounts({
         periodFrom,
         periodTo,
+        vesselNames: toArrayParam(req.query.vesselIds ?? req.query["vesselIds[]"]),
+        rankNames: toArrayParam(req.query.rankIds ?? req.query["rankIds[]"]),
+        poolNames: toArrayParam(req.query.poolIds ?? req.query["poolIds[]"]),
+        agentNames: toArrayParam(req.query.agentIds ?? req.query["agentIds[]"]),
       });
       res.json(result);
     } catch (error: any) {
@@ -117,6 +128,38 @@ export const testRecordsController = {
       }
       console.error("Error computing violation counts:", error);
       res.status(500).json({ error: "Failed to compute violation counts" });
+    }
+  },
+
+  async getViolationFormSummaries(req: Request, res: Response) {
+    try {
+      const { periodFrom, periodTo, type } = req.query;
+      if (typeof periodFrom !== "string" || typeof periodTo !== "string") {
+        return res.status(400).json({
+          error: "periodFrom and periodTo query params are required (YYYY-MM-DD)",
+        });
+      }
+      if (type !== "alcohol" && type !== "drug") {
+        return res.status(400).json({
+          error: "type query param is required and must be 'alcohol' or 'drug'",
+        });
+      }
+      const result = await testRecordsService.getViolationFormSummaries({
+        periodFrom,
+        periodTo,
+        type,
+        vesselNames: toArrayParam(req.query.vesselIds ?? req.query["vesselIds[]"]),
+        rankNames: toArrayParam(req.query.rankIds ?? req.query["rankIds[]"]),
+        poolNames: toArrayParam(req.query.poolIds ?? req.query["poolIds[]"]),
+        agentNames: toArrayParam(req.query.agentIds ?? req.query["agentIds[]"]),
+      });
+      res.json(result);
+    } catch (error: any) {
+      if (error.message?.includes("Invalid period")) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error fetching violation form summaries:", error);
+      res.status(500).json({ error: "Failed to fetch violation form summaries" });
     }
   },
 

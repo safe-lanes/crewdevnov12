@@ -40,6 +40,55 @@ export function DrugsAlcoholModule_v2() {
             setSelectedDrugsAlcoholPage(allowedPages[0]);
         }
     }, [allowedPages]);
+
+    // Deep-link consumption: when the URL carries `recordUuid` and `page`
+    // (e.g. from the Management Dashboard D&A Analysis drill-down), open the
+    // matching test record in the form on mount and strip the params so a
+    // manual refresh shows the user the normal page.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const sp = new URLSearchParams(window.location.search);
+        const recordUuid = sp.get('recordUuid');
+        const page = sp.get('page');
+        if (!recordUuid) return;
+
+        let cancelled = false;
+        const allTestTypes: Array<'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others'> = [
+            'annual', 'periodic', 'monthly', 'post-incident', 'others',
+        ];
+        if (page && allowedPages.includes(page)) {
+            setSelectedDrugsAlcoholPage(page);
+        }
+
+        (async () => {
+            try {
+                const record = await drugsAlcoholApiV2.testRecords.getByUuid(recordUuid);
+                if (cancelled || !record) return;
+                const tt = (record.testType ?? '').toString();
+                const testType = (allTestTypes.includes(tt as any) ? tt : 'annual') as
+                    'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others';
+                handleOpenForm(testType, record.vesselId ?? undefined, recordUuid);
+            } catch (err) {
+                console.error('Failed to open deep-linked D&A record', err);
+            } finally {
+                if (typeof window !== 'undefined') {
+                    const sp2 = new URLSearchParams(window.location.search);
+                    let changed = false;
+                    for (const key of ['recordUuid', 'page']) {
+                        if (sp2.has(key)) { sp2.delete(key); changed = true; }
+                    }
+                    if (changed) {
+                        const qs = sp2.toString();
+                        const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`;
+                        window.history.replaceState({}, '', newUrl);
+                    }
+                }
+            }
+        })();
+
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [allowedPages]);
     const daPageToMenu: Record<string, string> = { "annual": "Annual", "periodic": "Periodic", "monthly": "Monthly", "post-incident": "Post Incident", "others": "Others", "summary": "Summary" };
     const currentDAMenu = daPageToMenu[selectedDrugsAlcoholPage] || "Annual";
     const { toast } = useToast();

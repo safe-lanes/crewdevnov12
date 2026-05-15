@@ -7,6 +7,11 @@ import {
   daSignaturesV2,
   daAttachmentsV2,
 } from "../../../../shared/v2/drugs-alcohol/schema";
+import { masterVessels } from "../../../../shared/schema";
+import {
+  crewMembersV2,
+  crewPersonalDetails,
+} from "../../../../shared/v2/crew-pool/schema";
 import type {
   DaTestRecordV2,
   InsertDaTestRecordV2,
@@ -219,13 +224,50 @@ export class TestRecordsRepository {
       drugViolation: boolean | null;
     }>
   > {
+    const rows = await this.findFinalizedViolatingPersonnelDetailed();
+    return rows.map((r) => ({
+      testType: r.testType,
+      dateTimeTestCompleted: r.dateTimeTestCompleted,
+      incidentDateTime: r.incidentDateTime,
+      testDateTime: r.testDateTime,
+      alcoholViolation: r.alcoholViolation,
+      drugViolation: r.drugViolation,
+    }));
+  }
+
+  async findFinalizedViolatingPersonnelDetailed(): Promise<
+    Array<{
+      daUuid: string;
+      vesselId: string | null;
+      vesselName: string | null;
+      testType: string | null;
+      otherTestType: string | null;
+      dateTimeTestCompleted: string | null;
+      incidentDateTime: string | null;
+      testDateTime: string | null;
+      crewId: string | null;
+      rank: string | null;
+      crewPool: string | null;
+      manningAgent: string | null;
+      alcoholViolation: boolean | null;
+      drugViolation: boolean | null;
+    }>
+  > {
     const db = getDb();
     const rows = await db
       .select({
+        daUuid: daTestRecordsV2.daUuid,
+        vesselId: daTestRecordsV2.vesselId,
+        vesselName: masterVessels.vessel,
         testType: daTestRecordsV2.testType,
+        otherTestType: daTestRecordsV2.otherTestType,
         dateTimeTestCompleted: daTestRecordsV2.dateTimeTestCompleted,
         incidentDateTime: daTestRecordsV2.incidentDateTime,
         testDateTime: daTestRecordsV2.testDateTime,
+        crewId: daPersonnelTestedV2.crewId,
+        rank: daPersonnelTestedV2.rank,
+        crewPool: crewPersonalDetails.crewPool,
+        manningAgent: crewPersonalDetails.manningAgent,
         alcoholViolation: daPersonnelTestedV2.alcoholViolation,
         drugViolation: daPersonnelTestedV2.drugViolation,
       })
@@ -233,6 +275,21 @@ export class TestRecordsRepository {
       .innerJoin(
         daPersonnelTestedV2,
         eq(daPersonnelTestedV2.testRecordUuid, daTestRecordsV2.daUuid)
+      )
+      .leftJoin(masterVessels, eq(masterVessels.vesselUuid, daTestRecordsV2.vesselId))
+      .leftJoin(
+        crewMembersV2,
+        and(
+          eq(crewMembersV2.crewUuid, daPersonnelTestedV2.crewId),
+          eq(crewMembersV2.isDeleted, false)
+        )
+      )
+      .leftJoin(
+        crewPersonalDetails,
+        and(
+          eq(crewPersonalDetails.crewUuid, daPersonnelTestedV2.crewId),
+          eq(crewPersonalDetails.isDeleted, false)
+        )
       )
       .where(
         and(

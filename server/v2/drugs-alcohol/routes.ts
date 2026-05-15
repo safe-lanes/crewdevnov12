@@ -5,6 +5,7 @@ import { crewController } from "./controllers/crewController";
 const router = Router();
 
 router.get("/stats/violations", testRecordsController.getViolationCounts);
+router.get("/test-records/violations", testRecordsController.getViolationFormSummaries);
 router.get("/test-records", testRecordsController.getAll);
 router.get("/test-records/vessel/:vesselId", testRecordsController.getByVessel);
 router.get("/test-records/:uuid", testRecordsController.getByUuid);

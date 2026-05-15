@@ -178,7 +178,15 @@ export const DashboardPage = () => {
               key="da-analysis"
               label="D&A Analysis"
               testId="da-analysis"
-              renderContent={() => <DAAnalysisMetrics period={period} />}
+              renderContent={() => (
+                <DAAnalysisMetrics
+                  period={period}
+                  ranks={filters.ranks}
+                  vessels={filters.vessels}
+                  crewPools={filters.crewPools}
+                  manningAgents={filters.manningAgents}
+                />
+              )}
             />
             {PLACEHOLDER_CARDS.map((card) => (
               <DashboardCard
