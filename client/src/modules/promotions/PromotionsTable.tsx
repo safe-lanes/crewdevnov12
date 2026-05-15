@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { ColDef, ICellRendererParams, GridReadyEvent, GridApi, GridOptions } from 'ag-grid-community';
 import { useQuery } from '@tanstack/react-query';
@@ -162,6 +162,8 @@ interface PromotionsTableProps {
   nationality: string;
   criteria: string;
   status: string;
+  initialReviewUuid?: string | null;
+  onInitialReviewConsumed?: () => void;
 }
 
 export const PromotionsTable: React.FC<PromotionsTableProps> = ({
@@ -171,7 +173,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   vesselType,
   nationality,
   criteria,
-  status
+  status,
+  initialReviewUuid,
+  onInitialReviewConsumed,
 }) => {
   const { canEdit: canEditPerm, permissions } = usePermissions();
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
@@ -426,6 +430,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           crewId: crew.employeeId || crew.empNo || '-',
           crewMemberId: crewId,
           promotionReviewId: review?.id || null,
+          reviewUuid: review?.reviewUuid || null,
           name: `${crew.firstName || 'Unknown'} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
           dob: dobString,
           ageValue: calculatedAge !== null ? calculatedAge : '-',
@@ -478,6 +483,43 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   const handleEditPromotion = useCallback((data: any) => {
     setSelectedPromotion(data);
   }, []);
+
+  const [consumedInitialReviewUuid, setConsumedInitialReviewUuid] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initialReviewUuid) return;
+    if (consumedInitialReviewUuid === initialReviewUuid) return;
+
+    const reviews = Array.isArray(promotionReviews) ? promotionReviews : [];
+    const review = reviews.find((r: any) => r?.reviewUuid === initialReviewUuid);
+    if (!review) return;
+
+    const projected = (promotionData || []).find(
+      (row: any) =>
+        row.crewMemberId === review.crewMemberId &&
+        row.promotionToRank === review.promotionToRank,
+    );
+
+    const payload = projected ?? {
+      crewId: review.crewMemberId,
+      crewMemberId: review.crewMemberId,
+      promotionReviewId: review.id ?? null,
+      reviewUuid: review.reviewUuid,
+      name: '',
+      promotionToRank: review.promotionToRank,
+      status: review.status || 'In Progress',
+    };
+
+    setSelectedPromotion(payload);
+    setConsumedInitialReviewUuid(initialReviewUuid);
+    onInitialReviewConsumed?.();
+  }, [
+    initialReviewUuid,
+    consumedInitialReviewUuid,
+    promotionReviews,
+    promotionData,
+    onInitialReviewConsumed,
+  ]);
 
   const columnDefs: ColDef[] = useMemo(() => [
     {

@@ -16,6 +16,24 @@ import { usePermissions } from '@/contexts/PermissionsContext';
 export function PromotionsModule() {
     const [selectedPromotionsPage, setSelectedPromotionsPage] = useState('all');
     const [showFilters, setShowFilters] = useState(true);
+
+    const [initialReviewUuid, setInitialReviewUuid] = useState<string | null>(() => {
+        if (typeof window === 'undefined') return null;
+        const params = new URLSearchParams(window.location.search);
+        return params.get('review');
+    });
+
+    const handleInitialReviewConsumed = () => {
+        setInitialReviewUuid(null);
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('review')) {
+            params.delete('review');
+            const qs = params.toString();
+            const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`;
+            window.history.replaceState({}, '', newUrl);
+        }
+    };
     
     const [searchName, setSearchName] = useState('');
     const [promotionToRank, setPromotionToRank] = useState('');
@@ -207,6 +225,8 @@ export function PromotionsModule() {
                         nationality={nationality}
                         criteria={criteria}
                         status={status}
+                        initialReviewUuid={initialReviewUuid}
+                        onInitialReviewConsumed={handleInitialReviewConsumed}
                     />
                 </div>
             </div>
