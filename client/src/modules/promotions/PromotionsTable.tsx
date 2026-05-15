@@ -500,7 +500,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         row.promotionToRank === review.promotionToRank,
     );
 
-    const payload = projected ?? {
+    const basePayload = projected ?? {
       crewId: review.crewMemberId,
       crewMemberId: review.crewMemberId,
       promotionReviewId: review.id ?? null,
@@ -509,6 +509,11 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       promotionToRank: review.promotionToRank,
       status: review.status || 'In Progress',
     };
+
+    // Tag this opening as deep-linked so the form's Back arrow can use
+    // history.back() and restore the dashboard drill-down popup the user
+    // came from, instead of just unmounting onto the Promotions list.
+    const payload = { ...basePayload, _openedFromDeepLink: true };
 
     setSelectedPromotion(payload);
     setConsumedInitialReviewUuid(initialReviewUuid);
@@ -697,8 +702,15 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   };
 
   const handleCloseForm = useCallback(() => {
+    const wasDeepLinked = selectedPromotion?._openedFromDeepLink === true;
     setSelectedPromotion(null);
-  }, []);
+    // If the form was opened via a deep link from the dashboard drill-down
+    // popup, walk one step back in history so the user lands on the dashboard
+    // with the popup re-opened, rather than on the Promotions list.
+    if (wasDeepLinked && typeof window !== 'undefined') {
+      window.history.back();
+    }
+  }, [selectedPromotion]);
 
   const gridPerformanceOptions: Partial<GridOptions> = useMemo(() => ({
     suppressAnimationFrame: true,
