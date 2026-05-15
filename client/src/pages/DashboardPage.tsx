@@ -144,7 +144,14 @@ export const DashboardPage = () => {
               key="crew-retention"
               label="Crew Retention"
               testId="crew-retention"
-              renderContent={() => <CrewRetentionMetrics period={period} />}
+              renderContent={() => (
+                <CrewRetentionMetrics
+                  period={period}
+                  ranks={filters.ranks}
+                  crewPools={filters.crewPools}
+                  manningAgents={filters.manningAgents}
+                />
+              )}
             />
             <DashboardCard
               key="crew-pool"
