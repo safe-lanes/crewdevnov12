@@ -26,15 +26,9 @@ import { useNationalitiesV2, useVesselTypesV2, useManningAgentsV2 } from '@/hook
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import { useV2Candidates, useV2DeleteCandidate } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
+import { STATUS_MAPPING } from './statusBuckets';
 
-export const STATUS_MAPPING = {
-  "in-progress": ["draft", "Draft", "in-progress", "in_progress", "In Progress", "applied", "Applied", "screening", "Screening", "for_approval", "For Approval", "submitted", "Submitted"],
-  "recruited": ["recruited", "Recruited", "RECRUITED"],
-  "waitlist": ["waitlist", "Waitlist", "waitlisted", "Waitlisted", "WAITLIST", "WAITLISTED"],
-  "rejected": ["rejected", "Rejected", "REJECTED"]
-};
-
-export const RECRUITED_STATUSES = new Set(STATUS_MAPPING.recruited);
+export { STATUS_MAPPING, RECRUITED_STATUSES } from './statusBuckets';
 
 export const RecruitmentModuleV2 = (): JSX.Element => {
   const [selectedRecruitmentPage, setSelectedRecruitmentPage] = useState("in-progress");

@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
 import { candidateApi } from "@/modules/recruitment/api/candidateApi";
-import { RECRUITED_STATUSES } from "@/modules/recruitment/RecruitmentModule_v2";
+import { RECRUITED_STATUSES } from "@/modules/recruitment/statusBuckets";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface CandidateRow {

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AgCharts } from "@/lib/agCharts";
 import type { AgChartOptions, AgChartInstance } from "@/lib/agCharts";
 import { candidateApi } from "@/modules/recruitment/api/candidateApi";
-import { RECRUITED_STATUSES } from "@/modules/recruitment/RecruitmentModule_v2";
+import { RECRUITED_STATUSES } from "@/modules/recruitment/statusBuckets";
 import { CrewRecruitmentDrilldownDialog } from "./CrewRecruitmentDrilldownDialog";
 import { useDrilldownParam } from "./useDrilldownParam";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
