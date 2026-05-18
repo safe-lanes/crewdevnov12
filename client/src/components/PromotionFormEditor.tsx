@@ -328,9 +328,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   // License selection handlers
   const toggleLicenseSelection = (entryId: string) => {
     setSelectedLicenseIds(prev =>
-      prev.includes(entryId)
-        ? prev.filter(id => id !== entryId)
-        : [...prev, entryId]
+      prev[0] === entryId ? [] : [entryId]
     );
   };
 
