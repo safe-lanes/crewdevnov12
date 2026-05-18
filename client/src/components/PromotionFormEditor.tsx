@@ -154,14 +154,14 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
     if (latestReleasedConfig && latestReleasedConfig.higherLicenseIds !== undefined) {
       console.log('[PromotionFormEditor] Loading from latest released form-version:', latestReleasedConfig);
       reset(normalizeConfig(latestReleasedConfig));
-      setSelectedLicenseIds((latestReleasedConfig.higherLicenseIds || []).slice(0, 1));
+      setSelectedLicenseIds(latestReleasedConfig.higherLicenseIds || []);
       return;
     }
 
     if (rankGroupConfig && rankGroupConfig.higherLicenseIds !== undefined) {
       console.log('[PromotionFormEditor] No released version yet, loading from rank group configuration (legacy):', rankGroupConfig);
       reset(normalizeConfig(rankGroupConfig));
-      setSelectedLicenseIds((rankGroupConfig.higherLicenseIds || []).slice(0, 1));
+      setSelectedLicenseIds(rankGroupConfig.higherLicenseIds || []);
       return;
     }
 
@@ -171,7 +171,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
         if (savedConfig.higherLicenseIds !== undefined) {
           console.log('[PromotionFormEditor] Falling back to form configuration:', savedConfig);
           reset(normalizeConfig(savedConfig));
-          setSelectedLicenseIds((savedConfig.higherLicenseIds || []).slice(0, 1));
+          setSelectedLicenseIds(savedConfig.higherLicenseIds || []);
         }
       } catch (error) {
         console.error('Failed to parse form configuration:', error);
