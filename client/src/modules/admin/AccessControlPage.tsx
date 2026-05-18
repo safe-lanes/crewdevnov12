@@ -81,10 +81,7 @@ const VIEW_ONLY_SECTION_MENUS = new Set([
   // Phase 1 RBAC additions (view-only until Phase 2 wires Create/Edit/Delete)
   "dashboard",
   "terminated",
-  "training & ret.", "training", "retention",
-  "reports recruitment", "reports vessel", "reports crew pool",
-  "reports rotation", "reports promotion", "reports appraisals",
-  "reports drug alcohol", "reports rest hours", "reports training"
+  "training & ret.", "training", "retention"
 ]);
 const VIEW_ONLY_DISABLED_KEYS = new Set<keyof Permission>(["cancreate", "canedit", "candelete"]);
 

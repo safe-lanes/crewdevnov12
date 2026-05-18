@@ -1,7 +1,8 @@
 -- Migration 0117: RBAC Phase 1 — register new modules in Access Control
 -- Modules: Dashboard (top-level), Crew Pool > Terminated,
---          Training & Ret. (top-level) > Training / Retention,
---          Reports category submenus.
+--          Training & Ret. (top-level) > Training / Retention.
+-- Reports stays as a single top-level entry with no children — its in-page
+-- category tree picker is not gated per-category in Phase 1.
 --
 -- NOTE: 'Dashboard' already existed in migration 0096 as a Rest Hours submenu.
 -- adm_menumaster_ac.name is UNIQUE, so this migration first renames that
@@ -64,25 +65,3 @@ FROM (VALUES
 CROSS JOIN (SELECT muid FROM adm_menumaster_ac WHERE name = 'Training & Ret.' AND parent_menu IS NULL LIMIT 1) p
 ON CONFLICT (name) DO NOTHING;
 
--- =========================================================================
--- 6. Reports category submenus
---    Mirrors REPORT_TREE in client/src/pages/ReportsPage.tsx. Reports is a
---    single page with a category tree picker (no real per-category routes);
---    synthetic routes /reports/<category> satisfy the unique route
---    constraint and let Access Control list the categories.
--- =========================================================================
-INSERT INTO adm_menumaster_ac (muid, name, display_name, route, parent_menu, is_active, sort_order)
-SELECT gen_random_uuid(), s.name, s.display_name, s.route, p.muid, true, s.sort_order
-FROM (VALUES
-  ('Reports Recruitment',  'Recruitment',    '/reports/recruitment',  1),
-  ('Reports Vessel',       'Vessel',         '/reports/vessel',       2),
-  ('Reports Crew Pool',    'Crew Pool',      '/reports/crew-pool',    3),
-  ('Reports Rotation',     'Rotation',       '/reports/rotation',     4),
-  ('Reports Promotion',    'Promotion',      '/reports/promotion',    5),
-  ('Reports Appraisals',   'Appraisals',     '/reports/appraisals',   6),
-  ('Reports Drug Alcohol', 'Drug & Alcohol', '/reports/drug-alcohol', 7),
-  ('Reports Rest Hours',   'Rest Hours',     '/reports/rest-hours',   8),
-  ('Reports Training',     'Training',       '/reports/training',     9)
-) AS s(name, display_name, route, sort_order)
-CROSS JOIN (SELECT muid FROM adm_menumaster_ac WHERE name = 'Reports' AND parent_menu IS NULL LIMIT 1) p
-ON CONFLICT (name) DO NOTHING;
