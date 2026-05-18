@@ -144,7 +144,7 @@ export function PromotionsModule() {
                         </div>
 
                         <Select value={promotionToRank} onValueChange={setPromotionToRank}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-promotion-rank">
+                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-promotion-rank">
                                 <SelectValue placeholder="Promotion to Rank" />
                             </SelectTrigger>
                             <SelectContent>
@@ -164,7 +164,7 @@ export function PromotionsModule() {
                             </div>
                         ) : (
                             <Select value={vessel} onValueChange={setVessel}>
-                                <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel">
+                                <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-vessel">
                                     <SelectValue placeholder="Vessel" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -176,7 +176,7 @@ export function PromotionsModule() {
                         )}
 
                         <Select value={vesselType} onValueChange={setVesselType}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel-type">
+                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-vessel-type">
                                 <SelectValue placeholder="Vessel Type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -187,7 +187,7 @@ export function PromotionsModule() {
                         </Select>
 
                         <Select value={nationality} onValueChange={setNationality}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-nationality">
+                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-nationality">
                                 <SelectValue placeholder="Nationality" />
                             </SelectTrigger>
                             <SelectContent className="max-h-[200px]">
@@ -202,7 +202,7 @@ export function PromotionsModule() {
                         </Select>
 
                         <Select value={criteria} onValueChange={setCriteria}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-criteria">
+                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-criteria">
                                 <SelectValue placeholder="Criteria" />
                             </SelectTrigger>
                             <SelectContent>
@@ -213,7 +213,7 @@ export function PromotionsModule() {
                         </Select>
 
                         <Select value={status} onValueChange={setStatus}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-status">
+                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-status">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
