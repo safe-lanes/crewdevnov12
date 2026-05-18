@@ -104,7 +104,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   const allowedPages = useMemo(() => {
     const all = ["dashboard", "record", "plan"];
     if (permissions.length === 0) return all;
-    const pageToMenu: Record<string, string> = { "dashboard": "Dashboard", "record": "Record", "plan": "Rest Hours Plan" };
+    const pageToMenu: Record<string, string> = { "dashboard": "Rest Hours Dashboard", "record": "Record", "plan": "Rest Hours Plan" };
     return all.filter(p => canView(pageToMenu[p] || p));
   }, [permissions, canView]);
 

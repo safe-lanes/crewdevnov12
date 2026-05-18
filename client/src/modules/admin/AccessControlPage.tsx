@@ -79,7 +79,7 @@ const VIEW_ONLY_SECTION_MENUS = new Set([
   "ap seafarer info", "ap start info", "ap competence", "ap behavioural",
   "ap training needs", "ap summary", "ap office review",
   // Phase 1 RBAC additions (view-only until Phase 2 wires Create/Edit/Delete)
-  "main dashboard",
+  "dashboard",
   "terminated",
   "training & ret.", "training", "retention",
   "reports recruitment", "reports vessel", "reports crew pool",
