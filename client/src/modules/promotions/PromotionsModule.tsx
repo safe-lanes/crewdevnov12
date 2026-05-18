@@ -51,12 +51,17 @@ export function PromotionsModule() {
 
     const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useNationalitiesV2();
 
-    const nationalityOptions = useMemo(() => {
-        const list = (externalNationalitiesData as any)?.nationalities || externalNationalitiesData || [];
-        if (!Array.isArray(list)) return [] as string[];
-        const names = list
-            .map((n: any) => n?.nationality || n?.countryName || n?.name)
-            .filter((n: any): n is string => typeof n === 'string' && n.trim().length > 0);
+    type NationalityEntry = { nationality?: string; countryName?: string; name?: string };
+    const nationalityOptions = useMemo<string[]>(() => {
+        const raw: unknown = externalNationalitiesData;
+        let list: unknown = raw;
+        if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'nationalities' in raw) {
+            list = (raw as { nationalities: unknown }).nationalities;
+        }
+        if (!Array.isArray(list)) return [];
+        const names = (list as NationalityEntry[])
+            .map((n) => n?.nationality ?? n?.countryName ?? n?.name)
+            .filter((n): n is string => typeof n === 'string' && n.trim().length > 0);
         return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
     }, [externalNationalitiesData]);
     
@@ -187,7 +192,7 @@ export function PromotionsModule() {
                             </SelectTrigger>
                             <SelectContent className="max-h-[200px]">
                                 {nationalitiesLoading ? (
-                                    <SelectItem value="loading" disabled>Loading...</SelectItem>
+                                    <SelectItem value="loading" disabled>Loading…</SelectItem>
                                 ) : (
                                     nationalityOptions.map((n) => (
                                         <SelectItem key={n} value={n} data-testid={`nationality-option-${n}`}>{n}</SelectItem>
