@@ -59,6 +59,7 @@ export const PartACesTests = memo(function PartACesTests({
                 value={test.minScore}
                 onChange={(e) => handleScoreChange(test.id, 'minScore', e.target.value, test)}
                 data-testid={`input-ces-minscore-${test.id}`}
+                disabled
               />
             </TableCell>
             <TableCell className="text-sm">
