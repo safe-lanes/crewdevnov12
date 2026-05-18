@@ -451,8 +451,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         .map((vt: any) => vt.vesselType || vt.name || (typeof vt === 'string' ? vt : ''))
         .filter(Boolean);
     }
+    if (isLoadingVesselTypesV2) return [];
     return getVesselTypesForDropdown();
-  }, [vesselTypesV2Data]);
+  }, [vesselTypesV2Data, isLoadingVesselTypesV2]);
 
   const b2FleetGroupOptions = useMemo(() => {
     const raw = (fleetGroupsV2Data as any)?.fleetGroups || fleetGroupsV2Data || [];
