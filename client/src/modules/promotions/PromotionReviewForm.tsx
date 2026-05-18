@@ -1574,7 +1574,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
                   <div className="space-y-3">
                     {comments.map((comment) => {
-                      const isEditing = editingCommentId === comment.id || comment.text === '';
+                      const isEditing = editingCommentId === comment.id || !comment.text?.trim();
                       return (
                         <div key={comment.id} className="bg-gray-50 p-3 rounded" data-testid={`comment-${comment.id}`}>
                           <div className="flex justify-between items-start mb-2">
