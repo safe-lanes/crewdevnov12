@@ -12,6 +12,7 @@ import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
 
 export function PromotionsModule() {
     const [selectedPromotionsPage, setSelectedPromotionsPage] = useState('all');
@@ -47,6 +48,17 @@ export function PromotionsModule() {
     const isShipUser = userType === 'Ship';
 
     const { vessels: vesselOptions } = useVesselLookup();
+
+    const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useNationalitiesV2();
+
+    const nationalityOptions = useMemo(() => {
+        const list = (externalNationalitiesData as any)?.nationalities || externalNationalitiesData || [];
+        if (!Array.isArray(list)) return [] as string[];
+        const names = list
+            .map((n: any) => n?.nationality || n?.countryName || n?.name)
+            .filter((n: any): n is string => typeof n === 'string' && n.trim().length > 0);
+        return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+    }, [externalNationalitiesData]);
     
     const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
     
@@ -173,13 +185,14 @@ export function PromotionsModule() {
                             <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-nationality">
                                 <SelectValue placeholder="Nationality" />
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="British">British</SelectItem>
-                                <SelectItem value="Indian">Indian</SelectItem>
-                                <SelectItem value="Philippines">Philippines</SelectItem>
-                                <SelectItem value="Ukrainian">Ukrainian</SelectItem>
-                                <SelectItem value="Romanian">Romanian</SelectItem>
-                                <SelectItem value="Polish">Polish</SelectItem>
+                            <SelectContent className="max-h-[200px]">
+                                {nationalitiesLoading ? (
+                                    <SelectItem value="loading" disabled>Loading...</SelectItem>
+                                ) : (
+                                    nationalityOptions.map((n) => (
+                                        <SelectItem key={n} value={n} data-testid={`nationality-option-${n}`}>{n}</SelectItem>
+                                    ))
+                                )}
                             </SelectContent>
                         </Select>
 
