@@ -7,6 +7,7 @@ import AgGridTableActions from '@/components/AgGrid/AgGridTableActions';
 import { Button } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { findNextPromotionRank, shouldShowInPromotionsTable } from './promotionUtils';
@@ -179,6 +180,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   onInitialReviewConsumed,
 }) => {
   const { canEdit: canEditPerm, permissions } = usePermissions();
+  const { toast } = useToast();
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [selectedPromotion, setSelectedPromotion] = useState<any | null>(null);
   
@@ -196,12 +198,12 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     staleTime: REFERENCE_DATA_STALE_TIME,
   });
 
-  const { data: formsData = [] } = useQuery<any[]>({
+  const { data: formsData = [], isLoading: isLoadingForms, isFetched: isFormsFetched } = useQuery<any[]>({
     queryKey: ['/api/v2/admin/forms'],
     staleTime: REFERENCE_DATA_STALE_TIME,
   });
 
-  const { data: rankGroupsData = [] } = useQuery<any[]>({
+  const { data: rankGroupsData = [], isLoading: isLoadingRankGroups, isFetched: isRankGroupsFetched } = useQuery<any[]>({
     queryKey: ['/api/v2/admin/rank-groups'],
     staleTime: REFERENCE_DATA_STALE_TIME,
   });
@@ -248,6 +250,42 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     
     return map;
   }, [formsData, rankGroupsData, normalizeRank]);
+
+  const configuredRankSet = useMemo(() => {
+    const set = new Set<string>();
+    const promotionReviewForm = formsData.find((f: any) => f.name === 'Promotion Review Form');
+    if (!promotionReviewForm) return set;
+    const formRankGroups = rankGroupsData.filter((rg: any) =>
+      rg.formId === promotionReviewForm.id && !rg.archivedAt
+    );
+    for (const rg of formRankGroups) {
+      let ranks: string[] = [];
+      try {
+        ranks = typeof rg.ranks === 'string' ? JSON.parse(rg.ranks) : rg.ranks || [];
+      } catch {
+        ranks = [];
+      }
+      for (const r of ranks) set.add(normalizeRank(r));
+    }
+    return set;
+  }, [formsData, rankGroupsData, normalizeRank]);
+
+  const isRankGroupConfigured = useCallback((rank: string | undefined | null) => {
+    if (!rank) return true;
+    // Allow open while reference data is still loading / not yet fetched
+    // to avoid false negatives on initial paint.
+    if (isLoadingForms || isLoadingRankGroups) return true;
+    if (!isFormsFetched || !isRankGroupsFetched) return true;
+    return configuredRankSet.has(normalizeRank(rank));
+  }, [isLoadingForms, isLoadingRankGroups, isFormsFetched, isRankGroupsFetched, configuredRankSet, normalizeRank]);
+
+  const showMissingRankGroupToast = useCallback((rank: string | undefined | null) => {
+    toast({
+      title: 'No Promotion Rank Group Assigned',
+      description: `No Promotion Review Form rank group has been configured for the rank "${rank ?? ''}" in Admin Module. Please configure a rank group in Admin > Forms Configuration > Promotion Review Form.`,
+      variant: 'destructive',
+    });
+  }, [toast]);
 
   const reviewLookup = useMemo(() => {
     const map = new Map<string, any>();
@@ -482,8 +520,12 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   }, [promotionData, searchName, promotionToRank, vessel, vesselType, nationality, criteria, status, getVesselName]);
 
   const handleEditPromotion = useCallback((data: any) => {
+    if (!isRankGroupConfigured(data?.promotionToRank)) {
+      showMissingRankGroupToast(data?.promotionToRank);
+      return;
+    }
     setSelectedPromotion(data);
-  }, []);
+  }, [isRankGroupConfigured, showMissingRankGroupToast]);
 
   const [consumedInitialReviewUuid, setConsumedInitialReviewUuid] = useState<string | null>(null);
 
@@ -516,6 +558,13 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     // came from, instead of just unmounting onto the Promotions list.
     const payload = { ...basePayload, _openedFromDeepLink: true };
 
+    if (!isRankGroupConfigured(payload.promotionToRank)) {
+      showMissingRankGroupToast(payload.promotionToRank);
+      setConsumedInitialReviewUuid(initialReviewUuid);
+      onInitialReviewConsumed?.();
+      return;
+    }
+
     setSelectedPromotion(payload);
     setConsumedInitialReviewUuid(initialReviewUuid);
     onInitialReviewConsumed?.();
@@ -525,6 +574,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     promotionReviews,
     promotionData,
     onInitialReviewConsumed,
+    isRankGroupConfigured,
+    showMissingRankGroupToast,
   ]);
 
   const columnDefs: ColDef[] = useMemo(() => [
