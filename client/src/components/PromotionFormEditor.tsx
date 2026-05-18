@@ -1112,7 +1112,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                       className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                       onClick={() => toggleLicenseSelection(license.entryId)}
                     >
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedLicenseIds.includes(license.entryId)}
                           onCheckedChange={() => toggleLicenseSelection(license.entryId)}
