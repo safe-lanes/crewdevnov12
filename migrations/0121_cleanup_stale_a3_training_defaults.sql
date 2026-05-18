@@ -31,6 +31,21 @@ BEGIN
 
   RAISE NOTICE 'A3 cleanup: % active stale rows match the seed signature', candidate_count;
 
+  -- Strict cardinality guard: the dev DB inventory at migration-authoring
+  -- time showed exactly 7 active rows matching the full signature
+  -- (3x "LT Endorsement" + 4x "Crowd Control" with status='Proposed',
+  -- category='1. Competence', created_by_uuid NULL, before 2026-04-15).
+  -- The original plan called this out as "10 rows" by counting all rows
+  -- with the two training names; the strict status='Proposed' filter
+  -- only matches 7. Accept 0 (idempotent rerun / already applied) or 7
+  -- (first run). Any other count means the dataset has drifted and the
+  -- migration should be reviewed before proceeding.
+  IF candidate_count NOT IN (0, 7) THEN
+    RAISE EXCEPTION
+      'A3 cleanup safety check failed: expected 0 or 7 candidate rows, found %',
+      candidate_count;
+  END IF;
+
   UPDATE promo_training_needs_v2
   SET is_deleted = true,
       updated_at = NOW()
