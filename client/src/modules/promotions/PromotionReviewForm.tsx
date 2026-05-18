@@ -845,6 +845,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       if (existingReviewData.promotionTiming) {
         setPromotionTiming(existingReviewData.promotionTiming);
       }
+
+      const b2vt = (existingReviewData as any).b2VesselTypes;
+      if (Array.isArray(b2vt)) {
+        setVesselTypes(b2vt.filter((v: any) => typeof v === 'string' && v.trim()));
+      }
+      const b2fg = (existingReviewData as any).b2FleetGroups;
+      if (Array.isArray(b2fg)) {
+        setVesselClasses(b2fg.filter((v: any) => typeof v === 'string' && v.trim()));
+      }
     }
   }, [existingReviewData]);
 
@@ -974,9 +983,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partBNotes: formData.partBNotes || null,
       partCNotes: formData.partCNotes || null,
       selectedApproversForSubmission: JSON.stringify(selectedApproversForSubmission),
+      b2VesselTypes: vesselTypes,
+      b2FleetGroups: vesselClasses,
       status: statusToSend,
     };
-  }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData]);
+  }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses]);
 
   const handleSaveDraft = useCallback(() => {
     const reviewData = collectFormData({

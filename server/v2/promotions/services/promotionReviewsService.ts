@@ -8,6 +8,8 @@ import {
   ApprovalsRepository,
   ChecklistProgressRepository,
   CriteriaMasterRepository,
+  SuitabilityVesselTypesRepository,
+  SuitabilityFleetGroupsRepository,
 } from "../repositories";
 import { PromotionHierarchiesRepository } from "../../admin/repositories/promotionHierarchiesRepository";
 import { applyAuditUser } from "../../admin/utils/auditUser";
@@ -25,6 +27,8 @@ const trainingNeedsRepo = new TrainingNeedsRepository();
 const approvalsRepo = new ApprovalsRepository();
 const checklistProgressRepo = new ChecklistProgressRepository();
 const criteriaMasterRepo = new CriteriaMasterRepository();
+const suitabilityVesselTypesRepo = new SuitabilityVesselTypesRepository();
+const suitabilityFleetGroupsRepo = new SuitabilityFleetGroupsRepository();
 const hierarchiesRepo = new PromotionHierarchiesRepository();
 
 function findNextPromotionRank(currentRank: string, hierarchies: any[]): string | null {
@@ -64,6 +68,8 @@ function assembleV1Response(
   trainingNeeds: any[],
   approvals: any[],
   checklistProgress: any[],
+  suitVesselTypes: any[] = [],
+  suitFleetGroups: any[] = [],
 ) {
   const criteriaVerifiedStatus: Record<string, string> = {};
   const criteriaMeetsStatus: Record<string, string> = {};
@@ -201,6 +207,8 @@ function assembleV1Response(
     partBNotes: review.partBNotes || null,
     partCNotes: review.partCNotes || null,
     checklistProgressData: JSON.stringify(checklistProgressDataObj),
+    b2VesselTypes: suitVesselTypes.map((r: any) => r.vesselTypeName).filter(Boolean),
+    b2FleetGroups: suitFleetGroups.map((r: any) => r.fleetGroupName).filter(Boolean),
     status: review.status,
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
@@ -303,6 +311,8 @@ export class PromotionReviewsService {
       allTrainingNeeds,
       allApprovals,
       allChecklistProgress,
+      allSuitVesselTypes,
+      allSuitFleetGroups,
     ] = await Promise.all([
       criteriaStatusRepo.findByReviewUuids(reviewUuids),
       cesTestsRepo.findByReviewUuids(reviewUuids),
@@ -311,6 +321,8 @@ export class PromotionReviewsService {
       trainingNeedsRepo.findByReviewUuids(reviewUuids),
       approvalsRepo.findByReviewUuids(reviewUuids),
       checklistProgressRepo.findByReviewUuids(reviewUuids),
+      suitabilityVesselTypesRepo.findByReviewUuids(reviewUuids),
+      suitabilityFleetGroupsRepo.findByReviewUuids(reviewUuids),
     ]);
 
     const csMap = groupBy(allCriteriaStatuses, i => i.reviewUuid);
@@ -320,6 +332,8 @@ export class PromotionReviewsService {
     const tnMap = groupBy(allTrainingNeeds, i => i.reviewUuid);
     const apMap = groupBy(allApprovals, i => i.reviewUuid);
     const cpMap = groupBy(allChecklistProgress, i => i.reviewUuid);
+    const svtMap = groupBy(allSuitVesselTypes, i => i.reviewUuid);
+    const sfgMap = groupBy(allSuitFleetGroups, i => i.reviewUuid);
 
     return reviews.map(review => assembleV1Response(
       review,
@@ -330,6 +344,8 @@ export class PromotionReviewsService {
       tnMap[review.reviewUuid] || [],
       apMap[review.reviewUuid] || [],
       cpMap[review.reviewUuid] || [],
+      svtMap[review.reviewUuid] || [],
+      sfgMap[review.reviewUuid] || [],
     ));
   }
 
@@ -337,7 +353,7 @@ export class PromotionReviewsService {
     const review = await reviewsRepo.findByUuid(reviewUuid);
     if (!review) return null;
 
-    const [cs, ct, cc, tc, tn, ap, cp] = await Promise.all([
+    const [cs, ct, cc, tc, tn, ap, cp, svt, sfg] = await Promise.all([
       criteriaStatusRepo.findByReviewUuid(reviewUuid),
       cesTestsRepo.findByReviewUuid(reviewUuid),
       criteriaCommentsRepo.findByReviewUuid(reviewUuid),
@@ -345,9 +361,11 @@ export class PromotionReviewsService {
       trainingNeedsRepo.findByReviewUuid(reviewUuid),
       approvalsRepo.findByReviewUuid(reviewUuid),
       checklistProgressRepo.findByReviewUuid(reviewUuid),
+      suitabilityVesselTypesRepo.findByReviewUuid(reviewUuid),
+      suitabilityFleetGroupsRepo.findByReviewUuid(reviewUuid),
     ]);
 
-    return assembleV1Response(review, cs, ct, cc, tc, tn, ap, cp);
+    return assembleV1Response(review, cs, ct, cc, tc, tn, ap, cp, svt, sfg);
   }
 
   async getReviewById(id: number) {
@@ -361,7 +379,7 @@ export class PromotionReviewsService {
     if (reviews.length === 0) return [];
 
     const reviewUuids = reviews.map(r => r.reviewUuid);
-    const [cs, ct, cc, tc, tn, ap, cp] = await Promise.all([
+    const [cs, ct, cc, tc, tn, ap, cp, svt, sfg] = await Promise.all([
       criteriaStatusRepo.findByReviewUuids(reviewUuids),
       cesTestsRepo.findByReviewUuids(reviewUuids),
       criteriaCommentsRepo.findByReviewUuids(reviewUuids),
@@ -369,6 +387,8 @@ export class PromotionReviewsService {
       trainingNeedsRepo.findByReviewUuids(reviewUuids),
       approvalsRepo.findByReviewUuids(reviewUuids),
       checklistProgressRepo.findByReviewUuids(reviewUuids),
+      suitabilityVesselTypesRepo.findByReviewUuids(reviewUuids),
+      suitabilityFleetGroupsRepo.findByReviewUuids(reviewUuids),
     ]);
 
     const csMap = groupBy(cs, i => i.reviewUuid);
@@ -378,6 +398,8 @@ export class PromotionReviewsService {
     const tnMap = groupBy(tn, i => i.reviewUuid);
     const apMap = groupBy(ap, i => i.reviewUuid);
     const cpMap = groupBy(cp, i => i.reviewUuid);
+    const svtMap = groupBy(svt, i => i.reviewUuid);
+    const sfgMap = groupBy(sfg, i => i.reviewUuid);
 
     return reviews.map(review => assembleV1Response(
       review,
@@ -388,6 +410,8 @@ export class PromotionReviewsService {
       tnMap[review.reviewUuid] || [],
       apMap[review.reviewUuid] || [],
       cpMap[review.reviewUuid] || [],
+      svtMap[review.reviewUuid] || [],
+      sfgMap[review.reviewUuid] || [],
     ));
   }
 
@@ -402,6 +426,7 @@ export class PromotionReviewsService {
     const { criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
       selectedVesselTypeForA2_3b: _svt,
+      b2VesselTypes, b2FleetGroups,
       ...coreFields } = auditedData;
 
     if (_svt !== undefined && coreFields.selectedVesselTypeForA23b === undefined) {
@@ -413,6 +438,7 @@ export class PromotionReviewsService {
     await this.saveChildData(review.reviewUuid, {
       criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+      b2VesselTypes, b2FleetGroups,
     });
 
     return this.getReviewByUuid(review.reviewUuid);
@@ -424,6 +450,7 @@ export class PromotionReviewsService {
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
       id: _id, reviewUuid: _ruuid, createdAt: _ca, updatedAt: _ua, isDeleted: _del,
       selectedVesselTypeForA2_3b: _svt2,
+      b2VesselTypes, b2FleetGroups,
       ...coreFields } = auditedData;
 
     if (_svt2 !== undefined && coreFields.selectedVesselTypeForA23b === undefined) {
@@ -436,6 +463,7 @@ export class PromotionReviewsService {
     await this.saveChildData(reviewUuid, {
       criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+      b2VesselTypes, b2FleetGroups,
     });
 
     return this.getReviewByUuid(reviewUuid);
@@ -604,6 +632,26 @@ export class PromotionReviewsService {
         }
       }
       tasks.push(checklistProgressRepo.replaceForReview(reviewUuid, items));
+    }
+
+    if (data.b2VesselTypes !== undefined) {
+      const list = Array.isArray(data.b2VesselTypes)
+        ? data.b2VesselTypes
+        : this.parseJson(data.b2VesselTypes, []);
+      const names = (Array.isArray(list) ? list : [])
+        .map((v: any) => (typeof v === 'string' ? v : (v?.name || v?.vesselType || '')))
+        .filter((n: string) => !!n);
+      tasks.push(suitabilityVesselTypesRepo.replaceForReview(reviewUuid, names));
+    }
+
+    if (data.b2FleetGroups !== undefined) {
+      const list = Array.isArray(data.b2FleetGroups)
+        ? data.b2FleetGroups
+        : this.parseJson(data.b2FleetGroups, []);
+      const names = (Array.isArray(list) ? list : [])
+        .map((v: any) => (typeof v === 'string' ? v : (v?.name || v?.fleetGroup || '')))
+        .filter((n: string) => !!n);
+      tasks.push(suitabilityFleetGroupsRepo.replaceForReview(reviewUuid, names));
     }
 
     if (tasks.length > 0) await Promise.all(tasks);
