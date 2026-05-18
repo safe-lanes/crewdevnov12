@@ -10,8 +10,7 @@ import {
   promoTrainingNeedsV2,
   promoApprovalsV2,
   promoChecklistProgressV2,
-  promoSuitabilityVesselTypesV2,
-  promoSuitabilityFleetGroupsV2,
+  promoSuitabilityV2,
 } from "./schema";
 
 export const insertPromoCriteriaMasterV2Schema = createInsertSchema(promoCriteriaMasterV2).omit({ id: true, createdAt: true, updatedAt: true });
@@ -50,10 +49,6 @@ export const insertPromoChecklistProgressV2Schema = createInsertSchema(promoChec
 export type InsertPromoChecklistProgressV2 = z.infer<typeof insertPromoChecklistProgressV2Schema>;
 export type PromoChecklistProgressV2 = typeof promoChecklistProgressV2.$inferSelect;
 
-export const insertPromoSuitabilityVesselTypeV2Schema = createInsertSchema(promoSuitabilityVesselTypesV2).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertPromoSuitabilityVesselTypeV2 = z.infer<typeof insertPromoSuitabilityVesselTypeV2Schema>;
-export type PromoSuitabilityVesselTypeV2 = typeof promoSuitabilityVesselTypesV2.$inferSelect;
-
-export const insertPromoSuitabilityFleetGroupV2Schema = createInsertSchema(promoSuitabilityFleetGroupsV2).omit({ id: true, createdAt: true, updatedAt: true });
-export type InsertPromoSuitabilityFleetGroupV2 = z.infer<typeof insertPromoSuitabilityFleetGroupV2Schema>;
-export type PromoSuitabilityFleetGroupV2 = typeof promoSuitabilityFleetGroupsV2.$inferSelect;
+export const insertPromoSuitabilityV2Schema = createInsertSchema(promoSuitabilityV2).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertPromoSuitabilityV2 = z.infer<typeof insertPromoSuitabilityV2Schema>;
+export type PromoSuitabilityV2 = typeof promoSuitabilityV2.$inferSelect;

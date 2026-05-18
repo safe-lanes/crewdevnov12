@@ -117,23 +117,12 @@ export const promoApprovalsV2 = pgTable("promo_approvals_v2", {
   ...auditColumns,
 });
 
-export const promoSuitabilityVesselTypesV2 = pgTable("promo_suitability_vessel_types_v2", {
+export const promoSuitabilityV2 = pgTable("promo_suitability_v2", {
   id: serial("id").primaryKey(),
-  svtUuid: text("svt_uuid").notNull().unique(),
-  reviewUuid: text("review_uuid").notNull(),
-  vesselTypeUuid: text("vessel_type_uuid"),
-  vesselTypeName: text("vessel_type_name").notNull(),
-  sortOrder: integer("sort_order").default(0),
-  ...auditColumns,
-});
-
-export const promoSuitabilityFleetGroupsV2 = pgTable("promo_suitability_fleet_groups_v2", {
-  id: serial("id").primaryKey(),
-  sfgUuid: text("sfg_uuid").notNull().unique(),
-  reviewUuid: text("review_uuid").notNull(),
-  fleetGroupUuid: text("fleet_group_uuid"),
-  fleetGroupName: text("fleet_group_name").notNull(),
-  sortOrder: integer("sort_order").default(0),
+  psUuid: text("ps_uuid").notNull().unique(),
+  reviewUuid: text("review_uuid").notNull().unique(),
+  vesselTypes: text("vessel_types").array().notNull().default([]),
+  fleetGroups: text("fleet_groups").array().notNull().default([]),
   ...auditColumns,
 });
 

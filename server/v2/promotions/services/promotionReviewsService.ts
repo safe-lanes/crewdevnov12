@@ -8,16 +8,14 @@ import {
   ApprovalsRepository,
   ChecklistProgressRepository,
   CriteriaMasterRepository,
-  SuitabilityVesselTypesRepository,
-  SuitabilityFleetGroupsRepository,
+  SuitabilityRepository,
 } from "../repositories";
 import { PromotionHierarchiesRepository } from "../../admin/repositories/promotionHierarchiesRepository";
 import { applyAuditUser } from "../../admin/utils/auditUser";
-import type { PromotionReviewV2, InsertPromotionReviewV2 } from "../../../../shared/v2/promotions/types";
+import type { PromotionReviewV2, PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { masterVesselTypes, masterFleetGroups } from "../../../../shared/schema";
-import { eq, and, isNull, or, isNotNull } from "drizzle-orm";
+import { eq, and, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 
 export const promotionReviewWritableSchema = z.object({
@@ -56,8 +54,7 @@ const trainingNeedsRepo = new TrainingNeedsRepository();
 const approvalsRepo = new ApprovalsRepository();
 const checklistProgressRepo = new ChecklistProgressRepository();
 const criteriaMasterRepo = new CriteriaMasterRepository();
-const suitabilityVesselTypesRepo = new SuitabilityVesselTypesRepository();
-const suitabilityFleetGroupsRepo = new SuitabilityFleetGroupsRepository();
+const suitabilityRepo = new SuitabilityRepository();
 const hierarchiesRepo = new PromotionHierarchiesRepository();
 
 function findNextPromotionRank(currentRank: string, hierarchies: any[]): string | null {
@@ -97,10 +94,7 @@ function assembleV1Response(
   trainingNeeds: any[],
   approvals: any[],
   checklistProgress: any[],
-  suitVesselTypes: any[] = [],
-  suitFleetGroups: any[] = [],
-  vesselTypeNameByUuid: Map<string, string> = new Map(),
-  fleetGroupNameByUuid: Map<string, string> = new Map(),
+  suitability: PromoSuitabilityV2 | null = null,
 ) {
   const criteriaVerifiedStatus: Record<string, string> = {};
   const criteriaMeetsStatus: Record<string, string> = {};
@@ -238,42 +232,12 @@ function assembleV1Response(
     partBNotes: review.partBNotes || null,
     partCNotes: review.partCNotes || null,
     checklistProgressData: JSON.stringify(checklistProgressDataObj),
-    b2VesselTypes: suitVesselTypes
-      .map((r: any) => (r.vesselTypeUuid && vesselTypeNameByUuid.get(r.vesselTypeUuid)) || r.vesselTypeName)
-      .filter((n: any): n is string => typeof n === 'string' && n.length > 0),
-    b2FleetGroups: suitFleetGroups
-      .map((r: any) => (r.fleetGroupUuid && fleetGroupNameByUuid.get(r.fleetGroupUuid)) || r.fleetGroupName)
-      .filter((n: any): n is string => typeof n === 'string' && n.length > 0),
+    b2VesselTypes: Array.isArray(suitability?.vesselTypes) ? suitability!.vesselTypes : [],
+    b2FleetGroups: Array.isArray(suitability?.fleetGroups) ? suitability!.fleetGroups : [],
     status: review.status,
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
   };
-}
-
-async function loadMasterNameMaps(): Promise<{
-  vesselTypeNameByUuid: Map<string, string>;
-  fleetGroupNameByUuid: Map<string, string>;
-}> {
-  const db = getDb();
-  const [vtRows, fgRows] = await Promise.all([
-    db
-      .select({ vtUuid: masterVesselTypes.vtUuid, vesselType: masterVesselTypes.vesselType })
-      .from(masterVesselTypes)
-      .where(and(isNotNull(masterVesselTypes.vtUuid), isNotNull(masterVesselTypes.vesselType))),
-    db
-      .select({ fgUuid: masterFleetGroups.fgUuid, name: masterFleetGroups.name })
-      .from(masterFleetGroups)
-      .where(and(isNotNull(masterFleetGroups.fgUuid), isNotNull(masterFleetGroups.name))),
-  ]);
-  const vesselTypeNameByUuid = new Map<string, string>();
-  for (const r of vtRows) {
-    if (r.vtUuid && r.vesselType) vesselTypeNameByUuid.set(r.vtUuid, r.vesselType);
-  }
-  const fleetGroupNameByUuid = new Map<string, string>();
-  for (const r of fgRows) {
-    if (r.fgUuid && r.name) fleetGroupNameByUuid.set(r.fgUuid, r.name);
-  }
-  return { vesselTypeNameByUuid, fleetGroupNameByUuid };
 }
 
 export class PromotionReviewsService {
@@ -372,8 +336,7 @@ export class PromotionReviewsService {
       allTrainingNeeds,
       allApprovals,
       allChecklistProgress,
-      allSuitVesselTypes,
-      allSuitFleetGroups,
+      allSuitability,
     ] = await Promise.all([
       criteriaStatusRepo.findByReviewUuids(reviewUuids),
       cesTestsRepo.findByReviewUuids(reviewUuids),
@@ -382,11 +345,8 @@ export class PromotionReviewsService {
       trainingNeedsRepo.findByReviewUuids(reviewUuids),
       approvalsRepo.findByReviewUuids(reviewUuids),
       checklistProgressRepo.findByReviewUuids(reviewUuids),
-      suitabilityVesselTypesRepo.findByReviewUuids(reviewUuids),
-      suitabilityFleetGroupsRepo.findByReviewUuids(reviewUuids),
+      suitabilityRepo.findByReviewUuids(reviewUuids),
     ]);
-
-    const { vesselTypeNameByUuid, fleetGroupNameByUuid } = await loadMasterNameMaps();
 
     const csMap = groupBy(allCriteriaStatuses, i => i.reviewUuid);
     const ctMap = groupBy(allCesTests, i => i.reviewUuid);
@@ -395,8 +355,7 @@ export class PromotionReviewsService {
     const tnMap = groupBy(allTrainingNeeds, i => i.reviewUuid);
     const apMap = groupBy(allApprovals, i => i.reviewUuid);
     const cpMap = groupBy(allChecklistProgress, i => i.reviewUuid);
-    const svtMap = groupBy(allSuitVesselTypes, i => i.reviewUuid);
-    const sfgMap = groupBy(allSuitFleetGroups, i => i.reviewUuid);
+    const suitByReview = new Map(allSuitability.map(s => [s.reviewUuid, s]));
 
     return reviews.map(review => assembleV1Response(
       review,
@@ -407,10 +366,7 @@ export class PromotionReviewsService {
       tnMap[review.reviewUuid] || [],
       apMap[review.reviewUuid] || [],
       cpMap[review.reviewUuid] || [],
-      svtMap[review.reviewUuid] || [],
-      sfgMap[review.reviewUuid] || [],
-      vesselTypeNameByUuid,
-      fleetGroupNameByUuid,
+      suitByReview.get(review.reviewUuid) ?? null,
     ));
   }
 
@@ -418,7 +374,7 @@ export class PromotionReviewsService {
     const review = await reviewsRepo.findByUuid(reviewUuid);
     if (!review) return null;
 
-    const [cs, ct, cc, tc, tn, ap, cp, svt, sfg, masterMaps] = await Promise.all([
+    const [cs, ct, cc, tc, tn, ap, cp, suit] = await Promise.all([
       criteriaStatusRepo.findByReviewUuid(reviewUuid),
       cesTestsRepo.findByReviewUuid(reviewUuid),
       criteriaCommentsRepo.findByReviewUuid(reviewUuid),
@@ -426,16 +382,10 @@ export class PromotionReviewsService {
       trainingNeedsRepo.findByReviewUuid(reviewUuid),
       approvalsRepo.findByReviewUuid(reviewUuid),
       checklistProgressRepo.findByReviewUuid(reviewUuid),
-      suitabilityVesselTypesRepo.findByReviewUuid(reviewUuid),
-      suitabilityFleetGroupsRepo.findByReviewUuid(reviewUuid),
-      loadMasterNameMaps(),
+      suitabilityRepo.findByReviewUuid(reviewUuid),
     ]);
 
-    return assembleV1Response(
-      review, cs, ct, cc, tc, tn, ap, cp, svt, sfg,
-      masterMaps.vesselTypeNameByUuid,
-      masterMaps.fleetGroupNameByUuid,
-    );
+    return assembleV1Response(review, cs, ct, cc, tc, tn, ap, cp, suit);
   }
 
   async getReviewById(id: number) {
@@ -449,7 +399,7 @@ export class PromotionReviewsService {
     if (reviews.length === 0) return [];
 
     const reviewUuids = reviews.map(r => r.reviewUuid);
-    const [cs, ct, cc, tc, tn, ap, cp, svt, sfg] = await Promise.all([
+    const [cs, ct, cc, tc, tn, ap, cp, suit] = await Promise.all([
       criteriaStatusRepo.findByReviewUuids(reviewUuids),
       cesTestsRepo.findByReviewUuids(reviewUuids),
       criteriaCommentsRepo.findByReviewUuids(reviewUuids),
@@ -457,11 +407,8 @@ export class PromotionReviewsService {
       trainingNeedsRepo.findByReviewUuids(reviewUuids),
       approvalsRepo.findByReviewUuids(reviewUuids),
       checklistProgressRepo.findByReviewUuids(reviewUuids),
-      suitabilityVesselTypesRepo.findByReviewUuids(reviewUuids),
-      suitabilityFleetGroupsRepo.findByReviewUuids(reviewUuids),
+      suitabilityRepo.findByReviewUuids(reviewUuids),
     ]);
-
-    const { vesselTypeNameByUuid, fleetGroupNameByUuid } = await loadMasterNameMaps();
 
     const csMap = groupBy(cs, i => i.reviewUuid);
     const ctMap = groupBy(ct, i => i.reviewUuid);
@@ -470,8 +417,7 @@ export class PromotionReviewsService {
     const tnMap = groupBy(tn, i => i.reviewUuid);
     const apMap = groupBy(ap, i => i.reviewUuid);
     const cpMap = groupBy(cp, i => i.reviewUuid);
-    const svtMap = groupBy(svt, i => i.reviewUuid);
-    const sfgMap = groupBy(sfg, i => i.reviewUuid);
+    const suitByReview = new Map(suit.map(s => [s.reviewUuid, s]));
 
     return reviews.map(review => assembleV1Response(
       review,
@@ -482,10 +428,7 @@ export class PromotionReviewsService {
       tnMap[review.reviewUuid] || [],
       apMap[review.reviewUuid] || [],
       cpMap[review.reviewUuid] || [],
-      svtMap[review.reviewUuid] || [],
-      sfgMap[review.reviewUuid] || [],
-      vesselTypeNameByUuid,
-      fleetGroupNameByUuid,
+      suitByReview.get(review.reviewUuid) ?? null,
     ));
   }
 
@@ -708,24 +651,28 @@ export class PromotionReviewsService {
       tasks.push(checklistProgressRepo.replaceForReview(reviewUuid, items));
     }
 
-    if (data.b2VesselTypes !== undefined) {
-      const list = Array.isArray(data.b2VesselTypes)
-        ? data.b2VesselTypes
-        : this.parseJson(data.b2VesselTypes, []);
-      const names = (Array.isArray(list) ? list : [])
-        .map((v: any) => (typeof v === 'string' ? v : (v?.name || v?.vesselType || '')))
-        .filter((n: string) => !!n);
-      tasks.push(suitabilityVesselTypesRepo.replaceForReview(reviewUuid, names));
-    }
+    if (data.b2VesselTypes !== undefined || data.b2FleetGroups !== undefined) {
+      const toNames = (raw: any, keys: string[]): string[] | undefined => {
+        if (raw === undefined) return undefined;
+        const list = Array.isArray(raw) ? raw : this.parseJson(raw, []);
+        if (!Array.isArray(list)) return [];
+        return list
+          .map((v: any) => {
+            if (typeof v === 'string') return v;
+            for (const k of keys) {
+              if (v && typeof v[k] === 'string') return v[k];
+            }
+            return '';
+          })
+          .filter((n: string) => !!n);
+      };
 
-    if (data.b2FleetGroups !== undefined) {
-      const list = Array.isArray(data.b2FleetGroups)
-        ? data.b2FleetGroups
-        : this.parseJson(data.b2FleetGroups, []);
-      const names = (Array.isArray(list) ? list : [])
-        .map((v: any) => (typeof v === 'string' ? v : (v?.name || v?.fleetGroup || '')))
-        .filter((n: string) => !!n);
-      tasks.push(suitabilityFleetGroupsRepo.replaceForReview(reviewUuid, names));
+      const existing = await suitabilityRepo.findByReviewUuid(reviewUuid);
+      const vesselTypes = toNames(data.b2VesselTypes, ['name', 'vesselType'])
+        ?? (existing?.vesselTypes ?? []);
+      const fleetGroups = toNames(data.b2FleetGroups, ['name', 'fleetGroup'])
+        ?? (existing?.fleetGroups ?? []);
+      tasks.push(suitabilityRepo.upsertForReview(reviewUuid, { vesselTypes, fleetGroups }));
     }
 
     if (tasks.length > 0) await Promise.all(tasks);
