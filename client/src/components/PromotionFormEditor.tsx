@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery } from "@tanstack/react-query";
 import {
   Tooltip,
@@ -1092,45 +1092,40 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
 
             {/* License Table */}
             <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-              <RadioGroup value={selectedLicenseIds[0] ?? ''} asChild>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50 dark:bg-gray-800">
-                      <TableHead className="w-10"></TableHead>
-                      <TableHead className="text-xs">ID</TableHead>
-                      <TableHead className="text-xs">Certificate / Document</TableHead>
-                      <TableHead className="text-xs">ABBR</TableHead>
-                      <TableHead className="text-xs">Requirement</TableHead>
-                      <TableHead className="text-xs">Officer Matrix Label</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50 dark:bg-gray-800">
+                    <TableHead className="w-10"></TableHead>
+                    <TableHead className="text-xs">ID</TableHead>
+                    <TableHead className="text-xs">Certificate / Document</TableHead>
+                    <TableHead className="text-xs">ABBR</TableHead>
+                    <TableHead className="text-xs">Requirement</TableHead>
+                    <TableHead className="text-xs">Officer Matrix Label</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLicenses.map((license: LicenseEntry) => (
+                    <TableRow
+                      key={license.entryId}
+                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                      onClick={() => toggleLicenseSelection(license.entryId)}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedLicenseIds.includes(license.entryId)}
+                          onCheckedChange={() => toggleLicenseSelection(license.entryId)}
+                          data-testid={`checkbox-license-${license.entryId}`}
+                        />
+                      </TableCell>
+                      <TableCell className="text-xs">{license.entryId}</TableCell>
+                      <TableCell className="text-xs">{license.name}</TableCell>
+                      <TableCell className="text-xs">{license.shortCode}</TableCell>
+                      <TableCell className="text-xs">{license.description}</TableCell>
+                      <TableCell className="text-xs">{license.officerMatrixLabel || '-'}</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredLicenses.map((license: LicenseEntry) => (
-                      <TableRow
-                        key={license.entryId}
-                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                        onClick={() => toggleLicenseSelection(license.entryId)}
-                      >
-                        <TableCell>
-                          <RadioGroupItem
-                            value={license.entryId}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleLicenseSelection(license.entryId);
-                            }}
-                            data-testid={`radio-license-${license.entryId}`}
-                          />
-                        </TableCell>
-                        <TableCell className="text-xs">{license.entryId}</TableCell>
-                        <TableCell className="text-xs">{license.name}</TableCell>
-                        <TableCell className="text-xs">{license.shortCode}</TableCell>
-                        <TableCell className="text-xs">{license.description}</TableCell>
-                        <TableCell className="text-xs">{license.officerMatrixLabel || '-'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </RadioGroup>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
 
             {/* Action buttons */}
