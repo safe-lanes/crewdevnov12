@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useQuery } from "@tanstack/react-query";
 import {
   Tooltip,
@@ -154,14 +155,14 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
     if (latestReleasedConfig && latestReleasedConfig.higherLicenseIds !== undefined) {
       console.log('[PromotionFormEditor] Loading from latest released form-version:', latestReleasedConfig);
       reset(normalizeConfig(latestReleasedConfig));
-      setSelectedLicenseIds(latestReleasedConfig.higherLicenseIds || []);
+      setSelectedLicenseIds((latestReleasedConfig.higherLicenseIds || []).slice(0, 1));
       return;
     }
 
     if (rankGroupConfig && rankGroupConfig.higherLicenseIds !== undefined) {
       console.log('[PromotionFormEditor] No released version yet, loading from rank group configuration (legacy):', rankGroupConfig);
       reset(normalizeConfig(rankGroupConfig));
-      setSelectedLicenseIds(rankGroupConfig.higherLicenseIds || []);
+      setSelectedLicenseIds((rankGroupConfig.higherLicenseIds || []).slice(0, 1));
       return;
     }
 
@@ -171,7 +172,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
         if (savedConfig.higherLicenseIds !== undefined) {
           console.log('[PromotionFormEditor] Falling back to form configuration:', savedConfig);
           reset(normalizeConfig(savedConfig));
-          setSelectedLicenseIds(savedConfig.higherLicenseIds || []);
+          setSelectedLicenseIds((savedConfig.higherLicenseIds || []).slice(0, 1));
         }
       } catch (error) {
         console.error('Failed to parse form configuration:', error);
@@ -327,10 +328,8 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
 
   // License selection handlers
   const toggleLicenseSelection = (entryId: string) => {
-    setSelectedLicenseIds(prev => 
-      prev.includes(entryId) 
-        ? prev.filter(id => id !== entryId)
-        : [...prev, entryId]
+    setSelectedLicenseIds(prev =>
+      prev[0] === entryId ? [] : [entryId]
     );
   };
 
@@ -1084,15 +1083,6 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setSelectedLicenseIds(licenses.map((l: LicenseEntry) => l.entryId))}
-                  data-testid="button-select-all"
-                >
-                  Select All
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
                   onClick={() => setSelectedLicenseIds([])}
                   data-testid="button-clear-all"
                 >
@@ -1103,40 +1093,45 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
 
             {/* License Table */}
             <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50 dark:bg-gray-800">
-                    <TableHead className="w-10"></TableHead>
-                    <TableHead className="text-xs">ID</TableHead>
-                    <TableHead className="text-xs">Certificate / Document</TableHead>
-                    <TableHead className="text-xs">ABBR</TableHead>
-                    <TableHead className="text-xs">Requirement</TableHead>
-                    <TableHead className="text-xs">Officer Matrix Label</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLicenses.map((license: LicenseEntry) => (
-                    <TableRow 
-                      key={license.entryId}
-                      className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                      onClick={() => toggleLicenseSelection(license.entryId)}
-                    >
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedLicenseIds.includes(license.entryId)}
-                          onCheckedChange={() => toggleLicenseSelection(license.entryId)}
-                          data-testid={`checkbox-license-${license.entryId}`}
-                        />
-                      </TableCell>
-                      <TableCell className="text-xs">{license.entryId}</TableCell>
-                      <TableCell className="text-xs">{license.name}</TableCell>
-                      <TableCell className="text-xs">{license.shortCode}</TableCell>
-                      <TableCell className="text-xs">{license.description}</TableCell>
-                      <TableCell className="text-xs">{license.officerMatrixLabel || '-'}</TableCell>
+              <RadioGroup value={selectedLicenseIds[0] ?? ''} asChild>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50 dark:bg-gray-800">
+                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="text-xs">ID</TableHead>
+                      <TableHead className="text-xs">Certificate / Document</TableHead>
+                      <TableHead className="text-xs">ABBR</TableHead>
+                      <TableHead className="text-xs">Requirement</TableHead>
+                      <TableHead className="text-xs">Officer Matrix Label</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLicenses.map((license: LicenseEntry) => (
+                      <TableRow
+                        key={license.entryId}
+                        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                        onClick={() => toggleLicenseSelection(license.entryId)}
+                      >
+                        <TableCell>
+                          <RadioGroupItem
+                            value={license.entryId}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleLicenseSelection(license.entryId);
+                            }}
+                            data-testid={`radio-license-${license.entryId}`}
+                          />
+                        </TableCell>
+                        <TableCell className="text-xs">{license.entryId}</TableCell>
+                        <TableCell className="text-xs">{license.name}</TableCell>
+                        <TableCell className="text-xs">{license.shortCode}</TableCell>
+                        <TableCell className="text-xs">{license.description}</TableCell>
+                        <TableCell className="text-xs">{license.officerMatrixLabel || '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </RadioGroup>
             </div>
 
             {/* Action buttons */}
