@@ -18,7 +18,7 @@ interface PartACriteriaTableProps extends React.HTMLAttributes<HTMLDivElement> {
   isParentCriteria: (id: string) => boolean;
   isOtherCriteriaSubItem: (id: string) => boolean;
   computeParentStatus: (id: string) => 'yes' | 'na' | 'pending';
-  computeOtherCriteriaMeetsCriterion: () => 'yes' | 'pending';
+  computeOtherCriteriaMeetsCriterion: () => 'yes' | 'na' | 'pending';
   getMeetsCriterionBadge: (required: string, result: string, row: CriteriaRow) => React.ReactNode;
   criteriaComments: Record<string, Comment[]>;
   newCriteriaComment: Record<string, string>;
@@ -114,6 +114,8 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               const status = computeOtherCriteriaMeetsCriterion();
               return status === 'yes' ? (
                 <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded" data-testid="badge-a26-met">Yes</span>
+              ) : status === 'na' ? (
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded" data-testid="badge-a26-na">NA</span>
               ) : (
                 <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded" data-testid="badge-a26-pending">Pending</span>
               );

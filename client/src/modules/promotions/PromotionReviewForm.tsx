@@ -935,8 +935,20 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         id => id.startsWith(parentId) && id.length > parentId.length
       );
       if (childIds.length > 0) {
-        const childValues = childIds.map(id => criteriaMeetsStatus[id]);
-        if (childValues.some(v => v === 'yes')) {
+        const childMeetsValues = childIds.map(id => criteriaMeetsStatus[id]);
+        if (parentId === 'a2.6') {
+          const childVerifiedValues = childIds.map(id => criteriaVerifiedStatus[id] || '');
+          const hasBlank = childVerifiedValues.some(v => v === '' || v === undefined);
+          if (hasBlank) {
+            criteriaMeetsStatus[parentId] = 'pending';
+          } else if (childVerifiedValues.some(v => v === 'yes')) {
+            criteriaMeetsStatus[parentId] = 'yes';
+          } else if (childVerifiedValues.every(v => v === 'na')) {
+            criteriaMeetsStatus[parentId] = 'na';
+          } else {
+            criteriaMeetsStatus[parentId] = 'pending';
+          }
+        } else if (childMeetsValues.some(v => v === 'yes')) {
           criteriaMeetsStatus[parentId] = 'yes';
         } else {
           criteriaMeetsStatus[parentId] = 'pending';
@@ -1164,7 +1176,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     return id.startsWith('a2.6') && id.length > 4;
   }, []);
 
-  const computeOtherCriteriaMeetsCriterion = useCallback((): 'yes' | 'pending' => {
+  const computeOtherCriteriaMeetsCriterion = useCallback((): 'yes' | 'na' | 'pending' => {
     const otherCriteriaSubItems = criteriaData.filter(row => isOtherCriteriaSubItem(row.id));
     if (otherCriteriaSubItems.length === 0) return 'pending';
     
@@ -1172,8 +1184,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const hasBlank = verifiedValues.some(v => v === '' || v === undefined);
     if (hasBlank) return 'pending';
     
-    const allYesOrNa = verifiedValues.every(v => v === 'yes' || v === 'na');
-    if (allYesOrNa) return 'yes';
+    if (verifiedValues.some(v => v === 'yes')) return 'yes';
+    if (verifiedValues.every(v => v === 'na')) return 'na';
     
     return 'pending';
   }, [criteriaData, isOtherCriteriaSubItem]);
