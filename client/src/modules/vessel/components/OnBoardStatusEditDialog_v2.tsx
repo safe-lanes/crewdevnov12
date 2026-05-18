@@ -223,6 +223,11 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             if (isSignOff && !data.signOffReason) {
                 throw new Error("Please select a reason for sign-off");
             }
+
+            if (isTakeover && planningData?.signOnDate && data.takeOverDate &&
+                new Date(data.takeOverDate) < new Date(planningData.signOnDate)) {
+                throw new Error("Take Over Date cannot be earlier than the secondary crew's Sign On Date");
+            }
             
             let computedReliefDue: string | null = null;
             const signOnDate = planningData?.signOnDate || planningData?.joiningDate;
@@ -514,6 +519,13 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                                     setTakeOverDateOpen(false);
                                                                 }
                                                             }}
+                                                            disabled={(() => {
+                                                                const signOnVal = planningData?.signOnDate;
+                                                                if (!signOnVal) return undefined;
+                                                                const signOnParsed = parseDate(signOnVal);
+                                                                if (!signOnParsed) return undefined;
+                                                                return { before: signOnParsed };
+                                                            })()}
                                                             initialFocus
                                                         />
                                                     </PopoverContent>
