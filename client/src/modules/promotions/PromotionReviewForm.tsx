@@ -1007,16 +1007,35 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     };
   }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses]);
 
+  const hasBlankA4Comment = useMemo(
+    () => comments.some(c => !c.text?.trim()),
+    [comments]
+  );
+
+  const guardBlankA4 = useCallback(() => {
+    if (hasBlankA4Comment) {
+      toast({
+        title: 'A4 comment incomplete',
+        description: 'Please complete or remove the empty A4 reviewer comments before saving.',
+        variant: 'destructive',
+      });
+      return true;
+    }
+    return false;
+  }, [hasBlankA4Comment, toast]);
+
   const handleSaveDraft = useCallback(() => {
+    if (guardBlankA4()) return;
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
     });
     saveMutation.mutate(reviewData);
-  }, [collectFormData, saveMutation]);
+  }, [collectFormData, saveMutation, guardBlankA4]);
 
   const handleSubmitPartB = useCallback(() => {
+    if (guardBlankA4()) return;
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
@@ -1028,9 +1047,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       title: "Part B Submitted",
       description: "Approval section has been submitted successfully.",
     });
-  }, [collectFormData, saveMutation, toast]);
+  }, [collectFormData, saveMutation, toast, guardBlankA4]);
 
   const handleSubmitPartC = useCallback(() => {
+    if (guardBlankA4()) return;
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
@@ -1042,9 +1062,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       title: "Part C Submitted",
       description: "Execution section has been submitted successfully.",
     });
-  }, [collectFormData, saveMutation, toast]);
+  }, [collectFormData, saveMutation, toast, guardBlankA4]);
 
   const handleSubmit = (data: PromotionReviewFormData) => {
+    if (guardBlankA4()) return;
     const reviewData = collectFormData(data);
     saveMutation.mutate(reviewData);
   };
@@ -1335,6 +1356,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       return;
     }
 
+    if (guardBlankA4()) return;
+
     const resolvedApprovers = selectedApproversForSubmission.map(a => {
       if (a.userUuid) return a;
       const match = approverMasterData.find(m => m.displayName === a.displayName);
@@ -1412,7 +1435,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       .finally(() => {
         setIsSubmittingForApproval(false);
       });
-  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData]);
+  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData, guardBlankA4]);
 
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
@@ -1583,7 +1606,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                           </div>
                           {isEditing ? (
                             <textarea
-                              className="w-full min-h-[80px] p-2 border border-blue-200 rounded text-blue-600 italic text-sm resize-y"
+                              className={`w-full min-h-[80px] p-2 border rounded text-blue-600 italic text-sm resize-y ${
+                                !comment.text?.trim()
+                                  ? 'border-red-500 focus-visible:ring-red-500'
+                                  : 'border-blue-200'
+                              }`}
                               placeholder="Comment: Add your observations here..."
                               value={comment.text}
                               onChange={(e) => updateCommentText(comment.id, e.target.value)}
