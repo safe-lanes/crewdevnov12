@@ -1,6 +1,7 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, isNotNull } from "drizzle-orm";
 import { getDb } from "../../db";
 import { promoSuitabilityVesselTypesV2 } from "../../../../shared/v2/promotions/schema";
+import { masterVesselTypes } from "../../../../shared/schema";
 import type { PromoSuitabilityVesselTypeV2 } from "../../../../shared/v2/promotions/types";
 import { v4 as uuidv4 } from "uuid";
 
@@ -30,6 +31,31 @@ export class SuitabilityVesselTypesRepository {
       .orderBy(promoSuitabilityVesselTypesV2.sortOrder);
   }
 
+  private async resolveNameToUuid(names: string[]): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    if (names.length === 0) return map;
+    const db = getDb();
+    const rows = await db
+      .select({ vtUuid: masterVesselTypes.vtUuid, vesselType: masterVesselTypes.vesselType })
+      .from(masterVesselTypes)
+      .where(and(
+        isNotNull(masterVesselTypes.vtUuid),
+        isNotNull(masterVesselTypes.vesselType),
+      ));
+    const byLowerName = new Map<string, string>();
+    for (const r of rows) {
+      if (r.vesselType && r.vtUuid) {
+        byLowerName.set(r.vesselType.trim().toLowerCase(), r.vtUuid);
+      }
+    }
+    for (const n of names) {
+      const key = n.trim().toLowerCase();
+      const uuid = byLowerName.get(key);
+      if (uuid) map.set(n, uuid);
+    }
+    return map;
+  }
+
   async replaceForReview(reviewUuid: string, names: string[]): Promise<void> {
     const db = getDb();
     await db
@@ -46,10 +72,13 @@ export class SuitabilityVesselTypesRepository {
 
     if (cleaned.length === 0) return;
 
+    const uuidByName = await this.resolveNameToUuid(cleaned);
+
     await db.insert(promoSuitabilityVesselTypesV2).values(
       cleaned.map((vesselTypeName, idx) => ({
         svtUuid: uuidv4(),
         reviewUuid,
+        vesselTypeUuid: uuidByName.get(vesselTypeName) ?? null,
         vesselTypeName,
         sortOrder: idx,
       }))

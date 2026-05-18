@@ -10,6 +10,12 @@ import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCours
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import type { Form, RankGroup, CrewDashboardSummary, PromotionReview } from '@shared/schema';
 import type { PromotionA2Config } from '@shared/schema';
+
+type PromotionReviewResponse = PromotionReview & {
+  selectedApproversForSubmission?: string | null;
+  b2VesselTypes?: string[];
+  b2FleetGroups?: string[];
+};
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useVesselTypesV2, useUsersV2, useFleetGroupsV2 } from '@/hooks/v2/useMasterDataV2';
 import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
@@ -193,7 +199,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   );
   const [isSubmittingForApproval, setIsSubmittingForApproval] = useState(false);
 
-  const { data: existingReviewData, isLoading: isLoadingReview } = useQuery<PromotionReview>({
+  const { data: existingReviewData, isLoading: isLoadingReview } = useQuery<PromotionReviewResponse>({
     queryKey: [`/api/v2/promotions/reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`],
     enabled: !!crewMemberId && !!promotionToRank,
     retry: false,
@@ -846,13 +852,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         setPromotionTiming(existingReviewData.promotionTiming);
       }
 
-      const b2vt = (existingReviewData as any).b2VesselTypes;
+      const b2vt = existingReviewData.b2VesselTypes;
       if (Array.isArray(b2vt)) {
-        setVesselTypes(b2vt.filter((v: any) => typeof v === 'string' && v.trim()));
+        setVesselTypes(b2vt.filter((v): v is string => typeof v === 'string' && v.trim().length > 0));
       }
-      const b2fg = (existingReviewData as any).b2FleetGroups;
+      const b2fg = existingReviewData.b2FleetGroups;
       if (Array.isArray(b2fg)) {
-        setVesselClasses(b2fg.filter((v: any) => typeof v === 'string' && v.trim()));
+        setVesselClasses(b2fg.filter((v): v is string => typeof v === 'string' && v.trim().length > 0));
       }
     }
   }, [existingReviewData]);
