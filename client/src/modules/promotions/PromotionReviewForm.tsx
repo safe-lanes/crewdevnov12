@@ -1110,7 +1110,18 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       }
       return 'pending';
     }
-    
+
+    if (parentId === 'a2.3') {
+      const childrenIds = getChildrenIds(parentId);
+      if (childrenIds.length === 0) return 'pending';
+      const anyChildMeets = childrenIds.some(childId => {
+        const child = criteriaData.find(row => row.id === childId);
+        if (!child) return false;
+        return getMeetsCriterion(child.required, child.resultFromDb) === 'met';
+      });
+      return anyChildMeets ? 'yes' : 'pending';
+    }
+
     const childrenIds = getChildrenIds(parentId);
     if (childrenIds.length === 0) return 'pending';
 
@@ -1145,7 +1156,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     if (hasYes && allYesOrNa) return 'yes';
 
     return 'pending';
-  }, [getChildrenIds, cesTests, criteriaData, existingReviewData?.checklistProgressData, a2Config?.minChecklistCompletionPercent]);
+  }, [getChildrenIds, cesTests, criteriaData, existingReviewData?.checklistProgressData, a2Config?.minChecklistCompletionPercent, a2Config?.minChecklistVerifications, getMeetsCriterion]);
 
   const isParentCriteria = useCallback((id: string): boolean => parentCriteriaIds.includes(id), []);
 
