@@ -16,10 +16,18 @@ interface PartBApprovalProps extends React.HTMLAttributes<HTMLDivElement> {
   vesselClasses: string[];
   onRemoveVesselType: (type: string) => void;
   onRemoveVesselClass: (cls: string) => void;
+  onAddVesselType?: (type: string) => void;
+  onAddVesselClass?: (cls: string) => void;
+  vesselTypeOptions?: string[];
+  vesselClassOptions?: string[];
+  isLoadingVesselTypeOptions?: boolean;
+  isLoadingVesselClassOptions?: boolean;
   onSave?: () => void;
   onSubmit?: () => void;
   approverNames?: string[];
 }
+
+const slugify = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
 
 export const PartBApproval = memo(function PartBApproval({
   approvers,
@@ -30,11 +38,20 @@ export const PartBApproval = memo(function PartBApproval({
   vesselClasses,
   onRemoveVesselType,
   onRemoveVesselClass,
+  onAddVesselType,
+  onAddVesselClass,
+  vesselTypeOptions = [],
+  vesselClassOptions = [],
+  isLoadingVesselTypeOptions = false,
+  isLoadingVesselClassOptions = false,
   onSave,
   onSubmit,
   approverNames = [],
   ...restProps
 }: PartBApprovalProps) {
+
+  const availableVesselTypes = vesselTypeOptions.filter((t) => !vesselTypes.includes(t));
+  const availableVesselClasses = vesselClassOptions.filter((c) => !vesselClasses.includes(c));
 
   return (
     <div className="bg-white rounded-lg p-6" {...restProps}>
@@ -153,61 +170,107 @@ export const PartBApproval = memo(function PartBApproval({
 
         <div className="space-y-4">
           <h3 className="text-base font-medium text-[#16569e]">B2 Suitable for:</h3>
-          
-          <div className="flex items-center gap-4">
-            <Label className="text-sm w-48">B2.1 Vessel type(s):</Label>
-            <div className="flex-1 flex items-center gap-2 flex-wrap border border-gray-300 rounded-md p-2 min-h-[36px]" data-testid="vessel-types-container">
-              {vesselTypes.map((type) => (
-                <div key={type} className="inline-flex items-center gap-1 bg-[#E0F2FE] text-[#0284C7] px-2 py-1 rounded text-sm" data-testid={`vessel-type-${type.toLowerCase().replace(/\s+/g, '-')}`}>
-                  {type}
-                  <button 
-                    type="button"
-                    onClick={() => onRemoveVesselType(type)} 
-                    className="ml-1"
-                    data-testid={`button-remove-vessel-type-${type.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+
+          <div className="flex items-start gap-4">
+            <Label className="text-sm w-48 mt-2">B2.1 Vessel type(s):</Label>
+            <div className="flex-1 space-y-2">
+              {vesselTypes.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap" data-testid="vessel-types-container">
+                  {vesselTypes.map((type) => (
+                    <div
+                      key={type}
+                      className="inline-flex items-center gap-1 bg-[#E0F2FE] text-[#0284C7] px-2 py-1 rounded text-sm"
+                      data-testid={`vessel-type-${slugify(type)}`}
+                    >
+                      {type}
+                      <button
+                        type="button"
+                        onClick={() => onRemoveVesselType(type)}
+                        className="ml-1"
+                        data-testid={`button-remove-vessel-type-${slugify(type)}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+              <Select
+                value=""
+                onValueChange={(value) => onAddVesselType?.(value)}
+                disabled={!onAddVesselType}
+              >
+                <SelectTrigger className="w-full max-w-md h-9 text-sm" data-testid="select-add-vessel-type">
+                  <SelectValue
+                    placeholder={isLoadingVesselTypeOptions ? 'Loading options...' : 'Add vessel type...'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingVesselTypeOptions && (
+                    <SelectItem value="_loading" disabled>Loading options...</SelectItem>
+                  )}
+                  {!isLoadingVesselTypeOptions && availableVesselTypes.length === 0 && (
+                    <SelectItem value="_empty" disabled>No options available</SelectItem>
+                  )}
+                  {availableVesselTypes.map((vesselType) => (
+                    <SelectItem key={vesselType} value={vesselType}>
+                      {vesselType}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Button 
-              type="button"
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0"
-              data-testid="button-add-vessel-type"
-            >
-              <Plus className="h-4 w-4 text-gray-600" />
-            </Button>
           </div>
 
-          <div className="flex items-center gap-4">
-            <Label className="text-sm w-48">B2.2 Vessel/ Vessel Class/ Fleet:</Label>
-            <div className="flex-1 flex items-center gap-2 flex-wrap border border-gray-300 rounded-md p-2 min-h-[36px]" data-testid="vessel-classes-container">
-              {vesselClasses.map((cls) => (
-                <div key={cls} className="inline-flex items-center gap-1 bg-[#E0F2FE] text-[#0284C7] px-2 py-1 rounded text-sm" data-testid={`vessel-class-${cls.toLowerCase().replace(/\s+/g, '-')}`}>
-                  {cls}
-                  <button 
-                    type="button"
-                    onClick={() => onRemoveVesselClass(cls)} 
-                    className="ml-1"
-                    data-testid={`button-remove-vessel-class-${cls.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+          <div className="flex items-start gap-4">
+            <Label className="text-sm w-48 mt-2">B2.2 Vessel/ Vessel Class/ Fleet:</Label>
+            <div className="flex-1 space-y-2">
+              {vesselClasses.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap" data-testid="vessel-classes-container">
+                  {vesselClasses.map((cls) => (
+                    <div
+                      key={cls}
+                      className="inline-flex items-center gap-1 bg-[#E0F2FE] text-[#0284C7] px-2 py-1 rounded text-sm"
+                      data-testid={`vessel-class-${slugify(cls)}`}
+                    >
+                      {cls}
+                      <button
+                        type="button"
+                        onClick={() => onRemoveVesselClass(cls)}
+                        className="ml-1"
+                        data-testid={`button-remove-vessel-class-${slugify(cls)}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+              <Select
+                value=""
+                onValueChange={(value) => onAddVesselClass?.(value)}
+                disabled={!onAddVesselClass}
+              >
+                <SelectTrigger className="w-full max-w-md h-9 text-sm" data-testid="select-add-vessel-class">
+                  <SelectValue
+                    placeholder={isLoadingVesselClassOptions ? 'Loading options...' : 'Add fleet group...'}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingVesselClassOptions && (
+                    <SelectItem value="_loading" disabled>Loading options...</SelectItem>
+                  )}
+                  {!isLoadingVesselClassOptions && availableVesselClasses.length === 0 && (
+                    <SelectItem value="_empty" disabled>No options available</SelectItem>
+                  )}
+                  {availableVesselClasses.map((cls) => (
+                    <SelectItem key={cls} value={cls}>
+                      {cls}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Button 
-              type="button"
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0"
-              data-testid="button-add-vessel-class"
-            >
-              <Plus className="h-4 w-4 text-gray-600" />
-            </Button>
           </div>
         </div>
 

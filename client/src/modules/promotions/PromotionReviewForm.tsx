@@ -11,7 +11,7 @@ import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplate
 import type { Form, RankGroup, CrewDashboardSummary, PromotionReview } from '@shared/schema';
 import type { PromotionA2Config } from '@shared/schema';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useVesselTypesV2, useUsersV2 } from '@/hooks/v2/useMasterDataV2';
+import { useVesselTypesV2, useUsersV2, useFleetGroupsV2 } from '@/hooks/v2/useMasterDataV2';
 import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
 import type { LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -145,9 +145,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     enabled: !!crewMemberId,
   });
 
-  const { data: vesselTypesV2Data } = useVesselTypesV2();
+  const { data: vesselTypesV2Data, isLoading: isLoadingVesselTypesV2 } = useVesselTypesV2();
+  const { data: fleetGroupsV2Data, isLoading: isLoadingFleetGroupsV2 } = useFleetGroupsV2();
   const { normalizeRank } = useRankNormalization();
-  
+
   const { data: usersV2Data, isLoading: isLoadingUsers } = useUsersV2();
   
   const approverMasterData = useMemo(() => {
@@ -439,6 +440,35 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     return getVesselTypesForDropdown();
   }, [vesselTypesV2Data]);
 
+  const b2VesselTypeOptions = useMemo(() => {
+    const raw = (vesselTypesV2Data as any)?.vesseltypes
+      || (vesselTypesV2Data as any)?.vesselTypes
+      || vesselTypesV2Data
+      || [];
+    const list = Array.isArray(raw) ? raw : [];
+    if (list.length > 0) {
+      return list
+        .map((vt: any) => vt.vesselType || vt.name || (typeof vt === 'string' ? vt : ''))
+        .filter(Boolean);
+    }
+    return getVesselTypesForDropdown();
+  }, [vesselTypesV2Data]);
+
+  const b2FleetGroupOptions = useMemo(() => {
+    const raw = (fleetGroupsV2Data as any)?.fleetGroups || fleetGroupsV2Data || [];
+    const list = Array.isArray(raw) ? raw : [];
+    const seen = new Set<string>();
+    const result: string[] = [];
+    list.forEach((f: any) => {
+      const name = (f?.name || f?.fleetGroup || (typeof f === 'string' ? f : ''))?.trim();
+      if (name && !seen.has(name)) {
+        seen.add(name);
+        result.push(name);
+      }
+    });
+    return result;
+  }, [fleetGroupsV2Data]);
+
   const a2_3b_vesselTypeExperienceResult = useMemo(() => {
     if (!selectedVesselTypeForA2_3b) return '';
     if (!dashboardData?.rankExperienceByVesselType) return '0 Months';
@@ -666,8 +696,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const nextCommentIdRef = useRef(3);
   const nextTrainingIdRef = useRef(1);
 
-  const [vesselTypes, setVesselTypes] = useState<string[]>(['Product Tankers', 'Crude Oil Tankers']);
-  const [vesselClasses, setVesselClasses] = useState<string[]>(['MR Class1 Tankers', 'Chemical JP 20']);
+  const [vesselTypes, setVesselTypes] = useState<string[]>([]);
+  const [vesselClasses, setVesselClasses] = useState<string[]>([]);
 
   const [promotionConfirmed, setPromotionConfirmed] = useState<string>('');
   const [vesselAssigned, setVesselAssigned] = useState<string>('');
@@ -1214,6 +1244,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     setVesselClasses(prev => prev.filter(c => c !== cls));
   }, []);
 
+  const addVesselType = useCallback((type: string) => {
+    if (!type) return;
+    setVesselTypes(prev => (prev.includes(type) ? prev : [...prev, type]));
+  }, []);
+
+  const addVesselClass = useCallback((cls: string) => {
+    if (!cls) return;
+    setVesselClasses(prev => (prev.includes(cls) ? prev : [...prev, cls]));
+  }, []);
+
   const addComment = useCallback(() => {
     const newId = nextCommentIdRef.current.toString();
     nextCommentIdRef.current += 1;
@@ -1606,6 +1646,12 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               vesselClasses={vesselClasses}
               onRemoveVesselType={removeVesselType}
               onRemoveVesselClass={removeVesselClass}
+              onAddVesselType={addVesselType}
+              onAddVesselClass={addVesselClass}
+              vesselTypeOptions={b2VesselTypeOptions}
+              vesselClassOptions={b2FleetGroupOptions}
+              isLoadingVesselTypeOptions={isLoadingVesselTypesV2}
+              isLoadingVesselClassOptions={isLoadingFleetGroupsV2}
               onSave={handleSaveDraft}
               onSubmit={handleSubmitPartB}
               approverNames={approverMasterData.map(a => a.displayName)}
