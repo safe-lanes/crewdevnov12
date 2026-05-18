@@ -3,6 +3,7 @@ import { usePermissions } from '@/contexts/PermissionsContext';
 import { ColDef, ICellRendererParams, GridReadyEvent, GridApi, GridOptions } from 'ag-grid-community';
 import { useQuery } from '@tanstack/react-query';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
+import AgGridTableActions from '@/components/AgGrid/AgGridTableActions';
 import { Button } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -726,19 +727,34 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         columnDefs={columnDefs}
         onGridReady={handleGridReady}
         loading={isLoading || isLoadingHierarchies}
+        enableStatusBar={false}
         fillAvailableHeight={true}
-        bottomPadding={60}
+        bottomPadding={80}
         gridOptions={gridPerformanceOptions}
         className="vertical-headers-grid"
         data-testid="promotions-table"
       />
-      
-      <div className="flex justify-between items-center px-4 py-2 text-sm text-gray-600">
-        <div>
-          {filteredData.length > 0 ? `0 to ${filteredData.length} of ${filteredData.length}` : '0 to 0 of 0'}
+
+      <div
+        className="bg-white border-t border-gray-200 px-4 py-3 flex justify-between items-center"
+        style={{ marginTop: '-1px' }}
+        data-testid="promotions-table-footer"
+      >
+        <div
+          className="text-xs font-normal font-['Mulish',Helvetica] text-black"
+          data-testid="text-promotions-row-count"
+        >
+          Rows: {filteredData.length}
         </div>
         <div>
-          Page {filteredData.length > 0 ? '1' : '0'} of {filteredData.length > 0 ? '1' : '0'}
+          <AgGridTableActions
+            gridApi={gridApi}
+            exportFilename="promotions"
+            showExportButtons={true}
+            showFilterButtons={true}
+            showGroupButtons={true}
+            showSelectionButtons={false}
+          />
         </div>
       </div>
 
