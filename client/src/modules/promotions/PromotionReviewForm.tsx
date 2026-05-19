@@ -207,8 +207,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const effectiveReviewUuid = savedReviewUuid ?? existingReviewData?.reviewUuid ?? null;
 
+  type SaveMutationAction = 'draft' | 'submit-b' | 'submit-c';
+  type SaveMutationVariables = { data: any; action: SaveMutationAction };
+
   const saveMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async ({ data }: SaveMutationVariables) => {
       const endpoint = effectiveReviewUuid
         ? `/api/v2/promotions/reviews/${effectiveReviewUuid}`
         : '/api/v2/promotions/reviews';
@@ -216,26 +219,39 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       const response = await apiRequest(method, endpoint, data);
       return response;
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: any, variables: SaveMutationVariables) => {
       if (data?.reviewUuid) {
         setSavedReviewUuid(data.reviewUuid);
       }
       if (data?.id) {
         setSavedReviewId(data.id);
       }
-      toast({
-        title: "Draft Saved",
-        description: "Your promotion review progress has been saved.",
-      });
+      if (variables.action === 'submit-b') {
+        toast({
+          title: "Part B Submitted",
+          description: "Approval submitted successfully.",
+        });
+      } else if (variables.action === 'submit-c') {
+        toast({
+          title: "Part C Submitted",
+          description: "Form submitted successfully.",
+        });
+      } else {
+        toast({
+          title: "Draft Saved",
+          description: "Your promotion review progress has been saved.",
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/promotions/reviews'] });
       queryClient.invalidateQueries({ 
         queryKey: [`/api/v2/promotions/reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`] 
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, variables: SaveMutationVariables) => {
+      const isSubmit = variables.action === 'submit-b' || variables.action === 'submit-c';
       toast({
-        title: "Save Failed",
-        description: error.message || "Failed to save draft",
+        title: isSubmit ? "Submit Failed" : "Save Failed",
+        description: error.message || (isSubmit ? "Failed to submit" : "Failed to save draft"),
         variant: "destructive",
       });
     },
@@ -1031,7 +1047,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partBNotes: '',
       partCNotes: '',
     });
-    saveMutation.mutate(reviewData);
+    saveMutation.mutate({ data: reviewData, action: 'draft' });
   }, [collectFormData, saveMutation, guardBlankA4]);
 
   const handleSubmitPartB = useCallback(() => {
@@ -1042,12 +1058,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partCNotes: '',
     });
     reviewData.status = 'approved';
-    saveMutation.mutate(reviewData);
-    toast({
-      title: "Part B Submitted",
-      description: "Approval section has been submitted successfully.",
-    });
-  }, [collectFormData, saveMutation, toast, guardBlankA4]);
+    saveMutation.mutate({ data: reviewData, action: 'submit-b' });
+  }, [collectFormData, saveMutation, guardBlankA4]);
 
   const handleSubmitPartC = useCallback(() => {
     if (guardBlankA4()) return;
@@ -1057,17 +1069,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partCNotes: '',
     });
     reviewData.status = 'completed';
-    saveMutation.mutate(reviewData);
-    toast({
-      title: "Part C Submitted",
-      description: "Execution section has been submitted successfully.",
-    });
-  }, [collectFormData, saveMutation, toast, guardBlankA4]);
+    saveMutation.mutate({ data: reviewData, action: 'submit-c' });
+  }, [collectFormData, saveMutation, guardBlankA4]);
 
   const handleSubmit = (data: PromotionReviewFormData) => {
     if (guardBlankA4()) return;
     const reviewData = collectFormData(data);
-    saveMutation.mutate(reviewData);
+    saveMutation.mutate({ data: reviewData, action: 'draft' });
   };
 
   const getMeetsCriterion = useCallback((required: string, result: string) => {
