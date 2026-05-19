@@ -218,11 +218,17 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     const handleSaveV2 = async (data: OnBoardStatusFormData) => {
         try {
             const isTakeover = data.takeOverConfirmation && data.takeOverDate;
-            const isSignOff = data.reliefStatus === "Signed Off" && data.signOffDate;
-            
-            if (isSignOff && !data.signOffReason) {
-                throw new Error("Please select a reason for sign-off");
+
+            if (data.reliefStatus === "Signed Off") {
+                if (!data.signOffDate) {
+                    throw new Error("Sign Off Date is required when Relief Status is Signed Off");
+                }
+                if (!data.signOffReason || !SIGN_OFF_REASONS.includes(data.signOffReason as any)) {
+                    throw new Error("Please select a valid Reason for sign-off");
+                }
             }
+
+            const isSignOff = data.reliefStatus === "Signed Off" && data.signOffDate;
 
             if (isTakeover && planningData?.signOnDate && data.takeOverDate &&
                 new Date(data.takeOverDate) < new Date(planningData.signOnDate)) {
@@ -282,7 +288,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     if (primaryCrew.reliefStatus === "Signed Off" && primaryCrew.signOffDate) {
                         await apiRequest('POST', `/api/v2/vessel/planning/${primaryCrew.planUuid}/sign-off`, {
                             signOffDate: primaryCrew.signOffDate,
-                            signOffReason: primaryCrew.signOffReason || 'Take Over',
+                            signOffReason: primaryCrew.signOffReason,
                             signOffPortUuid: primaryCrew.signOffPortUuid,
                         });
                     } else {
