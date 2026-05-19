@@ -153,11 +153,10 @@ export function ViolationsOverviewDialog({
   // per vessel, matching how the tile sums across the selected vessels.
   const predictedNCKeys = useMemo(() => {
     if (!isPredicted) return null;
-    const keyOf = (c: any) => `${c.vesselId}|${c.crewMemberId}`;
     const perKey = new Map<string, { totalNCs: number; predictedNCs: number }>();
     for (const crew of crewSummaries) {
       if (!crew.crewMemberId || !crew.vesselId) continue;
-      const k = keyOf(crew);
+      const k = `${crew.vesselId}|${crew.crewMemberId}`;
       const prev = perKey.get(k) || { totalNCs: 0, predictedNCs: 0 };
       perKey.set(k, {
         totalNCs: prev.totalNCs + (crew.totalNCs ?? 0),
