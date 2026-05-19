@@ -356,17 +356,17 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     uploadedAt: att.uploadedAt ?? att.uploadDate ?? '',
   });
 
-  const toChecklistAttachment = (att: FileAttachment): ChecklistAttachment => {
+  type FileAttachmentLike = FileAttachment & { uploadDate?: string };
+  const toChecklistAttachment = (att: FileAttachmentLike): ChecklistAttachment => {
     const isoParsed = att.uploadedAt ? new Date(att.uploadedAt) : null;
     const isValidIso = !!isoParsed && !Number.isNaN(isoParsed.getTime()) && /\d{4}-\d{2}-\d{2}T/.test(att.uploadedAt ?? '');
-    const legacyUploadDate = (att as any).uploadDate as string | undefined;
     return {
       id: att.id,
       fileName: att.name,
       fileSize: att.size,
       uploadDate: isValidIso
         ? (isoParsed as Date).toLocaleDateString()
-        : (legacyUploadDate ?? att.uploadedAt ?? new Date().toLocaleDateString()),
+        : (att.uploadDate ?? att.uploadedAt ?? new Date().toLocaleDateString()),
       type: att.type,
       data: att.data,
       uploadedAt: att.uploadedAt,
