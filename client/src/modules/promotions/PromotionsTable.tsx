@@ -518,14 +518,25 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       
       const matchesVesselType = true;
       
-      const matchesCriteria = !criteria || 
-        item.license === criteria || 
-        item.age === criteria || 
-        item.sea === criteria || 
-        item.reco === criteria || 
-        item.otherCriteria === criteria || 
-        item.cesIndex === criteria || 
-        item.trainDocs === criteria;
+      const criteriaFields = [
+        item.license,
+        item.age,
+        item.sea,
+        item.reco,
+        item.otherCriteria,
+        item.cesIndex,
+        item.trainDocs,
+      ];
+      let matchesCriteria = true;
+      if (criteria === 'met') {
+        matchesCriteria = criteriaFields.every(s => s === 'met');
+      } else if (criteria === 'pending') {
+        matchesCriteria = criteriaFields.some(s => s === 'pending');
+      } else if (criteria === 'not-met') {
+        matchesCriteria =
+          criteriaFields.some(s => s === 'not-met') &&
+          !criteriaFields.some(s => s === 'pending');
+      }
 
       return matchesName && matchesRank && matchesVessel && matchesVesselType && matchesNationality && matchesCriteria && matchesStatus;
     });
