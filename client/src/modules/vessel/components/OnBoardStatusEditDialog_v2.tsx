@@ -220,11 +220,15 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             const isTakeover = data.takeOverConfirmation && data.takeOverDate;
 
             if (data.reliefStatus === "Signed Off") {
-                if (!data.signOffDate) {
-                    throw new Error("Sign Off Date is required when Relief Status is Signed Off");
-                }
+                const signedOffErrors: string[] = [];
                 if (!data.signOffReason || !SIGN_OFF_REASONS.includes(data.signOffReason as any)) {
-                    throw new Error("Please select a valid Reason for sign-off");
+                    signedOffErrors.push("Please select a valid Reason for sign-off");
+                }
+                if (!data.signOffDate) {
+                    signedOffErrors.push("Sign Off Date is required when Relief Status is Signed Off");
+                }
+                if (signedOffErrors.length > 0) {
+                    throw new Error(signedOffErrors.join(" • "));
                 }
             }
 
