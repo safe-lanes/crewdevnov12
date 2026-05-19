@@ -145,25 +145,28 @@ export function ViolationsOverviewDialog({
     return map;
   }, [vesselMasterData]);
 
-  // Aggregate NC counts per crew member to match the vessel aggregate rule
-  // (a crew with one actual-NC record and one predicted-NC record should NOT
-  // be counted as a Predicted NC, even though the predicted record on its own
-  // would satisfy predictedNCs>0 && totalNCs===0).
-  const predictedNCCrewIds = useMemo(() => {
+  // Aggregate NC counts per (vesselId, crewMemberId) to match the vessel
+  // aggregate rule in vesselRecordsService, which aggregates within each
+  // vessel-month group. A crew with split assignments on the same vessel
+  // (one actual-NC stint + one predicted-NC stint) should NOT be counted as
+  // a Predicted NC; but cross-vessel transfers are counted independently
+  // per vessel, matching how the tile sums across the selected vessels.
+  const predictedNCKeys = useMemo(() => {
     if (!isPredicted) return null;
-    const perCrew = new Map<string, { totalNCs: number; predictedNCs: number }>();
+    const keyOf = (c: any) => `${c.vesselId}|${c.crewMemberId}`;
+    const perKey = new Map<string, { totalNCs: number; predictedNCs: number }>();
     for (const crew of crewSummaries) {
-      const cid = crew.crewMemberId;
-      if (!cid) continue;
-      const prev = perCrew.get(cid) || { totalNCs: 0, predictedNCs: 0 };
-      perCrew.set(cid, {
+      if (!crew.crewMemberId || !crew.vesselId) continue;
+      const k = keyOf(crew);
+      const prev = perKey.get(k) || { totalNCs: 0, predictedNCs: 0 };
+      perKey.set(k, {
         totalNCs: prev.totalNCs + (crew.totalNCs ?? 0),
         predictedNCs: prev.predictedNCs + (crew.predictedNCs ?? 0),
       });
     }
     const qualifying = new Set<string>();
-    Array.from(perCrew.entries()).forEach(([cid, agg]) => {
-      if (agg.totalNCs === 0 && agg.predictedNCs > 0) qualifying.add(cid);
+    Array.from(perKey.entries()).forEach(([k, agg]) => {
+      if (agg.totalNCs === 0 && agg.predictedNCs > 0) qualifying.add(k);
     });
     return qualifying;
   }, [crewSummaries, isPredicted]);
@@ -175,12 +178,12 @@ export function ViolationsOverviewDialog({
         const violationDatesField = isPredicted ? crew.predictedViolationDates : crew.violationDates;
         if (!violationDatesField || violationDatesField === '[]') return false;
         if (isPredicted) {
-          return predictedNCCrewIds?.has(crew.crewMemberId) ?? false;
+          return predictedNCKeys?.has(`${crew.vesselId}|${crew.crewMemberId}`) ?? false;
         }
         return true;
       })
       .map(crew => crew.crewMemberId);
-  }, [crewSummaries, isPredicted, predictedNCCrewIds]);
+  }, [crewSummaries, isPredicted, predictedNCKeys]);
 
   // Fetch daily records only for crew members with violations
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
@@ -295,8 +298,8 @@ export function ViolationsOverviewDialog({
       if (!violationDatesField) return;
 
       // For Predicted NCs, only render crew counted by the tile aggregate
-      // (per-crew-member aggregation, matches vesselRecordsService).
-      if (isPredicted && !predictedNCCrewIds?.has(crew.crewMemberId)) {
+      // (per-(vessel, crew) aggregation, matches vesselRecordsService).
+      if (isPredicted && !predictedNCKeys?.has(`${crew.vesselId}|${crew.crewMemberId}`)) {
         return;
       }
 
@@ -344,7 +347,7 @@ export function ViolationsOverviewDialog({
       if (a.crewMemberName !== b.crewMemberName) return a.crewMemberName.localeCompare(b.crewMemberName);
       return a.day - b.day;
     });
-  }, [crewSummaries, allDailyRecords, vesselIdsToUse, monthValue, complianceMode, opaMode, isPredicted, rankFilter, vesselNameMap, crewIdsWithViolations, predictedNCCrewIds]);
+  }, [crewSummaries, allDailyRecords, vesselIdsToUse, monthValue, complianceMode, opaMode, isPredicted, rankFilter, vesselNameMap, crewIdsWithViolations, predictedNCKeys]);
 
   // Format month for display
   const formatMonth = (monthStr: string) => {
