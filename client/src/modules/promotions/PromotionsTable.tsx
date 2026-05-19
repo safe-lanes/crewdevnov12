@@ -18,6 +18,17 @@ import { PromotionReviewForm } from './PromotionReviewForm';
 const REFERENCE_DATA_STALE_TIME = 10 * 60 * 1000;
 const REVIEW_DATA_STALE_TIME = 2 * 60 * 1000;
 
+const PROMOTION_STATUS_BY_KEY: Record<string, 'In Progress' | 'Submitted' | 'Approved' | 'Completed'> = {
+  'in progress': 'In Progress',
+  'submitted': 'Submitted',
+  'for approval': 'Submitted',
+  'approved': 'Approved',
+  'completed': 'Completed',
+};
+
+const normalizePromotionStatus = (raw?: string | null): 'In Progress' | 'Submitted' | 'Approved' | 'Completed' =>
+  PROMOTION_STATUS_BY_KEY[(raw ?? '').trim().toLowerCase()] ?? 'In Progress';
+
 const calculateAge = (dob: string): number | null => {
   if (!dob || dob === '-') return null;
   
@@ -119,8 +130,9 @@ const StatusBadgeRenderer = (params: ICellRendererParams) => {
   const getBadgeClass = () => {
     switch (status) {
       case 'In Progress': return 'bg-yellow-100 text-yellow-800';
-      case 'For Approval': return 'bg-blue-100 text-blue-800';
+      case 'Submitted': return 'bg-blue-100 text-blue-800';
       case 'Approved': return 'bg-green-100 text-green-800';
+      case 'Completed': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -463,7 +475,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         
         const trainDocsStatus = computeCriteriaStatus(review, 'a2.8');
         
-        const reviewStatus = review?.status || 'In Progress';
+        const reviewStatus = normalizePromotionStatus(review?.status);
         
         return {
           crewId: crew.employeeId || crew.empNo || '-',

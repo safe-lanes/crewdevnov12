@@ -218,7 +218,7 @@ export function PromotionsModule() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="In Progress">In Progress</SelectItem>
-                                <SelectItem value="For Approval">For Approval</SelectItem>
+                                <SelectItem value="Submitted">Submitted</SelectItem>
                                 <SelectItem value="Approved">Approved</SelectItem>
                             </SelectContent>
                         </Select>
