@@ -66,17 +66,18 @@ export function VesselNCsDialog({
     [vesselRecords]
   );
 
-  // Fetch crew records for all vessel records using V2 API
-  // V1 pattern: uses vesselId param
+  // Fetch crew records scoped to the selected vessels AND month.
+  // Without monthValue, the server returns every record the vessel has ever had,
+  // which causes NCs from other months to leak into this popup.
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'crew-records', vesselUuids, complianceMode, opaMode],
+    queryKey: ['v2', 'rest-hours', 'crew-records', { vesselUuids, monthValue, complianceMode, opaMode }],
     queryFn: async () => {
-      const allCrewRecords: any[] = [];
-      for (const vesselId of vesselUuids) {
-        const records = await restHoursApiV2.crewRecords.getAll({ vesselId });
-        allCrewRecords.push(...records);
-      }
-      return allCrewRecords;
+      return restHoursApiV2.crewRecords.getAll({
+        vesselId: vesselUuids,
+        monthValue,
+        complianceMode,
+        opaMode,
+      });
     },
     enabled: open && vesselUuids.length > 0,
   });
@@ -105,12 +106,17 @@ export function VesselNCsDialog({
     return crewSummaries.filter(crew => crew.totalNCs > 0);
   }, [crewSummaries]);
 
-  // Fetch NC reports for all vessel records using V2 API
+  // Fetch NC reports and constrain to the selected vessels AND month.
+  // The /nc-reports/all endpoint has no server-side month filter, so we filter
+  // client-side on monthValue to avoid mixing reports from other months.
   const { data: allNCReports = [], isLoading: isLoadingNCs } = useQuery<NCReport[]>({
-    queryKey: ['v2', 'rest-hours', 'nc-reports', 'all', vesselUuids],
+    queryKey: ['v2', 'rest-hours', 'nc-reports', 'all', { vesselUuids, monthValue }],
     queryFn: async () => {
       const reports = await restHoursApiV2.ncReports.getAll();
-      return reports.filter((r: any) => vesselUuids.includes(r.vesselId) || vesselUuids.includes(r.vesselRecordUuid));
+      return reports.filter((r: any) =>
+        (vesselUuids.includes(r.vesselId) || vesselUuids.includes(r.vesselRecordUuid)) &&
+        r.monthValue === monthValue
+      );
     },
     enabled: open && crewRecordsWithNCs.length > 0 && vesselUuids.length > 0,
   });
