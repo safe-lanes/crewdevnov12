@@ -424,11 +424,15 @@ export const crewRecordsService = {
       allRecords.push(...records);
     }
 
-    if (vesselIds && vesselIds.length > 0 && monthValue) {
+    const vesselIdsForEnrichment = (vesselIds && vesselIds.length > 0)
+      ? vesselIds
+      : Array.from(new Set(allRecords.map(r => r.vesselId).filter(Boolean)));
+
+    if (vesselIdsForEnrichment.length > 0 && monthValue) {
       const { firstDay, lastDay } = getMonthBounds(monthValue);
 
       const db = getDb();
-      for (const vesselId of vesselIds) {
+      for (const vesselId of vesselIdsForEnrichment) {
 
         // Query ALL assignments for this vessel that overlap with the given month.
         // Overlap condition:
