@@ -1055,6 +1055,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
             }
             title="Manage Attachments"
             itemName={truncatedName}
+            contentClassName="z-[220]"
           />
         );
       })()}

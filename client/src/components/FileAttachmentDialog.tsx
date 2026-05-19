@@ -33,6 +33,7 @@ interface FileAttachmentDialogProps {
   onDeleteAttachment?: (id: number, attUuid: string) => Promise<void>;
   title?: string;
   itemName?: string;
+  contentClassName?: string;
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -46,6 +47,7 @@ export function FileAttachmentDialog({
   onDeleteAttachment,
   title = 'Manage Attachments',
   itemName,
+  contentClassName,
 }: FileAttachmentDialogProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -281,7 +283,7 @@ export function FileAttachmentDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className={`sm:max-w-[500px] ${contentClassName ?? ''}`}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
