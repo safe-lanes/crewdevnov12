@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Plus, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 interface VesselOption {
   id: string;
@@ -75,15 +75,6 @@ export const PartCExecution = memo(function PartCExecution({
                 <Label htmlFor="promotion-rejected" className="text-sm cursor-pointer">Rejected</Label>
               </div>
             </RadioGroup>
-            <Button 
-              type="button"
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0 ml-auto"
-              data-testid="button-info-promotion-confirmed"
-            >
-              <Plus className="h-4 w-4 text-gray-600" />
-            </Button>
           </div>
 
           <div className="flex items-center gap-4">
@@ -107,15 +98,6 @@ export const PartCExecution = memo(function PartCExecution({
                 )}
               </SelectContent>
             </Select>
-            <Button 
-              type="button"
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0"
-              data-testid="button-info-vessel-assigned"
-            >
-              <Plus className="h-4 w-4 text-gray-600" />
-            </Button>
           </div>
 
           <div className="flex items-center gap-4">
@@ -142,15 +124,6 @@ export const PartCExecution = memo(function PartCExecution({
                 <Label htmlFor="timing-prior-joining" className="text-sm cursor-pointer">Promoted prior joining</Label>
               </div>
             </RadioGroup>
-            <Button 
-              type="button"
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0"
-              data-testid="button-info-promotion-date"
-            >
-              <Plus className="h-4 w-4 text-gray-600" />
-            </Button>
           </div>
         </div>
 
