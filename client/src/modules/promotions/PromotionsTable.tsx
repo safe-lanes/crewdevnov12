@@ -196,7 +196,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [selectedPromotion, setSelectedPromotion] = useState<any | null>(null);
   
-  const { getVesselName } = useVesselLookup();
+  const { getVesselName, getVessel } = useVesselLookup();
   
   const { normalizeRank, isLoading: isLoadingRanks } = useRankNormalization();
 
@@ -538,7 +538,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           promotionToRank: nextRank || '-',
           vesselLeave: vesselLeave,
           presentVessel: crew.vesselUuid || null,
-          vesselType: crew.vesselType || null,
+          vesselType: (crew.vesselUuid ? getVessel(crew.vesselUuid)?.vesselType : null) || null,
           license: licenseStatus,
           sea: seaStatus,
           reco: recoStatus,
@@ -551,7 +551,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         };
       })
       .filter(item => item !== null);
-  }, [crewMembers, hierarchies, normalizeRank, ageRequirementsByRank, checklistConfigByRank, reviewLookup, computeCriteriaStatus, computeParentCriteriaStatus]);
+  }, [crewMembers, hierarchies, normalizeRank, ageRequirementsByRank, checklistConfigByRank, reviewLookup, computeCriteriaStatus, computeParentCriteriaStatus, getVessel]);
 
   const filteredData = useMemo(() => {
     return promotionData.filter(item => {
