@@ -640,15 +640,16 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       });
     });
     
-    // If no released version exists yet for this rank group, show the
-    // canonical "00 / today" placeholder (NOT the parent form's versionDate,
-    // which mirrors the max released across all rank groups and would leak
-    // an unrelated number/date onto a fresh rank group).
-    if (result.length === 0 || !result.some(v => v.status === 'Released')) {
+    // If the rank group has nothing saved yet (no real draft AND no released
+    // version), show a single Draft v00 placeholder so the user can start
+    // editing. NEVER synthesize a fake "Released" entry — doing so would
+    // mislead admins into thinking a release exists when the appraisal flow
+    // (which only honours real released versions) still blocks form open.
+    if (result.length === 0) {
       result.push({
         versionNo: "00",
         versionDate: format(new Date(), "dd-MMM-yyyy"),
-        status: "Released"
+        status: "Draft"
       });
     }
     
