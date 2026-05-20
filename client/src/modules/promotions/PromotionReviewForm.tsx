@@ -997,15 +997,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const existingStatusNormalized = typeof existingStatusRaw === 'string'
       ? existingStatusRaw.trim().toLowerCase().replace(/\s+/g, '_')
       : '';
-    const advancedStatuses = new Set(['submitted', 'approved', 'completed', 'in_progress']);
-    const statusToSend = advancedStatuses.has(existingStatusNormalized)
-      ? existingStatusRaw
-      : 'draft';
+    const isExistingReview = !!effectiveReviewUuid;
+    const shouldDowngradeFromInProgress = existingStatusNormalized === 'in_progress';
+    const sendStatusAsDraft = !isExistingReview || shouldDowngradeFromInProgress;
 
     return {
       crewMemberId: promotionData?.crewMemberId,
       promotionToRank: promotionData?.promotionToRank,
-      status: statusToSend,
+      ...(sendStatusAsDraft ? { status: 'draft' } : {}),
       selectedVesselTypeForA2_3b: includeA ? (selectedVesselTypeForA2_3b || null) : undefined,
       criteriaVerifiedStatus: includeA ? JSON.stringify(criteriaVerifiedStatus) : undefined,
       criteriaMeetsStatus: includeA ? JSON.stringify(criteriaMeetsStatus) : undefined,
@@ -1024,7 +1023,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       promotionTiming: includeC ? promotionTiming : undefined,
       partCNotes: includeC ? (formData.partCNotes || null) : undefined,
     };
-  }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses]);
+  }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses, effectiveReviewUuid]);
 
   const hasBlankA4Comment = useMemo(
     () => comments.some(c => !c.text?.trim()),
