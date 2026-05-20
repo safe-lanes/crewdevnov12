@@ -3380,12 +3380,19 @@ const AdminModuleInner = (): JSX.Element => {
       return { versionNo: latest.versionNo, versionDate: latest.versionDate };
     };
 
+    // Show the Draft pill whenever the rank group has no released version yet
+    // (either a real in-progress draft exists, OR the rank group has nothing
+    // saved at all — in which case the Form Editor synthesizes a v00 Draft
+    // placeholder). Keeps this list consistent with the editor's state.
     const hasDraftForRankGroup = (rankGroupName: string, formId: number): boolean => {
       const rg = allRankGroups.find(r => r.name === rankGroupName && r.formId === formId);
       if (!rg) return false;
-      return allFormVersions.some(
-        v => v.formId === formId && v.rankGroupId === rg.id && v.status === 'draft'
+      const rgVersions = allFormVersions.filter(
+        v => v.formId === formId && v.rankGroupId === rg.id
       );
+      const hasRealDraft = rgVersions.some(v => v.status === 'draft');
+      const hasReleased = rgVersions.some(v => v.status === 'released');
+      return hasRealDraft || !hasReleased;
     };
 
     // Group forms by category first
