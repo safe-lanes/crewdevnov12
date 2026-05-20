@@ -905,7 +905,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }
   }, [isLoadingReview, existingReviewData]);
 
-  const collectFormData = useCallback((formData: PromotionReviewFormData) => {
+  const collectFormData = useCallback((formData: PromotionReviewFormData, scope: 'a' | 'b' | 'c' | 'full' = 'full') => {
+    const includeA = scope === 'a' || scope === 'full';
+    const includeB = scope === 'b' || scope === 'full';
+    const includeC = scope === 'c' || scope === 'full';
     const criteriaVerifiedStatus: Record<string, string> = {};
     const criteriaMeetsStatus: Record<string, string> = {};
     
@@ -1002,24 +1005,24 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     return {
       crewMemberId: promotionData?.crewMemberId,
       promotionToRank: promotionData?.promotionToRank,
-      selectedVesselTypeForA2_3b: selectedVesselTypeForA2_3b || null,
-      criteriaVerifiedStatus: JSON.stringify(criteriaVerifiedStatus),
-      criteriaMeetsStatus: JSON.stringify(criteriaMeetsStatus),
-      cesTestsData: JSON.stringify(cesTests),
-      criteriaComments: JSON.stringify({ ...criteriaComments, a3: trainingComments, a4: commentsRef.current }),
-      trainingNeeds: JSON.stringify(trainingNeeds),
-      approvalData: JSON.stringify(approvers),
-      promotionConfirmed,
-      vesselAssigned,
-      promotionDate,
-      promotionTiming,
-      partANotes: formData.partANotes || null,
-      partBNotes: formData.partBNotes || null,
-      partCNotes: formData.partCNotes || null,
-      selectedApproversForSubmission: JSON.stringify(selectedApproversForSubmission),
-      b2VesselTypes: vesselTypes,
-      b2FleetGroups: vesselClasses,
       status: statusToSend,
+      selectedVesselTypeForA2_3b: includeA ? (selectedVesselTypeForA2_3b || null) : undefined,
+      criteriaVerifiedStatus: includeA ? JSON.stringify(criteriaVerifiedStatus) : undefined,
+      criteriaMeetsStatus: includeA ? JSON.stringify(criteriaMeetsStatus) : undefined,
+      cesTestsData: includeA ? JSON.stringify(cesTests) : undefined,
+      criteriaComments: includeA ? JSON.stringify({ ...criteriaComments, a3: trainingComments, a4: commentsRef.current }) : undefined,
+      trainingNeeds: includeA ? JSON.stringify(trainingNeeds) : undefined,
+      partANotes: includeA ? (formData.partANotes || null) : undefined,
+      approvalData: includeB ? JSON.stringify(approvers) : undefined as string | undefined,
+      selectedApproversForSubmission: includeB ? JSON.stringify(selectedApproversForSubmission) : undefined as string | undefined,
+      b2VesselTypes: includeB ? vesselTypes : undefined,
+      b2FleetGroups: includeB ? vesselClasses : undefined,
+      partBNotes: includeB ? (formData.partBNotes || null) : undefined,
+      promotionConfirmed: includeC ? promotionConfirmed : undefined,
+      vesselAssigned: includeC ? vesselAssigned : undefined,
+      promotionDate: includeC ? promotionDate : undefined,
+      promotionTiming: includeC ? promotionTiming : undefined,
+      partCNotes: includeC ? (formData.partCNotes || null) : undefined,
     };
   }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses]);
 
@@ -1040,13 +1043,33 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     return false;
   }, [hasBlankA4Comment, toast]);
 
-  const handleSaveDraft = useCallback(() => {
+  const handleSaveDraftA = useCallback(() => {
     if (guardBlankA4()) return;
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
-    });
+    }, 'a');
+    saveMutation.mutate({ data: reviewData, action: 'draft' });
+  }, [collectFormData, saveMutation, guardBlankA4]);
+
+  const handleSaveDraftB = useCallback(() => {
+    if (guardBlankA4()) return;
+    const reviewData = collectFormData({
+      partANotes: '',
+      partBNotes: '',
+      partCNotes: '',
+    }, 'b');
+    saveMutation.mutate({ data: reviewData, action: 'draft' });
+  }, [collectFormData, saveMutation, guardBlankA4]);
+
+  const handleSaveDraftC = useCallback(() => {
+    if (guardBlankA4()) return;
+    const reviewData = collectFormData({
+      partANotes: '',
+      partBNotes: '',
+      partCNotes: '',
+    }, 'c');
     saveMutation.mutate({ data: reviewData, action: 'draft' });
   }, [collectFormData, saveMutation, guardBlankA4]);
 
@@ -1056,7 +1079,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
-    });
+    }, 'b');
     reviewData.status = 'approved';
     saveMutation.mutate({ data: reviewData, action: 'submit-b' });
   }, [collectFormData, saveMutation, guardBlankA4]);
@@ -1067,14 +1090,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
-    });
+    }, 'c');
     reviewData.status = 'completed';
     saveMutation.mutate({ data: reviewData, action: 'submit-c' });
   }, [collectFormData, saveMutation, guardBlankA4]);
 
   const handleSubmit = (data: PromotionReviewFormData) => {
     if (guardBlankA4()) return;
-    const reviewData = collectFormData(data);
+    const reviewData = collectFormData(data, 'a');
     saveMutation.mutate({ data: reviewData, action: 'draft' });
   };
 
@@ -1403,9 +1426,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
-    });
+    }, 'a');
     
     reviewData.approvalData = JSON.stringify(newApprovers);
+    reviewData.selectedApproversForSubmission = JSON.stringify(resolvedApprovers);
     reviewData.status = 'submitted';
     
     const approverCount = selectedApproversForSubmission.length;
@@ -1692,7 +1716,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                       type="button"
                       variant="outline" 
                       className="px-8"
-                      onClick={handleSaveDraft}
+                      onClick={handleSaveDraftA}
                       data-testid="button-save-part-a"
                     >
                       Save
@@ -1728,7 +1752,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               vesselClassOptions={b2FleetGroupOptions}
               isLoadingVesselTypeOptions={isLoadingVesselTypesV2}
               isLoadingVesselClassOptions={isLoadingFleetGroupsV2}
-              onSave={handleSaveDraft}
+              onSave={handleSaveDraftB}
               onSubmit={handleSubmitPartB}
               approverNames={approverMasterData.map(a => a.displayName)}
             />
@@ -1746,7 +1770,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               onSetPromotionTiming={setPromotionTiming}
               vessels={vesselOptions}
               currentUserDisplay={currentUserDisplay}
-              onSave={handleSaveDraft}
+              onSave={handleSaveDraftC}
               onSubmit={handleSubmitPartC}
             />
           )}
