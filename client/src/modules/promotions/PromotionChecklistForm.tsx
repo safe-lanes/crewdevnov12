@@ -35,6 +35,8 @@ interface SeaServiceEntry {
   deadweight?: string | number;
   engineType?: string;
   enginePower?: string;
+  engineTypePower?: string;
+  isActive?: boolean;
   fromDate?: string;
   from?: string;
   toDate?: string;
@@ -638,7 +640,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                       <TableCell className="text-sm" data-testid={`cell-vessel-name-${service.id || index}`}>{service.vessel || service.vesselName || 'N/A'}</TableCell>
                       <TableCell className="text-sm" data-testid={`cell-vessel-type-${service.id || index}`}>{service.vesselType || 'N/A'}</TableCell>
                       <TableCell className="text-sm" data-testid={`cell-deadweight-${service.id || index}`}>{service.deadweight || 'N/A'}</TableCell>
-                      <TableCell className="text-sm" data-testid={`cell-engine-power-${service.id || index}`}>{service.engineType || service.enginePower || 'N/A'}</TableCell>
+                      <TableCell className="text-sm normal-case" data-testid={`cell-engine-power-${service.id || index}`}>{service.engineTypePower || service.engineType || service.enginePower || 'N/A'}</TableCell>
                       <TableCell className="text-sm" data-testid={`cell-from-${service.id || index}`}>{service.fromDate || service.from || 'N/A'}</TableCell>
                       <TableCell className="text-sm" data-testid={`cell-to-${service.id || index}`}>{service.toDate || service.to || 'N/A'}</TableCell>
                       <TableCell className="text-sm" data-testid={`cell-period-${service.id || index}`}>{service.period || service.duration || 'N/A'}</TableCell>

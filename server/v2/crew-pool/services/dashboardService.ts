@@ -210,17 +210,35 @@ export const dashboardService = {
       compliance: this.getComplianceStatus(crew, licenses),
       licenses: licenses,
       seaService: companySeaService.map((s: any) => {
-        const etpParts = s.engineTypePower ? s.engineTypePower.split('/').map((p: string) => p.trim()) : ['', ''];
+        const engineTypePower: string = s.engineTypePower || '';
+        const isActive = !s.toDate;
+        const today = new Date();
+        const effectiveToDate = s.toDate || today;
+        const formattedToDate = this.formatDate(effectiveToDate as any) || '';
+        let periodMonths: number | null = null;
+        if (s.periodMonths != null && !isActive) {
+          periodMonths = Number(s.periodMonths);
+        } else if (s.fromDate) {
+          periodMonths = crewSeaServiceService.calculatePeriodMonths(s.fromDate, s.toDate);
+        }
+        const periodStr = periodMonths != null
+          ? (Math.round(periodMonths * 10) / 10).toString()
+          : '';
         return {
           id: s.seaUuid,
           vesselName: s.vesselName || '',
           vesselType: s.vesselTypeName || '',
           deadweight: s.deadweight || '',
-          engineType: etpParts[0] || '',
-          enginePower: etpParts[1] || '',
+          // Full original value — single source of truth
+          engineTypePower,
+          // Back-compat: legacy consumers reading `engineType` get the full string;
+          // `enginePower` kept empty so any concatenator won't duplicate the value.
+          engineType: engineTypePower,
+          enginePower: '',
           fromDate: s.fromDate ? this.formatDate(s.fromDate) : '',
-          toDate: s.toDate ? this.formatDate(s.toDate) : '',
-          period: s.periodMonths != null ? String(s.periodMonths) : '',
+          toDate: formattedToDate,
+          period: periodStr,
+          isActive,
           rank: s.rank || '',
         };
       }),
