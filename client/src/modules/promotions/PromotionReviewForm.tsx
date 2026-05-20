@@ -1410,17 +1410,25 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     
     const currentDate = new Date().toISOString().split('T')[0];
     
-    const newApprovers: Approver[] = resolvedApprovers.map((approverObj) => ({
-      id: approverObj.userUuid,
-      date: currentDate,
-      approver: approverObj.displayName,
-      status: '',
-      approval: '',
-      comments: '',
-      isFromPartA: true,
-    }));
-    
-    setApprovers(newApprovers);
+    const newApprovers: Approver[] = resolvedApprovers.map((approverObj) => {
+      const existing = approvers.find(a => a.isFromPartA && a.id === approverObj.userUuid);
+      return existing
+        ? { ...existing, approver: approverObj.displayName, isFromPartA: true }
+        : {
+            id: approverObj.userUuid,
+            date: currentDate,
+            approver: approverObj.displayName,
+            status: '',
+            approval: '',
+            comments: '',
+            isFromPartA: true,
+          };
+    });
+
+    const preservedNonPartA = approvers.filter(a => !a.isFromPartA);
+    const mergedApprovers: Approver[] = [...newApprovers, ...preservedNonPartA];
+
+    setApprovers(mergedApprovers);
     
     const reviewData = collectFormData({
       partANotes: '',
@@ -1428,7 +1436,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partCNotes: '',
     }, 'a');
     
-    reviewData.approvalData = JSON.stringify(newApprovers);
+    reviewData.approvalData = JSON.stringify(mergedApprovers);
     reviewData.selectedApproversForSubmission = JSON.stringify(resolvedApprovers);
     reviewData.status = 'submitted';
     
