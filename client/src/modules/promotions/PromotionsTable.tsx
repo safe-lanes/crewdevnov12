@@ -538,6 +538,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           promotionToRank: nextRank || '-',
           vesselLeave: vesselLeave,
           presentVessel: crew.vesselUuid || null,
+          vesselType: crew.vesselType || null,
           license: licenseStatus,
           sea: seaStatus,
           reco: recoStatus,
@@ -563,7 +564,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       const matchesNationality = !nationality || item.nationality === nationality;
       const matchesStatus = !status || item.status === status;
       
-      const matchesVesselType = true;
+      const matchesVesselType = !vesselType || item.vesselType === vesselType;
       
       const criteriaFields = [
         item.license,
