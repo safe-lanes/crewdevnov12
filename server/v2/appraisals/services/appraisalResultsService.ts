@@ -11,6 +11,7 @@ import {
   ApprOfficeReviewsRepository,
   ApprTrainingFollowupsRepository,
 } from "../repositories";
+import { CrewMembersRepository } from "../../crew-pool/repositories";
 import { assembleV1Response } from "../utils/responseAssembler";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import { formsService } from "../../admin/services";
@@ -27,6 +28,7 @@ const appraiserCommentsRepo = new ApprAppraiserCommentsRepository();
 const seafarerCommentsRepo = new ApprSeafarerCommentsRepository();
 const officeReviewsRepo = new ApprOfficeReviewsRepository();
 const trainingFollowupsRepo = new ApprTrainingFollowupsRepository();
+const crewMembersRepo = new CrewMembersRepository();
 
 async function fetchChildDataForUuids(appraisalUuids: string[]) {
   if (appraisalUuids.length === 0) {
@@ -99,7 +101,38 @@ export class AppraisalResultsService {
   }
 
   async getPromotionRecommendations(crewMemberId: string, rank: string) {
-    const appraisals = await appraisalResultsRepo.findByCrewMemberId(crewMemberId);
+    // Promotion and Appraisal modules historically disagree on what
+    // crew_member_id means: Promotion stores the crew's emp_no (e.g. "A100084"),
+    // while Appraisal stores the crew_uuid in most cases (and sometimes the
+    // emp_no in older rows). Resolve the incoming identifier to the full set
+    // of values an appraisal row might use for this crew, then look up
+    // appraisals matching any of them.
+    const candidateIds = new Set<string>();
+    if (crewMemberId) candidateIds.add(crewMemberId);
+
+    // Try to resolve the crew member. The incoming value is usually an emp_no
+    // (from the Promotion form) but could also be a crew_uuid or numeric id.
+    // Repo errors are intentionally allowed to propagate so real DB issues
+    // surface as 5xx rather than silently undercounting.
+    let crew = await crewMembersRepo.findByEmpNo(crewMemberId);
+    if (!crew) {
+      crew = await crewMembersRepo.findByUuid(crewMemberId);
+    }
+    if (!crew) {
+      const numericId = Number(crewMemberId);
+      if (Number.isFinite(numericId) && numericId > 0) {
+        crew = await crewMembersRepo.findById(numericId);
+      }
+    }
+    if (crew) {
+      if (crew.empNo) candidateIds.add(crew.empNo);
+      if (crew.crewUuid) candidateIds.add(crew.crewUuid);
+      if (crew.id != null) candidateIds.add(String(crew.id));
+    }
+
+    const appraisals = await appraisalResultsRepo.findByCrewMemberIds(
+      Array.from(candidateIds),
+    );
 
     // Per spec, count is by crewId across all the crew's appraisal forms.
     // Rank is no longer used to filter — it is accepted only for backward
