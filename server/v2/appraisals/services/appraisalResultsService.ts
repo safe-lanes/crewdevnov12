@@ -312,7 +312,13 @@ export class AppraisalResultsService {
     return appraisalResultsRepo.softDeleteById(id);
   }
 
-  async submitStage(id: number, stage: "stage1" | "stage2" | "stage3", data: any, submittedBy: string) {
+  async submitStage(
+    id: number,
+    stage: "stage1" | "stage2" | "stage3",
+    data: any,
+    submittedBy: string,
+    extra?: { competenceRating?: string | null; behavioralRating?: string | null; overallRating?: string | null },
+  ) {
     const appraisal = await appraisalResultsRepo.findById(id);
     if (!appraisal) return null;
 
@@ -352,6 +358,13 @@ export class AppraisalResultsService {
       stageUpdate.stage2Status = "completed";
       stageUpdate.stage2SubmittedAt = new Date().toISOString();
       stageUpdate.stage2SubmittedBy = submittedBy;
+      // Persist calculated scores so the Crew Appraisals table reflects the
+      // Overall score immediately after Stage 2 submission (no reopen/save-draft needed).
+      if (extra) {
+        if (extra.competenceRating !== undefined) stageUpdate.competenceRating = extra.competenceRating;
+        if (extra.behavioralRating !== undefined) stageUpdate.behavioralRating = extra.behavioralRating;
+        if (extra.overallRating !== undefined) stageUpdate.overallRating = extra.overallRating;
+      }
     } else if (stage === "stage3") {
       stageUpdate.stage3Status = "completed";
       stageUpdate.stage3SubmittedAt = new Date().toISOString();

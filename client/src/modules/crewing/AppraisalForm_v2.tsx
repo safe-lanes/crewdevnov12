@@ -834,6 +834,34 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Stage 2 mutation (Parts C, D, E, F) - accepts synced form data to ensure comment persistence
   const stage2Mutation = useMutation({
     mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
+      // Calculate scores from current form data so the Crew Appraisals table
+      // reflects the Overall score immediately on direct Stage 2 submit
+      // (mirrors logic used by saveAppraisalMutation / Save Draft).
+      const calcScore = (assessments: any[]) => {
+        let totalScore = 0;
+        let totalWeight = 0;
+        assessments?.forEach(assessment => {
+          if (assessment.effectiveness && assessment.weight) {
+            let rating = 0;
+            switch (assessment.effectiveness) {
+              case "5-exceeds-expectations": rating = 5; break;
+              case "4-meets-expectations": rating = 4; break;
+              case "3-somewhat-meets-expectations": rating = 3; break;
+              case "2-below-expectations": rating = 2; break;
+              case "1-significantly-below-expectations": rating = 1; break;
+            }
+            totalScore += (rating * assessment.weight) / 100;
+            totalWeight += assessment.weight;
+          }
+        });
+        return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : null;
+      };
+      const competenceScore = calcScore(formData.competenceAssessments);
+      const behavioralScore = calcScore(formData.behaviouralAssessments);
+      const overallScore = (competenceScore && behavioralScore)
+        ? ((parseFloat(competenceScore) + parseFloat(behavioralScore)) / 2).toFixed(1)
+        : null;
+
       const stageData = {
         competenceAssessments: formData.competenceAssessments,
         behaviouralAssessments: formData.behaviouralAssessments,
@@ -846,6 +874,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage2`, {
         data: stageData,
         submittedBy: 'Current User',
+        competenceRating: competenceScore,
+        behavioralRating: behavioralScore,
+        overallRating: overallScore,
       });
       return response.json();
     },
