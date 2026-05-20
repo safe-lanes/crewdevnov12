@@ -329,10 +329,30 @@ export class AppraisalResultsService {
       throw new Error("Stage 2 must be submitted before Stage 3");
     }
 
-    let newStatus = appraisal.status;
-    if (stage === "stage1") newStatus = "preliminary";
-    else if (stage === "stage2") newStatus = "submitted";
-    else if (stage === "stage3") newStatus = "reviewed";
+    // Forward-only status progression: draft < preliminary < submitted < reviewed.
+    // A stage submission may advance the status to its nominal value but must
+    // never regress an appraisal that is already further along (e.g. resubmitting
+    // Stage 1 on a Submitted/Reviewed appraisal must not revert it to Preliminary).
+    const STATUS_ORDER: Record<string, number> = {
+      draft: 0,
+      preliminary: 1,
+      submitted: 2,
+      reviewed: 3,
+    };
+    const normalize = (s: string | null | undefined) =>
+      (s ?? "").trim().toLowerCase();
+    const rank = (s: string | null | undefined) => {
+      const key = normalize(s);
+      return key in STATUS_ORDER ? STATUS_ORDER[key] : -1;
+    };
+    const nominalForStage =
+      stage === "stage1" ? "preliminary"
+      : stage === "stage2" ? "submitted"
+      : "reviewed";
+    const currentNormalized = normalize(appraisal.status);
+    const newStatus = rank(nominalForStage) >= rank(currentNormalized)
+      ? nominalForStage
+      : (currentNormalized in STATUS_ORDER ? currentNormalized : nominalForStage);
 
     const stageUpdate: any = {
       status: newStatus,
