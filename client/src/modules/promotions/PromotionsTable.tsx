@@ -18,7 +18,8 @@ import { PromotionReviewForm } from './PromotionReviewForm';
 const REFERENCE_DATA_STALE_TIME = 10 * 60 * 1000;
 const REVIEW_DATA_STALE_TIME = 2 * 60 * 1000;
 
-const PROMOTION_STATUS_BY_KEY: Record<string, 'In Progress' | 'Submitted' | 'Approved' | 'Completed'> = {
+const PROMOTION_STATUS_BY_KEY: Record<string, 'Draft' | 'In Progress' | 'Submitted' | 'Approved' | 'Completed'> = {
+  'draft': 'Draft',
   'in progress': 'In Progress',
   'submitted': 'Submitted',
   'for approval': 'Submitted',
@@ -26,7 +27,7 @@ const PROMOTION_STATUS_BY_KEY: Record<string, 'In Progress' | 'Submitted' | 'App
   'completed': 'Completed',
 };
 
-const normalizePromotionStatus = (raw?: string | null): 'In Progress' | 'Submitted' | 'Approved' | 'Completed' =>
+const normalizePromotionStatus = (raw?: string | null): 'Draft' | 'In Progress' | 'Submitted' | 'Approved' | 'Completed' =>
   PROMOTION_STATUS_BY_KEY[(raw ?? '').trim().toLowerCase()] ?? 'In Progress';
 
 const calculateAge = (dob: string): number | null => {
@@ -129,6 +130,7 @@ const StatusBadgeRenderer = (params: ICellRendererParams) => {
   
   const getBadgeClass = () => {
     switch (status) {
+      case 'Draft': return 'bg-gray-100 text-gray-800';
       case 'In Progress': return 'bg-yellow-100 text-yellow-800';
       case 'Submitted': return 'bg-blue-100 text-blue-800';
       case 'Approved': return 'bg-green-100 text-green-800';

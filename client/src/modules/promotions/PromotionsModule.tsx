@@ -217,6 +217,7 @@ export function PromotionsModule() {
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="Draft">Draft</SelectItem>
                                 <SelectItem value="In Progress">In Progress</SelectItem>
                                 <SelectItem value="Submitted">Submitted</SelectItem>
                                 <SelectItem value="Approved">Approved</SelectItem>
