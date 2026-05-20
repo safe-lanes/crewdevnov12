@@ -100,15 +100,35 @@ export class AppraisalResultsService {
 
   async getPromotionRecommendations(crewMemberId: string, rank: string) {
     const appraisals = await appraisalResultsRepo.findByCrewMemberId(crewMemberId);
-    let count = 0;
 
+    // Per spec, count is by crewId across all the crew's appraisal forms.
+    // Rank is no longer used to filter — it is accepted only for backward
+    // compatibility and echoed back in the response.
+    // Only count appraisals whose work is at least preliminary — draft
+    // appraisals are explicitly excluded (confirmed business rule).
+    const ELIGIBLE_STATUSES = new Set(["preliminary", "submitted", "reviewed"]);
+
+    const eligibleUuids: string[] = [];
+    const seen = new Set<string>();
     for (const appraisal of appraisals) {
-      const statusLower = appraisal.status?.toLowerCase();
-      if (statusLower !== "submitted" && statusLower !== "reviewed") continue;
-      if ((appraisal.seafarersRank || "").toLowerCase().trim() !== rank.toLowerCase().trim()) continue;
+      const statusLower = (appraisal.status || "").toLowerCase();
+      if (!ELIGIBLE_STATUSES.has(statusLower)) continue;
+      const uuid = appraisal.appraisalUuid;
+      if (!uuid || seen.has(uuid)) continue;
+      seen.add(uuid);
+      eligibleUuids.push(uuid);
+    }
 
-      const childData = await fetchChildDataForUuids([appraisal.appraisalUuid]);
-      const recs = childData.recommendations.get(appraisal.appraisalUuid) || [];
+    if (eligibleUuids.length === 0) {
+      return { count: 0, rank, crewMemberId };
+    }
+
+    // Batched fetch — one query for all eligible appraisals rather than N.
+    const recsByUuid = await recommendationsRepo.findByAppraisalUuids(eligibleUuids);
+
+    let count = 0;
+    for (const uuid of eligibleUuids) {
+      const recs = recsByUuid.get(uuid) || [];
       const promotionRec = recs.find(
         (r: any) => r.question?.toLowerCase().includes("recommended for promotion")
       );

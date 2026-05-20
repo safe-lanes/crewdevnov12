@@ -81,10 +81,9 @@ export class AppraisalResultsController {
   async getPromotionRecommendations(req: Request, res: Response) {
     try {
       const crewMemberId = req.params.crewMemberId;
-      const rank = req.query.rank as string;
-      if (!rank) {
-        return res.status(400).json({ error: "Rank query parameter is required" });
-      }
+      // `rank` is accepted for backward compatibility but no longer used to
+      // filter — the count is purely by crewId across the crew's appraisals.
+      const rank = (req.query.rank as string) || "";
       const result = await service.getPromotionRecommendations(crewMemberId, rank);
       res.json(result);
     } catch (error) {

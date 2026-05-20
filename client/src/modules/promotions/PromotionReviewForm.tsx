@@ -181,9 +181,18 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const presentRank = crewMemberData?.presentRank ?? '';
 
+  // Query key starts with '/api/v2/appraisals' so it gets invalidated automatically
+  // by the existing appraisal save/update/submit mutations (which already invalidate
+  // ['/api/v2/appraisals']). Default fetcher uses queryKey[0] as the URL, so we
+  // supply an explicit queryFn that builds the URL from the structured key parts.
   const { data: promotionRecommendationsData } = useQuery<{ count: number; rank: string; crewMemberId: string }>({
-    queryKey: [`/api/v2/appraisals/crew/${crewMemberId}/promotion-recommendations?rank=${encodeURIComponent(presentRank)}`],
-    enabled: !!crewMemberId && !!presentRank,
+    queryKey: ['/api/v2/appraisals', 'crew', crewMemberId, 'promotion-recommendations', presentRank],
+    enabled: !!crewMemberId,
+    queryFn: async () => {
+      const url = `/api/v2/appraisals/crew/${crewMemberId}/promotion-recommendations?rank=${encodeURIComponent(presentRank || '')}`;
+      const res = await apiRequest('GET', url);
+      return res.json();
+    },
   });
 
   const a2_4_recommendationsResult = useMemo(() => {
