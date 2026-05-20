@@ -155,12 +155,18 @@ export function calculateChecklistProgressFromJson(
   minChecklistCompletionPercent: number = 100
 ): ChecklistProgressResult {
   const { sections, preCalculatedProgress } = parseChecklistDataWithProgress(checklistProgressData);
-  
-  // If we have pre-calculated progress (new format), use it directly
+
+  // Always recompute from raw sections using the CURRENT config when sections are
+  // available. The stored `progress` blob may be stale if admin changed the
+  // verifications-per-question or completion-threshold after the last save.
+  // Only fall back to the stored value if we have no sections to recompute from.
+  if (sections && sections.length > 0) {
+    return calculateChecklistProgress(sections, minChecklistVerifications, minChecklistCompletionPercent);
+  }
+
   if (preCalculatedProgress) {
     return preCalculatedProgress;
   }
-  
-  // Otherwise, calculate from sections (legacy format)
+
   return calculateChecklistProgress(sections, minChecklistVerifications, minChecklistCompletionPercent);
 }

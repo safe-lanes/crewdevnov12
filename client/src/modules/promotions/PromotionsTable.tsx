@@ -263,6 +263,50 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     return map;
   }, [formsData, rankGroupsData, normalizeRank]);
 
+  const checklistConfigByRank = useMemo(() => {
+    const map = new Map<string, { minChecklistVerifications: number; minChecklistCompletionPercent: number }>();
+
+    const promotionReviewForm = formsData.find((f: any) => f.name === 'Promotion Review Form');
+    if (!promotionReviewForm) return map;
+
+    const formRankGroups = rankGroupsData.filter((rg: any) =>
+      rg.formId === promotionReviewForm.id && !rg.archivedAt
+    );
+
+    for (const rg of formRankGroups) {
+      let ranks: string[] = [];
+      try {
+        ranks = typeof rg.ranks === 'string' ? JSON.parse(rg.ranks) : rg.ranks || [];
+      } catch {
+        ranks = [];
+      }
+
+      let config: any = null;
+      try {
+        if (rg.configuration) {
+          const parsed = typeof rg.configuration === 'string' ? JSON.parse(rg.configuration) : rg.configuration;
+          config = parsed?.promotionA2 ?? parsed;
+        }
+      } catch {
+        config = null;
+      }
+
+      if (config) {
+        const minVer = Number(config.minChecklistVerifications);
+        const minPct = Number(config.minChecklistCompletionPercent);
+        const entry = {
+          minChecklistVerifications: Number.isFinite(minVer) && minVer > 0 ? minVer : 1,
+          minChecklistCompletionPercent: Number.isFinite(minPct) && minPct > 0 ? minPct : 100,
+        };
+        for (const rank of ranks) {
+          map.set(normalizeRank(rank), entry);
+        }
+      }
+    }
+
+    return map;
+  }, [formsData, rankGroupsData, normalizeRank]);
+
   const configuredRankSet = useMemo(() => {
     const set = new Set<string>();
     const promotionReviewForm = formsData.find((f: any) => f.name === 'Promotion Review Form');
@@ -463,10 +507,13 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         
         const recoStatus = computeCriteriaStatus(review, 'a2.4');
         
+        const checklistCfg = nextRank
+          ? checklistConfigByRank.get(normalizeRank(nextRank))
+          : undefined;
         const checklistProgressResult = calculateChecklistProgressFromJson(
           review?.checklistProgressData,
-          0,
-          100
+          checklistCfg?.minChecklistVerifications ?? 1,
+          checklistCfg?.minChecklistCompletionPercent ?? 100
         );
         
         const otherCriteriaStatus = computeParentCriteriaStatus(review, 'a2.6');
@@ -503,7 +550,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         };
       })
       .filter(item => item !== null);
-  }, [crewMembers, hierarchies, normalizeRank, ageRequirementsByRank, reviewLookup, computeCriteriaStatus, computeParentCriteriaStatus]);
+  }, [crewMembers, hierarchies, normalizeRank, ageRequirementsByRank, checklistConfigByRank, reviewLookup, computeCriteriaStatus, computeParentCriteriaStatus]);
 
   const filteredData = useMemo(() => {
     return promotionData.filter(item => {
