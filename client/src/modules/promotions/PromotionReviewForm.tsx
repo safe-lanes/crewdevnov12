@@ -690,10 +690,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           };
         });
       } else {
-        if (prev.length === 0) {
-          return [{ id: '1', description: '', date: '', minScore: '', score: '', result: '' }];
-        }
-        return prev;
+        // No admin A2.7 configuration for this rank group — render no sub-rows.
+        return [];
       }
     });
   }, [a2Config]);
@@ -770,7 +768,21 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             ? JSON.parse(existingReviewData.cesTestsData)
             : existingReviewData.cesTestsData;
           if (Array.isArray(cesData) && cesData.length > 0) {
-            setCesTests(cesData);
+            // Drop any persisted entries that are entirely blank — these are
+            // historical placeholder rows from before A2.7 admin config was
+            // respected, and should not reappear when there is no admin config.
+            const filtered = cesData.filter((t: any) =>
+              t && (
+                (t.description && String(t.description).trim()) ||
+                (t.date && String(t.date).trim()) ||
+                (t.minScore && String(t.minScore).trim()) ||
+                (t.score && String(t.score).trim()) ||
+                (t.result && String(t.result).trim())
+              )
+            );
+            if (filtered.length > 0) {
+              setCesTests(filtered);
+            }
           }
         } catch {}
       }
