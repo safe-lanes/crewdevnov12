@@ -1435,6 +1435,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         return !isBlank;
       });
 
+    // Reflect blank-row removal in the UI immediately (no page refresh needed)
+    if (updatedTrainingFollowups.length !== (data.trainingFollowups?.length ?? 0)) {
+      form.setValue('trainingFollowups', updatedTrainingFollowups, { shouldDirty: false });
+    }
+
     const appraiserLabels: Record<string, string> = {
       "master": "Master",
       "chief-officer": "Chief Officer",
