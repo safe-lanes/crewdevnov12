@@ -82,7 +82,9 @@ export const rotationDeployService = {
       if (entry.rankId) {
         existingSecondary = await vesselPlanningRepository.findSecondaryByVesselAndRank(
           entry.vesselUuid,
-          entry.rankId
+          entry.rankId,
+          undefined,
+          entry.rank
         );
       }
       if (!existingSecondary) {
