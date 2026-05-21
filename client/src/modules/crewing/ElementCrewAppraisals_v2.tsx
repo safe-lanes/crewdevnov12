@@ -822,7 +822,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
 
                 <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
                   <SelectTrigger className="h-8 w-28 text-xs text-[#0f172a] shrink-0" data-testid="select-vessel-type">
-                    <SelectValue placeholder="Type" />
+                    <SelectValue placeholder="Vessel Type" />
                   </SelectTrigger>
                   <SelectContent>
                     {uniqueVesselTypes.map((vesselType) => (
@@ -919,7 +919,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                 <div className="grid grid-cols-3 gap-3">
                   <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
                     <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-vessel-type">
-                      <SelectValue placeholder="Type" />
+                      <SelectValue placeholder="Vessel Type" />
                     </SelectTrigger>
                     <SelectContent>
                       {uniqueVesselTypes.map((vesselType) => (
@@ -1019,7 +1019,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                 <div className="grid grid-cols-2 gap-2">
                   <Select value={filters.vesselType} onValueChange={(value) => setFilters(prev => ({ ...prev, vesselType: value }))}>
                     <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-vessel-type">
-                      <SelectValue placeholder="Type" />
+                      <SelectValue placeholder="Vessel Type" />
                     </SelectTrigger>
                     <SelectContent>
                       {uniqueVesselTypes.map((vesselType) => (
