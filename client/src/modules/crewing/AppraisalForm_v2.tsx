@@ -1436,8 +1436,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const updatedAppraiserComments = (data.appraiserComments ?? []).map((c, index) => {
       if (index === 0) {
         const appraiserValue = data.primaryAppraiser;
-        const resolvedName = appraiserValue ? (appraiserLabels[appraiserValue] || appraiserValue) : c.name;
-        return { ...c, name: resolvedName || c.name, rank: appraiserValue ? 'Primary Appraiser' : c.rank };
+        const resolvedRank = appraiserValue ? (appraiserLabels[appraiserValue] || appraiserValue) : c.rank;
+        return { ...c, name: 'Primary Appraiser', rank: resolvedRank || c.rank };
       }
       return c;
     });
@@ -3546,7 +3546,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           "technical-superintendent": "Technical Superintendent",
                                           "crew-manager": "Crew Manager"
                                         };
-                                        return appraiserValue ? `${appraiserLabels[appraiserValue] || appraiserValue} (Primary Appraiser)` : "Select Primary Appraiser";
+                                        return appraiserValue ? `Primary Appraiser, ${appraiserLabels[appraiserValue] || appraiserValue}` : "Select Primary Appraiser";
                                       })() : `${appraiser.name}, ${appraiser.rank}`}
                                     </p>
                                   </div>

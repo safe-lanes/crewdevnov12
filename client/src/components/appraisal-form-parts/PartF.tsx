@@ -242,39 +242,60 @@ const PartFComponent: React.FC<PartFProps> = ({
               <div className="space-y-3">
                 {form.watch("appraiserComments").map((comment, index) => {
                   const isPrimary = index === 0;
-                  const isEditing = editingAppraiserComment === comment.id || (!comment.name && !comment.comment);
+                  const isEditing = editingAppraiserComment === comment.id || (!isPrimary && !comment.name && !comment.comment);
                   // Auto-fill primary appraiser's rank from Part A selection
-                  const displayRank = isPrimary && !comment.rank && primaryAppraiserRank 
-                    ? primaryAppraiserRank 
-                    : comment.rank;
+                  const displayRank = isPrimary && primaryAppraiserRank
+                    ? primaryAppraiserRank
+                    : (isPrimary && !comment.rank && primaryAppraiserRank ? primaryAppraiserRank : comment.rank);
+                  const displayName = isPrimary ? "Primary Appraiser" : comment.name;
                   return (
                     <div key={comment.id} className="bg-gray-50 p-3 rounded" data-testid={`appraiser-comment-${comment.id}`}>
                       {isEditing ? (
                         <div className="space-y-3">
                           <div className="flex gap-4">
                             <div className="flex-1">
-                              <Input
-                                value={comment.name}
-                                onChange={(e) => updateAppraiserComment(comment.id, "name", e.target.value)}
-                                placeholder="Appraiser name"
-                                className="text-sm"
-                                data-testid={`input-appraiser-name-${comment.id}`}
-                              />
+                              {isPrimary ? (
+                                <Input
+                                  value={displayName}
+                                  readOnly
+                                  disabled
+                                  className="text-sm bg-gray-100"
+                                  data-testid={`input-appraiser-name-${comment.id}`}
+                                />
+                              ) : (
+                                <Input
+                                  value={comment.name}
+                                  onChange={(e) => updateAppraiserComment(comment.id, "name", e.target.value)}
+                                  placeholder="Appraiser name"
+                                  className="text-sm"
+                                  data-testid={`input-appraiser-name-${comment.id}`}
+                                />
+                              )}
                             </div>
                             <div className="flex-1">
-                              <Select
-                                value={isPrimary && !comment.rank && primaryAppraiserRank ? primaryAppraiserRank : comment.rank}
-                                onValueChange={(value) => updateAppraiserComment(comment.id, "rank", value)}
-                              >
-                                <SelectTrigger data-testid={`select-appraiser-rank-${comment.id}`}>
-                                  <SelectValue placeholder="Select rank" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {availableRanks.map((rank) => (
-                                    <SelectItem key={rank.id} value={rank.name}>{rank.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              {isPrimary ? (
+                                <Input
+                                  value={displayRank || ""}
+                                  readOnly
+                                  disabled
+                                  className="text-sm bg-gray-100"
+                                  data-testid={`input-appraiser-rank-${comment.id}`}
+                                />
+                              ) : (
+                                <Select
+                                  value={comment.rank}
+                                  onValueChange={(value) => updateAppraiserComment(comment.id, "rank", value)}
+                                >
+                                  <SelectTrigger data-testid={`select-appraiser-rank-${comment.id}`}>
+                                    <SelectValue placeholder="Select rank" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {availableRanks.map((rank) => (
+                                      <SelectItem key={rank.id} value={rank.name}>{rank.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
                             </div>
                             {!isPrimary && (
                               <Button
@@ -303,8 +324,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                         <>
                           <div className="flex justify-between items-start mb-2">
                             <span className="text-sm font-medium" data-testid={`text-appraiser-name-${comment.id}`}>
-                              {comment.name}{displayRank ? `, ${displayRank}` : ""}
-                              {!comment.name && isPrimary && " (Primary Appraiser)"}
+                              {displayName}{displayRank ? `, ${displayRank}` : ""}
                             </span>
                             <div className="flex gap-1">
                               <Button
