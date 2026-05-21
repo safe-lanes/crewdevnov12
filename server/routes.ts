@@ -177,8 +177,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Helper function to find next promotion rank (replicates frontend promotionUtils.ts logic)
-  // rankPath is stored senior→junior (index 0 = most senior like Master)
-  // So we need to move towards index 0 to get more senior ranks
+  // rankPath is stored junior→senior (index 0 = most junior, last index = most senior)
+  // So we move towards the last index to get more senior ranks
   function findNextPromotionRank(currentRank: string, hierarchies: any[]): string | null {
     // Find the hierarchy that contains the current rank
     for (const hierarchy of hierarchies) {
@@ -199,11 +199,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentIndex = rankPath.indexOf(currentRank);
       
       // Check if there's a next rank (more senior position)
-      if (currentIndex > 0) {
-        // Next rank exists (one position lower index = more senior)
-        return rankPath[currentIndex - 1];
+      if (currentIndex < rankPath.length - 1) {
+        // Next rank exists (one position higher index = more senior)
+        return rankPath[currentIndex + 1];
       } else {
-        // Already at senior position (index 0 = top of the ladder)
+        // Already at senior position (last index = top of the ladder)
         return null;
       }
     }

@@ -506,8 +506,8 @@ export class DatabaseStorage implements IStorage {
 
   private buildRankOrderMap(hierarchies: any[]): Map<string, number> {
     // Build a map of rank name -> hierarchy order (lower = more senior)
-    // Each hierarchy's rankPath goes from senior to junior (e.g., Master → Chief Officer → 2nd Officer → 3rd Officer)
-    // So index 0 = most senior, higher index = more junior
+    // Each hierarchy's rankPath goes from junior to senior (e.g., 3rd Officer → 2nd Officer → Chief Officer → Master)
+    // So last index = most senior, index 0 = most junior. We invert the index so seniors get the lowest order.
     const rankOrderMap = new Map<string, number>();
     
     for (const hierarchy of hierarchies) {
@@ -525,13 +525,15 @@ export class DatabaseStorage implements IStorage {
       
       if (!Array.isArray(rankPath)) continue;
       
-      // Each rank gets its index as order (0 = most senior, higher = more junior)
+      // Invert the index so most senior (last position) gets order 0, most junior gets the highest order
+      const lastIndex = rankPath.length - 1;
       rankPath.forEach((rank, index) => {
         const normalizedRank = rank.trim().toLowerCase();
+        const order = lastIndex - index;
         // Use the lowest order if rank appears in multiple hierarchies (more senior position wins)
         const currentOrder = rankOrderMap.get(normalizedRank);
-        if (currentOrder === undefined || index < currentOrder) {
-          rankOrderMap.set(normalizedRank, index);
+        if (currentOrder === undefined || order < currentOrder) {
+          rankOrderMap.set(normalizedRank, order);
         }
       });
     }

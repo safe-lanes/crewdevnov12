@@ -68,8 +68,9 @@ function findNextPromotionRank(currentRank: string, hierarchies: any[]): string 
       rankPath = [];
     }
     if (!rankPath.includes(currentRank)) continue;
+    // rankPath is stored junior→senior (index 0 = most junior, last index = most senior)
     const currentIndex = rankPath.indexOf(currentRank);
-    if (currentIndex > 0) return rankPath[currentIndex - 1];
+    if (currentIndex < rankPath.length - 1) return rankPath[currentIndex + 1];
     return null;
   }
   return null;
