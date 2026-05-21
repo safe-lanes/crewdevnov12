@@ -29,7 +29,6 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
 import {
   Tooltip,
   TooltipContent,
@@ -62,7 +61,6 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   onClose,
   onSave
 }) => {
-  const { toast } = useToast();
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showLicenseDialog, setShowLicenseDialog] = useState(false);
   const [selectedLicenseIds, setSelectedLicenseIds] = useState<string[]>([]);
@@ -187,26 +185,27 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   const checklistSections = watch('checklistSections') ?? [];
 
   const onSubmit = (data: PromotionA2Config) => {
-    const invalidCesIndex = (data.cesTests ?? []).findIndex(
-      (t) => !t.description?.trim() || t.minScore == null || !Number.isFinite(t.minScore)
+    const cleanedOtherCriteria = (data.otherCriteria ?? []).filter(
+      (c) => (c.label?.trim() || c.requirement?.trim())
     );
-    if (invalidCesIndex !== -1) {
-      toast({
-        title: 'A2.7 incomplete',
-        description: 'Please complete all A2.7 CES / Language Test rows before saving.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    const cleanedCesTests = (data.cesTests ?? []).filter(
+      (t) => (t.description?.trim() || (t.minScore != null && Number.isFinite(t.minScore)))
+    );
+
+    const cleanedData = {
+      ...data,
+      otherCriteria: cleanedOtherCriteria,
+      cesTests: cleanedCesTests,
+    };
 
     const configurationJson = JSON.stringify({
-      ...data,
+      ...cleanedData,
       higherLicenseIds: selectedLicenseIds,
       rankGroupName,
       savedAt: new Date().toISOString(),
     });
 
-    console.log('[PromotionFormEditor] Saving A2 config:', { formId: actualFormId, config: data });
+    console.log('[PromotionFormEditor] Saving A2 config:', { formId: actualFormId, config: cleanedData });
     
     onSave({
       formId: actualFormId,
@@ -894,16 +893,16 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                           <div className="flex items-center gap-2">
                             <Input
                               type="text"
-                              placeholder="Enter CES / Language Test Description *"
-                              className={`h-8 flex-1 text-xs ${!test.description?.trim() ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                              placeholder="Enter CES / Language Test Description"
+                              className="h-8 flex-1 text-xs"
                               value={test.description || ''}
                               onChange={(e) => updateCesTestDescription(index, e.target.value)}
                               data-testid={`input-ces-description-${index}`}
                             />
                             <Input
                               type="number"
-                              placeholder="Min Score *"
-                              className={`h-8 w-24 text-xs ${test.minScore == null || !Number.isFinite(test.minScore) ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                              placeholder="Min Score"
+                              className="h-8 w-24 text-xs"
                               value={test.minScore ?? ''}
                               onChange={(e) => {
                                 const parsed = parseInt(e.target.value, 10);
