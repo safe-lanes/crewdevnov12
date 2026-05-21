@@ -40,6 +40,7 @@ const PartGComponent: React.FC<PartGProps> = ({
   saveAppraisalMutation,
 }) => {
   const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
+  const isG1Locked = appraisalStatus === 'reviewed';
 
   const deleteTrainingFollowupComment = (id: string) => {
     showConfirmDialog(
@@ -67,7 +68,7 @@ const PartGComponent: React.FC<PartGProps> = ({
             <div className="border border-[#EAEBEF] rounded-lg p-4">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-base font-medium" style={{ color: '#16569e' }}>G1. Office Reviews</h4>
-                <Button type="button" onClick={addOfficeReview} variant="outline" size="sm">
+                <Button type="button" onClick={addOfficeReview} variant="outline" size="sm" disabled={isG1Locked} data-testid="button-add-reviewer">
                   <Plus className="h-4 w-4 mr-1" />
                   Add Reviewer
                 </Button>
@@ -78,15 +79,25 @@ const PartGComponent: React.FC<PartGProps> = ({
                     <div className="flex gap-4 mb-3">
                       <div className="flex-1">
                         <label className="text-xs text-gray-500">Reviewer Name</label>
-                        <Input value={review.name} onChange={(e) => updateOfficeReview(review.id, "name", e.target.value)} placeholder="Enter name" />
+                        {isG1Locked ? (
+                          <Input value={review.name} readOnly disabled className="bg-gray-100" data-testid={`input-reviewer-name-${review.id}`} />
+                        ) : (
+                          <Input value={review.name} onChange={(e) => updateOfficeReview(review.id, "name", e.target.value)} placeholder="Enter name" data-testid={`input-reviewer-name-${review.id}`} />
+                        )}
                       </div>
                       <div className="flex-1">
                         <label className="text-xs text-gray-500">Position</label>
-                        <Input value={review.position} onChange={(e) => updateOfficeReview(review.id, "position", e.target.value)} placeholder="Enter position" />
+                        {isG1Locked ? (
+                          <Input value={review.position} readOnly disabled className="bg-gray-100" data-testid={`input-reviewer-position-${review.id}`} />
+                        ) : (
+                          <Input value={review.position} onChange={(e) => updateOfficeReview(review.id, "position", e.target.value)} placeholder="Enter position" data-testid={`input-reviewer-position-${review.id}`} />
+                        )}
                       </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => deleteOfficeReview(review.id)}>
-                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
-                      </Button>
+                      {!isG1Locked && (
+                        <Button type="button" variant="ghost" size="icon" onClick={() => deleteOfficeReview(review.id)} data-testid={`button-delete-reviewer-${review.id}`}>
+                          <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                        </Button>
+                      )}
                     </div>
                     <Textarea value={review.feedback} onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)} placeholder="Enter feedback..." rows={3} />
                   </div>

@@ -45,6 +45,7 @@ const PartFComponent: React.FC<PartFProps> = ({
 }) => {
   const overallScoreValue = parseFloat(overallScore) || 0;
   const { bgColor: overallBgColor, textColor: overallTextColor } = getScoreColors(overallScoreValue);
+  const isF3Locked = appraisalStatus === 'submitted' || appraisalStatus === 'reviewed';
 
   // Map primaryAppraiser value to rank name
   const primaryAppraiserToRank: Record<string, string> = {
@@ -232,6 +233,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                   size="sm"
                   className="text-xs"
                   onClick={addAppraiserComment}
+                  disabled={isF3Locked}
                   data-testid="button-add-appraiser"
                 >
                   <Plus className="h-3 w-3 mr-1" />
@@ -262,6 +264,14 @@ const PartFComponent: React.FC<PartFProps> = ({
                                   className="text-sm bg-gray-100"
                                   data-testid={`input-appraiser-name-${comment.id}`}
                                 />
+                              ) : isF3Locked ? (
+                                <Input
+                                  value={comment.name}
+                                  readOnly
+                                  disabled
+                                  className="text-sm bg-gray-100"
+                                  data-testid={`input-appraiser-name-${comment.id}`}
+                                />
                               ) : (
                                 <Input
                                   value={comment.name}
@@ -276,6 +286,14 @@ const PartFComponent: React.FC<PartFProps> = ({
                               {isPrimary ? (
                                 <Input
                                   value={displayRank || ""}
+                                  readOnly
+                                  disabled
+                                  className="text-sm bg-gray-100"
+                                  data-testid={`input-appraiser-rank-${comment.id}`}
+                                />
+                              ) : isF3Locked ? (
+                                <Input
+                                  value={comment.rank}
                                   readOnly
                                   disabled
                                   className="text-sm bg-gray-100"
@@ -297,7 +315,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                                 </Select>
                               )}
                             </div>
-                            {!isPrimary && (
+                            {!isPrimary && !isF3Locked && (
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -337,7 +355,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                               >
                                 <Pencil className="h-3.5 w-3.5 text-gray-400" />
                               </Button>
-                              {!isPrimary && (
+                              {!isPrimary && !isF3Locked && (
                                 <Button
                                   type="button"
                                   variant="ghost"

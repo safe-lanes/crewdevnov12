@@ -3525,6 +3525,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               onClick={() => {
                                 addAppraiserComment("Ashok Kumar", "Chief Officer");
                               }}
+                              disabled={appraisalStatus === 'submitted' || appraisalStatus === 'reviewed'}
                             >
                               + Add Appraiser
                             </Button>
@@ -3559,7 +3560,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     >
                                       <Edit2 className="h-4 w-4" />
                                     </Button>
-                                    {index > 0 && (
+                                    {index > 0 && appraisalStatus !== 'submitted' && appraisalStatus !== 'reviewed' && (
                                       <Button
                                         type="button"
                                         variant="ghost"
@@ -3699,6 +3700,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               size="sm"
                               className="text-gray-600 border-gray-300"
                               onClick={addOfficeReview}
+                              disabled={appraisalStatus === 'reviewed'}
                             >
                               + Add Reviewer
                             </Button>
@@ -3732,14 +3734,16 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     )}
                                   </div>
                                   <div className="flex space-x-2 ml-4">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => deleteOfficeReview(review.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
-                                    </Button>
+                                    {appraisalStatus !== 'reviewed' && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => deleteOfficeReview(review.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
                               </div>
