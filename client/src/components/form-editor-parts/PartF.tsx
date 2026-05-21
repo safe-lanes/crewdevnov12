@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageSquare, Edit2, Trash2 } from "lucide-react";
+import { MessageSquare, Trash2 } from "lucide-react";
 import { PartFProps } from "./types";
 
 const PartFComponent: React.FC<PartFProps> = ({
@@ -149,30 +149,17 @@ const PartFComponent: React.FC<PartFProps> = ({
                           <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                         </Button>
                         {recommendation.isCustom && isConfigMode && (
-                          <>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              style={{ color: '#52baf3' }}
-                              onClick={() => startEditingRecommendation(recommendation.id)}
-                              className="h-6 w-6"
-                              data-testid={`button-edit-recommendation-${index}`}
-                            >
-                              <Edit2 className="h-[18px] w-[18px]" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteRecommendation(recommendation.id)}
-                              style={{ color: '#52baf3' }}
-                              className="h-6 w-6"
-                              data-testid={`button-delete-recommendation-${index}`}
-                            >
-                              <Trash2 className="h-[18px] w-[18px]" />
-                            </Button>
-                          </>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteRecommendation(recommendation.id)}
+                            style={{ color: '#52baf3' }}
+                            className="h-6 w-6"
+                            data-testid={`button-delete-recommendation-${index}`}
+                          >
+                            <Trash2 className="h-[18px] w-[18px]" />
+                          </Button>
                         )}
                       </div>
                     </td>
