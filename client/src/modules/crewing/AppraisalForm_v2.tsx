@@ -158,6 +158,7 @@ const trainingFollowupSchema = z.object({
   ]),
   targetDate: z.string().optional(),
   comment: z.string().optional(),
+  addedFromDB: z.boolean().optional(),
 });
 
 // Part A schema
@@ -1737,6 +1738,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       status: "" as const,
       targetDate: "",
       comment: "",
+      addedFromDB: true,
     }));
     const currentFollowups = form.getValues("trainingFollowups");
     form.setValue("trainingFollowups", [...currentFollowups, ...newFollowups]);
@@ -3806,26 +3808,41 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                 </tr>
                               </thead>
                               <tbody>
-                                {form.watch("trainingFollowups").map((followup, index) => (
+                                {form.watch("trainingFollowups").map((followup, index) => {
+                                  const matchedDbOption = dbTrainingOptions.find(o => o.id === followup.correspondingInDB);
+                                  const isFromDb = followup.addedFromDB === true || (!!followup.correspondingInDB && matchedDbOption?.name === followup.training);
+                                  return (
                                   <React.Fragment key={followup.id}>
                                     <tr className="border-t">
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <Input
-                                          value={followup.training}
-                                          onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)}
-                                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                                        />
+                                        {isFromDb ? (
+                                          <span data-testid={`text-followup-training-${followup.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                                            {followup.training}
+                                          </span>
+                                        ) : (
+                                          <Input
+                                            value={followup.training}
+                                            onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)}
+                                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                          />
+                                        )}
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <DbTrainingCombobox
-                                          value={followup.correspondingInDB || ""}
-                                          options={dbTrainingOptions}
-                                          onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
-                                          isLoading={isLoadingDbTrainings}
-                                          isError={isErrorDbTrainings}
-                                          testId={`select-followup-db-${followup.id}`}
-                                        />
+                                        {isFromDb ? (
+                                          <span data-testid={`text-followup-db-${followup.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                                            {matchedDbOption?.name || followup.training}
+                                          </span>
+                                        ) : (
+                                          <DbTrainingCombobox
+                                            value={followup.correspondingInDB || ""}
+                                            options={dbTrainingOptions}
+                                            onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
+                                            isLoading={isLoadingDbTrainings}
+                                            isError={isErrorDbTrainings}
+                                            testId={`select-followup-db-${followup.id}`}
+                                          />
+                                        )}
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                         <select
@@ -3936,7 +3953,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       </tr>
                                     )}
                                   </React.Fragment>
-                                ))}
+                                  );
+                                })}
                                 {form.watch("trainingFollowups").length === 0 && (
                                   <tr>
                                     <td colSpan={7} className="p-8 text-center text-gray-500 text-[13px]">

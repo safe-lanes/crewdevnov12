@@ -77,6 +77,7 @@ export const trainingFollowupSchema = z.object({
   ]),
   targetDate: z.string().optional(),
   comment: z.string().optional(),
+  addedFromDB: z.boolean().optional(),
 });
 
 export const appraisalFormDataSchema = z.object({

@@ -156,17 +156,37 @@ const PartGComponent: React.FC<PartGProps> = ({
                         <tr className="border-t border-gray-100">
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Input value={followup.training} onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)} placeholder="Training name" className="h-8" />
+                            {(() => {
+                              const matchedDbOption = dbTrainings.find(o => o.id === followup.correspondingInDB);
+                              const isFromDb = (followup as any).addedFromDB === true || (!!followup.correspondingInDB && matchedDbOption?.name === followup.training);
+                              return isFromDb ? (
+                                <span data-testid={`text-followup-training-${followup.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                                  {followup.training}
+                                </span>
+                              ) : (
+                                <Input value={followup.training} onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)} placeholder="Training name" className="h-8" />
+                              );
+                            })()}
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <DbTrainingCombobox
-                              value={followup.correspondingInDB || ""}
-                              options={dbTrainings}
-                              onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
-                              isLoading={isLoadingDbTrainings}
-                              isError={isErrorDbTrainings}
-                              testId={`select-followup-db-${followup.id}`}
-                            />
+                            {(() => {
+                              const matchedDbOption = dbTrainings.find(o => o.id === followup.correspondingInDB);
+                              const isFromDb = (followup as any).addedFromDB === true || (!!followup.correspondingInDB && matchedDbOption?.name === followup.training);
+                              return isFromDb ? (
+                                <span data-testid={`text-followup-db-${followup.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                                  {matchedDbOption?.name || followup.training}
+                                </span>
+                              ) : (
+                                <DbTrainingCombobox
+                                  value={followup.correspondingInDB || ""}
+                                  options={dbTrainings}
+                                  onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
+                                  isLoading={isLoadingDbTrainings}
+                                  isError={isErrorDbTrainings}
+                                  testId={`select-followup-db-${followup.id}`}
+                                />
+                              );
+                            })()}
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                             <Select value={followup.category || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)}>
