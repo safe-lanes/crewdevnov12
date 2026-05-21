@@ -334,8 +334,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const [appraisalId, setAppraisalId] = useState<number | null>(propAppraisalId || null);
   const [appraisalStatus, setAppraisalStatus] = useState<'draft' | 'preliminary' | 'submitted' | 'reviewed'>(initialStatus);
   
-  // Derive whether to show evaluation column in Part B
-  const showEvaluation = ['submitted', 'reviewed'].includes(appraisalStatus);
+  // Evaluation column in Part B is always visible across all statuses;
+  // Stage 1 schemas keep `evaluation` optional so blank saves still succeed.
+  const showEvaluation = true;
   
   // Section references using canonical Part IDs
   const partARef = useRef<HTMLDivElement>(null);
