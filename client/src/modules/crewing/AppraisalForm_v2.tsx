@@ -1419,10 +1419,21 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       comment: resolveComment(recommendationComments, r.id, r.comment)
     }));
 
-    const updatedTrainingFollowups = (data.trainingFollowups ?? []).map(f => ({
-      ...f,
-      comment: resolveComment(trainingFollowupComments, f.id, f.comment)
-    }));
+    const updatedTrainingFollowups = (data.trainingFollowups ?? [])
+      .map(f => ({
+        ...f,
+        comment: resolveComment(trainingFollowupComments, f.id, f.comment)
+      }))
+      .filter(f => {
+        const isBlank =
+          !(f.training ?? '').trim() &&
+          !(f.correspondingInDB ?? '').trim() &&
+          !(f.category ?? '').trim() &&
+          !(f.status ?? '').trim() &&
+          !(f.targetDate ?? '').trim() &&
+          !(f.comment ?? '').trim();
+        return !isBlank;
+      });
 
     const appraiserLabels: Record<string, string> = {
       "master": "Master",
