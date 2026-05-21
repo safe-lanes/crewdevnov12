@@ -229,8 +229,8 @@ const stage1Schema = partASchema.merge(partBStage1Schema);
 // Stage 2: Parts C, D, E, F (Performance Assessment) - requires recommendation answers
 const stage2Schema = partCSchema.merge(partDSchema).merge(partESchema).merge(partFStage2Schema);
 
-// Stage 3: Part G (Office Review)
-const stage3Schema = partGSchema;
+// Stage 3: Part B (Evaluation required) + Part G (Office Review)
+const stage3Schema = partBSchema.merge(partGSchema);
 
 // Full appraisal schema (for draft saves and full validation)
 const appraisalSchema = z.object({
