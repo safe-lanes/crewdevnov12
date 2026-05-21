@@ -1030,7 +1030,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       criteriaVerifiedStatus: includeA ? JSON.stringify(criteriaVerifiedStatus) : undefined,
       criteriaMeetsStatus: includeA ? JSON.stringify(criteriaMeetsStatus) : undefined,
       cesTestsData: includeA ? JSON.stringify(cesTests) : undefined,
-      criteriaComments: includeA ? JSON.stringify({ ...criteriaComments, a3: trainingComments, a4: commentsRef.current }) : undefined,
+      criteriaComments: includeA ? JSON.stringify({ ...criteriaComments, a3: trainingComments, a4: commentsRef.current.filter(c => c.text?.trim()) }) : undefined,
       trainingNeeds: includeA ? JSON.stringify(trainingNeeds) : undefined,
       partANotes: includeA ? (formData.partANotes || null) : undefined,
       approvalData: includeB ? JSON.stringify(approvers) : undefined as string | undefined,
@@ -1046,55 +1046,34 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     };
   }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses, effectiveReviewUuid]);
 
-  const hasBlankA4Comment = useMemo(
-    () => comments.some(c => !c.text?.trim()),
-    [comments]
-  );
-
-  const guardBlankA4 = useCallback(() => {
-    if (hasBlankA4Comment) {
-      toast({
-        title: 'A4 comment incomplete',
-        description: 'Please complete or remove the empty A4 reviewer comments before saving.',
-        variant: 'destructive',
-      });
-      return true;
-    }
-    return false;
-  }, [hasBlankA4Comment, toast]);
-
   const handleSaveDraftA = useCallback(() => {
-    if (guardBlankA4()) return;
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
     }, 'a');
     saveMutation.mutate({ data: reviewData, action: 'draft' });
-  }, [collectFormData, saveMutation, guardBlankA4]);
+  }, [collectFormData, saveMutation]);
 
   const handleSaveDraftB = useCallback(() => {
-    if (guardBlankA4()) return;
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
     }, 'b');
     saveMutation.mutate({ data: reviewData, action: 'draft' });
-  }, [collectFormData, saveMutation, guardBlankA4]);
+  }, [collectFormData, saveMutation]);
 
   const handleSaveDraftC = useCallback(() => {
-    if (guardBlankA4()) return;
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
     }, 'c');
     saveMutation.mutate({ data: reviewData, action: 'draft' });
-  }, [collectFormData, saveMutation, guardBlankA4]);
+  }, [collectFormData, saveMutation]);
 
   const handleSubmitPartB = useCallback(() => {
-    if (guardBlankA4()) return;
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
@@ -1102,10 +1081,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }, 'b');
     reviewData.status = 'approved';
     saveMutation.mutate({ data: reviewData, action: 'submit-b' });
-  }, [collectFormData, saveMutation, guardBlankA4]);
+  }, [collectFormData, saveMutation]);
 
   const handleSubmitPartC = useCallback(() => {
-    if (guardBlankA4()) return;
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
@@ -1113,10 +1091,9 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }, 'c');
     reviewData.status = 'completed';
     saveMutation.mutate({ data: reviewData, action: 'submit-c' });
-  }, [collectFormData, saveMutation, guardBlankA4]);
+  }, [collectFormData, saveMutation]);
 
   const handleSubmit = (data: PromotionReviewFormData) => {
-    if (guardBlankA4()) return;
     const reviewData = collectFormData(data, 'a');
     saveMutation.mutate({ data: reviewData, action: 'draft' });
   };
@@ -1407,8 +1384,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       return;
     }
 
-    if (guardBlankA4()) return;
-
     const resolvedApprovers = selectedApproversForSubmission.map(a => {
       if (a.userUuid) return a;
       const match = approverMasterData.find(m => m.displayName === a.displayName);
@@ -1495,7 +1470,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       .finally(() => {
         setIsSubmittingForApproval(false);
       });
-  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData, guardBlankA4]);
+  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData]);
 
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
@@ -1666,11 +1641,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                           </div>
                           {isEditing ? (
                             <textarea
-                              className={`w-full min-h-[80px] p-2 border rounded text-blue-600 italic text-sm resize-y ${
-                                !comment.text?.trim()
-                                  ? 'border-red-500 focus-visible:ring-red-500'
-                                  : 'border-blue-200'
-                              }`}
+                              className="w-full min-h-[80px] p-2 border border-blue-200 rounded text-blue-600 italic text-sm resize-y"
                               placeholder="Comment: Add your observations here..."
                               value={comment.text}
                               onChange={(e) => updateCommentText(comment.id, e.target.value)}
