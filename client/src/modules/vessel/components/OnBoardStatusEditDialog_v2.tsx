@@ -166,11 +166,16 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         }
     }, [open, planningData, form]);
 
-    // Takeover is a Secondary-only operation (Primary only hands over).
-    // Single-crew rows are always crewStatus === 'primary' (see schema default
-    // + service insert paths), so this single check also covers the
-    // "only one crew onboard" scenario.
-    const isTakeoverApplicable = planningData?.crewStatus === "secondary";
+    // Takeover UI gating — three precise states:
+    //  - Fresh standby secondary (secondary + no handOverDate): editable Take Over Date + Checkbox
+    //  - Post-handover ex-primary (secondary + handOverDate set): hide takeover fields entirely
+    //  - Primary (always): read-only Take Over Date display, no checkbox
+    const isSecondary = planningData?.crewStatus === "secondary";
+    const isPrimary = planningData?.crewStatus === "primary";
+    const hasHandOver = !!planningData?.handOverDate;
+    const isPostHandoverSecondary = isSecondary && hasHandOver;
+    const showEditableTakeover = isSecondary && !hasHandOver;
+    const showReadOnlyTakeoverOnPrimary = isPrimary;
 
     const watchedReliefStatus = form.watch('reliefStatus');
     const watchedContractPeriod = form.watch('contractPeriodMonths');
@@ -217,7 +222,13 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
 
     const handleSaveV2 = async (data: OnBoardStatusFormData) => {
         try {
-            const isTakeover = data.takeOverConfirmation && data.takeOverDate;
+            // Safety guard: a post-handover ex-primary (secondary + handOverDate)
+            // must never re-trigger a takeover swap, even if form state carries
+            // stale takeOverDate / takeOverConfirmation values.
+            const isPostHandoverRow =
+                planningData?.crewStatus === "secondary" && !!planningData?.handOverDate;
+            const isTakeover =
+                !isPostHandoverRow && data.takeOverConfirmation && data.takeOverDate;
 
             if (data.reliefStatus === "Signed Off") {
                 const signedOffErrors: string[] = [];
@@ -346,8 +357,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 await vesselApiV2.updatePlanning(secondaryCrew.planUuid, {
                     crewStatus: "primary",
                     signOnDate: secondarySignOnDate,
-                    takeOverDate: null,
-                    takeOverConfirmation: false,
+                    takeOverDate: data.takeOverDate,
+                    takeOverConfirmation: true,
                     contractPeriodMonths: secondaryCrew.contractPeriodMonths || secondaryCrew.relieverContractPeriodMonths,
                     contractEndRangeStartMonths: secondaryCrew.contractEndRangeStartMonths || secondaryCrew.relieverContractEndRangeStartMonths,
                     contractEndRangeEndMonths: secondaryCrew.contractEndRangeEndMonths || secondaryCrew.relieverContractEndRangeEndMonths,
@@ -497,7 +508,19 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             </div>
                         </div>
 
-                        {isTakeoverApplicable && (
+                        {showReadOnlyTakeoverOnPrimary && (
+                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                <span className="text-sm text-gray-700">Take Over Date:</span>
+                                <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
+                                    <span className="text-sm text-gray-900" data-testid="text-take-over-date-readonly">
+                                        {planningData?.takeOverDate ? formatDisplayDate(planningData.takeOverDate) : '-'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {showEditableTakeover && (
                             <>
                                 <FormField
                                     control={form.control}
