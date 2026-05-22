@@ -825,7 +825,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
       if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
-      toast({ title: 'Stage 1 Submitted' });
+      toast({ title: 'Stage 1 Submitted', description: 'Appraisal information (Parts A-B) saved successfully.' });
       onClose();
     },
     onError: (error: any) => {
