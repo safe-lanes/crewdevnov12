@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageSquare, Trash2 } from "lucide-react";
-import { PartFProps } from "./types";
+import { PartFProps, isBaselineRecommendationQuestion } from "./types";
 
 const PartFComponent: React.FC<PartFProps> = ({
   formMethods,
@@ -148,7 +148,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                         >
                           <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                         </Button>
-                        {recommendation.isCustom && isConfigMode && (
+                        {recommendation.isCustom && isConfigMode && !isBaselineRecommendationQuestion(recommendation.question) && (
                           <Button
                             type="button"
                             variant="ghost"

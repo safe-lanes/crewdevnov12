@@ -3,7 +3,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 // Memoized Part components for performance optimization
-import { PartA, PartB, PartC, PartD, PartE, PartF, PartG } from "./form-editor-parts";
+import { PartA, PartB, PartC, PartD, PartE, PartF, PartG, isBaselineRecommendationQuestion } from "./form-editor-parts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -827,7 +827,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         question: rec.question || rec.recommendation || '',
         answer: (rec.answer ?? (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : '')) as 'Yes' | 'No' | 'NA' | '',
         comment: rec.comment || '',
-        isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
+        isCustom: rec.isCustom !== undefined
+          ? rec.isCustom
+          : !isBaselineRecommendationQuestion(rec.question || rec.recommendation || ''),
       })));
 
       formMethods.setValue('trainingNeeds', rankGroupConfig.trainingNeeds ?? []);
@@ -905,7 +907,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
             question: rec.question || rec.recommendation || '',
             answer: rec.answer ?? (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : ''),
             comment: rec.comment || '',
-            isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
+            isCustom: rec.isCustom !== undefined
+              ? rec.isCustom
+              : !isBaselineRecommendationQuestion(rec.question || rec.recommendation || ''),
           }))
         : []);
       formMethods.setValue('trainingFollowups', Array.isArray(config.trainingFollowups) ? config.trainingFollowups : []);

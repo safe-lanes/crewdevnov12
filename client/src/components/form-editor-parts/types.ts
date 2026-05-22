@@ -1,6 +1,16 @@
 import { z } from "zod";
 import { UseFormReturn } from "react-hook-form";
 
+export const BASELINE_RECOMMENDATION_QUESTIONS: ReadonlySet<string> = new Set([
+  "Recommended for continued service on board?",
+  "Recommended for re-employment?",
+  "Recommended for promotion?",
+  "Career Development recommendations (If Any)?",
+]);
+
+export const isBaselineRecommendationQuestion = (q: string | undefined | null): boolean =>
+  !!q && BASELINE_RECOMMENDATION_QUESTIONS.has(q);
+
 export interface RankGroupConfiguration {
   competenceAssessments?: Array<{
     id: string;
