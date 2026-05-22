@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
+import { getScoreColors } from "@/components/appraisal-form-parts/types";
 
 interface TrainingEntry { id: string; training?: string; evaluation?: string; comment?: string }
 interface TargetEntry { id: string; targetSetting?: string; evaluation?: string; comment?: string }
@@ -134,6 +135,25 @@ function SubHeader({ title }: { title: string }) {
     <h3 className="mt-6 mb-3 text-[12.5px] font-semibold text-[#16569e] tracking-wide">
       {title}
     </h3>
+  );
+}
+
+function SectionScore({ label, value, testId }: { label: string; value?: string | null; testId?: string }) {
+  if (!value || !String(value).trim()) return null;
+  const numeric = parseFloat(String(value));
+  const colors = Number.isNaN(numeric)
+    ? { bgColor: "bg-gray-200", textColor: "text-gray-700" }
+    : getScoreColors(numeric);
+  return (
+    <div className="flex items-center gap-3 mt-3 mb-4">
+      <span className="text-[12.5px] text-gray-600">{label}</span>
+      <span
+        data-testid={testId}
+        className={`px-3 py-1 rounded text-[13px] font-semibold min-w-[56px] text-center ${colors.bgColor} ${colors.textColor}`}
+      >
+        {value}
+      </span>
+    </div>
   );
 }
 
@@ -409,15 +429,6 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 testId="text-status"
               />
               <Field label="Last Appraisal Date" value={formatDate(existingAppraisal.appraisalDate)} testId="text-appraisalDate" />
-              {existingAppraisal.competenceRating && (
-                <Field label="Competence Rating" value={valueOr(existingAppraisal.competenceRating)} testId="text-competenceRating" />
-              )}
-              {existingAppraisal.behavioralRating && (
-                <Field label="Behavioural Rating" value={valueOr(existingAppraisal.behavioralRating)} testId="text-behavioralRating" />
-              )}
-              {existingAppraisal.overallRating && (
-                <Field label="Overall Rating" value={valueOr(existingAppraisal.overallRating)} testId="text-overallRating" />
-              )}
             </div>
 
             {/* Section B */}
@@ -459,6 +470,11 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
             {isSectionVisible("partC") && (
               <>
                 <SectionHeader id="C" title="C. Competence Assessment" />
+                <SectionScore
+                  label="Competence Section Score"
+                  value={existingAppraisal.competenceRating}
+                  testId="text-competenceRating"
+                />
                 <DataTable
                   rows={data.competenceAssessments}
                   sectionId="C"
@@ -476,6 +492,11 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
             {isSectionVisible("partD") && (
               <>
                 <SectionHeader id="D" title="D. Behavioural Assessment" />
+                <SectionScore
+                  label="Behavioural Section Score"
+                  value={existingAppraisal.behavioralRating}
+                  testId="text-behavioralRating"
+                />
                 <DataTable
                   rows={data.behaviouralAssessments}
                   sectionId="D"
@@ -509,6 +530,11 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
               <>
                 <SectionHeader id="F" title="F. Comments & Recommendations" />
                 <SubHeader title="F1. Recommendations" />
+                <SectionScore
+                  label="Final Overall Score"
+                  value={existingAppraisal.overallRating}
+                  testId="text-overallRating"
+                />
                 <DataTable
                   rows={data.recommendations}
                   sectionId="F1"
