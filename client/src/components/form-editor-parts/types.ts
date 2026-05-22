@@ -67,7 +67,7 @@ export const trainingNeedsSchema = z.object({
 export const recommendationSchema = z.object({
   id: z.string(),
   question: z.string().min(1, "Question is required"),
-  answer: z.enum(["Yes", "No", "NA"]),
+  answer: z.union([z.enum(["Yes", "No", "NA"]), z.literal("")]),
   comment: z.string().optional(),
   isCustom: z.boolean().optional().default(false),
 });

@@ -97,7 +97,7 @@ interface RankGroupConfiguration {
     id: string;
     recommendation?: string;
     question?: string;
-    answer?: 'Yes' | 'No' | 'NA';
+    answer?: 'Yes' | 'No' | 'NA' | '';
     yes?: boolean;
     no?: boolean;
     na?: boolean;
@@ -153,7 +153,7 @@ const trainingNeedsSchema = z.object({
 const recommendationSchema = z.object({
   id: z.string(),
   question: z.string().min(1, "Question is required"),
-  answer: z.enum(["Yes", "No", "NA"]),
+  answer: z.union([z.enum(["Yes", "No", "NA"]), z.literal("")]),
   comment: z.string().optional(),
   isCustom: z.boolean().optional().default(false),
 });
@@ -775,10 +775,10 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       behaviouralAssessments: [],
       trainingNeeds: [],
       recommendations: [
-        { id: "1", question: "Recommended for continued service on board?", answer: "Yes", comment: "", isCustom: false },
-        { id: "2", question: "Recommended for re-employment?", answer: "Yes", comment: "", isCustom: false },
-        { id: "3", question: "Recommended for promotion?", answer: "Yes", comment: "", isCustom: false },
-        { id: "4", question: "Career Development recommendations (If Any)?", answer: "Yes", comment: "", isCustom: false },
+        { id: "1", question: "Recommended for continued service on board?", answer: "", comment: "", isCustom: false },
+        { id: "2", question: "Recommended for re-employment?", answer: "", comment: "", isCustom: false },
+        { id: "3", question: "Recommended for promotion?", answer: "", comment: "", isCustom: false },
+        { id: "4", question: "Career Development recommendations (If Any)?", answer: "", comment: "", isCustom: false },
       ],
       // Part G: Office Review & Followup
       officeReviewComments: "",
@@ -825,7 +825,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       formMethods.setValue('recommendations', (rankGroupConfig.recommendations ?? []).map(rec => ({
         id: rec.id,
         question: rec.question || rec.recommendation || '',
-        answer: (rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes')) as 'Yes' | 'No' | 'NA',
+        answer: (rec.answer ?? (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : '')) as 'Yes' | 'No' | 'NA' | '',
         comment: rec.comment || '',
         isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
       })));
@@ -903,7 +903,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         ? config.recommendations.map((rec: any) => ({
             id: rec.id,
             question: rec.question || rec.recommendation || '',
-            answer: rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes'),
+            answer: rec.answer ?? (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : ''),
             comment: rec.comment || '',
             isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
           }))
@@ -1521,7 +1521,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     const newRecommendation = {
       id: newRecommendationId,
       question: "Add new recommendation",
-      answer: "Yes" as const,
+      answer: "" as const,
       comment: "",
       isCustom: true // Mark as custom/additional recommendation
     };
