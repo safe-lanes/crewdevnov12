@@ -701,7 +701,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             <Button 
                                 type="submit"
                                 className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-[#14b8a6] hover:bg-[#14b8a6]/90"}
-                                disabled={updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict}
+                                disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict}
                                 data-testid="button-submit-relief"
                             >
                                 {isCheckingConflict ? "Checking..." : unassignChecked ? "Unassign" : "Submit"}

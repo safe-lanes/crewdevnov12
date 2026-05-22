@@ -441,6 +441,9 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         handleSaveV2(data);
     });
 
+    const onboardCrewName = planningData?.crewName || planningData?.onBoardCrewName;
+    const isOnboardCrewAssigned = !!onboardCrewName && onboardCrewName.trim() !== '';
+
     const formatDisplayDate = (dateStr: string) => {
         if (!dateStr) return '';
         try {
@@ -481,6 +484,12 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     </DialogTitle>
                 </DialogHeader>
 
+                {!isOnboardCrewAssigned && (
+                    <p className="text-xs text-amber-600 mt-2" data-testid="text-no-onboard-crew-message">
+                        No onboard crew available. Crew must first complete Sign On from Reliever section.
+                    </p>
+                )}
+
                 <Form {...form}>
                     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
@@ -508,7 +517,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             </div>
                         </div>
 
-                        {showReadOnlyTakeoverOnPrimary && (
+                        {showReadOnlyTakeoverOnPrimary && isOnboardCrewAssigned && (
                             <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                 <span className="text-sm text-gray-700">Take Over Date:</span>
                                 <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
@@ -520,7 +529,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             </div>
                         )}
 
-                        {showEditableTakeover && (
+                        {showEditableTakeover && isOnboardCrewAssigned && (
                             <>
                                 <FormField
                                     control={form.control}
@@ -608,6 +617,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                     data-testid="input-contract-period-onboard"
                                                     value={field.value ?? ''}
                                                     onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isOnboardCrewAssigned}
                                                 />
                                             </FormControl>
                                         </div>
@@ -632,6 +642,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                     data-testid="input-contract-range-start-onboard"
                                                     value={field.value ?? ''}
                                                     onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isOnboardCrewAssigned}
                                                 />
                                             </FormControl>
                                         </div>
@@ -656,6 +667,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                     data-testid="input-contract-range-end-onboard"
                                                     value={field.value ?? ''}
                                                     onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isOnboardCrewAssigned}
                                                 />
                                             </FormControl>
                                         </div>
@@ -686,6 +698,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 onValueChange={field.onChange} 
                                                 value={field.value || undefined} 
                                                 data-testid="select-relief-status"
+                                                disabled={!isOnboardCrewAssigned}
                                             >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select Status" />
@@ -754,6 +767,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                         variant="outline"
                                                         className="w-full justify-start text-left font-normal"
                                                         data-testid="button-sign-off-date"
+                                                        disabled={!isOnboardCrewAssigned}
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
                                                         {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
@@ -800,6 +814,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 onValueChange={field.onChange}
                                                 placeholder="Search port..."
                                                 data-testid="select-sign-off-port"
+                                                disabled={!isOnboardCrewAssigned}
                                             />
                                         </FormControl>
                                     </div>
@@ -811,7 +826,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             <Button 
                                 type="submit"
                                 className="bg-[#14b8a6] hover:bg-[#14b8a6]/90"
-                                disabled={updatePlanningV2.isPending || createPlanningV2.isPending}
+                                disabled={!isOnboardCrewAssigned || updatePlanningV2.isPending || createPlanningV2.isPending}
                                 data-testid="button-submit-onboard"
                             >
                                 Submit
