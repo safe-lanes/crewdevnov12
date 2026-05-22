@@ -106,6 +106,7 @@ const trainingNeedsSchema = z.object({
   id: z.string(),
   training: z.string().min(1, "Training name is required"),
   comment: z.string().optional(),
+  addedFromDB: z.boolean().optional(),
 });
 
 // Part F schemas
@@ -1558,6 +1559,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       training: template.name,
       comment: "",
+      addedFromDB: true,
     }));
     const currentTrainingNeeds = form.getValues("trainingNeeds");
     form.setValue("trainingNeeds", [...currentTrainingNeeds, ...newTrainingNeeds]);
@@ -3279,12 +3281,18 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               <tr className="border-t">
                                 <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                                 <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                  <Input
-                                    value={trainingNeed.training}
-                                    onChange={(e) => updateTrainingNeed(trainingNeed.id, "training", e.target.value)}
-                                    placeholder={`Training ${index + 1}`}
-                                    className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                                  />
+                                  {trainingNeed.addedFromDB === true ? (
+                                    <span data-testid={`text-training-need-${trainingNeed.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                                      {trainingNeed.training}
+                                    </span>
+                                  ) : (
+                                    <Input
+                                      value={trainingNeed.training}
+                                      onChange={(e) => updateTrainingNeed(trainingNeed.id, "training", e.target.value)}
+                                      placeholder={`Training ${index + 1}`}
+                                      className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                    />
+                                  )}
                                 </td>
                                 <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                   <div className="flex gap-2 justify-center">

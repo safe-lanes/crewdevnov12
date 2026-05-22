@@ -82,12 +82,18 @@ const PartEComponent: React.FC<PartEProps> = ({
                       <tr className="border-t">
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                          <Input
-                            value={need.training}
-                            onChange={(e) => updateTrainingNeed(need.id, "training", e.target.value)}
-                            placeholder="Enter training need"
-                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          />
+                          {(need as any).addedFromDB === true ? (
+                            <span data-testid={`text-training-need-${need.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                              {need.training}
+                            </span>
+                          ) : (
+                            <Input
+                              value={need.training}
+                              onChange={(e) => updateTrainingNeed(need.id, "training", e.target.value)}
+                              placeholder="Enter training need"
+                              className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                            />
+                          )}
                         </td>
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                           <div className="flex gap-2 justify-center">

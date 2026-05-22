@@ -36,6 +36,7 @@ export const trainingNeedsSchema = z.object({
   id: z.string(),
   training: z.string().min(1, "Training name is required"),
   comment: z.string().optional(),
+  addedFromDB: z.boolean().optional(),
 });
 
 export const recommendationSchema = z.object({
