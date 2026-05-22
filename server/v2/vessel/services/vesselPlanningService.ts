@@ -1130,7 +1130,7 @@ export const vesselPlanningService = {
       }
     }
 
-    const hasPrimaryCrew = !!planning.crewUuid;
+    const hasPrimaryCrew = !!planning.crewUuid && !planning.isArchived && !planning.isDeleted;
 
     const result = await db.transaction(async (tx: typeof db) => {
       if (hasPrimaryCrew) {
