@@ -2182,12 +2182,18 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       if (!['A', 'B'].includes(activeSection)) {
         setActiveSection('A'); // Switch to continuous1 view
       }
+      // Set the highlight immediately so the sidebar reflects the click
+      // even before the scroll-based observer catches up.
+      setActiveContinuousSection1(sectionId);
+      setActiveContinuousSection2('');
       setTimeout(() => scrollToSection(sectionId), 100); // Small delay to ensure DOM is ready
     } else if (section.type === 'continuous2') {
       // For continuous2 sections (C-F), stay in the continuous view and scroll to section
       if (!['C', 'D', 'E', 'F'].includes(activeSection)) {
         setActiveSection('C'); // Switch to continuous2 view
       }
+      setActiveContinuousSection2(sectionId);
+      setActiveContinuousSection1('');
       setTimeout(() => scrollToSection(sectionId), 100); // Small delay to ensure DOM is ready
     } else {
       // For stepper sections (G), use traditional navigation and clear continuous section highlighting
