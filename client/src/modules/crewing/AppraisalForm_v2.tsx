@@ -995,6 +995,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         : null;
 
       const stageData = {
+        // Task #500: snapshot the current B1 trainings (auto + manual) and
+        // Stage-1 targets at Stage 2 submission so the live D3 re-sync that
+        // happens up to Stage 2 is frozen into the appraisal record.
+        trainings: formData.trainings,
+        targets: formData.targets,
         competenceAssessments: formData.competenceAssessments,
         behaviouralAssessments: formData.behaviouralAssessments,
         trainingNeeds: formData.trainingNeeds,

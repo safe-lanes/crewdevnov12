@@ -433,14 +433,25 @@ export class AppraisalResultsService {
         targetsRepo.syncForAppraisal(appraisal.appraisalUuid, data.targets || []),
       ]);
     } else if (stage === "stage2") {
-      await Promise.all([
+      // Task #500: persist the current B1 trainings (and targets) snapshot
+      // alongside the Stage-2 C-F writes. Only sync them when the payload
+      // includes them so legacy callers that omit `trainings`/`targets`
+      // leave existing persisted rows untouched.
+      const stage2Writes: Promise<unknown>[] = [
         competenceAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.competenceAssessments || []),
         behaviouralAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.behaviouralAssessments || []),
         trainingNeedsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingNeeds || []),
         recommendationsRepo.syncForAppraisal(appraisal.appraisalUuid, data.recommendations || []),
         appraiserCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.appraiserComments || []),
         seafarerCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.seafarerComments || []),
-      ]);
+      ];
+      if (Array.isArray((data as any)?.trainings)) {
+        stage2Writes.push(trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings));
+      }
+      if (Array.isArray((data as any)?.targets)) {
+        stage2Writes.push(targetsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).targets));
+      }
+      await Promise.all(stage2Writes);
     } else if (stage === "stage3") {
       // Task #500: persist any post-Stage-2 B1 Evaluation edits alongside
       // Section G. If the client omits `trainings` we leave the existing
