@@ -147,7 +147,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                             )}
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                               <div className="flex gap-2 justify-center">
-                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setTrainingComments(prev => ({ ...prev, [training.id]: prev[training.id] || "" }))}>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={lockB1Structural} onClick={() => setTrainingComments(prev => ({ ...prev, [training.id]: prev[training.id] || "" }))} data-testid={`button-add-training-comment-${training.id}`}>
                                   <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                                 </Button>
                                 {!lockDelete && (
@@ -162,7 +162,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                             <tr>
                               <td></td>
                               <td colSpan={3} className="p-3">
-                                {editingTrainingComment === training.id ? (
+                                {editingTrainingComment === training.id && !lockB1Structural ? (
                                   <Textarea
                                     value={trainingComments[training.id] ?? ""}
                                     onChange={(e) => { setTrainingComments(prev => ({ ...prev, [training.id]: e.target.value })); updateTraining(training.id, "comment", e.target.value); }}
@@ -174,14 +174,19 @@ const PartBComponent: React.FC<PartBProps> = ({
                                   />
                                 ) : (
                                   <div className="flex justify-between items-start">
-                                    <div className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]" onClick={() => setEditingTrainingComment(training.id)}>
+                                    <div
+                                      className={`flex-1 text-blue-600 italic p-2 rounded text-[13px] ${lockB1Structural ? "" : "cursor-pointer hover:bg-gray-50"}`}
+                                      onClick={() => { if (!lockB1Structural) setEditingTrainingComment(training.id); }}
+                                    >
                                       {trainingComments[training.id] || "Click to add comment..."}
                                     </div>
-                                    <div className="ml-2">
-                                      <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTrainingComment(training.id); }}>
-                                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
-                                      </Button>
-                                    </div>
+                                    {!lockB1Structural && (
+                                      <div className="ml-2">
+                                        <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTrainingComment(training.id); }} data-testid={`button-delete-training-comment-${training.id}`}>
+                                          <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                        </Button>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </td>
@@ -257,7 +262,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                           )}
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                             <div className="flex gap-2 justify-center">
-                              <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setTargetComments(prev => ({ ...prev, [target.id]: prev[target.id] || "" }))}>
+                              <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={lockB2Structural} onClick={() => setTargetComments(prev => ({ ...prev, [target.id]: prev[target.id] || "" }))} data-testid={`button-add-target-comment-${target.id}`}>
                                 <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                               </Button>
                               {!lockB2 && (
@@ -272,7 +277,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                           <tr>
                             <td></td>
                             <td colSpan={3} className="p-3">
-                              {editingTargetComment === target.id ? (
+                              {editingTargetComment === target.id && !lockB2Structural ? (
                                 <Textarea
                                   value={targetComments[target.id] ?? ""}
                                   onChange={(e) => { setTargetComments(prev => ({ ...prev, [target.id]: e.target.value })); updateTarget(target.id, "comment", e.target.value); }}
@@ -284,14 +289,19 @@ const PartBComponent: React.FC<PartBProps> = ({
                                 />
                               ) : (
                                 <div className="flex justify-between items-start">
-                                  <div className="flex-1 text-blue-600 italic cursor-pointer p-2 rounded hover:bg-gray-50 text-[13px]" onClick={() => setEditingTargetComment(target.id)}>
+                                  <div
+                                    className={`flex-1 text-blue-600 italic p-2 rounded text-[13px] ${lockB2Structural ? "" : "cursor-pointer hover:bg-gray-50"}`}
+                                    onClick={() => { if (!lockB2Structural) setEditingTargetComment(target.id); }}
+                                  >
                                     {targetComments[target.id] || "Click to add comment..."}
                                   </div>
-                                  <div className="ml-2">
-                                    <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTargetComment(target.id); }}>
-                                      <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
-                                    </Button>
-                                  </div>
+                                  {!lockB2Structural && (
+                                    <div className="ml-2">
+                                      <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTargetComment(target.id); }} data-testid={`button-delete-target-comment-${target.id}`}>
+                                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </td>

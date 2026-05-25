@@ -26,12 +26,21 @@ const PartAComponent: React.FC<PartAProps> = ({
   availableRanks,
   appraisalTypes,
   isFieldVisible,
+  isLockForm,
+  isPostStage2,
+  isPostStage3,
 }) => {
   const { isLoading: ranksLoading, error: ranksError, rankOptions } = useCompanyRanks();
   const currentRank = form.watch("seafarersRank");
   const hasLegacyRank =
     !!currentRank && !rankOptions.some((option) => option.value === currentRank);
+  // Task #505: A locks once Stage 2 has been submitted on a lock-form
+  // appraisal, and unconditionally after Stage 3. The fieldset disables
+  // every input/select/button inside; the seafarer fields stay frozen
+  // via their own readOnly/disabled props as before.
+  const lockSection = (!!isLockForm && !!isPostStage2) || !!isPostStage3;
   return (
+    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-a-lock">
     <div ref={partRef} data-section-id="A">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -261,6 +270,7 @@ const PartAComponent: React.FC<PartAProps> = ({
         </CardContent>
       </Card>
     </div>
+    </fieldset>
   );
 };
 

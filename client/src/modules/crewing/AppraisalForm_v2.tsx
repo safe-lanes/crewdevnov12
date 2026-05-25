@@ -2195,6 +2195,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           isFieldVisible={isFieldVisible}
           isSectionVisible={isSectionVisible}
           showConfirmDialog={showConfirmDialog}
+          isLockForm={isLockForm}
+          isPostStage1={isPostStage1}
+          isPostStage2={isPostStage2}
+          isPostStage3={isPostStage3}
         />
         )}
 
