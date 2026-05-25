@@ -15,6 +15,7 @@ export interface TrainingRow {
   category: string;
   status: string;
   completionDate: string;
+  addedFromDB?: boolean;
 }
 
 export interface Comment {

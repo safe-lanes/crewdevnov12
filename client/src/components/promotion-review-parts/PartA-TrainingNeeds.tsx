@@ -95,28 +95,53 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {trainingNeeds.map((training, index) => (
+            {trainingNeeds.map((training, index) => {
+              const matchedDbOption = dbTrainings.find(o => o.id === training.correspondingInDB);
+              // When `addedFromDB` is explicitly set (true or false), trust it —
+              // this is the authoritative source for rows created in the current
+              // session. The name-equality fallback only applies to legacy rows
+              // persisted before the flag existed (addedFromDB === undefined), so
+              // that a manual row whose typed name happens to coincide with a
+              // selected DB option's name is NOT incorrectly locked.
+              const isFromDb =
+                training.addedFromDB === true ||
+                (training.addedFromDB === undefined &&
+                  !!training.correspondingInDB &&
+                  matchedDbOption?.name === training.training);
+              return (
               <React.Fragment key={training.id}>
                 <TableRow>
                   <TableCell className="text-sm" data-testid={`cell-training-sno-${training.id}`}>{index + 1}</TableCell>
                   <TableCell>
-                    <Input
-                      value={training.training}
-                      onChange={(e) => onUpdateTraining(training.id, 'training', e.target.value)}
-                      placeholder="Enter training name..."
-                      className="h-8 text-xs"
-                      data-testid={`input-training-name-${training.id}`}
-                    />
+                    {isFromDb ? (
+                      <span className="text-xs text-[#4f5863]" data-testid={`text-training-name-${training.id}`}>
+                        {training.training}
+                      </span>
+                    ) : (
+                      <Input
+                        value={training.training}
+                        onChange={(e) => onUpdateTraining(training.id, 'training', e.target.value)}
+                        placeholder="Enter training name..."
+                        className="h-8 text-xs"
+                        data-testid={`input-training-name-${training.id}`}
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
-                    <DbTrainingCombobox
-                      value={training.correspondingInDB}
-                      options={dbTrainings}
-                      onChange={(value) => onUpdateTraining(training.id, 'correspondingInDB', value)}
-                      isLoading={isLoadingDbTrainings}
-                      isError={isErrorDbTrainings}
-                      testId={`select-training-db-${training.id}`}
-                    />
+                    {isFromDb ? (
+                      <span className="text-xs text-[#4f5863]" data-testid={`text-training-db-${training.id}`}>
+                        {matchedDbOption?.name || training.training}
+                      </span>
+                    ) : (
+                      <DbTrainingCombobox
+                        value={training.correspondingInDB}
+                        options={dbTrainings}
+                        onChange={(value) => onUpdateTraining(training.id, 'correspondingInDB', value)}
+                        isLoading={isLoadingDbTrainings}
+                        isError={isErrorDbTrainings}
+                        testId={`select-training-db-${training.id}`}
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
                     <Select 
@@ -266,7 +291,8 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                   </TableRow>
                 )}
               </React.Fragment>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </div>

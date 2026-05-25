@@ -1271,7 +1271,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       correspondingInDB: '',
       category: '',
       status: '',
-      completionDate: 'dd-mm-yy'
+      completionDate: 'dd-mm-yy',
+      addedFromDB: false,
     }]);
   }, []);
 
@@ -1295,7 +1296,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         correspondingInDB: template.id,
         category: '',
         status: '',
-        completionDate: 'dd-mm-yy'
+        completionDate: 'dd-mm-yy',
+        addedFromDB: true,
       };
     });
     setTrainingNeeds(prev => [...prev, ...newTrainings]);
