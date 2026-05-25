@@ -2559,7 +2559,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   if (mergeContinuousAtoF) {
                     if (!['A', 'B', 'C', 'D', 'E', 'F'].includes(activeSection)) return null;
                     return (
-                      <div ref={continuous1ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto" data-testid="container-continuous-af">
+                      <div ref={continuous1ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto flex flex-col gap-6 sm:gap-8" data-testid="container-continuous-af">
                         {renderContinuousSections1()}
                         {renderContinuousSections2()}
                       </div>
