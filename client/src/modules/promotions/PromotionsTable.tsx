@@ -401,7 +401,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     const meets = typeof meetsRaw === 'string' ? meetsRaw.toLowerCase() : meetsRaw;
     
     if (meets === 'yes') return 'met';
-    if (meets === 'no') return 'pending';
+    if (meets === 'no') return 'not-met';
     
     const verifiedStatus = review._parsedVerifiedStatus || {};
     const verified = verifiedStatus[criteriaId];
@@ -432,11 +432,14 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       const cesTests = review._parsedCesTests || [];
       if (cesTests.length > 0) {
         const results = cesTests.map((t: any) => ((t.result || '') as string).trim().toLowerCase());
+        const hasMissing = results.some((r: string) => r === '' || r === 'pending');
+        if (hasMissing) return 'pending';
         if (results.every((r: string) => r === 'pass' || r === 'na' || r === 'n/a')) return 'met';
-        return 'pending';
+        return 'not-met';
       }
       
-      if (cesStatus === 'no' || cesStatus === 'pending') return 'pending';
+      if (cesStatus === 'no') return 'not-met';
+      if (cesStatus === 'pending') return 'pending';
       return 'no-info';
     }
     
@@ -447,7 +450,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     if (childIds.length === 0) {
       const parentValue = normalize(meetsStatus[parentId]);
       if (parentValue === 'yes') return 'met';
-      if (parentValue === 'no' || parentValue === 'pending') return 'pending';
+      if (parentValue === 'no') return 'not-met';
+      if (parentValue === 'pending') return 'pending';
       
       if (Object.keys(meetsStatus).length > 0) return 'pending';
       return 'no-info';
@@ -462,9 +466,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       if (v === 'yes' || v === 'na') return 'met';
       return 'pending';
     });
-    if (childStatuses.every(s => s === 'met')) return 'met';
-    if (childStatuses.some(s => s === 'not-met')) return 'pending';
-    return 'pending';
+    if (childStatuses.some(s => s === 'pending')) return 'pending';
+    if (childStatuses.some(s => s === 'not-met')) return 'not-met';
+    return 'met';
   }, []);
 
   const promotionData = useMemo(() => {
@@ -577,15 +581,16 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         item.cesIndex,
         item.trainDocs,
       ];
+      const isPendingLike = (s: string) => s === 'pending' || s === 'no-info';
       let matchesCriteria = true;
       if (criteria === 'met') {
         matchesCriteria = criteriaFields.every(s => s === 'met');
       } else if (criteria === 'pending') {
-        matchesCriteria = criteriaFields.some(s => s === 'pending');
+        matchesCriteria = criteriaFields.some(isPendingLike);
       } else if (criteria === 'not-met') {
         matchesCriteria =
           criteriaFields.some(s => s === 'not-met') &&
-          !criteriaFields.some(s => s === 'pending');
+          !criteriaFields.some(isPendingLike);
       }
 
       return matchesName && matchesRank && matchesVessel && matchesVesselType && matchesNationality && matchesCriteria && matchesStatus;
