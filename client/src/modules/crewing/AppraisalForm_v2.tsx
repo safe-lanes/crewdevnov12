@@ -2182,7 +2182,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Function to render continuous sections 1 (A&B) - Using extracted components
   const renderContinuousSections1 = () => {
     return (
-      <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-6 sm:gap-8">
         {/* Part A: Seafarer's Information - Extracted Component */}
         {canViewSection('A') && (
         <PartA
@@ -2263,7 +2263,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const overallScore = calculateOverallScore();
 
     return (
-      <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-6 sm:gap-8">
         {canViewSection('C') && (
         <PartC
           form={form}
