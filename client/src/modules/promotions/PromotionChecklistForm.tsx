@@ -870,18 +870,27 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge
-                        className={`${
-                          point.verifications.length === 0
+                      {(() => {
+                        // Fall back to 1 when the admin hasn't configured a
+                        // minimum — keeps the historical "any verification
+                        // turns it green" behavior for un-migrated configs.
+                        const minRequired = Math.max(1, checklistConfig?.minChecklistVerifications ?? 1);
+                        const count = point.verifications.length;
+                        const badgeClass =
+                          count === 0
                             ? 'bg-gray-200 text-gray-700'
-                            : point.verifications.length === 1
-                            ? 'bg-yellow-200 text-yellow-800'
-                            : 'bg-green-200 text-green-800'
-                        }`}
-                        data-testid={`badge-verified-${point.id}`}
-                      >
-                        {point.verifications.length}
-                      </Badge>
+                            : count >= minRequired
+                            ? 'bg-green-200 text-green-800'
+                            : 'bg-yellow-200 text-yellow-800';
+                        return (
+                          <Badge
+                            className={badgeClass}
+                            data-testid={`badge-verified-${point.id}`}
+                          >
+                            {count}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-2">
