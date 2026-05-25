@@ -576,8 +576,20 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const existingRows = (form.getValues('trainings') || []) as Array<{
       id: string; training: string; evaluation: string; comment?: string; source?: string;
     }>;
-    const manualRows = existingRows.filter(r => r.source !== 'auto');
+    const manualRowsRaw = existingRows.filter(r => r.source !== 'auto');
     const existingAutoRows = existingRows.filter(r => r.source === 'auto');
+
+    // Names that will appear as auto rows on this render — used to dedupe
+    // any manual rows that happen to share a training name, so the appraiser
+    // never sees the same course twice (one auto + one manual).
+    const autoNames = new Set(
+      (crewTrainingCourses || [])
+        .filter(c => inWindow(c.issued))
+        .map(c => (c.courseName || c.courseId || 'Training').toString().trim().toLowerCase()),
+    );
+    const manualRows = manualRowsRaw.filter(
+      r => !autoNames.has((r.training || '').toString().trim().toLowerCase()),
+    );
 
     const autoRows = (crewTrainingCourses || [])
       .filter(c => inWindow(c.issued))

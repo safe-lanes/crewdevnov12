@@ -328,6 +328,19 @@ export class AppraisalResultsService {
     if (stage === "stage3" && !appraisal.stage2Status) {
       throw new Error("Stage 2 must be submitted before Stage 3");
     }
+    // Task #500: Stage 3 requires every persisted B1 training row to carry a
+    // non-empty Evaluation. We enforce this server-side as a defense-in-depth
+    // backup to the same check on the client.
+    if (stage === "stage3") {
+      const persistedByUuid = await trainingsRepo.findByAppraisalUuids([appraisal.appraisalUuid]);
+      const persisted = persistedByUuid.get(appraisal.appraisalUuid) || [];
+      const missing = persisted.findIndex(t => !((t as any).evaluation || "").toString().trim());
+      if (missing !== -1) {
+        throw new Error(
+          `B1 Evaluation required for every training row before Stage 3 submission (row ${missing + 1} is missing).`,
+        );
+      }
+    }
 
     // Forward-only status progression: draft < preliminary < submitted < reviewed.
     // A stage submission may advance the status to its nominal value but must
