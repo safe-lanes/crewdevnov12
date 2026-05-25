@@ -43,6 +43,7 @@ import { CalendarIcon } from "lucide-react";
 import { format, addMonths, parseISO } from "date-fns";
 import { ComplianceMatrixDialog_v2 } from './ComplianceMatrixDialog_v2';
 import { AppraisalForm } from '@/modules/crewing/AppraisalForm_v2';
+import { AppraisalView } from '@/modules/crewing/AppraisalView_v2';
 import { CrewInfoForm_v2 as CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm_v2';
 import { getBaseRank } from '@shared/crew-mapping';
 import { HandoverAttachmentsDialog, getHandoverAttachmentCount } from '@/components/HandoverAttachmentsDialog';
@@ -651,7 +652,9 @@ export function VesselModule_v2(): JSX.Element {
         vesselId: string;
         crewName: string;
         rank: string;
-    }>({ planningId: '', vesselId: '', crewName: '', rank: '' });
+        readOnly: boolean;
+    }>({ planningId: '', vesselId: '', crewName: '', rank: '', readOnly: false });
+    const [appraisalView, setAppraisalView] = useState<{ appraisalId: number; rank: string; seafarerName: string } | null>(null);
     const [onBoardDialogOpen, setOnBoardDialogOpen] = useState(false);
     const [onBoardDialogData, setOnBoardDialogData] = useState<{ rank: string; rankId: string; planningData: any } | null>(null);
     const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
@@ -1291,6 +1294,16 @@ export function VesselModule_v2(): JSX.Element {
         }
     };
 
+    const handleAppraisalView = (planning: any, latestAppraisal: any) => {
+        if (!latestAppraisal?.id) return;
+        const crewRank = planning.presentRank || planning.rank || '';
+        setAppraisalView({
+            appraisalId: latestAppraisal.id,
+            rank: getBaseRank(crewRank) || crewRank,
+            seafarerName: planning.crewMemberName || '',
+        });
+    };
+
     const handleAppraisalClick = async (crew: any, buttonConfig: { text: string; appraisalId?: number; status?: string }) => {
         const crewRank = crew.presentRank || crew.rank || '';
         const displayRank = getBaseRank(crewRank) || crewRank;
@@ -1676,6 +1689,24 @@ export function VesselModule_v2(): JSX.Element {
                                                                                     });
                                                                                 const hasAppraisal = crewAppraisals.length > 0;
                                                                                 const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                                if (planning.isArchived === true) {
+                                                                                    if (latestAppraisal) {
+                                                                                        return (
+                                                                                            <Button
+                                                                                                variant="ghost"
+                                                                                                size="sm"
+                                                                                                className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                                                onClick={() => handleAppraisalView(planning, latestAppraisal)}
+                                                                                                data-testid={`button-appraisal-view-${index + 1}`}
+                                                                                            >
+                                                                                                View
+                                                                                            </Button>
+                                                                                        );
+                                                                                    }
+                                                                                    return (
+                                                                                        <span className="text-gray-400 text-xs" data-testid={`text-appraisal-none-${index + 1}`}>-</span>
+                                                                                    );
+                                                                                }
                                                                                 const status = latestAppraisal?.status?.toLowerCase();
                                                                                 const isDraft = status === 'draft' || status === 'preliminary';
                                                                                 const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'Add') : 'Add';
@@ -1708,18 +1739,23 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 const attachmentCount = getHandoverAttachmentCount(planning.handoverAttachments) || (planning.handoverAttachmentCount || 0);
                                                                                 const hasAttachments = attachmentCount > 0;
                                                                                 const handoverDate = formatDateOnly(planning.handOverDate);
+                                                                                const isArchivedRow = planning.isArchived === true;
+                                                                                const archivedTitle = 'Crew is archived — handover is read-only';
                                                                                 return (
                                                                                     <div className="flex flex-col gap-0.5">
                                                                                         {handoverDate && <span className="text-gray-600">{handoverDate}</span>}
                                                                                         <Button
                                                                                             variant="link"
                                                                                             size="sm"
-                                                                                            onClick={() => {
+                                                                                            disabled={isArchivedRow && !hasAttachments}
+                                                                                            title={isArchivedRow && !hasAttachments ? archivedTitle : undefined}
+                                                                                            onClick={isArchivedRow && !hasAttachments ? undefined : () => {
                                                                                                 setHandoverDialogData({
                                                                                                     planningId: planning.planUuid,
                                                                                                     vesselId: selectedVessel?.vesselId || '',
                                                                                                     crewName: planning.crewMemberName || '',
-                                                                                                    rank: planning.rank || ''
+                                                                                                    rank: planning.rank || '',
+                                                                                                    readOnly: isArchivedRow,
                                                                                                 });
                                                                                                 setHandoverDialogOpen(true);
                                                                                             }}
@@ -1862,6 +1898,24 @@ export function VesselModule_v2(): JSX.Element {
                                                                                     });
                                                                                 const hasAppraisal = crewAppraisals.length > 0;
                                                                                 const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                                if (planning.isArchived === true) {
+                                                                                    if (latestAppraisal) {
+                                                                                        return (
+                                                                                            <Button
+                                                                                                variant="ghost"
+                                                                                                size="sm"
+                                                                                                className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                                                                onClick={() => handleAppraisalView(planning, latestAppraisal)}
+                                                                                                data-testid={`button-appraisal-view-${index + 1}`}
+                                                                                            >
+                                                                                                View
+                                                                                            </Button>
+                                                                                        );
+                                                                                    }
+                                                                                    return (
+                                                                                        <span className="text-gray-400 text-xs" data-testid={`text-appraisal-none-${index + 1}`}>-</span>
+                                                                                    );
+                                                                                }
                                                                                 const status = latestAppraisal?.status?.toLowerCase();
                                                                                 const isDraft = status === 'draft' || status === 'preliminary';
                                                                                 const buttonText = hasAppraisal ? (isDraft ? 'Edit' : 'Add') : 'Add';
@@ -1893,16 +1947,21 @@ export function VesselModule_v2(): JSX.Element {
                                                                             {(() => {
                                                                                 const attachmentCount = getHandoverAttachmentCount(planning.handoverAttachments) || (planning.handoverAttachmentCount || 0);
                                                                                 const hasAttachments = attachmentCount > 0;
+                                                                                const isArchivedRow = planning.isArchived === true;
+                                                                                const archivedTitle = 'Crew is archived — handover is read-only';
                                                                                 return (
                                                                                     <Button
                                                                                         variant="link"
                                                                                         size="sm"
-                                                                                        onClick={() => {
+                                                                                        disabled={isArchivedRow && !hasAttachments}
+                                                                                        title={isArchivedRow && !hasAttachments ? archivedTitle : undefined}
+                                                                                        onClick={isArchivedRow && !hasAttachments ? undefined : () => {
                                                                                             setHandoverDialogData({
                                                                                                 planningId: planning.planUuid,
                                                                                                 vesselId: selectedVessel?.vesselId || '',
                                                                                                 crewName: planning.crewMemberName || '',
-                                                                                                rank: planning.rank || ''
+                                                                                                rank: planning.rank || '',
+                                                                                                readOnly: isArchivedRow,
                                                                                             });
                                                                                             setHandoverDialogOpen(true);
                                                                                         }}
@@ -2483,6 +2542,15 @@ export function VesselModule_v2(): JSX.Element {
                 vesselId={selectedVessel?.vesselId}
             />
 
+            {appraisalView && (
+                <AppraisalView
+                    appraisalId={appraisalView.appraisalId}
+                    rank={appraisalView.rank}
+                    seafarerNameFallback={appraisalView.seafarerName}
+                    onClose={() => setAppraisalView(null)}
+                />
+            )}
+
             {showAppraisalForm && selectedCrewForAppraisal && (
                 <AppraisalForm
                     crewMember={selectedCrewForAppraisal}
@@ -2553,6 +2621,7 @@ export function VesselModule_v2(): JSX.Element {
                 vesselId={handoverDialogData.vesselId}
                 crewName={handoverDialogData.crewName}
                 rank={handoverDialogData.rank}
+                readOnly={handoverDialogData.readOnly}
                 version="v2"
                 onAttachmentsChanged={() => {
                     queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, handoverDialogData.vesselId, 'planning'] });

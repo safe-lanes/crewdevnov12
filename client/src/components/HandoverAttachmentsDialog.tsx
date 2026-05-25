@@ -32,6 +32,7 @@ interface HandoverAttachmentsDialogProps {
   rank: string;
   onAttachmentsChanged?: (hasAttachments: boolean) => void;
   version?: 'v1' | 'v2';
+  readOnly?: boolean;
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -46,6 +47,7 @@ export function HandoverAttachmentsDialog({
   rank,
   onAttachmentsChanged,
   version = 'v1',
+  readOnly = false,
 }: HandoverAttachmentsDialogProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -263,6 +265,7 @@ export function HandoverAttachmentsDialog({
               data-testid="input-handover-file"
             />
 
+            {!readOnly && (
             <Button
               type="button"
               variant="outline"
@@ -279,6 +282,7 @@ export function HandoverAttachmentsDialog({
                 <span className="text-xs text-gray-400">PDF, JPG, PNG (max 5MB)</span>
               </div>
             </Button>
+            )}
 
             {isLoading ? (
               <div className="text-center text-sm text-gray-500 py-4">Loading attachments...</div>
@@ -309,6 +313,7 @@ export function HandoverAttachmentsDialog({
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Button>
+                        {!readOnly && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -320,6 +325,7 @@ export function HandoverAttachmentsDialog({
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
+                        )}
                       </div>
                     </div>
                   ))}
