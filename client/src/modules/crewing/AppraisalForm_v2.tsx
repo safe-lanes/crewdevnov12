@@ -514,6 +514,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     expiry?: string | null;
   }>>({
     queryKey: ['/api/v2/crew-pool/crew', crewMember?.id, 'training'],
+    // The default query fetcher only sends `queryKey[0]`, so we must provide
+    // an explicit fetcher to hit the per-crew training endpoint.
+    queryFn: async () => {
+      const res = await fetch(`/api/v2/crew-pool/crew/${crewMember!.id}/training`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`Failed to load crew trainings (${res.status})`);
+      return res.json();
+    },
     enabled: !!crewMember?.id && !isPostStage2,
   });
 
@@ -1138,6 +1147,17 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           description: `Please provide an Evaluation for every B1 training row before submitting Stage 3 (row ${missing + 1} is missing).`,
           variant: 'destructive',
         });
+        // Jump the user back to Part B and focus the offending Evaluation
+        // input so they can act on the error without hunting for it.
+        try {
+          partBRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => {
+            const el = document.querySelector<HTMLElement>(
+              `[data-testid="input-training-evaluation-${missing}"], [data-testid="select-training-evaluation-${missing}"]`,
+            );
+            el?.focus();
+          }, 300);
+        } catch { /* non-fatal */ }
         return;
       }
     }
