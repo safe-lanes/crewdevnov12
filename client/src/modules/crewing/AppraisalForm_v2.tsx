@@ -348,6 +348,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const [nationalityOpen, setNationalityOpen] = useState(false);
   const [editingOfficeReview, setEditingOfficeReview] = useState<string | null>(null);
   const [appraisalId, setAppraisalId] = useState<number | null>(propAppraisalId || null);
+  // Task #503: bumped by the hydration effect so the B1 auto-merge re-runs
+  // after `form.reset` + `setValue('trainings', ...)` overwrites the auto
+  // rows with the persisted (possibly empty) trainings array.
+  const [hydrationToken, setHydrationToken] = useState(0);
   const [appraisalStatus, setAppraisalStatus] = useState<AppraisalStatusValue>(initialStatus as AppraisalStatusValue);
 
   // Task #500: stage-progression helpers. Synonyms `stage2_submitted` and
@@ -633,7 +637,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       form.setValue('trainings', next as any, { shouldDirty: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(crewTrainingCourses), watchedSignOn, crewMember?.signOn, isPostStage2]);
+  }, [JSON.stringify(crewTrainingCourses), watchedSignOn, crewMember?.signOn, isPostStage2, hydrationToken]);
 
   // Pre-populate crew member fields when data loads (only for new appraisals)
   useEffect(() => {
@@ -1113,7 +1117,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         if (existingAppraisal.status && APPRAISAL_STATUS_VALUES.includes(existingAppraisal.status)) {
           setAppraisalStatus(existingAppraisal.status as AppraisalStatusValue);
         }
-        
+
+        // Task #503: signal the B1 auto-merge effect to re-run now that
+        // hydration has overwritten `trainings` with the persisted value,
+        // so the D3 auto rows get re-injected on top.
+        setHydrationToken(t => t + 1);
+
         console.log('✅ Hydrated form with existing appraisal data:', existingAppraisal);
       } catch (error) {
         console.error('❌ Failed to parse appraisal data:', error);
