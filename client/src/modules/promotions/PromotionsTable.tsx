@@ -411,8 +411,6 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       return 'pending';
     }
     
-    if (verified === 'yes') return 'met';
-    if (verified === 'na') return 'met';
     if (Object.keys(verifiedStatus).length > 0 || Object.keys(meetsStatus).length > 0) return 'pending';
     
     return 'no-info';
