@@ -1152,9 +1152,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         try {
           partBRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           setTimeout(() => {
-            const el = document.querySelector<HTMLElement>(
-              `[data-testid="input-training-evaluation-${missing}"], [data-testid="select-training-evaluation-${missing}"]`,
-            );
+            // Part B renders its evaluation select with a testid keyed by the
+            // row's stable id, e.g. `select-training-eval-${training.id}`.
+            const missingId = (form.getValues('trainings')?.[missing] as any)?.id;
+            const sel = missingId
+              ? `[data-testid="select-training-eval-${missingId}"]`
+              : `[data-testid^="select-training-eval-"]`;
+            const el = document.querySelector<HTMLElement>(sel);
             el?.focus();
           }, 300);
         } catch { /* non-fatal */ }
@@ -2327,6 +2331,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           stage1Mutation={stage1Mutation}
           stage2Mutation={stage2Mutation}
           saveAppraisalMutation={saveAppraisalMutation}
+          isLockForm={isLockForm}
+          isPostStage1={isPostStage1}
+          isPostStage2={isPostStage2}
+          isPostStage3={isPostStage3}
         />
         )}
       </div>
