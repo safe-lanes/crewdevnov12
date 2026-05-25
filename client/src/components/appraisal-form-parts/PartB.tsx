@@ -37,14 +37,17 @@ const PartBComponent: React.FC<PartBProps> = ({
   isPostStage2,
   isPostStage3,
 }) => {
-  // Task #500:
+  // Task #500 + #504:
   //   - When the form's lock-form flag is on and Stage 2 has been submitted,
-  //     B1 stays editable only for the Evaluation column; everything else
-  //     (training name, delete, add) and the entire B2 section locks down.
+  //     both B1 and B2 stay editable only for the Evaluation column;
+  //     everything else (training/target name, delete, add) locks down.
   //   - After Stage 3, everything locks regardless of the flag.
   const lockB1Structural = !!(isPostStage3 || (isLockForm && isPostStage2));
   const lockB1Evaluation = !!isPostStage3;
-  const lockB2 = !!(isPostStage3 || (isLockForm && isPostStage2));
+  const lockB2Structural = !!(isPostStage3 || (isLockForm && isPostStage2));
+  const lockB2Evaluation = !!isPostStage3;
+  // Backwards-compat alias used by the B2 "Add Target" / delete buttons.
+  const lockB2 = lockB2Structural;
   const deleteTrainingComment = (id: string) => {
     showConfirmDialog(
       "Delete Comment",
@@ -238,7 +241,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                           </td>
                           {showEvaluation && (
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                              <Select value={target.evaluation} onValueChange={(value) => updateTarget(target.id, "evaluation", value)} disabled={lockB2}>
+                              <Select value={target.evaluation} onValueChange={(value) => updateTarget(target.id, "evaluation", value)} disabled={lockB2Evaluation}>
                                 <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                                   <SelectValue placeholder="Select Rating" />
                                 </SelectTrigger>
