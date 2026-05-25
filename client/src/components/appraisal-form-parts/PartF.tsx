@@ -45,7 +45,12 @@ const PartFComponent: React.FC<PartFProps> = ({
 }) => {
   const overallScoreValue = parseFloat(overallScore) || 0;
   const { bgColor: overallBgColor, textColor: overallTextColor } = getScoreColors(overallScoreValue);
-  const isF3Locked = appraisalStatus === 'submitted' || appraisalStatus === 'reviewed';
+  // Task #500: when the form's lock-form flag is on, the F section locks
+  // immediately after Stage 2 submit (along with the rest of A-F); without
+  // the flag the legacy behavior still kicks in at 'submitted'/'reviewed'.
+  const isPostStage2 = appraisalStatus === 'submitted' || appraisalStatus === 'reviewed' || appraisalStatus === ('stage2_submitted' as typeof appraisalStatus) || appraisalStatus === ('stage3_submitted' as typeof appraisalStatus);
+  const isPostStage3 = appraisalStatus === 'reviewed' || appraisalStatus === ('stage3_submitted' as typeof appraisalStatus);
+  const isF3Locked = isPostStage3 || isPostStage2;
 
   // Map primaryAppraiser value to rank name
   const primaryAppraiserToRank: Record<string, string> = {
@@ -456,7 +461,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                 type="button"
                 className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8"
                 onClick={() => handleStageSubmission('stage2')}
-                disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'submitted' || appraisalStatus === 'reviewed'}
+                disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || isPostStage2}
                 data-testid="button-submit-stage-2"
               >
                 {stage2Mutation.isPending ? 'Submitting...' : 'Submit Stage 2'}

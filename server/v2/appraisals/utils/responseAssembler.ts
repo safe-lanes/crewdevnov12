@@ -41,6 +41,7 @@ export function assembleV1Response(
       training: s(t.training),
       evaluation: s(t.evaluation),
       comment: s(t.comment),
+      source: (t as any).source || "manual",
     })),
     targets: targets.map((t, i) => ({
       id: String(i + 1),
@@ -175,6 +176,7 @@ export function assembleV1Response(
     submittedAt: appraisal.submittedAt,
     submittedBy: appraisal.submittedBy,
     status: appraisal.status,
+    isLockForm: (appraisal as any).isLockForm ?? false,
     stageStatuses: JSON.stringify(stageStatuses),
     stagePayloads: JSON.stringify(stagePayloads),
   };

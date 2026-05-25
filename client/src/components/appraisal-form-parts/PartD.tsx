@@ -23,6 +23,9 @@ const PartDComponent: React.FC<PartDProps> = ({
   editingBehaviouralComment,
   setEditingBehaviouralComment,
   updateBehaviouralAssessment,
+  isLockForm,
+  isPostStage2,
+  isPostStage3,
   behaviouralSectionScore,
   getScoreColors,
 }) => {
@@ -42,7 +45,11 @@ const PartDComponent: React.FC<PartDProps> = ({
   const scoreValue = parseFloat(behaviouralSectionScore) || 0;
   const { bgColor, textColor } = getScoreColors(scoreValue);
 
+  // Task #500: D is locked once Stage 2 has been submitted on a lock-form
+  // appraisal, and fully locked after Stage 3 in all cases.
+  const lockSection = (!!isLockForm && !!isPostStage2) || !!isPostStage3;
   return (
+    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-d-lock">
     <div ref={partRef} data-section-id="D">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -139,6 +146,7 @@ const PartDComponent: React.FC<PartDProps> = ({
         </CardContent>
       </Card>
     </div>
+    </fieldset>
   );
 };
 

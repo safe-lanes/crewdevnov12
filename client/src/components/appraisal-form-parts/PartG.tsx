@@ -40,7 +40,8 @@ const PartGComponent: React.FC<PartGProps> = ({
   saveAppraisalMutation,
 }) => {
   const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
-  const isG1Locked = appraisalStatus === 'reviewed';
+  // Task #500: post-Stage 3 fully locks G (legacy behavior).
+  const isG1Locked = appraisalStatus === 'reviewed' || appraisalStatus === ('stage3_submitted' as typeof appraisalStatus);
 
   const deleteTrainingFollowupComment = (id: string) => {
     showConfirmDialog(
@@ -53,7 +54,12 @@ const PartGComponent: React.FC<PartGProps> = ({
     );
   };
 
+  // Task #500: G is fully locked once Stage 3 has been submitted. Using a
+  // fieldset disables every native input, select, textarea and button inside,
+  // including the Save Draft / Submit Stage 3 actions at the bottom.
+  const lockSection = !!isPostStage3;
   return (
+    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-g-lock">
     <div ref={partRef} data-section-id="G">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -291,6 +297,7 @@ const PartGComponent: React.FC<PartGProps> = ({
         </CardContent>
       </Card>
     </div>
+    </fieldset>
   );
 };
 

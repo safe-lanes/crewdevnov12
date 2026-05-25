@@ -48,6 +48,8 @@ export class ApprTrainingsRepository {
               training: row.training || null,
               evaluation: row.evaluation || null,
               comment: row.comment || null,
+              // Preserve existing source unless the client explicitly sets it.
+              source: row.source || existing[i].source || "manual",
               sortOrder: i,
               updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
               updatedAt: now,
@@ -62,6 +64,7 @@ export class ApprTrainingsRepository {
             training: row.training || null,
             evaluation: row.evaluation || null,
             comment: row.comment || null,
+            source: row.source || "manual",
             sortOrder: i,
             createdByUuid: auditUserUuid || null,
             updatedByUuid: auditUserUuid || null,

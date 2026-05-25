@@ -33,7 +33,18 @@ const PartBComponent: React.FC<PartBProps> = ({
   addTarget,
   updateTarget,
   deleteTarget,
+  isLockForm,
+  isPostStage2,
+  isPostStage3,
 }) => {
+  // Task #500:
+  //   - When the form's lock-form flag is on and Stage 2 has been submitted,
+  //     B1 stays editable only for the Evaluation column; everything else
+  //     (training name, delete, add) and the entire B2 section locks down.
+  //   - After Stage 3, everything locks regardless of the flag.
+  const lockB1Structural = !!(isPostStage3 || (isLockForm && isPostStage2));
+  const lockB1Evaluation = !!isPostStage3;
+  const lockB2 = !!(isPostStage3 || (isLockForm && isPostStage2));
   const deleteTrainingComment = (id: string) => {
     showConfirmDialog(
       "Delete Comment",
@@ -75,7 +86,7 @@ const PartBComponent: React.FC<PartBProps> = ({
             <div data-testid="section-b1">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-medium text-[16px]" style={{ color: '#16569e' }}>B1. Trainings conducted prior joining vessel (To Assess Effectiveness)</h3>
-                <Button type="button" onClick={addTraining} variant="outline" size="sm" className="text-gray-600 border-gray-300">
+                <Button type="button" onClick={addTraining} variant="outline" size="sm" className="text-gray-600 border-gray-300" disabled={lockB1Structural} data-testid="button-add-training">
                   <Plus className="h-4 w-4 mr-1" />
                   Add Training
                 </Button>
@@ -93,22 +104,32 @@ const PartBComponent: React.FC<PartBProps> = ({
                       </tr>
                     </thead>
                     <tbody className="bg-white">
-                      {form.watch("trainings").map((training, index) => (
+                      {form.watch("trainings").map((training, index) => {
+                        const isAutoRow = (training as { source?: string }).source === 'auto';
+                        // Auto-fetched rows are non-deletable and their training
+                        // name is read-only. They also lock once stage-2 lock
+                        // kicks in.
+                        const lockName = lockB1Structural || isAutoRow;
+                        const lockDelete = lockB1Structural || isAutoRow;
+                        return (
                         <Fragment key={training.id}>
-                          <tr className="border-b border-gray-200 bg-white hover:bg-gray-50">
+                          <tr className="border-b border-gray-200 bg-white hover:bg-gray-50" data-testid={`row-training-${training.id}`}>
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                               <Input
                                 value={training.training}
                                 onChange={(e) => updateTraining(training.id, "training", e.target.value)}
                                 placeholder={`Training ${index + 1}`}
+                                readOnly={lockName}
+                                disabled={lockName}
                                 className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                data-testid={`input-training-name-${training.id}`}
                               />
                             </td>
                             {showEvaluation && (
                               <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                <Select value={training.evaluation} onValueChange={(value) => updateTraining(training.id, "evaluation", value)}>
-                                  <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                <Select value={training.evaluation} onValueChange={(value) => updateTraining(training.id, "evaluation", value)} disabled={lockB1Evaluation}>
+                                  <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-training-eval-${training.id}`}>
                                     <SelectValue placeholder="Select Rating" />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -126,9 +147,11 @@ const PartBComponent: React.FC<PartBProps> = ({
                                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setTrainingComments(prev => ({ ...prev, [training.id]: prev[training.id] || "" }))}>
                                   <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                                 </Button>
-                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTraining(training.id)}>
-                                  <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
-                                </Button>
+                                {!lockDelete && (
+                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTraining(training.id)} data-testid={`button-delete-training-${training.id}`}>
+                                    <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                  </Button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -162,7 +185,8 @@ const PartBComponent: React.FC<PartBProps> = ({
                             </tr>
                           )}
                         </Fragment>
-                      ))}
+                        );
+                      })}
                       {form.watch("trainings").length === 0 && (
                         <tr>
                           <td colSpan={4} className="p-8 text-center text-gray-500">
@@ -181,7 +205,7 @@ const PartBComponent: React.FC<PartBProps> = ({
             <div data-testid="section-b2">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-medium text-[16px]" style={{ color: '#16569e' }}>B2. Target Setting</h3>
-                <Button type="button" onClick={addTarget} variant="outline" size="sm" className="text-gray-600 border-gray-300">
+                <Button type="button" onClick={addTarget} variant="outline" size="sm" className="text-gray-600 border-gray-300" disabled={lockB2} data-testid="button-add-target">
                   <Plus className="h-4 w-4 mr-1" />
                   Add Target
                 </Button>
@@ -207,12 +231,14 @@ const PartBComponent: React.FC<PartBProps> = ({
                               value={target.targetSetting}
                               onChange={(e) => updateTarget(target.id, "targetSetting", e.target.value)}
                               placeholder={`Target ${index + 1}`}
+                              readOnly={lockB2}
+                              disabled={lockB2}
                               className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
                             />
                           </td>
                           {showEvaluation && (
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                              <Select value={target.evaluation} onValueChange={(value) => updateTarget(target.id, "evaluation", value)}>
+                              <Select value={target.evaluation} onValueChange={(value) => updateTarget(target.id, "evaluation", value)} disabled={lockB2}>
                                 <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                                   <SelectValue placeholder="Select Rating" />
                                 </SelectTrigger>
@@ -231,9 +257,11 @@ const PartBComponent: React.FC<PartBProps> = ({
                               <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setTargetComments(prev => ({ ...prev, [target.id]: prev[target.id] || "" }))}>
                                 <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                               </Button>
-                              <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTarget(target.id)}>
-                                <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
-                              </Button>
+                              {!lockB2 && (
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTarget(target.id)} data-testid={`button-delete-target-${target.id}`}>
+                                  <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>

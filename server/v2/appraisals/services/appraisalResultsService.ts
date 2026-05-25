@@ -333,11 +333,17 @@ export class AppraisalResultsService {
     // A stage submission may advance the status to its nominal value but must
     // never regress an appraisal that is already further along (e.g. resubmitting
     // Stage 1 on a Submitted/Reviewed appraisal must not revert it to Preliminary).
+    // Task #500: accept new status synonyms `stage2_submitted` and
+    // `stage3_submitted` as equivalents of `submitted`/`reviewed` so existing
+    // consumers (UI status checks, role-based filtering) keep working without
+    // a coordinated rewrite. Server still emits the canonical short names.
     const STATUS_ORDER: Record<string, number> = {
       draft: 0,
       preliminary: 1,
       submitted: 2,
+      stage2_submitted: 2,
       reviewed: 3,
+      stage3_submitted: 3,
     };
     const normalize = (s: string | null | undefined) =>
       (s ?? "").trim().toLowerCase();
@@ -384,6 +390,18 @@ export class AppraisalResultsService {
         if (extra.competenceRating !== undefined) stageUpdate.competenceRating = extra.competenceRating;
         if (extra.behavioralRating !== undefined) stageUpdate.behavioralRating = extra.behavioralRating;
         if (extra.overallRating !== undefined) stageUpdate.overallRating = extra.overallRating;
+      }
+      // Task #500: snapshot the form's current lock-form flag onto this
+      // appraisal so admin-side toggles after Stage 2 do not retroactively
+      // unlock (or lock) already-submitted appraisals.
+      try {
+        const rank = (appraisal as any).seafarersRank as string | null | undefined;
+        if (rank) {
+          const formForRank = await formsService.getFormForRank(rank, "appraisal");
+          stageUpdate.isLockForm = !!(formForRank as any)?.isLockForm;
+        }
+      } catch (e) {
+        console.warn("[Appraisals V2] Failed to resolve isLockForm for stage2 snapshot:", e);
       }
     } else if (stage === "stage3") {
       stageUpdate.stage3Status = "completed";

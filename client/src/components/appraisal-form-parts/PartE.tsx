@@ -21,6 +21,9 @@ const PartEComponent: React.FC<PartEProps> = ({
   updateTrainingNeed,
   deleteTrainingNeed,
   handleTrainingNeedsSelect,
+  isLockForm,
+  isPostStage2,
+  isPostStage3,
 }) => {
   const deleteTrainingNeedsComment = (id: string) => {
     showConfirmDialog(
@@ -33,7 +36,11 @@ const PartEComponent: React.FC<PartEProps> = ({
     );
   };
 
+  // Task #500: E is locked once Stage 2 has been submitted on a lock-form
+  // appraisal, and fully locked after Stage 3 in all cases.
+  const lockSection = (!!isLockForm && !!isPostStage2) || !!isPostStage3;
   return (
+    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-e-lock">
     <div ref={partRef} data-section-id="E">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -151,6 +158,7 @@ const PartEComponent: React.FC<PartEProps> = ({
         </CardContent>
       </Card>
     </div>
+    </fieldset>
   );
 };
 

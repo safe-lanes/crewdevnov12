@@ -191,7 +191,7 @@ export const formsService = {
     };
   },
 
-  async getVersionConfiguration(versionId: number): Promise<{ rankGroupName: string | null; rankGroupConfig: any | null; formVersionId: number; formVersionUuid: string }> {
+  async getVersionConfiguration(versionId: number): Promise<{ rankGroupName: string | null; rankGroupConfig: any | null; formVersionId: number; formVersionUuid: string; isLockForm: boolean }> {
     // Include soft-deleted versions: appraisals pinned to a version that was
     // later deleted in the Form Editor must still resolve their frozen config.
     const version = await formVersionsRepo.findByIdIncludingDeleted(versionId);
@@ -211,11 +211,21 @@ export const formsService = {
         console.warn(`⚠️ [V2 getVersionConfiguration] Failed to parse configuration for version id ${versionId}:`, e);
       }
     }
+    // Surface the parent form's lock-form flag so the editor can render the
+    // correct lock/disabled UI for pinned (existing) appraisals.
+    let isLockForm = false;
+    try {
+      const parent = await formsRepo.findById(version.formId);
+      isLockForm = !!(parent as any)?.isLockForm;
+    } catch {
+      isLockForm = false;
+    }
     return {
       rankGroupName,
       rankGroupConfig,
       formVersionId: version.id,
       formVersionUuid: version.fvUuid,
+      isLockForm,
     };
   },
 

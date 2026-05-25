@@ -19,6 +19,7 @@ export const admFormsV2 = pgTable("adm_forms_v2", {
   versionDate: text("version_date").notNull(),
   configuration: text("configuration"),
   sharedConfig: text("shared_config"),
+  isLockForm: boolean("is_lock_form").notNull().default(false),
   ...auditColumns,
 });
 

@@ -7,6 +7,9 @@ export const trainingSchema = z.object({
   training: z.string().min(1, "Training name is required"),
   evaluation: z.string().min(1, "Evaluation is required"),
   comment: z.string().optional(),
+  // Task #500: 'auto' rows are injected from Crew Pool D3 and become
+  // read-only / non-deletable; 'manual' rows are user-entered.
+  source: z.enum(["manual", "auto"]).optional(),
 });
 
 export const targetSchema = z.object({
@@ -116,7 +119,15 @@ export type SeafarerComment = z.infer<typeof seafarerCommentSchema>;
 export type OfficeReview = z.infer<typeof officeReviewSchema>;
 export type TrainingFollowup = z.infer<typeof trainingFollowupSchema>;
 
-export type AppraisalStatus = 'draft' | 'preliminary' | 'submitted' | 'reviewed';
+// Task #500: accept new synonyms `stage2_submitted` and `stage3_submitted`
+// alongside the canonical `submitted` / `reviewed` values.
+export type AppraisalStatus =
+  | 'draft'
+  | 'preliminary'
+  | 'submitted'
+  | 'stage2_submitted'
+  | 'reviewed'
+  | 'stage3_submitted';
 
 export interface VesselLookupItem {
   entryId: string;
@@ -141,6 +152,14 @@ export interface AppraisalFormSectionBaseProps {
   isFieldVisible: (fieldName: string) => boolean;
   isSectionVisible: (sectionName: string) => boolean;
   showConfirmDialog: (title: string, description: string, onConfirm: () => void) => void;
+  // Task #500: lock-form flag (snapshot at Stage 2 submit) + stage progression
+  // helpers. When `isLockForm` is true and the appraisal is past Stage 2 all
+  // editable content (except B1 Evaluation) is frozen; past Stage 3 everything
+  // is frozen.
+  isLockForm?: boolean;
+  isPostStage1?: boolean;
+  isPostStage2?: boolean;
+  isPostStage3?: boolean;
 }
 
 export interface PartAProps extends AppraisalFormSectionBaseProps {
