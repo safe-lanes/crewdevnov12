@@ -38,6 +38,10 @@ const PartGComponent: React.FC<PartGProps> = ({
   handleSaveDraft,
   stage3Mutation,
   saveAppraisalMutation,
+  isLockForm,
+  isPostStage1,
+  isPostStage2,
+  isPostStage3,
 }) => {
   const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
   // Task #500: post-Stage 3 fully locks G (legacy behavior).

@@ -328,13 +328,16 @@ export class AppraisalResultsService {
     if (stage === "stage3" && !appraisal.stage2Status) {
       throw new Error("Stage 2 must be submitted before Stage 3");
     }
-    // Task #500: Stage 3 requires every persisted B1 training row to carry a
-    // non-empty Evaluation. We enforce this server-side as a defense-in-depth
-    // backup to the same check on the client.
+    // Task #500: Stage 3 requires every B1 training row to carry a non-empty
+    // Evaluation. We enforce this server-side as defense-in-depth. We prefer
+    // validating the incoming payload (which carries any post-Stage-2 B1
+    // Evaluation edits) and fall back to the persisted rows if the client
+    // omits `trainings` (legacy callers).
     if (stage === "stage3") {
-      const persistedByUuid = await trainingsRepo.findByAppraisalUuids([appraisal.appraisalUuid]);
-      const persisted = persistedByUuid.get(appraisal.appraisalUuid) || [];
-      const missing = persisted.findIndex(t => !((t as any).evaluation || "").toString().trim());
+      const incoming = Array.isArray((data as any)?.trainings) ? (data as any).trainings as any[] : null;
+      const source = incoming
+        ?? ((await trainingsRepo.findByAppraisalUuids([appraisal.appraisalUuid])).get(appraisal.appraisalUuid) || []);
+      const missing = source.findIndex((t: any) => !((t?.evaluation ?? "").toString().trim()));
       if (missing !== -1) {
         throw new Error(
           `B1 Evaluation required for every training row before Stage 3 submission (row ${missing + 1} is missing).`,
@@ -439,10 +442,17 @@ export class AppraisalResultsService {
         seafarerCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.seafarerComments || []),
       ]);
     } else if (stage === "stage3") {
-      await Promise.all([
+      // Task #500: persist any post-Stage-2 B1 Evaluation edits alongside
+      // Section G. If the client omits `trainings` we leave the existing
+      // persisted rows untouched.
+      const stage3Writes: Promise<unknown>[] = [
         officeReviewsRepo.syncForAppraisal(appraisal.appraisalUuid, data.officeReviews || []),
         trainingFollowupsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingFollowups || []),
-      ]);
+      ];
+      if (Array.isArray((data as any)?.trainings)) {
+        stage3Writes.push(trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings));
+      }
+      await Promise.all(stage3Writes);
     }
 
     return this.getById(id);

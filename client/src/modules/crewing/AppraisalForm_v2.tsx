@@ -1021,6 +1021,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const stage3Mutation = useMutation({
     mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
       const stageData = {
+        // Task #500: B1 Evaluation stays editable through Stage 3, so we must
+        // ship the latest `trainings` array along with Section G payloads so
+        // server-side Stage 3 validation sees the updated evaluations and the
+        // sync writes them in the same transaction.
+        trainings: formData.trainings,
         officeReviews: formData.officeReviews,
         trainingFollowups: formData.trainingFollowups,
       };
