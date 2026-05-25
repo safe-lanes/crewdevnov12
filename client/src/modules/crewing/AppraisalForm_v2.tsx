@@ -2182,7 +2182,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Function to render continuous sections 1 (A&B) - Using extracted components
   const renderContinuousSections1 = () => {
     return (
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-6 sm:space-y-8">
         {/* Part A: Seafarer's Information - Extracted Component */}
         {canViewSection('A') && (
         <PartA
@@ -2263,7 +2263,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const overallScore = calculateOverallScore();
 
     return (
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-6 sm:space-y-8">
         {canViewSection('C') && (
         <PartC
           form={form}
@@ -2543,7 +2543,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           {/* Form Content */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 bg-[#f8fafc]">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 sm:space-y-8">
                 
                 {/* Render content based on section type.
                     Task #500: continuous A-F scroll. When Part B2 is hidden by
