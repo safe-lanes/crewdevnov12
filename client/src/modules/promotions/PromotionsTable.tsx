@@ -403,14 +403,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     if (meets === 'yes') return 'met';
     if (meets === 'no') return 'not-met';
     
-    const verifiedStatus = review._parsedVerifiedStatus || {};
-    const verified = verifiedStatus[criteriaId];
-    if (meets === 'pending') {
-      if (verified === 'yes') return 'met';
-      if (verified === 'na') return 'met';
-      return 'pending';
-    }
+    if (meets === 'pending') return 'pending';
     
+    const verifiedStatus = review._parsedVerifiedStatus || {};
     if (Object.keys(verifiedStatus).length > 0 || Object.keys(meetsStatus).length > 0) return 'pending';
     
     return 'no-info';
@@ -424,9 +419,6 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     const normalize = (val: any) => typeof val === 'string' ? val.toLowerCase() : val;
     
     if (parentId === 'a2.7') {
-      const cesStatus = normalize(meetsStatus['a2.7']);
-      if (cesStatus === 'yes') return 'met';
-      
       const cesTests = review._parsedCesTests || [];
       if (cesTests.length > 0) {
         const results = cesTests.map((t: any) => ((t.result || '') as string).trim().toLowerCase());
@@ -436,6 +428,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         return 'not-met';
       }
       
+      const cesStatus = normalize(meetsStatus['a2.7']);
+      if (cesStatus === 'yes') return 'met';
       if (cesStatus === 'no') return 'not-met';
       if (cesStatus === 'pending') return 'pending';
       return 'no-info';
@@ -455,13 +449,10 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       return 'no-info';
     }
     
-    const verifiedStatus = review._parsedVerifiedStatus || {};
     const childStatuses = childIds.map(id => {
       const m = normalize(meetsStatus[id]) || '';
       if (m === 'yes') return 'met';
       if (m === 'no') return 'not-met';
-      const v = verifiedStatus[id];
-      if (v === 'yes' || v === 'na') return 'met';
       return 'pending';
     });
     if (childStatuses.some(s => s === 'pending')) return 'pending';
@@ -490,11 +481,11 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         const dobString = crew.dob || crew.dateOfBirth || '-';
         const calculatedAge = calculateAge(dobString);
         
-        let ageStatus: 'met' | 'pending' | 'not-met' = 'pending';
+        let ageStatus: 'met' | 'pending' | 'not-met' = 'met';
         if (calculatedAge !== null && nextRank) {
           const normalizedNextRank = normalizeRank(nextRank);
           const ageReq = ageRequirementsByRank.get(normalizedNextRank);
-          if (ageReq) {
+          if (ageReq && (ageReq.ageMin || ageReq.ageMax)) {
             const meetsMin = !ageReq.ageMin || calculatedAge >= ageReq.ageMin;
             const meetsMax = !ageReq.ageMax || calculatedAge <= ageReq.ageMax;
             ageStatus = (meetsMin && meetsMax) ? 'met' : 'not-met';
