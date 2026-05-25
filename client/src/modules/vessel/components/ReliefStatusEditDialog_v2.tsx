@@ -246,6 +246,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             }
             
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] });
             
             toast({
                 title: "Success",
@@ -288,6 +289,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             });
             
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] });
             
             toast({
                 title: "Reliever Unassigned",
