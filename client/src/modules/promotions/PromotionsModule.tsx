@@ -233,6 +233,7 @@ export function PromotionsModule() {
                                 <SelectItem value="In Progress">In Progress</SelectItem>
                                 <SelectItem value="Submitted">Submitted</SelectItem>
                                 <SelectItem value="Approved">Approved</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
                             </SelectContent>
                         </Select>
 
