@@ -376,6 +376,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Scroll container references for continuous groups
   const continuous1ContainerRef = useRef<HTMLDivElement>(null);
   const continuous2ContainerRef = useRef<HTMLDivElement>(null);
+
   
   // States for tracking which comments are being edited
   const [editingTrainingComment, setEditingTrainingComment] = useState<string | null>(null);
@@ -2059,9 +2060,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     }
   }, [sections, activeSection, activeContinuousSection1, activeContinuousSection2]);
 
-  // Intersection Observer for continuous group 1 (A&B)
+  // Intersection Observer for continuous group 1 (A&B).
+  // When Parts A-F render together in a single scroll container
+  // (mergeContinuousAtoF in the JSX below — i.e. Part B2 hidden by
+  // config or Stage 1 already submitted), this same observer also
+  // tracks Parts C-F so the sidebar highlight follows real-time scroll
+  // across the whole form.
   useEffect(() => {
     if (!continuous1ContainerRef.current) return;
+    const mergedAF = !isSectionVisible('partB2') || isPostStage1;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -2074,10 +2081,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         });
 
         // Update the active continuous section if there's a significant intersection
-        if (mostVisible && mostVisible.intersectionRatio > 0.6) {
+        if (mostVisible && mostVisible.intersectionRatio > 0.4) {
           const sectionId = mostVisible.target.getAttribute('data-section-id');
-          if (sectionId && sectionId !== activeContinuousSection1) {
-            setActiveContinuousSection1(sectionId);
+          if (!sectionId) return;
+          const matched = sections.find(s => s.id === sectionId);
+          if (matched?.type === 'continuous1') {
+            if (sectionId !== activeContinuousSection1) setActiveContinuousSection1(sectionId);
+          } else if (matched?.type === 'continuous2') {
+            if (sectionId !== activeContinuousSection2) setActiveContinuousSection2(sectionId);
           }
         }
       },
@@ -2088,9 +2099,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
     );
 
-    // Observe continuous1 sections (A&B)
-    const continuous1Sections = sections.filter(s => s.type === 'continuous1');
-    continuous1Sections.forEach(section => {
+    // Observe continuous1 sections (A&B). In merged A-F mode, also
+    // observe C-F so the sidebar highlight updates as the user scrolls
+    // past those sections inside the same scroll container.
+    const observed = mergedAF
+      ? sections.filter(s => s.type === 'continuous1' || s.type === 'continuous2')
+      : sections.filter(s => s.type === 'continuous1');
+    observed.forEach(section => {
       if (section.ref?.current) {
         observer.observe(section.ref.current);
       }
@@ -2099,7 +2114,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     return () => {
       observer.disconnect();
     };
-  }, [activeContinuousSection1, sections]);
+  }, [activeContinuousSection1, activeContinuousSection2, sections, isPostStage1, isSectionVisible]);
 
   // Intersection Observer for continuous group 2 (C-F)
   useEffect(() => {
@@ -2442,12 +2457,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         <div className="block sm:hidden bg-white border-b px-4 py-3">
           <nav className="flex justify-center space-x-4">
             {sections.map((section, index) => {
-              // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
-              // Also ensure the section type is currently being rendered
+              // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection.
+              // In merged A-F mode (Part B2 hidden OR Stage 1 submitted) Parts A-F all live in one scroll
+              // container, so continuous2 highlights must be allowed even when activeSection is A/B.
+              const mergedAFNav = !isSectionVisible('partB2') || isPostStage1;
               const isActive = section.type === 'continuous1' 
-                ? (['A', 'B'].includes(activeSection) && activeContinuousSection1 === section.id)
+                ? ((mergedAFNav || ['A', 'B'].includes(activeSection)) && activeContinuousSection1 === section.id)
                 : section.type === 'continuous2' 
-                  ? (['C', 'D', 'E', 'F'].includes(activeSection) && activeContinuousSection2 === section.id)
+                  ? ((mergedAFNav || ['C', 'D', 'E', 'F'].includes(activeSection)) && activeContinuousSection2 === section.id)
                   : activeSection === section.id;
               
               return (
@@ -2483,12 +2500,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             <div className="p-3">
               <nav className="space-y-1">
                 {sections.map((section, index) => {
-                  // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
-                  // Also ensure the section type is currently being rendered
+                  // See merged-mode comment in the mobile nav above.
+                  const mergedAFSide = !isSectionVisible('partB2') || isPostStage1;
                   const isActive = section.type === 'continuous1' 
-                    ? (['A', 'B'].includes(activeSection) && activeContinuousSection1 === section.id)
+                    ? ((mergedAFSide || ['A', 'B'].includes(activeSection)) && activeContinuousSection1 === section.id)
                     : section.type === 'continuous2' 
-                      ? (['C', 'D', 'E', 'F'].includes(activeSection) && activeContinuousSection2 === section.id)
+                      ? ((mergedAFSide || ['C', 'D', 'E', 'F'].includes(activeSection)) && activeContinuousSection2 === section.id)
                       : activeSection === section.id;
                   const isCompleted = false; // You can add completion logic here
                   
