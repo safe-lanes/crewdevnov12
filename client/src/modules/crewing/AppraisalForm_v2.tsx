@@ -2238,12 +2238,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         )}
 
         {/* Stage 1 Action Buttons - kept in parent for form-level control.
-            Hidden once Stage 1 has been submitted: from then on the form is
-            rendered in continuous A-F mode and Part F's own Save Draft /
-            Submit Stage 2 row is the relevant action bar — leaving these
-            here makes them sit awkwardly between Part B and Part C. */}
-        {!isPostStage1 && (
-        <div className="flex justify-end gap-4">
+            Negative top margin pulls the row closer to the Part B card so
+            it doesn't float in the middle of the section gap. */}
+        <div className="flex justify-end gap-4 -mt-2 sm:-mt-4">
           <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
             Save Draft
           </Button>
@@ -2257,7 +2254,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
           </Button>
         </div>
-        )}
       </div>
     );
   };
