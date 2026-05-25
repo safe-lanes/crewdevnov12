@@ -1287,20 +1287,31 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, []);
 
   const addTrainingsFromDatabase = useCallback((selectedTemplates: TrainingCourseTemplate[]) => {
-    const newTrainings = selectedTemplates.map((template) => {
-      const newId = nextTrainingIdRef.current.toString();
-      nextTrainingIdRef.current += 1;
-      return {
-        id: newId,
-        training: template.name,
-        correspondingInDB: template.id,
-        category: '',
-        status: '',
-        completionDate: 'dd-mm-yy',
-        addedFromDB: true,
-      };
+    setTrainingNeeds(prev => {
+      const existingIds = new Set(prev.map(t => t.correspondingInDB).filter(Boolean));
+      const batchIds = new Set<string>();
+      const newTrainings = selectedTemplates
+        .filter(template => {
+          if (!template.id) return true;
+          if (existingIds.has(template.id) || batchIds.has(template.id)) return false;
+          batchIds.add(template.id);
+          return true;
+        })
+        .map((template) => {
+          const newId = nextTrainingIdRef.current.toString();
+          nextTrainingIdRef.current += 1;
+          return {
+            id: newId,
+            training: template.name,
+            correspondingInDB: template.id,
+            category: '',
+            status: '',
+            completionDate: 'dd-mm-yy',
+            addedFromDB: true,
+          };
+        });
+      return [...prev, ...newTrainings];
     });
-    setTrainingNeeds(prev => [...prev, ...newTrainings]);
   }, []);
 
   const addApprover = useCallback(() => {

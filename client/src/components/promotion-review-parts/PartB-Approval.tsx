@@ -53,6 +53,11 @@ export const PartBApproval = memo(function PartBApproval({
   const availableVesselTypes = vesselTypeOptions.filter((t) => !vesselTypes.includes(t));
   const availableVesselClasses = vesselClassOptions.filter((c) => !vesselClasses.includes(c));
 
+  const usedApproverNames = React.useMemo(
+    () => new Set(approvers.map((a) => a.approver).filter(Boolean)),
+    [approvers]
+  );
+
   return (
     <div className="bg-white rounded-lg p-6" {...restProps}>
       <div className="space-y-6">
@@ -108,7 +113,11 @@ export const PartBApproval = memo(function PartBApproval({
                     </SelectTrigger>
                     <SelectContent>
                       {approverNames.map((name: string) => (
-                        <SelectItem key={name} value={name}>
+                        <SelectItem
+                          key={name}
+                          value={name}
+                          disabled={usedApproverNames.has(name) && name !== approver.approver}
+                        >
                           {name}
                         </SelectItem>
                       ))}
