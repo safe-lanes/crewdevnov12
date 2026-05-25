@@ -86,9 +86,12 @@ export function TrainingCourseSelectionDialog({
     });
   };
 
+  const isTemplateAlreadyAdded = (t: TrainingCourseTemplate) =>
+    alreadyAddedIds.has(t.id) || (!!t.companyId && alreadyAddedIds.has(t.companyId));
+
   const handleSelectAll = () => {
     const allIds = filteredTemplates
-      .filter(t => !alreadyAddedIds.has(t.id))
+      .filter(t => !isTemplateAlreadyAdded(t))
       .map(t => t.id);
     setSelectedIds(new Set(allIds));
   };
@@ -110,7 +113,7 @@ export function TrainingCourseSelectionDialog({
     onClose();
   };
 
-  const availableCount = filteredTemplates.filter(t => !alreadyAddedIds.has(t.id)).length;
+  const availableCount = filteredTemplates.filter(t => !isTemplateAlreadyAdded(t)).length;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
@@ -203,7 +206,7 @@ export function TrainingCourseSelectionDialog({
             ) : (
               <div className="divide-y">
                 {filteredTemplates.map((template) => {
-                  const isAlreadyAdded = alreadyAddedIds.has(template.id);
+                  const isAlreadyAdded = isTemplateAlreadyAdded(template);
                   const isSelected = selectedIds.has(template.id);
 
                   return (
