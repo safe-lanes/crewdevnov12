@@ -510,6 +510,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     trainUuid?: string;
     courseId?: string;
     courseName?: string | null;
+    trainingCourse?: string | null;
     issued?: string | null;
     expiry?: string | null;
   }>>({
@@ -594,7 +595,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const autoNames = new Set(
       (crewTrainingCourses || [])
         .filter(c => inWindow(c.issued))
-        .map(c => (c.courseName || c.courseId || 'Training').toString().trim().toLowerCase()),
+        .map(c => (c.trainingCourse || c.courseName || c.courseId || 'Training').toString().trim().toLowerCase()),
     );
     const manualRows = manualRowsRaw.filter(
       r => !autoNames.has((r.training || '').toString().trim().toLowerCase()),
@@ -603,7 +604,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const autoRows = (crewTrainingCourses || [])
       .filter(c => inWindow(c.issued))
       .map(c => {
-        const trainingName = (c.courseName || c.courseId || 'Training').toString();
+        const trainingName = (c.trainingCourse || c.courseName || c.courseId || 'Training').toString();
         const stableKey = c.trainUuid || c.courseId || trainingName;
         const id = `auto:${stableKey}`;
         // Preserve any existing evaluation/comment across re-renders, including
@@ -1130,15 +1131,29 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     stage: 'stage1' | 'stage2' | 'stage3',
     options?: { skipLockConfirm?: boolean },
   ) => {
-    // Task #500: when the form's lock-form flag is on and the user clicks
-    // "Submit Stage 2", show a confirmation modal first with the spec text and
-    // re-enter with `skipLockConfirm: true` once the user confirms. Using an
-    // explicit option avoids race-prone re-entrancy via shared mutable flags.
-    if (stage === 'stage2' && isLockForm && !options?.skipLockConfirm) {
+    // Show a confirmation modal before any stage submission. Stage 2 uses
+    // the spec-mandated lock-warning copy; Stage 1 and Stage 3 use a generic
+    // "are you sure" prompt. The handler re-enters with `skipLockConfirm:
+    // true` once the user confirms.
+    if (!options?.skipLockConfirm) {
+      let title = '';
+      let description = '';
+      if (stage === 'stage1') {
+        title = 'Submit Stage 1';
+        description = 'Are you sure you want to submit Stage 1? You will still be able to save drafts and continue to Stage 2 afterwards.';
+      } else if (stage === 'stage2') {
+        title = 'Submit Stage 2';
+        description = isLockForm
+          ? 'Form will be locked upon submission. If you want to make changes before final submission, you can use the Draft Save option.'
+          : 'Are you sure you want to submit Stage 2?';
+      } else {
+        title = 'Submit Stage 3';
+        description = 'Submitting Stage 3 will lock the entire form. This action cannot be undone from here.';
+      }
       showConfirmDialog(
-        'Submit Stage 2',
-        'Form will be locked upon submission. If you want to make changes before final submission, you can use the Draft Save option.',
-        () => { void handleStageSubmission('stage2', { skipLockConfirm: true }); },
+        title,
+        description,
+        () => { void handleStageSubmission(stage, { skipLockConfirm: true }); },
       );
       return;
     }
