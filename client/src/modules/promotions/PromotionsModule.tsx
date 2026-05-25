@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Filter, Search as SearchIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
+import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { usePermissions } from '@/contexts/PermissionsContext';
@@ -67,16 +67,28 @@ export function PromotionsModule() {
     
     const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
     
-    const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
+    const { data: vesselTypeMasterDataRaw } = useQuery<unknown>({
         queryKey: ["/api/v2/masters/vessel-types"],
     });
-    
+
     const vesselTypeOptions = useMemo(() => {
-        if (vesselTypeMasterDataRaw.length > 0) {
-            const filteredTypes = vesselTypeMasterDataRaw.filter(vt => vt.level && vt.level >= 2);
-            if (filteredTypes.length > 0) return filteredTypes.map(vt => vt.name);
-        }
-        return DEFAULT_DROPDOWN_VESSEL_TYPES;
+        // Mirror B2.1's extraction in PromotionReviewForm so the two lists
+        // stay in lockstep across any API-shape changes.
+        const raw =
+            (vesselTypeMasterDataRaw as any)?.vesseltypes
+            || (vesselTypeMasterDataRaw as any)?.vesselTypes
+            || vesselTypeMasterDataRaw
+            || [];
+        const list = Array.isArray(raw) ? raw : [];
+        const names: string[] = list.length > 0
+            ? list
+                .map((vt: any) => vt?.vesselType || vt?.name || (typeof vt === 'string' ? vt : ''))
+                .filter((n: unknown): n is string => typeof n === 'string' && n.length > 0)
+            : getVesselTypesForDropdown();
+        // Dedupe + case-insensitive locale sort.
+        return Array.from(new Set(names)).sort((a, b) =>
+            a.localeCompare(b, undefined, { sensitivity: 'base' })
+        );
     }, [vesselTypeMasterDataRaw]);
 
     useEffect(() => {
