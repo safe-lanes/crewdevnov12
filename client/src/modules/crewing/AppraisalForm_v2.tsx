@@ -2087,8 +2087,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           const matched = sections.find(s => s.id === sectionId);
           if (matched?.type === 'continuous1') {
             if (sectionId !== activeContinuousSection1) setActiveContinuousSection1(sectionId);
+            // In merged A-F mode, ensure only one section is highlighted at a time.
+            if (mergedAF && activeContinuousSection2) setActiveContinuousSection2('');
           } else if (matched?.type === 'continuous2') {
             if (sectionId !== activeContinuousSection2) setActiveContinuousSection2(sectionId);
+            if (mergedAF && activeContinuousSection1) setActiveContinuousSection1('');
           }
         }
       },
