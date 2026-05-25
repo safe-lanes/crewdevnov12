@@ -786,11 +786,21 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                         }
                                                     }}
                                                     disabled={(() => {
+                                                        const matchers: any[] = [];
                                                         const signOnVal = form.getValues('signOnDate');
-                                                        if (!signOnVal) return undefined;
-                                                        const signOnParsed = parseDate(signOnVal);
-                                                        if (!signOnParsed) return undefined;
-                                                        return { before: signOnParsed };
+                                                        const signOnParsed = signOnVal ? parseDate(signOnVal) : null;
+
+                                                        if (signOnParsed) {
+                                                            matchers.push({ before: signOnParsed });
+                                                        }
+
+                                                        if (watchedReliefStatus === "Signed Off") {
+                                                            const today = new Date();
+                                                            today.setHours(0, 0, 0, 0);
+                                                            matchers.push({ after: today });
+                                                        }
+
+                                                        return matchers.length > 0 ? matchers : undefined;
                                                     })()}
                                                     initialFocus
                                                 />
