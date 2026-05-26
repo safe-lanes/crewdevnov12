@@ -1498,7 +1498,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   ), [cesTests, updateCesTest, deleteCesTest]);
 
   return (
-    <div className="promotion-review-form">
+    <div>
       <BaseSubmoduleForm
         title="Promotion Review Form"
         sections={sections}
