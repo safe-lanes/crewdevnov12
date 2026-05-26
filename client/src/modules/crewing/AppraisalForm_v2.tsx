@@ -2275,7 +2275,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             it doesn't float in the middle of the section gap. */}
         <div className="flex justify-end gap-4 -mt-2 sm:-mt-4">
           <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
-            Save Draft
+            Save
           </Button>
           <Button 
             type="button"
@@ -2455,7 +2455,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   data-testid="button-save-draft-header"
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  Save Draft
+                  Save
                 </Button>
                 <Button 
                   variant="outline" 
@@ -3240,7 +3240,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
                       <div className="flex justify-end gap-4 mt-6">
                         <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
-                          Save Draft
+                          Save
                         </Button>
                         <Button 
                           type="button"
@@ -3983,7 +3983,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             onClick={handleSaveDraft}
                             disabled={saveAppraisalMutation.isPending}
                           >
-                            {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
+                            {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
                           </Button>
                           <Button 
                             type="button"
@@ -4277,7 +4277,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             onClick={handleSaveDraft}
                             disabled={saveAppraisalMutation.isPending}
                           >
-                            {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
+                            {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
                           </Button>
                           <Button 
                             type="button"

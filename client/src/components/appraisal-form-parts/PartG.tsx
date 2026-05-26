@@ -285,7 +285,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                 disabled={saveAppraisalMutation.isPending}
                 data-testid="button-save-draft-part-g"
               >
-                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
+                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
               <Button 
                 type="button"

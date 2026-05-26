@@ -464,7 +464,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                 disabled={saveAppraisalMutation.isPending}
                 data-testid="button-save-draft-part-f"
               >
-                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
+                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
               <Button
                 type="button"
