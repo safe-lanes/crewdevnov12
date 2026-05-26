@@ -22,7 +22,7 @@ function log(message: string, source = "express") {
 
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 200,
+  max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests", message: "Please try again later." },
