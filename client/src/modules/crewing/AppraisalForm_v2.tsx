@@ -2455,7 +2455,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   data-testid="button-save-draft-header"
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  Save
+                  Save Draft
                 </Button>
                 <Button 
                   variant="outline" 
