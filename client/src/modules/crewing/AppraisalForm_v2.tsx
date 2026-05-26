@@ -829,7 +829,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Mutation for saving appraisal (uses PUT for existing, POST for new)
   const saveAppraisalMutation = useMutation({
-    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null; closeAfter?: boolean; isDraftAction?: boolean }) => {
+    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null; closeAfter?: boolean; isDraftAction?: boolean; silent?: boolean }) => {
       if (!crewMember?.id) {
         throw new Error('Crew member ID is required to save appraisal');
       }
@@ -915,13 +915,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         queryClient.setQueryData([`/api/v2/appraisals/${data.id}`], data);
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
-      const isDraftAction = variables.isDraftAction === true || variables.status === 'draft';
-      toast({
-        title: isDraftAction ? 'Draft Saved' : 'Appraisal Submitted',
-        description: isDraftAction
-          ? 'Your appraisal draft has been saved successfully. You can now submit stages.'
-          : 'Your appraisal has been submitted successfully.',
-      });
+      if (!variables.silent) {
+        const isDraftAction = variables.isDraftAction === true || variables.status === 'draft';
+        toast({
+          title: isDraftAction ? 'Draft Saved' : 'Appraisal Submitted',
+          description: isDraftAction
+            ? 'Your appraisal draft has been saved successfully. You can now submit stages.'
+            : 'Your appraisal has been submitted successfully.',
+        });
+      }
       if (variables.closeAfter) {
         onClose();
       }
@@ -1275,7 +1277,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     // If no appraisalId, save as draft first
     if (!idToUse) {
       try {
-        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft', closeAfter: false });
+        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft', closeAfter: false, silent: true });
         if (result && result.id) {
           idToUse = result.id;
           setAppraisalId(result.id);
