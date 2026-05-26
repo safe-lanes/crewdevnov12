@@ -530,6 +530,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       return res.json();
     },
     enabled: !!crewMember?.id && !isPostStage2,
+    // Task #512: always refetch when the appraisal form mounts so a D3
+    // training added in CrewInfoForm right before clicking "Add" reliably
+    // appears in Part B1 instead of being served from a stale cache.
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const { toast } = useToast();

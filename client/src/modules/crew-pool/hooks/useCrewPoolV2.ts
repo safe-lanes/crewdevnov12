@@ -645,6 +645,10 @@ export function useSaveTrainingCourseV2() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+      // Task #512: the appraisal form (Part B1 auto-inject) reads from a
+      // different key prefix — invalidate it too so D3 saves immediately
+      // refresh the appraisal's training source.
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', variables.crewUuid, 'training'] });
     },
   });
 }
@@ -658,6 +662,9 @@ export function useDeleteTrainingCourseV2() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+      // Task #512: mirror the save-side fix so deletions also refresh the
+      // appraisal form's Part B1 training source.
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', variables.crewUuid, 'training'] });
     },
   });
 }
