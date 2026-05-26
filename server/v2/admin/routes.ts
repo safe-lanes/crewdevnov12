@@ -26,6 +26,7 @@ router.post("/forms/cleanup-duplicates", formsController.cleanupDuplicates);
 router.get("/forms/:id", formsController.getById);
 router.post("/forms", formsController.create);
 router.put("/forms/:id", formsController.update);
+router.patch("/forms/:id", formsController.updateLockFlag);
 router.delete("/forms/:id", formsController.delete);
 
 router.get("/forms/:id/versions", formsController.getVersions);

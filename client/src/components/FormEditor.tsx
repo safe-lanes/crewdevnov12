@@ -212,6 +212,7 @@ type AppraisalFormData = z.infer<typeof appraisalSchema>;
 // Extended form type that includes originalFormId from AdminModule expanded forms
 interface ExtendedForm extends Form {
   originalFormId?: number;
+  isLockForm?: boolean | null;
 }
 
 interface FormEditorProps {
@@ -2019,13 +2020,13 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
             <Badge
               variant="outline"
               className={`ml-1 sm:ml-2 text-xs hidden sm:inline-flex ${
-                (form as any).isLockForm
+                form.isLockForm
                   ? 'border-amber-300 bg-amber-50 text-amber-700'
                   : 'border-gray-300 bg-gray-50 text-gray-600'
               }`}
               data-testid="badge-lock-form-indicator"
             >
-              Lock Form Feature: {(form as any).isLockForm ? 'ON' : 'OFF'}
+              Lock Form Feature: {form.isLockForm ? 'ON' : 'OFF'}
             </Badge>
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
