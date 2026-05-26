@@ -529,35 +529,36 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
             {isSectionVisible("partF") && (
               <>
                 <SectionHeader id="F" title="F. Comments & Recommendations" />
-                <SubHeader title="F1. Recommendations" />
+                <SubHeader title="F1. Overall Score" />
                 <SectionScore
                   label="Final Overall Score"
                   value={existingAppraisal.overallRating}
                   testId="text-overallRating"
                 />
+                <SubHeader title="F2. Appraiser's Recommendations" />
                 <DataTable
                   rows={data.recommendations}
-                  sectionId="F1"
+                  sectionId="F2"
                   columns={[
                     { header: "Question", render: (r) => r.question, width: "55%" },
                     { header: "Answer", render: (r) => r.answer, width: "15%" },
                     { header: "Comment", render: (r) => r.comment },
                   ]}
                 />
-                <SubHeader title="F2. Appraiser Comments" />
+                <SubHeader title="F3. Appraiser Comments" />
                 <DataTable
                   rows={data.appraiserComments}
-                  sectionId="F2"
+                  sectionId="F3"
                   columns={[
                     { header: "Name", render: (r) => r.name, width: "25%" },
                     { header: "Rank", render: (r) => r.rank, width: "20%" },
                     { header: "Comment", render: (r) => r.comment },
                   ]}
                 />
-                <SubHeader title="F3. Seafarer Comments" />
+                <SubHeader title="F4. Seafarer Comments" />
                 <DataTable
                   rows={data.seafarerComments}
-                  sectionId="F3"
+                  sectionId="F4"
                   columns={[
                     { header: "Name", render: (r) => r.name, width: "25%" },
                     { header: "Rank", render: (r) => r.rank, width: "20%" },
