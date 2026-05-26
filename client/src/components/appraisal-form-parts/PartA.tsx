@@ -38,7 +38,9 @@ const PartAComponent: React.FC<PartAProps> = ({
   // appraisal, and unconditionally after Stage 3. The fieldset disables
   // every input/select/button inside; the seafarer fields stay frozen
   // via their own readOnly/disabled props as before.
-  const lockSection = (!!isLockForm && !!isPostStage2) || !!isPostStage3;
+  // Task #513: locking is opt-in via the admin lock-form flag. When OFF,
+  // Stage 3 submit no longer freezes this section.
+  const lockSection = !!isLockForm && (!!isPostStage2 || !!isPostStage3);
   return (
     <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-a-lock">
     <div ref={partRef} data-section-id="A">

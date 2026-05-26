@@ -1163,7 +1163,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           : 'Are you sure you want to submit Stage 2?';
       } else {
         title = 'Submit Stage 3';
-        description = 'Submitting Stage 3 will lock the entire form. This action cannot be undone from here.';
+        // Task #513: only warn about a full-form lock when the admin
+        // lock-form flag is on; otherwise use a neutral confirmation.
+        description = isLockForm
+          ? 'Submitting Stage 3 will lock the entire form. This action cannot be undone from here.'
+          : 'Are you sure you want to submit Stage 3? This action cannot be undone from here.';
       }
       showConfirmDialog(
         title,

@@ -45,7 +45,8 @@ const PartCComponent: React.FC<PartCProps> = ({
   // Task #500: C is locked once Stage 2 has been submitted on a lock-form
   // appraisal, and fully locked after Stage 3 in all cases. Using a fieldset
   // disables every native input, select, textarea and button inside.
-  const lockSection = (!!isLockForm && !!isPostStage2) || !!isPostStage3;
+  // Task #513: lock-form flag gates all post-stage locking.
+  const lockSection = !!isLockForm && (!!isPostStage2 || !!isPostStage3);
   return (
     <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-c-lock">
     <div ref={partRef} data-section-id="C">

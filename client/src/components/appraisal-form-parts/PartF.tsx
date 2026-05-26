@@ -57,7 +57,8 @@ const PartFComponent: React.FC<PartFProps> = ({
   const isF3Locked = isPostStage3 || isPostStage2;
   // Task #500: when `is_lock_form` is on, all of Part F locks after Stage 2
   // (matching A/Targets/C/D/E). After Stage 3 F is unconditionally locked.
-  const lockSection = (!!isLockForm && isPostStage2) || isPostStage3;
+  // Task #513: lock-form flag gates all post-stage locking.
+  const lockSection = !!isLockForm && (isPostStage2 || isPostStage3);
 
   // Map primaryAppraiser value to rank name
   const primaryAppraiserToRank: Record<string, string> = {

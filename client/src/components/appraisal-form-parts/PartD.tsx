@@ -47,7 +47,8 @@ const PartDComponent: React.FC<PartDProps> = ({
 
   // Task #500: D is locked once Stage 2 has been submitted on a lock-form
   // appraisal, and fully locked after Stage 3 in all cases.
-  const lockSection = (!!isLockForm && !!isPostStage2) || !!isPostStage3;
+  // Task #513: lock-form flag gates all post-stage locking.
+  const lockSection = !!isLockForm && (!!isPostStage2 || !!isPostStage3);
   return (
     <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-d-lock">
     <div ref={partRef} data-section-id="D">

@@ -42,10 +42,12 @@ const PartBComponent: React.FC<PartBProps> = ({
   //     both B1 and B2 stay editable only for the Evaluation column;
   //     everything else (training/target name, delete, add) locks down.
   //   - After Stage 3, everything locks regardless of the flag.
-  const lockB1Structural = !!(isPostStage3 || (isLockForm && isPostStage2));
-  const lockB1Evaluation = !!isPostStage3;
-  const lockB2Structural = !!(isPostStage3 || (isLockForm && isPostStage2));
-  const lockB2Evaluation = !!isPostStage3;
+  // Task #513: lock-form flag is the gate for all post-stage locking.
+  // When the admin flag is OFF, Stage 2/3 submits no longer freeze B1/B2.
+  const lockB1Structural = !!isLockForm && !!(isPostStage2 || isPostStage3);
+  const lockB1Evaluation = !!isLockForm && !!isPostStage3;
+  const lockB2Structural = !!isLockForm && !!(isPostStage2 || isPostStage3);
+  const lockB2Evaluation = !!isLockForm && !!isPostStage3;
   // Backwards-compat alias used by the B2 "Add Target" / delete buttons.
   const lockB2 = lockB2Structural;
   const deleteTrainingComment = (id: string) => {
