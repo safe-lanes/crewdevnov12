@@ -1,5 +1,10 @@
 uploads = []
-generated = []
+
+[[generated]]
+id = "tUnsH0HSC9QuElaR5dta-"
+uri = "file://attached_assets/generated_images/lock_form_checkbox_mockup.png"
+type = "image"
+title = "lock form checkbox mockup"
 
 [[outputs]]
 id = "SiCsPjP1Pioa2gpq7Zp8M"
