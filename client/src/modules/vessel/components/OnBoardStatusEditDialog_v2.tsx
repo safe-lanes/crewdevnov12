@@ -185,7 +185,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         if (watchedReliefStatus === "Signed Off") {
             const currentSignOff = form.getValues('signOffDate');
             if (currentSignOff) {
-                const parsed = new Date(currentSignOff);
+                const parsed = parseISO(currentSignOff);
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
@@ -254,7 +254,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 if (!data.signOffDate) {
                     signedOffErrors.push("Sign Off Date is required when Relief Status is Signed Off");
                 } else {
-                    const signOffParsed = new Date(data.signOffDate);
+                    const signOffParsed = parseISO(data.signOffDate);
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
 
