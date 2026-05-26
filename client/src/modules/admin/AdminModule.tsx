@@ -8334,7 +8334,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   <label className="flex items-center gap-1.5 text-[11px] font-normal text-[#4f5863] cursor-pointer whitespace-nowrap">
                                     <Checkbox
                                       checked={!!(formsData as any[]).find(f => f.id === form.originalFormId)?.isLockForm}
-                                      disabled={updateFormLockMutation.isPending}
+                                      disabled={updateFormLockMutation.isPending || (permissions.length > 0 && !canEdit("Forms"))}
                                       onCheckedChange={(checked) => {
                                         updateFormLockMutation.mutate({
                                           formId: form.originalFormId,
