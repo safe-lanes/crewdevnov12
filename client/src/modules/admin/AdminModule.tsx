@@ -8327,41 +8327,43 @@ const AdminModuleInner = (): JSX.Element => {
                       >
                         <div className="flex items-center gap-3">
                           <span className="truncate min-w-0">{form.name}</span>
-                          {form.category !== 'promotion' && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <label className="flex items-center gap-1.5 text-[11px] font-normal text-[#4f5863] cursor-pointer whitespace-nowrap shrink-0">
-                                    <Checkbox
-                                      checked={!!(formsData as any[]).find(f => f.id === form.originalFormId)?.isLockForm}
-                                      disabled={updateFormLockMutation.isPending || (permissions.length > 0 && !canEdit("Forms"))}
-                                      onCheckedChange={(checked) => {
-                                        updateFormLockMutation.mutate({
-                                          formId: form.originalFormId,
-                                          isLockForm: checked === true,
-                                        });
-                                      }}
-                                      data-testid={`checkbox-lock-form-${form.originalFormId}`}
-                                    />
-                                    <span>Lock Form Feature</span>
-                                  </label>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom" className="max-w-xs">
-                                  <p>Locks Stage 1 fields after submission and Stage 2 fields after review. Applies to all rank groups under this form.</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                          {(permissions.length === 0 || canCreate("Forms")) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 ml-auto shrink-0"
-                            onClick={() => handleAddRankGroup(form.name)}
-                          >
-                            <Plus className="h-4 w-4 text-gray-500" />
-                          </Button>
-                          )}
+                          <div className="ml-auto mr-8 flex items-center gap-2 shrink-0">
+                            {form.category !== 'promotion' && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <label className="flex items-center gap-1.5 text-[11px] font-normal text-[#4f5863] cursor-pointer whitespace-nowrap">
+                                      <Checkbox
+                                        checked={!!(formsData as any[]).find(f => f.id === form.originalFormId)?.isLockForm}
+                                        disabled={updateFormLockMutation.isPending || (permissions.length > 0 && !canEdit("Forms"))}
+                                        onCheckedChange={(checked) => {
+                                          updateFormLockMutation.mutate({
+                                            formId: form.originalFormId,
+                                            isLockForm: checked === true,
+                                          });
+                                        }}
+                                        data-testid={`checkbox-lock-form-${form.originalFormId}`}
+                                      />
+                                      <span>Lock Form Feature</span>
+                                    </label>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="max-w-xs">
+                                    <p>Locks Stage 1 fields after submission and Stage 2 fields after review. Applies to all rank groups under this form.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            {(permissions.length === 0 || canCreate("Forms")) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => handleAddRankGroup(form.name)}
+                            >
+                              <Plus className="h-4 w-4 text-gray-500" />
+                            </Button>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                     )}
