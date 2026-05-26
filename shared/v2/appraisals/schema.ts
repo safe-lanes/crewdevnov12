@@ -101,6 +101,7 @@ export const apprTrainingNeedsV2 = pgTable("appr_training_needs_v2", {
   appraisalUuid: text("appraisal_uuid").notNull(),
   training: text("training"),
   comment: text("comment"),
+  source: text("source").notNull().default("manual"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });

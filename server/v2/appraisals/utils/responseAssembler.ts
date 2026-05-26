@@ -67,6 +67,7 @@ export function assembleV1Response(
       id: String(i + 1),
       training: s(tn.training),
       comment: s(tn.comment),
+      addedFromDB: (tn as { source?: string }).source === "db",
     })),
     recommendations: recommendations.map((r, i) => ({
       id: String(i + 1),
