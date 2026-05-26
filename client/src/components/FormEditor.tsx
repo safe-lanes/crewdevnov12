@@ -2016,6 +2016,17 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                 Configuration Mode
               </Badge>
             )}
+            <Badge
+              variant="outline"
+              className={`ml-1 sm:ml-2 text-xs hidden sm:inline-flex ${
+                (form as any).isLockForm
+                  ? 'border-amber-300 bg-amber-50 text-amber-700'
+                  : 'border-gray-300 bg-gray-50 text-gray-600'
+              }`}
+              data-testid="badge-lock-form-indicator"
+            >
+              Lock Form Feature: {(form as any).isLockForm ? 'ON' : 'OFF'}
+            </Badge>
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Release Ver is always available when a draft exists (in or out of config mode). */}

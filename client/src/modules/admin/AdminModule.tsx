@@ -3794,6 +3794,31 @@ const AdminModuleInner = (): JSX.Element => {
     },
   });
 
+  const updateFormLockMutation = useMutation({
+    mutationFn: async ({ formId, isLockForm }: { formId: number; isLockForm: boolean }) => {
+      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      return apiRequest('PUT', `/api/v2/admin/forms/${formId}`, { isLockForm, auditUserUuid });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
+      queryClient.invalidateQueries({ predicate: (query) => {
+        const key = query.queryKey[0];
+        return typeof key === 'string' && (
+          key.startsWith('/api/v2/admin/form-versions') ||
+          key.startsWith('/api/v2/admin/forms/for-rank')
+        );
+      }});
+      toast({ title: "Success", description: "Lock Form setting updated" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update Lock Form setting: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateRankGroupConfigMutation = useMutation({
     mutationFn: async ({rankGroupId, configuration}: {rankGroupId: number; configuration: string}) => {
       return apiRequest('PUT', `/api/v2/admin/rank-groups/${rankGroupId}/configuration`, { configuration });
@@ -8285,18 +8310,34 @@ const AdminModuleInner = (): JSX.Element => {
                         rowSpan={form.groupSize}
                         className="text-[#4f5863] text-xs font-semibold py-3 border-r border-gray-200 bg-[#ffffff]"
                       >
-                        <div className="flex items-center justify-between">
-                          <span>{form.name}</span>
-                          {(permissions.length === 0 || canCreate("Forms")) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 ml-2"
-                            onClick={() => handleAddRankGroup(form.name)}
-                          >
-                            <Plus className="h-4 w-4 text-gray-500" />
-                          </Button>
-                          )}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <span>{form.name}</span>
+                            {(permissions.length === 0 || canCreate("Forms")) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 ml-2"
+                              onClick={() => handleAddRankGroup(form.name)}
+                            >
+                              <Plus className="h-4 w-4 text-gray-500" />
+                            </Button>
+                            )}
+                          </div>
+                          <label className="flex items-center gap-2 text-[11px] font-normal text-[#4f5863] cursor-pointer">
+                            <Checkbox
+                              checked={!!(formsData as any[]).find(f => f.id === form.originalFormId)?.isLockForm}
+                              disabled={updateFormLockMutation.isPending || (permissions.length > 0 && !canEdit("Forms"))}
+                              onCheckedChange={(checked) => {
+                                updateFormLockMutation.mutate({
+                                  formId: form.originalFormId,
+                                  isLockForm: checked === true,
+                                });
+                              }}
+                              data-testid={`checkbox-lock-form-${form.originalFormId}`}
+                            />
+                            <span>Lock Form Feature</span>
+                          </label>
                         </div>
                       </TableCell>
                     )}
