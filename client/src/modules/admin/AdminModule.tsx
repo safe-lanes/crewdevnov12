@@ -8325,13 +8325,13 @@ const AdminModuleInner = (): JSX.Element => {
                         rowSpan={form.groupSize}
                         className="text-[#4f5863] text-xs font-semibold py-3 border-r border-gray-200 bg-[#ffffff]"
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className="truncate">{form.name}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="truncate min-w-0">{form.name}</span>
+                          {form.category !== 'promotion' && (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <label className="flex items-center gap-1.5 text-[11px] font-normal text-[#4f5863] cursor-pointer whitespace-nowrap">
+                                  <label className="flex items-center gap-1.5 text-[11px] font-normal text-[#4f5863] cursor-pointer whitespace-nowrap shrink-0">
                                     <Checkbox
                                       checked={!!(formsData as any[]).find(f => f.id === form.originalFormId)?.isLockForm}
                                       disabled={updateFormLockMutation.isPending || (permissions.length > 0 && !canEdit("Forms"))}
@@ -8351,12 +8351,12 @@ const AdminModuleInner = (): JSX.Element => {
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
-                          </div>
+                          )}
                           {(permissions.length === 0 || canCreate("Forms")) && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0 ml-2 shrink-0"
+                            className="h-6 w-6 p-0 ml-auto shrink-0"
                             onClick={() => handleAddRankGroup(form.name)}
                           >
                             <Plus className="h-4 w-4 text-gray-500" />
