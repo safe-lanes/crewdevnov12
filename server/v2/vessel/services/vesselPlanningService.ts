@@ -1111,6 +1111,24 @@ export const vesselPlanningService = {
 
     const relieverCrewUuid = planning.relieverCrewUuid;
     const vesselUuid = planning.vesselUuid;
+
+    // Backend enforcement: same guard as the UI conflict check, so the API
+    // rejects duplicates even when called directly. Excludes the current
+    // planning row to allow in-place handover.
+    const conflict = await vesselPlanningService.checkSignOnConflict(
+      relieverCrewUuid,
+      vesselUuid,
+      planUuid,
+    );
+    if (conflict.hasConflict) {
+      const err: any = new Error(
+        `Sign-on conflict: crew member is already actively signed on to vessel ${conflict.conflictVesselName || "another vessel"}. Please sign off from the previous assignment before proceeding.`
+      );
+      err.code = "SIGN_ON_CONFLICT";
+      err.conflict = conflict;
+      throw err;
+    }
+
     const signOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
     const effectiveContractPeriod = data.contractPeriodMonths || planning.relieverContractPeriodMonths;
     const effectiveContractRangeStart = data.contractEndRangeStartMonths ?? planning.relieverContractEndRangeStartMonths;
@@ -1405,10 +1423,17 @@ export const vesselPlanningService = {
    * Get Officer Matrix data for a crew member
    * Returns experience metrics, certifications, and English proficiency
    */
-  async checkSignOnConflict(crewUuid: string, currentVesselUuid: string): Promise<{ hasConflict: boolean; conflictVesselName?: string; conflictVesselUuid?: string }> {
+  async checkSignOnConflict(
+    crewUuid: string,
+    currentVesselUuid: string,
+    currentPlanUuid?: string,
+  ): Promise<{ hasConflict: boolean; conflictVesselName?: string; conflictVesselUuid?: string }> {
     const db = getDb();
     const { masterVessels } = await import("../../../../shared/schema");
 
+    // 1. Any active OnBoard assignment for this crew (same or different vessel,
+    //    any rank) is a conflict. Reliever crew is, by definition, not yet
+    //    OnBoard, so this should never match the row being edited.
     const activeAssignments = await db
       .select({
         vesselUuid: crewAssignments.vesselUuid,
@@ -1425,7 +1450,7 @@ export const vesselPlanningService = {
       );
 
     const conflict = activeAssignments.find(
-      (a: { vesselUuid: string | null; vesselName: string | null }) => a.vesselUuid && a.vesselUuid !== currentVesselUuid
+      (a: { vesselUuid: string | null; vesselName: string | null }) => !!a.vesselUuid
     );
 
     if (conflict) {
@@ -1436,12 +1461,21 @@ export const vesselPlanningService = {
       };
     }
 
-    const activePlanningOnOtherVessels = await db
+    // 2. Any active planning row where the crew is primary, or a reliever that
+    //    has already progressed to "In Transit" / "Signed On", on any vessel
+    //    and any rank, is a conflict. Exclude the planning row currently being
+    //    edited so a slot does not conflict with itself (e.g. in-place
+    //    handover where this row's relieverCrewUuid equals the crew being
+    //    signed on).
+    const activePlanning = await db
       .select({
+        planUuid: vesselPlanningV2.planUuid,
         vesselUuid: vesselPlanningV2.vesselUuid,
         vesselName: masterVessels.vessel,
         joiningStatus: vesselPlanningV2.joiningStatus,
         crewStatus: vesselPlanningV2.crewStatus,
+        crewUuid: vesselPlanningV2.crewUuid,
+        relieverCrewUuid: vesselPlanningV2.relieverCrewUuid,
       })
       .from(vesselPlanningV2)
       .leftJoin(masterVessels, eq(vesselPlanningV2.vesselUuid, masterVessels.vesselUuid))
@@ -1456,10 +1490,10 @@ export const vesselPlanningService = {
         )
       );
 
-    const planningConflict = activePlanningOnOtherVessels.find((p: { vesselUuid: string; vesselName: string | null; joiningStatus: string | null; crewStatus: string | null }) => {
-      if (p.vesselUuid === currentVesselUuid) return false;
-      if (p.joiningStatus === "In Transit" || p.joiningStatus === "Signed On") return true;
-      // if (p.crewStatus === "primary") return true;
+    const planningConflict = activePlanning.find((p: { planUuid: string; vesselUuid: string; vesselName: string | null; joiningStatus: string | null; crewStatus: string | null; crewUuid: string | null; relieverCrewUuid: string | null }) => {
+      if (currentPlanUuid && p.planUuid === currentPlanUuid) return false;
+      if (p.crewUuid === crewUuid && (p.crewStatus === "primary" || p.crewStatus === "secondary")) return true;
+      if (p.relieverCrewUuid === crewUuid && (p.joiningStatus === "In Transit" || p.joiningStatus === "Signed On")) return true;
       return false;
     });
 

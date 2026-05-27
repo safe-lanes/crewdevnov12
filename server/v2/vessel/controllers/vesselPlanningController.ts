@@ -168,6 +168,9 @@ export const vesselPlanningController = {
       
       res.json(planning);
     } catch (error: any) {
+      if (error.code === "SIGN_ON_CONFLICT") {
+        return res.status(409).json({ error: error.message, conflict: error.conflict });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
@@ -211,6 +214,9 @@ export const vesselPlanningController = {
       
       res.json(planning);
     } catch (error: any) {
+      if (error.code === "SIGN_ON_CONFLICT") {
+        return res.status(409).json({ error: error.message, conflict: error.conflict });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
@@ -284,7 +290,12 @@ export const vesselPlanningController = {
         return res.status(400).json({ error: "crewUuid and vesselUuid are required" });
       }
 
-      const result = await vesselPlanningService.checkSignOnConflict(crewUuid, vesselUuid as string);
+      const { planUuid } = req.query;
+      const result = await vesselPlanningService.checkSignOnConflict(
+        crewUuid,
+        vesselUuid as string,
+        typeof planUuid === "string" && planUuid.length > 0 ? planUuid : undefined,
+      );
       res.json(result);
     } catch (error) {
       console.error("Error checking sign-on conflict:", error);

@@ -171,7 +171,9 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const checkSignOnConflict = async (crewUuid: string): Promise<boolean> => {
         try {
             setIsCheckingConflict(true);
-            const response = await fetch(`/api/v2/vessel/planning/check-sign-on-conflict/${crewUuid}?vesselUuid=${encodeURIComponent(vesselUuid)}`);
+            const planUuid = planningData?.planUuid;
+            const planUuidParam = planUuid ? `&planUuid=${encodeURIComponent(planUuid)}` : '';
+            const response = await fetch(`/api/v2/vessel/planning/check-sign-on-conflict/${crewUuid}?vesselUuid=${encodeURIComponent(vesselUuid)}${planUuidParam}`);
             if (!response.ok) {
                 toast({
                     title: "Validation Error",
