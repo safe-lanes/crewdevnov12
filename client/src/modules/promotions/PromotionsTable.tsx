@@ -435,6 +435,25 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       return 'no-info';
     }
     
+    if (parentId === 'a2.6') {
+      const verifiedStatus = review._parsedVerifiedStatus || {};
+      const childIds = Object.keys(verifiedStatus).filter(
+        id => id.startsWith(parentId) && id.length > parentId.length
+      );
+      if (childIds.length > 0) {
+        const childVerified = childIds.map(id => (normalize(verifiedStatus[id]) || ''));
+        if (childVerified.some(v => v === '')) return 'pending';
+        if (childVerified.some(v => v === 'yes')) return 'met';
+        if (childVerified.every(v => v === 'na')) return 'met';
+        return 'pending';
+      }
+      const parentVal = normalize(meetsStatus[parentId]);
+      if (parentVal === 'yes' || parentVal === 'na') return 'met';
+      if (parentVal === 'no') return 'not-met';
+      if (parentVal === 'pending') return 'pending';
+      return 'no-info';
+    }
+
     const parentValue = normalize(meetsStatus[parentId]);
     if (parentValue === 'yes' || parentValue === 'na') return 'met';
     if (parentValue === 'no') return 'not-met';
