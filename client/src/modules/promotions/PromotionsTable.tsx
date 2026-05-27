@@ -435,23 +435,23 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       return 'no-info';
     }
     
+    const parentValue = normalize(meetsStatus[parentId]);
+    if (parentValue === 'yes' || parentValue === 'na') return 'met';
+    if (parentValue === 'no') return 'not-met';
+    if (parentValue === 'pending') return 'pending';
+
     const childIds = Object.keys(meetsStatus).filter(
       id => id.startsWith(parentId) && id.length > parentId.length
     );
-    
+
     if (childIds.length === 0) {
-      const parentValue = normalize(meetsStatus[parentId]);
-      if (parentValue === 'yes') return 'met';
-      if (parentValue === 'no') return 'not-met';
-      if (parentValue === 'pending') return 'pending';
-      
       if (Object.keys(meetsStatus).length > 0) return 'pending';
       return 'no-info';
     }
-    
+
     const childStatuses = childIds.map(id => {
       const m = normalize(meetsStatus[id]) || '';
-      if (m === 'yes') return 'met';
+      if (m === 'yes' || m === 'na') return 'met';
       if (m === 'no') return 'not-met';
       return 'pending';
     });
