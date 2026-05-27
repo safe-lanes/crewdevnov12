@@ -852,17 +852,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               isFromPartA: a.isFromPartA !== undefined ? a.isFromPartA : true
             }));
             setApprovers(approversWithFlag);
-            // Advance the id counter past any numeric ids already in use so
-            // newly added Part B approvers cannot collide with existing rows
-            // (which would cause the backend match-update to overwrite or
-            // soft-delete the wrong row on the next save).
-            const maxNumericId = approversWithFlag.reduce((max: number, a: Approver) => {
-              const n = parseInt(String(a.id), 10);
-              return Number.isFinite(n) && n > max ? n : max;
-            }, 0);
-            if (maxNumericId >= nextApproverIdRef.current) {
-              nextApproverIdRef.current = maxNumericId + 1;
-            }
           }
         } catch {}
       }
@@ -1429,32 +1418,6 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     
     const currentDate = new Date().toISOString().split('T')[0];
     
-    // Pull the server's current approver rows from the query cache so that
-    // Part B approvers added (and saved) on a previous round are NOT lost just
-    // because the local `approvers` state happens to be stale. The previous
-    // implementation rebuilt approvalData from `approvers` alone, which meant
-    // any Part B approver missing from local state (e.g. after a refetch race
-    // or a stale closure) would be wiped on submit.
-    const serverNonPartA: Approver[] = (() => {
-      try {
-        const cached: any = queryClient.getQueryData([
-          `/api/v2/promotions/reviews/crew/${crewMemberId}/rank/${encodeURIComponent(promotionToRank)}`,
-        ]);
-        const raw = cached?.approvalData;
-        if (!raw) return [];
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        if (!Array.isArray(parsed)) return [];
-        return parsed
-          .map((a: Approver) => ({
-            ...a,
-            isFromPartA: a.isFromPartA !== undefined ? a.isFromPartA : true,
-          }))
-          .filter((a: Approver) => !a.isFromPartA);
-      } catch {
-        return [];
-      }
-    })();
-
     const newApprovers: Approver[] = resolvedApprovers.map((approverObj) => {
       const existing = approvers.find(a => a.isFromPartA && a.id === approverObj.userUuid);
       return existing
@@ -1470,23 +1433,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           };
     });
 
-    // Union of server-known and local-only Part B approvers, with local edits
-    // winning when both sides have the same id.
-    const localNonPartAById = new Map(
-      approvers.filter(a => !a.isFromPartA).map(a => [String(a.id), a] as const),
-    );
-    const seen = new Set<string>();
-    const preservedNonPartA: Approver[] = [];
-    for (const sa of serverNonPartA) {
-      const key = String(sa.id);
-      const local = localNonPartAById.get(key);
-      preservedNonPartA.push(local ?? sa);
-      seen.add(key);
-    }
-    for (const [key, la] of Array.from(localNonPartAById.entries())) {
-      if (!seen.has(key)) preservedNonPartA.push(la);
-    }
-
+    const preservedNonPartA = approvers.filter(a => !a.isFromPartA);
     const mergedApprovers: Approver[] = [...newApprovers, ...preservedNonPartA];
 
     setApprovers(mergedApprovers);
@@ -1536,7 +1483,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       .finally(() => {
         setIsSubmittingForApproval(false);
       });
-  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData, approvers, crewMemberId, promotionToRank]);
+  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData]);
 
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
