@@ -105,22 +105,21 @@ export const VesselStatusChart = ({
   })), [v2Vessels]);
 
   // Fetch vessel records
-  const { data: vesselRecords = [], isLoading, isError } = useQuery<any[]>({
+  const { data: vesselRecords = [], isLoading, isError, isFetching } = useQuery<any[]>({
     queryKey: ['v2', 'rest-hours', 'vessel-records', vesselIds, monthValue, complianceMode, opaMode],
     queryFn: async () => {
       if (!monthValue) return [];
-      
+
       const [year, month] = monthValue.split('-');
-      
-      // Get vessel records for this month using V2 API
-      const records = await restHoursApiV2.vesselRecords.getAll({ month, year });
-      
-      // Filter by vesselIds if provided
-      const filteredRecords = vesselIds && vesselIds.length > 0
-        ? records.filter((vr: any) => vesselIds.includes(vr.vesselId))
-        : records;
-      
-      return filteredRecords;
+
+      // Single backend call with server-side multi-vessel filter
+      const records = await restHoursApiV2.vesselRecords.getAll({
+        vesselUuid: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
+        month,
+        year,
+      });
+
+      return records;
     },
     enabled: !!monthValue,
   });
@@ -261,7 +260,9 @@ export const VesselStatusChart = ({
       );
     }
 
-    if (isError) {
+    // Only surface a hard error after retries have settled — transient 429s
+    // are retried by the query client and should not flash red.
+    if (isError && !isFetching) {
       return (
         <div className="w-full h-full flex items-center justify-center">
           <div className="text-sm text-red-500">Error loading data</div>

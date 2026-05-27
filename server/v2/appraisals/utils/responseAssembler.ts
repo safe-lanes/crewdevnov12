@@ -41,6 +41,7 @@ export function assembleV1Response(
       training: s(t.training),
       evaluation: s(t.evaluation),
       comment: s(t.comment),
+      source: (t as any).source || "manual",
     })),
     targets: targets.map((t, i) => ({
       id: String(i + 1),
@@ -66,6 +67,7 @@ export function assembleV1Response(
       id: String(i + 1),
       training: s(tn.training),
       comment: s(tn.comment),
+      addedFromDB: (tn as { source?: string }).source === "db",
     })),
     recommendations: recommendations.map((r, i) => ({
       id: String(i + 1),
@@ -161,6 +163,7 @@ export function assembleV1Response(
 
   return {
     id: appraisal.id,
+    appraisalUuid: appraisal.appraisalUuid,
     crewMemberId: appraisal.crewMemberId,
     formId: appraisal.formIdLegacy ?? (parseInt(appraisal.formUuid || "") || 1),
     formVersionId: appraisal.formVersionId ?? null,
@@ -174,6 +177,7 @@ export function assembleV1Response(
     submittedAt: appraisal.submittedAt,
     submittedBy: appraisal.submittedBy,
     status: appraisal.status,
+    isLockForm: (appraisal as any).isLockForm ?? false,
     stageStatuses: JSON.stringify(stageStatuses),
     stagePayloads: JSON.stringify(stagePayloads),
   };

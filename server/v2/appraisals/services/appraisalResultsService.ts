@@ -11,6 +11,7 @@ import {
   ApprOfficeReviewsRepository,
   ApprTrainingFollowupsRepository,
 } from "../repositories";
+import { CrewMembersRepository } from "../../crew-pool/repositories";
 import { assembleV1Response } from "../utils/responseAssembler";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import { formsService } from "../../admin/services";
@@ -27,6 +28,7 @@ const appraiserCommentsRepo = new ApprAppraiserCommentsRepository();
 const seafarerCommentsRepo = new ApprSeafarerCommentsRepository();
 const officeReviewsRepo = new ApprOfficeReviewsRepository();
 const trainingFollowupsRepo = new ApprTrainingFollowupsRepository();
+const crewMembersRepo = new CrewMembersRepository();
 
 async function fetchChildDataForUuids(appraisalUuids: string[]) {
   if (appraisalUuids.length === 0) {
@@ -99,16 +101,67 @@ export class AppraisalResultsService {
   }
 
   async getPromotionRecommendations(crewMemberId: string, rank: string) {
-    const appraisals = await appraisalResultsRepo.findByCrewMemberId(crewMemberId);
-    let count = 0;
+    // Promotion and Appraisal modules historically disagree on what
+    // crew_member_id means: Promotion stores the crew's emp_no (e.g. "A100084"),
+    // while Appraisal stores the crew_uuid in most cases (and sometimes the
+    // emp_no in older rows). Resolve the incoming identifier to the full set
+    // of values an appraisal row might use for this crew, then look up
+    // appraisals matching any of them.
+    const candidateIds = new Set<string>();
+    if (crewMemberId) candidateIds.add(crewMemberId);
 
+    // Try to resolve the crew member. The incoming value is usually an emp_no
+    // (from the Promotion form) but could also be a crew_uuid or numeric id.
+    // Repo errors are intentionally allowed to propagate so real DB issues
+    // surface as 5xx rather than silently undercounting.
+    let crew = await crewMembersRepo.findByEmpNo(crewMemberId);
+    if (!crew) {
+      crew = await crewMembersRepo.findByUuid(crewMemberId);
+    }
+    if (!crew) {
+      const numericId = Number(crewMemberId);
+      if (Number.isFinite(numericId) && numericId > 0) {
+        crew = await crewMembersRepo.findById(numericId);
+      }
+    }
+    if (crew) {
+      if (crew.empNo) candidateIds.add(crew.empNo);
+      if (crew.crewUuid) candidateIds.add(crew.crewUuid);
+      if (crew.id != null) candidateIds.add(String(crew.id));
+    }
+
+    const appraisals = await appraisalResultsRepo.findByCrewMemberIds(
+      Array.from(candidateIds),
+    );
+
+    // Per spec, count is by crewId across all the crew's appraisal forms.
+    // Rank is no longer used to filter — it is accepted only for backward
+    // compatibility and echoed back in the response.
+    // Only count appraisals whose work is at least preliminary — draft
+    // appraisals are explicitly excluded (confirmed business rule).
+    const ELIGIBLE_STATUSES = new Set(["preliminary", "submitted", "reviewed"]);
+
+    const eligibleUuids: string[] = [];
+    const seen = new Set<string>();
     for (const appraisal of appraisals) {
-      const statusLower = appraisal.status?.toLowerCase();
-      if (statusLower !== "submitted" && statusLower !== "reviewed") continue;
-      if ((appraisal.seafarersRank || "").toLowerCase().trim() !== rank.toLowerCase().trim()) continue;
+      const statusLower = (appraisal.status || "").toLowerCase();
+      if (!ELIGIBLE_STATUSES.has(statusLower)) continue;
+      const uuid = appraisal.appraisalUuid;
+      if (!uuid || seen.has(uuid)) continue;
+      seen.add(uuid);
+      eligibleUuids.push(uuid);
+    }
 
-      const childData = await fetchChildDataForUuids([appraisal.appraisalUuid]);
-      const recs = childData.recommendations.get(appraisal.appraisalUuid) || [];
+    if (eligibleUuids.length === 0) {
+      return { count: 0, rank, crewMemberId };
+    }
+
+    // Batched fetch — one query for all eligible appraisals rather than N.
+    const recsByUuid = await recommendationsRepo.findByAppraisalUuids(eligibleUuids);
+
+    let count = 0;
+    for (const uuid of eligibleUuids) {
+      const recs = recsByUuid.get(uuid) || [];
       const promotionRec = recs.find(
         (r: any) => r.question?.toLowerCase().includes("recommended for promotion")
       );
@@ -259,7 +312,13 @@ export class AppraisalResultsService {
     return appraisalResultsRepo.softDeleteById(id);
   }
 
-  async submitStage(id: number, stage: "stage1" | "stage2" | "stage3", data: any, submittedBy: string) {
+  async submitStage(
+    id: number,
+    stage: "stage1" | "stage2" | "stage3",
+    data: any,
+    submittedBy: string,
+    extra?: { competenceRating?: string | null; behavioralRating?: string | null; overallRating?: string | null },
+  ) {
     const appraisal = await appraisalResultsRepo.findById(id);
     if (!appraisal) return null;
 
@@ -269,11 +328,53 @@ export class AppraisalResultsService {
     if (stage === "stage3" && !appraisal.stage2Status) {
       throw new Error("Stage 2 must be submitted before Stage 3");
     }
+    // Task #500: Stage 3 requires every B1 training row to carry a non-empty
+    // Evaluation. We enforce this server-side as defense-in-depth. We prefer
+    // validating the incoming payload (which carries any post-Stage-2 B1
+    // Evaluation edits) and fall back to the persisted rows if the client
+    // omits `trainings` (legacy callers).
+    if (stage === "stage3") {
+      const incoming = Array.isArray((data as any)?.trainings) ? (data as any).trainings as any[] : null;
+      const source = incoming
+        ?? ((await trainingsRepo.findByAppraisalUuids([appraisal.appraisalUuid])).get(appraisal.appraisalUuid) || []);
+      const missing = source.findIndex((t: any) => !((t?.evaluation ?? "").toString().trim()));
+      if (missing !== -1) {
+        throw new Error(
+          `B1 Evaluation required for every training row before Stage 3 submission (row ${missing + 1} is missing).`,
+        );
+      }
+    }
 
-    let newStatus = appraisal.status;
-    if (stage === "stage1") newStatus = "preliminary";
-    else if (stage === "stage2") newStatus = "submitted";
-    else if (stage === "stage3") newStatus = "reviewed";
+    // Forward-only status progression: draft < preliminary < submitted < reviewed.
+    // A stage submission may advance the status to its nominal value but must
+    // never regress an appraisal that is already further along (e.g. resubmitting
+    // Stage 1 on a Submitted/Reviewed appraisal must not revert it to Preliminary).
+    // Task #500: accept new status synonyms `stage2_submitted` and
+    // `stage3_submitted` as equivalents of `submitted`/`reviewed` so existing
+    // consumers (UI status checks, role-based filtering) keep working without
+    // a coordinated rewrite. Server still emits the canonical short names.
+    const STATUS_ORDER: Record<string, number> = {
+      draft: 0,
+      preliminary: 1,
+      submitted: 2,
+      stage2_submitted: 2,
+      reviewed: 3,
+      stage3_submitted: 3,
+    };
+    const normalize = (s: string | null | undefined) =>
+      (s ?? "").trim().toLowerCase();
+    const rank = (s: string | null | undefined) => {
+      const key = normalize(s);
+      return key in STATUS_ORDER ? STATUS_ORDER[key] : -1;
+    };
+    const nominalForStage =
+      stage === "stage1" ? "preliminary"
+      : stage === "stage2" ? "submitted"
+      : "reviewed";
+    const currentNormalized = normalize(appraisal.status);
+    const newStatus = rank(nominalForStage) >= rank(currentNormalized)
+      ? nominalForStage
+      : (currentNormalized in STATUS_ORDER ? currentNormalized : nominalForStage);
 
     const stageUpdate: any = {
       status: newStatus,
@@ -299,6 +400,25 @@ export class AppraisalResultsService {
       stageUpdate.stage2Status = "completed";
       stageUpdate.stage2SubmittedAt = new Date().toISOString();
       stageUpdate.stage2SubmittedBy = submittedBy;
+      // Persist calculated scores so the Crew Appraisals table reflects the
+      // Overall score immediately after Stage 2 submission (no reopen/save-draft needed).
+      if (extra) {
+        if (extra.competenceRating !== undefined) stageUpdate.competenceRating = extra.competenceRating;
+        if (extra.behavioralRating !== undefined) stageUpdate.behavioralRating = extra.behavioralRating;
+        if (extra.overallRating !== undefined) stageUpdate.overallRating = extra.overallRating;
+      }
+      // Task #500: snapshot the form's current lock-form flag onto this
+      // appraisal so admin-side toggles after Stage 2 do not retroactively
+      // unlock (or lock) already-submitted appraisals.
+      try {
+        const rank = (appraisal as any).seafarersRank as string | null | undefined;
+        if (rank) {
+          const formForRank = await formsService.getFormForRank(rank, "appraisal");
+          stageUpdate.isLockForm = !!(formForRank as any)?.isLockForm;
+        }
+      } catch (e) {
+        console.warn("[Appraisals V2] Failed to resolve isLockForm for stage2 snapshot:", e);
+      }
     } else if (stage === "stage3") {
       stageUpdate.stage3Status = "completed";
       stageUpdate.stage3SubmittedAt = new Date().toISOString();
@@ -313,19 +433,37 @@ export class AppraisalResultsService {
         targetsRepo.syncForAppraisal(appraisal.appraisalUuid, data.targets || []),
       ]);
     } else if (stage === "stage2") {
-      await Promise.all([
+      // Task #500: persist the current B1 trainings (and targets) snapshot
+      // alongside the Stage-2 C-F writes. Only sync them when the payload
+      // includes them so legacy callers that omit `trainings`/`targets`
+      // leave existing persisted rows untouched.
+      const stage2Writes: Promise<unknown>[] = [
         competenceAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.competenceAssessments || []),
         behaviouralAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.behaviouralAssessments || []),
         trainingNeedsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingNeeds || []),
         recommendationsRepo.syncForAppraisal(appraisal.appraisalUuid, data.recommendations || []),
         appraiserCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.appraiserComments || []),
         seafarerCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.seafarerComments || []),
-      ]);
+      ];
+      if (Array.isArray((data as any)?.trainings)) {
+        stage2Writes.push(trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings));
+      }
+      if (Array.isArray((data as any)?.targets)) {
+        stage2Writes.push(targetsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).targets));
+      }
+      await Promise.all(stage2Writes);
     } else if (stage === "stage3") {
-      await Promise.all([
+      // Task #500: persist any post-Stage-2 B1 Evaluation edits alongside
+      // Section G. If the client omits `trainings` we leave the existing
+      // persisted rows untouched.
+      const stage3Writes: Promise<unknown>[] = [
         officeReviewsRepo.syncForAppraisal(appraisal.appraisalUuid, data.officeReviews || []),
         trainingFollowupsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingFollowups || []),
-      ]);
+      ];
+      if (Array.isArray((data as any)?.trainings)) {
+        stage3Writes.push(trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings));
+      }
+      await Promise.all(stage3Writes);
     }
 
     return this.getById(id);

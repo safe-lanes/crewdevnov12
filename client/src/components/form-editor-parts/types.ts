@@ -1,6 +1,16 @@
 import { z } from "zod";
 import { UseFormReturn } from "react-hook-form";
 
+export const BASELINE_RECOMMENDATION_QUESTIONS: ReadonlySet<string> = new Set([
+  "Recommended for continued service on board?",
+  "Recommended for re-employment?",
+  "Recommended for promotion?",
+  "Career Development recommendations (If Any)?",
+]);
+
+export const isBaselineRecommendationQuestion = (q: string | undefined | null): boolean =>
+  !!q && BASELINE_RECOMMENDATION_QUESTIONS.has(q);
+
 export interface RankGroupConfiguration {
   competenceAssessments?: Array<{
     id: string;
@@ -67,7 +77,7 @@ export const trainingNeedsSchema = z.object({
 export const recommendationSchema = z.object({
   id: z.string(),
   question: z.string().min(1, "Question is required"),
-  answer: z.enum(["Yes", "No", "NA"]),
+  answer: z.union([z.enum(["Yes", "No", "NA"]), z.literal("")]),
   comment: z.string().optional(),
   isCustom: z.boolean().optional().default(false),
 });

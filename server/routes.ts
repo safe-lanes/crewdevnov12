@@ -11,6 +11,9 @@ import { adminV2Routes } from "./v2/admin";
 import mastersV2Routes from "./v2/masters/routes";
 import promotionsV2Routes from "./v2/promotions/routes";
 import appraisalsV2Routes from "./v2/appraisals/routes";
+import trainingNeedsV2Routes from "./v2/training-needs/routes";
+import trainingRetentionV2Routes from "./v2/training-retention/routes";
+import reportsV2Routes from "./v2/reports/routes";
 import authV2Routes from "./v2/auth/routes";
 import { setupSwagger } from "./swagger";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
@@ -96,6 +99,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mount v2 appraisals routes
   app.use("/api/v2/appraisals", appraisalsV2Routes);
 
+  // Mount v2 training needs routes (Training & Ret. > Training)
+  app.use("/api/v2/training-needs", trainingNeedsV2Routes);
+
+  // Mount v2 training retention routes (Training & Ret. > Retention)
+  app.use("/api/v2/training-retention", trainingRetentionV2Routes);
+
+  // Mount v2 reports routes (Reports Generator framework)
+  app.use("/api/v2/reports", reportsV2Routes);
+
   // Mount v2 auth routes (standalone login)
   app.use("/api/v2/auth", authV2Routes);
 
@@ -169,8 +181,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Helper function to find next promotion rank (replicates frontend promotionUtils.ts logic)
-  // rankPath is stored senior→junior (index 0 = most senior like Master)
-  // So we need to move towards index 0 to get more senior ranks
+  // rankPath is stored junior→senior (index 0 = most junior, last index = most senior)
+  // So we move towards the last index to get more senior ranks
   function findNextPromotionRank(currentRank: string, hierarchies: any[]): string | null {
     // Find the hierarchy that contains the current rank
     for (const hierarchy of hierarchies) {
@@ -191,11 +203,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentIndex = rankPath.indexOf(currentRank);
       
       // Check if there's a next rank (more senior position)
-      if (currentIndex > 0) {
-        // Next rank exists (one position lower index = more senior)
-        return rankPath[currentIndex - 1];
+      if (currentIndex < rankPath.length - 1) {
+        // Next rank exists (one position higher index = more senior)
+        return rankPath[currentIndex + 1];
       } else {
-        // Already at senior position (index 0 = top of the ladder)
+        // Already at senior position (last index = top of the ladder)
         return null;
       }
     }
@@ -416,7 +428,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use unified status calculation logic:
         // isActive=false → "Inactive", else check vessel assignment → "On Board"/"On Leave"
         const isActive = crew.isActive !== false; // Default to active if null/undefined
-        normalized.status = calculateCrewStatus(isActive ? true : false, hasVesselAssignment);
+        const rawCrewStatus =
+          typeof (crew as { status?: unknown }).status === "string"
+            ? ((crew as { status?: string }).status ?? null)
+            : null;
+        normalized.status = calculateCrewStatus(
+          isActive ? true : false,
+          hasVesselAssignment,
+          rawCrewStatus,
+        );
         normalized.isActive = isActive;
         normalized.nextAvailability = crew.nextAvailability || null;
         

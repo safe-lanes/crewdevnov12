@@ -1,9 +1,10 @@
 import { eq, and, asc, desc, or, ilike, sql, isNull, isNotNull, inArray, aliasedTable } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
-import { CrewMembersRepository } from "../repositories";
+import { CrewMembersRepository, crewTerminationsRepository } from "../repositories";
 import {
   crewMembersV2,
+  crewTerminations,
   crewAssignments,
   crewPersonalDetails,
   crewAddresses,
@@ -446,6 +447,14 @@ export const crewMembersService = {
     vesselUuid?: string;
     limit?: number;
     offset?: number;
+    /**
+     * Explicit view filter from the request:
+     *  - 'active'  : exclude status='Terminated' (Crew Database tab)
+     *  - 'all'     : include everything
+     *  - undefined : honour `filters.status` if present, otherwise behave
+     *                like 'active' for backwards-compatible Crew Database UI.
+     */
+    view?: "active" | "all";
   }): Promise<{ data: any[]; pagination: PaginationMeta }> {
     const db = getDb();
     const limit = Math.min(filters?.limit || 1000, 1000);
@@ -466,6 +475,15 @@ export const crewMembersService = {
 
     if (filters?.status) {
       conditions.push(eq(crewMembersV2.status, filters.status));
+    } else if (filters?.view !== "all") {
+      // Crew Database view explicitly excludes Terminated crew; the
+      // Terminated tab uses getTerminated(). Pass view='all' to opt out.
+      conditions.push(
+        or(
+          isNull(crewMembersV2.status),
+          sql`${crewMembersV2.status} <> 'Terminated'`,
+        )!,
+      );
     }
 
     if (filters?.search) {
@@ -552,6 +570,7 @@ export const crewMembersService = {
         vesselType: masterVesselTypes.vesselType,
         currentVesselName: masterVessels.vessel,
         manningAgentName: crewPersonalDetails.manningAgent,
+        crewPool: crewPersonalDetails.crewPool,
       })
       .from(crewPage)
       .innerJoin(crewMembersV2, eq(crewMembersV2.id, crewPage.id))
@@ -644,7 +663,12 @@ export const crewMembersService = {
         signOffDate: prevAssignment?.signOffDate || null,
         reason: prevAssignment?.reason || null,
         manningAgentName: r.manningAgentName || '',
-        status: this.calculateCrewStatus(r.crew.isActive !== false, !!effectiveVessel),
+        crewPool: r.crewPool || null,
+        status: this.calculateCrewStatus(
+          r.crew.isActive !== false,
+          !!effectiveVessel,
+          r.crew.status ?? null,
+        ),
         timeOnBoardMonths: this.calculateTimeOnBoard(effectiveSignOnDate),
       };
     });
@@ -668,9 +692,171 @@ export const crewMembersService = {
    * - isActive=true + vessel assignment → "On Board"
    * - isActive=true + no vessel → "On Leave"
    */
-  calculateCrewStatus(isActive: boolean, hasVesselAssignment: boolean): string {
+  calculateCrewStatus(
+    isActive: boolean,
+    hasVesselAssignment: boolean,
+    rawStatus?: string | null,
+  ): string {
+    if (rawStatus === "Terminated") return "Terminated";
     if (!isActive) return "Inactive";
     return hasVesselAssignment ? "On Board" : "On Leave";
+  },
+
+  /**
+   * Terminate employment for a crew member.
+   *  - Inserts an immutable record into crew_terminations (with snapshots of
+   *    rank/pool/manning agent for retention reporting).
+   *  - Sets crew status='Terminated', isActive=false, and mirrors the latest
+   *    termination summary onto crew_members_v2 for fast list rendering.
+   *  - archivedAt is intentionally NOT set so the cp-terminated report keeps
+   *    working through its existing isActive=false filter.
+   */
+  async terminateEmployment(
+    crewUuid: string,
+    payload: {
+      terminationDate?: string | null;
+      initiatedBy?: string | null;
+      reason?: string | null;
+      category?: string | null;
+      notForHire?: boolean;
+      comments?: string | null;
+      submittedByUserId?: string | null;
+      submittedByName?: string | null;
+      submittedByRole?: string | null;
+      auditUserUuid?: string | null;
+    },
+  ): Promise<{ crew: CrewMemberV2; termination: any }> {
+    const crew = await this.getByUuid(crewUuid);
+    const db = getDb();
+
+    // Snapshot pool / manning agent from personal details (rank lives on crew row)
+    const personalRows = await db
+      .select({
+        crewPool: crewPersonalDetails.crewPool,
+        manningAgent: crewPersonalDetails.manningAgent,
+      })
+      .from(crewPersonalDetails)
+      .where(eq(crewPersonalDetails.crewUuid, crewUuid))
+      .limit(1);
+    const personal = personalRows[0];
+
+    const auditUserUuid = payload.auditUserUuid ?? null;
+
+    return await db.transaction(async (tx: any) => {
+      const termination = await crewTerminationsRepository.create(
+        {
+          crewUuid,
+          terminationDate: payload.terminationDate ?? null,
+          initiatedBy: payload.initiatedBy ?? null,
+          reason: payload.reason ?? null,
+          category: payload.category ?? null,
+          notForHire: !!payload.notForHire,
+          comments: payload.comments ?? null,
+          // Submitter identity comes from the trusted authenticated session
+          // (JWT). Client-supplied submitter strings are never accepted by
+          // the controller, so the values here originate server-side only.
+          submittedByUserId: payload.submittedByUserId ?? null,
+          submittedByName: payload.submittedByName ?? null,
+          submittedByRole: payload.submittedByRole ?? null,
+          rankIdSnapshot: crew.presentRank ?? null,
+          poolIdSnapshot: personal?.crewPool ?? null,
+          manningAgentIdSnapshot: personal?.manningAgent ?? null,
+          createdByUuid: auditUserUuid,
+          updatedByUuid: auditUserUuid,
+        },
+        tx,
+      );
+
+      const updatedRows = await tx
+        .update(crewMembersV2)
+        .set({
+          status: "Terminated",
+          isActive: false,
+          lastTerminationDate: payload.terminationDate ?? null,
+          lastTerminationReason: payload.reason ?? null,
+          lastTerminationCategory: payload.category ?? null,
+          terminationInitiatedBy: payload.initiatedBy ?? null,
+          notForHire: !!payload.notForHire,
+          updatedAt: new Date(),
+          updatedByUuid: auditUserUuid,
+        })
+        .where(eq(crewMembersV2.crewUuid, crewUuid))
+        .returning();
+
+      return { crew: updatedRows[0], termination };
+    });
+  },
+
+  /**
+   * List terminated crew (status='Terminated') with personal-details / last
+   * vessel data so the Terminated tab can mirror Crew Database parity.
+   */
+  async getTerminated(): Promise<any[]> {
+    const db = getDb();
+
+    const rows = await db
+      .select({
+        crew: crewMembersV2,
+        nationality: masterNationalities.nationality,
+        crewPool: crewPersonalDetails.crewPool,
+        manningAgent: crewPersonalDetails.manningAgent,
+      })
+      .from(crewMembersV2)
+      .leftJoin(
+        masterNationalities,
+        eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid),
+      )
+      .leftJoin(
+        crewPersonalDetails,
+        eq(crewMembersV2.crewUuid, crewPersonalDetails.crewUuid),
+      )
+      .where(
+        and(
+          eq(crewMembersV2.isDeleted, false),
+          eq(crewMembersV2.status, "Terminated"),
+        ),
+      )
+      .orderBy(desc(crewMembersV2.updatedAt));
+
+    const crewUuids = rows.map((r: any) => r.crew.crewUuid).filter(Boolean);
+    const lastAssignments = new Map<string, any>();
+    if (crewUuids.length > 0) {
+      const prev = await db
+        .select({
+          crewUuid: crewAssignments.crewUuid,
+          vesselUuid: crewAssignments.vesselUuid,
+          vesselName: masterVessels.vessel,
+          signOffDate: crewAssignments.signOffDate,
+        })
+        .from(crewAssignments)
+        .leftJoin(
+          masterVessels,
+          eq(crewAssignments.vesselUuid, masterVessels.vesselUuid),
+        )
+        .where(
+          and(
+            inArray(crewAssignments.crewUuid, crewUuids),
+            eq(crewAssignments.isDeleted, false),
+          ),
+        )
+        .orderBy(desc(crewAssignments.signOffDate));
+      for (const p of prev) {
+        if (!lastAssignments.has(p.crewUuid)) lastAssignments.set(p.crewUuid, p);
+      }
+    }
+
+    return rows.map((r: any) => {
+      const last = lastAssignments.get(r.crew.crewUuid);
+      return {
+        ...r.crew,
+        nationality: r.nationality,
+        crewPool: r.crewPool,
+        manningAgent: r.manningAgent,
+        lastVessel: last?.vesselName || last?.vesselUuid || null,
+        signOffDate: last?.signOffDate || null,
+        status: "Terminated",
+      };
+    });
   },
 
   /**

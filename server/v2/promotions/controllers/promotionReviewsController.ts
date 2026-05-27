@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { PromotionReviewsService } from "../services";
+import { promotionReviewWritableSchema } from "../services/promotionReviewsService";
 
 const service = new PromotionReviewsService();
 
@@ -73,7 +74,11 @@ export class PromotionReviewsController {
 
   async createReview(req: Request, res: Response) {
     try {
-      const review = await service.createReview(req.body);
+      const parsed = promotionReviewWritableSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid promotion review payload", details: parsed.error.flatten() });
+      }
+      const review = await service.createReview(parsed.data);
       console.log(`[Promotions V2] Created review ${review?.reviewUuid} for crew ${review?.crewMemberId}`);
       res.status(201).json(review);
     } catch (error) {
@@ -85,7 +90,11 @@ export class PromotionReviewsController {
   async updateReview(req: Request, res: Response) {
     try {
       const { reviewUuid } = req.params;
-      const review = await service.updateReview(reviewUuid, req.body);
+      const parsed = promotionReviewWritableSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid promotion review payload", details: parsed.error.flatten() });
+      }
+      const review = await service.updateReview(reviewUuid, parsed.data);
       if (!review) return res.status(404).json({ error: "Promotion review not found" });
       console.log(`[Promotions V2] Updated review ${reviewUuid}`);
       res.json(review);

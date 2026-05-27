@@ -1,32 +1,38 @@
 import { Request, Response } from "express";
-import { eq, and, sql, isNull } from "drizzle-orm";
+import { and, sql, isNotNull, inArray, eq } from "drizzle-orm";
 import { getDb } from "../../db";
-import { crewAssignments } from "../../../../shared/v2/crew-pool/schema";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 
 export const vesselCrewCountController = {
   async getCrewCounts(req: Request, res: Response) {
     try {
       const db = getDb();
-      
-      // Count crew that are currently on board:
-      // - isCurrent = true (active assignment)
-      // - signOffDate IS NULL (not signed off)
-      // - isDeleted = false (not deleted)
+
+      // Count crew currently on board, per vessel, from vessel_planning_v2:
+      // - crewStatus is 'primary' or 'secondary' (skip relief-only planning rows)
+      // - isArchived = false   (excludes signed-off historical rows / orphans)
+      // - isDeleted  = false
+      // - crewUuid   IS NOT NULL  (skip empty rank slots)
+      // - vesselUuid IS NOT NULL
+      // - signOnDate IS NOT NULL  (non-negotiable: count only ACTUALLY signed-on crew;
+      //                             excludes deployed-pending-sign-on relievers)
       const results = await db
         .select({
-          vesselUuid: crewAssignments.vesselUuid,
+          vesselUuid: vesselPlanningV2.vesselUuid,
           count: sql<number>`count(*)::int`,
         })
-        .from(crewAssignments)
+        .from(vesselPlanningV2)
         .where(
           and(
-            eq(crewAssignments.isCurrent, true),
-            eq(crewAssignments.isDeleted, false),
-            isNull(crewAssignments.signOffDate),
-            sql`${crewAssignments.vesselUuid} IS NOT NULL`
+            inArray(vesselPlanningV2.crewStatus, ["primary", "secondary"]),
+            eq(vesselPlanningV2.isArchived, false),
+            eq(vesselPlanningV2.isDeleted, false),
+            isNotNull(vesselPlanningV2.crewUuid),
+            isNotNull(vesselPlanningV2.vesselUuid),
+            isNotNull(vesselPlanningV2.signOnDate)
           )
         )
-        .groupBy(crewAssignments.vesselUuid);
+        .groupBy(vesselPlanningV2.vesselUuid);
 
       const countMap: Record<string, number> = {};
       for (const row of results) {

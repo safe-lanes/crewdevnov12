@@ -23,6 +23,8 @@ import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import { useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
+import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
+import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 
 // Import extracted Part components for code splitting
 import { PartA, PartB, PartC, PartD, PartE, PartF, PartG, RequiredMark } from "@/components/appraisal-form-parts";
@@ -104,6 +106,7 @@ const trainingNeedsSchema = z.object({
   id: z.string(),
   training: z.string().min(1, "Training name is required"),
   comment: z.string().optional(),
+  addedFromDB: z.boolean().optional(),
 });
 
 // Part F schemas
@@ -150,9 +153,13 @@ const trainingFollowupSchema = z.object({
   training: z.string(),
   correspondingInDB: z.string(),
   category: z.string(),
-  status: z.enum(["Proposed", "Approved", "Planned", "Declined", "Completed"]),
+  status: z.union([
+    z.enum(["Proposed", "Approved", "Planned", "Declined", "Completed"]),
+    z.literal(""),
+  ]),
   targetDate: z.string().optional(),
   comment: z.string().optional(),
+  addedFromDB: z.boolean().optional(),
 });
 
 // Part A schema
@@ -223,8 +230,8 @@ const stage1Schema = partASchema.merge(partBStage1Schema);
 // Stage 2: Parts C, D, E, F (Performance Assessment) - requires recommendation answers
 const stage2Schema = partCSchema.merge(partDSchema).merge(partESchema).merge(partFStage2Schema);
 
-// Stage 3: Part G (Office Review)
-const stage3Schema = partGSchema;
+// Stage 3: Part B (Evaluation required) + Part G (Office Review)
+const stage3Schema = partBSchema.merge(partGSchema);
 
 // Full appraisal schema (for draft saves and full validation)
 const appraisalSchema = z.object({
@@ -265,12 +272,26 @@ const appraisalSchema = z.object({
 
 type AppraisalFormData = z.infer<typeof appraisalSchema>;
 
+// Task #500: status union widened with `stage2_submitted` / `stage3_submitted`
+// synonyms recognized by the server; `isLockForm` is the snapshotted lock-form
+// flag carried on the appraisal record after Stage 2 submit.
+type AppraisalStatusValue =
+  | 'draft'
+  | 'preliminary'
+  | 'submitted'
+  | 'stage2_submitted'
+  | 'reviewed'
+  | 'stage3_submitted';
+const APPRAISAL_STATUS_VALUES: AppraisalStatusValue[] = [
+  'draft', 'preliminary', 'submitted', 'stage2_submitted', 'reviewed', 'stage3_submitted',
+];
 interface ExistingAppraisal {
   id: number;
   appraisalData: string | AppraisalFormData;
-  status: 'draft' | 'preliminary' | 'submitted' | 'reviewed';
+  status: AppraisalStatusValue;
   formVersionId?: number | null;
   formVersionUuid?: string | null;
+  isLockForm?: boolean;
 }
 
 interface AppraisalFormProps {
@@ -327,10 +348,21 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const [nationalityOpen, setNationalityOpen] = useState(false);
   const [editingOfficeReview, setEditingOfficeReview] = useState<string | null>(null);
   const [appraisalId, setAppraisalId] = useState<number | null>(propAppraisalId || null);
-  const [appraisalStatus, setAppraisalStatus] = useState<'draft' | 'preliminary' | 'submitted' | 'reviewed'>(initialStatus);
-  
+  // Task #503: bumped by the hydration effect so the B1 auto-merge re-runs
+  // after `form.reset` + `setValue('trainings', ...)` overwrites the auto
+  // rows with the persisted (possibly empty) trainings array.
+  const [hydrationToken, setHydrationToken] = useState(0);
+  const [appraisalStatus, setAppraisalStatus] = useState<AppraisalStatusValue>(initialStatus as AppraisalStatusValue);
+
+  // Task #500: stage-progression helpers. Synonyms `stage2_submitted` and
+  // `stage3_submitted` count the same as `submitted` and `reviewed`.
+  const isPostStage1 = appraisalStatus !== 'draft';
+  const isPostStage2 = appraisalStatus === 'submitted' || appraisalStatus === 'stage2_submitted'
+    || appraisalStatus === 'reviewed' || appraisalStatus === 'stage3_submitted';
+  const isPostStage3 = appraisalStatus === 'reviewed' || appraisalStatus === 'stage3_submitted';
+
   // Derive whether to show evaluation column in Part B
-  const showEvaluation = ['submitted', 'reviewed'].includes(appraisalStatus);
+  const showEvaluation = isPostStage2;
   
   // Section references using canonical Part IDs
   const partARef = useRef<HTMLDivElement>(null);
@@ -344,6 +376,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Scroll container references for continuous groups
   const continuous1ContainerRef = useRef<HTMLDivElement>(null);
   const continuous2ContainerRef = useRef<HTMLDivElement>(null);
+
   
   // States for tracking which comments are being edited
   const [editingTrainingComment, setEditingTrainingComment] = useState<string | null>(null);
@@ -392,6 +425,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     queryKey: ['/api/v2/admin/available-ranks'],
   });
   
+  // Company training catalogue used by the G2 "Corresponding in DB" combobox.
+  const { options: dbTrainingOptions, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
+
   // Fetch appraisal types from V2 Masters (Master 023)
   const { data: appraisalTypesRaw = [] } = useAppraisalTypesV2();
   const appraisalTypes = useMemo(() => {
@@ -452,6 +488,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     : latestFormConfig;
   const isLoadingFormConfig = usePinned ? isLoadingPinnedConfig : isLoadingLatestConfig;
 
+  // Task #500: lock-form flag — once Stage 2 is submitted we trust the
+  // snapshot stored on the appraisal record; before that we read the live
+  // setting from the form config (pinned for re-opened drafts, latest for
+  // brand-new appraisals).
+  const isLockForm: boolean = isPostStage2
+    ? !!(existingAppraisal as { isLockForm?: boolean } | undefined)?.isLockForm
+    : !!(formConfig as { isLockForm?: boolean } | undefined)?.isLockForm
+      || !!(pinnedFormConfig as { isLockForm?: boolean } | undefined)?.isLockForm;
+
   // Log form configuration for debugging
   useEffect(() => {
     if (formConfig) {
@@ -461,6 +506,36 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       });
     }
   }, [formConfig, crewMember?.rank, usePinned, pinnedFormVersionId]);
+
+  // Task #500: auto-fetch B1 trainings from Crew Pool D3 (crew_training_courses)
+  // and merge any course `issued` within 12 months of sign-on into Part B1 as
+  // read-only / non-deletable rows. The fetch stops once Stage 2 has been
+  // submitted — at that point the rows are frozen on the appraisal record.
+  const { data: crewTrainingCourses = [] } = useQuery<Array<{
+    trainUuid?: string;
+    courseId?: string;
+    courseName?: string | null;
+    trainingCourse?: string | null;
+    issued?: string | null;
+    expiry?: string | null;
+  }>>({
+    queryKey: ['/api/v2/crew-pool/crew', crewMember?.id, 'training'],
+    // The default query fetcher only sends `queryKey[0]`, so we must provide
+    // an explicit fetcher to hit the per-crew training endpoint.
+    queryFn: async () => {
+      const res = await fetch(`/api/v2/crew-pool/crew/${crewMember!.id}/training`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`Failed to load crew trainings (${res.status})`);
+      return res.json();
+    },
+    enabled: !!crewMember?.id && !isPostStage2,
+    // Task #512: always refetch when the appraisal form mounts so a D3
+    // training added in CrewInfoForm right before clicking "Add" reliably
+    // appears in Part B1 instead of being served from a stale cache.
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
 
   const { toast } = useToast();
 
@@ -493,6 +568,82 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       trainingFollowups: [],
     },
   });
+
+  // Task #500: keep B1 in sync with the auto-fetched courses while the form
+  // is still in pre-Stage-2 state. We drop any previously-injected `auto` rows,
+  // keep all manual rows verbatim, and re-inject one auto row per course whose
+  // `issued` date falls within [signOn - 12 months, signOn]. Stable identity
+  // comes from `trainUuid` / `courseId` (prefixed `auto:` so it can't collide
+  // with manual UUIDs). After Stage 2 submit the appraisal record owns the
+  // snapshot and this effect short-circuits.
+  const watchedSignOn = form.watch('signOn');
+  useEffect(() => {
+    if (isPostStage2) return;
+    const signOnStr = (watchedSignOn || crewMember?.signOn || '').toString().trim();
+    if (!signOnStr) return;
+    const signOnDate = new Date(signOnStr);
+    if (isNaN(signOnDate.getTime())) return;
+    const windowStart = new Date(signOnDate);
+    windowStart.setMonth(windowStart.getMonth() - 12);
+
+    const inWindow = (issued?: string | null) => {
+      if (!issued) return false;
+      const d = new Date(issued);
+      if (isNaN(d.getTime())) return false;
+      return d >= windowStart && d <= signOnDate;
+    };
+
+    const existingRows = (form.getValues('trainings') || []) as Array<{
+      id: string; training: string; evaluation: string; comment?: string; source?: string;
+    }>;
+    const manualRowsRaw = existingRows.filter(r => r.source !== 'auto');
+    const existingAutoRows = existingRows.filter(r => r.source === 'auto');
+
+    // Names that will appear as auto rows on this render — used to dedupe
+    // any manual rows that happen to share a training name, so the appraiser
+    // never sees the same course twice (one auto + one manual).
+    const autoNames = new Set(
+      (crewTrainingCourses || [])
+        .filter(c => inWindow(c.issued))
+        .map(c => (c.trainingCourse || c.courseName || c.courseId || 'Training').toString().trim().toLowerCase()),
+    );
+    const manualRows = manualRowsRaw.filter(
+      r => !autoNames.has((r.training || '').toString().trim().toLowerCase()),
+    );
+
+    const autoRows = (crewTrainingCourses || [])
+      .filter(c => inWindow(c.issued))
+      .map(c => {
+        const trainingName = (c.trainingCourse || c.courseName || c.courseId || 'Training').toString();
+        const stableKey = c.trainUuid || c.courseId || trainingName;
+        const id = `auto:${stableKey}`;
+        // Preserve any existing evaluation/comment across re-renders, including
+        // after a server hydration that renumbers IDs. We first try to match by
+        // our prefixed `auto:` id, then fall back to source+training-name —
+        // which is what survives a hydration round-trip.
+        const prior = existingAutoRows.find(r => r.id === id)
+          || existingAutoRows.find(r => r.training === trainingName);
+        return {
+          id,
+          training: trainingName,
+          evaluation: prior?.evaluation || '',
+          comment: prior?.comment || '',
+          source: 'auto' as const,
+        };
+      });
+
+    const next = [...autoRows, ...manualRows];
+    // Skip the write if nothing changed structurally (prevents an effect loop).
+    const same = next.length === existingRows.length
+      && next.every((r, i) => existingRows[i]
+        && existingRows[i].id === r.id
+        && existingRows[i].training === r.training
+        && (existingRows[i].source || 'manual') === (r.source || 'manual'));
+    if (!same) {
+      form.setValue('trainings', next as any, { shouldDirty: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(crewTrainingCourses), watchedSignOn, crewMember?.signOn, isPostStage2, hydrationToken]);
 
   // Pre-populate crew member fields when data loads (only for new appraisals)
   useEffect(() => {
@@ -646,7 +797,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         ? config.rankGroupConfig.trainingFollowups.map((f: any) => ({
             id: f.id,
             training: f.training ?? '',
-            correspondingInDB: f.correspondingInDB ?? 'Select Training from DB',
+            correspondingInDB: f.correspondingInDB ?? '',
             category: f.category ?? 'Select Rating',
             status: f.status ?? 'Proposed',
             targetDate: f.targetDate ?? '',
@@ -678,7 +829,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Mutation for saving appraisal (uses PUT for existing, POST for new)
   const saveAppraisalMutation = useMutation({
-    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null; closeAfter?: boolean }) => {
+    mutationFn: async (payload: { data: AppraisalFormData; status: string; existingId?: number | null; closeAfter?: boolean; isDraftAction?: boolean; silent?: boolean }) => {
       if (!crewMember?.id) {
         throw new Error('Crew member ID is required to save appraisal');
       }
@@ -764,12 +915,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         queryClient.setQueryData([`/api/v2/appraisals/${data.id}`], data);
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
-      toast({
-        title: variables.status === 'draft' ? 'Draft Saved' : 'Appraisal Submitted',
-        description: variables.status === 'draft' 
-          ? 'Your appraisal draft has been saved successfully. You can now submit stages.' 
-          : 'Your appraisal has been submitted successfully.',
-      });
+      if (!variables.silent) {
+        const isDraftAction = variables.isDraftAction === true || variables.status === 'draft';
+        toast({
+          title: isDraftAction ? 'Draft Saved' : 'Appraisal Submitted',
+          description: isDraftAction
+            ? 'Your appraisal draft has been saved successfully. You can now submit stages.'
+            : 'Your appraisal has been submitted successfully.',
+        });
+      }
       if (variables.closeAfter) {
         onClose();
       }
@@ -814,7 +968,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
       if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
-      toast({ title: appraisalStatus === 'draft' ? 'Stage 1 submitted' : 'Stage 1 saved' });
+      toast({ title: 'Stage 1 Submitted', description: 'Appraisal information (Parts A-B) saved successfully.' });
       onClose();
     },
     onError: (error: any) => {
@@ -825,7 +979,40 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Stage 2 mutation (Parts C, D, E, F) - accepts synced form data to ensure comment persistence
   const stage2Mutation = useMutation({
     mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
+      // Calculate scores from current form data so the Crew Appraisals table
+      // reflects the Overall score immediately on direct Stage 2 submit
+      // (mirrors logic used by saveAppraisalMutation / Save Draft).
+      const calcScore = (assessments: any[]) => {
+        let totalScore = 0;
+        let totalWeight = 0;
+        assessments?.forEach(assessment => {
+          if (assessment.effectiveness && assessment.weight) {
+            let rating = 0;
+            switch (assessment.effectiveness) {
+              case "5-exceeds-expectations": rating = 5; break;
+              case "4-meets-expectations": rating = 4; break;
+              case "3-somewhat-meets-expectations": rating = 3; break;
+              case "2-below-expectations": rating = 2; break;
+              case "1-significantly-below-expectations": rating = 1; break;
+            }
+            totalScore += (rating * assessment.weight) / 100;
+            totalWeight += assessment.weight;
+          }
+        });
+        return totalWeight > 0 ? (totalScore * 100 / totalWeight).toFixed(1) : null;
+      };
+      const competenceScore = calcScore(formData.competenceAssessments);
+      const behavioralScore = calcScore(formData.behaviouralAssessments);
+      const overallScore = (competenceScore && behavioralScore)
+        ? ((parseFloat(competenceScore) + parseFloat(behavioralScore)) / 2).toFixed(1)
+        : null;
+
       const stageData = {
+        // Task #500: snapshot the current B1 trainings (auto + manual) and
+        // Stage-1 targets at Stage 2 submission so the live D3 re-sync that
+        // happens up to Stage 2 is frozen into the appraisal record.
+        trainings: formData.trainings,
+        targets: formData.targets,
         competenceAssessments: formData.competenceAssessments,
         behaviouralAssessments: formData.behaviouralAssessments,
         trainingNeeds: formData.trainingNeeds,
@@ -837,6 +1024,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage2`, {
         data: stageData,
         submittedBy: 'Current User',
+        competenceRating: competenceScore,
+        behavioralRating: behavioralScore,
+        overallRating: overallScore,
       });
       return response.json();
     },
@@ -846,7 +1036,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
       if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
-      toast({ title: (appraisalStatus === 'draft' || appraisalStatus === 'preliminary') ? 'Stage 2 Submitted' : 'Stage 2 saved', description: 'Performance assessment (Parts C-F) saved successfully.' });
+      toast({ title: 'Stage 2 Submitted', description: 'Performance assessment (Parts C-F) saved successfully.' });
       onClose();
     },
     onError: (error: any) => {
@@ -858,6 +1048,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const stage3Mutation = useMutation({
     mutationFn: async ({ id, formData }: { id: number; formData: AppraisalFormData }) => {
       const stageData = {
+        // Task #500: B1 Evaluation stays editable through Stage 3, so we must
+        // ship the latest `trainings` array along with Section G payloads so
+        // server-side Stage 3 validation sees the updated evaluations and the
+        // sync writes them in the same transaction.
+        trainings: formData.trainings,
         officeReviews: formData.officeReviews,
         trainingFollowups: formData.trainingFollowups,
       };
@@ -927,10 +1122,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         loadCommentsFromFormData(parsedData);
         
         // Update status from fetched data
-        if (existingAppraisal.status && ['draft', 'preliminary', 'submitted', 'reviewed'].includes(existingAppraisal.status)) {
-          setAppraisalStatus(existingAppraisal.status as 'draft' | 'preliminary' | 'submitted' | 'reviewed');
+        if (existingAppraisal.status && APPRAISAL_STATUS_VALUES.includes(existingAppraisal.status)) {
+          setAppraisalStatus(existingAppraisal.status as AppraisalStatusValue);
         }
-        
+
+        // Task #503: signal the B1 auto-merge effect to re-run now that
+        // hydration has overwritten `trainings` with the persisted value,
+        // so the D3 auto rows get re-injected on top.
+        setHydrationToken(t => t + 1);
+
         console.log('✅ Hydrated form with existing appraisal data:', existingAppraisal);
       } catch (error) {
         console.error('❌ Failed to parse appraisal data:', error);
@@ -944,7 +1144,68 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   }, [existingAppraisal, form, toast]);
 
   // Shared handler for stage submissions (auto-saves draft if needed)
-  const handleStageSubmission = async (stage: 'stage1' | 'stage2' | 'stage3') => {
+  const handleStageSubmission = async (
+    stage: 'stage1' | 'stage2' | 'stage3',
+    options?: { skipLockConfirm?: boolean },
+  ) => {
+    // Show a confirmation modal before any stage submission. Stage 2 uses
+    // the spec-mandated lock-warning copy; Stage 1 and Stage 3 use a generic
+    // "are you sure" prompt. The handler re-enters with `skipLockConfirm:
+    // true` once the user confirms.
+    if (!options?.skipLockConfirm) {
+      let title = '';
+      let description = '';
+      if (stage === 'stage1') {
+        title = 'Submit Stage 1';
+        description = 'Are you sure you want to submit Stage 1? You will still be able to save drafts and continue to Stage 2 afterwards.';
+      } else if (stage === 'stage2') {
+        title = 'Submit Stage 2';
+        description = isLockForm
+          ? 'Form will be locked upon submission. If you want to make changes before final submission, you can use the Draft Save option.'
+          : 'Are you sure you want to submit Stage 2?';
+      } else {
+        title = 'Submit Stage 3';
+        // Task #513: only warn about a full-form lock when the admin
+        // lock-form flag is on; otherwise use a neutral confirmation.
+        description = isLockForm
+          ? 'Submitting Stage 3 will lock the entire form. This action cannot be undone from here.'
+          : 'Are you sure you want to submit Stage 3? This action cannot be undone from here.';
+      }
+      showConfirmDialog(
+        title,
+        description,
+        () => { void handleStageSubmission(stage, { skipLockConfirm: true }); },
+      );
+      return;
+    }
+    // Task #500: Stage 3 requires every B1 training row to carry an Evaluation.
+    if (stage === 'stage3') {
+      const trainings = (form.getValues('trainings') || []) as Array<{ evaluation?: string }>;
+      const missing = trainings.findIndex(t => !((t.evaluation || '').toString().trim()));
+      if (missing !== -1) {
+        toast({
+          title: 'B1 Evaluation required',
+          description: `Please provide an Evaluation for every B1 training row before submitting Stage 3 (row ${missing + 1} is missing).`,
+          variant: 'destructive',
+        });
+        // Jump the user back to Part B and focus the offending Evaluation
+        // input so they can act on the error without hunting for it.
+        try {
+          partBRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(() => {
+            // Part B renders its evaluation select with a testid keyed by the
+            // row's stable id, e.g. `select-training-eval-${training.id}`.
+            const missingId = (form.getValues('trainings')?.[missing] as any)?.id;
+            const sel = missingId
+              ? `[data-testid="select-training-eval-${missingId}"]`
+              : `[data-testid^="select-training-eval-"]`;
+            const el = document.querySelector<HTMLElement>(sel);
+            el?.focus();
+          }, 300);
+        } catch { /* non-fatal */ }
+        return;
+      }
+    }
     // Get form data with synced comments from useState hooks
     const formData = getFormDataWithSyncedComments();
 
@@ -1016,7 +1277,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     // If no appraisalId, save as draft first
     if (!idToUse) {
       try {
-        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft', closeAfter: false });
+        const result = await saveAppraisalMutation.mutateAsync({ data: formData, status: 'draft', closeAfter: false, silent: true });
         if (result && result.id) {
           idToUse = result.id;
           setAppraisalId(result.id);
@@ -1064,7 +1325,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     // Only use 'draft' status before Stage 1 has been submitted
     const statusToSave = appraisalStatus === 'draft' ? 'draft' : appraisalStatus;
     console.log('💾 Preserving status:', statusToSave);
-    saveAppraisalMutation.mutate({ data, status: statusToSave, closeAfter: false });
+    saveAppraisalMutation.mutate({ data, status: statusToSave, closeAfter: false, isDraftAction: true });
   };
 
   const onSubmitAppraisal = () => {
@@ -1378,10 +1639,26 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       comment: resolveComment(recommendationComments, r.id, r.comment)
     }));
 
-    const updatedTrainingFollowups = (data.trainingFollowups ?? []).map(f => ({
-      ...f,
-      comment: resolveComment(trainingFollowupComments, f.id, f.comment)
-    }));
+    const updatedTrainingFollowups = (data.trainingFollowups ?? [])
+      .map(f => ({
+        ...f,
+        comment: resolveComment(trainingFollowupComments, f.id, f.comment)
+      }))
+      .filter(f => {
+        const isBlank =
+          !(f.training ?? '').trim() &&
+          !(f.correspondingInDB ?? '').trim() &&
+          !(f.category ?? '').trim() &&
+          !(f.status ?? '').trim() &&
+          !(f.targetDate ?? '').trim() &&
+          !(f.comment ?? '').trim();
+        return !isBlank;
+      });
+
+    // Reflect blank-row removal in the UI immediately (no page refresh needed)
+    if (updatedTrainingFollowups.length !== (data.trainingFollowups?.length ?? 0)) {
+      form.setValue('trainingFollowups', updatedTrainingFollowups, { shouldDirty: false });
+    }
 
     const appraiserLabels: Record<string, string> = {
       "master": "Master",
@@ -1395,8 +1672,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const updatedAppraiserComments = (data.appraiserComments ?? []).map((c, index) => {
       if (index === 0) {
         const appraiserValue = data.primaryAppraiser;
-        const resolvedName = appraiserValue ? (appraiserLabels[appraiserValue] || appraiserValue) : c.name;
-        return { ...c, name: resolvedName || c.name, rank: appraiserValue ? 'Primary Appraiser' : c.rank };
+        const resolvedRank = appraiserValue ? (appraiserLabels[appraiserValue] || appraiserValue) : c.rank;
+        return { ...c, name: 'Primary Appraiser', rank: resolvedRank || c.rank };
       }
       return c;
     });
@@ -1500,6 +1777,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       training: template.name,
       comment: "",
+      addedFromDB: true,
     }));
     const currentTrainingNeeds = form.getValues("trainingNeeds");
     form.setValue("trainingNeeds", [...currentTrainingNeeds, ...newTrainingNeeds]);
@@ -1599,9 +1877,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const newFollowup = {
       id: Date.now().toString(),
       training: "",
-      correspondingInDB: "Select Training from DB",
-      category: "Select Rating",
-      status: "Proposed" as const,
+      correspondingInDB: "",
+      category: "",
+      status: "" as const,
       targetDate: "",
       comment: "",
     };
@@ -1661,9 +1939,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const newFollowup = {
       id: Date.now().toString(),
       training: "",
-      correspondingInDB: "Select Training from DB",
-      category: "Select Rating",
-      status: "Proposed" as const,
+      correspondingInDB: "",
+      category: "",
+      status: "" as const,
       targetDate: "",
       comment: "",
     };
@@ -1676,10 +1954,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       training: template.name,
       correspondingInDB: template.id,
-      category: "Select Rating",
-      status: "Proposed" as const,
+      category: "",
+      status: "" as const,
       targetDate: "",
       comment: "",
+      addedFromDB: true,
     }));
     const currentFollowups = form.getValues("trainingFollowups");
     form.setValue("trainingFollowups", [...currentFollowups, ...newFollowups]);
@@ -1792,9 +2071,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     }
   }, [sections, activeSection, activeContinuousSection1, activeContinuousSection2]);
 
-  // Intersection Observer for continuous group 1 (A&B)
+  // Intersection Observer for continuous group 1 (A&B).
+  // When Parts A-F render together in a single scroll container
+  // (mergeContinuousAtoF in the JSX below — i.e. Part B2 hidden by
+  // config or Stage 1 already submitted), this same observer also
+  // tracks Parts C-F so the sidebar highlight follows real-time scroll
+  // across the whole form.
   useEffect(() => {
     if (!continuous1ContainerRef.current) return;
+    const mergedAF = !isSectionVisible('partB2') || isPostStage1;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -1807,10 +2092,17 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         });
 
         // Update the active continuous section if there's a significant intersection
-        if (mostVisible && mostVisible.intersectionRatio > 0.6) {
+        if (mostVisible && mostVisible.intersectionRatio > 0.4) {
           const sectionId = mostVisible.target.getAttribute('data-section-id');
-          if (sectionId && sectionId !== activeContinuousSection1) {
-            setActiveContinuousSection1(sectionId);
+          if (!sectionId) return;
+          const matched = sections.find(s => s.id === sectionId);
+          if (matched?.type === 'continuous1') {
+            if (sectionId !== activeContinuousSection1) setActiveContinuousSection1(sectionId);
+            // In merged A-F mode, ensure only one section is highlighted at a time.
+            if (mergedAF && activeContinuousSection2) setActiveContinuousSection2('');
+          } else if (matched?.type === 'continuous2') {
+            if (sectionId !== activeContinuousSection2) setActiveContinuousSection2(sectionId);
+            if (mergedAF && activeContinuousSection1) setActiveContinuousSection1('');
           }
         }
       },
@@ -1821,9 +2113,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
     );
 
-    // Observe continuous1 sections (A&B)
-    const continuous1Sections = sections.filter(s => s.type === 'continuous1');
-    continuous1Sections.forEach(section => {
+    // Observe continuous1 sections (A&B). In merged A-F mode, also
+    // observe C-F so the sidebar highlight updates as the user scrolls
+    // past those sections inside the same scroll container.
+    const observed = mergedAF
+      ? sections.filter(s => s.type === 'continuous1' || s.type === 'continuous2')
+      : sections.filter(s => s.type === 'continuous1');
+    observed.forEach(section => {
       if (section.ref?.current) {
         observer.observe(section.ref.current);
       }
@@ -1832,7 +2128,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     return () => {
       observer.disconnect();
     };
-  }, [activeContinuousSection1, sections]);
+  }, [activeContinuousSection1, activeContinuousSection2, sections, isPostStage1, isSectionVisible]);
 
   // Intersection Observer for continuous group 2 (C-F)
   useEffect(() => {
@@ -1897,12 +2193,18 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       if (!['A', 'B'].includes(activeSection)) {
         setActiveSection('A'); // Switch to continuous1 view
       }
+      // Set the highlight immediately so the sidebar reflects the click
+      // even before the scroll-based observer catches up.
+      setActiveContinuousSection1(sectionId);
+      setActiveContinuousSection2('');
       setTimeout(() => scrollToSection(sectionId), 100); // Small delay to ensure DOM is ready
     } else if (section.type === 'continuous2') {
       // For continuous2 sections (C-F), stay in the continuous view and scroll to section
       if (!['C', 'D', 'E', 'F'].includes(activeSection)) {
         setActiveSection('C'); // Switch to continuous2 view
       }
+      setActiveContinuousSection2(sectionId);
+      setActiveContinuousSection1('');
       setTimeout(() => scrollToSection(sectionId), 100); // Small delay to ensure DOM is ready
     } else {
       // For stepper sections (G), use traditional navigation and clear continuous section highlighting
@@ -1915,7 +2217,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // Function to render continuous sections 1 (A&B) - Using extracted components
   const renderContinuousSections1 = () => {
     return (
-      <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-6 sm:gap-8">
         {/* Part A: Seafarer's Information - Extracted Component */}
         {canViewSection('A') && (
         <PartA
@@ -1928,6 +2230,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           isFieldVisible={isFieldVisible}
           isSectionVisible={isSectionVisible}
           showConfirmDialog={showConfirmDialog}
+          isLockForm={isLockForm}
+          isPostStage1={isPostStage1}
+          isPostStage2={isPostStage2}
+          isPostStage3={isPostStage3}
         />
         )}
 
@@ -1959,19 +2265,26 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           addTarget={addTarget}
           updateTarget={updateTarget}
           deleteTarget={deleteTarget}
+          isLockForm={isLockForm}
+          isPostStage1={isPostStage1}
+          isPostStage2={isPostStage2}
+          isPostStage3={isPostStage3}
         />
         )}
 
-        {/* Stage 1 Action Buttons - kept in parent for form-level control */}
-        <div className="flex justify-end gap-4">
+        {/* Stage 1 Action Buttons - kept in parent for form-level control.
+            Negative top margin pulls the row closer to the Part B card so
+            it doesn't float in the middle of the section gap. */}
+        <div className="flex justify-end gap-4 -mt-2 sm:-mt-4">
           <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
-            Save Draft
+            Save
           </Button>
           <Button 
             type="button"
             className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
             onClick={() => handleStageSubmission('stage1')}
-            disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
+            disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending || isPostStage1}
+            data-testid="button-submit-stage1"
           >
             {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
           </Button>
@@ -1987,7 +2300,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     const overallScore = calculateOverallScore();
 
     return (
-      <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-6 sm:gap-8">
         {canViewSection('C') && (
         <PartC
           form={form}
@@ -2003,6 +2316,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           updateCompetenceAssessment={updateCompetenceAssessment}
           competenceSectionScore={competenceSectionScore}
           getScoreColors={getScoreColors}
+          isLockForm={isLockForm}
+          isPostStage1={isPostStage1}
+          isPostStage2={isPostStage2}
+          isPostStage3={isPostStage3}
         />
         )}
 
@@ -2021,6 +2338,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           updateBehaviouralAssessment={updateBehaviouralAssessment}
           behaviouralSectionScore={behaviouralSectionScore}
           getScoreColors={getScoreColors}
+          isLockForm={isLockForm}
+          isPostStage1={isPostStage1}
+          isPostStage2={isPostStage2}
+          isPostStage3={isPostStage3}
         />
         )}
 
@@ -2042,6 +2363,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           updateTrainingNeed={updateTrainingNeed}
           deleteTrainingNeed={deleteTrainingNeed}
           handleTrainingNeedsSelect={handleTrainingNeedsSelect}
+          isLockForm={isLockForm}
+          isPostStage1={isPostStage1}
+          isPostStage2={isPostStage2}
+          isPostStage3={isPostStage3}
         />
         )}
 
@@ -2076,6 +2401,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           stage1Mutation={stage1Mutation}
           stage2Mutation={stage2Mutation}
           saveAppraisalMutation={saveAppraisalMutation}
+          isLockForm={isLockForm}
+          isPostStage1={isPostStage1}
+          isPostStage2={isPostStage2}
+          isPostStage3={isPostStage3}
         />
         )}
       </div>
@@ -2148,12 +2477,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         <div className="block sm:hidden bg-white border-b px-4 py-3">
           <nav className="flex justify-center space-x-4">
             {sections.map((section, index) => {
-              // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
-              // Also ensure the section type is currently being rendered
+              // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection.
+              // In merged A-F mode (Part B2 hidden OR Stage 1 submitted) Parts A-F all live in one scroll
+              // container, so continuous2 highlights must be allowed even when activeSection is A/B.
+              const mergedAFNav = !isSectionVisible('partB2') || isPostStage1;
               const isActive = section.type === 'continuous1' 
-                ? (['A', 'B'].includes(activeSection) && activeContinuousSection1 === section.id)
+                ? ((mergedAFNav || ['A', 'B'].includes(activeSection)) && activeContinuousSection1 === section.id)
                 : section.type === 'continuous2' 
-                  ? (['C', 'D', 'E', 'F'].includes(activeSection) && activeContinuousSection2 === section.id)
+                  ? ((mergedAFNav || ['C', 'D', 'E', 'F'].includes(activeSection)) && activeContinuousSection2 === section.id)
                   : activeSection === section.id;
               
               return (
@@ -2189,12 +2520,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             <div className="p-3">
               <nav className="space-y-1">
                 {sections.map((section, index) => {
-                  // For continuous sections, use their respective activeContinuousSection, for steppers use activeSection
-                  // Also ensure the section type is currently being rendered
+                  // See merged-mode comment in the mobile nav above.
+                  const mergedAFSide = !isSectionVisible('partB2') || isPostStage1;
                   const isActive = section.type === 'continuous1' 
-                    ? (['A', 'B'].includes(activeSection) && activeContinuousSection1 === section.id)
+                    ? ((mergedAFSide || ['A', 'B'].includes(activeSection)) && activeContinuousSection1 === section.id)
                     : section.type === 'continuous2' 
-                      ? (['C', 'D', 'E', 'F'].includes(activeSection) && activeContinuousSection2 === section.id)
+                      ? ((mergedAFSide || ['C', 'D', 'E', 'F'].includes(activeSection)) && activeContinuousSection2 === section.id)
                       : activeSection === section.id;
                   const isCompleted = false; // You can add completion logic here
                   
@@ -2251,19 +2582,41 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           {/* Form Content */}
           <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 bg-[#f8fafc]">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 sm:space-y-8">
                 
-                {/* Render content based on section type */}
-                {(['A', 'B'].includes(activeSection)) && (
-                  <div ref={continuous1ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
-                    {renderContinuousSections1()}
-                  </div>
-                )}
-                {(['C', 'D', 'E', 'F'].includes(activeSection)) && (
-                  <div ref={continuous2ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
-                    {renderContinuousSections2()}
-                  </div>
-                )}
+                {/* Render content based on section type.
+                    Task #500: continuous A-F scroll. When Part B2 is hidden by
+                    config, or once Stage 1 has been submitted, A-F is rendered
+                    as a single continuous container. Otherwise the legacy
+                    two-container split (Stage 1 = A/B, Stage 2 = C/D/E/F) is
+                    preserved so the user must explicitly submit Stage 1
+                    before scrolling into Stage 2. */}
+                {(() => {
+                  const mergeContinuousAtoF = !isSectionVisible('partB2') || isPostStage1;
+                  if (mergeContinuousAtoF) {
+                    if (!['A', 'B', 'C', 'D', 'E', 'F'].includes(activeSection)) return null;
+                    return (
+                      <div ref={continuous1ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto flex flex-col gap-6 sm:gap-8" data-testid="container-continuous-af">
+                        {renderContinuousSections1()}
+                        {renderContinuousSections2()}
+                      </div>
+                    );
+                  }
+                  return (
+                    <>
+                      {(['A', 'B'].includes(activeSection)) && (
+                        <div ref={continuous1ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
+                          {renderContinuousSections1()}
+                        </div>
+                      )}
+                      {(['C', 'D', 'E', 'F'].includes(activeSection)) && (
+                        <div ref={continuous2ContainerRef} className="h-[calc(100vh-200px)] overflow-y-auto">
+                          {renderContinuousSections2()}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 
                 {/* Part G: Office Review & Followup - Traditional Stepper */}
                 {activeSection === "G" && canViewSection('G') && (
@@ -2292,6 +2645,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                     handleSaveDraft={handleSaveDraft}
                     stage3Mutation={stage3Mutation}
                     saveAppraisalMutation={saveAppraisalMutation}
+                    isLockForm={isLockForm}
+                    isPostStage1={isPostStage1}
+                    isPostStage2={isPostStage2}
+                    isPostStage3={isPostStage3}
                   />
                 )}
                 
@@ -2885,7 +3242,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
                       <div className="flex justify-end gap-4 mt-6">
                         <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
-                          Save Draft
+                          Save
                         </Button>
                         <Button 
                           type="button"
@@ -3220,12 +3577,18 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               <tr className="border-t">
                                 <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                                 <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                  <Input
-                                    value={trainingNeed.training}
-                                    onChange={(e) => updateTrainingNeed(trainingNeed.id, "training", e.target.value)}
-                                    placeholder={`Training ${index + 1}`}
-                                    className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                                  />
+                                  {trainingNeed.addedFromDB === true ? (
+                                    <span data-testid={`text-training-need-${trainingNeed.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                                      {trainingNeed.training}
+                                    </span>
+                                  ) : (
+                                    <Input
+                                      value={trainingNeed.training}
+                                      onChange={(e) => updateTrainingNeed(trainingNeed.id, "training", e.target.value)}
+                                      placeholder={`Training ${index + 1}`}
+                                      className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                    />
+                                  )}
                                 </td>
                                 <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                   <div className="flex gap-2 justify-center">
@@ -3484,6 +3847,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               onClick={() => {
                                 addAppraiserComment("Ashok Kumar", "Chief Officer");
                               }}
+                              disabled={appraisalStatus === 'submitted' || appraisalStatus === 'reviewed'}
                             >
                               + Add Appraiser
                             </Button>
@@ -3505,7 +3869,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           "technical-superintendent": "Technical Superintendent",
                                           "crew-manager": "Crew Manager"
                                         };
-                                        return appraiserValue ? `${appraiserLabels[appraiserValue] || appraiserValue} (Primary Appraiser)` : "Select Primary Appraiser";
+                                        return appraiserValue ? `Primary Appraiser, ${appraiserLabels[appraiserValue] || appraiserValue}` : "Select Primary Appraiser";
                                       })() : `${appraiser.name}, ${appraiser.rank}`}
                                     </p>
                                   </div>
@@ -3518,7 +3882,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     >
                                       <Edit2 className="h-4 w-4" />
                                     </Button>
-                                    {index > 0 && (
+                                    {index > 0 && appraisalStatus !== 'submitted' && appraisalStatus !== 'reviewed' && (
                                       <Button
                                         type="button"
                                         variant="ghost"
@@ -3621,7 +3985,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             onClick={handleSaveDraft}
                             disabled={saveAppraisalMutation.isPending}
                           >
-                            {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
+                            {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
                           </Button>
                           <Button 
                             type="button"
@@ -3658,6 +4022,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                               size="sm"
                               className="text-gray-600 border-gray-300"
                               onClick={addOfficeReview}
+                              disabled={appraisalStatus === 'reviewed'}
                             >
                               + Add Reviewer
                             </Button>
@@ -3691,14 +4056,16 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     )}
                                   </div>
                                   <div className="flex space-x-2 ml-4">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => deleteOfficeReview(review.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
-                                    </Button>
+                                    {appraisalStatus !== 'reviewed' && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => deleteOfficeReview(review.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                      </Button>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -3745,24 +4112,41 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                 </tr>
                               </thead>
                               <tbody>
-                                {form.watch("trainingFollowups").map((followup, index) => (
+                                {form.watch("trainingFollowups").map((followup, index) => {
+                                  const matchedDbOption = dbTrainingOptions.find(o => o.id === followup.correspondingInDB);
+                                  const isFromDb = followup.addedFromDB === true || (!!followup.correspondingInDB && matchedDbOption?.name === followup.training);
+                                  return (
                                   <React.Fragment key={followup.id}>
                                     <tr className="border-t">
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <Input
-                                          value={followup.training}
-                                          onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)}
-                                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                                        />
+                                        {isFromDb ? (
+                                          <span data-testid={`text-followup-training-${followup.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                                            {followup.training}
+                                          </span>
+                                        ) : (
+                                          <Input
+                                            value={followup.training}
+                                            onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)}
+                                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                                          />
+                                        )}
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                                        <Input
-                                          value={followup.correspondingInDB}
-                                          onChange={(e) => updateTrainingFollowup(followup.id, "correspondingInDB", e.target.value)}
-                                          placeholder="Enter corresponding DB entry..."
-                                          className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                                        />
+                                        {isFromDb ? (
+                                          <span data-testid={`text-followup-db-${followup.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                                            {matchedDbOption?.name || followup.training}
+                                          </span>
+                                        ) : (
+                                          <DbTrainingCombobox
+                                            value={followup.correspondingInDB || ""}
+                                            options={dbTrainingOptions}
+                                            onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
+                                            isLoading={isLoadingDbTrainings}
+                                            isError={isErrorDbTrainings}
+                                            testId={`select-followup-db-${followup.id}`}
+                                          />
+                                        )}
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                                         <select
@@ -3770,9 +4154,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           onChange={(e) => updateTrainingFollowup(followup.id, "category", e.target.value)}
                                           className="w-full p-1 border rounded text-[13px] h-6"
                                         >
-                                          <option>Select Rating</option>
-                                          <option>1. Competence</option>
-                                          <option>2- Soft Skills</option>
+                                          <option value="" disabled>Select Category</option>
+                                          <option value="1. Competence">1. Competence</option>
+                                          <option value="2- Soft Skills">2- Soft Skills</option>
                                         </select>
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
@@ -3787,6 +4171,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                             followup.status === "Completed" ? "bg-green-200" : ""
                                           }`}
                                         >
+                                          <option value="" disabled>Select Status</option>
                                           <option value="Proposed">Proposed</option>
                                           <option value="Approved">Approved</option>
                                           <option value="Planned">Planned</option>
@@ -3872,7 +4257,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       </tr>
                                     )}
                                   </React.Fragment>
-                                ))}
+                                  );
+                                })}
                                 {form.watch("trainingFollowups").length === 0 && (
                                   <tr>
                                     <td colSpan={7} className="p-8 text-center text-gray-500 text-[13px]">
@@ -3893,7 +4279,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             onClick={handleSaveDraft}
                             disabled={saveAppraisalMutation.isPending}
                           >
-                            {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
+                            {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
                           </Button>
                           <Button 
                             type="button"

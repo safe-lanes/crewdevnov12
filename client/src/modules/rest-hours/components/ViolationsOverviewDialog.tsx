@@ -145,15 +145,44 @@ export function ViolationsOverviewDialog({
     return map;
   }, [vesselMasterData]);
 
+  // Aggregate NC counts per (vesselId, crewMemberId) to match the vessel
+  // aggregate rule in vesselRecordsService, which aggregates within each
+  // vessel-month group. A crew with split assignments on the same vessel
+  // (one actual-NC stint + one predicted-NC stint) should NOT be counted as
+  // a Predicted NC; but cross-vessel transfers are counted independently
+  // per vessel, matching how the tile sums across the selected vessels.
+  const predictedNCKeys = useMemo(() => {
+    if (!isPredicted) return null;
+    const perKey = new Map<string, { totalNCs: number; predictedNCs: number }>();
+    for (const crew of crewSummaries) {
+      if (!crew.crewMemberId || !crew.vesselId) continue;
+      const k = `${crew.vesselId}|${crew.crewMemberId}`;
+      const prev = perKey.get(k) || { totalNCs: 0, predictedNCs: 0 };
+      perKey.set(k, {
+        totalNCs: prev.totalNCs + (crew.totalNCs ?? 0),
+        predictedNCs: prev.predictedNCs + (crew.predictedNCs ?? 0),
+      });
+    }
+    const qualifying = new Set<string>();
+    Array.from(perKey.entries()).forEach(([k, agg]) => {
+      if (agg.totalNCs === 0 && agg.predictedNCs > 0) qualifying.add(k);
+    });
+    return qualifying;
+  }, [crewSummaries, isPredicted]);
+
   // Get crew IDs that have violations to fetch their daily records
   const crewIdsWithViolations = useMemo(() => {
     return crewSummaries
       .filter(crew => {
         const violationDatesField = isPredicted ? crew.predictedViolationDates : crew.violationDates;
-        return violationDatesField && violationDatesField !== '[]';
+        if (!violationDatesField || violationDatesField === '[]') return false;
+        if (isPredicted) {
+          return predictedNCKeys?.has(`${crew.vesselId}|${crew.crewMemberId}`) ?? false;
+        }
+        return true;
       })
       .map(crew => crew.crewMemberId);
-  }, [crewSummaries, isPredicted]);
+  }, [crewSummaries, isPredicted, predictedNCKeys]);
 
   // Fetch daily records only for crew members with violations
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
@@ -267,6 +296,12 @@ export function ViolationsOverviewDialog({
       
       if (!violationDatesField) return;
 
+      // For Predicted NCs, only render crew counted by the tile aggregate
+      // (per-(vessel, crew) aggregation, matches vesselRecordsService).
+      if (isPredicted && !predictedNCKeys?.has(`${crew.vesselId}|${crew.crewMemberId}`)) {
+        return;
+      }
+
       let violationDays: number[] = [];
       try {
         violationDays = JSON.parse(violationDatesField);
@@ -311,7 +346,7 @@ export function ViolationsOverviewDialog({
       if (a.crewMemberName !== b.crewMemberName) return a.crewMemberName.localeCompare(b.crewMemberName);
       return a.day - b.day;
     });
-  }, [crewSummaries, allDailyRecords, vesselIdsToUse, monthValue, complianceMode, opaMode, isPredicted, rankFilter, vesselNameMap, crewIdsWithViolations]);
+  }, [crewSummaries, allDailyRecords, vesselIdsToUse, monthValue, complianceMode, opaMode, isPredicted, rankFilter, vesselNameMap, crewIdsWithViolations, predictedNCKeys]);
 
   // Format month for display
   const formatMonth = (monthStr: string) => {

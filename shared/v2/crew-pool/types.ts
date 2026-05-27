@@ -2,6 +2,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import {
   crewMembersV2,
+  crewTerminations,
   crewAssignments,
   crewVesselTypesApplied,
   crewPersonalDetails,
@@ -42,6 +43,13 @@ export const insertCrewMemberV2Schema = createInsertSchema(crewMembersV2).omit({
 
 export const insertCrewAssignmentSchema = createInsertSchema(crewAssignments).omit({
   id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrewTerminationSchema = createInsertSchema(crewTerminations).omit({
+  id: true,
+  termUuid: true,
   createdAt: true,
   updatedAt: true,
 });
@@ -215,6 +223,9 @@ export type CrewMemberV2 = typeof crewMembersV2.$inferSelect;
 
 export type InsertCrewAssignment = z.infer<typeof insertCrewAssignmentSchema>;
 export type CrewAssignment = typeof crewAssignments.$inferSelect;
+
+export type InsertCrewTermination = z.infer<typeof insertCrewTerminationSchema>;
+export type CrewTermination = typeof crewTerminations.$inferSelect;
 
 // ============================================================================
 // CREW PROFILE - TYPES

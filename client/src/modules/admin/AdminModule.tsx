@@ -106,6 +106,7 @@ import {
 } from "@/utils/portMasterMapping";
 import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionContext";
 import AccessControlPage from "./AccessControlPage";
+import ApprovalWorkflowPage from "./ApprovalWorkflowPage";
 import UsersAdminPage from "./UsersAdminPage";
 import { 
   getCategoryLabel,
@@ -538,9 +539,9 @@ const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
   const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
   const adminAllowedPages = useMemo(() => {
-    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "users"];
+    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow", "users"];
     if (permissions.length === 0) return all;
-    const pageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "users": "Users" };
+    const pageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow", "users": "Users" };
     return all.filter(p => canView(pageToMenu[p] || p));
   }, [permissions, canView]);
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
@@ -3380,12 +3381,19 @@ const AdminModuleInner = (): JSX.Element => {
       return { versionNo: latest.versionNo, versionDate: latest.versionDate };
     };
 
+    // Show the Draft pill whenever the rank group has no released version yet
+    // (either a real in-progress draft exists, OR the rank group has nothing
+    // saved at all — in which case the Form Editor synthesizes a v00 Draft
+    // placeholder). Keeps this list consistent with the editor's state.
     const hasDraftForRankGroup = (rankGroupName: string, formId: number): boolean => {
       const rg = allRankGroups.find(r => r.name === rankGroupName && r.formId === formId);
       if (!rg) return false;
-      return allFormVersions.some(
-        v => v.formId === formId && v.rankGroupId === rg.id && v.status === 'draft'
+      const rgVersions = allFormVersions.filter(
+        v => v.formId === formId && v.rankGroupId === rg.id
       );
+      const hasRealDraft = rgVersions.some(v => v.status === 'draft');
+      const hasReleased = rgVersions.some(v => v.status === 'released');
+      return hasRealDraft || !hasReleased;
     };
 
     // Group forms by category first
@@ -3784,6 +3792,46 @@ const AdminModuleInner = (): JSX.Element => {
         description: `Failed to save form configuration: ${error.message}`,
         variant: "destructive",
       });
+    },
+  });
+
+  const updateFormLockMutation = useMutation({
+    mutationFn: async ({ formId, isLockForm }: { formId: number; isLockForm: boolean }) => {
+      return apiRequest('PATCH', `/api/v2/admin/forms/${formId}`, { isLockForm });
+    },
+    onMutate: async ({ formId, isLockForm }) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/v2/admin/forms'] });
+      const previous = queryClient.getQueryData<any[]>(['/api/v2/admin/forms']);
+      if (previous) {
+        queryClient.setQueryData<any[]>(
+          ['/api/v2/admin/forms'],
+          previous.map(f => f.id === formId ? { ...f, isLockForm } : f),
+        );
+      }
+      return { previous };
+    },
+    onError: (error: Error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['/api/v2/admin/forms'], context.previous);
+      }
+      toast({
+        title: "Error",
+        description: `Failed to update Lock Form setting: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Lock Form setting updated" });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
+      queryClient.invalidateQueries({ predicate: (query) => {
+        const key = query.queryKey[0];
+        return typeof key === 'string' && (
+          key.startsWith('/api/v2/admin/form-versions') ||
+          key.startsWith('/api/v2/admin/forms/for-rank')
+        );
+      }});
     },
   });
 
@@ -6836,6 +6884,8 @@ const AdminModuleInner = (): JSX.Element => {
     </div>
   );
 
+  const renderApprovalWorkflowModule = () => <ApprovalWorkflowPage />;
+
   const renderDataMastersModule = () => (
     <div>
       {/* Responsive Header Layout */}
@@ -8276,13 +8326,38 @@ const AdminModuleInner = (): JSX.Element => {
                         rowSpan={form.groupSize}
                         className="text-[#4f5863] text-xs font-semibold py-3 border-r border-gray-200 bg-[#ffffff]"
                       >
-                        <div className="flex items-center justify-between">
-                          <span>{form.name}</span>
+                        <div className="relative flex items-center gap-3 pr-12">
+                          <span className="truncate min-w-0">{form.name}</span>
+                          {form.category !== 'promotion' && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <label className="ml-auto mr-2 flex items-center gap-1.5 text-[11px] font-normal text-[#4f5863] cursor-pointer whitespace-nowrap shrink-0">
+                                    <Checkbox
+                                      checked={!!(formsData as any[]).find(f => f.id === form.originalFormId)?.isLockForm}
+                                      disabled={updateFormLockMutation.isPending || (permissions.length > 0 && !canEdit("Forms"))}
+                                      onCheckedChange={(checked) => {
+                                        updateFormLockMutation.mutate({
+                                          formId: form.originalFormId,
+                                          isLockForm: checked === true,
+                                        });
+                                      }}
+                                      data-testid={`checkbox-lock-form-${form.originalFormId}`}
+                                    />
+                                    <span>Lock Form Feature</span>
+                                  </label>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="max-w-xs">
+                                  <p>Locks Stage 1 fields after submission and Stage 2 fields after review. Applies to all rank groups under this form.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                           {(permissions.length === 0 || canCreate("Forms")) && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 w-6 p-0 ml-2"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
                             onClick={() => handleAddRankGroup(form.name)}
                           >
                             <Plus className="h-4 w-4 text-gray-500" />
@@ -8416,6 +8491,7 @@ const AdminModuleInner = (): JSX.Element => {
         {selectedAdminPage === "masters" && renderDataMastersModule()}
         {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
         {selectedAdminPage === "access-control" && <AccessControlPage />}
+        {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
         {selectedAdminPage === "users" && <UsersAdminPage />}
       </MainLayout>
 
@@ -8823,7 +8899,7 @@ const AddRankGroupDialog = ({
 
   // Fetch rank conflicts for this form
   const { data: rankConflicts = {} } = useQuery<Record<string, string>>({
-    queryKey: ['/api/v2/admin/rank-groups/form', formId, 'rank-conflicts', editingRankGroup?.id],
+    queryKey: ['/api/v2/admin/rank-groups', 'form-conflicts', formId, editingRankGroup?.id],
     queryFn: async () => {
       if (!formId) return {};
       const url = editingRankGroup?.id 

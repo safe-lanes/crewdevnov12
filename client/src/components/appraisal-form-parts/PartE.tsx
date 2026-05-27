@@ -21,6 +21,9 @@ const PartEComponent: React.FC<PartEProps> = ({
   updateTrainingNeed,
   deleteTrainingNeed,
   handleTrainingNeedsSelect,
+  isLockForm,
+  isPostStage2,
+  isPostStage3,
 }) => {
   const deleteTrainingNeedsComment = (id: string) => {
     showConfirmDialog(
@@ -33,7 +36,12 @@ const PartEComponent: React.FC<PartEProps> = ({
     );
   };
 
+  // Task #500: E is locked once Stage 2 has been submitted on a lock-form
+  // appraisal, and fully locked after Stage 3 in all cases.
+  // Task #513: lock-form flag gates all post-stage locking.
+  const lockSection = !!isLockForm && (!!isPostStage2 || !!isPostStage3);
   return (
+    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-e-lock">
     <div ref={partRef} data-section-id="E">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -82,12 +90,18 @@ const PartEComponent: React.FC<PartEProps> = ({
                       <tr className="border-t">
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                          <Input
-                            value={need.training}
-                            onChange={(e) => updateTrainingNeed(need.id, "training", e.target.value)}
-                            placeholder="Enter training need"
-                            className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          />
+                          {(need as any).addedFromDB === true ? (
+                            <span data-testid={`text-training-need-${need.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                              {need.training}
+                            </span>
+                          ) : (
+                            <Input
+                              value={need.training}
+                              onChange={(e) => updateTrainingNeed(need.id, "training", e.target.value)}
+                              placeholder="Enter training need"
+                              className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                            />
+                          )}
                         </td>
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                           <div className="flex gap-2 justify-center">
@@ -145,6 +159,7 @@ const PartEComponent: React.FC<PartEProps> = ({
         </CardContent>
       </Card>
     </div>
+    </fieldset>
   );
 };
 

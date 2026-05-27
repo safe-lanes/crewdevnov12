@@ -177,45 +177,16 @@ export const PeriodicAnalysisChart = ({
       } else {
         monthsToFetchList = monthlyMonthsToFetch;
       }
-      
-      if (monthsToFetchList.length === 0) return [];
-      
-      // Fetch vessel records for each month, then get crew records
-      const fetchPromises = monthsToFetchList.map(async (monthValue) => {
-        const [year, month] = monthValue.split('-');
-        
-        // Get vessel records for this month
-        const vesselRecords = await restHoursApiV2.vesselRecords.getAll({ 
-          month, 
-          year 
-        });
-        
-        // Filter by vesselIds if provided
-        const filteredVesselRecords = vesselIds && vesselIds.length > 0
-          ? vesselRecords.filter((vr: any) => vesselIds.includes(vr.vesselId))
-          : vesselRecords;
-        
-        // Get crew records for each vessel record
-        const crewRecordsPromises = filteredVesselRecords.map(async (vr: any) => {
-          const crewRecords = await restHoursApiV2.crewRecords.getAll({ 
-            vesselId: vr.vesselId,
-            monthValue,
-          });
-          return crewRecords.map((cr: any) => ({
-            ...cr,
-            vesselId: vr.vesselId,
-          }));
-        });
-        
-        const allCrewRecords = await Promise.all(crewRecordsPromises);
-        return allCrewRecords.flat();
-      });
 
-      // Wait for all requests to complete
-      const allResults = await Promise.all(fetchPromises);
-      
-      // Flatten the array of arrays into a single array
-      return allResults.flat();
+      if (monthsToFetchList.length === 0) return [];
+
+      // Single batched backend call across all months and selected vessels.
+      return await restHoursApiV2.crewRecords.getAll({
+        vesselId: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
+        monthValues: monthsToFetchList,
+        complianceMode,
+        opaMode,
+      });
     },
     enabled: periodType === 'years' || 
              (periodType === 'quarters' && quarterlyMonthsToFetch.length > 0) ||

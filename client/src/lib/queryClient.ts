@@ -50,7 +50,14 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 2,
       gcTime: 1000 * 60 * 10,
-      retry: false,
+      // Retry once on 429 (rate-limited) responses so transient bursts recover
+      // gracefully instead of surfacing as red error states in the UI.
+      retry: (failureCount, error) => {
+        if (failureCount >= 1) return false;
+        const msg = error instanceof Error ? error.message : String(error);
+        return /^429:/.test(msg);
+      },
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     },
     mutations: {
       retry: false,

@@ -8,14 +8,33 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Filter, Search as SearchIcon } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
+import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
 
 export function PromotionsModule() {
     const [selectedPromotionsPage, setSelectedPromotionsPage] = useState('all');
     const [showFilters, setShowFilters] = useState(true);
+
+    const [initialReviewUuid, setInitialReviewUuid] = useState<string | null>(() => {
+        if (typeof window === 'undefined') return null;
+        const params = new URLSearchParams(window.location.search);
+        return params.get('review');
+    });
+
+    const handleInitialReviewConsumed = () => {
+        setInitialReviewUuid(null);
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('review')) {
+            params.delete('review');
+            const qs = params.toString();
+            const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`;
+            window.history.replaceState({}, '', newUrl);
+        }
+    };
     
     const [searchName, setSearchName] = useState('');
     const [promotionToRank, setPromotionToRank] = useState('');
@@ -29,19 +48,47 @@ export function PromotionsModule() {
     const isShipUser = userType === 'Ship';
 
     const { vessels: vesselOptions } = useVesselLookup();
+
+    const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useNationalitiesV2();
+
+    type NationalityEntry = { nationality?: string; countryName?: string; name?: string };
+    const nationalityOptions = useMemo<string[]>(() => {
+        const raw: unknown = externalNationalitiesData;
+        let list: unknown = raw;
+        if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'nationalities' in raw) {
+            list = (raw as { nationalities: unknown }).nationalities;
+        }
+        if (!Array.isArray(list)) return [];
+        const names = (list as NationalityEntry[])
+            .map((n) => n?.nationality ?? n?.countryName ?? n?.name)
+            .filter((n): n is string => typeof n === 'string' && n.trim().length > 0);
+        return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+    }, [externalNationalitiesData]);
     
     const { rankOptions, isLoading: ranksLoading } = useCompanyRanks();
     
-    const { data: vesselTypeMasterDataRaw = [] } = useQuery<Array<{ entryId: string; name: string; level?: number }>>({
+    const { data: vesselTypeMasterDataRaw } = useQuery<unknown>({
         queryKey: ["/api/v2/masters/vessel-types"],
     });
-    
+
     const vesselTypeOptions = useMemo(() => {
-        if (vesselTypeMasterDataRaw.length > 0) {
-            const filteredTypes = vesselTypeMasterDataRaw.filter(vt => vt.level && vt.level >= 2);
-            if (filteredTypes.length > 0) return filteredTypes.map(vt => vt.name);
-        }
-        return DEFAULT_DROPDOWN_VESSEL_TYPES;
+        // Mirror B2.1's extraction in PromotionReviewForm so the two lists
+        // stay in lockstep across any API-shape changes.
+        const raw =
+            (vesselTypeMasterDataRaw as any)?.vesseltypes
+            || (vesselTypeMasterDataRaw as any)?.vesselTypes
+            || vesselTypeMasterDataRaw
+            || [];
+        const list = Array.isArray(raw) ? raw : [];
+        const names: string[] = list.length > 0
+            ? list
+                .map((vt: any) => vt?.vesselType || vt?.name || (typeof vt === 'string' ? vt : ''))
+                .filter((n: unknown): n is string => typeof n === 'string' && n.length > 0)
+            : getVesselTypesForDropdown();
+        // Dedupe + case-insensitive locale sort.
+        return Array.from(new Set(names)).sort((a, b) =>
+            a.localeCompare(b, undefined, { sensitivity: 'base' })
+        );
     }, [vesselTypeMasterDataRaw]);
 
     useEffect(() => {
@@ -109,7 +156,7 @@ export function PromotionsModule() {
                         </div>
 
                         <Select value={promotionToRank} onValueChange={setPromotionToRank}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-promotion-rank">
+                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-promotion-rank">
                                 <SelectValue placeholder="Promotion to Rank" />
                             </SelectTrigger>
                             <SelectContent>
@@ -129,7 +176,7 @@ export function PromotionsModule() {
                             </div>
                         ) : (
                             <Select value={vessel} onValueChange={setVessel}>
-                                <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel">
+                                <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-vessel">
                                     <SelectValue placeholder="Vessel" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -141,7 +188,7 @@ export function PromotionsModule() {
                         )}
 
                         <Select value={vesselType} onValueChange={setVesselType}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-vessel-type">
+                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-vessel-type">
                                 <SelectValue placeholder="Vessel Type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -152,21 +199,22 @@ export function PromotionsModule() {
                         </Select>
 
                         <Select value={nationality} onValueChange={setNationality}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-nationality">
+                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-nationality">
                                 <SelectValue placeholder="Nationality" />
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="British">British</SelectItem>
-                                <SelectItem value="Indian">Indian</SelectItem>
-                                <SelectItem value="Philippines">Philippines</SelectItem>
-                                <SelectItem value="Ukrainian">Ukrainian</SelectItem>
-                                <SelectItem value="Romanian">Romanian</SelectItem>
-                                <SelectItem value="Polish">Polish</SelectItem>
+                            <SelectContent className="max-h-[200px]">
+                                {nationalitiesLoading ? (
+                                    <SelectItem value="loading" disabled>Loading…</SelectItem>
+                                ) : (
+                                    nationalityOptions.map((n) => (
+                                        <SelectItem key={n} value={n} data-testid={`nationality-option-${n}`}>{n}</SelectItem>
+                                    ))
+                                )}
                             </SelectContent>
                         </Select>
 
                         <Select value={criteria} onValueChange={setCriteria}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-criteria">
+                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-criteria">
                                 <SelectValue placeholder="Criteria" />
                             </SelectTrigger>
                             <SelectContent>
@@ -177,13 +225,15 @@ export function PromotionsModule() {
                         </Select>
 
                         <Select value={status} onValueChange={setStatus}>
-                            <SelectTrigger className="w-[150px] h-8 bg-white text-[#8a8a8a] text-xs" data-testid="select-status">
+                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-status">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
+                                <SelectItem value="Draft">Draft</SelectItem>
                                 <SelectItem value="In Progress">In Progress</SelectItem>
-                                <SelectItem value="For Approval">For Approval</SelectItem>
+                                <SelectItem value="Submitted">Submitted</SelectItem>
                                 <SelectItem value="Approved">Approved</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -207,6 +257,8 @@ export function PromotionsModule() {
                         nationality={nationality}
                         criteria={criteria}
                         status={status}
+                        initialReviewUuid={initialReviewUuid}
+                        onInitialReviewConsumed={handleInitialReviewConsumed}
                     />
                 </div>
             </div>

@@ -41,6 +41,23 @@ export class AppraisalResultsRepository {
       .orderBy(desc(appraisalResultsV2.createdAt));
   }
 
+  // Historic data inconsistency: some appraisals store crew_member_id as the
+  // crew's emp_no, others as the crew_uuid (and rare cases as the numeric id).
+  // Callers that already know all the candidate identifiers for a crew member
+  // can use this method to fetch every matching appraisal in one query.
+  async findByCrewMemberIds(crewMemberIds: string[]): Promise<AppraisalResultV2[]> {
+    if (crewMemberIds.length === 0) return [];
+    const db = getDb();
+    return db
+      .select()
+      .from(appraisalResultsV2)
+      .where(and(
+        inArray(appraisalResultsV2.crewMemberId, crewMemberIds),
+        eq(appraisalResultsV2.isDeleted, false),
+      ))
+      .orderBy(desc(appraisalResultsV2.createdAt));
+  }
+
   async create(data: Omit<InsertAppraisalResultV2, "appraisalUuid">): Promise<AppraisalResultV2> {
     const db = getDb();
     const results = await db

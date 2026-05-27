@@ -22,8 +22,9 @@ const PromotionsRouter = lazy(() => import("./modules/promotions/index"));
 const DrugsAlcoholModule = lazy(() => import("./modules/drugs-alcohol/index").then(m => ({ default: m.DrugsAlcoholModule })));
 const RestHoursModuleComponent = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursModule })));
 const RestHoursVesselOverviewComponent = lazy(() => import("./modules/rest-hours").then(m => ({ default: m.RestHoursVesselOverview })));
+const TrainingRetentionModuleComponent = lazy(() => import("./modules/training-retention").then(m => ({ default: m.TrainingRetentionModule })));
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
-const ReportsComingSoon = lazy(() => import("./pages/ReportsComingSoon").then(m => ({ default: m.ReportsComingSoon })));
+const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const AccountsModule = lazy(() => import("./modules/accounts/AccountsModule").then(m => ({ default: m.AccountsModule })));
 const NotFound = lazy(() => import("./modules/not-found"));
 
@@ -99,7 +100,9 @@ function AuthenticatedApp() {
               <Route path="/">
                 <ProtectedRoute menuName="Crewing"><AppraisalsRouter /></ProtectedRoute>
               </Route>
-              <Route path="/dashboard" component={DashboardPage} />
+              <Route path="/dashboard">
+                    <ProtectedRoute menuName="Dashboard" fallbackRoute="/recruitment"><DashboardPage /></ProtectedRoute>
+                  </Route>
               <Route path="/recruitment">
                 <ProtectedRoute menuName="Recruitment"><RecruitmentWrapper /></ProtectedRoute>
               </Route>
@@ -127,8 +130,20 @@ function AuthenticatedApp() {
               <Route path="/rest-hours">
                 <ProtectedRoute menuName="Rest Hours"><RestHoursModuleComponent /></ProtectedRoute>
               </Route>
+                  <Route path="/training-retention/training">
+                    <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
+                  </Route>
+                  <Route path="/training-retention/retention">
+                    <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
+                  </Route>
+                  <Route path="/training-retention/:rest*">
+                    <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
+                  </Route>
+                  <Route path="/training-retention">
+                    <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
+                  </Route>
               <Route path="/reports">
-                <ProtectedRoute menuName="Reports"><ReportsComingSoon /></ProtectedRoute>
+                <ProtectedRoute menuName="Reports"><ReportsPage /></ProtectedRoute>
               </Route>
               <Route path="/admin/*">
                 <ProtectedRoute menuName="Admin"><AdminRouter /></ProtectedRoute>

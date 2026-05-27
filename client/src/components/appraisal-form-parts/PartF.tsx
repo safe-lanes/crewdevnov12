@@ -42,9 +42,23 @@ const PartFComponent: React.FC<PartFProps> = ({
   stage2Mutation,
   saveAppraisalMutation,
   handleSaveDraft,
+  isLockForm,
+  isPostStage1,
+  isPostStage2: isPostStage2Prop,
+  isPostStage3: isPostStage3Prop,
 }) => {
   const overallScoreValue = parseFloat(overallScore) || 0;
   const { bgColor: overallBgColor, textColor: overallTextColor } = getScoreColors(overallScoreValue);
+  // Task #500: when the form's lock-form flag is on, the F section locks
+  // immediately after Stage 2 submit (along with the rest of A-F); without
+  // the flag the legacy behavior still kicks in at 'submitted'/'reviewed'.
+  const isPostStage2 = isPostStage2Prop ?? (appraisalStatus === 'submitted' || appraisalStatus === 'reviewed' || appraisalStatus === ('stage2_submitted' as typeof appraisalStatus) || appraisalStatus === ('stage3_submitted' as typeof appraisalStatus));
+  const isPostStage3 = isPostStage3Prop ?? (appraisalStatus === 'reviewed' || appraisalStatus === ('stage3_submitted' as typeof appraisalStatus));
+  const isF3Locked = isPostStage3 || isPostStage2;
+  // Task #500: when `is_lock_form` is on, all of Part F locks after Stage 2
+  // (matching A/Targets/C/D/E). After Stage 3 F is unconditionally locked.
+  // Task #513: lock-form flag gates all post-stage locking.
+  const lockSection = !!isLockForm && (isPostStage2 || isPostStage3);
 
   // Map primaryAppraiser value to rank name
   const primaryAppraiserToRank: Record<string, string> = {
@@ -62,6 +76,7 @@ const PartFComponent: React.FC<PartFProps> = ({
   const primaryAppraiserRank = primaryAppraiserToRank[primaryAppraiserValue || ""] || "";
 
   return (
+    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-f-lock">
     <div ref={partRef} data-section-id="F">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -232,6 +247,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                   size="sm"
                   className="text-xs"
                   onClick={addAppraiserComment}
+                  disabled={isF3Locked}
                   data-testid="button-add-appraiser"
                 >
                   <Plus className="h-3 w-3 mr-1" />
@@ -242,41 +258,78 @@ const PartFComponent: React.FC<PartFProps> = ({
               <div className="space-y-3">
                 {form.watch("appraiserComments").map((comment, index) => {
                   const isPrimary = index === 0;
-                  const isEditing = editingAppraiserComment === comment.id || (!comment.name && !comment.comment);
+                  const isEditing = editingAppraiserComment === comment.id || (!isPrimary && !comment.name && !comment.comment);
                   // Auto-fill primary appraiser's rank from Part A selection
-                  const displayRank = isPrimary && !comment.rank && primaryAppraiserRank 
-                    ? primaryAppraiserRank 
-                    : comment.rank;
+                  const displayRank = isPrimary && primaryAppraiserRank
+                    ? primaryAppraiserRank
+                    : (isPrimary && !comment.rank && primaryAppraiserRank ? primaryAppraiserRank : comment.rank);
+                  const displayName = isPrimary ? "Primary Appraiser" : comment.name;
                   return (
                     <div key={comment.id} className="bg-gray-50 p-3 rounded" data-testid={`appraiser-comment-${comment.id}`}>
                       {isEditing ? (
                         <div className="space-y-3">
                           <div className="flex gap-4">
                             <div className="flex-1">
-                              <Input
-                                value={comment.name}
-                                onChange={(e) => updateAppraiserComment(comment.id, "name", e.target.value)}
-                                placeholder="Appraiser name"
-                                className="text-sm"
-                                data-testid={`input-appraiser-name-${comment.id}`}
-                              />
+                              {isPrimary ? (
+                                <Input
+                                  value={displayName}
+                                  readOnly
+                                  disabled
+                                  className="text-sm bg-gray-100"
+                                  data-testid={`input-appraiser-name-${comment.id}`}
+                                />
+                              ) : isF3Locked ? (
+                                <Input
+                                  value={comment.name}
+                                  readOnly
+                                  disabled
+                                  className="text-sm bg-gray-100"
+                                  data-testid={`input-appraiser-name-${comment.id}`}
+                                />
+                              ) : (
+                                <Input
+                                  value={comment.name}
+                                  onChange={(e) => updateAppraiserComment(comment.id, "name", e.target.value)}
+                                  placeholder="Appraiser name"
+                                  className="text-sm"
+                                  data-testid={`input-appraiser-name-${comment.id}`}
+                                />
+                              )}
                             </div>
                             <div className="flex-1">
-                              <Select
-                                value={isPrimary && !comment.rank && primaryAppraiserRank ? primaryAppraiserRank : comment.rank}
-                                onValueChange={(value) => updateAppraiserComment(comment.id, "rank", value)}
-                              >
-                                <SelectTrigger data-testid={`select-appraiser-rank-${comment.id}`}>
-                                  <SelectValue placeholder="Select rank" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {availableRanks.map((rank) => (
-                                    <SelectItem key={rank.id} value={rank.name}>{rank.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              {isPrimary ? (
+                                <Input
+                                  value={displayRank || ""}
+                                  readOnly
+                                  disabled
+                                  className="text-sm bg-gray-100"
+                                  data-testid={`input-appraiser-rank-${comment.id}`}
+                                />
+                              ) : isF3Locked ? (
+                                <Input
+                                  value={comment.rank}
+                                  readOnly
+                                  disabled
+                                  className="text-sm bg-gray-100"
+                                  data-testid={`input-appraiser-rank-${comment.id}`}
+                                />
+                              ) : (
+                                <Select
+                                  value={comment.rank}
+                                  onValueChange={(value) => updateAppraiserComment(comment.id, "rank", value)}
+                                >
+                                  <SelectTrigger data-testid={`select-appraiser-rank-${comment.id}`}>
+                                    <SelectValue placeholder="Select rank" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {availableRanks.map((rank) => (
+                                      <SelectItem key={rank.id} value={rank.name}>{rank.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
                             </div>
-                            {!isPrimary && (
+                            {!isPrimary && !isF3Locked && (
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -303,8 +356,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                         <>
                           <div className="flex justify-between items-start mb-2">
                             <span className="text-sm font-medium" data-testid={`text-appraiser-name-${comment.id}`}>
-                              {comment.name}{displayRank ? `, ${displayRank}` : ""}
-                              {!comment.name && isPrimary && " (Primary Appraiser)"}
+                              {displayName}{displayRank ? `, ${displayRank}` : ""}
                             </span>
                             <div className="flex gap-1">
                               <Button
@@ -317,7 +369,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                               >
                                 <Pencil className="h-3.5 w-3.5 text-gray-400" />
                               </Button>
-                              {!isPrimary && (
+                              {!isPrimary && !isF3Locked && (
                                 <Button
                                   type="button"
                                   variant="ghost"
@@ -412,13 +464,13 @@ const PartFComponent: React.FC<PartFProps> = ({
                 disabled={saveAppraisalMutation.isPending}
                 data-testid="button-save-draft-part-f"
               >
-                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
+                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
               <Button
                 type="button"
                 className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8"
                 onClick={() => handleStageSubmission('stage2')}
-                disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'submitted' || appraisalStatus === 'reviewed'}
+                disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || isPostStage2}
                 data-testid="button-submit-stage-2"
               >
                 {stage2Mutation.isPending ? 'Submitting...' : 'Submit Stage 2'}
@@ -428,6 +480,7 @@ const PartFComponent: React.FC<PartFProps> = ({
         </CardContent>
       </Card>
     </div>
+    </fieldset>
   );
 };
 

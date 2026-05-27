@@ -43,6 +43,7 @@ export const appraisalResultsV2 = pgTable("appraisal_results_v2", {
   stage3Status: text("stage3_status"),
   stage3SubmittedAt: text("stage3_submitted_at"),
   stage3SubmittedBy: text("stage3_submitted_by"),
+  isLockForm: boolean("is_lock_form").notNull().default(false),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });
@@ -54,6 +55,7 @@ export const apprTrainingsV2 = pgTable("appr_trainings_v2", {
   training: text("training"),
   evaluation: text("evaluation"),
   comment: text("comment"),
+  source: text("source").notNull().default("manual"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });
@@ -99,6 +101,7 @@ export const apprTrainingNeedsV2 = pgTable("appr_training_needs_v2", {
   appraisalUuid: text("appraisal_uuid").notNull(),
   training: text("training"),
   comment: text("comment"),
+  source: text("source").notNull().default("manual"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });

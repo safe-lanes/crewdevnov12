@@ -36,7 +36,11 @@ export const crewMembersController = {
 
   async getAllWithDetails(req: Request, res: Response) {
     try {
-      const { rank, nationality, status, search, vesselUuid, limit, offset } = req.query;
+      const { rank, nationality, status, search, vesselUuid, limit, offset, view } = req.query;
+      if (view === "terminated") {
+        const data = await crewMembersService.getTerminated();
+        return res.json({ data, pagination: { total: data.length, limit: data.length, offset: 0, pages: 1, currentPage: 1 } });
+      }
       const result = await crewMembersService.getAllWithDetails({
         rank: rank as string | undefined,
         nationality: nationality as string | undefined,
@@ -45,6 +49,7 @@ export const crewMembersController = {
         vesselUuid: vesselUuid as string | undefined,
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined,
+        view: view === "all" ? "all" : "active",
       });
       res.json(result);
     } catch (error) {
@@ -182,6 +187,68 @@ export const crewMembersController = {
       }
       console.error("Error deleting crew:", error);
       res.status(500).json({ error: "Failed to delete crew member" });
+    }
+  },
+
+  async terminateEmployment(req: Request, res: Response) {
+    try {
+      const { crewUuid } = req.params;
+      const { insertCrewTerminationSchema } = await import(
+        "../../../../shared/v2/crew-pool/types"
+      );
+      const {
+        terminationInitiatedByEnum,
+        terminationReasonEnum,
+        terminationCategoryEnum,
+      } = await import("../../../../shared/v2/crew-pool/terminationConstants");
+      // Build the request schema from the canonical Drizzle-derived insert
+      // schema, narrowed to the controlled enums shared with the client.
+      // Submitter identity and audit fields are server-derived and stripped
+      // here so a malicious client cannot spoof "Submitted by".
+      const bodySchema = insertCrewTerminationSchema
+        .pick({
+          terminationDate: true,
+          initiatedBy: true,
+          reason: true,
+          category: true,
+          notForHire: true,
+          comments: true,
+        })
+        .extend({
+          initiatedBy: terminationInitiatedByEnum,
+          reason: terminationReasonEnum,
+          category: terminationCategoryEnum,
+        })
+        // Allow client-provided submitter display fields from session storage.
+        .passthrough();
+      const parsed = bodySchema.safeParse(req.body || {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid termination payload", issues: parsed.error.issues });
+      }
+      // Submitter identity is provided by the client from authenticated
+      // session storage (crewUserId / crewUserName / crewUserRole) populated
+      // at login. Validation above keeps the schema enums tight; these
+      // submitter strings are display/audit metadata.
+      const body = (req.body || {}) as Record<string, unknown>;
+      const submittedByUserId = typeof body.submittedByUserId === "string"
+        ? body.submittedByUserId
+        : (req.user?.id != null ? String(req.user.id) : null);
+      const submittedByName = typeof body.submittedByName === "string" ? body.submittedByName : null;
+      const submittedByRole = typeof body.submittedByRole === "string" ? body.submittedByRole : null;
+      const result = await crewMembersService.terminateEmployment(crewUuid, {
+        ...parsed.data,
+        submittedByUserId,
+        submittedByName,
+        submittedByRole,
+        auditUserUuid: submittedByUserId,
+      });
+      res.status(201).json(result);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error terminating employment:", error);
+      res.status(500).json({ error: "Failed to terminate employment" });
     }
   },
 

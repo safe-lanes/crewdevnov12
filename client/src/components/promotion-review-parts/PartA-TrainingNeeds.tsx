@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, MessageSquare } from 'lucide-react';
 import type { TrainingRow, Comment } from './types';
+import { DbTrainingCombobox, type DbTrainingOption } from './DbTrainingCombobox';
 
 interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   trainingNeeds: TrainingRow[];
@@ -17,7 +18,12 @@ interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   onSetNewTrainingComment: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   editingTrainingComment: string | null;
   onSetEditingTrainingComment: React.Dispatch<React.SetStateAction<string | null>>;
+  editingTrainingCommentId: string | null;
+  onSetEditingTrainingCommentId: React.Dispatch<React.SetStateAction<string | null>>;
   onSetTrainingComments: React.Dispatch<React.SetStateAction<Record<string, Comment[]>>>;
+  dbTrainings: DbTrainingOption[];
+  isLoadingDbTrainings?: boolean;
+  isErrorDbTrainings?: boolean;
 }
 
 const getCurrentUserDisplay = (): string => {
@@ -37,7 +43,12 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
   onSetNewTrainingComment,
   editingTrainingComment,
   onSetEditingTrainingComment,
+  editingTrainingCommentId,
+  onSetEditingTrainingCommentId,
   onSetTrainingComments,
+  dbTrainings,
+  isLoadingDbTrainings = false,
+  isErrorDbTrainings = false,
   ...restProps
 }: PartATrainingNeedsProps) {
   const currentUserDisplay = getCurrentUserDisplay();
@@ -84,19 +95,53 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {trainingNeeds.map((training, index) => (
+            {trainingNeeds.map((training, index) => {
+              const matchedDbOption = dbTrainings.find(o => o.id === training.correspondingInDB);
+              // When `addedFromDB` is explicitly set (true or false), trust it —
+              // this is the authoritative source for rows created in the current
+              // session. The name-equality fallback only applies to legacy rows
+              // persisted before the flag existed (addedFromDB === undefined), so
+              // that a manual row whose typed name happens to coincide with a
+              // selected DB option's name is NOT incorrectly locked.
+              const isFromDb =
+                training.addedFromDB === true ||
+                (training.addedFromDB === undefined &&
+                  !!training.correspondingInDB &&
+                  matchedDbOption?.name === training.training);
+              return (
               <React.Fragment key={training.id}>
                 <TableRow>
                   <TableCell className="text-sm" data-testid={`cell-training-sno-${training.id}`}>{index + 1}</TableCell>
-                  <TableCell className="text-sm" data-testid={`cell-training-name-${training.id}`}>{training.training}</TableCell>
                   <TableCell>
-                    <Input
-                      value={training.correspondingInDB}
-                      onChange={(e) => onUpdateTraining(training.id, 'correspondingInDB', e.target.value)}
-                      placeholder="Enter corresponding DB entry..."
-                      className="h-8 text-xs"
-                      data-testid={`input-training-db-${training.id}`}
-                    />
+                    {isFromDb ? (
+                      <span className="text-xs text-[#4f5863]" data-testid={`text-training-name-${training.id}`}>
+                        {training.training}
+                      </span>
+                    ) : (
+                      <Input
+                        value={training.training}
+                        onChange={(e) => onUpdateTraining(training.id, 'training', e.target.value)}
+                        placeholder="Enter training name..."
+                        className="h-8 text-xs"
+                        data-testid={`input-training-name-${training.id}`}
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {isFromDb ? (
+                      <span className="text-xs text-[#4f5863]" data-testid={`text-training-db-${training.id}`}>
+                        {matchedDbOption?.name || training.training}
+                      </span>
+                    ) : (
+                      <DbTrainingCombobox
+                        value={training.correspondingInDB}
+                        options={dbTrainings}
+                        onChange={(value) => onUpdateTraining(training.id, 'correspondingInDB', value)}
+                        isLoading={isLoadingDbTrainings}
+                        isError={isErrorDbTrainings}
+                        testId={`select-training-db-${training.id}`}
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
                     <Select 
@@ -104,7 +149,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                       onValueChange={(value) => onUpdateTraining(training.id, 'category', value)}
                     >
                       <SelectTrigger className="h-8 text-xs" data-testid={`select-training-category-${training.id}`}>
-                        <SelectValue />
+                        <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="1. Competence">1. Competence</SelectItem>
@@ -118,7 +163,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                       onValueChange={(value) => onUpdateTraining(training.id, 'status', value)}
                     >
                       <SelectTrigger className="h-8 text-xs" data-testid={`select-training-status-${training.id}`}>
-                        <SelectValue />
+                        <SelectValue placeholder="Select Status" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Proposed">Proposed</SelectItem>
@@ -146,7 +191,10 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         variant="ghost" 
                         size="sm" 
                         className="h-7 w-7 p-0"
-                        onClick={() => onSetEditingTrainingComment(editingTrainingComment === training.id ? null : training.id)}
+                        onClick={() => {
+                          onSetEditingTrainingCommentId(null);
+                          onSetEditingTrainingComment(editingTrainingComment === training.id ? null : training.id);
+                        }}
                         data-testid={`button-training-comment-${training.id}`}
                       >
                         <MessageSquare className="h-4 w-4 text-gray-600" />
@@ -159,37 +207,45 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                   <TableRow>
                     <TableCell colSpan={6} className="bg-gray-50 p-3">
                       {trainingComments[training.id]?.map((comment) => (
-                        <div key={comment.id} className="mb-2">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="text-xs font-medium text-gray-700 mb-1">{comment.user}</div>
-                              <div 
-                                className="text-xs text-blue-600 italic cursor-pointer"
-                                onClick={() => {
-                                  onSetEditingTrainingComment(training.id);
-                                  onSetNewTrainingComment(prev => ({ ...prev, [training.id]: comment.text }));
-                                }}
-                              >
-                                Comment: {comment.text}
+                        editingTrainingCommentId === comment.id ? null : (
+                          <div key={comment.id} className="mb-2">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="text-xs font-medium text-gray-700 mb-1">{comment.user}</div>
+                                <div 
+                                  className="text-xs text-blue-600 italic cursor-pointer"
+                                  onClick={() => {
+                                    onSetEditingTrainingComment(training.id);
+                                    onSetEditingTrainingCommentId(comment.id);
+                                    onSetNewTrainingComment(prev => ({ ...prev, [training.id]: comment.text }));
+                                  }}
+                                >
+                                  Comment: {comment.text}
+                                </div>
                               </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => {
+                                  onSetTrainingComments(prev => ({
+                                    ...prev,
+                                    [training.id]: prev[training.id].filter(c => c.id !== comment.id)
+                                  }));
+                                  if (editingTrainingCommentId === comment.id) {
+                                    onSetEditingTrainingCommentId(null);
+                                    onSetEditingTrainingComment(null);
+                                    onSetNewTrainingComment(prev => ({ ...prev, [training.id]: '' }));
+                                  }
+                                }}
+                                data-testid={`button-delete-training-comment-${comment.id}`}
+                              >
+                                <Trash2 className="h-3 w-3 text-gray-600" />
+                              </Button>
                             </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={() => {
-                                onSetTrainingComments(prev => ({
-                                  ...prev,
-                                  [training.id]: prev[training.id].filter(c => c.id !== comment.id)
-                                }));
-                              }}
-                              data-testid={`button-delete-training-comment-${comment.id}`}
-                            >
-                              <Trash2 className="h-3 w-3 text-gray-600" />
-                            </Button>
                           </div>
-                        </div>
+                        )
                       ))}
                       
                       {editingTrainingComment === training.id && (
@@ -202,7 +258,17 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                             onChange={(e) => onSetNewTrainingComment(prev => ({ ...prev, [training.id]: e.target.value }))}
                             onBlur={() => {
                               const commentText = newTrainingComment[training.id]?.trim();
-                              if (commentText) {
+                              if (editingTrainingCommentId) {
+                                if (commentText) {
+                                  const editingId = editingTrainingCommentId;
+                                  onSetTrainingComments(prev => ({
+                                    ...prev,
+                                    [training.id]: (prev[training.id] || []).map(c =>
+                                      c.id === editingId ? { ...c, text: commentText } : c
+                                    ),
+                                  }));
+                                }
+                              } else if (commentText) {
                                 const newComment: Comment = {
                                   id: `training-comment-${Date.now()}`,
                                   user: currentUserDisplay,
@@ -215,6 +281,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                               }
                               onSetNewTrainingComment(prev => ({ ...prev, [training.id]: '' }));
                               onSetEditingTrainingComment(null);
+                              onSetEditingTrainingCommentId(null);
                             }}
                             data-testid={`textarea-training-comment-${training.id}`}
                           />
@@ -224,7 +291,8 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                   </TableRow>
                 )}
               </React.Fragment>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </div>

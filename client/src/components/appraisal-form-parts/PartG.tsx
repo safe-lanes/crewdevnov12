@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/select";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import { PartGProps } from "./types";
+import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
+import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 
 const PartGComponent: React.FC<PartGProps> = ({
   form,
@@ -36,7 +38,15 @@ const PartGComponent: React.FC<PartGProps> = ({
   handleSaveDraft,
   stage3Mutation,
   saveAppraisalMutation,
+  isLockForm,
+  isPostStage1,
+  isPostStage2,
+  isPostStage3,
 }) => {
+  const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
+  // Task #500: post-Stage 3 fully locks G (legacy behavior).
+  const isG1Locked = appraisalStatus === 'reviewed' || appraisalStatus === ('stage3_submitted' as typeof appraisalStatus);
+
   const deleteTrainingFollowupComment = (id: string) => {
     showConfirmDialog(
       "Delete Comment",
@@ -48,7 +58,12 @@ const PartGComponent: React.FC<PartGProps> = ({
     );
   };
 
+  // Task #500: G is fully locked once Stage 3 has been submitted. Using a
+  // fieldset disables every native input, select, textarea and button inside,
+  // including the Save Draft / Submit Stage 3 actions at the bottom.
+  const lockSection = !!isPostStage3;
   return (
+    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-g-lock">
     <div ref={partRef} data-section-id="G">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -63,7 +78,7 @@ const PartGComponent: React.FC<PartGProps> = ({
             <div className="border border-[#EAEBEF] rounded-lg p-4">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-base font-medium" style={{ color: '#16569e' }}>G1. Office Reviews</h4>
-                <Button type="button" onClick={addOfficeReview} variant="outline" size="sm">
+                <Button type="button" onClick={addOfficeReview} variant="outline" size="sm" disabled={isG1Locked} data-testid="button-add-reviewer">
                   <Plus className="h-4 w-4 mr-1" />
                   Add Reviewer
                 </Button>
@@ -74,15 +89,25 @@ const PartGComponent: React.FC<PartGProps> = ({
                     <div className="flex gap-4 mb-3">
                       <div className="flex-1">
                         <label className="text-xs text-gray-500">Reviewer Name</label>
-                        <Input value={review.name} onChange={(e) => updateOfficeReview(review.id, "name", e.target.value)} placeholder="Enter name" />
+                        {isG1Locked ? (
+                          <Input value={review.name} readOnly disabled className="bg-gray-100" data-testid={`input-reviewer-name-${review.id}`} />
+                        ) : (
+                          <Input value={review.name} onChange={(e) => updateOfficeReview(review.id, "name", e.target.value)} placeholder="Enter name" data-testid={`input-reviewer-name-${review.id}`} />
+                        )}
                       </div>
                       <div className="flex-1">
                         <label className="text-xs text-gray-500">Position</label>
-                        <Input value={review.position} onChange={(e) => updateOfficeReview(review.id, "position", e.target.value)} placeholder="Enter position" />
+                        {isG1Locked ? (
+                          <Input value={review.position} readOnly disabled className="bg-gray-100" data-testid={`input-reviewer-position-${review.id}`} />
+                        ) : (
+                          <Input value={review.position} onChange={(e) => updateOfficeReview(review.id, "position", e.target.value)} placeholder="Enter position" data-testid={`input-reviewer-position-${review.id}`} />
+                        )}
                       </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => deleteOfficeReview(review.id)}>
-                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
-                      </Button>
+                      {!isG1Locked && (
+                        <Button type="button" variant="ghost" size="icon" onClick={() => deleteOfficeReview(review.id)} data-testid={`button-delete-reviewer-${review.id}`}>
+                          <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                        </Button>
+                      )}
                     </div>
                     <Textarea value={review.feedback} onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)} placeholder="Enter feedback..." rows={3} />
                   </div>
@@ -141,19 +166,41 @@ const PartGComponent: React.FC<PartGProps> = ({
                         <tr className="border-t border-gray-100">
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Input value={followup.training} onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)} placeholder="Training name" className="h-8" />
+                            {(() => {
+                              const matchedDbOption = dbTrainings.find(o => o.id === followup.correspondingInDB);
+                              const isFromDb = (followup as any).addedFromDB === true || (!!followup.correspondingInDB && matchedDbOption?.name === followup.training);
+                              return isFromDb ? (
+                                <span data-testid={`text-followup-training-${followup.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                                  {followup.training}
+                                </span>
+                              ) : (
+                                <Input value={followup.training} onChange={(e) => updateTrainingFollowup(followup.id, "training", e.target.value)} placeholder="Training name" className="h-8" />
+                              );
+                            })()}
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Input
-                              value={followup.correspondingInDB || ""}
-                              onChange={(e) => updateTrainingFollowup(followup.id, "correspondingInDB", e.target.value)}
-                              placeholder="Enter corresponding DB entry..."
-                              className="h-8"
-                            />
+                            {(() => {
+                              const matchedDbOption = dbTrainings.find(o => o.id === followup.correspondingInDB);
+                              const isFromDb = (followup as any).addedFromDB === true || (!!followup.correspondingInDB && matchedDbOption?.name === followup.training);
+                              return isFromDb ? (
+                                <span data-testid={`text-followup-db-${followup.id}`} className="text-[#4f5863] text-[13px] font-normal">
+                                  {matchedDbOption?.name || followup.training}
+                                </span>
+                              ) : (
+                                <DbTrainingCombobox
+                                  value={followup.correspondingInDB || ""}
+                                  options={dbTrainings}
+                                  onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
+                                  isLoading={isLoadingDbTrainings}
+                                  isError={isErrorDbTrainings}
+                                  testId={`select-followup-db-${followup.id}`}
+                                />
+                              );
+                            })()}
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Select value={followup.category} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)}>
-                              <SelectTrigger className="h-8"><SelectValue placeholder="Select Rating" /></SelectTrigger>
+                            <Select value={followup.category || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)}>
+                              <SelectTrigger className="h-8"><SelectValue placeholder="Select Category" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="1. Competence">1. Competence</SelectItem>
                                 <SelectItem value="2- Soft Skills">2- Soft Skills</SelectItem>
@@ -161,8 +208,8 @@ const PartGComponent: React.FC<PartGProps> = ({
                             </Select>
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Select value={followup.status} onValueChange={(value) => updateTrainingFollowup(followup.id, "status", value)}>
-                              <SelectTrigger className="h-8"><SelectValue placeholder="Status" /></SelectTrigger>
+                            <Select value={followup.status || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "status", value)}>
+                              <SelectTrigger className="h-8"><SelectValue placeholder="Select Status" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="Proposed">Proposed</SelectItem>
                                 <SelectItem value="Approved">Approved</SelectItem>
@@ -238,7 +285,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                 disabled={saveAppraisalMutation.isPending}
                 data-testid="button-save-draft-part-g"
               >
-                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save Draft'}
+                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
               <Button 
                 type="button"
@@ -254,6 +301,7 @@ const PartGComponent: React.FC<PartGProps> = ({
         </CardContent>
       </Card>
     </div>
+    </fieldset>
   );
 };
 

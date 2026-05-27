@@ -22,6 +22,7 @@ import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAtta
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
+import { usePermissions } from '@/contexts/PermissionsContext';
 import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
 import { generateRecruitmentPDF } from '@/lib/generateRecruitmentPDF';
 import { formatDate } from '@/utils/format';
@@ -592,6 +593,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { roleName, manningAgent: userManningAgent } = usePermissions();
+  const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
+
+  useEffect(() => {
+    if (isManningAgentUser && userManningAgent && formData.manningAgent !== userManningAgent) {
+      setFormData(prev => ({ ...prev, manningAgent: userManningAgent }));
+    }
+  }, [isManningAgentUser, userManningAgent, formData.manningAgent]);
 
   const { data: adminCompanyTrainings = [] } = useQuery<Array<{ id: number; companyId: string; trainingLabel?: string }>>({
     queryKey: ['/api/v2/admin/company-trainings'],
@@ -4525,8 +4534,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">Manning Agent</Label>
               {isEditing ? (
-                <Select value={formData.manningAgent} onValueChange={(value) => updateFormData('manningAgent', value)}>
-                  <SelectTrigger className="mt-1" data-testid="select-manning-agent">
+                <Select value={formData.manningAgent} onValueChange={(value) => updateFormData('manningAgent', value)} disabled={isManningAgentUser}>
+                  <SelectTrigger className="mt-1" data-testid="select-manning-agent" disabled={isManningAgentUser}>
                     <SelectValue placeholder="Select manning agent" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[200px]">

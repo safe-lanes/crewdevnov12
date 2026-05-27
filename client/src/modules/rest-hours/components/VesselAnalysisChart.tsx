@@ -95,37 +95,14 @@ export const VesselAnalysisChart = ({
     queryKey: ['v2', 'rest-hours', 'crew-records-vessel-analysis', vesselIds, complianceMode, opaMode, monthsToFetch],
     queryFn: async () => {
       if (monthsToFetch.length === 0) return [];
-      
-      const fetchPromises = monthsToFetch.map(async (monthValue) => {
-        const [year, month] = monthValue.split('-');
-        
-        // Get vessel records for this month
-        const vesselRecords = await restHoursApiV2.vesselRecords.getAll({ month, year });
-        
-        // Filter by vesselIds if provided
-        const filteredVesselRecords = vesselIds && vesselIds.length > 0
-          ? vesselRecords.filter((vr: any) => vesselIds.includes(vr.vesselId))
-          : vesselRecords;
-        
-        // Get crew records for each vessel record
-        const crewRecordsPromises = filteredVesselRecords.map(async (vr: any) => {
-          const crewRecords = await restHoursApiV2.crewRecords.getAll({ 
-            vesselId: vr.vesselId,
-            monthValue,
-          });
-          return crewRecords.map((cr: any) => ({
-            ...cr,
-            vesselId: vr.vesselId,
-            monthValue,
-          }));
-        });
-        
-        const allCrewRecords = await Promise.all(crewRecordsPromises);
-        return allCrewRecords.flat();
-      });
 
-      const allResults = await Promise.all(fetchPromises);
-      return allResults.flat();
+      // Single batched backend call across all 12 months and selected vessels.
+      return await restHoursApiV2.crewRecords.getAll({
+        vesselId: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
+        monthValues: monthsToFetch,
+        complianceMode,
+        opaMode,
+      });
     },
     enabled: monthsToFetch.length > 0,
   });

@@ -47,6 +47,7 @@ export class ApprTrainingNeedsRepository {
             .set({
               training: row.training || null,
               comment: row.comment || null,
+              source: row.addedFromDB === true ? "db" : "manual",
               sortOrder: i,
               updatedByUuid: auditUserUuid || existing[i].updatedByUuid,
               updatedAt: now,
@@ -60,6 +61,7 @@ export class ApprTrainingNeedsRepository {
             appraisalUuid,
             training: row.training || null,
             comment: row.comment || null,
+            source: row.addedFromDB === true ? "db" : "manual",
             sortOrder: i,
             createdByUuid: auditUserUuid || null,
             updatedByUuid: auditUserUuid || null,

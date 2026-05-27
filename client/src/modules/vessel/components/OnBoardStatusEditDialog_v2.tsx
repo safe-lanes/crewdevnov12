@@ -166,8 +166,35 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         }
     }, [open, planningData, form]);
 
+    // Takeover UI gating — three precise states:
+    //  - Fresh standby secondary (secondary + no handOverDate): editable Take Over Date + Checkbox
+    //  - Post-handover ex-primary (secondary + handOverDate set): hide takeover fields entirely
+    //  - Primary (always): read-only Take Over Date display, no checkbox
+    const isSecondary = planningData?.crewStatus === "secondary";
+    const isPrimary = planningData?.crewStatus === "primary";
+    const hasHandOver = !!planningData?.handOverDate;
+    const isPostHandoverSecondary = isSecondary && hasHandOver;
+    const showEditableTakeover = isSecondary && !hasHandOver;
+    const showReadOnlyTakeoverOnPrimary = isPrimary;
+
     const watchedReliefStatus = form.watch('reliefStatus');
     const watchedContractPeriod = form.watch('contractPeriodMonths');
+
+    // Auto-clear stale future Sign Off Date when Relief Status switches to "Signed Off"
+    React.useEffect(() => {
+        if (watchedReliefStatus === "Signed Off") {
+            const currentSignOff = form.getValues('signOffDate');
+            if (currentSignOff) {
+                const parsed = parseISO(currentSignOff);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                if (!isNaN(parsed.getTime()) && parsed > today) {
+                    form.setValue('signOffDate', '', { shouldValidate: true });
+                }
+            }
+        }
+    }, [watchedReliefStatus]);
     
     const calculatedReliefDue = React.useMemo(() => {
         const signOnDate = planningData?.signOnDate || planningData?.joiningDate;
@@ -211,11 +238,40 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
 
     const handleSaveV2 = async (data: OnBoardStatusFormData) => {
         try {
-            const isTakeover = data.takeOverConfirmation && data.takeOverDate;
+            // Safety guard: a post-handover ex-primary (secondary + handOverDate)
+            // must never re-trigger a takeover swap, even if form state carries
+            // stale takeOverDate / takeOverConfirmation values.
+            const isPostHandoverRow =
+                planningData?.crewStatus === "secondary" && !!planningData?.handOverDate;
+            const isTakeover =
+                !isPostHandoverRow && data.takeOverConfirmation && data.takeOverDate;
+
+            if (data.reliefStatus === "Signed Off") {
+                const signedOffErrors: string[] = [];
+                if (!data.signOffReason || !SIGN_OFF_REASONS.includes(data.signOffReason as any)) {
+                    signedOffErrors.push("Please select a valid Reason for sign-off");
+                }
+                if (!data.signOffDate) {
+                    signedOffErrors.push("Sign Off Date is required when Relief Status is Signed Off");
+                } else {
+                    const signOffParsed = parseISO(data.signOffDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    if (!isNaN(signOffParsed.getTime()) && signOffParsed > today) {
+                        signedOffErrors.push("Sign Off Date cannot be a future date");
+                    }
+                }
+                if (signedOffErrors.length > 0) {
+                    throw new Error(signedOffErrors.join(" • "));
+                }
+            }
+
             const isSignOff = data.reliefStatus === "Signed Off" && data.signOffDate;
-            
-            if (isSignOff && !data.signOffReason) {
-                throw new Error("Please select a reason for sign-off");
+
+            if (isTakeover && planningData?.signOnDate && data.takeOverDate &&
+                new Date(data.takeOverDate) < new Date(planningData.signOnDate)) {
+                throw new Error("Take Over Date cannot be earlier than the secondary crew's Sign On Date");
             }
             
             let computedReliefDue: string | null = null;
@@ -268,10 +324,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 }
                 
                 if (primaryCrew) {
-                    if (primaryCrew.signOffDate || primaryCrew.reliefStatus === "Signed Off") {
+                    if (primaryCrew.reliefStatus === "Signed Off" && primaryCrew.signOffDate) {
                         await apiRequest('POST', `/api/v2/vessel/planning/${primaryCrew.planUuid}/sign-off`, {
-                            signOffDate: primaryCrew.signOffDate || new Date().toISOString().split('T')[0],
-                            signOffReason: primaryCrew.signOffReason || 'Take Over',
+                            signOffDate: primaryCrew.signOffDate,
+                            signOffReason: primaryCrew.signOffReason,
                             signOffPortUuid: primaryCrew.signOffPortUuid,
                         });
                     } else {
@@ -325,8 +381,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 await vesselApiV2.updatePlanning(secondaryCrew.planUuid, {
                     crewStatus: "primary",
                     signOnDate: secondarySignOnDate,
-                    takeOverDate: null,
-                    takeOverConfirmation: false,
+                    takeOverDate: data.takeOverDate,
+                    takeOverConfirmation: true,
                     contractPeriodMonths: secondaryCrew.contractPeriodMonths || secondaryCrew.relieverContractPeriodMonths,
                     contractEndRangeStartMonths: secondaryCrew.contractEndRangeStartMonths || secondaryCrew.relieverContractEndRangeStartMonths,
                     contractEndRangeEndMonths: secondaryCrew.contractEndRangeEndMonths || secondaryCrew.relieverContractEndRangeEndMonths,
@@ -379,6 +435,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             }
             
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] });
             queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/training', vesselUuid] });
             queryClient.invalidateQueries({ queryKey: ['v2-crew-pool'] });
             // Invalidate dashboard query so crew status updates immediately after sign-off
@@ -408,6 +465,9 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     const handleSubmit = form.handleSubmit((data) => {
         handleSaveV2(data);
     });
+
+    const onboardCrewName = planningData?.crewName || planningData?.onBoardCrewName;
+    const isOnboardCrewAssigned = !!onboardCrewName && onboardCrewName.trim() !== '';
 
     const formatDisplayDate = (dateStr: string) => {
         if (!dateStr) return '';
@@ -449,6 +509,12 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     </DialogTitle>
                 </DialogHeader>
 
+                {!isOnboardCrewAssigned && (
+                    <p className="text-xs text-amber-600 mt-2" data-testid="text-no-onboard-crew-message">
+                        No onboard crew available. Crew must first complete Sign On from Reliever section.
+                    </p>
+                )}
+
                 <Form {...form}>
                     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
@@ -476,65 +542,88 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             </div>
                         </div>
 
-                        <FormField
-                            control={form.control}
-                            name="takeOverDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Take Over Date</FormLabel>
-                                        <Popover open={takeOverDateOpen} onOpenChange={setTakeOverDateOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        className="w-full justify-start text-left font-normal"
-                                                        data-testid="button-take-over-date"
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={field.value ? parseDate(field.value) : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            field.onChange(format(date, 'yyyy-MM-dd'));
-                                                            setTakeOverDateOpen(false);
-                                                        }
-                                                    }}
-                                                    initialFocus
-                                                />
-                                            </PopoverContent>
-                                        </Popover>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
+                        {showReadOnlyTakeoverOnPrimary && isOnboardCrewAssigned && (
+                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                <span className="text-sm text-gray-700">Take Over Date:</span>
+                                <div className="flex items-center border rounded-md px-3 py-2 bg-gray-50">
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-gray-400" />
+                                    <span className="text-sm text-gray-900" data-testid="text-take-over-date-readonly">
+                                        {planningData?.takeOverDate ? formatDisplayDate(planningData.takeOverDate) : '-'}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
 
-                        <FormField
-                            control={form.control}
-                            name="takeOverConfirmation"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Take Over Confirmation</FormLabel>
-                                        <FormControl>
-                                            <div className="flex items-center">
-                                                <Checkbox 
-                                                    checked={field.value || false}
-                                                    onCheckedChange={field.onChange}
-                                                    data-testid="checkbox-take-over-confirmation"
-                                                />
+                        {showEditableTakeover && isOnboardCrewAssigned && (
+                            <>
+                                <FormField
+                                    control={form.control}
+                                    name="takeOverDate"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                                <FormLabel className="text-sm text-gray-700">Take Over Date</FormLabel>
+                                                <Popover open={takeOverDateOpen} onOpenChange={setTakeOverDateOpen}>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button
+                                                                variant="outline"
+                                                                className="w-full justify-start text-left font-normal"
+                                                                data-testid="button-take-over-date"
+                                                            >
+                                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                                {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-auto p-0" align="start">
+                                                        <Calendar
+                                                            mode="single"
+                                                            selected={field.value ? parseDate(field.value) : undefined}
+                                                            onSelect={(date) => {
+                                                                if (date) {
+                                                                    field.onChange(format(date, 'yyyy-MM-dd'));
+                                                                    setTakeOverDateOpen(false);
+                                                                }
+                                                            }}
+                                                            disabled={(() => {
+                                                                const signOnVal = planningData?.signOnDate;
+                                                                if (!signOnVal) return undefined;
+                                                                const signOnParsed = parseDate(signOnVal);
+                                                                if (!signOnParsed) return undefined;
+                                                                return { before: signOnParsed };
+                                                            })()}
+                                                            initialFocus
+                                                        />
+                                                    </PopoverContent>
+                                                </Popover>
                                             </div>
-                                        </FormControl>
-                                    </div>
-                                </FormItem>
-                            )}
-                        />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="takeOverConfirmation"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                                <FormLabel className="text-sm text-gray-700">Take Over Confirmation</FormLabel>
+                                                <FormControl>
+                                                    <div className="flex items-center">
+                                                        <Checkbox 
+                                                            checked={field.value || false}
+                                                            onCheckedChange={field.onChange}
+                                                            data-testid="checkbox-take-over-confirmation"
+                                                        />
+                                                    </div>
+                                                </FormControl>
+                                            </div>
+                                        </FormItem>
+                                    )}
+                                />
+                            </>
+                        )}
 
                         <div className="border border-[#16569e] rounded-md p-4 space-y-4">
                             <FormField
@@ -553,6 +642,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                     data-testid="input-contract-period-onboard"
                                                     value={field.value ?? ''}
                                                     onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isOnboardCrewAssigned}
                                                 />
                                             </FormControl>
                                         </div>
@@ -577,6 +667,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                     data-testid="input-contract-range-start-onboard"
                                                     value={field.value ?? ''}
                                                     onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isOnboardCrewAssigned}
                                                 />
                                             </FormControl>
                                         </div>
@@ -601,6 +692,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                     data-testid="input-contract-range-end-onboard"
                                                     value={field.value ?? ''}
                                                     onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                                                    disabled={!isOnboardCrewAssigned}
                                                 />
                                             </FormControl>
                                         </div>
@@ -631,6 +723,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 onValueChange={field.onChange} 
                                                 value={field.value || undefined} 
                                                 data-testid="select-relief-status"
+                                                disabled={!isOnboardCrewAssigned}
                                             >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select Status" />
@@ -699,6 +792,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                         variant="outline"
                                                         className="w-full justify-start text-left font-normal"
                                                         data-testid="button-sign-off-date"
+                                                        disabled={!isOnboardCrewAssigned}
                                                     >
                                                         <CalendarIcon className="mr-2 h-4 w-4" />
                                                         {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
@@ -716,11 +810,21 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                         }
                                                     }}
                                                     disabled={(() => {
+                                                        const matchers: any[] = [];
                                                         const signOnVal = form.getValues('signOnDate');
-                                                        if (!signOnVal) return undefined;
-                                                        const signOnParsed = parseDate(signOnVal);
-                                                        if (!signOnParsed) return undefined;
-                                                        return { before: signOnParsed };
+                                                        const signOnParsed = signOnVal ? parseDate(signOnVal) : null;
+
+                                                        if (signOnParsed) {
+                                                            matchers.push({ before: signOnParsed });
+                                                        }
+
+                                                        if (watchedReliefStatus === "Signed Off") {
+                                                            const today = new Date();
+                                                            today.setHours(0, 0, 0, 0);
+                                                            matchers.push({ after: today });
+                                                        }
+
+                                                        return matchers.length > 0 ? matchers : undefined;
                                                     })()}
                                                     initialFocus
                                                 />
@@ -745,6 +849,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 onValueChange={field.onChange}
                                                 placeholder="Search port..."
                                                 data-testid="select-sign-off-port"
+                                                disabled={!isOnboardCrewAssigned}
                                             />
                                         </FormControl>
                                     </div>
@@ -756,7 +861,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             <Button 
                                 type="submit"
                                 className="bg-[#14b8a6] hover:bg-[#14b8a6]/90"
-                                disabled={updatePlanningV2.isPending || createPlanningV2.isPending}
+                                disabled={!isOnboardCrewAssigned || updatePlanningV2.isPending || createPlanningV2.isPending}
                                 data-testid="button-submit-onboard"
                             >
                                 Submit

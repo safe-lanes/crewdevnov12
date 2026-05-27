@@ -1,17 +1,28 @@
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { ShieldX } from 'lucide-react';
+import { Redirect } from 'wouter';
 
 interface ProtectedRouteProps {
   menuName: string;
   children: React.ReactNode;
+  /**
+   * Optional route to redirect to when the user lacks View permission on
+   * `menuName`. If omitted, the standard "Access Restricted" page renders.
+   * Used by the Dashboard route to fall back to Recruitment instead of
+   * showing the no-access screen on the default landing page.
+   */
+  fallbackRoute?: string;
 }
 
-export function ProtectedRoute({ menuName, children }: ProtectedRouteProps) {
+export function ProtectedRoute({ menuName, children, fallbackRoute }: ProtectedRouteProps) {
   const { canView, isLoading, permissions } = usePermissions();
 
   if (isLoading) return null;
 
   if (permissions.length > 0 && !canView(menuName)) {
+    if (fallbackRoute) {
+      return <Redirect to={fallbackRoute} />;
+    }
     return <NoAccessPage menuName={menuName} />;
   }
 

@@ -117,6 +117,15 @@ export const promoApprovalsV2 = pgTable("promo_approvals_v2", {
   ...auditColumns,
 });
 
+export const promoSuitabilityV2 = pgTable("promo_suitability_v2", {
+  id: serial("id").primaryKey(),
+  psUuid: text("ps_uuid").notNull().unique(),
+  reviewUuid: text("review_uuid").notNull().unique(),
+  vesselTypes: text("vessel_types").array().notNull().default([]),
+  fleetGroups: text("fleet_groups").array().notNull().default([]),
+  ...auditColumns,
+});
+
 export const promoChecklistProgressV2 = pgTable("promo_checklist_progress_v2", {
   id: serial("id").primaryKey(),
   cpUuid: text("cp_uuid").notNull().unique(),

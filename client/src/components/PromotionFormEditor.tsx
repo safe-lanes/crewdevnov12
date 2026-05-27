@@ -185,14 +185,27 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   const checklistSections = watch('checklistSections') ?? [];
 
   const onSubmit = (data: PromotionA2Config) => {
-    const configurationJson = JSON.stringify({
+    const cleanedOtherCriteria = (data.otherCriteria ?? []).filter(
+      (c) => (c.label?.trim() || c.requirement?.trim())
+    );
+    const cleanedCesTests = (data.cesTests ?? []).filter(
+      (t) => (t.description?.trim() || (t.minScore != null && Number.isFinite(t.minScore)))
+    );
+
+    const cleanedData = {
       ...data,
+      otherCriteria: cleanedOtherCriteria,
+      cesTests: cleanedCesTests,
+    };
+
+    const configurationJson = JSON.stringify({
+      ...cleanedData,
       higherLicenseIds: selectedLicenseIds,
       rankGroupName,
       savedAt: new Date().toISOString(),
     });
 
-    console.log('[PromotionFormEditor] Saving A2 config:', { formId: actualFormId, config: data });
+    console.log('[PromotionFormEditor] Saving A2 config:', { formId: actualFormId, config: cleanedData });
     
     onSave({
       formId: actualFormId,
@@ -327,10 +340,8 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
 
   // License selection handlers
   const toggleLicenseSelection = (entryId: string) => {
-    setSelectedLicenseIds(prev => 
-      prev.includes(entryId) 
-        ? prev.filter(id => id !== entryId)
-        : [...prev, entryId]
+    setSelectedLicenseIds(prev =>
+      prev[0] === entryId ? [] : [entryId]
     );
   };
 
@@ -893,7 +904,10 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                               placeholder="Min Score"
                               className="h-8 w-24 text-xs"
                               value={test.minScore ?? ''}
-                              onChange={(e) => updateCesTestScore(index, e.target.value ? parseInt(e.target.value) : null)}
+                              onChange={(e) => {
+                                const parsed = parseInt(e.target.value, 10);
+                                updateCesTestScore(index, Number.isFinite(parsed) ? parsed : null);
+                              }}
                               data-testid={`input-ces-minscore-${index}`}
                             />
                             <Button
@@ -1084,15 +1098,6 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setSelectedLicenseIds(licenses.map((l: LicenseEntry) => l.entryId))}
-                  data-testid="button-select-all"
-                >
-                  Select All
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
                   onClick={() => setSelectedLicenseIds([])}
                   data-testid="button-clear-all"
                 >
@@ -1116,12 +1121,12 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                 </TableHeader>
                 <TableBody>
                   {filteredLicenses.map((license: LicenseEntry) => (
-                    <TableRow 
+                    <TableRow
                       key={license.entryId}
                       className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
                       onClick={() => toggleLicenseSelection(license.entryId)}
                     >
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedLicenseIds.includes(license.entryId)}
                           onCheckedChange={() => toggleLicenseSelection(license.entryId)}

@@ -10,6 +10,8 @@ import { formatDate } from '@/utils/format';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { format as formatDateFns } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
@@ -30,6 +32,7 @@ import { TravelDocumentSelectionDialog } from './TravelDocumentSelectionDialog';
 import { VisaSelectionDialog } from './VisaSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem, deepParseJson } from '@/lib/encryptionService';
 import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
@@ -81,7 +84,8 @@ import {
   useAddMedicalAttachmentV2,
   useRemoveMedicalAttachmentV2,
   useAddDoctorVisitAttachmentV2,
-  useRemoveDoctorVisitAttachmentV2
+  useRemoveDoctorVisitAttachmentV2,
+  useTerminateEmploymentV2
 } from './hooks/useCrewPoolV2';
 import type { LegacySeaService, LegacyPreJoiningMedical, LegacyDoctorVisit } from './mappers/v2ToLegacyMapper';
 import { 
@@ -155,6 +159,37 @@ interface CrewInfoFormProps {
   onClose: () => void;
   crewMember: CrewMember | null;
   onCrewMemberChange?: (crewMember: CrewMember) => void;
+}
+
+import {
+  TERMINATION_INITIATED_BY,
+  TERMINATION_REASONS,
+  TERMINATION_CATEGORIES,
+  TERMINATION_INITIATED_BY_LABELS,
+  TERMINATION_CATEGORY_LABELS,
+  type TerminationInitiatedBy as CanonicalTerminationInitiatedBy,
+  type TerminationCategory as CanonicalTerminationCategory,
+} from '@shared/v2/crew-pool/terminationConstants';
+
+type TerminationInitiatedBy = '' | CanonicalTerminationInitiatedBy;
+type TerminationCategory = '' | CanonicalTerminationCategory;
+
+interface TerminationDraft {
+  terminationDate: string;
+  initiatedBy: TerminationInitiatedBy;
+  reason: string;
+  category: TerminationCategory;
+  notForHire: boolean;
+  comments: string;
+}
+
+interface TerminationPayload {
+  terminationDate: string;
+  initiatedBy: Exclude<TerminationInitiatedBy, ''>;
+  reason: string;
+  category: Exclude<TerminationCategory, ''>;
+  notForHire: boolean;
+  comments: string;
 }
 
 interface FormData {
@@ -561,6 +596,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Data mappings with proper nullish coalescing
   const statusData = dashboardData?.status;
+  const isTerminatedStatus = (s: string | undefined | null): boolean =>
+    s === 'Terminated' ||
+    s === 'Terminated - NFR' ||
+    s === 'Terminated Employment' ||
+    s === 'Terminated Employment - NFR';
   const experienceData = dashboardData?.experience;
   const shipTypesData = dashboardData?.shipTypes;
   const rankExperienceData = dashboardData?.rankExperience;
@@ -585,6 +625,22 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const isCreatingCrewRef = useRef(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const [isStatusEditOpen, setIsStatusEditOpen] = useState(false);
+  const [isTerminateOpen, setIsTerminateOpen] = useState(false);
+  const initialTerminationDraft = useMemo<TerminationDraft>(() => {
+    const t = new Date();
+    const yyyy = t.getFullYear();
+    const mm = String(t.getMonth() + 1).padStart(2, '0');
+    const dd = String(t.getDate()).padStart(2, '0');
+    return {
+      terminationDate: `${yyyy}-${mm}-${dd}`,
+      initiatedBy: '',
+      reason: '',
+      category: '',
+      notForHire: false,
+      comments: '',
+    };
+  }, []);
+  const [terminationDraft, setTerminationDraft] = useState<TerminationDraft>(initialTerminationDraft);
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
@@ -631,7 +687,86 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { canView, canEdit, permissions } = usePermissions();
+  const { canView, canEdit, permissions, roleName, userId, manningAgent: userManningAgent } = usePermissions();
+  const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
+
+  const submitter = useMemo<{ name: string; role: string; userId: string }>(() => {
+    const extractStringValue = (val: any): string => {
+      if (!val) return '';
+      if (typeof val === 'string') return val;
+      if (typeof val === 'object') {
+        return val.name || val.userName || val.fullName || val.displayName || val.role || '';
+      }
+      return String(val);
+    };
+
+    let resolvedName = '';
+    try {
+      const rawProfile = getDecryptedLocalStorageItem('userProfile', true);
+      const profile = deepParseJson(rawProfile);
+      if (profile && typeof profile === 'object') {
+        const first = profile.firstname || profile.firstName || '';
+        const last = profile.lastname || profile.lastName || '';
+        const composed = `${first} ${last}`.trim();
+        if (composed) resolvedName = composed;
+        else {
+          const direct = profile.fullName || profile.fullname || profile.displayName || profile.name || profile.userName;
+          if (direct) resolvedName = String(direct);
+        }
+      }
+      if (!resolvedName) {
+        const decryptedSession = getDecryptedSessionStorageItem('crewUserName', true);
+        resolvedName = extractStringValue(decryptedSession);
+      }
+      if (!resolvedName) resolvedName = sessionStorage.getItem('crewUserName') || '';
+      if (!resolvedName) {
+        const decryptedLS = getDecryptedLocalStorageItem('userName', true);
+        resolvedName = extractStringValue(decryptedLS);
+      }
+      if (!resolvedName) resolvedName = localStorage.getItem('userName') || '';
+    } catch {
+      resolvedName = sessionStorage.getItem('crewUserName') || localStorage.getItem('userName') || '';
+    }
+
+    let resolvedRole = roleName || '';
+    try {
+      if (!resolvedRole) {
+        const decryptedRole = getDecryptedSessionStorageItem('crewUserRole', true);
+        resolvedRole = extractStringValue(decryptedRole);
+      }
+      if (!resolvedRole) resolvedRole = sessionStorage.getItem('crewUserRole') || '';
+      if (!resolvedRole) {
+        const decryptedDesignation = getDecryptedSessionStorageItem('crewDesignation', true);
+        resolvedRole = extractStringValue(decryptedDesignation);
+      }
+      if (!resolvedRole) resolvedRole = sessionStorage.getItem('crewDesignation') || '';
+    } catch {
+      resolvedRole = resolvedRole || sessionStorage.getItem('crewUserRole') || sessionStorage.getItem('crewDesignation') || '';
+    }
+
+    let resolvedUserId = userId || '';
+    try {
+      if (!resolvedUserId) {
+        const decryptedId = getDecryptedSessionStorageItem('crewUserId', true);
+        resolvedUserId = extractStringValue(decryptedId);
+      }
+      if (!resolvedUserId) resolvedUserId = sessionStorage.getItem('crewUserId') || '';
+      if (!resolvedUserId) resolvedUserId = localStorage.getItem('crewUserId') || '';
+    } catch {
+      resolvedUserId = resolvedUserId || sessionStorage.getItem('crewUserId') || localStorage.getItem('crewUserId') || '';
+    }
+
+    return { name: resolvedName, role: resolvedRole, userId: resolvedUserId };
+  }, [isTerminateOpen, roleName, userId]);
+
+  const submittedByName = submitter.name;
+  const submittedByRoleResolved = submitter.role;
+
+  useEffect(() => {
+    if (isTerminateOpen && !submittedByName && !submittedByRoleResolved) {
+      console.warn('[Terminate Employment] Submitted-by could not be resolved from any source', { submittedByName, submittedByRoleResolved, userId: submitter.userId });
+    }
+  }, [isTerminateOpen, submittedByName, submittedByRoleResolved, submitter.userId]);
 
   const sectionMenuMap: Record<string, string | null> = {
     A: 'CP Dashboard',
@@ -640,6 +775,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     D: 'CP Training Certificates',
     E: 'CP Sea Service',
     F: 'CP Medical',
+    G: null,
   };
 
   const canViewSection = useCallback((sectionId: string): boolean => {
@@ -664,7 +800,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     { id: 'C', title: 'Travel & ID Documents', number: 'C' },
     { id: 'D', title: 'Training & Certificates', number: 'D' },
     { id: 'E', title: 'Sea Service', number: 'E' },
-    { id: 'F', title: 'Medical', number: 'F' }
+    { id: 'F', title: 'Medical', number: 'F' },
+    { id: 'G', title: 'Brief & Debrief', number: 'G' }
   ];
 
   const sections = useMemo(() =>
@@ -679,6 +816,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const sectionDRef = useRef<HTMLDivElement>(null);
   const sectionERef = useRef<HTMLDivElement>(null);
   const sectionFRef = useRef<HTMLDivElement>(null);
+  const sectionGRef = useRef<HTMLDivElement>(null);
   const isBatchSavingRef = useRef(false);
   const deletingContextRef = useRef<{ crewId: string; count: number } | null>(null);
   const [isBatchSaving, setIsBatchSaving] = useState(false);
@@ -1206,6 +1344,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     createdCrewIdRef.current = null;
     setCreatedCrewId(null);
   }, [crewMember?.id]);
+
+  useEffect(() => {
+    if (isManningAgentUser && userManningAgent && formData.manningAgent !== userManningAgent) {
+      setFormData(prev => ({ ...prev, manningAgent: userManningAgent }));
+    }
+  }, [isManningAgentUser, userManningAgent, formData.manningAgent]);
 
   // Reset form data when opening for a NEW crew member (crewMember is null)
   // This ensures the form starts with empty values instead of stale data from previous selection
@@ -2457,12 +2601,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <div className="bg-white p-4 rounded-lg border border-gray-200 flex-1" data-testid="card-status">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium" style={{ color: '#16569e' }}>Status</h3>
-                {canEditSection('A') && (
+                {canEditSection('A') && !isDashboardLoading && !isTerminatedStatus(statusData?.status) && (
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  onClick={() => setIsStatusEditOpen(true)}
+                  onClick={() => {
+                    if (isTerminatedStatus(statusData?.status)) return;
+                    setIsStatusEditOpen(true);
+                  }}
                   data-testid="button-edit-status"
                 >
                   <Pencil className="h-3 w-3" />
@@ -2490,12 +2637,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </div>
                 ) : (
                   <>
-                    {/* Status Badge with color coding: On Board=orange, On Leave=green, Inactive=gray */}
+                    {/* Status Badge with color coding: On Board=orange, On Leave=green, Inactive=gray, Terminated=red */}
                     <div 
                       className={`${
                         statusData?.status === 'On Board' ? 'bg-orange-500' : 
                         statusData?.status === 'On Leave' ? 'bg-green-500' : 
                         statusData?.status === 'Inactive' ? 'bg-gray-500' :
+                        isTerminatedStatus(statusData?.status) ? 'bg-[#ef4444]' :
                         'bg-gray-400'
                       } text-white p-3 rounded text-center`} 
                       data-testid="status-badge"
@@ -3454,8 +3602,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Manning Agent</Label>
             {isEditing ? (
-              <Select value={formData.manningAgent} onValueChange={(value) => updateFormData('manningAgent', value)}>
-                <SelectTrigger className="mt-1" data-testid="select-manning-agent-crew">
+              <Select value={formData.manningAgent} onValueChange={(value) => updateFormData('manningAgent', value)} disabled={isManningAgentUser}>
+                <SelectTrigger className="mt-1" data-testid="select-manning-agent-crew" disabled={isManningAgentUser}>
                   <SelectValue placeholder="Select manning agent" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
@@ -5586,6 +5734,156 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     );
   };
 
+  // Part G — Briefing & De briefing (UI only, dummy data)
+  // Final dynamic form will be configurable from Admin (like Appraisals).
+  const briefingDummyRows = [
+    { id: 'BR-1', vessel: 'MV Atlantic Star', joiningRank: 'Chief Officer', joiningDate: '12/03/2025' },
+    { id: 'BR-2', vessel: 'MV Pacific Dawn', joiningRank: '2nd Officer', joiningDate: '05/11/2024' },
+  ];
+
+  const debriefingDummyRows = [
+    { id: 'DB-1', vessel: 'MV Atlantic Star', rankServed: 'Chief Officer', dateJoined: '12/03/2025', dateSignedOff: '20/09/2025', reasonForSignOff: 'End of contract' },
+    { id: 'DB-2', vessel: 'MV Pacific Dawn', rankServed: '2nd Officer', dateJoined: '05/11/2024', dateSignedOff: '18/05/2025', reasonForSignOff: 'Medical' },
+  ];
+
+  const handleBriefingPlaceholder = () => {
+    toast({
+      title: 'Form coming soon',
+      description: 'The briefing/debriefing form will be configurable from Admin (like Appraisals).',
+      duration: 3000,
+    });
+  };
+
+  const renderG1Briefing = () => {
+    return (
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>G1. Briefing</h3>
+          {canEditSection('G') && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleBriefingPlaceholder}
+              className="flex items-center gap-2"
+              data-testid="button-add-briefing"
+            >
+              <Plus className="h-4 w-4" />
+              ADD
+            </Button>
+          )}
+        </div>
+
+        <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px]">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Joining Rank</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Joining Date</th>
+                  {canEditSection('G') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {briefingDummyRows.map((row) => (
+                  <tr key={row.id} className="border-t">
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-briefing-vessel-${row.id}`}>{row.vessel}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-briefing-rank-${row.id}`}>{row.joiningRank}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-briefing-date-${row.id}`}>{row.joiningDate}</td>
+                    {canEditSection('G') && (
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-gray-400 hover:text-blue-600"
+                            onClick={handleBriefingPlaceholder}
+                            data-testid={`button-edit-briefing-${row.id}`}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderG2DeBriefing = () => {
+    return (
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-base font-medium" style={{ color: '#16569e' }}>G2. De briefing</h3>
+          {canEditSection('G') && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleBriefingPlaceholder}
+              className="flex items-center gap-2"
+              data-testid="button-add-debriefing"
+            >
+              <Plus className="h-4 w-4" />
+              ADD
+            </Button>
+          )}
+        </div>
+
+        <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank Served</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date Joined</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date Signed off</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Reason for Sign off</th>
+                  {canEditSection('G') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {debriefingDummyRows.map((row) => (
+                  <tr key={row.id} className="border-t">
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-vessel-${row.id}`}>{row.vessel}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-rank-${row.id}`}>{row.rankServed}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-joined-${row.id}`}>{row.dateJoined}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-signedoff-${row.id}`}>{row.dateSignedOff}</td>
+                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-reason-${row.id}`}>{row.reasonForSignOff}</td>
+                    {canEditSection('G') && (
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-gray-400 hover:text-blue-600"
+                            onClick={handleBriefingPlaceholder}
+                            data-testid={`button-edit-debriefing-${row.id}`}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Save Draft functionality
   const handleSaveDraft = () => {
     if (isBatchSavingRef.current) return;
@@ -7144,6 +7442,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   // V2 Update crew member mutation  
   const updateCrewMutationV2 = useUpdateCrewV2();
+  const terminateEmploymentMutationV2 = useTerminateEmploymentV2();
   
   // V2 Section save mutations
   const savePersonalDetailsMutationV2 = useSavePersonalDetailsV2();
@@ -7475,7 +7774,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
     const sectionRefMap: Record<string, React.RefObject<HTMLDivElement | null>> = {
       A: sectionARef, B: sectionBRef, C: sectionCRef,
-      D: sectionDRef, E: sectionERef, F: sectionFRef,
+      D: sectionDRef, E: sectionERef, F: sectionFRef, G: sectionGRef,
     };
     sections.forEach((s) => {
       const ref = sectionRefMap[s.id];
@@ -7510,6 +7809,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         break;
       case 'F':
         targetRef = sectionFRef;
+        break;
+      case 'G':
+        targetRef = sectionGRef;
         break;
       default:
         return;
@@ -7876,6 +8178,23 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               </CardContent>
             </Card>
             )}
+
+            {/* G - Briefing & De briefing */}
+            {canViewSection('G') && (
+            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionGRef} data-section="G">
+              <CardContent className="p-3 sm:p-4 lg:p-6">
+                <div className="pb-4 mb-6">
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G - Briefing &amp; De briefing</h2>
+                  <div style={{ color: '#16569e' }} className="text-sm">Add briefing &amp; debriefing records</div>
+                  <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
+                </div>
+                <div className="space-y-6">
+                  {renderG1Briefing()}
+                  {renderG2DeBriefing()}
+                </div>
+              </CardContent>
+            </Card>
+            )}
           </div>
         </div>
       </div>
@@ -7908,10 +8227,187 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <div className="w-3 h-3 rounded-full bg-gray-500 mr-3"></div>
               Inactive
             </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => {
+                setIsStatusEditOpen(false);
+                setTerminationDraft(initialTerminationDraft);
+                setIsTerminateOpen(true);
+              }}
+              data-testid="button-open-terminate-employment"
+            >
+              <div className="w-3 h-3 rounded-full bg-orange-500 mr-3"></div>
+              Terminate Employment
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
-      
+
+      {/* Terminate Employment Dialog */}
+      <Dialog
+        open={isTerminateOpen}
+        onOpenChange={(open) => {
+          setIsTerminateOpen(open);
+          if (!open) setTerminationDraft(initialTerminationDraft);
+        }}
+      >
+        <DialogContent className="sm:max-w-[560px]" data-testid="dialog-terminate-employment">
+          <DialogHeader>
+            <DialogTitle>Terminate Employment</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-xs text-gray-600">Termination Date</Label>
+                <FormattedDateInput
+                  value={terminationDraft.terminationDate}
+                  onChange={(e) => setTerminationDraft(prev => ({ ...prev, terminationDate: e.target.value }))}
+                  className="mt-1"
+                  data-testid="input-termination-date"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-gray-600">Termination Initiated by</Label>
+                <Select
+                  value={terminationDraft.initiatedBy}
+                  onValueChange={(value) => setTerminationDraft(prev => ({ ...prev, initiatedBy: value as TerminationInitiatedBy }))}
+                >
+                  <SelectTrigger className="mt-1" data-testid="select-termination-initiated-by">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TERMINATION_INITIATED_BY.map((v) => (
+                      <SelectItem key={v} value={v}>{TERMINATION_INITIATED_BY_LABELS[v]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-600">Reason for Termination</Label>
+                <Select
+                  value={terminationDraft.reason}
+                  onValueChange={(value) => setTerminationDraft(prev => ({ ...prev, reason: value }))}
+                >
+                  <SelectTrigger className="mt-1" data-testid="select-termination-reason">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TERMINATION_REASONS.map((v) => (
+                      <SelectItem key={v} value={v}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs text-gray-600">Termination Category</Label>
+                <Select
+                  value={terminationDraft.category}
+                  onValueChange={(value) => setTerminationDraft(prev => ({ ...prev, category: value as TerminationCategory }))}
+                >
+                  <SelectTrigger className="mt-1" data-testid="select-termination-category">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TERMINATION_CATEGORIES.map((v) => (
+                      <SelectItem key={v} value={v}>{TERMINATION_CATEGORY_LABELS[v]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-end pb-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={terminationDraft.notForHire}
+                    onCheckedChange={(checked) => setTerminationDraft(prev => ({ ...prev, notForHire: checked === true }))}
+                    data-testid="checkbox-not-for-hire"
+                  />
+                  <span className="text-sm font-medium text-red-500">Not for Hire</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-600">Comments</Label>
+              <Textarea
+                value={terminationDraft.comments}
+                onChange={(e) => setTerminationDraft(prev => ({ ...prev, comments: e.target.value }))}
+                rows={4}
+                className="mt-1 resize-none"
+                data-testid="textarea-termination-comments"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex !justify-between items-center sm:!justify-between">
+            <div className="text-xs text-gray-500" data-testid="text-termination-submitted-by">
+              {(() => {
+                const dateStr = formatDateFns(new Date(), 'dd/MM/yyyy');
+                const who = [submittedByName, submittedByRoleResolved].filter(Boolean).join(', ');
+                return who ? `Submitted by: ${who} on ${dateStr}` : `Submitted on ${dateStr}`;
+              })()}
+            </div>
+            <Button
+              className="h-8 px-6 bg-[#5dc86f] hover:bg-[#218838] text-white"
+              disabled={
+                !terminationDraft.initiatedBy ||
+                !terminationDraft.reason ||
+                !terminationDraft.category ||
+                terminateEmploymentMutationV2.isPending
+              }
+              onClick={async () => {
+                if (!terminationDraft.initiatedBy || !terminationDraft.reason || !terminationDraft.category) {
+                  return;
+                }
+                if (!crewUuid) {
+                  toast({
+                    title: "Cannot terminate",
+                    description: "Crew member must be saved before termination.",
+                    variant: "destructive",
+                    duration: 3000,
+                  });
+                  return;
+                }
+                try {
+                  // Use the same resolved identity values shown in the footer
+                  // so the saved record matches what the user saw at submit time.
+                  await terminateEmploymentMutationV2.mutateAsync({
+                    crewUuid: String(crewUuid),
+                    payload: {
+                      terminationDate: terminationDraft.terminationDate || null,
+                      initiatedBy: terminationDraft.initiatedBy,
+                      reason: terminationDraft.reason,
+                      category: terminationDraft.category,
+                      notForHire: terminationDraft.notForHire,
+                      comments: terminationDraft.comments || null,
+                      submittedByUserId: submitter.userId || null,
+                      submittedByName: submittedByName || null,
+                      submittedByRole: submittedByRoleResolved || null,
+                    },
+                  });
+                  toast({
+                    title: "Employment terminated",
+                    description: "Crew member moved to Terminated tab.",
+                    duration: 3000,
+                  });
+                  setIsTerminateOpen(false);
+                  setTerminationDraft(initialTerminationDraft);
+                  onClose();
+                } catch (err: any) {
+                  toast({
+                    title: "Failed to terminate employment",
+                    description: err?.message || "An unexpected error occurred.",
+                    variant: "destructive",
+                    duration: 4000,
+                  });
+                }
+              }}
+              data-testid="button-submit-termination"
+            >
+              {terminateEmploymentMutationV2.isPending ? 'Submitting…' : 'Submit'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Next Availability Edit Dialog */}
       <Dialog open={isNextAvailabilityEditOpen} onOpenChange={setIsNextAvailabilityEditOpen}>
         <DialogContent className="sm:max-w-[350px]">

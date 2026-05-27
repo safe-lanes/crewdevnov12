@@ -33,6 +33,7 @@ interface FileAttachmentDialogProps {
   onDeleteAttachment?: (id: number, attUuid: string) => Promise<void>;
   title?: string;
   itemName?: string;
+  contentClassName?: string;
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -46,16 +47,17 @@ export function FileAttachmentDialog({
   onDeleteAttachment,
   title = 'Manage Attachments',
   itemName,
+  contentClassName,
 }: FileAttachmentDialogProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    const newAttachments: FileAttachment[] = [];
     const errors: string[] = [];
+    const validFiles: File[] = [];
 
     Array.from(files).forEach((file) => {
       if (!ALLOWED_TYPES.includes(file.type)) {
@@ -68,27 +70,43 @@ export function FileAttachmentDialog({
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const attachment: FileAttachment = {
-          id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          data: e.target?.result as string,
-          uploadedAt: new Date().toISOString(),
-          isNew: true, // Mark as new attachment for save logic
-        };
-        
-        onAttachmentsChange([...attachments, attachment]);
-        
-        toast({
-          title: 'File Uploaded',
-          description: `${file.name} has been attached successfully.`,
-        });
-      };
-      reader.readAsDataURL(file);
+      validFiles.push(file);
     });
+
+    const readFile = (file: File) =>
+      new Promise<FileAttachment | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          resolve({
+            id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data: e.target?.result as string,
+            uploadedAt: new Date().toISOString(),
+            isNew: true,
+          });
+        };
+        reader.onerror = () => {
+          errors.push(`${file.name}: Failed to read file.`);
+          resolve(null);
+        };
+        reader.readAsDataURL(file);
+      });
+
+    const results = await Promise.all(validFiles.map(readFile));
+    const newAttachments = results.filter((a): a is FileAttachment => a !== null);
+
+    if (newAttachments.length > 0) {
+      onAttachmentsChange([...attachments, ...newAttachments]);
+      toast({
+        title: newAttachments.length === 1 ? 'File Uploaded' : 'Files Uploaded',
+        description:
+          newAttachments.length === 1
+            ? `${newAttachments[0].name} has been attached successfully.`
+            : `${newAttachments.length} files have been attached successfully.`,
+      });
+    }
 
     if (errors.length > 0) {
       toast({
@@ -265,7 +283,7 @@ export function FileAttachmentDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className={`sm:max-w-[500px] ${contentClassName ?? ''}`}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>

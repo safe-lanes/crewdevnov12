@@ -15,13 +15,17 @@ import { calculateSeaServicePeriod } from "./seaServiceCalculator";
  */
 export function calculateCrewStatus(
   isActive: boolean | null | undefined,
-  hasVesselAssignment: boolean
-): 'On Board' | 'On Leave' | 'Inactive' {
+  hasVesselAssignment: boolean,
+  rawStatus?: string | null,
+): 'On Board' | 'On Leave' | 'Inactive' | 'Terminated' {
+  // Explicit Terminated wins (employment ended; not eligible for planning).
+  if (rawStatus === 'Terminated') {
+    return 'Terminated';
+  }
   // If explicitly marked as inactive, return Inactive
   if (isActive === false) {
     return 'Inactive';
   }
-  
   // If active (true, null, or undefined defaults to active)
   // Check vessel assignment to determine On Board vs On Leave
   return hasVesselAssignment ? 'On Board' : 'On Leave';
@@ -30,9 +34,10 @@ export function calculateCrewStatus(
 /**
  * Get the status category for filtering/grouping purposes
  * "On Board" and "On Leave" are both "Active"
- * "Inactive" is its own category
+ * "Inactive" and "Terminated" are their own categories.
  */
-export function getStatusCategory(status: string): 'Active' | 'Inactive' {
+export function getStatusCategory(status: string): 'Active' | 'Inactive' | 'Terminated' {
+  if (status === 'Terminated') return 'Terminated';
   return status === 'Inactive' ? 'Inactive' : 'Active';
 }
 

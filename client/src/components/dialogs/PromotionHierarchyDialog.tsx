@@ -387,7 +387,7 @@ export function PromotionHierarchyDialog({ open, onOpenChange, apiBasePath = '/a
                       </div>
                     </div>
                     <div className="flex items-center gap-1 text-xs text-gray-600 flex-wrap">
-                      {[...hierarchy.rankPath].reverse().map((rank, index) => (
+                      {[...hierarchy.rankPath].map((rank, index) => (
                         <span key={`${rank}-${index}`} className="inline-flex items-center">
                           {rank}
                           {index < hierarchy.rankPath.length - 1 && (

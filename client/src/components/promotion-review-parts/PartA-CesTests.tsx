@@ -1,8 +1,6 @@
 import React, { memo } from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Info, Edit, Trash2 } from 'lucide-react';
 import type { CesTest } from './types';
 
 interface PartACesTestsProps {
@@ -61,6 +59,7 @@ export const PartACesTests = memo(function PartACesTests({
                 value={test.minScore}
                 onChange={(e) => handleScoreChange(test.id, 'minScore', e.target.value, test)}
                 data-testid={`input-ces-minscore-${test.id}`}
+                disabled
               />
             </TableCell>
             <TableCell className="text-sm">
@@ -81,38 +80,7 @@ export const PartACesTests = memo(function PartACesTests({
             </TableCell>
             <TableCell>
             </TableCell>
-            <TableCell>
-              <div className="flex gap-1">
-                <Button 
-                  type="button"
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-7 w-7 p-0"
-                  data-testid={`button-ces-info-${test.id}`}
-                >
-                  <Info className="h-4 w-4 text-gray-600" />
-                </Button>
-                <Button 
-                  type="button"
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-7 w-7 p-0"
-                  data-testid={`button-ces-edit-${test.id}`}
-                >
-                  <Edit className="h-4 w-4 text-gray-600" />
-                </Button>
-                <Button 
-                  type="button"
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-7 w-7 p-0"
-                  onClick={() => onDeleteCesTest(test.id)}
-                  data-testid={`button-ces-delete-${test.id}`}
-                >
-                  <Trash2 className="h-4 w-4 text-gray-600" />
-                </Button>
-              </div>
-            </TableCell>
+            <TableCell></TableCell>
           </TableRow>
         );
       })}

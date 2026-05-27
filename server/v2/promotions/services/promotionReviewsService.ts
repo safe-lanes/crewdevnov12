@@ -8,13 +8,42 @@ import {
   ApprovalsRepository,
   ChecklistProgressRepository,
   CriteriaMasterRepository,
+  SuitabilityRepository,
 } from "../repositories";
 import { PromotionHierarchiesRepository } from "../../admin/repositories/promotionHierarchiesRepository";
 import { applyAuditUser } from "../../admin/utils/auditUser";
-import type { PromotionReviewV2, InsertPromotionReviewV2 } from "../../../../shared/v2/promotions/types";
+import type { PromotionReviewV2, PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { eq, and, isNull, or } from "drizzle-orm";
+import { z } from "zod";
+
+export const promotionReviewWritableSchema = z.object({
+  crewMemberId: z.string().optional(),
+  promotionToRank: z.string().optional(),
+  selectedVesselTypeForA2_3b: z.string().nullable().optional(),
+  selectedVesselTypeForA23b: z.string().nullable().optional(),
+  criteriaVerifiedStatus: z.string().optional(),
+  criteriaMeetsStatus: z.string().optional(),
+  cesTestsData: z.string().optional(),
+  criteriaComments: z.string().optional(),
+  trainingNeeds: z.string().optional(),
+  approvalData: z.string().optional(),
+  selectedApproversForSubmission: z.string().optional(),
+  checklistProgressData: z.string().optional(),
+  promotionConfirmed: z.string().nullable().optional(),
+  vesselAssigned: z.string().nullable().optional(),
+  promotionDate: z.string().nullable().optional(),
+  promotionTiming: z.string().nullable().optional(),
+  partANotes: z.string().nullable().optional(),
+  partBNotes: z.string().nullable().optional(),
+  partCNotes: z.string().nullable().optional(),
+  status: z.string().optional(),
+  b2VesselTypes: z.array(z.string()).optional(),
+  b2FleetGroups: z.array(z.string()).optional(),
+}).passthrough();
+
+export type PromotionReviewWritableInput = z.infer<typeof promotionReviewWritableSchema>;
 
 const reviewsRepo = new PromotionReviewsRepository();
 const criteriaStatusRepo = new CriteriaStatusRepository();
@@ -25,6 +54,7 @@ const trainingNeedsRepo = new TrainingNeedsRepository();
 const approvalsRepo = new ApprovalsRepository();
 const checklistProgressRepo = new ChecklistProgressRepository();
 const criteriaMasterRepo = new CriteriaMasterRepository();
+const suitabilityRepo = new SuitabilityRepository();
 const hierarchiesRepo = new PromotionHierarchiesRepository();
 
 function findNextPromotionRank(currentRank: string, hierarchies: any[]): string | null {
@@ -38,8 +68,9 @@ function findNextPromotionRank(currentRank: string, hierarchies: any[]): string 
       rankPath = [];
     }
     if (!rankPath.includes(currentRank)) continue;
+    // rankPath is stored junior→senior (index 0 = most junior, last index = most senior)
     const currentIndex = rankPath.indexOf(currentRank);
-    if (currentIndex > 0) return rankPath[currentIndex - 1];
+    if (currentIndex < rankPath.length - 1) return rankPath[currentIndex + 1];
     return null;
   }
   return null;
@@ -64,6 +95,7 @@ function assembleV1Response(
   trainingNeeds: any[],
   approvals: any[],
   checklistProgress: any[],
+  suitability: PromoSuitabilityV2 | null = null,
 ) {
   const criteriaVerifiedStatus: Record<string, string> = {};
   const criteriaMeetsStatus: Record<string, string> = {};
@@ -201,6 +233,8 @@ function assembleV1Response(
     partBNotes: review.partBNotes || null,
     partCNotes: review.partCNotes || null,
     checklistProgressData: JSON.stringify(checklistProgressDataObj),
+    b2VesselTypes: Array.isArray(suitability?.vesselTypes) ? suitability!.vesselTypes : [],
+    b2FleetGroups: Array.isArray(suitability?.fleetGroups) ? suitability!.fleetGroups : [],
     status: review.status,
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
@@ -303,6 +337,7 @@ export class PromotionReviewsService {
       allTrainingNeeds,
       allApprovals,
       allChecklistProgress,
+      allSuitability,
     ] = await Promise.all([
       criteriaStatusRepo.findByReviewUuids(reviewUuids),
       cesTestsRepo.findByReviewUuids(reviewUuids),
@@ -311,6 +346,7 @@ export class PromotionReviewsService {
       trainingNeedsRepo.findByReviewUuids(reviewUuids),
       approvalsRepo.findByReviewUuids(reviewUuids),
       checklistProgressRepo.findByReviewUuids(reviewUuids),
+      suitabilityRepo.findByReviewUuids(reviewUuids),
     ]);
 
     const csMap = groupBy(allCriteriaStatuses, i => i.reviewUuid);
@@ -320,6 +356,7 @@ export class PromotionReviewsService {
     const tnMap = groupBy(allTrainingNeeds, i => i.reviewUuid);
     const apMap = groupBy(allApprovals, i => i.reviewUuid);
     const cpMap = groupBy(allChecklistProgress, i => i.reviewUuid);
+    const suitByReview = new Map(allSuitability.map(s => [s.reviewUuid, s]));
 
     return reviews.map(review => assembleV1Response(
       review,
@@ -330,6 +367,7 @@ export class PromotionReviewsService {
       tnMap[review.reviewUuid] || [],
       apMap[review.reviewUuid] || [],
       cpMap[review.reviewUuid] || [],
+      suitByReview.get(review.reviewUuid) ?? null,
     ));
   }
 
@@ -337,7 +375,7 @@ export class PromotionReviewsService {
     const review = await reviewsRepo.findByUuid(reviewUuid);
     if (!review) return null;
 
-    const [cs, ct, cc, tc, tn, ap, cp] = await Promise.all([
+    const [cs, ct, cc, tc, tn, ap, cp, suit] = await Promise.all([
       criteriaStatusRepo.findByReviewUuid(reviewUuid),
       cesTestsRepo.findByReviewUuid(reviewUuid),
       criteriaCommentsRepo.findByReviewUuid(reviewUuid),
@@ -345,9 +383,10 @@ export class PromotionReviewsService {
       trainingNeedsRepo.findByReviewUuid(reviewUuid),
       approvalsRepo.findByReviewUuid(reviewUuid),
       checklistProgressRepo.findByReviewUuid(reviewUuid),
+      suitabilityRepo.findByReviewUuid(reviewUuid),
     ]);
 
-    return assembleV1Response(review, cs, ct, cc, tc, tn, ap, cp);
+    return assembleV1Response(review, cs, ct, cc, tc, tn, ap, cp, suit);
   }
 
   async getReviewById(id: number) {
@@ -361,7 +400,7 @@ export class PromotionReviewsService {
     if (reviews.length === 0) return [];
 
     const reviewUuids = reviews.map(r => r.reviewUuid);
-    const [cs, ct, cc, tc, tn, ap, cp] = await Promise.all([
+    const [cs, ct, cc, tc, tn, ap, cp, suit] = await Promise.all([
       criteriaStatusRepo.findByReviewUuids(reviewUuids),
       cesTestsRepo.findByReviewUuids(reviewUuids),
       criteriaCommentsRepo.findByReviewUuids(reviewUuids),
@@ -369,6 +408,7 @@ export class PromotionReviewsService {
       trainingNeedsRepo.findByReviewUuids(reviewUuids),
       approvalsRepo.findByReviewUuids(reviewUuids),
       checklistProgressRepo.findByReviewUuids(reviewUuids),
+      suitabilityRepo.findByReviewUuids(reviewUuids),
     ]);
 
     const csMap = groupBy(cs, i => i.reviewUuid);
@@ -378,6 +418,7 @@ export class PromotionReviewsService {
     const tnMap = groupBy(tn, i => i.reviewUuid);
     const apMap = groupBy(ap, i => i.reviewUuid);
     const cpMap = groupBy(cp, i => i.reviewUuid);
+    const suitByReview = new Map(suit.map(s => [s.reviewUuid, s]));
 
     return reviews.map(review => assembleV1Response(
       review,
@@ -388,6 +429,7 @@ export class PromotionReviewsService {
       tnMap[review.reviewUuid] || [],
       apMap[review.reviewUuid] || [],
       cpMap[review.reviewUuid] || [],
+      suitByReview.get(review.reviewUuid) ?? null,
     ));
   }
 
@@ -402,6 +444,7 @@ export class PromotionReviewsService {
     const { criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
       selectedVesselTypeForA2_3b: _svt,
+      b2VesselTypes, b2FleetGroups,
       ...coreFields } = auditedData;
 
     if (_svt !== undefined && coreFields.selectedVesselTypeForA23b === undefined) {
@@ -413,6 +456,7 @@ export class PromotionReviewsService {
     await this.saveChildData(review.reviewUuid, {
       criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+      b2VesselTypes, b2FleetGroups,
     });
 
     return this.getReviewByUuid(review.reviewUuid);
@@ -424,6 +468,7 @@ export class PromotionReviewsService {
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
       id: _id, reviewUuid: _ruuid, createdAt: _ca, updatedAt: _ua, isDeleted: _del,
       selectedVesselTypeForA2_3b: _svt2,
+      b2VesselTypes, b2FleetGroups,
       ...coreFields } = auditedData;
 
     if (_svt2 !== undefined && coreFields.selectedVesselTypeForA23b === undefined) {
@@ -436,6 +481,7 @@ export class PromotionReviewsService {
     await this.saveChildData(reviewUuid, {
       criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+      b2VesselTypes, b2FleetGroups,
     });
 
     return this.getReviewByUuid(reviewUuid);
@@ -604,6 +650,30 @@ export class PromotionReviewsService {
         }
       }
       tasks.push(checklistProgressRepo.replaceForReview(reviewUuid, items));
+    }
+
+    if (data.b2VesselTypes !== undefined || data.b2FleetGroups !== undefined) {
+      const toNames = (raw: any, keys: string[]): string[] | undefined => {
+        if (raw === undefined) return undefined;
+        const list = Array.isArray(raw) ? raw : this.parseJson(raw, []);
+        if (!Array.isArray(list)) return [];
+        return list
+          .map((v: any) => {
+            if (typeof v === 'string') return v;
+            for (const k of keys) {
+              if (v && typeof v[k] === 'string') return v[k];
+            }
+            return '';
+          })
+          .filter((n: string) => !!n);
+      };
+
+      const existing = await suitabilityRepo.findByReviewUuid(reviewUuid);
+      const vesselTypes = toNames(data.b2VesselTypes, ['name', 'vesselType'])
+        ?? (existing?.vesselTypes ?? []);
+      const fleetGroups = toNames(data.b2FleetGroups, ['name', 'fleetGroup'])
+        ?? (existing?.fleetGroups ?? []);
+      tasks.push(suitabilityRepo.upsertForReview(reviewUuid, { vesselTypes, fleetGroups }));
     }
 
     if (tasks.length > 0) await Promise.all(tasks);

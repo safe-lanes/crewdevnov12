@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Paperclip, MessageSquare, CheckCircle2, Loader2 } from 'lucide-react';
+import { X, Paperclip, MessageSquare, CheckCircle2, Loader2, Pencil } from 'lucide-react';
+import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,8 @@ interface SeaServiceEntry {
   deadweight?: string | number;
   engineType?: string;
   enginePower?: string;
+  engineTypePower?: string;
+  isActive?: boolean;
   fromDate?: string;
   from?: string;
   toDate?: string;
@@ -49,6 +52,7 @@ interface ChecklistComment {
   rank: string;
   text: string;
   date: string;
+  verificationId?: string;
 }
 
 interface ChecklistVerification {
@@ -63,6 +67,9 @@ interface ChecklistAttachment {
   fileName: string;
   fileSize: number;
   uploadDate: string;
+  type?: string;
+  data?: string;
+  uploadedAt?: string;
 }
 
 interface AssessmentPoint {
@@ -180,14 +187,25 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
           title: configSection.title,
           assessmentPoints: configSection.assessmentPoints.map((configPoint) => {
             const savedPoint = savedSection?.assessmentPoints?.find(p => p.id === configPoint.id);
-            
+            const verifications = savedPoint?.verifications ?? [];
+            const savedComments = savedPoint?.comments ?? [];
+
+            let verifIdx = 0;
+            const comments = savedComments.map((c) => {
+              const isVerificationComment = (c.text ?? '') === '';
+              if (!isVerificationComment) return c;
+              if (c.verificationId) return c;
+              const linked = verifications[verifIdx++];
+              return linked ? { ...c, verificationId: linked.id } : c;
+            });
+
             return {
               id: configPoint.id,
               number: configPoint.id,
               text: configPoint.text,
               completed: savedPoint?.completed ?? false,
-              verifications: savedPoint?.verifications ?? [],
-              comments: savedPoint?.comments ?? [],
+              verifications,
+              comments,
               attachments: savedPoint?.attachments ?? [],
             };
           }),
@@ -246,6 +264,9 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
 
   const [activeCommentBox, setActiveCommentBox] = React.useState<string | null>(null);
   const [commentText, setCommentText] = React.useState<string>('');
+  const [attachmentDialog, setAttachmentDialog] = React.useState<{ sectionId: string; pointId: string } | null>(null);
+  const [editingCommentId, setEditingCommentId] = React.useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = React.useState<string>('');
 
   const handleSave = async () => {
     const reviewIdentifier = promotionReviewUuid || promotionReviewId;
@@ -328,33 +349,72 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     ));
   };
 
-  const handleAddAttachment = (sectionId: string, pointId: string) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.onchange = (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const newAttachment: ChecklistAttachment = {
-          id: `att-${Date.now()}`,
-          fileName: file.name,
-          fileSize: file.size,
-          uploadDate: new Date().toLocaleDateString()
-        };
-        setChecklistSections(prev => prev.map(section =>
-          section.id === sectionId
-            ? {
-                ...section,
-                assessmentPoints: section.assessmentPoints.map(point =>
-                  point.id === pointId
-                    ? { ...point, attachments: [...point.attachments, newAttachment] }
-                    : point
-                )
-              }
-            : section
-        ));
-      }
+  const toFileAttachment = (att: ChecklistAttachment): FileAttachment => ({
+    id: att.id,
+    name: att.fileName,
+    type: att.type ?? '',
+    size: att.fileSize,
+    data: att.data ?? '',
+    uploadedAt: att.uploadedAt ?? att.uploadDate ?? '',
+  });
+
+  type FileAttachmentLike = FileAttachment & { uploadDate?: string };
+  const toChecklistAttachment = (att: FileAttachmentLike): ChecklistAttachment => {
+    const isoParsed = att.uploadedAt ? new Date(att.uploadedAt) : null;
+    const isValidIso = !!isoParsed && !Number.isNaN(isoParsed.getTime()) && /\d{4}-\d{2}-\d{2}T/.test(att.uploadedAt ?? '');
+    return {
+      id: att.id,
+      fileName: att.name,
+      fileSize: att.size,
+      uploadDate: isValidIso
+        ? (isoParsed as Date).toLocaleDateString()
+        : (att.uploadDate ?? att.uploadedAt ?? new Date().toLocaleDateString()),
+      type: att.type,
+      data: att.data,
+      uploadedAt: att.uploadedAt,
     };
-    input.click();
+  };
+
+  const handleAttachmentsChange = (sectionId: string, pointId: string, next: FileAttachment[]) => {
+    const mapped = next.filter(a => !a.isDeleted).map(toChecklistAttachment);
+    setChecklistSections(prev => prev.map(section =>
+      section.id === sectionId
+        ? {
+            ...section,
+            assessmentPoints: section.assessmentPoints.map(point =>
+              point.id === pointId ? { ...point, attachments: mapped } : point
+            )
+          }
+        : section
+    ));
+  };
+
+  const handleSaveEditedComment = (sectionId: string, pointId: string, commentId: string) => {
+    const newText = editCommentText.trim();
+    if (!newText) {
+      setEditingCommentId(null);
+      setEditCommentText('');
+      return;
+    }
+    setChecklistSections(prev => prev.map(section =>
+      section.id === sectionId
+        ? {
+            ...section,
+            assessmentPoints: section.assessmentPoints.map(point =>
+              point.id === pointId
+                ? {
+                    ...point,
+                    comments: point.comments.map(c =>
+                      c.id === commentId ? { ...c, text: newText } : c
+                    )
+                  }
+                : point
+            )
+          }
+        : section
+    ));
+    setEditingCommentId(null);
+    setEditCommentText('');
   };
 
   const handleToggleCommentBox = (pointId: string) => {
@@ -420,19 +480,21 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     const now = new Date();
     const formattedDate = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, ' ');
 
+    const verificationId = `verify-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const newVerification: ChecklistVerification = {
-      id: `verify-${Date.now()}`,
+      id: verificationId,
       verifierName: currentUser.name,
       rank: currentUser.rank,
       date: formattedDate
     };
 
     const verificationComment: ChecklistComment = {
-      id: `vcomment-${Date.now()}`,
+      id: `vcomment-${verificationId}`,
       userName: currentUser.name,
       rank: currentUser.rank,
       text: '',
-      date: formattedDate
+      date: formattedDate,
+      verificationId,
     };
 
     setChecklistSections(prev => prev.map(section =>
@@ -481,11 +543,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                 ? {
                     ...p,
                     verifications: p.verifications.filter(v => v.id !== verificationId),
-                    comments: p.comments.filter(c => 
-                      !(c.userName === verification.verifierName && 
-                        c.date === verification.date && 
-                        c.text === '')
-                    )
+                    comments: p.comments.filter(c => c.verificationId !== verificationId)
                   }
                 : p
             )
@@ -582,7 +640,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                       <TableCell className="text-sm" data-testid={`cell-vessel-name-${service.id || index}`}>{service.vessel || service.vesselName || 'N/A'}</TableCell>
                       <TableCell className="text-sm" data-testid={`cell-vessel-type-${service.id || index}`}>{service.vesselType || 'N/A'}</TableCell>
                       <TableCell className="text-sm" data-testid={`cell-deadweight-${service.id || index}`}>{service.deadweight || 'N/A'}</TableCell>
-                      <TableCell className="text-sm" data-testid={`cell-engine-power-${service.id || index}`}>{service.engineType || service.enginePower || 'N/A'}</TableCell>
+                      <TableCell className="text-sm normal-case" data-testid={`cell-engine-power-${service.id || index}`}>{service.engineTypePower || service.engineType || service.enginePower || 'N/A'}</TableCell>
                       <TableCell className="text-sm" data-testid={`cell-from-${service.id || index}`}>{service.fromDate || service.from || 'N/A'}</TableCell>
                       <TableCell className="text-sm" data-testid={`cell-to-${service.id || index}`}>{service.toDate || service.to || 'N/A'}</TableCell>
                       <TableCell className="text-sm" data-testid={`cell-period-${service.id || index}`}>{service.period || service.duration || 'N/A'}</TableCell>
@@ -690,24 +748,60 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                         
                         {point.comments.map((comment) => {
                           const isVerificationComment = comment.text === '';
-                          const associatedVerification = isVerificationComment 
-                            ? point.verifications.find(v => 
-                                v.verifierName === comment.userName && v.date === comment.date
-                              )
+                          const associatedVerification = isVerificationComment && comment.verificationId
+                            ? point.verifications.find(v => v.id === comment.verificationId)
                             : null;
-                          const canCancel = isVerificationComment && 
-                            associatedVerification && 
+                          const isAuthor =
                             currentUser.name.trim().toLowerCase() === comment.userName.trim().toLowerCase();
-                          
+                          const canCancel = isVerificationComment && associatedVerification && isAuthor;
+                          const canEditComment = !isVerificationComment && isAuthor;
+                          const isEditing = editingCommentId === comment.id;
+
                           return (
                             <div key={comment.id} className="text-sm text-blue-600 italic flex items-start gap-2">
                               <div className="flex-1">
                                 {comment.text ? (
-                                  <>
-                                    <span className="font-medium">Comment by:</span> {comment.userName}, {comment.rank}, {comment.date}
-                                    <br />
-                                    <span className="font-medium">Comment:</span> {comment.text}
-                                  </>
+                                  isEditing ? (
+                                    <div className="space-y-2">
+                                      <div>
+                                        <span className="font-medium">Comment by:</span> {comment.userName}, {comment.rank}, {comment.date}
+                                      </div>
+                                      <Textarea
+                                        value={editCommentText}
+                                        onChange={(e) => setEditCommentText(e.target.value)}
+                                        className="w-full not-italic text-gray-900"
+                                        rows={2}
+                                        autoFocus
+                                        data-testid={`textarea-edit-comment-${comment.id}`}
+                                      />
+                                      <div className="flex gap-2 justify-end">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            setEditingCommentId(null);
+                                            setEditCommentText('');
+                                          }}
+                                          data-testid={`button-cancel-edit-comment-${comment.id}`}
+                                        >
+                                          Cancel
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleSaveEditedComment(section.id, point.id, comment.id)}
+                                          data-testid={`button-save-edit-comment-${comment.id}`}
+                                        >
+                                          Save
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <span className="font-medium">Comment by:</span> {comment.userName}, {comment.rank}, {comment.date}
+                                      <br />
+                                      <span className="font-medium">Comment:</span> {comment.text}
+                                    </>
+                                  )
                                 ) : (
                                   <>
                                     <span className="font-medium">Verified by:</span> {comment.userName}, {comment.rank}, {comment.date}
@@ -729,15 +823,30 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                                     <X className="h-3 w-3" />
                                   </span>
                                 )
-                              ) : (
-                                <button
-                                  onClick={() => handleDeleteComment(section.id, point.id, comment.id)}
-                                  className="text-gray-400 hover:text-red-600"
-                                  title="Delete comment"
-                                  data-testid={`button-delete-comment-${comment.id}`}
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
+                              ) : !isEditing && (
+                                <div className="flex items-start gap-1">
+                                  {canEditComment && (
+                                    <button
+                                      onClick={() => {
+                                        setEditingCommentId(comment.id);
+                                        setEditCommentText(comment.text);
+                                      }}
+                                      className="text-gray-400 hover:text-blue-600"
+                                      title="Edit comment"
+                                      data-testid={`button-edit-comment-${comment.id}`}
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleDeleteComment(section.id, point.id, comment.id)}
+                                    className="text-gray-400 hover:text-red-600"
+                                    title="Delete comment"
+                                    data-testid={`button-delete-comment-${comment.id}`}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
                               )}
                             </div>
                           );
@@ -761,28 +870,45 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge
-                        className={`${
-                          point.verifications.length === 0
+                      {(() => {
+                        // Fall back to 1 when the admin hasn't configured a
+                        // minimum — keeps the historical "any verification
+                        // turns it green" behavior for un-migrated configs.
+                        const minRequired = Math.max(1, checklistConfig?.minChecklistVerifications ?? 1);
+                        const count = point.verifications.length;
+                        const badgeClass =
+                          count === 0
                             ? 'bg-gray-200 text-gray-700'
-                            : point.verifications.length === 1
-                            ? 'bg-yellow-200 text-yellow-800'
-                            : 'bg-green-200 text-green-800'
-                        }`}
-                        data-testid={`badge-verified-${point.id}`}
-                      >
-                        {point.verifications.length}
-                      </Badge>
+                            : count >= minRequired
+                            ? 'bg-green-200 text-green-800'
+                            : 'bg-yellow-200 text-yellow-800';
+                        return (
+                          <Badge
+                            className={badgeClass}
+                            data-testid={`badge-verified-${point.id}`}
+                          >
+                            {count}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={() => handleAddAttachment(section.id, point.id)}
-                          className="text-gray-500 hover:text-blue-600"
-                          title="Add Attachment"
+                          onClick={() => setAttachmentDialog({ sectionId: section.id, pointId: point.id })}
+                          className="text-gray-500 hover:text-blue-600 relative flex items-center gap-1"
+                          title="Manage Attachments"
                           data-testid={`button-attachment-${point.id}`}
                         >
                           <Paperclip className="h-4 w-4" />
+                          {point.attachments.length > 0 && (
+                            <span
+                              className="text-xs text-gray-600"
+                              data-testid={`text-attachment-count-${point.id}`}
+                            >
+                              {point.attachments.length}
+                            </span>
+                          )}
                         </button>
                         <button
                           onClick={() => handleToggleCommentBox(point.id)}
@@ -857,21 +983,6 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
                     </TableRow>
                   )}
 
-                  {point.attachments.length > 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="bg-blue-50">
-                        <div className="text-sm">
-                          <span className="font-medium">Attachments: </span>
-                          {point.attachments.map((att, idx) => (
-                            <span key={att.id}>
-                              {att.fileName}
-                              {idx < point.attachments.length - 1 && ', '}
-                            </span>
-                          ))}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
                 </React.Fragment>
               ))}
             </TableBody>
@@ -935,6 +1046,30 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
           </div>
         </div>
       </div>
+
+      {attachmentDialog && (() => {
+        const section = checklistSections.find(s => s.id === attachmentDialog.sectionId);
+        const point = section?.assessmentPoints.find(p => p.id === attachmentDialog.pointId);
+        const fileAttachments = (point?.attachments ?? []).map(toFileAttachment);
+        const truncatedName = point?.text && point.text.length > 80
+          ? `${point.text.slice(0, 80)}…`
+          : point?.text;
+        return (
+          <FileAttachmentDialog
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) setAttachmentDialog(null);
+            }}
+            attachments={fileAttachments}
+            onAttachmentsChange={(next) =>
+              handleAttachmentsChange(attachmentDialog.sectionId, attachmentDialog.pointId, next)
+            }
+            title="Manage Attachments"
+            itemName={truncatedName}
+            contentClassName="z-[220]"
+          />
+        );
+      })()}
     </div>
   );
 };

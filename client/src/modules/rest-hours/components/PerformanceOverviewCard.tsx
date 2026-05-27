@@ -107,41 +107,18 @@ export const PerformanceOverviewCard = ({
   const isMultiMonthMode = monthsToFetch.length !== 1;
 
   // Fetch crew records data
-  const { data: allCrewRecords = [], isLoading, isError, error } = useQuery<any[]>({
+  const { data: allCrewRecords = [], isLoading, isError, isFetching, error } = useQuery<any[]>({
     queryKey: ['v2', 'rest-hours', 'crew-records-performance', vesselIds, complianceMode, opaMode, monthsToFetch],
     queryFn: async () => {
       if (monthsToFetch.length === 0) return [];
-      
-      const fetchPromises = monthsToFetch.map(async (monthValue) => {
-        const [year, month] = monthValue.split('-');
-        
-        // Get vessel records for this month
-        const vesselRecords = await restHoursApiV2.vesselRecords.getAll({ month, year });
-        
-        // Filter by vesselIds if provided
-        const filteredVesselRecords = vesselIds && vesselIds.length > 0
-          ? vesselRecords.filter((vr: any) => vesselIds.includes(vr.vesselId))
-          : vesselRecords;
-        
-        // Get crew records for each vessel record
-        const crewRecordsPromises = filteredVesselRecords.map(async (vr: any) => {
-          const crewRecords = await restHoursApiV2.crewRecords.getAll({ 
-            vesselId: vr.vesselId,
-            monthValue,
-          });
-          return crewRecords.map((cr: any) => ({
-            ...cr,
-            vesselId: vr.vesselId,
-            monthValue,
-          }));
-        });
-        
-        const allCrewRecords = await Promise.all(crewRecordsPromises);
-        return allCrewRecords.flat();
-      });
 
-      const allResults = await Promise.all(fetchPromises);
-      return allResults.flat();
+      // Single batched backend call across all months and selected vessels.
+      return await restHoursApiV2.crewRecords.getAll({
+        vesselId: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
+        monthValues: monthsToFetch,
+        complianceMode,
+        opaMode,
+      });
     },
     enabled: monthsToFetch.length > 0,
   });
@@ -237,7 +214,9 @@ export const PerformanceOverviewCard = ({
     );
   }
 
-  if (isError) {
+  // Only surface a hard error after retries have settled (isFetching === false).
+  // Transient 429 bursts are retried by the query client and should not flash red.
+  if (isError && !isFetching) {
     return (
       <div className="w-full h-full flex items-center justify-center">
         <div className="text-sm text-red-500">Error loading data: {error instanceof Error ? error.message : 'Unknown error'}</div>

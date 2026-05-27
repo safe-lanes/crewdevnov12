@@ -77,7 +77,11 @@ const CP_FORM_DISABLED_KEYS = new Set<keyof Permission>(["candelete"]);
 const VIEW_ONLY_SECTION_MENUS = new Set([
   "pm criteria review", "pm approval", "pm execution",
   "ap seafarer info", "ap start info", "ap competence", "ap behavioural",
-  "ap training needs", "ap summary", "ap office review"
+  "ap training needs", "ap summary", "ap office review",
+  // Phase 1 RBAC additions (view-only until Phase 2 wires Create/Edit/Delete)
+  "dashboard",
+  "terminated",
+  "training & ret.", "training", "retention"
 ]);
 const VIEW_ONLY_DISABLED_KEYS = new Set<keyof Permission>(["cancreate", "canedit", "candelete"]);
 

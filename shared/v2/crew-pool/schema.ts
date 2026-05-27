@@ -36,6 +36,38 @@ export const crewMembersV2 = pgTable("crew_members_v2", {
   uploadedPhoto: text("uploaded_photo"),
   sourceRecCanUuid: text("source_rec_can_uuid"),
   archivedAt: timestamp("archived_at"),
+  // Termination mirror columns (latest termination summary; source of truth lives in crew_terminations)
+  lastTerminationDate: text("last_termination_date"),
+  lastTerminationReason: text("last_termination_reason"),
+  lastTerminationCategory: text("last_termination_category"),
+  terminationInitiatedBy: text("termination_initiated_by"),
+  notForHire: boolean("not_for_hire").default(false),
+  ...auditColumns,
+});
+
+// ============================================
+// CREW TERMINATIONS (1 table)
+// ============================================
+export const crewTerminations = pgTable("crew_terminations", {
+  id: serial("id").primaryKey(),
+  termUuid: text("term_uuid").notNull().unique(),
+  crewUuid: text("crew_uuid").notNull(),
+  terminationDate: text("termination_date"),
+  initiatedBy: text("initiated_by"),
+  reason: text("reason"),
+  category: text("category"),
+  notForHire: boolean("not_for_hire").default(false),
+  comments: text("comments"),
+  // Server-derived submitter identity (from auth context). Display strings
+  // are retained for historical reporting since name/role are looked up
+  // outside of this DB (SAIL Audits) and may change over time.
+  submittedByUserId: text("submitted_by_user_id"),
+  submittedByName: text("submitted_by_name"),
+  submittedByRole: text("submitted_by_role"),
+  // Snapshots of identifiers at the time of termination (for retention reporting)
+  rankIdSnapshot: text("rank_id_snapshot"),
+  poolIdSnapshot: text("pool_id_snapshot"),
+  manningAgentIdSnapshot: text("manning_agent_id_snapshot"),
   ...auditColumns,
 });
 

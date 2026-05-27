@@ -1,0 +1,1 @@
+export { TrainingRetentionModule } from './TrainingRetentionModule';

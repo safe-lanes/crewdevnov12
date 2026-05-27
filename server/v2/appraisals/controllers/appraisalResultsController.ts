@@ -32,6 +32,9 @@ const stage2SubmissionSchema = z.object({
     seafarerComments: z.array(z.any()).optional(),
   }),
   submittedBy: z.string().optional(),
+  competenceRating: z.string().nullable().optional(),
+  behavioralRating: z.string().nullable().optional(),
+  overallRating: z.string().nullable().optional(),
 });
 
 const stage3SubmissionSchema = z.object({
@@ -81,10 +84,9 @@ export class AppraisalResultsController {
   async getPromotionRecommendations(req: Request, res: Response) {
     try {
       const crewMemberId = req.params.crewMemberId;
-      const rank = req.query.rank as string;
-      if (!rank) {
-        return res.status(400).json({ error: "Rank query parameter is required" });
-      }
+      // `rank` is accepted for backward compatibility but no longer used to
+      // filter — the count is purely by crewId across the crew's appraisals.
+      const rank = (req.query.rank as string) || "";
       const result = await service.getPromotionRecommendations(crewMemberId, rank);
       res.json(result);
     } catch (error) {
@@ -157,8 +159,14 @@ export class AppraisalResultsController {
       if (!validationResult.success) {
         return res.status(400).json({ error: "Invalid stage 2 data", details: validationResult.error.issues });
       }
-      const { data, submittedBy } = validationResult.data;
-      const appraisal = await service.submitStage(id, "stage2", data, submittedBy || "Unknown");
+      const { data, submittedBy, competenceRating, behavioralRating, overallRating } = validationResult.data;
+      // Pass through as-is: `undefined` means "client didn't send it, don't touch existing column";
+      // `null` means "client explicitly cleared it". The service only writes fields that are !== undefined.
+      const appraisal = await service.submitStage(id, "stage2", data, submittedBy || "Unknown", {
+        competenceRating,
+        behavioralRating,
+        overallRating,
+      });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }

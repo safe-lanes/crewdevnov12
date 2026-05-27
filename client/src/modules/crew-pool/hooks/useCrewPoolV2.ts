@@ -96,6 +96,39 @@ export function useCrewListV2(params?: {
   });
 }
 
+export function useTerminatedCrewListV2() {
+  return useQuery({
+    queryKey: [V2_QUERY_KEY, 'crew', 'list', { view: 'terminated' }],
+    queryFn: async ({ signal }) => {
+      const response = await crewPoolApiV2.getTerminatedCrewList(signal);
+      const rawData = Array.isArray(response) ? response : (response.data || []);
+      return rawData.map(mapV2CrewToLegacy);
+    },
+    staleTime: V2_STALE_TIME,
+  });
+}
+
+export function useTerminateEmploymentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, payload }: { crewUuid: string; payload: any }) => {
+      // Submitter identity is derived server-side from the authenticated session.
+      // Only display strings (name/role) are sent from the client.
+      return crewPoolApiV2.terminateEmployment(crewUuid, payload);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid, 'full-profile'] });
+      // Per-crew dashboard cache (exact key used by crew dashboard widgets).
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', variables.crewUuid, 'dashboard'] });
+      // Aggregated dashboard widgets that count crew by status.
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+    },
+  });
+}
+
 export function useCrewByIdV2(crewUuid: string | null) {
   return useQuery({
     queryKey: [V2_QUERY_KEY, 'crew', crewUuid],
@@ -612,6 +645,10 @@ export function useSaveTrainingCourseV2() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+      // Task #512: the appraisal form (Part B1 auto-inject) reads from a
+      // different key prefix — invalidate it too so D3 saves immediately
+      // refresh the appraisal's training source.
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', variables.crewUuid, 'training'] });
     },
   });
 }
@@ -625,6 +662,9 @@ export function useDeleteTrainingCourseV2() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+      // Task #512: mirror the save-side fix so deletions also refresh the
+      // appraisal form's Part B1 training source.
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', variables.crewUuid, 'training'] });
     },
   });
 }

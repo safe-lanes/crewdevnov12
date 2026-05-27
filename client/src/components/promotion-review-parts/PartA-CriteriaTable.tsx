@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Eye, Plus, Info, MessageSquare, Trash2 } from 'lucide-react';
+import { Eye, Info, MessageSquare, Trash2 } from 'lucide-react';
 import type { CriteriaRow, Comment } from './types';
 import { calculateChecklistProgressFromJson, type ChecklistProgressResult } from '@/modules/promotions/checklistProgressUtils';
 
@@ -18,7 +18,7 @@ interface PartACriteriaTableProps extends React.HTMLAttributes<HTMLDivElement> {
   isParentCriteria: (id: string) => boolean;
   isOtherCriteriaSubItem: (id: string) => boolean;
   computeParentStatus: (id: string) => 'yes' | 'na' | 'pending';
-  computeOtherCriteriaMeetsCriterion: () => 'yes' | 'pending';
+  computeOtherCriteriaMeetsCriterion: () => 'yes' | 'na' | 'pending';
   getMeetsCriterionBadge: (required: string, result: string, row: CriteriaRow) => React.ReactNode;
   criteriaComments: Record<string, Comment[]>;
   newCriteriaComment: Record<string, string>;
@@ -114,6 +114,8 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               const status = computeOtherCriteriaMeetsCriterion();
               return status === 'yes' ? (
                 <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded" data-testid="badge-a26-met">Yes</span>
+              ) : status === 'na' ? (
+                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded" data-testid="badge-a26-na">NA</span>
               ) : (
                 <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded" data-testid="badge-a26-pending">Pending</span>
               );
@@ -201,18 +203,6 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
                 data-testid={`button-criteria-comment-${row.id}`}
               >
                 <MessageSquare className="h-4 w-4 text-gray-400" />
-              </Button>
-            )}
-            {row.id === 'a2.7' && (
-              <Button 
-                type="button"
-                variant="ghost" 
-                size="sm" 
-                className="h-7 w-7 p-0"
-                onClick={onAddCesTest}
-                data-testid="button-add-ces-test-inline"
-              >
-                <Plus className="h-4 w-4 text-gray-600" />
               </Button>
             )}
           </div>

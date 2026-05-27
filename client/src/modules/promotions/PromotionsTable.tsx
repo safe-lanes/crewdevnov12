@@ -1,11 +1,13 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { ColDef, ICellRendererParams, GridReadyEvent, GridApi, GridOptions } from 'ag-grid-community';
 import { useQuery } from '@tanstack/react-query';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
+import AgGridTableActions from '@/components/AgGrid/AgGridTableActions';
 import { Button } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { findNextPromotionRank, shouldShowInPromotionsTable } from './promotionUtils';
@@ -15,6 +17,18 @@ import { PromotionReviewForm } from './PromotionReviewForm';
 
 const REFERENCE_DATA_STALE_TIME = 10 * 60 * 1000;
 const REVIEW_DATA_STALE_TIME = 2 * 60 * 1000;
+
+const PROMOTION_STATUS_BY_KEY: Record<string, 'Draft' | 'In Progress' | 'Submitted' | 'Approved' | 'Completed'> = {
+  'draft': 'Draft',
+  'in progress': 'In Progress',
+  'submitted': 'Submitted',
+  'for approval': 'Submitted',
+  'approved': 'Approved',
+  'completed': 'Completed',
+};
+
+const normalizePromotionStatus = (raw?: string | null): 'Draft' | 'In Progress' | 'Submitted' | 'Approved' | 'Completed' =>
+  PROMOTION_STATUS_BY_KEY[(raw ?? '').trim().toLowerCase()] ?? 'In Progress';
 
 const calculateAge = (dob: string): number | null => {
   if (!dob || dob === '-') return null;
@@ -116,9 +130,11 @@ const StatusBadgeRenderer = (params: ICellRendererParams) => {
   
   const getBadgeClass = () => {
     switch (status) {
+      case 'Draft': return 'bg-gray-100 text-gray-800';
       case 'In Progress': return 'bg-yellow-100 text-yellow-800';
-      case 'For Approval': return 'bg-blue-100 text-blue-800';
+      case 'Submitted': return 'bg-blue-100 text-blue-800';
       case 'Approved': return 'bg-green-100 text-green-800';
+      case 'Completed': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -162,6 +178,8 @@ interface PromotionsTableProps {
   nationality: string;
   criteria: string;
   status: string;
+  initialReviewUuid?: string | null;
+  onInitialReviewConsumed?: () => void;
 }
 
 export const PromotionsTable: React.FC<PromotionsTableProps> = ({
@@ -171,13 +189,16 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   vesselType,
   nationality,
   criteria,
-  status
+  status,
+  initialReviewUuid,
+  onInitialReviewConsumed,
 }) => {
   const { canEdit: canEditPerm, permissions } = usePermissions();
+  const { toast } = useToast();
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [selectedPromotion, setSelectedPromotion] = useState<any | null>(null);
   
-  const { getVesselName } = useVesselLookup();
+  const { getVesselName, getVessel } = useVesselLookup();
   
   const { normalizeRank, isLoading: isLoadingRanks } = useRankNormalization();
 
@@ -191,12 +212,12 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     staleTime: REFERENCE_DATA_STALE_TIME,
   });
 
-  const { data: formsData = [] } = useQuery<any[]>({
+  const { data: formsData = [], isLoading: isLoadingForms, isFetched: isFormsFetched } = useQuery<any[]>({
     queryKey: ['/api/v2/admin/forms'],
     staleTime: REFERENCE_DATA_STALE_TIME,
   });
 
-  const { data: rankGroupsData = [] } = useQuery<any[]>({
+  const { data: rankGroupsData = [], isLoading: isLoadingRankGroups, isFetched: isRankGroupsFetched } = useQuery<any[]>({
     queryKey: ['/api/v2/admin/rank-groups'],
     staleTime: REFERENCE_DATA_STALE_TIME,
   });
@@ -243,6 +264,86 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     
     return map;
   }, [formsData, rankGroupsData, normalizeRank]);
+
+  const checklistConfigByRank = useMemo(() => {
+    const map = new Map<string, { minChecklistVerifications: number; minChecklistCompletionPercent: number }>();
+
+    const promotionReviewForm = formsData.find((f: any) => f.name === 'Promotion Review Form');
+    if (!promotionReviewForm) return map;
+
+    const formRankGroups = rankGroupsData.filter((rg: any) =>
+      rg.formId === promotionReviewForm.id && !rg.archivedAt
+    );
+
+    for (const rg of formRankGroups) {
+      let ranks: string[] = [];
+      try {
+        ranks = typeof rg.ranks === 'string' ? JSON.parse(rg.ranks) : rg.ranks || [];
+      } catch {
+        ranks = [];
+      }
+
+      let config: any = null;
+      try {
+        if (rg.configuration) {
+          const parsed = typeof rg.configuration === 'string' ? JSON.parse(rg.configuration) : rg.configuration;
+          config = parsed?.promotionA2 ?? parsed;
+        }
+      } catch {
+        config = null;
+      }
+
+      if (config) {
+        const minVer = Number(config.minChecklistVerifications);
+        const minPct = Number(config.minChecklistCompletionPercent);
+        const entry = {
+          minChecklistVerifications: Number.isFinite(minVer) && minVer > 0 ? minVer : 1,
+          minChecklistCompletionPercent: Number.isFinite(minPct) && minPct > 0 ? minPct : 100,
+        };
+        for (const rank of ranks) {
+          map.set(normalizeRank(rank), entry);
+        }
+      }
+    }
+
+    return map;
+  }, [formsData, rankGroupsData, normalizeRank]);
+
+  const configuredRankSet = useMemo(() => {
+    const set = new Set<string>();
+    const promotionReviewForm = formsData.find((f: any) => f.name === 'Promotion Review Form');
+    if (!promotionReviewForm) return set;
+    const formRankGroups = rankGroupsData.filter((rg: any) =>
+      rg.formId === promotionReviewForm.id && !rg.archivedAt
+    );
+    for (const rg of formRankGroups) {
+      let ranks: string[] = [];
+      try {
+        ranks = typeof rg.ranks === 'string' ? JSON.parse(rg.ranks) : rg.ranks || [];
+      } catch {
+        ranks = [];
+      }
+      for (const r of ranks) set.add(normalizeRank(r));
+    }
+    return set;
+  }, [formsData, rankGroupsData, normalizeRank]);
+
+  const isRankGroupConfigured = useCallback((rank: string | undefined | null) => {
+    if (!rank) return true;
+    // Allow open while reference data is still loading / not yet fetched
+    // to avoid false negatives on initial paint.
+    if (isLoadingForms || isLoadingRankGroups) return true;
+    if (!isFormsFetched || !isRankGroupsFetched) return true;
+    return configuredRankSet.has(normalizeRank(rank));
+  }, [isLoadingForms, isLoadingRankGroups, isFormsFetched, isRankGroupsFetched, configuredRankSet, normalizeRank]);
+
+  const showMissingRankGroupToast = useCallback((rank: string | undefined | null) => {
+    toast({
+      title: 'No Promotion Rank Group Assigned',
+      description: `No Promotion Review Form rank group has been configured for the rank "${rank ?? ''}" in Admin Module. Please configure a rank group in Admin > Forms Configuration > Promotion Review Form.`,
+      variant: 'destructive',
+    });
+  }, [toast]);
 
   const reviewLookup = useMemo(() => {
     const map = new Map<string, any>();
@@ -300,18 +401,11 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     const meets = typeof meetsRaw === 'string' ? meetsRaw.toLowerCase() : meetsRaw;
     
     if (meets === 'yes') return 'met';
-    if (meets === 'no') return 'pending';
+    if (meets === 'no') return 'not-met';
+    
+    if (meets === 'pending') return 'pending';
     
     const verifiedStatus = review._parsedVerifiedStatus || {};
-    const verified = verifiedStatus[criteriaId];
-    if (meets === 'pending') {
-      if (verified === 'yes') return 'met';
-      if (verified === 'na') return 'met';
-      return 'pending';
-    }
-    
-    if (verified === 'yes') return 'met';
-    if (verified === 'na') return 'met';
     if (Object.keys(verifiedStatus).length > 0 || Object.keys(meetsStatus).length > 0) return 'pending';
     
     return 'no-info';
@@ -325,45 +419,64 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     const normalize = (val: any) => typeof val === 'string' ? val.toLowerCase() : val;
     
     if (parentId === 'a2.7') {
-      const cesStatus = normalize(meetsStatus['a2.7']);
-      if (cesStatus === 'yes') return 'met';
-      
       const cesTests = review._parsedCesTests || [];
       if (cesTests.length > 0) {
         const results = cesTests.map((t: any) => ((t.result || '') as string).trim().toLowerCase());
+        const hasMissing = results.some((r: string) => r === '' || r === 'pending');
+        if (hasMissing) return 'pending';
         if (results.every((r: string) => r === 'pass' || r === 'na' || r === 'n/a')) return 'met';
-        return 'pending';
+        return 'not-met';
       }
       
-      if (cesStatus === 'no' || cesStatus === 'pending') return 'pending';
+      const cesStatus = normalize(meetsStatus['a2.7']);
+      if (cesStatus === 'yes') return 'met';
+      if (cesStatus === 'no') return 'not-met';
+      if (cesStatus === 'pending') return 'pending';
       return 'no-info';
     }
     
+    if (parentId === 'a2.6') {
+      const verifiedStatus = review._parsedVerifiedStatus || {};
+      const childIds = Object.keys(verifiedStatus).filter(
+        id => id.startsWith(parentId) && id.length > parentId.length
+      );
+      if (childIds.length > 0) {
+        const childVerified = childIds.map(id => (normalize(verifiedStatus[id]) || ''));
+        if (childVerified.some(v => v === '')) return 'pending';
+        if (childVerified.some(v => v === 'yes')) return 'met';
+        if (childVerified.every(v => v === 'na')) return 'met';
+        return 'pending';
+      }
+      const parentVal = normalize(meetsStatus[parentId]);
+      if (parentVal === 'yes' || parentVal === 'na') return 'met';
+      if (parentVal === 'no') return 'not-met';
+      if (parentVal === 'pending') return 'pending';
+      return 'no-info';
+    }
+
+    const parentValue = normalize(meetsStatus[parentId]);
+    if (parentValue === 'yes' || parentValue === 'na') return 'met';
+    if (parentValue === 'no') return 'not-met';
+    if (parentValue === 'pending') return 'pending';
+
     const childIds = Object.keys(meetsStatus).filter(
       id => id.startsWith(parentId) && id.length > parentId.length
     );
-    
+
     if (childIds.length === 0) {
-      const parentValue = normalize(meetsStatus[parentId]);
-      if (parentValue === 'yes') return 'met';
-      if (parentValue === 'no' || parentValue === 'pending') return 'pending';
-      
       if (Object.keys(meetsStatus).length > 0) return 'pending';
       return 'no-info';
     }
-    
-    const verifiedStatus = review._parsedVerifiedStatus || {};
+
     const childStatuses = childIds.map(id => {
       const m = normalize(meetsStatus[id]) || '';
-      if (m === 'yes') return 'met';
+      if (m === 'yes' || m === 'na') return 'met';
       if (m === 'no') return 'not-met';
-      const v = verifiedStatus[id];
-      if (v === 'yes' || v === 'na') return 'met';
       return 'pending';
     });
-    if (childStatuses.every(s => s === 'met')) return 'met';
-    if (childStatuses.some(s => s === 'not-met')) return 'pending';
-    return 'pending';
+    if (childStatuses.some(s => s === 'pending')) return 'pending';
+    if (childStatuses.some(s => s === 'not-met')) return 'not-met';
+    return 'met';
   }, []);
 
   const promotionData = useMemo(() => {
@@ -387,11 +500,11 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         const dobString = crew.dob || crew.dateOfBirth || '-';
         const calculatedAge = calculateAge(dobString);
         
-        let ageStatus: 'met' | 'pending' | 'not-met' = 'pending';
+        let ageStatus: 'met' | 'pending' | 'not-met' = 'met';
         if (calculatedAge !== null && nextRank) {
           const normalizedNextRank = normalizeRank(nextRank);
           const ageReq = ageRequirementsByRank.get(normalizedNextRank);
-          if (ageReq) {
+          if (ageReq && (ageReq.ageMin || ageReq.ageMax)) {
             const meetsMin = !ageReq.ageMin || calculatedAge >= ageReq.ageMin;
             const meetsMax = !ageReq.ageMax || calculatedAge <= ageReq.ageMax;
             ageStatus = (meetsMin && meetsMax) ? 'met' : 'not-met';
@@ -408,10 +521,13 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         
         const recoStatus = computeCriteriaStatus(review, 'a2.4');
         
+        const checklistCfg = nextRank
+          ? checklistConfigByRank.get(normalizeRank(nextRank))
+          : undefined;
         const checklistProgressResult = calculateChecklistProgressFromJson(
           review?.checklistProgressData,
-          0,
-          100
+          checklistCfg?.minChecklistVerifications ?? 1,
+          checklistCfg?.minChecklistCompletionPercent ?? 100
         );
         
         const otherCriteriaStatus = computeParentCriteriaStatus(review, 'a2.6');
@@ -420,12 +536,13 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         
         const trainDocsStatus = computeCriteriaStatus(review, 'a2.8');
         
-        const reviewStatus = review?.status || 'In Progress';
+        const reviewStatus = normalizePromotionStatus(review?.status);
         
         return {
           crewId: crew.employeeId || crew.empNo || '-',
           crewMemberId: crewId,
           promotionReviewId: review?.id || null,
+          reviewUuid: review?.reviewUuid || null,
           name: `${crew.firstName || 'Unknown'} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
           dob: dobString,
           ageValue: calculatedAge !== null ? calculatedAge : '-',
@@ -435,6 +552,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           promotionToRank: nextRank || '-',
           vesselLeave: vesselLeave,
           presentVessel: crew.vesselUuid || null,
+          vesselType: (crew.vesselUuid ? getVessel(crew.vesselUuid)?.vesselType : null) || null,
           license: licenseStatus,
           sea: seaStatus,
           reco: recoStatus,
@@ -447,7 +565,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         };
       })
       .filter(item => item !== null);
-  }, [crewMembers, hierarchies, normalizeRank, ageRequirementsByRank, reviewLookup, computeCriteriaStatus, computeParentCriteriaStatus]);
+  }, [crewMembers, hierarchies, normalizeRank, ageRequirementsByRank, checklistConfigByRank, reviewLookup, computeCriteriaStatus, computeParentCriteriaStatus, getVessel]);
 
   const filteredData = useMemo(() => {
     return promotionData.filter(item => {
@@ -460,24 +578,92 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       const matchesNationality = !nationality || item.nationality === nationality;
       const matchesStatus = !status || item.status === status;
       
-      const matchesVesselType = true;
+      const matchesVesselType = !vesselType || item.vesselType === vesselType;
       
-      const matchesCriteria = !criteria || 
-        item.license === criteria || 
-        item.age === criteria || 
-        item.sea === criteria || 
-        item.reco === criteria || 
-        item.otherCriteria === criteria || 
-        item.cesIndex === criteria || 
-        item.trainDocs === criteria;
+      const criteriaFields = [
+        item.license,
+        item.age,
+        item.sea,
+        item.reco,
+        item.otherCriteria,
+        item.cesIndex,
+        item.trainDocs,
+      ];
+      const checklistMet = item.checklistProgressData?.meetsThreshold === true;
+      const isPendingLike = (s: string) => s === 'pending' || s === 'no-info';
+      const anyPending = criteriaFields.some(isPendingLike) || !checklistMet;
+      let matchesCriteria = true;
+      if (criteria === 'met') {
+        matchesCriteria = criteriaFields.every(s => s === 'met') && checklistMet;
+      } else if (criteria === 'pending') {
+        matchesCriteria = anyPending;
+      } else if (criteria === 'not-met') {
+        matchesCriteria =
+          criteriaFields.some(s => s === 'not-met') && !anyPending;
+      }
 
       return matchesName && matchesRank && matchesVessel && matchesVesselType && matchesNationality && matchesCriteria && matchesStatus;
     });
   }, [promotionData, searchName, promotionToRank, vessel, vesselType, nationality, criteria, status, getVesselName]);
 
   const handleEditPromotion = useCallback((data: any) => {
+    if (!isRankGroupConfigured(data?.promotionToRank)) {
+      showMissingRankGroupToast(data?.promotionToRank);
+      return;
+    }
     setSelectedPromotion(data);
-  }, []);
+  }, [isRankGroupConfigured, showMissingRankGroupToast]);
+
+  const [consumedInitialReviewUuid, setConsumedInitialReviewUuid] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!initialReviewUuid) return;
+    if (consumedInitialReviewUuid === initialReviewUuid) return;
+
+    const reviews = Array.isArray(promotionReviews) ? promotionReviews : [];
+    const review = reviews.find((r: any) => r?.reviewUuid === initialReviewUuid);
+    if (!review) return;
+
+    const projected = (promotionData || []).find(
+      (row: any) =>
+        row.crewMemberId === review.crewMemberId &&
+        row.promotionToRank === review.promotionToRank,
+    );
+
+    const basePayload = projected ?? {
+      crewId: review.crewMemberId,
+      crewMemberId: review.crewMemberId,
+      promotionReviewId: review.id ?? null,
+      reviewUuid: review.reviewUuid,
+      name: '',
+      promotionToRank: review.promotionToRank,
+      status: review.status || 'In Progress',
+    };
+
+    // Tag this opening as deep-linked so the form's Back arrow can use
+    // history.back() and restore the dashboard drill-down popup the user
+    // came from, instead of just unmounting onto the Promotions list.
+    const payload = { ...basePayload, _openedFromDeepLink: true };
+
+    if (!isRankGroupConfigured(payload.promotionToRank)) {
+      showMissingRankGroupToast(payload.promotionToRank);
+      setConsumedInitialReviewUuid(initialReviewUuid);
+      onInitialReviewConsumed?.();
+      return;
+    }
+
+    setSelectedPromotion(payload);
+    setConsumedInitialReviewUuid(initialReviewUuid);
+    onInitialReviewConsumed?.();
+  }, [
+    initialReviewUuid,
+    consumedInitialReviewUuid,
+    promotionReviews,
+    promotionData,
+    onInitialReviewConsumed,
+    isRankGroupConfigured,
+    showMissingRankGroupToast,
+  ]);
 
   const columnDefs: ColDef[] = useMemo(() => [
     {
@@ -655,8 +841,15 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   };
 
   const handleCloseForm = useCallback(() => {
+    const wasDeepLinked = selectedPromotion?._openedFromDeepLink === true;
     setSelectedPromotion(null);
-  }, []);
+    // If the form was opened via a deep link from the dashboard drill-down
+    // popup, walk one step back in history so the user lands on the dashboard
+    // with the popup re-opened, rather than on the Promotions list.
+    if (wasDeepLinked && typeof window !== 'undefined') {
+      window.history.back();
+    }
+  }, [selectedPromotion]);
 
   const gridPerformanceOptions: Partial<GridOptions> = useMemo(() => ({
     suppressAnimationFrame: true,
@@ -672,19 +865,34 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         columnDefs={columnDefs}
         onGridReady={handleGridReady}
         loading={isLoading || isLoadingHierarchies}
+        enableStatusBar={false}
         fillAvailableHeight={true}
-        bottomPadding={60}
+        bottomPadding={80}
         gridOptions={gridPerformanceOptions}
         className="vertical-headers-grid"
         data-testid="promotions-table"
       />
-      
-      <div className="flex justify-between items-center px-4 py-2 text-sm text-gray-600">
-        <div>
-          {filteredData.length > 0 ? `0 to ${filteredData.length} of ${filteredData.length}` : '0 to 0 of 0'}
+
+      <div
+        className="bg-white border-t border-gray-200 px-4 py-3 flex justify-between items-center"
+        style={{ marginTop: '-1px' }}
+        data-testid="promotions-table-footer"
+      >
+        <div
+          className="text-xs font-normal font-['Mulish',Helvetica] text-black"
+          data-testid="text-promotions-row-count"
+        >
+          Rows: {filteredData.length}
         </div>
         <div>
-          Page {filteredData.length > 0 ? '1' : '0'} of {filteredData.length > 0 ? '1' : '0'}
+          <AgGridTableActions
+            gridApi={gridApi}
+            exportFilename="promotions"
+            showExportButtons={true}
+            showFilterButtons={true}
+            showGroupButtons={true}
+            showSelectionButtons={false}
+          />
         </div>
       </div>
 

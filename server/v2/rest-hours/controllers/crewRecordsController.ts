@@ -4,10 +4,14 @@ import { crewRecordsService } from "../services";
 export const crewRecordsController = {
   async getAll(req: Request, res: Response) {
     try {
-      const { vesselId, monthValue, ranks, search, complianceMode, opaMode } = req.query;
+      const { vesselId, monthValue, monthValues, ranks, search, complianceMode, opaMode } = req.query;
 
       const vesselIds = vesselId
         ? (vesselId as string).split(",").filter(Boolean)
+        : undefined;
+
+      const monthValuesList = monthValues
+        ? (monthValues as string).split(",").filter(Boolean)
         : undefined;
 
       const rankList = ranks
@@ -16,6 +20,18 @@ export const crewRecordsController = {
 
       const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
       const opa = opaMode === 'true' || opaMode === '1';
+
+      // Bulk path: multi-month aggregation (used by Periodic / Vessel Analysis charts).
+      // Skips placeholder/sign-on resolution since these views only aggregate real totals.
+      if (monthValuesList && monthValuesList.length > 0) {
+        const records = await crewRecordsService.getBulkByMonths({
+          vesselIds,
+          monthValues: monthValuesList,
+          complianceMode: mode,
+          opaMode: opa,
+        });
+        return res.json(records);
+      }
 
       const records = await crewRecordsService.getByFilters({
         vesselIds,
@@ -92,8 +108,11 @@ export const crewRecordsController = {
       const { vesselId, monthValue, complianceMode, opaMode } = req.query;
       const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
       const opa = opaMode === 'true' || opaMode === '1';
+      const vesselIds = vesselId
+        ? (vesselId as string).split(",").filter(Boolean)
+        : undefined;
       const result = await crewRecordsService.getViolationsByRank({
-        vesselId: vesselId as string | undefined,
+        vesselIds,
         monthValue: monthValue as string | undefined,
         complianceMode: mode,
         opaMode: opa,
@@ -110,8 +129,11 @@ export const crewRecordsController = {
       const { vesselId, monthValue, complianceMode, opaMode } = req.query;
       const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
       const opa = opaMode === 'true' || opaMode === '1';
+      const vesselIds = vesselId
+        ? (vesselId as string).split(",").filter(Boolean)
+        : undefined;
       const result = await crewRecordsService.getNcsByRank({
-        vesselId: vesselId as string | undefined,
+        vesselIds,
         monthValue: monthValue as string | undefined,
         complianceMode: mode,
         opaMode: opa,

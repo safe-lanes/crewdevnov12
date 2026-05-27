@@ -3,7 +3,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 // Memoized Part components for performance optimization
-import { PartA, PartB, PartC, PartD, PartE, PartF, PartG } from "./form-editor-parts";
+import { PartA, PartB, PartC, PartD, PartE, PartF, PartG, isBaselineRecommendationQuestion } from "./form-editor-parts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -97,7 +97,7 @@ interface RankGroupConfiguration {
     id: string;
     recommendation?: string;
     question?: string;
-    answer?: 'Yes' | 'No' | 'NA';
+    answer?: 'Yes' | 'No' | 'NA' | '';
     yes?: boolean;
     no?: boolean;
     na?: boolean;
@@ -153,7 +153,7 @@ const trainingNeedsSchema = z.object({
 const recommendationSchema = z.object({
   id: z.string(),
   question: z.string().min(1, "Question is required"),
-  answer: z.enum(["Yes", "No", "NA"]),
+  answer: z.union([z.enum(["Yes", "No", "NA"]), z.literal("")]),
   comment: z.string().optional(),
   isCustom: z.boolean().optional().default(false),
 });
@@ -212,6 +212,7 @@ type AppraisalFormData = z.infer<typeof appraisalSchema>;
 // Extended form type that includes originalFormId from AdminModule expanded forms
 interface ExtendedForm extends Form {
   originalFormId?: number;
+  isLockForm?: boolean | null;
 }
 
 interface FormEditorProps {
@@ -640,15 +641,16 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       });
     });
     
-    // If no released version exists yet for this rank group, show the
-    // canonical "00 / today" placeholder (NOT the parent form's versionDate,
-    // which mirrors the max released across all rank groups and would leak
-    // an unrelated number/date onto a fresh rank group).
-    if (result.length === 0 || !result.some(v => v.status === 'Released')) {
+    // If the rank group has nothing saved yet (no real draft AND no released
+    // version), show a single Draft v00 placeholder so the user can start
+    // editing. NEVER synthesize a fake "Released" entry — doing so would
+    // mislead admins into thinking a release exists when the appraisal flow
+    // (which only honours real released versions) still blocks form open.
+    if (result.length === 0) {
       result.push({
         versionNo: "00",
         versionDate: format(new Date(), "dd-MMM-yyyy"),
-        status: "Released"
+        status: "Draft"
       });
     }
     
@@ -774,10 +776,10 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       behaviouralAssessments: [],
       trainingNeeds: [],
       recommendations: [
-        { id: "1", question: "Recommended for continued service on board?", answer: "Yes", comment: "", isCustom: false },
-        { id: "2", question: "Recommended for re-employment?", answer: "Yes", comment: "", isCustom: false },
-        { id: "3", question: "Recommended for promotion?", answer: "Yes", comment: "", isCustom: false },
-        { id: "4", question: "Career Development recommendations (If Any)?", answer: "Yes", comment: "", isCustom: false },
+        { id: "1", question: "Recommended for continued service on board?", answer: "", comment: "", isCustom: false },
+        { id: "2", question: "Recommended for re-employment?", answer: "", comment: "", isCustom: false },
+        { id: "3", question: "Recommended for promotion?", answer: "", comment: "", isCustom: false },
+        { id: "4", question: "Career Development recommendations (If Any)?", answer: "", comment: "", isCustom: false },
       ],
       // Part G: Office Review & Followup
       officeReviewComments: "",
@@ -824,9 +826,11 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       formMethods.setValue('recommendations', (rankGroupConfig.recommendations ?? []).map(rec => ({
         id: rec.id,
         question: rec.question || rec.recommendation || '',
-        answer: (rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes')) as 'Yes' | 'No' | 'NA',
+        answer: (rec.answer ?? (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : '')) as 'Yes' | 'No' | 'NA' | '',
         comment: rec.comment || '',
-        isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
+        isCustom: rec.isCustom !== undefined
+          ? rec.isCustom
+          : !isBaselineRecommendationQuestion(rec.question || rec.recommendation || ''),
       })));
 
       formMethods.setValue('trainingNeeds', rankGroupConfig.trainingNeeds ?? []);
@@ -902,9 +906,11 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         ? config.recommendations.map((rec: any) => ({
             id: rec.id,
             question: rec.question || rec.recommendation || '',
-            answer: rec.answer || (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : 'Yes'),
+            answer: rec.answer ?? (rec.yes ? 'Yes' : rec.no ? 'No' : rec.na ? 'NA' : ''),
             comment: rec.comment || '',
-            isCustom: rec.isCustom !== undefined ? rec.isCustom : true,
+            isCustom: rec.isCustom !== undefined
+              ? rec.isCustom
+              : !isBaselineRecommendationQuestion(rec.question || rec.recommendation || ''),
           }))
         : []);
       formMethods.setValue('trainingFollowups', Array.isArray(config.trainingFollowups) ? config.trainingFollowups : []);
@@ -1520,7 +1526,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     const newRecommendation = {
       id: newRecommendationId,
       question: "Add new recommendation",
-      answer: "Yes" as const,
+      answer: "" as const,
       comment: "",
       isCustom: true // Mark as custom/additional recommendation
     };
@@ -2011,6 +2017,17 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                 Configuration Mode
               </Badge>
             )}
+            <Badge
+              variant="outline"
+              className={`ml-1 sm:ml-2 text-xs hidden sm:inline-flex ${
+                form.isLockForm
+                  ? 'border-amber-300 bg-amber-50 text-amber-700'
+                  : 'border-gray-300 bg-gray-50 text-gray-600'
+              }`}
+              data-testid="badge-lock-form-indicator"
+            >
+              Lock Form Feature: {form.isLockForm ? 'ON' : 'OFF'}
+            </Badge>
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Release Ver is always available when a draft exists (in or out of config mode). */}

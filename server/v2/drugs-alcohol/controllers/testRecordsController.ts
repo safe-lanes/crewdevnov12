@@ -1,5 +1,36 @@
 import { Request, Response } from "express";
+import { z } from "zod";
 import { testRecordsService } from "../services";
+
+function toArrayParam(v: unknown): string[] {
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
+  if (typeof v === "string" && v.length > 0)
+    return v.split(",").map((s) => s.trim()).filter(Boolean);
+  return [];
+}
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
+
+const violationFormSummariesQuerySchema = z
+  .object({
+    periodFrom: isoDate,
+    periodTo: isoDate,
+    type: z.enum(["alcohol", "drug"]),
+  })
+  .refine((v) => v.periodFrom <= v.periodTo, {
+    message: "periodFrom must be on or before periodTo",
+    path: ["periodFrom"],
+  });
+
+const violationCountsQuerySchema = z
+  .object({
+    periodFrom: isoDate,
+    periodTo: isoDate,
+  })
+  .refine((v) => v.periodFrom <= v.periodTo, {
+    message: "periodFrom must be on or before periodTo",
+    path: ["periodFrom"],
+  });
 
 export const testRecordsController = {
   async getAll(req: Request, res: Response) {
@@ -95,6 +126,70 @@ export const testRecordsController = {
       }
       console.error("Error updating test record:", error);
       res.status(500).json({ error: "Failed to update test record" });
+    }
+  },
+
+  async getViolationCounts(req: Request, res: Response) {
+    try {
+      const parsed = violationCountsQuerySchema.safeParse({
+        periodFrom: req.query.periodFrom,
+        periodTo: req.query.periodTo,
+      });
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid query parameters",
+          details: parsed.error.flatten(),
+        });
+      }
+      const { periodFrom, periodTo } = parsed.data;
+      const result = await testRecordsService.getViolationCounts({
+        periodFrom,
+        periodTo,
+        vesselNames: toArrayParam(req.query.vesselIds ?? req.query["vesselIds[]"]),
+        rankNames: toArrayParam(req.query.rankIds ?? req.query["rankIds[]"]),
+        poolNames: toArrayParam(req.query.poolIds ?? req.query["poolIds[]"]),
+        agentNames: toArrayParam(req.query.agentIds ?? req.query["agentIds[]"]),
+      });
+      res.json(result);
+    } catch (error: any) {
+      if (error.message?.includes("Invalid period")) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error computing violation counts:", error);
+      res.status(500).json({ error: "Failed to compute violation counts" });
+    }
+  },
+
+  async getViolationFormSummaries(req: Request, res: Response) {
+    try {
+      const parsed = violationFormSummariesQuerySchema.safeParse({
+        periodFrom: req.query.periodFrom,
+        periodTo: req.query.periodTo,
+        type: req.query.type,
+      });
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid query parameters",
+          details: parsed.error.flatten(),
+        });
+      }
+      const { periodFrom, periodTo, type } = parsed.data;
+      const result = await testRecordsService.getViolationFormSummaries({
+        periodFrom,
+        periodTo,
+        type,
+        vesselNames: toArrayParam(req.query.vesselIds ?? req.query["vesselIds[]"]),
+        rankNames: toArrayParam(req.query.rankIds ?? req.query["rankIds[]"]),
+        poolNames: toArrayParam(req.query.poolIds ?? req.query["poolIds[]"]),
+        agentNames: toArrayParam(req.query.agentIds ?? req.query["agentIds[]"]),
+      });
+      res.json(result);
+    } catch (error: any) {
+      if (error.message?.includes("Invalid period")) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error fetching violation form summaries:", error);
+      res.status(500).json({ error: "Failed to fetch violation form summaries" });
     }
   },
 

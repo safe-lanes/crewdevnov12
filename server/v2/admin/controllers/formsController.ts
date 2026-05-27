@@ -71,6 +71,28 @@ export const formsController = {
     }
   },
 
+  async updateLockFlag(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid form ID" });
+      }
+      const schema = z.object({ isLockForm: z.boolean() });
+      const result = schema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid payload", details: result.error.issues });
+      }
+      const form = await formsService.updateById(id, { isLockForm: result.data.isLockForm });
+      res.json(form);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error updating form lock flag:", error);
+      res.status(500).json({ error: "Failed to update form lock flag" });
+    }
+  },
+
   async delete(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);

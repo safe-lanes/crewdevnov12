@@ -909,6 +909,7 @@ export const RHRecordingForm = ({
           ...record,
           hours: newHours,
           isPlan: true,
+          userEdited: false,
           hoursOfRest24hr: restHours,
           hoursOfWork24hr: workHours,
           comments: finalComments,
@@ -938,19 +939,30 @@ export const RHRecordingForm = ({
         
         const updatedRecords = parsedRecords.map((record: DailyRecord) => {
           let hours = record.hours;
-          
-          if (record.isPlan) {
+
+          // Reload rules:
+          //  - Rec rows (!isPlan): always preserve saved hours.
+          //  - Plan rows the user has edited (userEdited === true): preserve saved hours.
+          //  - Plan rows the user has NOT edited (userEdited === false): re-seed from
+          //    the latest Fixed Task template + Variable Task overlay so changes to
+          //    Fixed/Variable Tasks reflect on still-untouched Plan days.
+          //  - Legacy rows (userEdited === undefined): preserve saved hours — we can't
+          //    tell whether they were user-edited, so we err on the side of not
+          //    silently overwriting saved data.
+          //  - Also seed when hours is empty/missing as a defensive fallback.
+          const shouldReseed =
+            record.isPlan &&
+            (record.userEdited === false || !hours || hours.length === 0);
+
+          if (shouldReseed) {
             if (hasLatestFixedTask) {
               hours = [...latestTemplate];
+            } else {
+              hours = Array(48).fill('');
             }
-            
+
             const dayCells = variableTaskCellsMap.get(record.day);
             if (dayCells && dayCells.length > 0) {
-              if (!hours || hours.length === 0) {
-                hours = Array(48).fill('');
-              } else {
-                hours = [...hours];
-              }
               for (const cellRange of dayCells) {
                 for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
                   hours[i] = 'a';
@@ -958,7 +970,7 @@ export const RHRecordingForm = ({
               }
             }
           }
-          
+
           const restHours = hours ? hours.filter((h: string) => h === '').length / 2 : 24;
           const workHours = 24 - restHours;
 
@@ -1858,10 +1870,13 @@ export const RHRecordingForm = ({
       const record = { ...newRecords[dayIndex] };
       
       record.isPlan = !record.isPlan;
-      
+
       // If switching from Plan to Rec, keep the hours as-is (they're already set)
-      // The colors will change based on isPlan flag
-      
+      // The colors will change based on isPlan flag. Do NOT touch userEdited here —
+      // toggling Plan/Rec is metadata only, and changing the flag could convert a
+      // legacy row (userEdited undefined) into a reseed-eligible row and risk
+      // silently overwriting saved data on reload.
+
       newRecords[dayIndex] = record;
       return newRecords;
     });
@@ -1877,9 +1892,20 @@ export const RHRecordingForm = ({
       // Update the hour value (allow only 'w', 'd', 'a', or empty)
       const normalizedValue = value.toLowerCase();
       if (normalizedValue === 'w' || normalizedValue === 'd' || normalizedValue === 'a' || normalizedValue === '') {
+        const previousValue = record.hours[hourIndex];
+        if (previousValue === normalizedValue) {
+          // No actual change — focus/blur or no-op edit. Do not mark as edited
+          // or the row would stop refreshing from Fixed/Variable Tasks on reload.
+          return prevRecords;
+        }
+
         record.hours = [...record.hours];
         record.hours[hourIndex] = normalizedValue;
-        
+
+        // Mark this row as user-edited so the loader stops re-seeding it from
+        // the Fixed Task template / Variable Task overlay on reload.
+        record.userEdited = true;
+
         // Set isPlan based on the current recordMode toggle
         record.isPlan = (recordMode === 'Plan');
         

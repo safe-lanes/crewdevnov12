@@ -55,16 +55,9 @@ export const rotationDeployService = {
 
       const deployedDate = new Date().toISOString().split("T")[0];
 
-      await rotationEntriesRepository.update(entryUuid, {
-        proposalStatus: "Deployed",
-        deployedByUuid,
-        deployedDate,
-        updatedByUuid: effectiveAuditUser,
-      });
-
       let existingPlan;
       if (entry.rankId) {
-        existingPlan = await vesselPlanningRepository.findByVesselAndRank(
+        existingPlan = await vesselPlanningRepository.findPrimaryByVesselAndRank(
           entry.vesselUuid,
           entry.rankId,
           entry.rank
@@ -72,11 +65,45 @@ export const rotationDeployService = {
       }
       if (!existingPlan) {
         const allPlans = await vesselPlanningRepository.findByVesselUuid(entry.vesselUuid);
-        const matchByRank = allPlans.find((p: any) => p.rank === entry.rank && !p.isArchived);
+        const matchByRank = allPlans.find((p: any) => p.rank === entry.rank && !p.isArchived && p.crewStatus === 'primary');
         if (matchByRank) {
           existingPlan = matchByRank;
         }
       }
+
+      if (existingPlan?.relieverCrewUuid) {
+        return {
+          success: false,
+          error: "Reliever already exists. The existing reliever must either take over or be unassigned from vessel before deploying a new crew.",
+        };
+      }
+
+      let existingSecondary;
+      if (entry.rankId) {
+        existingSecondary = await vesselPlanningRepository.findSecondaryByVesselAndRank(
+          entry.vesselUuid,
+          entry.rankId,
+          undefined,
+          entry.rank
+        );
+      }
+      if (!existingSecondary) {
+        const allPlans = await vesselPlanningRepository.findByVesselUuid(entry.vesselUuid);
+        existingSecondary = allPlans.find((p: any) => p.rank === entry.rank && !p.isArchived && !p.isDeleted && p.crewStatus === 'secondary');
+      }
+      if (existingSecondary) {
+        return {
+          success: false,
+          error: "Secondary crew already exists. The secondary must take over before deploying a new crew.",
+        };
+      }
+
+      await rotationEntriesRepository.update(entryUuid, {
+        proposalStatus: "Deployed",
+        deployedByUuid,
+        deployedDate,
+        updatedByUuid: effectiveAuditUser,
+      });
 
       let planUuid: string;
       

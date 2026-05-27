@@ -118,6 +118,55 @@ function transformToV1Response(record: TestRecordWithChildren): any {
   };
 }
 
+function isValidDateString(s: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+export function parseDateLeniently(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  }
+  const dmyMatch = trimmed.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const monthName = dmyMatch[2].toLowerCase().slice(0, 3);
+    const months: Record<string, number> = {
+      jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+      jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+    };
+    const month = months[monthName];
+    if (!month) return null;
+    const year = parseInt(dmyMatch[3], 10);
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  return null;
+}
+
+export function pickRelevantDate(
+  testType: string | null | undefined,
+  dates: {
+    dateTimeTestCompleted: string | null | undefined;
+    incidentDateTime: string | null | undefined;
+    testDateTime: string | null | undefined;
+  }
+): string | null {
+  const normalized = (testType || "").toLowerCase().trim();
+  if (normalized === "post-incident") {
+    return (
+      parseDateLeniently(dates.incidentDateTime) ??
+      parseDateLeniently(dates.dateTimeTestCompleted)
+    );
+  }
+  return (
+    parseDateLeniently(dates.dateTimeTestCompleted) ??
+    parseDateLeniently(dates.testDateTime)
+  );
+}
+
 function extractDateFromTestCompleted(dateTimeTestCompleted: string): string | null {
   if (!dateTimeTestCompleted) return null;
   const match = dateTimeTestCompleted.match(/^(\d{1,2}\s+\w+\s+\d{4})/);
@@ -253,6 +302,169 @@ export const testRecordsService = {
     await this._upsertChildren(daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid);
 
     return this.getByUuid(daUuid);
+  },
+
+  async getViolationCounts(params: {
+    periodFrom: string;
+    periodTo: string;
+    vesselNames?: string[];
+    rankNames?: string[];
+    poolNames?: string[];
+    agentNames?: string[];
+  }): Promise<{ alcoholViolations: number; drugViolations: number }> {
+    const filtered = await this._getFilteredViolatingPersonnel(params);
+    let alcoholViolations = 0;
+    let drugViolations = 0;
+    for (const row of filtered) {
+      if (row.alcoholViolation) alcoholViolations++;
+      if (row.drugViolation) drugViolations++;
+    }
+    return { alcoholViolations, drugViolations };
+  },
+
+  async getViolationFormSummaries(params: {
+    periodFrom: string;
+    periodTo: string;
+    type: "alcohol" | "drug";
+    vesselNames?: string[];
+    rankNames?: string[];
+    poolNames?: string[];
+    agentNames?: string[];
+  }): Promise<
+    Array<{
+      daUuid: string;
+      testType: string | null;
+      otherTestType: string | null;
+      testDate: string;
+      vesselId: string | null;
+      vesselName: string | null;
+      alcoholViolations: number;
+      drugViolations: number;
+    }>
+  > {
+    const filtered = await this._getFilteredViolatingPersonnel(params);
+    const byForm = new Map<
+      string,
+      {
+        daUuid: string;
+        testType: string | null;
+        otherTestType: string | null;
+        testDate: string;
+        vesselId: string | null;
+        vesselName: string | null;
+        alcoholViolations: number;
+        drugViolations: number;
+      }
+    >();
+    for (const row of filtered) {
+      const existing = byForm.get(row.daUuid);
+      if (existing) {
+        if (row.alcoholViolation) existing.alcoholViolations++;
+        if (row.drugViolation) existing.drugViolations++;
+      } else {
+        byForm.set(row.daUuid, {
+          daUuid: row.daUuid,
+          testType: row.testType,
+          otherTestType: row.otherTestType,
+          testDate: row.testDate,
+          vesselId: row.vesselId,
+          vesselName: row.vesselName,
+          alcoholViolations: row.alcoholViolation ? 1 : 0,
+          drugViolations: row.drugViolation ? 1 : 0,
+        });
+      }
+    }
+    const list = Array.from(byForm.values()).filter((f) =>
+      params.type === "alcohol" ? f.alcoholViolations > 0 : f.drugViolations > 0
+    );
+    list.sort((a, b) => (a.testDate < b.testDate ? 1 : a.testDate > b.testDate ? -1 : 0));
+    return list;
+  },
+
+  async _getFilteredViolatingPersonnel(params: {
+    periodFrom: string;
+    periodTo: string;
+    vesselNames?: string[];
+    rankNames?: string[];
+    poolNames?: string[];
+    agentNames?: string[];
+  }): Promise<
+    Array<{
+      daUuid: string;
+      vesselId: string | null;
+      vesselName: string | null;
+      testType: string | null;
+      otherTestType: string | null;
+      testDate: string;
+      rank: string | null;
+      crewPool: string | null;
+      manningAgent: string | null;
+      alcoholViolation: boolean | null;
+      drugViolation: boolean | null;
+    }>
+  > {
+    const { periodFrom, periodTo, vesselNames, rankNames, poolNames, agentNames } = params;
+    if (!isValidDateString(periodFrom) || !isValidDateString(periodTo)) {
+      throw new Error("Invalid period: periodFrom and periodTo must be YYYY-MM-DD");
+    }
+    if (periodFrom > periodTo) {
+      throw new Error("Invalid period: periodFrom must be on or before periodTo");
+    }
+    const rows = await testRecordsRepository.findFinalizedViolatingPersonnelDetailed();
+    const vesselSet = vesselNames && vesselNames.length > 0 ? new Set(vesselNames) : null;
+    const rankSet = rankNames && rankNames.length > 0 ? new Set(rankNames) : null;
+    const poolSet = poolNames && poolNames.length > 0 ? new Set(poolNames) : null;
+    const agentSet = agentNames && agentNames.length > 0 ? new Set(agentNames) : null;
+
+    const out: Array<{
+      daUuid: string;
+      vesselId: string | null;
+      vesselName: string | null;
+      testType: string | null;
+      otherTestType: string | null;
+      testDate: string;
+      rank: string | null;
+      crewPool: string | null;
+      manningAgent: string | null;
+      alcoholViolation: boolean | null;
+      drugViolation: boolean | null;
+    }> = [];
+    // De-duplicate fan-out from leftJoin on crew_personal_details (in case
+    // multiple non-deleted detail rows exist for a single crewUuid). Each
+    // (daUuid, crewId-or-row-index) personnel entry should only be counted once.
+    const seen = new Set<string>();
+    let idx = 0;
+    for (const row of rows) {
+      idx++;
+      const dedupKey = `${row.daUuid}::${row.crewId ?? `__row_${idx}`}`;
+      if (seen.has(dedupKey)) continue;
+      seen.add(dedupKey);
+      const dateStr = pickRelevantDate(row.testType, {
+        dateTimeTestCompleted: row.dateTimeTestCompleted,
+        incidentDateTime: row.incidentDateTime,
+        testDateTime: row.testDateTime,
+      });
+      if (!dateStr) continue;
+      if (dateStr < periodFrom || dateStr > periodTo) continue;
+      if (vesselSet && !(row.vesselName && vesselSet.has(row.vesselName))) continue;
+      if (rankSet && !(row.rank && rankSet.has(row.rank))) continue;
+      if (poolSet && !(row.crewPool && poolSet.has(row.crewPool))) continue;
+      if (agentSet && !(row.manningAgent && agentSet.has(row.manningAgent))) continue;
+      out.push({
+        daUuid: row.daUuid,
+        vesselId: row.vesselId,
+        vesselName: row.vesselName,
+        testType: row.testType,
+        otherTestType: row.otherTestType,
+        testDate: dateStr,
+        rank: row.rank,
+        crewPool: row.crewPool,
+        manningAgent: row.manningAgent,
+        alcoholViolation: row.alcoholViolation,
+        drugViolation: row.drugViolation,
+      });
+    }
+    return out;
   },
 
   async delete(daUuid: string): Promise<void> {

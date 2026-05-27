@@ -176,7 +176,26 @@ export class VesselPlanningRepository {
     return results[0];
   }
 
-  async findSecondaryByVesselAndRank(vesselUuid: string, rankId: string, excludePlanUuid?: string): Promise<VesselPlanningV2 | undefined> {
+  async findPrimaryByVesselAndRank(vesselUuid: string, rankId: string, rank?: string): Promise<VesselPlanningV2 | undefined> {
+    const db = getDb();
+    const conditions = [
+      eq(vesselPlanningV2.vesselUuid, vesselUuid),
+      eq(vesselPlanningV2.rankId, rankId),
+      eq(vesselPlanningV2.crewStatus, 'primary'),
+      eq(vesselPlanningV2.isDeleted, false),
+      eq(vesselPlanningV2.isArchived, false),
+    ];
+    if (rank) {
+      conditions.push(eq(vesselPlanningV2.rank, rank));
+    }
+    const results = await db
+      .select()
+      .from(vesselPlanningV2)
+      .where(and(...conditions));
+    return results[0];
+  }
+
+  async findSecondaryByVesselAndRank(vesselUuid: string, rankId: string, excludePlanUuid?: string, rank?: string): Promise<VesselPlanningV2 | undefined> {
     const db = getDb();
     const conditions = [
       eq(vesselPlanningV2.vesselUuid, vesselUuid),
@@ -185,6 +204,9 @@ export class VesselPlanningRepository {
       eq(vesselPlanningV2.isDeleted, false),
       eq(vesselPlanningV2.isArchived, false),
     ];
+    if (rank) {
+      conditions.push(eq(vesselPlanningV2.rank, rank));
+    }
     const results = await db
       .select()
       .from(vesselPlanningV2)

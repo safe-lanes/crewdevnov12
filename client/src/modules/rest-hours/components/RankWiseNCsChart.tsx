@@ -53,49 +53,20 @@ export const RankWiseNCsChart = ({
     return params;
   }, [vesselIds, monthValue, complianceMode, opaMode]);
 
-  const { data: ncsData = [], isLoading, error } = useQuery<NCByRank[]>({
+  const { data: ncsData = [], isLoading, isFetching, error } = useQuery<NCByRank[]>({
     queryKey: ['v2', 'rest-hours', 'ncs-by-rank', queryParams],
     queryFn: async () => {
       if (!queryParams.monthValue) return [];
-      
-      const [year, month] = queryParams.monthValue.split('-');
-      
-      // Get vessel records for this month
-      const vesselRecords = await restHoursApiV2.vesselRecords.getAll({ month, year });
-      
-      // Filter by vesselIds if provided
-      const filteredVesselRecords = queryParams.vesselIds && queryParams.vesselIds.length > 0
-        ? vesselRecords.filter((vr: any) => queryParams.vesselIds.includes(vr.vesselId))
-        : vesselRecords;
-      
-      // Aggregate NCs by rank across all vessel records
-      const rankNCsMap = new Map<string, number>();
-      
-      for (const vr of filteredVesselRecords) {
-        try {
-          const ncsByRank = await restHoursApiV2.crewRecords.getNcsByRank({ 
-            vesselId: vr.vesselId,
-            monthValue: queryParams.monthValue,
-            complianceMode: queryParams.complianceMode,
-            opaMode: queryParams.opaMode,
-          });
-          
-          ncsByRank.forEach((item: any) => {
-            const currentCount = rankNCsMap.get(item.rank) || 0;
-            rankNCsMap.set(item.rank, currentCount + (item.ncCount || 0));
-          });
-        } catch (e) {
-          console.warn('Failed to fetch NCs for vessel record:', vr.vesselId);
-        }
-      }
-      
-      // Convert map to array
-      const result: NCByRank[] = Array.from(rankNCsMap.entries()).map(([rank, ncCount]) => ({
-        rank,
-        ncCount,
-      }));
-      
-      return result.sort((a, b) => b.ncCount - a.ncCount);
+
+      // Single backend call — server aggregates across all selected vessels
+      const result: NCByRank[] = await restHoursApiV2.crewRecords.getNcsByRank({
+        vesselId: queryParams.vesselIds && queryParams.vesselIds.length > 0 ? queryParams.vesselIds : undefined,
+        monthValue: queryParams.monthValue,
+        complianceMode: queryParams.complianceMode,
+        opaMode: queryParams.opaMode,
+      });
+
+      return result;
     },
     enabled: !!monthValue,
   });
@@ -317,7 +288,9 @@ export const RankWiseNCsChart = ({
     );
   }
 
-  if (error) {
+  // Only surface a hard error after retries have settled — transient 429s
+  // are retried by the query client and should not flash red.
+  if (error && !isFetching) {
     return (
       <div className="w-full h-full flex items-center justify-center">
         <div className="text-sm text-red-500">Failed to load NCs data</div>

@@ -1,4 +1,5 @@
 export { CrewMembersRepository } from "./crewMembersRepository";
+export { CrewTerminationsRepository, crewTerminationsRepository } from "./crewTerminationsRepository";
 export { CrewAssignmentsRepository } from "./crewAssignmentsRepository";
 export { CrewPersonalRepository } from "./crewPersonalRepository";
 export { CrewFamilyRepository } from "./crewFamilyRepository";
