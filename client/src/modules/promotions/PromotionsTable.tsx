@@ -589,16 +589,17 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         item.cesIndex,
         item.trainDocs,
       ];
+      const checklistMet = item.checklistProgressData?.meetsThreshold === true;
       const isPendingLike = (s: string) => s === 'pending' || s === 'no-info';
+      const anyPending = criteriaFields.some(isPendingLike) || !checklistMet;
       let matchesCriteria = true;
       if (criteria === 'met') {
-        matchesCriteria = criteriaFields.every(s => s === 'met');
+        matchesCriteria = criteriaFields.every(s => s === 'met') && checklistMet;
       } else if (criteria === 'pending') {
-        matchesCriteria = criteriaFields.some(isPendingLike);
+        matchesCriteria = anyPending;
       } else if (criteria === 'not-met') {
         matchesCriteria =
-          criteriaFields.some(s => s === 'not-met') &&
-          !criteriaFields.some(isPendingLike);
+          criteriaFields.some(s => s === 'not-met') && !anyPending;
       }
 
       return matchesName && matchesRank && matchesVessel && matchesVesselType && matchesNationality && matchesCriteria && matchesStatus;
