@@ -930,6 +930,7 @@ function CrewColumn({
   // Returns the vessel names to display in tooltip on hover
   const getCrewVesselInfo = (crewUuid: string): string | null => {
     const vesselNames: string[] = [];
+    const labels: string[] = [];
 
     // Check for Red: crew is Signed On or In Transit on another vessel
     const activeVessels: string[] = [];
@@ -946,7 +947,7 @@ function CrewColumn({
       }
     });
     if (activeVessels.length > 0) {
-      return `Deployed: ${activeVessels.join(', ')}`;
+      labels.push(`Deployed: ${activeVessels.join(', ')}`);
     }
 
     // Check for Purple: crew is a deployed reliever with Planned or Confirmed status.
@@ -963,7 +964,7 @@ function CrewColumn({
       }
     });
     if (purpleVessels.length > 0) {
-      return `Deployed (Awaiting Sign On): ${purpleVessels.join(', ')}`;
+      labels.push(`Deployed (Awaiting Sign On): ${purpleVessels.join(', ')}`);
     }
 
     // Check for Blue (Proposed): crew has a pending proposal awaiting Deploy approval
@@ -972,7 +973,11 @@ function CrewColumn({
       .map(p => p.vessel)
       .filter((v, i, arr) => arr.indexOf(v) === i); // unique vessel names
     if (proposedVessels.length > 0) {
-      return `Proposed (Awaiting Approval): ${proposedVessels.join(', ')}`;
+      labels.push(`Proposed (Awaiting Approval): ${proposedVessels.join(', ')}`);
+    }
+
+    if (labels.length > 0) {
+      return labels.join('\n');
     }
 
     // Check for overlapping deployments on other vessels (red color reason)
@@ -1178,7 +1183,7 @@ function CrewColumn({
                             </button>
                           </TooltipTrigger>
                           <TooltipContent side="right" className="max-w-xs">
-                            <div className="text-xs">
+                            <div className="text-xs whitespace-pre-line">
                               <span className="font-medium">Vessel: </span>{vesselInfo}
                             </div>
                           </TooltipContent>
