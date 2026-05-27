@@ -33,28 +33,41 @@ export class ApprovalsRepository {
     return results[0];
   }
 
-  async replaceForReview(reviewUuid: string, approvals: Omit<InsertPromoApprovalV2, "apUuid" | "reviewUuid">[]): Promise<PromoApprovalV2[]> {
+  async replaceForReview(
+    reviewUuid: string,
+    approvals: Omit<InsertPromoApprovalV2, "apUuid" | "reviewUuid">[],
+    scope: 'all' | 'approvals' | 'selected' = 'all',
+  ): Promise<PromoApprovalV2[]> {
     const db = getDb();
     const allRows = await db
       .select()
       .from(promoApprovalsV2)
       .where(eq(promoApprovalsV2.reviewUuid, reviewUuid));
 
-    const existing = allRows.filter(e => !e.isDeleted);
-    const softDeleted = allRows.filter(e => e.isDeleted);
+    const inScope = (r: PromoApprovalV2) => {
+      if (scope === 'all') return true;
+      if (scope === 'approvals') return !r.isSelectedForSubmission;
+      return !!r.isSelectedForSubmission;
+    };
+
+    const existing = allRows.filter((e: PromoApprovalV2) => !e.isDeleted && inScope(e));
+    const softDeleted = allRows.filter((e: PromoApprovalV2) => e.isDeleted && inScope(e));
+
+    const softDeleteScoped = async (ids: number[]) => {
+      if (ids.length === 0) return;
+      await db
+        .update(promoApprovalsV2)
+        .set({ isDeleted: true, updatedAt: new Date() })
+        .where(inArray(promoApprovalsV2.id, ids));
+    };
 
     if (approvals.length === 0) {
-      if (existing.length > 0) {
-        await db
-          .update(promoApprovalsV2)
-          .set({ isDeleted: true, updatedAt: new Date() })
-          .where(and(eq(promoApprovalsV2.reviewUuid, reviewUuid), eq(promoApprovalsV2.isDeleted, false)));
-      }
+      await softDeleteScoped(existing.map((e: PromoApprovalV2) => e.id));
       return [];
     }
 
     const matchRow = (a: any, candidates: PromoApprovalV2[], usedIds: number[]): PromoApprovalV2 | undefined => {
-      return candidates.find(e => {
+      return candidates.find((e: PromoApprovalV2) => {
         if (usedIds.includes(e.id)) return false;
         if (a.isSelectedForSubmission && e.isSelectedForSubmission) {
           if (a.approverId && e.approverId) return e.approverId === a.approverId;
@@ -76,7 +89,7 @@ export class ApprovalsRepository {
       let match = matchRow(a, existing, usedExistingIds);
 
       if (!match) {
-        match = softDeleted.find(e => {
+        match = softDeleted.find((e: PromoApprovalV2) => {
           if (usedExistingIds.includes(e.id)) return false;
           if (a.approverId && e.approverId) return e.approverId === a.approverId;
           if (a.approver && e.approver) return e.approver === a.approver;
@@ -86,17 +99,21 @@ export class ApprovalsRepository {
 
       if (match) {
         usedExistingIds.push(match.id);
+        // Use `=== undefined` (not `??`) so explicit empty strings clear fields,
+        // while truly omitted props fall back to the existing value.
+        const pick = <T>(incoming: T | undefined, existing: T): T =>
+          incoming === undefined ? existing : incoming;
         const updated = await db
           .update(promoApprovalsV2)
           .set({
-            approverId: a.approverId ?? match.approverId,
-            date: a.date ?? match.date,
-            approver: a.approver ?? match.approver,
-            status: a.status ?? match.status,
-            approval: a.approval ?? match.approval,
-            comments: a.comments ?? match.comments,
-            isFromPartA: a.isFromPartA ?? match.isFromPartA,
-            isSelectedForSubmission: a.isSelectedForSubmission ?? match.isSelectedForSubmission,
+            approverId: pick(a.approverId, match.approverId),
+            date: pick(a.date, match.date),
+            approver: pick(a.approver, match.approver),
+            status: pick(a.status, match.status),
+            approval: pick(a.approval, match.approval),
+            comments: pick(a.comments, match.comments),
+            isFromPartA: pick(a.isFromPartA, match.isFromPartA),
+            isSelectedForSubmission: pick(a.isSelectedForSubmission, match.isSelectedForSubmission),
             sortOrder: i,
             isDeleted: false,
             updatedAt: new Date(),
@@ -113,13 +130,10 @@ export class ApprovalsRepository {
       }
     }
 
-    const unusedActiveIds = existing.filter(e => !usedExistingIds.includes(e.id)).map(e => e.id);
-    if (unusedActiveIds.length > 0) {
-      await db
-        .update(promoApprovalsV2)
-        .set({ isDeleted: true, updatedAt: new Date() })
-        .where(inArray(promoApprovalsV2.id, unusedActiveIds));
-    }
+    const unusedActiveIds = existing
+      .filter((e: PromoApprovalV2) => !usedExistingIds.includes(e.id))
+      .map((e: PromoApprovalV2) => e.id);
+    await softDeleteScoped(unusedActiveIds);
 
     return results;
   }

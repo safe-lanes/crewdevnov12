@@ -575,37 +575,45 @@ export class PromotionReviewsService {
       }))));
     }
 
-    if (data.approvalData !== undefined || data.selectedApproversForSubmission !== undefined) {
-      const approvalRows: any[] = [];
+    // Persist approval-side rows (manually-added Part B approvers + Part A
+    // approver rows with isFromPartA=true) and selection-side rows (the
+    // multi-select "submit to" list) INDEPENDENTLY. A partial payload that
+    // contains only one of the two fields must not wipe the other half.
+    // Use `?? null` rather than `|| null` so explicit empty strings clear a
+    // value instead of being silently rewritten to the previous one.
+    if (data.approvalData !== undefined) {
       const approvals = this.parseJson(data.approvalData, []);
-      for (const a of approvals) {
-        approvalRows.push({
-          approverId: a.id || null,
-          date: a.date || null,
-          approver: a.approver || null,
-          status: a.status || null,
-          approval: a.approval || null,
-          comments: a.comments || null,
-          isFromPartA: a.isFromPartA || false,
-          isSelectedForSubmission: false,
-        });
-      }
+      const approvalRows: any[] = approvals.map((a: any) => ({
+        approverId: a.id ?? null,
+        date: a.date ?? null,
+        approver: a.approver ?? null,
+        status: a.status ?? null,
+        approval: a.approval ?? null,
+        comments: a.comments ?? null,
+        isFromPartA: a.isFromPartA || false,
+        isSelectedForSubmission: false,
+      }));
+      tasks.push(approvalsRepo.replaceForReview(reviewUuid, approvalRows, 'approvals'));
+    }
+
+    if (data.selectedApproversForSubmission !== undefined) {
       const selectedApprovers = this.parseJson(data.selectedApproversForSubmission, []);
+      const selectionRows: any[] = [];
       for (const item of selectedApprovers) {
         if (typeof item === 'string') {
-          approvalRows.push({
+          selectionRows.push({
             approver: item,
             isSelectedForSubmission: true,
           });
         } else {
-          approvalRows.push({
-            approverId: item.userUuid || null,
-            approver: item.displayName || item.approver || '',
+          selectionRows.push({
+            approverId: item.userUuid ?? null,
+            approver: item.displayName ?? item.approver ?? '',
             isSelectedForSubmission: true,
           });
         }
       }
-      tasks.push(approvalsRepo.replaceForReview(reviewUuid, approvalRows));
+      tasks.push(approvalsRepo.replaceForReview(reviewUuid, selectionRows, 'selected'));
     }
 
     if (data.checklistProgressData !== undefined) {
