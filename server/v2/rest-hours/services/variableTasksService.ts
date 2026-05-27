@@ -123,7 +123,7 @@ export const variableTasksService = {
 
   async recalculateConflictsForVessel(vesselId: string, monthValue: string): Promise<void> {
     try {
-      const variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthValue });
+      const variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthValue, isDraft: false });
 
       const crewRecords = await crewRecordsRepository.findAll({ vesselId, monthValue });
       if (crewRecords.length === 0) return;

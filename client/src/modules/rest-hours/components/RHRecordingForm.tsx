@@ -597,7 +597,7 @@ export const RHRecordingForm = ({
   // Filter variable tasks to only those involving the selected crew member
   const crewVariableTasks = useMemo(() => {
     if (!selectedCrewMemberId || !variableTasks.length) return [];
-    return variableTasks.filter(task => isCrewMemberInTask(task, selectedCrewMemberId));
+    return variableTasks.filter(task => !task.isDraft && isCrewMemberInTask(task, selectedCrewMemberId));
   }, [variableTasks, selectedCrewMemberId]);
 
   // Fetch date line adjustments for the selected vessel and month

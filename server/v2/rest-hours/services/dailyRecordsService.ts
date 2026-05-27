@@ -221,7 +221,7 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
 
     let variableTasks: Awaited<ReturnType<typeof variableTasksRepository.findAll>> = [];
     try {
-      variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthYear });
+      variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthYear, isDraft: false });
     } catch (e) {
       console.error('Failed to fetch variable tasks during postSaveSync:', e);
     }

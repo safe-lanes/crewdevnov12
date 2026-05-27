@@ -195,7 +195,7 @@ async function enrichRecordsWithComputedFields(
     for (const monthValue of monthValues) {
       const vtKey = `${vesselId}-${monthValue}`;
       if (!variableTasksMap.has(vtKey)) {
-        const tasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthValue });
+        const tasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthValue, isDraft: false });
         variableTasksMap.set(vtKey, tasks);
       }
     }
