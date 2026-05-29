@@ -166,6 +166,14 @@ const trainingFollowupSchema = z.object({
   addedFromDB: z.boolean().optional(),
 });
 
+// Strict version for Stage 3 validation - requires a non-empty training name.
+// Training Name is the primary identifier for G2 follow-up rows, so it must be
+// provided before Stage 3 can be submitted. Draft saves keep using the lenient
+// `trainingFollowupSchema` above.
+const trainingFollowupStage3Schema = trainingFollowupSchema.extend({
+  training: z.string().trim().min(1, "Training name is required in Part G2"),
+});
+
 // Part A schema
 const partASchema = z.object({
   seafarersName: z.string().min(1, "Seafarer's name is required"),
@@ -227,6 +235,12 @@ const partGSchema = z.object({
   trainingFollowups: z.array(trainingFollowupSchema).default([]),
 });
 
+// Part G schema for Stage 3 validation (requires non-empty G2 training names)
+const partGStage3Schema = z.object({
+  officeReviews: z.array(officeReviewSchema).default([]),
+  trainingFollowups: z.array(trainingFollowupStage3Schema).default([]),
+});
+
 // Stage-specific schemas for validation
 // Stage 1: Parts A & B (Target Setting) - evaluation optional, empty arrays allowed
 const stage1Schema = partASchema.merge(partBStage1Schema);
@@ -235,7 +249,7 @@ const stage1Schema = partASchema.merge(partBStage1Schema);
 const stage2Schema = partCSchema.merge(partDSchema).merge(partESchema).merge(partFStage2Schema);
 
 // Stage 3: Part B (Evaluation required) + Part G (Office Review)
-const stage3Schema = partBSchema.merge(partGSchema);
+const stage3Schema = partBSchema.merge(partGStage3Schema);
 
 // Full appraisal schema (for draft saves and full validation)
 const appraisalSchema = z.object({
