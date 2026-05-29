@@ -2976,7 +2976,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       )}
 
                       <div className="flex justify-end mt-6">
-                        <Button type="button" className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
                           Save
                         </Button>
                       </div>
@@ -3286,7 +3286,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       )}
 
                       <div className="flex justify-end gap-4 mt-6">
-                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
                           Save
                         </Button>
                         <Button 
@@ -3431,7 +3431,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end mt-6">
-                        <Button type="button" className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
                           Save
                         </Button>
                       </div>
@@ -3566,7 +3566,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end mt-6">
-                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
                           Save
                         </Button>
                       </div>
@@ -3718,7 +3718,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end mt-6">
-                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
                           Save
                         </Button>
                       </div>
@@ -4028,7 +4028,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             type="button"
                             className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8" 
                             onClick={handleSaveDraft}
-                            disabled={saveAppraisalMutation.isPending}
+                            disabled={saveAppraisalMutation.isPending || isPostStage3}
                           >
                             {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
                           </Button>
@@ -4322,7 +4322,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             type="button"
                             className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8" 
                             onClick={handleSaveDraft}
-                            disabled={saveAppraisalMutation.isPending}
+                            disabled={saveAppraisalMutation.isPending || isPostStage3}
                           >
                             {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
                           </Button>
