@@ -37,6 +37,7 @@ import {
   DialogTitle, 
   DialogFooter 
 } from "@/components/ui/dialog";
+import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import { format } from "date-fns";
 import { Form, FormVersion, RankGroup } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -384,6 +385,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     return String.fromCharCode(65 + visibleIndex); // Convert to letter (A=65)
   };
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
+  // Unsaved-changes tracking for the editor. `baselineConfigRef` holds the
+  // serialized configuration of the last loaded/saved state; the editor is
+  // "dirty" when the current state no longer matches it. The dialog warns the
+  // user before the Back button discards in-progress edits.
+  const baselineConfigRef = useRef<string | null>(null);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   // Initialize version state from form props to ensure consistency with list display
   const [selectedVersionNo, setSelectedVersionNo] = useState<string>(form.versionNo || "");
   const [selectedVersionDate, setSelectedVersionDate] = useState<Date | undefined>(
@@ -555,15 +562,16 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     },
   });
   const createDraftMutation = useMutation({
-    mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string }) => {
+    mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string; silent?: boolean }) => {
+      const { silent, ...payload } = versionData;
       const response = await apiRequest('POST', versionsPostUrl, {
-        ...versionData,
+        ...payload,
         status: 'draft',
         rankGroupId: currentRankGroup?.id,
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [versionsQueryKey] });
       if (useV2) {
         queryClient.invalidateQueries({ predicate: (q) => {
@@ -572,7 +580,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         }});
       }
       setHasSavedDraft(true);
-      toast({ title: "Draft saved", description: "Your changes have been saved as a draft." });
+      // Only surface the "Draft saved" toast for an explicit Save Draft action.
+      // The seed-on-entry call passes `silent: true` so entering edit mode does
+      // not falsely claim the user's (not-yet-made) changes were saved.
+      if (!variables?.silent) {
+        toast({ title: "Draft saved", description: "Your changes have been saved as a draft." });
+      }
     },
     onError: (error: Error) => {
       setHasSavedDraft(false);
@@ -660,18 +673,27 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     return result;
   }, [versionsData, hasSavedDraft, hasDraftVersion, selectedVersionNo, selectedVersionDate]);
   
-  // Build the Save Draft payload from the current in-memory form state.
-  // Single source of truth shared by the "Save Draft" button and the
-  // save-then-release flow so the two paths can never drift.
-  const buildDraftPayload = () => {
+  // Serialize the current editor state (form values + hidden fields/sections)
+  // into the exact `configuration` string shape persisted in a draft. Shared by
+  // buildDraftPayload and the unsaved-changes baseline so the dirty comparison
+  // is apples-to-apples. Visibility can be passed explicitly (used when the
+  // load effect hasn't yet committed its setState calls).
+  const computeConfigurationString = (
+    visField: typeof fieldVisibility = fieldVisibility,
+    visSection: typeof sectionVisibility = sectionVisibility,
+  ) => {
     const formData = formMethods.getValues();
-    const sharedConfig = { appraisalTypeOptions };
-    const hiddenFields = Object.entries(fieldVisibility)
+    const hiddenFields = Object.entries(visField)
       .filter(([, visible]) => !visible)
       .map(([field]) => field);
-    const hiddenSections = Object.entries(sectionVisibility)
+    const hiddenSections = Object.entries(visSection)
       .filter(([, visible]) => !visible)
       .map(([section]) => section);
+    return JSON.stringify({ ...formData, hiddenFields, hiddenSections });
+  };
+
+  const buildDraftPayload = () => {
+    const sharedConfig = { appraisalTypeOptions };
     const versionNo = selectedVersionNo || "01";
     const versionDate = selectedVersionDate
       ? format(selectedVersionDate, "dd-MMM-yyyy")
@@ -679,7 +701,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     return {
       versionNo,
       versionDate,
-      configuration: JSON.stringify({ ...formData, hiddenFields, hiddenSections }),
+      configuration: computeConfigurationString(),
       sharedConfig: JSON.stringify(sharedConfig),
     };
   };
@@ -936,7 +958,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         });
       }
       setSectionVisibility(defaultSectionVis);
-      
+
+      // Capture the freshly-loaded state as the unsaved-changes baseline. Use
+      // the locally-computed visibility (the setState calls above are not yet
+      // committed) so the baseline exactly mirrors what the form now holds.
+      baselineConfigRef.current = computeConfigurationString(defaultFieldVis, defaultSectionVis);
+
       console.log('[FormEditor] Loaded version', activeVersion, 'configuration with hiddenFields:', config.hiddenFields, 'hiddenSections:', config.hiddenSections);
     } catch (e) {
       console.warn('[FormEditor] Failed to parse version configuration:', e);
@@ -989,6 +1016,50 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       hiddenSections,
     });
     onClose();
+  };
+
+  // Persist the current state as a draft (shared by the Save Draft button and
+  // the unsaved-changes dialog). Returns true if the draft was saved, false if
+  // a validation gate stopped the save (a dialog was raised instead).
+  const saveDraft = async (): Promise<boolean> => {
+    if (isConfigMode && !runConfigModeValidation()) return false;
+    if (!isConfigMode) {
+      const validationResult = validateAssessmentCriteria();
+      if (!validationResult.isValid) {
+        setValidationErrors(validationResult.errors);
+        setShowValidationDialog(true);
+        return false;
+      }
+    }
+    const payload = buildDraftPayload();
+    try {
+      await createDraftMutation.mutateAsync(payload);
+    } catch {
+      // createDraftMutation.onError already surfaced a toast.
+      return false;
+    }
+    setHasSavedDraft(true);
+    setActiveVersion(payload.versionNo);
+    // The saved state is now the clean baseline.
+    baselineConfigRef.current = payload.configuration;
+    formMethods.handleSubmit(onSubmit)();
+    return true;
+  };
+
+  // Whether the editor has in-progress edits not yet saved to the draft.
+  // Only meaningful while editing (config mode); viewing never warns.
+  const hasUnsavedChanges = (): boolean =>
+    isConfigMode &&
+    baselineConfigRef.current !== null &&
+    computeConfigurationString() !== baselineConfigRef.current;
+
+  // Back button: warn before discarding unsaved edits; otherwise close.
+  const handleBackClick = () => {
+    if (hasUnsavedChanges()) {
+      setShowUnsavedDialog(true);
+    } else {
+      onClose();
+    }
   };
 
   // Training management functions
@@ -2004,8 +2075,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
             <Button
               variant="ghost"
               size="icon"
-              onClick={onClose}
+              onClick={handleBackClick}
               className="h-8 w-8 shrink-0"
+              data-testid="button-back"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -2135,6 +2207,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                         versionDate: format(new Date(), "dd-MMM-yyyy"),
                         configuration: releasedSrc?.configuration ?? '{}',
                         sharedConfig: releasedSrc?.sharedConfig ?? JSON.stringify({ appraisalTypeOptions }),
+                        silent: true,
                       });
                       setHasSavedDraft(true);
                     }
@@ -2155,23 +2228,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               if (isViewingReleased) return null;
               return (
             <Button 
-              onClick={() => {
-                // Same validation gates as the save-then-release flow.
-                if (isConfigMode && !runConfigModeValidation()) return;
-                if (!isConfigMode) {
-                  const validationResult = validateAssessmentCriteria();
-                  if (!validationResult.isValid) {
-                    setValidationErrors(validationResult.errors);
-                    setShowValidationDialog(true);
-                    return;
-                  }
-                }
-                const payload = buildDraftPayload();
-                createDraftMutation.mutate(payload);
-                setHasSavedDraft(true);
-                setActiveVersion(payload.versionNo);
-                formMethods.handleSubmit(onSubmit)();
-              }}
+              onClick={() => { void saveDraft(); }}
               className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
               size="sm"
               disabled={createDraftMutation.isPending || !currentRankGroup}
@@ -2919,6 +2976,23 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Unsaved changes warning when leaving the editor via Back */}
+      <UnsavedChangesDialog
+        isOpen={showUnsavedDialog}
+        title="Unsaved Changes"
+        description="You have unsaved changes. Please save your changes before exiting."
+        onSave={async () => {
+          const saved = await saveDraft();
+          setShowUnsavedDialog(false);
+          if (saved) onClose();
+        }}
+        onDiscard={() => {
+          setShowUnsavedDialog(false);
+          onClose();
+        }}
+        onCancel={() => setShowUnsavedDialog(false)}
+      />
     </div>
   );
 };
