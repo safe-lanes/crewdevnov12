@@ -2382,7 +2382,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                 <div key={section.id} className="flex items-center">
                   <button
                     type="button"
-                    onClick={() => setActiveSection(section.id)}
+                    onClick={() => scrollToSection(section.id)}
                     className="flex items-center justify-center"
                     data-testid={`button-step-mobile-${section.id}`}
                   >
@@ -2418,7 +2418,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                     <div key={section.id} className="relative">
                       <button
                         type="button"
-                        onClick={() => setActiveSection(section.id)}
+                        onClick={() => scrollToSection(section.id)}
                         className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
                           isActive 
                             ? "bg-blue-50 border-blue-600 text-blue-700" 
