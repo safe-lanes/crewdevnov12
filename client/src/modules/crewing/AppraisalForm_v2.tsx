@@ -1346,9 +1346,23 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const handleSaveDraft = () => {
     console.log('💾 handleSaveDraft called - bypassing validation');
     // Get form data with synced comments from useState hooks
+    // (this also drops completely-blank G2 follow-up rows)
     const data = getFormDataWithSyncedComments();
     console.log('💾 Form values:', data);
     console.log('💾 Form errors (ignored for draft):', form.formState.errors);
+    // Enforce mandatory G2 (Training Follow-up) name even on draft save:
+    // any remaining (non-blank) row must have a training name.
+    const hasMissingTrainingName = (data.trainingFollowups ?? []).some(
+      f => !(f.training ?? '').trim()
+    );
+    if (hasMissingTrainingName) {
+      toast({
+        title: 'Validation Error',
+        description: 'Training name is required in Part G2',
+        variant: 'destructive',
+      });
+      return;
+    }
     // Preserve current workflow status after Stage 1 or Stage 2 submission
     // Only use 'draft' status before Stage 1 has been submitted
     const statusToSave = appraisalStatus === 'draft' ? 'draft' : appraisalStatus;
