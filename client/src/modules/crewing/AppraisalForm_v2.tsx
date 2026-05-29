@@ -2985,7 +2985,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period From</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
+                                <Input {...field} min={(watchedSignOn || crewMember?.signOn) || undefined} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>

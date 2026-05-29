@@ -32,6 +32,10 @@ const PartAComponent: React.FC<PartAProps> = ({
 }) => {
   const { isLoading: ranksLoading, error: ranksError, rankOptions } = useCompanyRanks();
   const currentRank = form.watch("seafarersRank");
+  // Task #548: "Appraisal Period From" cannot be earlier than the Sign On Date.
+  // Bind the Sign On value (yyyy-mm-dd) to the date input's `min` so the native
+  // calendar disables earlier dates. Omit when no Sign On is set.
+  const signOnValue = form.watch("signOn");
   const hasLegacyRank =
     !!currentRank && !rankOptions.some((option) => option.value === currentRank);
   // Task #505: A locks once Stage 2 has been submitted on a lock-form
@@ -194,7 +198,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                   <FormItem>
                     <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period From</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" data-testid="input-period-from" />
+                      <Input {...field} min={signOnValue || undefined} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" data-testid="input-period-from" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
