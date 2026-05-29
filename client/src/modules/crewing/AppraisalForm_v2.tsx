@@ -107,6 +107,10 @@ const trainingNeedsSchema = z.object({
   training: z.string().min(1, "Training name is required"),
   comment: z.string().optional(),
   addedFromDB: z.boolean().optional(),
+  // Database course ID of the selected training (mirrors Part G's
+  // `correspondingInDB`). Used to grey out already-added trainings in the
+  // database selection dialog and prevent duplicate entries.
+  correspondingInDB: z.string().optional(),
 });
 
 // Part F schemas
@@ -753,6 +757,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             id: t.id,
             training: t.training ?? '',
             comment: t.comment ?? '',
+            addedFromDB: t.addedFromDB,
+            correspondingInDB: t.correspondingInDB,
           }))
         : [];
 
@@ -1786,6 +1792,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       training: template.name,
       comment: "",
       addedFromDB: true,
+      correspondingInDB: template.id,
     }));
     const currentTrainingNeeds = form.getValues("trainingNeeds");
     form.setValue("trainingNeeds", [...currentTrainingNeeds, ...newTrainingNeeds]);
@@ -4330,7 +4337,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         open={isTrainingNeedsDialogOpen}
         onClose={() => setIsTrainingNeedsDialogOpen(false)}
         onConfirm={addTrainingNeedsFromDatabase}
-        existingCourseIds={(form.getValues("trainingNeeds") || []).map(t => t.training).filter(Boolean)}
+        existingCourseIds={(form.getValues("trainingNeeds") || []).map(t => t.correspondingInDB).filter(Boolean) as string[]}
       />
 
       {/* Training Followup Database Selection Dialog */}
