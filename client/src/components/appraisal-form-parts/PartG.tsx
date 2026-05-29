@@ -193,13 +193,14 @@ const PartGComponent: React.FC<PartGProps> = ({
                                   onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
                                   isLoading={isLoadingDbTrainings}
                                   isError={isErrorDbTrainings}
+                                  disabled={lockSection}
                                   testId={`select-followup-db-${followup.id}`}
                                 />
                               );
                             })()}
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Select value={followup.category || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)}>
+                            <Select value={followup.category || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)} disabled={lockSection}>
                               <SelectTrigger className="h-8"><SelectValue placeholder="Select Category" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="1. Competence">1. Competence</SelectItem>
@@ -208,7 +209,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                             </Select>
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Select value={followup.status || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "status", value)}>
+                            <Select value={followup.status || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "status", value)} disabled={lockSection}>
                               <SelectTrigger className="h-8"><SelectValue placeholder="Select Status" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="Proposed">Proposed</SelectItem>

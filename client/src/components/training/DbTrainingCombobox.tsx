@@ -16,6 +16,7 @@ interface DbTrainingComboboxProps {
   onChange: (value: string) => void;
   isLoading?: boolean;
   isError?: boolean;
+  disabled?: boolean;
   testId?: string;
   triggerClassName?: string;
 }
@@ -26,6 +27,7 @@ export function DbTrainingCombobox({
   onChange,
   isLoading = false,
   isError = false,
+  disabled = false,
   testId,
   triggerClassName,
 }: DbTrainingComboboxProps) {
@@ -60,7 +62,7 @@ export function DbTrainingCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          disabled={isLoading}
+          disabled={isLoading || disabled}
           className={cn(
             'h-8 w-full justify-between text-xs font-normal px-2',
             !matched && !isUnknown && 'text-muted-foreground',

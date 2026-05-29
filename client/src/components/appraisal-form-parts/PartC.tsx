@@ -76,7 +76,7 @@ const PartCComponent: React.FC<PartCProps> = ({
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.assessmentCriteria}</td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.weight}%</td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                        <Select value={assessment.effectiveness} onValueChange={(value) => updateCompetenceAssessment(assessment.id, "effectiveness", value)}>
+                        <Select value={assessment.effectiveness} onValueChange={(value) => updateCompetenceAssessment(assessment.id, "effectiveness", value)} disabled={lockSection}>
                           <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                             <SelectValue placeholder="Select Rating" />
                           </SelectTrigger>
