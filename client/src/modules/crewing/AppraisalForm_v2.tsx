@@ -1271,27 +1271,47 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       );
       return;
     }
-    // Task #500: Stage 3 requires every B1 training row to carry an Evaluation.
+    // Task #500/#542: Stage 3 requires every B1 training row AND every B2
+    // target row to carry an Evaluation. Check both sections and, if anything
+    // is missing in either, show one generic message naming both sections.
     if (stage === 'stage3') {
-      const trainings = (form.getValues('trainings') || []) as Array<{ evaluation?: string }>;
-      const missing = trainings.findIndex(t => !((t.evaluation || '').toString().trim()));
-      if (missing !== -1) {
+      // Only check sections that are actually visible: hidden sections have
+      // their array payloads cleared during schema validation below, so stale
+      // data in a hidden B1/B2 must not block submission.
+      const trainings = isSectionVisible('partB1')
+        ? (form.getValues('trainings') || []) as Array<{ evaluation?: string }>
+        : [];
+      const targets = isSectionVisible('partB2')
+        ? (form.getValues('targets') || []) as Array<{ evaluation?: string }>
+        : [];
+      const missingB1 = trainings.findIndex(t => !((t.evaluation || '').toString().trim()));
+      const missingB2 = targets.findIndex(t => !((t.evaluation || '').toString().trim()));
+      if (missingB1 !== -1 || missingB2 !== -1) {
         toast({
-          title: 'B1 Evaluation required',
-          description: `Please provide an Evaluation for every B1 training row before submitting Stage 3 (row ${missing + 1} is missing).`,
+          title: 'B1 and B2 Evaluations are required',
+          description: 'B1 and B2 Evaluations are required. Please complete all pending evaluation ratings before submitting Stage 3.',
           variant: 'destructive',
         });
-        // Jump the user back to Part B and focus the offending Evaluation
-        // input so they can act on the error without hunting for it.
+        // Jump the user back to Part B and focus the first offending Evaluation
+        // input so they can act on the error without hunting for it. Prefer the
+        // first missing B1 row; otherwise focus the first missing B2 row.
         try {
           partBRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           setTimeout(() => {
-            // Part B renders its evaluation select with a testid keyed by the
-            // row's stable id, e.g. `select-training-eval-${training.id}`.
-            const missingId = (form.getValues('trainings')?.[missing] as any)?.id;
-            const sel = missingId
-              ? `[data-testid="select-training-eval-${missingId}"]`
-              : `[data-testid^="select-training-eval-"]`;
+            // Part B renders evaluation selects with testids keyed by the row's
+            // stable id, e.g. `select-training-eval-${id}` / `select-target-eval-${id}`.
+            let sel: string;
+            if (missingB1 !== -1) {
+              const missingId = (form.getValues('trainings')?.[missingB1] as any)?.id;
+              sel = missingId
+                ? `[data-testid="select-training-eval-${missingId}"]`
+                : `[data-testid^="select-training-eval-"]`;
+            } else {
+              const missingId = (form.getValues('targets')?.[missingB2] as any)?.id;
+              sel = missingId
+                ? `[data-testid="select-target-eval-${missingId}"]`
+                : `[data-testid^="select-target-eval-"]`;
+            }
             const el = document.querySelector<HTMLElement>(sel);
             el?.focus();
           }, 300);

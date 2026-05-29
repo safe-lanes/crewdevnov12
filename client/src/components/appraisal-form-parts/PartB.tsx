@@ -249,7 +249,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                           {showEvaluation && (
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                               <Select value={target.evaluation} onValueChange={(value) => updateTarget(target.id, "evaluation", value)} disabled={lockB2Evaluation}>
-                                <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-target-eval-${target.id}`}>
                                   <SelectValue placeholder="Select Rating" />
                                 </SelectTrigger>
                                 <SelectContent>
