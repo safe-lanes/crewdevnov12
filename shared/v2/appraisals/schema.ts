@@ -100,6 +100,7 @@ export const apprTrainingNeedsV2 = pgTable("appr_training_needs_v2", {
   trainingNeedUuid: text("training_need_uuid").notNull().unique(),
   appraisalUuid: text("appraisal_uuid").notNull(),
   training: text("training"),
+  correspondingInDb: text("corresponding_in_db"),
   comment: text("comment"),
   source: text("source").notNull().default("manual"),
   sortOrder: integer("sort_order").default(0),

@@ -66,6 +66,7 @@ export function assembleV1Response(
     trainingNeeds: trainingNeeds.map((tn, i) => ({
       id: String(i + 1),
       training: s(tn.training),
+      correspondingInDB: s(tn.correspondingInDb),
       comment: s(tn.comment),
       addedFromDB: (tn as { source?: string }).source === "db",
     })),
