@@ -811,6 +811,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         console.log('📋 Resetting form with config values');
         form.reset({ ...currentValues, ...updates }, { keepDefaultValues: false });
       }
+
+      // Task #527: the reset above overwrites `trainings` with the rank-group
+      // defaults (or an empty list), clobbering any D3 auto-rows the B1
+      // auto-merge effect had already injected. Bump the hydration token so
+      // that effect re-runs and re-injects the in-window trainings on top of
+      // the (manual) rank-group rows. Without this, new appraisals show an
+      // empty B1 even when in-window trainings exist.
+      setHydrationToken(t => t + 1);
     }
     
     // Always load hidden fields/sections from rank group config
