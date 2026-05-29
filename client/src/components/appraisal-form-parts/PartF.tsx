@@ -461,7 +461,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                 type="button"
                 className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8"
                 onClick={handleSaveDraft}
-                disabled={saveAppraisalMutation.isPending}
+                disabled={saveAppraisalMutation.isPending || isPostStage3}
                 data-testid="button-save-draft-part-f"
               >
                 {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}

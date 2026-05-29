@@ -2319,7 +2319,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             Negative top margin pulls the row closer to the Part B card so
             it doesn't float in the middle of the section gap. */}
         <div className="flex justify-end gap-4 -mt-2 sm:-mt-4">
-          <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+          <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
             Save
           </Button>
           <Button 
@@ -2496,6 +2496,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   variant="outline" 
                   size="sm"
                   onClick={handleSaveDraft}
+                  disabled={isPostStage3}
                   className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
                   data-testid="button-save-draft-header"
                 >
@@ -2506,6 +2507,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   variant="outline" 
                   size="sm"
                   onClick={handleSaveDraft}
+                  disabled={isPostStage3}
                   className="sm:hidden"
                   data-testid="button-save-draft-header-mobile"
                 >
