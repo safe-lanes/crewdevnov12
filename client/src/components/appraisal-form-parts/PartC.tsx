@@ -48,7 +48,7 @@ const PartCComponent: React.FC<PartCProps> = ({
   // Task #513: lock-form flag gates all post-stage locking.
   const lockSection = !!isLockForm && (!!isPostStage2 || !!isPostStage3);
   return (
-    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-c-lock">
+    <fieldset disabled={lockSection} className="min-w-0 border-0 p-0 m-0" data-testid="fieldset-part-c-lock">
     <div ref={partRef} data-section-id="C">
       <Card className="bg-white">
         <CardContent className="p-6">

@@ -42,7 +42,7 @@ const PartAComponent: React.FC<PartAProps> = ({
   // Stage 3 submit no longer freezes this section.
   const lockSection = !!isLockForm && (!!isPostStage2 || !!isPostStage3);
   return (
-    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-a-lock">
+    <fieldset disabled={lockSection} className="min-w-0 border-0 p-0 m-0" data-testid="fieldset-part-a-lock">
     <div ref={partRef} data-section-id="A">
       <Card className="bg-white">
         <CardContent className="p-6">

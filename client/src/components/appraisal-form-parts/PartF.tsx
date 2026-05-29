@@ -76,7 +76,7 @@ const PartFComponent: React.FC<PartFProps> = ({
   const primaryAppraiserRank = primaryAppraiserToRank[primaryAppraiserValue || ""] || "";
 
   return (
-    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-f-lock">
+    <fieldset disabled={lockSection} className="min-w-0 border-0 p-0 m-0" data-testid="fieldset-part-f-lock">
     <div ref={partRef} data-section-id="F">
       <Card className="bg-white">
         <CardContent className="p-6">
