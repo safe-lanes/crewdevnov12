@@ -658,13 +658,25 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         const prior = existingAutoRows.find(r => r.id === id)
           || existingAutoRows.find(r => normalizeName(r.training) === normalizeName(trainingName));
         const priorId = prior?.id;
-        // Prefer the live comment-state value (keyed by the prior id) over the
-        // prior RHF row so a freshly-typed comment is never dropped. A `null`
-        // value marks a deleted comment and resolves to an empty string, which
-        // also clears any stale text still sitting on the RHF row.
-        const comment = (priorId !== undefined && priorId in currentComments)
-          ? (currentComments[priorId] ?? '')
-          : (prior?.comment || '');
+        // Resolve the comment, preferring live comment-state so a freshly-typed
+        // (or deleted) comment is never dropped — even when a `form.reset`
+        // (e.g. rank-group config load) has already cleared the RHF auto rows
+        // but left the comment state intact. Order:
+        //   1. live state under the new stable id (survives a reset that wiped
+        //      the RHF rows),
+        //   2. live state under the prior row id (covers an id change across a
+        //      hydration round-trip),
+        //   3. the prior RHF row's comment.
+        // A `null` value marks a deleted comment and resolves to an empty
+        // string, also clearing any stale text still sitting on the RHF row.
+        let comment: string;
+        if (id in currentComments) {
+          comment = currentComments[id] ?? '';
+        } else if (priorId !== undefined && priorId in currentComments) {
+          comment = currentComments[priorId] ?? '';
+        } else {
+          comment = prior?.comment || '';
+        }
         autoCommentReassignments.push({ newId: id, priorId });
         return {
           id,
@@ -697,7 +709,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         if (!k.startsWith('auto:')) merged[k] = prev[k];
       });
       autoCommentReassignments.forEach(({ newId, priorId }) => {
-        if (priorId !== undefined && priorId in prev) {
+        // Keep comment state already stored under the new (stable) id — this is
+        // what survives a `form.reset` that cleared the RHF auto rows. Only fall
+        // back to the prior id when the auto id actually changed across a
+        // rebuild.
+        if (newId in prev) {
+          merged[newId] = prev[newId];
+        } else if (priorId !== undefined && priorId in prev) {
           merged[newId] = prev[priorId];
         }
       });
