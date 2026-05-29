@@ -178,7 +178,7 @@ const trainingFollowupStage3Schema = trainingFollowupSchema.extend({
 const partASchema = z.object({
   seafarersName: z.string().min(1, "Seafarer's name is required"),
   seafarersRank: z.string().min(1, "Seafarer's rank is required"),
-  nationality: z.string().min(1, "Nationality is required"),
+  nationality: z.string().optional(),
   vessel: z.string().min(1, "Vessel is required"),
   signOn: z.string().optional(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
@@ -256,7 +256,7 @@ const appraisalSchema = z.object({
   // Part A: Seafarer's Information
   seafarersName: z.string().min(1, "Seafarer's name is required"),
   seafarersRank: z.string().min(1, "Seafarer's rank is required"),
-  nationality: z.string().min(1, "Nationality is required"),
+  nationality: z.string().optional(),
   vessel: z.string().min(1, "Vessel is required"),
   signOn: z.string().optional(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
@@ -2753,7 +2753,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="nationality"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality<RequiredMark /></FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality</FormLabel>
                               <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
                                 <PopoverTrigger asChild>
                                   <FormControl>
@@ -2768,7 +2768,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     >
                                       {field.value
                                         ? NATIONALITIES.find(
-                                            (nationality) => nationality.toLowerCase() === field.value.toLowerCase()
+                                            (nationality) => nationality.toLowerCase() === field.value?.toLowerCase()
                                           )
                                         : "Select nationality..."}
                                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

@@ -87,7 +87,7 @@ export const trainingFollowupSchema = z.object({
 export const appraisalFormDataSchema = z.object({
   seafarersName: z.string(),
   seafarersRank: z.string(),
-  nationality: z.string(),
+  nationality: z.string().optional(),
   vessel: z.string(),
   signOn: z.string().optional(),
   appraisalType: z.string(),

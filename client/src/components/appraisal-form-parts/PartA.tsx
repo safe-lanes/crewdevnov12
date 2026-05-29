@@ -103,7 +103,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                 name="nationality"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality<RequiredMark /></FormLabel>
+                    <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality</FormLabel>
                     <FormControl>
                       <Input {...field} readOnly tabIndex={-1} placeholder="Enter nationality" className="bg-gray-50 text-gray-700 cursor-not-allowed focus-visible:ring-0 focus-visible:ring-offset-0" data-testid="input-nationality" />
                     </FormControl>
