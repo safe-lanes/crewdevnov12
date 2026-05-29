@@ -353,6 +353,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const [editingTraining, setEditingTraining] = useState<string | null>(null);
   const [editingTarget, setEditingTarget] = useState<string | null>(null);
   const [trainingComments, setTrainingComments] = useState<{[key: string]: string | null}>({});
+  // Task #540: mirror trainingComments in a ref so the B1 auto-merge effect can
+  // read the latest comment state (including freshly-typed or deleted comments)
+  // when it rebuilds auto rows, without adding trainingComments to its dep array
+  // (which would re-run the merge on every keystroke).
+  const trainingCommentsRef = useRef<{[key: string]: string | null}>({});
+  useEffect(() => { trainingCommentsRef.current = trainingComments; }, [trainingComments]);
   const [targetComments, setTargetComments] = useState<{[key: string]: string | null}>({});
   const [competenceComments, setCompetenceComments] = useState<{[key: string]: string | null}>({});
   const [behaviouralComments, setBehaviouralComments] = useState<{[key: string]: string | null}>({});
@@ -629,6 +635,16 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       r => !autoNames.has((r.training || '').toString().trim().toLowerCase()),
     );
 
+    const normalizeName = (s?: string) => (s || '').toString().trim().toLowerCase();
+    // Latest comment state (including in-flight edits/deletions not yet folded
+    // back into the RHF rows). Used to keep a just-typed comment from being
+    // dropped when the auto rows are rebuilt.
+    const currentComments = trainingCommentsRef.current;
+    // Records how each rebuilt auto row inherits its comment-state key, so we
+    // can re-key `trainingComments` after the merge even when the auto id
+    // changes across a hydration round-trip.
+    const autoCommentReassignments: Array<{ newId: string; priorId?: string }> = [];
+
     const autoRows = (crewTrainingCourses || [])
       .filter(c => inWindow(c.issued))
       .map(c => {
@@ -637,15 +653,24 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         const id = `auto:${stableKey}`;
         // Preserve any existing evaluation/comment across re-renders, including
         // after a server hydration that renumbers IDs. We first try to match by
-        // our prefixed `auto:` id, then fall back to source+training-name —
+        // our prefixed `auto:` id, then fall back to training-name (normalized),
         // which is what survives a hydration round-trip.
         const prior = existingAutoRows.find(r => r.id === id)
-          || existingAutoRows.find(r => r.training === trainingName);
+          || existingAutoRows.find(r => normalizeName(r.training) === normalizeName(trainingName));
+        const priorId = prior?.id;
+        // Prefer the live comment-state value (keyed by the prior id) over the
+        // prior RHF row so a freshly-typed comment is never dropped. A `null`
+        // value marks a deleted comment and resolves to an empty string, which
+        // also clears any stale text still sitting on the RHF row.
+        const comment = (priorId !== undefined && priorId in currentComments)
+          ? (currentComments[priorId] ?? '')
+          : (prior?.comment || '');
+        autoCommentReassignments.push({ newId: id, priorId });
         return {
           id,
           training: trainingName,
           evaluation: prior?.evaluation || '',
-          comment: prior?.comment || '',
+          comment,
           source: 'auto' as const,
         };
       });
@@ -660,6 +685,28 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     if (!same) {
       form.setValue('trainings', next as any, { shouldDirty: false });
     }
+
+    // Re-key `trainingComments` so each auto row's comment state follows its
+    // (possibly rebuilt) id. Strip every stale `auto:` key and re-add the
+    // inherited value under the new id — including `null` for a deleted comment
+    // and `""` for a freshly-opened empty box. Manual-row keys are untouched.
+    // Bail out when nothing actually changed to avoid an extra render.
+    setTrainingComments(prev => {
+      const merged: {[key: string]: string | null} = {};
+      Object.keys(prev).forEach(k => {
+        if (!k.startsWith('auto:')) merged[k] = prev[k];
+      });
+      autoCommentReassignments.forEach(({ newId, priorId }) => {
+        if (priorId !== undefined && priorId in prev) {
+          merged[newId] = prev[priorId];
+        }
+      });
+      const prevKeys = Object.keys(prev);
+      const mergedKeys = Object.keys(merged);
+      const unchanged = prevKeys.length === mergedKeys.length
+        && mergedKeys.every(k => k in prev && prev[k] === merged[k]);
+      return unchanged ? prev : merged;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(crewTrainingCourses), watchedSignOn, crewMember?.signOn, isPostStage2, hydrationToken]);
 
