@@ -1312,6 +1312,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         });
       return [...prev, ...newTrainings];
     });
+    setIsTrainingDialogOpen(false);
   }, []);
 
   const addApprover = useCallback(() => {
