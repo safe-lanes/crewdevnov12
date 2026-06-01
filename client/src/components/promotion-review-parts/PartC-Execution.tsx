@@ -51,12 +51,12 @@ export const PartCExecution = memo(function PartCExecution({
 
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-medium text-[#16569e]">C.1 Confirmation & Assignment</h3>
+            <h3 className="text-base font-medium text-[#16569e]">C1 Confirmation & Assignment</h3>
             <Info className="h-4 w-4 text-gray-400 cursor-help" />
           </div>
 
           <div className="flex items-center gap-4">
-            <Label className="text-sm w-48">B2.1 Promotion confirmed:</Label>
+            <Label className="text-sm w-48">C1.1 Promotion confirmed:</Label>
             <RadioGroup 
               value={promotionConfirmed} 
               onValueChange={onSetPromotionConfirmed}
@@ -78,7 +78,7 @@ export const PartCExecution = memo(function PartCExecution({
           </div>
 
           <div className="flex items-center gap-4">
-            <Label className="text-sm w-48">B2.2 Vessel Assigned:</Label>
+            <Label className="text-sm w-48">C1.2 Vessel Assigned:</Label>
             <Select 
               value={vesselAssigned}
               onValueChange={onSetVesselAssigned}
@@ -101,7 +101,7 @@ export const PartCExecution = memo(function PartCExecution({
           </div>
 
           <div className="flex items-center gap-4">
-            <Label className="text-sm w-48">B2.3 Date of Promotion:</Label>
+            <Label className="text-sm w-48">C1.3 Date of Promotion:</Label>
             <Input 
               type="date" 
               className="w-40"
