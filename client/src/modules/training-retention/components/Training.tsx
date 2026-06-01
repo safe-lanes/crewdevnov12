@@ -36,6 +36,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
+import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 import { cn } from "@/lib/utils";
 
 type AggregatedRow = {
@@ -53,6 +54,12 @@ type AggregatedRow = {
   editable: "limited" | "full";
   crewMemberId: string | null;
   rankId: string | null;
+};
+
+// Row shape passed to the grid: AggregatedRow plus the resolved DB training name
+// (raw correspondingInDb id is preserved for the edit dialog).
+type GridRow = AggregatedRow & {
+  correspondingInDbName: string | null;
 };
 
 type CompanyTrainingLookup = {
@@ -168,6 +175,11 @@ export const Training = (): JSX.Element => {
     queryKey: ["/api/v2/training-needs"],
   });
 
+  // Resolve the stored numeric company-training id (correspondingInDb) to its
+  // display name. The raw id is preserved on the row; only the displayed value
+  // is the resolved name so sort/filter/CSV-Excel export all operate on names.
+  const { getName: getDbTrainingName } = useCompanyTrainings();
+
   const { data: companyTrainings = [] } = useQuery<CompanyTrainingLookup[]>({
     queryKey: ["/api/v2/admin/company-trainings"],
   });
@@ -212,16 +224,23 @@ export const Training = (): JSX.Element => {
     return Array.from(set).sort();
   }, [rows]);
 
-  const filtered = useMemo(() => {
+  const filtered = useMemo<GridRow[]>(() => {
     const q = appliedFilters.searchName.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (appliedFilters.source !== "all" && r.source !== appliedFilters.source) return false;
-      if (appliedFilters.rank !== "all" && (r.rank || "") !== appliedFilters.rank) return false;
-      if (appliedFilters.status !== "all" && (r.status || "") !== appliedFilters.status) return false;
-      if (!q) return true;
-      return (r.name || "").toLowerCase().includes(q);
-    });
-  }, [rows, appliedFilters]);
+    return rows
+      .filter((r) => {
+        if (appliedFilters.source !== "all" && r.source !== appliedFilters.source) return false;
+        if (appliedFilters.rank !== "all" && (r.rank || "") !== appliedFilters.rank) return false;
+        if (appliedFilters.status !== "all" && (r.status || "") !== appliedFilters.status) return false;
+        if (!q) return true;
+        return (r.name || "").toLowerCase().includes(q);
+      })
+      .map((r) => ({
+        ...r,
+        correspondingInDbName: r.correspondingInDb
+          ? getDbTrainingName(r.correspondingInDb) ?? r.correspondingInDb
+          : null,
+      }));
+  }, [rows, appliedFilters, getDbTrainingName]);
 
   const setDraft = <K extends keyof FilterState>(k: K, v: FilterState[K]) =>
     setDraftFilters((p) => ({ ...p, [k]: v }));
@@ -304,7 +323,7 @@ export const Training = (): JSX.Element => {
       },
       {
         headerName: "Training (DB)",
-        field: "correspondingInDb",
+        field: "correspondingInDbName",
         flex: 1.2,
         valueFormatter: (p) => p.value || "-",
         cellStyle: { fontSize: "13px", color: "#4f5863" },
