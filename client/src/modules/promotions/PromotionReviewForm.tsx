@@ -1727,7 +1727,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                     <Button 
                       type="button"
                       variant="outline" 
-                      className="px-8"
+                      className="px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
                       onClick={handleSaveDraftA}
                       data-testid="button-save-part-a"
                     >
