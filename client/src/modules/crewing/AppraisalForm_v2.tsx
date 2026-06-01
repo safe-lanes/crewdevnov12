@@ -178,7 +178,7 @@ const trainingFollowupStage3Schema = trainingFollowupSchema.extend({
 const partASchema = z.object({
   seafarersName: z.string().min(1, "Seafarer's name is required"),
   seafarersRank: z.string().min(1, "Seafarer's rank is required"),
-  nationality: z.string().optional(),
+  nationality: z.string().nullish(),
   vessel: z.string().min(1, "Vessel is required"),
   signOn: z.string().optional(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
@@ -256,7 +256,7 @@ const appraisalSchema = z.object({
   // Part A: Seafarer's Information
   seafarersName: z.string().min(1, "Seafarer's name is required"),
   seafarersRank: z.string().min(1, "Seafarer's rank is required"),
-  nationality: z.string().optional(),
+  nationality: z.string().nullish(),
   vessel: z.string().min(1, "Vessel is required"),
   signOn: z.string().optional(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
@@ -1037,14 +1037,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       const stageData = {
         seafarersName: formData.seafarersName,
         seafarersRank: formData.seafarersRank,
-        nationality: formData.nationality,
+        nationality: formData.nationality ?? "",
         vessel: formData.vessel,
-        signOn: formData.signOn,
+        signOn: formData.signOn ?? "",
         appraisalType: formData.appraisalType,
-        appraisalPeriodFrom: formData.appraisalPeriodFrom,
-        appraisalPeriodTo: formData.appraisalPeriodTo,
-        personalityIndexCategory: formData.personalityIndexCategory,
-        primaryAppraiser: formData.primaryAppraiser,
+        appraisalPeriodFrom: formData.appraisalPeriodFrom ?? "",
+        appraisalPeriodTo: formData.appraisalPeriodTo ?? "",
+        personalityIndexCategory: formData.personalityIndexCategory ?? "",
+        primaryAppraiser: formData.primaryAppraiser ?? "",
         trainings: formData.trainings,
         targets: formData.targets,
       };

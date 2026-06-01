@@ -8,7 +8,7 @@ const stage1SubmissionSchema = z.object({
   data: z.object({
     seafarersName: z.string().min(1),
     seafarersRank: z.string().min(1),
-    nationality: z.string().min(1),
+    nationality: z.string().nullish(),
     vessel: z.string().min(1),
     appraisalType: z.string().min(1),
     signOn: z.string().optional(),
