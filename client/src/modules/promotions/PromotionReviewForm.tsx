@@ -1046,14 +1046,30 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     };
   }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses, effectiveReviewUuid]);
 
+  const validateTrainingNames = useCallback(() => {
+    const hasBlankTrainingName = trainingNeeds.some(t => !t.training?.trim());
+    if (hasBlankTrainingName) {
+      toast({
+        title: "Training name is required in part A3",
+        description: "Please enter a training name for every row before saving.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  }, [trainingNeeds, toast]);
+
   const handleSaveDraftA = useCallback(() => {
+    if (!validateTrainingNames()) {
+      return;
+    }
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
     }, 'a');
     saveMutation.mutate({ data: reviewData, action: 'draft' });
-  }, [collectFormData, saveMutation]);
+  }, [collectFormData, saveMutation, validateTrainingNames]);
 
   const handleSaveDraftB = useCallback(() => {
     const reviewData = collectFormData({
@@ -1388,6 +1404,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     if (isSubmittingForApproval) {
       return;
     }
+
+    if (!validateTrainingNames()) {
+      return;
+    }
     
     if (selectedApproversForSubmission.length === 0) {
       toast({
@@ -1484,7 +1504,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       .finally(() => {
         setIsSubmittingForApproval(false);
       });
-  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData]);
+  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData, validateTrainingNames]);
 
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
