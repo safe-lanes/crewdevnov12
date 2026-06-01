@@ -139,6 +139,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         onChange={(value) => onUpdateTraining(training.id, 'correspondingInDB', value)}
                         isLoading={isLoadingDbTrainings}
                         isError={isErrorDbTrainings}
+                        fallbackLabel={training.training}
                         testId={`select-training-db-${training.id}`}
                       />
                     )}

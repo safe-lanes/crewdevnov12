@@ -194,6 +194,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                                   isLoading={isLoadingDbTrainings}
                                   isError={isErrorDbTrainings}
                                   disabled={lockSection}
+                                  fallbackLabel={followup.training}
                                   testId={`select-followup-db-${followup.id}`}
                                 />
                               );

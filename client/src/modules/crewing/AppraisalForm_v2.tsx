@@ -4274,6 +4274,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                             onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
                                             isLoading={isLoadingDbTrainings}
                                             isError={isErrorDbTrainings}
+                                            fallbackLabel={followup.training}
                                             testId={`select-followup-db-${followup.id}`}
                                           />
                                         )}
