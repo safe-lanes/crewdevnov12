@@ -1882,6 +1882,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       updateTarget={updateTarget}
       deleteTarget={deleteTarget}
       setShowEffectivenessDialog={setShowEffectivenessDialog}
+      disableAddButtons={true}
     />
   );
 
@@ -1938,6 +1939,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       addTrainingNeed={addTrainingNeed}
       updateTrainingNeed={updateTrainingNeed}
       deleteTrainingNeed={deleteTrainingNeed}
+      disableAddButtons={true}
     />
   );
 
@@ -1975,6 +1977,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       addTrainingFollowup={addTrainingFollowup}
       updateTrainingFollowup={updateTrainingFollowup}
       deleteTrainingFollowup={deleteTrainingFollowup}
+      disableAddButtons={true}
     />
   );
 

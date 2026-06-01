@@ -25,6 +25,7 @@ const PartGComponent: React.FC<PartGProps> = ({
   addTrainingFollowup,
   updateTrainingFollowup,
   deleteTrainingFollowup,
+  disableAddButtons = false,
 }) => {
 
   return (
@@ -71,6 +72,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                   type="button"
                   variant="outline"
                   size="sm"
+                  disabled={disableAddButtons}
                   onClick={() => addTrainingFollowup('database')}
                   className="flex items-center gap-1"
                   data-testid="button-add-followup-from-db"
@@ -82,6 +84,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                   type="button"
                   variant="outline"
                   size="sm"
+                  disabled={disableAddButtons}
                   onClick={() => addTrainingFollowup('new')}
                   className="flex items-center gap-1"
                   data-testid="button-add-new-followup"

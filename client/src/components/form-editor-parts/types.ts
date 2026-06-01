@@ -166,6 +166,7 @@ export interface PartBProps extends FormSectionBaseProps {
   updateTarget: (id: string, field: string, value: string) => void;
   deleteTarget: (id: string) => void;
   setShowEffectivenessDialog: (show: boolean) => void;
+  disableAddButtons?: boolean;
 }
 
 export interface PartCProps extends FormSectionBaseProps {
@@ -206,6 +207,7 @@ export interface PartEProps extends FormSectionBaseProps {
   addTrainingNeed: (type: 'database' | 'new') => void;
   updateTrainingNeed: (id: string, field: string, value: string) => void;
   deleteTrainingNeed: (id: string) => void;
+  disableAddButtons?: boolean;
 }
 
 export interface PartFProps extends FormSectionBaseProps {
@@ -233,6 +235,7 @@ export interface PartGProps extends FormSectionBaseProps {
   addTrainingFollowup: (type: 'database' | 'new') => void;
   updateTrainingFollowup: (id: string, field: string, value: string) => void;
   deleteTrainingFollowup: (id: string) => void;
+  disableAddButtons?: boolean;
 }
 
 export const getScoreColors = (score: number) => {
