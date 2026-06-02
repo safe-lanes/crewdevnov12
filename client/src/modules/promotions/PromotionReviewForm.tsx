@@ -1567,9 +1567,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         disableSaveDraft={lockState.lockPartC}
       >
       {({ activeSection, form, showConfirmDialog }) => {
-        const submitMessage = lockState.isLockForm
-          ? 'Upon submission, the form will be locked.'
-          : 'Are you sure you want to submit?';
+        const submitMessage = 'after submit the section should be locked';
         const confirmSubmitA = () =>
           showConfirmDialog('Submit for Approval', submitMessage, handleSubmitForApproval);
         const confirmSubmitB = () =>
