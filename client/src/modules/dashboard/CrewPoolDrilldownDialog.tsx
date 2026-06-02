@@ -27,6 +27,7 @@ interface CrewRow {
   manningAgentName?: string | null;
   crewPool?: string | null;
   presentVessel?: string | null;
+  presentVesselName?: string | null;
 }
 
 interface CrewListResponse {
@@ -285,7 +286,7 @@ export const CrewPoolDrilldownDialog = ({
                         <td className="px-4 py-2 text-sm">{buildName(c)}</td>
                         <td className="px-4 py-2 text-sm">{c.presentRank || ""}</td>
                         <td className="px-4 py-2 text-sm">{nationalityName}</td>
-                        <td className="px-4 py-2 text-sm">{c.presentVessel || ""}</td>
+                        <td className="px-4 py-2 text-sm">{c.presentVesselName || ""}</td>
                         <td className="px-4 py-2 text-sm">{c.crewPool || ""}</td>
                         <td className="px-4 py-2 text-sm">
                           {c.manningAgentName || ""}
