@@ -6229,8 +6229,29 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             }
             setDeletedChildUuids([]);
           }
-          if (formData.children && formData.children.length > 0) {
-            formData.children.forEach((child: any, index: number) => {
+          // Keep only rows with at least one filled field (drops ALL blank rows from save + UI).
+          const nonBlankChildren = (formData.children ?? []).filter((c: any) =>
+            (c.firstName ?? '').trim() || (c.middleName ?? '').trim() ||
+            (c.familyName ?? '').trim() || (c.dateOfBirth ?? '').trim() ||
+            (c.gender ?? '').trim()
+          );
+          // Already-saved blank rows (blank but have a childUuid) -> delete from DB so they don't return on reload.
+          const blankSavedChildUuids = (formData.children ?? [])
+            .filter((c: any) => c.childUuid && !deletedChildUuids.includes(c.childUuid) &&
+              !(c.firstName ?? '').trim() && !(c.middleName ?? '').trim() &&
+              !(c.familyName ?? '').trim() && !(c.dateOfBirth ?? '').trim() && !(c.gender ?? '').trim())
+            .map((c: any) => c.childUuid as string);
+          for (const childUuid of blankSavedChildUuids) {
+            miscOps.push(async () => {
+              try { await crewPoolApiV2.deleteChild(crewIdentifier, childUuid); } catch (e) { /* ignore */ }
+            });
+          }
+          // Reflect removal of all blank rows in live state (no refresh; also cleans the PDF source).
+          if (nonBlankChildren.length !== (formData.children?.length ?? 0)) {
+            setFormData(prev => ({ ...prev, children: nonBlankChildren }));
+          }
+          if (nonBlankChildren.length > 0) {
+            nonBlankChildren.forEach((child: any, index: number) => {
               const childData = {
                 firstName: child.firstName,
                 middleName: child.middleName,
@@ -7000,7 +7021,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         spouseMiddleName: formData.spouseMiddleName,
         spouseFamilyName: formData.spouseFamilyName,
         spouseDateOfBirth: formData.spouseDateOfBirth,
-        children: formData.children,
+        children: (formData.children ?? []).filter((c: any) =>
+          (c.firstName ?? '').trim() ||
+          (c.middleName ?? '').trim() ||
+          (c.familyName ?? '').trim() ||
+          (c.dateOfBirth ?? '').trim() ||
+          (c.gender ?? '').trim()
+        ),
         nokFirstName: formData.nokFirstName,
         nokMiddleName: formData.nokMiddleName,
         nokFamilyName: formData.nokFamilyName,
@@ -7231,9 +7258,33 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         }
         setDeletedChildUuids(prev => prev.filter(id => !successfulDeletes.includes(id)));
       }
-      if (formData.children && formData.children.length > 0) {
-        for (let index = 0; index < formData.children.length; index++) {
-          const child = formData.children[index] as any;
+      // Keep only rows with at least one filled field (drops ALL blank rows from save + UI).
+      const nonBlankChildren = (formData.children ?? []).filter((c: any) =>
+        (c.firstName ?? '').trim() || (c.middleName ?? '').trim() ||
+        (c.familyName ?? '').trim() || (c.dateOfBirth ?? '').trim() ||
+        (c.gender ?? '').trim()
+      );
+      // Already-saved blank rows (blank but have a childUuid) -> delete from DB so they don't return on reload.
+      const blankSavedChildUuids = (formData.children ?? [])
+        .filter((c: any) => c.childUuid && !deletedChildUuids.includes(c.childUuid) &&
+          !(c.firstName ?? '').trim() && !(c.middleName ?? '').trim() &&
+          !(c.familyName ?? '').trim() && !(c.dateOfBirth ?? '').trim() && !(c.gender ?? '').trim())
+        .map((c: any) => c.childUuid as string);
+      for (const childUuid of blankSavedChildUuids) {
+        try {
+          await crewPoolApiV2.deleteChild(crewUuid, childUuid);
+        } catch (e) {
+          console.error(`[V2] Failed to delete blank child ${childUuid}:`, e);
+          b3HasErrors = true;
+        }
+      }
+      // Reflect removal of all blank rows in live state (no refresh; also cleans the PDF source).
+      if (nonBlankChildren.length !== (formData.children?.length ?? 0)) {
+        setFormData(prev => ({ ...prev, children: nonBlankChildren }));
+      }
+      if (nonBlankChildren.length > 0) {
+        for (let index = 0; index < nonBlankChildren.length; index++) {
+          const child = nonBlankChildren[index] as any;
           const childData = {
             firstName: child.firstName, middleName: child.middleName,
             familyName: child.familyName, dob: child.dateOfBirth,
