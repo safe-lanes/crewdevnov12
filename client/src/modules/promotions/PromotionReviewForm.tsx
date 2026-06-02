@@ -118,10 +118,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const vesselOptions = useMemo(() => {
     if (!vesselMasterData) return [];
-    return vesselMasterData.map((vessel: any) => ({
-      id: String(vessel.id || vessel.vesselId || vessel.nuid),
-      name: vessel.name || vessel.vesselName || 'Unknown Vessel',
-    }));
+    // Use the vessel's stable UUID as the option value (persisted in
+    // vessel_assigned) so promotions reference the vessel by UUID, not by a
+    // numeric/display id. The label remains the current vessel name and is
+    // re-resolved from master data, so a later rename is always reflected.
+    return vesselMasterData
+      .map((vessel: any) => ({
+        id: String(vessel.vesselUuid || vessel.uuid || vessel.entryId || ''),
+        name: vessel.vessel || vessel.name || vessel.vesselName || 'Unknown Vessel',
+      }))
+      .filter((v) => v.id !== '');
   }, [vesselMasterData]);
 
   const [currentUserDisplay, setCurrentUserDisplay] = useState(() => getCurrentUserDisplay());

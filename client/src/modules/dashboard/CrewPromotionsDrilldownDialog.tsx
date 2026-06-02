@@ -139,6 +139,34 @@ export const CrewPromotionsDrilldownDialog = ({
     enabled: open,
   });
 
+  const { data: vessels = [] } = useQuery<any[]>({
+    queryKey: ["/api/v2/masters/vessels"],
+    staleTime: 60 * 1000,
+    enabled: open,
+  });
+
+  // Resolve the stored vessel reference to the vessel's CURRENT name. Promotions
+  // store the vessel UUID (vessel_assigned); we key the map by UUID and also by
+  // numeric id / name so legacy or not-yet-backfilled rows still resolve. The
+  // name is read from master data, so a later vessel rename is reflected here.
+  const vesselNameByKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const v of vessels) {
+      const name = v.vessel || v.name || v.vesselName;
+      if (!name) continue;
+      for (const k of [v.vesselUuid, v.uuid, v.entryId, v.id, v.vesselId]) {
+        if (k != null && String(k).trim() !== "") map.set(String(k), name);
+      }
+    }
+    return map;
+  }, [vessels]);
+
+  const resolveVesselName = (value: string | null | undefined): string => {
+    const raw = (value || "").trim();
+    if (!raw) return "";
+    return vesselNameByKey.get(raw) || raw;
+  };
+
   const crewNameMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const c of crewMembers) {
@@ -265,7 +293,7 @@ export const CrewPromotionsDrilldownDialog = ({
                         <td className="px-4 py-2 text-sm">{name}</td>
                         <td className="px-4 py-2 text-sm">{crewId}</td>
                         <td className="px-4 py-2 text-sm">{r.promotionToRank || ""}</td>
-                        <td className="px-4 py-2 text-sm">{r.vesselAssigned || ""}</td>
+                        <td className="px-4 py-2 text-sm">{resolveVesselName(r.vesselAssigned)}</td>
                         <td className="px-4 py-2 text-sm">{formatDate(r.promotionDate)}</td>
                         <td className="px-4 py-2 text-sm">
                           {r.status ? (
