@@ -1529,11 +1529,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     />
   ), [cesTests, updateCesTest, deleteCesTest]);
 
-  // Task #569: stage-wise locking, mirroring the appraisal "Lock form" feature.
-  // The admin lock flag lives on the "Promotion Review Form" admin form. While the
-  // review is still editable (draft/in_progress) we read the live flag; once the
-  // review reaches "submitted" we use the snapshot persisted on the review so later
-  // admin toggles do not retroactively change already-submitted reviews.
+  // Stage-wise locking, mirroring the appraisal "Lock form" feature. The admin
+  // lock flag lives on the "Promotion Review Form" admin form. We read it live
+  // here; lockState combines this with the snapshot frozen on the review at
+  // submit time (see lockState below).
   const promotionFormLockLive = useMemo(() => {
     const promotionReviewForm = formsData?.find(f => f.name === 'Promotion Review Form');
     return !!(promotionReviewForm as any)?.isLockForm;
@@ -1544,9 +1543,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const isSubmittedPlus = ['submitted', 'approved', 'completed'].includes(statusNorm);
     const isApprovedPlus = ['approved', 'completed'].includes(statusNorm);
     const isCompleted = statusNorm === 'completed';
-    const isLockForm = isSubmittedPlus
-      ? !!(existingReviewData as any)?.isLockForm
-      : promotionFormLockLive;
+    // Lock when EITHER the snapshot frozen at submit time is set, OR the form's
+    // live admin lock flag is currently on. This keeps the admin-flag gate (no
+    // flag = no lock), preserves the freeze (a review submitted while locked
+    // stays locked even if the flag is later turned off), and ensures reviews
+    // submitted before this feature existed (snapshot defaulted false) still
+    // lock once the admin enables the flag.
+    const isLockForm = !!(existingReviewData as any)?.isLockForm || promotionFormLockLive;
     return {
       isLockForm,
       lockPartA: isLockForm && isSubmittedPlus,
