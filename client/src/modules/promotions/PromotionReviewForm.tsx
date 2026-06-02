@@ -1650,6 +1650,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   checklistProgressData={existingReviewData?.checklistProgressData}
                   minChecklistVerifications={a2Config?.minChecklistVerifications ?? undefined}
                   minChecklistCompletionPercent={a2Config?.minChecklistCompletionPercent ?? undefined}
+                  disabled={lockState.lockPartA}
                 />
 
                 <PartATrainingNeeds
@@ -1669,6 +1670,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   dbTrainings={dbTrainings}
                   isLoadingDbTrainings={isLoadingDbTrainings}
                   isErrorDbTrainings={isErrorDbTrainings}
+                  disabled={lockState.lockPartA}
                 />
 
                 <div className="border border-[#EAEBEF] rounded-lg p-4">
@@ -1835,6 +1837,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               onSave={handleSaveDraftB}
               onSubmit={confirmSubmitB}
               approverNames={approverMasterData.map(a => a.displayName)}
+              disabled={lockState.lockPartB}
             />
             </fieldset>
           )}
@@ -1854,6 +1857,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               currentUserDisplay={currentUserDisplay}
               onSave={handleSaveDraftC}
               onSubmit={confirmSubmitC}
+              disabled={lockState.lockPartC}
             />
             </fieldset>
           )}

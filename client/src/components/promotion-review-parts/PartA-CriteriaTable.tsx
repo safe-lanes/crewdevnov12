@@ -32,6 +32,7 @@ interface PartACriteriaTableProps extends React.HTMLAttributes<HTMLDivElement> {
   checklistProgressData?: string | null;
   minChecklistVerifications?: number;
   minChecklistCompletionPercent?: number;
+  disabled?: boolean;
 }
 
 const getCurrentUserDisplay = (): string => {
@@ -63,6 +64,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
   checklistProgressData,
   minChecklistVerifications = 0,
   minChecklistCompletionPercent = 100,
+  disabled = false,
   ...restProps
 }: PartACriteriaTableProps) {
   const currentUserDisplay = getCurrentUserDisplay();
@@ -90,6 +92,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               <Select 
                 value={selectedVesselTypeForA2_3b} 
                 onValueChange={onVesselTypeChange}
+                disabled={disabled}
               >
                 <SelectTrigger className="h-8 text-xs" data-testid="select-vessel-type-a23b">
                   <SelectValue placeholder="Select Vessel Type" />
@@ -149,6 +152,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               value={row.verified} 
               onValueChange={(value) => onUpdateVerified(row.id, value)}
               className="flex gap-4"
+              disabled={disabled}
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem 
@@ -334,8 +338,8 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
                   <React.Fragment key={row.id}>
                     <TableRow 
                       key="a2.5-progress" 
-                      className="cursor-pointer hover:bg-gray-50"
-                      onClick={onShowChecklistForm}
+                      className={disabled ? 'opacity-60' : 'cursor-pointer hover:bg-gray-50'}
+                      onClick={disabled ? undefined : onShowChecklistForm}
                       data-testid="row-promotion-checklist-progress"
                     >
                       <TableCell colSpan={2} className="text-sm">A2.5 Promotion Checklist Progress</TableCell>

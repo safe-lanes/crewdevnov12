@@ -24,6 +24,7 @@ interface PartCExecutionProps extends React.HTMLAttributes<HTMLDivElement> {
   currentUserDisplay?: string;
   onSave?: () => void;
   onSubmit?: () => void;
+  disabled?: boolean;
 }
 
 export const PartCExecution = memo(function PartCExecution({
@@ -39,6 +40,7 @@ export const PartCExecution = memo(function PartCExecution({
   currentUserDisplay = 'Current User, Staff',
   onSave,
   onSubmit,
+  disabled = false,
   ...restProps
 }: PartCExecutionProps) {
   return (
@@ -61,6 +63,7 @@ export const PartCExecution = memo(function PartCExecution({
               value={promotionConfirmed} 
               onValueChange={onSetPromotionConfirmed}
               className="flex gap-6"
+              disabled={disabled}
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="yes" id="promotion-yes" data-testid="radio-promotion-yes" />
@@ -82,6 +85,7 @@ export const PartCExecution = memo(function PartCExecution({
             <Select 
               value={vesselAssigned}
               onValueChange={onSetVesselAssigned}
+              disabled={disabled}
             >
               <SelectTrigger className="flex-1" data-testid="select-vessel-assigned">
                 <SelectValue placeholder="Select vessel" />
@@ -114,6 +118,7 @@ export const PartCExecution = memo(function PartCExecution({
               value={promotionTiming} 
               onValueChange={onSetPromotionTiming}
               className="flex gap-6 flex-1"
+              disabled={disabled}
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="on-board" id="timing-on-board" data-testid="radio-timing-on-board" />

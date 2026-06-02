@@ -25,6 +25,7 @@ interface PartBApprovalProps extends React.HTMLAttributes<HTMLDivElement> {
   onSave?: () => void;
   onSubmit?: () => void;
   approverNames?: string[];
+  disabled?: boolean;
 }
 
 const slugify = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
@@ -47,6 +48,7 @@ export const PartBApproval = memo(function PartBApproval({
   onSave,
   onSubmit,
   approverNames = [],
+  disabled = false,
   ...restProps
 }: PartBApprovalProps) {
 
@@ -107,6 +109,7 @@ export const PartBApproval = memo(function PartBApproval({
                   <Select 
                     value={approver.approver}
                     onValueChange={(value) => onUpdateApprover(approver.id, 'approver', value)}
+                    disabled={disabled}
                   >
                     <SelectTrigger className="h-9 text-xs flex-1" data-testid={`select-approver-${approver.id}`}>
                       <SelectValue placeholder="Select Approver" />
@@ -127,6 +130,7 @@ export const PartBApproval = memo(function PartBApproval({
                 <Select 
                   value={approver.status}
                   onValueChange={(value) => onUpdateApprover(approver.id, 'status', value)}
+                  disabled={disabled}
                 >
                   <SelectTrigger className="h-9 text-xs w-32" data-testid={`select-status-${approver.id}`}>
                     <SelectValue placeholder="Status" />
@@ -141,6 +145,7 @@ export const PartBApproval = memo(function PartBApproval({
                   value={approver.approval} 
                   onValueChange={(value) => onUpdateApprover(approver.id, 'approval', value)}
                   className="flex gap-4"
+                  disabled={disabled}
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id={`${approver.id}-yes`} data-testid={`radio-approval-yes-${approver.id}`} />
@@ -207,7 +212,7 @@ export const PartBApproval = memo(function PartBApproval({
               <Select
                 value=""
                 onValueChange={(value) => onAddVesselType?.(value)}
-                disabled={!onAddVesselType}
+                disabled={!onAddVesselType || disabled}
               >
                 <SelectTrigger className="w-full max-w-md h-9 text-sm" data-testid="select-add-vessel-type">
                   <SelectValue
@@ -258,7 +263,7 @@ export const PartBApproval = memo(function PartBApproval({
               <Select
                 value=""
                 onValueChange={(value) => onAddVesselClass?.(value)}
-                disabled={!onAddVesselClass}
+                disabled={!onAddVesselClass || disabled}
               >
                 <SelectTrigger className="w-full max-w-md h-9 text-sm" data-testid="select-add-vessel-class">
                   <SelectValue

@@ -24,6 +24,7 @@ interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   dbTrainings: DbTrainingOption[];
   isLoadingDbTrainings?: boolean;
   isErrorDbTrainings?: boolean;
+  disabled?: boolean;
 }
 
 const getCurrentUserDisplay = (): string => {
@@ -49,6 +50,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
   dbTrainings,
   isLoadingDbTrainings = false,
   isErrorDbTrainings = false,
+  disabled = false,
   ...restProps
 }: PartATrainingNeedsProps) {
   const currentUserDisplay = getCurrentUserDisplay();
@@ -63,6 +65,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
             size="sm" 
             className="text-xs"
             onClick={onOpenTrainingDialog}
+            disabled={disabled}
             data-testid="button-add-training-from-db"
           >
             <Plus className="h-3 w-3 mr-1" />
@@ -74,6 +77,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
             size="sm" 
             className="text-xs" 
             onClick={onAddTrainingRow}
+            disabled={disabled}
             data-testid="button-add-new-training"
           >
             <Plus className="h-3 w-3 mr-1" />
@@ -123,6 +127,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         onChange={(e) => onUpdateTraining(training.id, 'training', e.target.value)}
                         placeholder="Enter training name..."
                         className="h-8 text-xs"
+                        disabled={disabled}
                         data-testid={`input-training-name-${training.id}`}
                       />
                     )}
@@ -139,6 +144,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         onChange={(value) => onUpdateTraining(training.id, 'correspondingInDB', value)}
                         isLoading={isLoadingDbTrainings}
                         isError={isErrorDbTrainings}
+                        disabled={disabled}
                         fallbackLabel={training.training}
                         testId={`select-training-db-${training.id}`}
                       />
@@ -148,6 +154,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                     <Select 
                       value={training.category}
                       onValueChange={(value) => onUpdateTraining(training.id, 'category', value)}
+                      disabled={disabled}
                     >
                       <SelectTrigger className="h-8 text-xs" data-testid={`select-training-category-${training.id}`}>
                         <SelectValue placeholder="Select Category" />
@@ -162,6 +169,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                     <Select 
                       value={training.status}
                       onValueChange={(value) => onUpdateTraining(training.id, 'status', value)}
+                      disabled={disabled}
                     >
                       <SelectTrigger className="h-8 text-xs" data-testid={`select-training-status-${training.id}`}>
                         <SelectValue placeholder="Select Status" />
@@ -183,6 +191,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         size="sm" 
                         className="h-7 w-7 p-0" 
                         onClick={() => onDeleteTraining(training.id)}
+                        disabled={disabled}
                         data-testid={`button-training-delete-${training.id}`}
                       >
                         <Trash2 className="h-4 w-4 text-gray-600" />
