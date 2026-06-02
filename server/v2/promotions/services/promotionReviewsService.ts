@@ -11,6 +11,7 @@ import {
   SuitabilityRepository,
 } from "../repositories";
 import { PromotionHierarchiesRepository } from "../../admin/repositories/promotionHierarchiesRepository";
+import { formsService } from "../../admin/services";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import type { PromotionReviewV2, PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
 import { getDb } from "../../db";
@@ -39,6 +40,7 @@ export const promotionReviewWritableSchema = z.object({
   partBNotes: z.string().nullable().optional(),
   partCNotes: z.string().nullable().optional(),
   status: z.string().optional(),
+  isLockForm: z.boolean().optional(),
   b2VesselTypes: z.array(z.string()).optional(),
   b2FleetGroups: z.array(z.string()).optional(),
 }).passthrough();
@@ -236,6 +238,7 @@ function assembleV1Response(
     b2VesselTypes: Array.isArray(suitability?.vesselTypes) ? suitability!.vesselTypes : [],
     b2FleetGroups: Array.isArray(suitability?.fleetGroups) ? suitability!.fleetGroups : [],
     status: review.status,
+    isLockForm: (review as any).isLockForm ?? false,
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
   };
@@ -439,6 +442,22 @@ export class PromotionReviewsService {
     return this.getReviewByUuid(review.reviewUuid);
   }
 
+  // Task #569: resolve the admin "Lock Form" flag for the Promotion Review form.
+  // Match the frontend which looks up by name ("Promotion Review Form"); fall back
+  // to the promotion category so behaviour is stable if the form is renamed.
+  private async resolvePromotionLockFlag(): Promise<boolean> {
+    try {
+      const allForms = await formsService.getAll();
+      const promotionForm =
+        allForms.find((f: any) => f.name === "Promotion Review Form") ??
+        allForms.find((f: any) => f.category === "promotion");
+      return !!(promotionForm as any)?.isLockForm;
+    } catch (e) {
+      console.warn("[Promotions V2] Failed to resolve promotion lock flag:", e);
+      return false;
+    }
+  }
+
   async createReview(data: any) {
     const auditedData = applyAuditUser(data, true);
     const { criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
@@ -449,6 +468,12 @@ export class PromotionReviewsService {
 
     if (_svt !== undefined && coreFields.selectedVesselTypeForA23b === undefined) {
       coreFields.selectedVesselTypeForA23b = _svt;
+    }
+
+    // First submission can happen directly via POST (new review submitted for
+    // approval). Snapshot the lock flag so later admin toggles don't change it.
+    if (coreFields.status === "submitted") {
+      coreFields.isLockForm = await this.resolvePromotionLockFlag();
     }
 
     const review = await reviewsRepo.create(coreFields);
@@ -473,6 +498,19 @@ export class PromotionReviewsService {
 
     if (_svt2 !== undefined && coreFields.selectedVesselTypeForA23b === undefined) {
       coreFields.selectedVesselTypeForA23b = _svt2;
+    }
+
+    // Task #569: snapshot the promotion form's admin lock-form flag onto this
+    // review at the first submission (Submit for Approval → status "submitted")
+    // so later admin lock/unlock toggles do not retroactively change the lock
+    // state of already-submitted reviews. Mirror the appraisal stage-2 snapshot.
+    if (coreFields.status === "submitted") {
+      const existing = await reviewsRepo.findByUuid(reviewUuid);
+      const existingStatus = (existing?.status || "").trim().toLowerCase();
+      const alreadyLocked = ["submitted", "approved", "completed"].includes(existingStatus);
+      if (!alreadyLocked) {
+        coreFields.isLockForm = await this.resolvePromotionLockFlag();
+      }
     }
 
     const review = await reviewsRepo.update(reviewUuid, coreFields);

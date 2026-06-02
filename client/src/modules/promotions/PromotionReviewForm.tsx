@@ -1529,6 +1529,32 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     />
   ), [cesTests, updateCesTest, deleteCesTest]);
 
+  // Task #569: stage-wise locking, mirroring the appraisal "Lock form" feature.
+  // The admin lock flag lives on the "Promotion Review Form" admin form. While the
+  // review is still editable (draft/in_progress) we read the live flag; once the
+  // review reaches "submitted" we use the snapshot persisted on the review so later
+  // admin toggles do not retroactively change already-submitted reviews.
+  const promotionFormLockLive = useMemo(() => {
+    const promotionReviewForm = formsData?.find(f => f.name === 'Promotion Review Form');
+    return !!(promotionReviewForm as any)?.isLockForm;
+  }, [formsData]);
+
+  const lockState = useMemo(() => {
+    const statusNorm = ((existingReviewData as any)?.status || 'draft').toString().trim().toLowerCase();
+    const isSubmittedPlus = ['submitted', 'approved', 'completed'].includes(statusNorm);
+    const isApprovedPlus = ['approved', 'completed'].includes(statusNorm);
+    const isCompleted = statusNorm === 'completed';
+    const isLockForm = isSubmittedPlus
+      ? !!(existingReviewData as any)?.isLockForm
+      : promotionFormLockLive;
+    return {
+      isLockForm,
+      lockPartA: isLockForm && isSubmittedPlus,
+      lockPartB: isLockForm && isApprovedPlus,
+      lockPartC: isLockForm && isCompleted,
+    };
+  }, [existingReviewData, promotionFormLockLive]);
+
   return (
     <div className="promotion-review-form">
       <BaseSubmoduleForm
@@ -1538,12 +1564,23 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         defaultValues={defaultValues}
         onClose={onClose}
         onSubmit={handleSubmit}
+        disableSaveDraft={lockState.lockPartC}
       >
-      {({ activeSection, form }) => (
+      {({ activeSection, form, showConfirmDialog }) => {
+        const submitMessage = lockState.isLockForm
+          ? 'Upon submission, the form will be locked.'
+          : 'Are you sure you want to submit?';
+        const confirmSubmitA = () =>
+          showConfirmDialog('Submit for Approval', submitMessage, handleSubmitForApproval);
+        const confirmSubmitB = () =>
+          showConfirmDialog('Submit for Approval', submitMessage, handleSubmitPartB);
+        const confirmSubmitC = () =>
+          showConfirmDialog('Submit for Approval', submitMessage, handleSubmitPartC);
+        return (
         <>
           {activeSection === 'a' && canViewSection('a') && (
             <div className="bg-white rounded-lg p-6">
-              <div className="space-y-6">
+              <fieldset disabled={lockState.lockPartA} className="space-y-6 min-w-0 border-0 p-0 m-0">
                 {rankGroupLookupResult.attempted && !rankGroupLookupResult.found && rankGroupLookupResult.targetRank && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3" data-testid="alert-no-rank-group">
                     <Info className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
@@ -1768,7 +1805,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                     <Button 
                       type="button"
                       className="px-8 bg-green-600 hover:bg-green-700"
-                      onClick={handleSubmitForApproval}
+                      onClick={confirmSubmitA}
                       disabled={isSubmittingForApproval}
                       data-testid="button-submit-part-a"
                     >
@@ -1776,11 +1813,12 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                     </Button>
                   </div>
                 </div>
-              </div>
+              </fieldset>
             </div>
           )}
 
           {activeSection === 'b' && canViewSection('b') && (
+            <fieldset disabled={lockState.lockPartB} className="min-w-0 border-0 p-0 m-0">
             <PartBApproval
               approvers={approvers}
               onAddApprover={addApprover}
@@ -1797,12 +1835,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               isLoadingVesselTypeOptions={isLoadingVesselTypesV2}
               isLoadingVesselClassOptions={isLoadingFleetGroupsV2}
               onSave={handleSaveDraftB}
-              onSubmit={handleSubmitPartB}
+              onSubmit={confirmSubmitB}
               approverNames={approverMasterData.map(a => a.displayName)}
             />
+            </fieldset>
           )}
 
           {activeSection === 'c' && canViewSection('c') && (
+            <fieldset disabled={lockState.lockPartC} className="min-w-0 border-0 p-0 m-0">
             <PartCExecution
               promotionConfirmed={promotionConfirmed}
               onSetPromotionConfirmed={setPromotionConfirmed}
@@ -1815,11 +1855,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               vessels={vesselOptions}
               currentUserDisplay={currentUserDisplay}
               onSave={handleSaveDraftC}
-              onSubmit={handleSubmitPartC}
+              onSubmit={confirmSubmitC}
             />
+            </fieldset>
           )}
         </>
-      )}
+        );
+      }}
       </BaseSubmoduleForm>
 
       {showChecklistForm && (

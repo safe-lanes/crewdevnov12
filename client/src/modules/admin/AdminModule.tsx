@@ -8327,7 +8327,7 @@ const AdminModuleInner = (): JSX.Element => {
                       >
                         <div className="relative flex items-center gap-3 pr-12">
                           <span className="truncate min-w-0">{form.name}</span>
-                          {form.category !== 'promotion' && (
+                          {(
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -8347,7 +8347,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   </label>
                                 </TooltipTrigger>
                                 <TooltipContent side="bottom" className="max-w-xs">
-                                  <p>Locks Stage 1 fields after submission and Stage 2 fields after review. Applies to all rank groups under this form.</p>
+                                  <p>Progressively locks each stage of the form after it is submitted/approved. Applies to all rank groups under this form.</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>

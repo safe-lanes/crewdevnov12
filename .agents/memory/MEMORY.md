@@ -1,0 +1,1 @@
+- [db:push interactive drift](db-push-drift.md) — db:push hangs on rename prompts here; add columns via idempotent ALTER TABLE, keep drizzle schema in sync.
