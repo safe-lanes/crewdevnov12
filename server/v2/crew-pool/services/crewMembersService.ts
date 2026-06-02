@@ -188,6 +188,61 @@ export const crewMembersService = {
       );
     }
 
+    // Attach the distinct vessel type names from each crew member's complete
+    // sea service history (Section A2). A sea service record's vessel type
+    // reference may hold either a master vessel type UUID or a plain name, so
+    // resolve the name via both joins (mirroring dashboardService.getSeaService).
+    const crewUuids = enriched
+      .map((crew: any) => crew.crewUuid)
+      .filter((uuid: unknown): uuid is string => typeof uuid === "string" && uuid.length > 0);
+
+    if (crewUuids.length > 0) {
+      const mvtByUuid = masterVesselTypes;
+      const mvtByName = aliasedTable(masterVesselTypes, "sea_mvt_by_name");
+
+      const seaTypeRows = await db
+        .select({
+          crewUuid: crewSeaService.crewUuid,
+          vesselTypeName: sql<string>`COALESCE(${mvtByUuid.vesselType}, ${mvtByName.vesselType})`,
+        })
+        .from(crewSeaService)
+        .leftJoin(mvtByUuid, eq(crewSeaService.vesselTypeUuid, mvtByUuid.vtUuid))
+        .leftJoin(
+          mvtByName,
+          and(
+            isNull(mvtByUuid.vtUuid),
+            eq(crewSeaService.vesselTypeUuid, mvtByName.vesselType)
+          )
+        )
+        .where(
+          and(
+            inArray(crewSeaService.crewUuid, crewUuids),
+            eq(crewSeaService.isDeleted, false)
+          )
+        );
+
+      const typesByCrew = new Map<string, Set<string>>();
+      for (const row of seaTypeRows) {
+        const name = typeof row.vesselTypeName === "string" ? row.vesselTypeName.trim() : "";
+        if (!row.crewUuid || !name) continue;
+        let set = typesByCrew.get(row.crewUuid);
+        if (!set) {
+          set = new Set<string>();
+          typesByCrew.set(row.crewUuid, set);
+        }
+        set.add(name);
+      }
+
+      for (const crew of enriched) {
+        const set = crew.crewUuid ? typesByCrew.get(crew.crewUuid) : undefined;
+        crew.seaServiceVesselTypes = set ? Array.from(set) : [];
+      }
+    } else {
+      for (const crew of enriched) {
+        crew.seaServiceVesselTypes = [];
+      }
+    }
+
     return enriched;
   },
 

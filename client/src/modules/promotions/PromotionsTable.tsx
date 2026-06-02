@@ -553,6 +553,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           vesselLeave: vesselLeave,
           presentVessel: crew.vesselUuid || null,
           vesselType: (crew.vesselUuid ? getVessel(crew.vesselUuid)?.vesselType : null) || null,
+          seaServiceVesselTypes: Array.isArray(crew.seaServiceVesselTypes) ? crew.seaServiceVesselTypes : [],
           license: licenseStatus,
           sea: seaStatus,
           reco: recoStatus,
@@ -578,7 +579,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       const matchesNationality = !nationality || item.nationality === nationality;
       const matchesStatus = !status || item.status === status;
       
-      const matchesVesselType = !vesselType || item.vesselType === vesselType;
+      const matchesVesselType = !vesselType ||
+        item.vesselType === vesselType ||
+        (Array.isArray(item.seaServiceVesselTypes) && item.seaServiceVesselTypes.includes(vesselType));
       
       const criteriaFields = [
         item.license,
