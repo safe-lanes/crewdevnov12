@@ -1,2 +1,1 @@
 - [db:push interactive drift](db-push-drift.md) — db:push hangs on rename prompts here; add columns via idempotent ALTER TABLE, keep drizzle schema in sync.
-- [Snapshot-vs-live flags](snapshot-vs-live-flags.md) — freezing an admin flag at submit leaves legacy rows off; use `snapshot || liveFlag`.
