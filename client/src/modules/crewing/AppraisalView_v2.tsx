@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
+import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { getScoreColors } from "@/components/appraisal-form-parts/types";
 
 interface TrainingEntry { id: string; training?: string; evaluation?: string; comment?: string }
@@ -260,6 +261,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
   });
 
   const { getName: getDbTrainingName } = useCompanyTrainings();
+  const { getVesselName } = useVesselLookup();
 
   const formVersionId = existingAppraisal?.formVersionId ?? null;
 
@@ -399,7 +401,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
                 <Field label="Nationality" value={valueOr(data.nationality)} testId="text-nationality" />
               )}
               {isFieldVisible("vessel") && (
-                <Field label="Vessel" value={valueOr(data.vessel)} testId="text-vessel" />
+                <Field label="Vessel" value={valueOr(data.vessel ? getVesselName(data.vessel) || data.vessel : data.vessel)} testId="text-vessel" />
               )}
               {isFieldVisible("signOn") && (
                 <Field label="Sign On" value={formatDate(data.signOn)} testId="text-signOn" />

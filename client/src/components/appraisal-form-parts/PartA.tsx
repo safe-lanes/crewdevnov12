@@ -132,7 +132,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                       </FormControl>
                       <SelectContent>
                         {vessels.map((vessel) => (
-                          <SelectItem key={vessel.entryId} value={vessel.name}>
+                          <SelectItem key={vessel.entryId} value={vessel.entryId}>
                             {vessel.name}
                           </SelectItem>
                         ))}

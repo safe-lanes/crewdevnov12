@@ -444,7 +444,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     && (isSectionVisible('partB1') || isSectionVisible('partB2'));
 
   // Fetch vessels and ranks from persistent storage
-  const { vessels } = useVesselLookup();
+  const { vessels, getVesselId } = useVesselLookup();
   const { data: availableRanks = [] } = useQuery<Array<{ id: number; name: string; category: string }>>({
     queryKey: ['/api/v2/admin/available-ranks'],
   });
@@ -789,6 +789,28 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       }
     }
   }, [crewMember, appraisalId, form]);
+
+  // Normalize the vessel field to its master-data UUID. The vessel form value
+  // may be a NAME — seeded from a crew member (new appraisal) or loaded from a
+  // legacy/un-backfilled appraisal via form.reset(). The PartA <Select> options
+  // are keyed by UUID, so the (disabled) field would otherwise show nothing.
+  // Converting name -> UUID keeps the current vessel name visible and ensures
+  // the UUID is what gets persisted on save.
+  //
+  // Keyed off the watched vessel value (not effect declaration order) so it
+  // re-runs whenever the field changes — including after the existing-appraisal
+  // hydration effect's form.reset() runs — and whenever vessel master data
+  // finishes loading (getVesselId identity changes). It converges in one pass:
+  // once the value is a UUID, getVesselId() returns undefined and no further
+  // setValue happens. Names with no master match are left untouched.
+  const watchedVessel = form.watch('vessel');
+  useEffect(() => {
+    if (!watchedVessel) return;
+    const asId = getVesselId(watchedVessel);
+    if (asId && asId !== watchedVessel) {
+      form.setValue('vessel', asId, { shouldDirty: false });
+    }
+  }, [watchedVessel, getVesselId, form]);
 
   // Load rank-group-specific configuration when available (only for new appraisals)
   useEffect(() => {
@@ -1815,6 +1837,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
     return {
       ...data,
+      // Persist the vessel as its master-data UUID so the appraisal always
+      // reflects the vessel's CURRENT name (resolved at display). If the form
+      // value is already a UUID (or the name can't be resolved), keep it as-is.
+      vessel: getVesselId(data.vessel) || data.vessel,
       signOn: data.signOn ?? "",
       appraisalPeriodFrom: data.appraisalPeriodFrom ?? "",
       appraisalPeriodTo: data.appraisalPeriodTo ?? "",
