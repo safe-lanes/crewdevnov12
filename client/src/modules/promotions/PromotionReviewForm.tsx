@@ -1068,8 +1068,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partBNotes: '',
       partCNotes: '',
     }, 'a');
+    const approversToPersist = approvers.filter(a => a.approver?.trim());
+    if (approversToPersist.length > 0 || selectedApproversForSubmission.length > 0) {
+      reviewData.approvalData = JSON.stringify(approversToPersist);
+      reviewData.selectedApproversForSubmission = JSON.stringify(selectedApproversForSubmission);
+    }
     saveMutation.mutate({ data: reviewData, action: 'draft' });
-  }, [collectFormData, saveMutation, validateTrainingNames]);
+  }, [collectFormData, saveMutation, validateTrainingNames, approvers, selectedApproversForSubmission]);
 
   const handleSaveDraftB = useCallback(() => {
     const reviewData = collectFormData({
