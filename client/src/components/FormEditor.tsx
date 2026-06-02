@@ -276,48 +276,53 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   // Continuous scroll state - tracks which section is most visible during scroll
   const [activeContinuousSection, setActiveContinuousSection] = useState<string>("A");
 
-  // Intersection Observer for continuous scroll tracking
+  // Scroll-spy for continuous scroll tracking
   useEffect(() => {
-    if (!continuousScrollContainerRef.current) return;
+    const container = continuousScrollContainerRef.current;
+    if (!container) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let mostVisible = entries[0];
-        
-        entries.forEach((entry) => {
-          if (entry.intersectionRatio > mostVisible.intersectionRatio) {
-            mostVisible = entry;
-          }
-        });
+    const observed = [
+      { id: 'A', ref: partARef },
+      { id: 'B', ref: partBRef },
+      { id: 'C', ref: partCRef },
+      { id: 'D', ref: partDRef },
+      { id: 'E', ref: partERef },
+      { id: 'F', ref: partFRef },
+      { id: 'G', ref: partGRef },
+    ];
 
-        // Update the active continuous section if there's a significant intersection (lowered threshold for better detection)
-        if (mostVisible && mostVisible.intersectionRatio > 0.3) {
-          const sectionId = mostVisible.target.getAttribute('data-section-id');
-          if (sectionId) {
-            setActiveContinuousSection(sectionId);
-            setActiveSection(sectionId); // Also update the main active section for stepper highlighting
-          }
+    // Active section = last one whose top crossed a trigger line near the top
+    // of the container (height-independent), with a bottom override so the
+    // final visible section highlights once scrolled to the end. This lets
+    // late sections such as Part F highlight even when tall or near the bottom.
+    const computeActive = () => {
+      const present = observed.filter(s => s.ref.current);
+      if (present.length === 0) return;
+      const containerRect = container.getBoundingClientRect();
+      const atBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight <= 2;
+      let activeId = present[0].id;
+      if (atBottom) {
+        activeId = present[present.length - 1].id;
+      } else {
+        const triggerY = containerRect.top + containerRect.height * 0.25;
+        for (const s of present) {
+          if (s.ref.current!.getBoundingClientRect().top <= triggerY) activeId = s.id;
         }
-      },
-      {
-        root: continuousScrollContainerRef.current,
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-        rootMargin: '-100px 0px -100px 0px' // Increased for better detection on tall sections
       }
-    );
+      setActiveContinuousSection(activeId);
+      setActiveSection(activeId); // keep stepper highlight in sync
+    };
 
-    // Observe all section refs
-    const refs = [partARef, partBRef, partCRef, partDRef, partERef, partFRef, partGRef];
-    refs.forEach(ref => {
-      if (ref.current) {
-        observer.observe(ref.current);
-      }
-    });
+    computeActive();
+    container.addEventListener('scroll', computeActive, { passive: true });
+    window.addEventListener('resize', computeActive);
 
     return () => {
-      observer.disconnect();
+      container.removeEventListener('scroll', computeActive);
+      window.removeEventListener('resize', computeActive);
     };
-  }, []); // Removed activeContinuousSection dependency to avoid unnecessary observer recreation
+  }, []); // refs are read at call time, so no deps needed
 
   // Function to scroll to a specific section in continuous mode
   const scrollToSection = (sectionId: string) => {

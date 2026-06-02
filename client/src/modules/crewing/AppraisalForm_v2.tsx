@@ -2232,97 +2232,90 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // tracks Parts C-F so the sidebar highlight follows real-time scroll
   // across the whole form.
   useEffect(() => {
-    if (!continuous1ContainerRef.current) return;
+    const container = continuous1ContainerRef.current;
+    if (!container) return;
     const mergedAF = !isSectionVisible('partB2') || isPostStage1;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let mostVisible = entries[0];
-        
-        entries.forEach((entry) => {
-          if (entry.intersectionRatio > mostVisible.intersectionRatio) {
-            mostVisible = entry;
-          }
-        });
-
-        // Update the active continuous section if there's a significant intersection
-        if (mostVisible && mostVisible.intersectionRatio > 0.4) {
-          const sectionId = mostVisible.target.getAttribute('data-section-id');
-          if (!sectionId) return;
-          const matched = sections.find(s => s.id === sectionId);
-          if (matched?.type === 'continuous1') {
-            if (sectionId !== activeContinuousSection1) setActiveContinuousSection1(sectionId);
-            // In merged A-F mode, ensure only one section is highlighted at a time.
-            if (mergedAF && activeContinuousSection2) setActiveContinuousSection2('');
-          } else if (matched?.type === 'continuous2') {
-            if (sectionId !== activeContinuousSection2) setActiveContinuousSection2(sectionId);
-            if (mergedAF && activeContinuousSection1) setActiveContinuousSection1('');
-          }
-        }
-      },
-      {
-        root: continuous1ContainerRef.current,
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-        rootMargin: '-50px 0px -50px 0px'
-      }
-    );
-
-    // Observe continuous1 sections (A&B). In merged A-F mode, also
-    // observe C-F so the sidebar highlight updates as the user scrolls
-    // past those sections inside the same scroll container.
+    // Sections rendered inside this scroll container. In merged A-F mode the
+    // container holds A-F; otherwise only the continuous1 group (A&B).
     const observed = mergedAF
       ? sections.filter(s => s.type === 'continuous1' || s.type === 'continuous2')
       : sections.filter(s => s.type === 'continuous1');
-    observed.forEach(section => {
-      if (section.ref?.current) {
-        observer.observe(section.ref.current);
+
+    // Pick the active section as the last one whose top has crossed a trigger
+    // line near the top of the container. This is independent of section height,
+    // and the bottom override lets the final section (Part F) highlight even
+    // when the container can't scroll it far enough to dominate the viewport.
+    const computeActive = () => {
+      const present = observed.filter(s => s.ref?.current);
+      if (present.length === 0) return;
+      const containerRect = container.getBoundingClientRect();
+      const atBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight <= 2;
+      let active = present[0];
+      if (atBottom) {
+        active = present[present.length - 1];
+      } else {
+        const triggerY = containerRect.top + containerRect.height * 0.25;
+        for (const s of present) {
+          if (s.ref!.current!.getBoundingClientRect().top <= triggerY) active = s;
+        }
       }
-    });
+      if (active.type === 'continuous1') {
+        if (active.id !== activeContinuousSection1) setActiveContinuousSection1(active.id);
+        // In merged A-F mode, ensure only one section is highlighted at a time.
+        if (mergedAF && activeContinuousSection2) setActiveContinuousSection2('');
+      } else if (active.type === 'continuous2') {
+        if (active.id !== activeContinuousSection2) setActiveContinuousSection2(active.id);
+        if (mergedAF && activeContinuousSection1) setActiveContinuousSection1('');
+      }
+    };
+
+    computeActive();
+    container.addEventListener('scroll', computeActive, { passive: true });
+    window.addEventListener('resize', computeActive);
 
     return () => {
-      observer.disconnect();
+      container.removeEventListener('scroll', computeActive);
+      window.removeEventListener('resize', computeActive);
     };
   }, [activeContinuousSection1, activeContinuousSection2, sections, isPostStage1, isSectionVisible]);
 
-  // Intersection Observer for continuous group 2 (C-F)
+  // Scroll-spy for continuous group 2 (C-F)
   useEffect(() => {
-    if (!continuous2ContainerRef.current) return;
+    const container = continuous2ContainerRef.current;
+    if (!container) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let mostVisible = entries[0];
-        
-        entries.forEach((entry) => {
-          if (entry.intersectionRatio > mostVisible.intersectionRatio) {
-            mostVisible = entry;
-          }
-        });
+    const observed = sections.filter(s => s.type === 'continuous2');
 
-        // Update the active continuous section if there's a significant intersection
-        if (mostVisible && mostVisible.intersectionRatio > 0.6) {
-          const sectionId = mostVisible.target.getAttribute('data-section-id');
-          if (sectionId && sectionId !== activeContinuousSection2) {
-            setActiveContinuousSection2(sectionId);
-          }
+    // Active section = last one whose top crossed a trigger line near the top
+    // of the container, with a bottom override so the final section (Part F)
+    // highlights once the container is scrolled to the end.
+    const computeActive = () => {
+      const present = observed.filter(s => s.ref?.current);
+      if (present.length === 0) return;
+      const containerRect = container.getBoundingClientRect();
+      const atBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight <= 2;
+      let active = present[0];
+      if (atBottom) {
+        active = present[present.length - 1];
+      } else {
+        const triggerY = containerRect.top + containerRect.height * 0.25;
+        for (const s of present) {
+          if (s.ref!.current!.getBoundingClientRect().top <= triggerY) active = s;
         }
-      },
-      {
-        root: continuous2ContainerRef.current,
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-        rootMargin: '-50px 0px -50px 0px'
       }
-    );
+      if (active.id !== activeContinuousSection2) setActiveContinuousSection2(active.id);
+    };
 
-    // Observe continuous2 sections (C-F)
-    const continuous2Sections = sections.filter(s => s.type === 'continuous2');
-    continuous2Sections.forEach(section => {
-      if (section.ref?.current) {
-        observer.observe(section.ref.current);
-      }
-    });
+    computeActive();
+    container.addEventListener('scroll', computeActive, { passive: true });
+    window.addEventListener('resize', computeActive);
 
     return () => {
-      observer.disconnect();
+      container.removeEventListener('scroll', computeActive);
+      window.removeEventListener('resize', computeActive);
     };
   }, [activeContinuousSection2, sections]);
 
