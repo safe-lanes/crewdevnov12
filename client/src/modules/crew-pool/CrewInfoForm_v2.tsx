@@ -14,6 +14,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { format as formatDateFns } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -504,7 +513,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const isDetailedDataLoading = isV2ProfileLoading;
   
   // V2: Dashboard data from V2 API endpoint
-  const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
+  const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError, refetch: refetchDashboard } = useQuery<CrewDashboardSummary>({
     queryKey: ['/api/v2/crew-pool/crew', crewUuid, 'dashboard'],
     queryFn: async () => {
       const response = await fetch(`/api/v2/crew-pool/crew/${crewUuid}/dashboard`);
@@ -641,6 +650,36 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     };
   }, []);
   const [terminationDraft, setTerminationDraft] = useState<TerminationDraft>(initialTerminationDraft);
+  // Block popup for On Board crew + double-click guard during the fresh status check
+  const [onBoardBlockMsg, setOnBoardBlockMsg] = useState<string | null>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+
+  // Mandatory fresh check: never Inactive/Terminate a signed-on (On Board) crew.
+  // Rule: allow any KNOWN status except "On Board". Block "On Board".
+  // Fail-safe: if status is unknown (load failed / empty), block too.
+  const ensureNotOnBoard = async (action: 'Inactive' | 'Terminated'): Promise<boolean> => {
+    try {
+      setIsCheckingStatus(true);
+      const { data: fresh } = await refetchDashboard();
+      const freshStatus = fresh?.status?.status;
+
+      if (freshStatus && freshStatus !== 'On Board') {
+        return true;
+      }
+
+      if (freshStatus === 'On Board') {
+        setOnBoardBlockMsg(`Status cannot be changed to ${action} while the crew member is On Board. Please sign off the crew member first.`);
+      } else {
+        setOnBoardBlockMsg(`Unable to verify the crew member's current status. Please reopen the profile and try again.`);
+      }
+      return false;
+    } catch {
+      setOnBoardBlockMsg(`Unable to verify the crew member's current status. Please reopen the profile and try again.`);
+      return false;
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
@@ -8221,7 +8260,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Button
               variant={statusData?.isActive === false ? "default" : "outline"}
               className="w-full justify-start"
-              onClick={() => handleToggleActiveStatus(false)}
+              disabled={isCheckingStatus}
+              onClick={async () => {
+                if (!(await ensureNotOnBoard('Inactive'))) return;
+                handleToggleActiveStatus(false);
+              }}
               data-testid="button-set-inactive"
             >
               <div className="w-3 h-3 rounded-full bg-gray-500 mr-3"></div>
@@ -8230,7 +8273,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Button
               variant="outline"
               className="w-full justify-start"
-              onClick={() => {
+              disabled={isCheckingStatus}
+              onClick={async () => {
+                if (!(await ensureNotOnBoard('Terminated'))) return;
                 setIsStatusEditOpen(false);
                 setTerminationDraft(initialTerminationDraft);
                 setIsTerminateOpen(true);
@@ -8243,6 +8288,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* On Board guard popup — blocks Inactive/Terminate for signed-on crew */}
+      <AlertDialog open={!!onBoardBlockMsg} onOpenChange={(open) => { if (!open) setOnBoardBlockMsg(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Action not allowed</AlertDialogTitle>
+            <AlertDialogDescription>{onBoardBlockMsg}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setOnBoardBlockMsg(null)} data-testid="button-close-onboard-block">
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Terminate Employment Dialog */}
       <Dialog
