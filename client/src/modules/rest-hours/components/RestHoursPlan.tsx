@@ -38,6 +38,10 @@ export const RestHoursPlan = (): JSX.Element => {
     setPeriodValue,
     planVesselId: selectedVessel,
     setPlanVesselId: setSelectedVessel,
+    draftPlanVesselId: draftSelectedVessel,
+    setDraftPlanVesselId: setDraftSelectedVessel,
+    applyFilters,
+    syncDraftFromApplied,
   } = useRestHoursFiltersStore();
 
   const { vessels: v2Vessels, isLoading: vesselsLoading } = useV2Vessels();
@@ -63,8 +67,11 @@ export const RestHoursPlan = (): JSX.Element => {
     
     if (filters.vesselIds && filters.vesselIds.length === 1) {
       setSelectedVessel(filters.vesselIds[0]);
+      setDraftSelectedVessel(filters.vesselIds[0]);
     }
   }, []);
+
+  useEffect(() => { syncDraftFromApplied(); }, []);
 
   // Auto-select first vessel when vessels load (only if no vessel selected)
   useEffect(() => {
@@ -72,6 +79,7 @@ export const RestHoursPlan = (): JSX.Element => {
     
     if (!selectedVessel) {
       setSelectedVessel(vessels[0].entryId);
+      setDraftSelectedVessel(vessels[0].entryId);
     }
   }, [vesselsLoading, vessels, selectedVessel, setSelectedVessel]);
 
@@ -104,7 +112,8 @@ export const RestHoursPlan = (): JSX.Element => {
       year: currentYear,
       month: currentMonth,
     });
-    setSelectedVessel("");
+    setDraftSelectedVessel("");
+    applyFilters();
   };
 
   // Memoize the callback to prevent infinite render loops
@@ -170,7 +179,7 @@ export const RestHoursPlan = (): JSX.Element => {
         <div className="flex flex-col gap-3 mb-4 p-3 bg-transparent rounded-lg" data-testid="filter-container">
           <PeriodFilter value={periodValue} onChange={setPeriodValue} />
 
-          <Select value={selectedVessel} onValueChange={setSelectedVessel}>
+          <Select value={draftSelectedVessel} onValueChange={setDraftSelectedVessel}>
             <SelectTrigger 
               className="h-8 w-full text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
               disabled={vesselsLoading}
@@ -186,6 +195,14 @@ export const RestHoursPlan = (): JSX.Element => {
               ))}
             </SelectContent>
           </Select>
+
+          <Button
+            onClick={applyFilters}
+            className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-white text-xs px-4"
+            data-testid="button-apply"
+          >
+            Apply
+          </Button>
 
           <Button
             variant="outline"
@@ -204,7 +221,7 @@ export const RestHoursPlan = (): JSX.Element => {
       <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
         <PeriodFilter value={periodValue} onChange={setPeriodValue} />
 
-        <Select value={selectedVessel} onValueChange={setSelectedVessel}>
+        <Select value={draftSelectedVessel} onValueChange={setDraftSelectedVessel}>
           <SelectTrigger 
             className="h-8 w-40 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
             disabled={vesselsLoading}
@@ -220,6 +237,14 @@ export const RestHoursPlan = (): JSX.Element => {
             ))}
           </SelectContent>
         </Select>
+
+        <Button
+          onClick={applyFilters}
+          className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-white text-xs px-4"
+          data-testid="button-apply"
+        >
+          Apply
+        </Button>
 
         <Button
           variant="outline"

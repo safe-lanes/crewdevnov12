@@ -603,5 +603,17 @@ export const restHoursApiV2 = {
       if (!response.ok) throw new Error('Failed to fetch crew count by vessel');
       return response.json();
     },
+
+    async getFleetGroups() {
+      const response = await fetch(`/api/v2/masters/fleet-groups`);
+      if (!response.ok) throw new Error('Failed to fetch fleet groups');
+      return response.json();
+    },
+
+    async getAdditionalGroups() {
+      const response = await fetch(`/api/v2/masters/additional-groups`);
+      if (!response.ok) throw new Error('Failed to fetch additional groups');
+      return response.json();
+    },
   },
 };

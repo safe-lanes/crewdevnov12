@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SectionTitleComponents from '@/components/Section/SectionTitleComponents';
 import { usePermissions } from '@/contexts/PermissionsContext';
-import { useV2Vessels } from '../hooks/useRestHoursV2Data';
+import { useV2Vessels, useV2FleetGroups, useV2AdditionalGroups, parseGroupVesselNames } from '../hooks/useRestHoursV2Data';
 import { RHRecordsTable } from './RHRecordsTable';
 import { PeriodFilter, type PeriodFilterValue } from '@/components/filters/PeriodFilter';
 import { parseRestHoursFilters, serializeRestHoursFilters, periodFilterToPart, partToPeriodFilter, type RestHoursFilters } from '../utils/filterParams';
@@ -42,13 +42,25 @@ export const RestHoursRecord = (): JSX.Element => {
     setFleetValue,
     addGroupValue,
     setAddGroupValue,
-    toggleVessel,
+    draftFilterType,
+    setDraftFilterType,
+    draftSelectedVessels,
+    setDraftSelectedVessels,
+    toggleDraftVessel,
+    draftFleetValue,
+    setDraftFleetValue,
+    draftAddGroupValue,
+    setDraftAddGroupValue,
+    applyFilters,
+    syncDraftFromApplied,
   } = useRestHoursFiltersStore();
 
   const { userType, myVessels } = usePermissions();
   const isShipUser = userType === 'Ship';
 
   const { vessels: v2Vessels, isLoading: vesselsLoading } = useV2Vessels();
+  const { fleetGroups } = useV2FleetGroups();
+  const { additionalGroups } = useV2AdditionalGroups();
   
   const vessels = useMemo(() => v2Vessels.map(v => ({
     id: v.id,
@@ -67,6 +79,8 @@ export const RestHoursRecord = (): JSX.Element => {
       const myVesselName = myVessels[0].vessel;
       setFilterType("vessel");
       setSelectedVessels([myVesselName]);
+      setDraftFilterType("vessel");
+      setDraftSelectedVessels([myVesselName]);
     }
   }, [isShipUser, myVessels, vessels]);
 
@@ -129,17 +143,22 @@ export const RestHoursRecord = (): JSX.Element => {
     
     if (!isShipUser && filters.filterType) {
       setFilterType(filters.filterType);
+      setDraftFilterType(filters.filterType);
     }
     
     if (!isShipUser && filters.fleetGroup) {
       setFleetValue(filters.fleetGroup);
+      setDraftFleetValue(filters.fleetGroup);
     }
     if (!isShipUser && filters.addGroup) {
       setAddGroupValue(filters.addGroup);
+      setDraftAddGroupValue(filters.addGroup);
     }
     
     hasSyncedFromUrl.current = true;
   }, []);
+
+  useEffect(() => { syncDraftFromApplied(); }, []);
   
   useEffect(() => {
     if (isShipUser) return;
@@ -156,15 +175,25 @@ export const RestHoursRecord = (): JSX.Element => {
       
       if (vesselNames.length > 0) {
         setSelectedVessels(vesselNames);
+        setDraftSelectedVessels(vesselNames);
       }
     }
   }, [isShipUser, vessels, vesselsLoading]);
 
+  const effectiveVesselNames = useMemo(() => {
+    let names: string[] = [];
+    if (filterType === 'vessel') names = selectedVessels;
+    else if (filterType === 'fleet') names = parseGroupVesselNames(fleetGroups.find(g => (g.fgUuid ?? String(g.id)) === fleetValue)?.vessels);
+    else if (filterType === 'addGroup') names = parseGroupVesselNames(additionalGroups.find(g => (g.agUuid ?? String(g.id)) === addGroupValue)?.vessels);
+    return names.filter(n => vessels.some((v: any) => v.name === n));
+  }, [filterType, selectedVessels, fleetValue, addGroupValue, fleetGroups, additionalGroups, vessels]);
+
   const handleClearFilters = () => {
-    setFilterType("vessel");
-    setSelectedVessels([]);
-    setFleetValue("");
-    setAddGroupValue("");
+    setDraftFilterType("vessel");
+    setDraftSelectedVessels([]);
+    setDraftFleetValue("");
+    setDraftAddGroupValue("");
+    applyFilters();
     setPeriodValue({
       mode: 'year-month',
       year: currentYear,
@@ -184,8 +213,8 @@ export const RestHoursRecord = (): JSX.Element => {
           <span className="truncate">
             {isShipUser && shipVesselName
               ? shipVesselName
-              : selectedVessels.length > 0 
-                ? `${selectedVessels.length} selected` 
+              : draftSelectedVessels.length > 0 
+                ? `${draftSelectedVessels.length} selected` 
                 : vesselsLoading ? "Loading..." : "Vessel"
             }
           </span>
@@ -199,11 +228,11 @@ export const RestHoursRecord = (): JSX.Element => {
               key={vessel.id} 
               className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded cursor-pointer"
               data-testid={`vessel-row-${vessel.entryId || vessel.id}`}
-              onClick={() => toggleVessel(vessel.name)}
+              onClick={() => toggleDraftVessel(vessel.name)}
             >
               <Checkbox 
-                checked={selectedVessels.includes(vessel.name)}
-                onCheckedChange={() => toggleVessel(vessel.name)}
+                checked={draftSelectedVessels.includes(vessel.name)}
+                onCheckedChange={() => toggleDraftVessel(vessel.name)}
                 data-testid={`checkbox-vessel-${vessel.entryId || vessel.id}`}
                 onClick={(e) => e.stopPropagation()}
               />
@@ -221,7 +250,7 @@ export const RestHoursRecord = (): JSX.Element => {
   );
 
   const renderFleetSelect = () => (
-    <Select value={fleetValue} onValueChange={setFleetValue} disabled={isShipUser}>
+    <Select value={draftFleetValue} onValueChange={setDraftFleetValue} disabled={isShipUser}>
       <SelectTrigger 
         className={`h-8 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900 ${isPhone ? 'w-full' : 'w-40'}`}
         data-testid="select-fleet-value"
@@ -229,16 +258,16 @@ export const RestHoursRecord = (): JSX.Element => {
         <SelectValue placeholder="Select Fleet" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="fleet1">Fleet Group 1</SelectItem>
-        <SelectItem value="fleet2">Fleet Group 2</SelectItem>
-        <SelectItem value="fleet3">Fleet Group 3</SelectItem>
+        {fleetGroups.map((g) => (
+          <SelectItem key={g.fgUuid ?? String(g.id)} value={g.fgUuid ?? String(g.id)}>{g.name}</SelectItem>
+        ))}
       </SelectContent>
     </Select>
   );
 
   // Additional Group select component (shared across layouts)
   const renderAddGroupSelect = () => (
-    <Select value={addGroupValue} onValueChange={setAddGroupValue} disabled={isShipUser}>
+    <Select value={draftAddGroupValue} onValueChange={setDraftAddGroupValue} disabled={isShipUser}>
       <SelectTrigger 
         className={`h-8 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900 ${isPhone ? 'w-full' : 'w-40'}`}
         data-testid="select-addgroup-value"
@@ -246,9 +275,9 @@ export const RestHoursRecord = (): JSX.Element => {
         <SelectValue placeholder="Select Group" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="group1">Additional Group 1</SelectItem>
-        <SelectItem value="group2">Additional Group 2</SelectItem>
-        <SelectItem value="group3">Additional Group 3</SelectItem>
+        {additionalGroups.map((g) => (
+          <SelectItem key={g.agUuid ?? String(g.id)} value={g.agUuid ?? String(g.id)}>{g.name}</SelectItem>
+        ))}
       </SelectContent>
     </Select>
   );
@@ -263,8 +292,8 @@ export const RestHoursRecord = (): JSX.Element => {
           <PeriodFilter value={periodValue} onChange={setPeriodValue} />
 
           <RadioGroup 
-            value={filterType} 
-            onValueChange={(value: "vessel" | "fleet" | "addGroup") => !isShipUser && setFilterType(value)}
+            value={draftFilterType} 
+            onValueChange={(value: "vessel" | "fleet" | "addGroup") => !isShipUser && setDraftFilterType(value)}
             className="flex flex-col gap-3"
           >
             <div className="flex flex-col gap-2">
@@ -308,6 +337,15 @@ export const RestHoursRecord = (): JSX.Element => {
           </RadioGroup>
 
           <Button
+            onClick={applyFilters}
+            className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-white text-xs px-4"
+            disabled={isShipUser}
+            data-testid="button-apply"
+          >
+            Apply
+          </Button>
+
+          <Button
             variant="outline"
             onClick={handleClearFilters}
             className="h-8 w-full text-[#8798ad] text-[11px] border-[#e1e8ed]"
@@ -326,8 +364,8 @@ export const RestHoursRecord = (): JSX.Element => {
           <PeriodFilter value={periodValue} onChange={setPeriodValue} />
 
           <RadioGroup 
-            value={filterType} 
-            onValueChange={(value: "vessel" | "fleet" | "addGroup") => !isShipUser && setFilterType(value)}
+            value={draftFilterType} 
+            onValueChange={(value: "vessel" | "fleet" | "addGroup") => !isShipUser && setDraftFilterType(value)}
             className="grid grid-cols-3 gap-4"
           >
             <div className="flex flex-col gap-2">
@@ -371,6 +409,15 @@ export const RestHoursRecord = (): JSX.Element => {
           </RadioGroup>
 
           <Button
+            onClick={applyFilters}
+            className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-white text-xs px-4"
+            disabled={isShipUser}
+            data-testid="button-apply"
+          >
+            Apply
+          </Button>
+
+          <Button
             variant="outline"
             onClick={handleClearFilters}
             className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
@@ -388,8 +435,8 @@ export const RestHoursRecord = (): JSX.Element => {
         <PeriodFilter value={periodValue} onChange={setPeriodValue} />
 
         <RadioGroup 
-          value={filterType} 
-          onValueChange={(value: "vessel" | "fleet" | "addGroup") => !isShipUser && setFilterType(value)}
+          value={draftFilterType} 
+          onValueChange={(value: "vessel" | "fleet" | "addGroup") => !isShipUser && setDraftFilterType(value)}
           className="flex items-center gap-6"
         >
           <div className="flex items-center gap-2">
@@ -425,6 +472,15 @@ export const RestHoursRecord = (): JSX.Element => {
             {renderAddGroupSelect()}
           </div>
         </RadioGroup>
+
+        <Button
+          onClick={applyFilters}
+          className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-white text-xs px-4"
+          disabled={isShipUser}
+          data-testid="button-apply"
+        >
+          Apply
+        </Button>
 
         <Button
           variant="outline"
@@ -481,7 +537,7 @@ export const RestHoursRecord = (): JSX.Element => {
       <div className="pr-4 pb-4">
         {selectedMonths.length > 0 ? (
           <RHRecordsTable 
-            selectedVessels={filterType === 'vessel' ? selectedVessels : []}
+            selectedVessels={effectiveVesselNames}
             selectedMonths={selectedMonths}
             complianceMode={complianceMode}
             opaMode={opaMode}

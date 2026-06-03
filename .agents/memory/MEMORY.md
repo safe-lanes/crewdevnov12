@@ -1,1 +1,1 @@
-- [db:push interactive drift](db-push-drift.md) — db:push hangs on rename prompts here; add columns via idempotent ALTER TABLE, keep drizzle schema in sync.
+- [Rest Hours masters endpoints](rest-hours-masters-endpoints.md) — fleet/additional groups live under /api/v2/masters, NOT the rest-hours V2_BASE.
