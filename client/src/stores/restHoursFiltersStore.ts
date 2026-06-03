@@ -40,6 +40,8 @@ interface RestHoursFiltersState {
   toggleDraftVessel: (vesselName: string) => void;
   setDraftFleetValue: (value: string) => void;
   setDraftAddGroupValue: (value: string) => void;
+  selectDraftFleet: (value: string) => void;
+  selectDraftAddGroup: (value: string) => void;
   applyFilters: () => void;
   syncDraftFromApplied: () => void;
   resetFilters: () => void;
@@ -104,10 +106,25 @@ export const useRestHoursFiltersStore = create<RestHoursFiltersState>()(
         const { draftSelectedVessels } = get();
         set({ draftSelectedVessels: draftSelectedVessels.includes(vesselName)
           ? draftSelectedVessels.filter(v => v !== vesselName)
-          : [...draftSelectedVessels, vesselName] });
+          : [...draftSelectedVessels, vesselName],
+          draftFilterType: 'vessel',
+          draftFleetValue: '',
+          draftAddGroupValue: '' });
       },
       setDraftFleetValue: (value) => set({ draftFleetValue: value }),
       setDraftAddGroupValue: (value) => set({ draftAddGroupValue: value }),
+      selectDraftFleet: (value) => set({
+        draftFleetValue: value,
+        draftFilterType: 'fleet',
+        draftSelectedVessels: [],
+        draftAddGroupValue: '',
+      }),
+      selectDraftAddGroup: (value) => set({
+        draftAddGroupValue: value,
+        draftFilterType: 'addGroup',
+        draftSelectedVessels: [],
+        draftFleetValue: '',
+      }),
       applyFilters: () => {
         const { draftFilterType, draftSelectedVessels, draftPlanVesselId, draftFleetValue, draftAddGroupValue } = get();
         set({ filterType: draftFilterType, selectedVessels: draftSelectedVessels,

@@ -61,6 +61,8 @@ export const RestHoursDashboard = (): JSX.Element => {
     setDraftFleetValue,
     draftAddGroupValue,
     setDraftAddGroupValue,
+    selectDraftFleet,
+    selectDraftAddGroup,
     applyFilters,
     syncDraftFromApplied,
   } = useRestHoursFiltersStore();
@@ -157,7 +159,7 @@ export const RestHoursDashboard = (): JSX.Element => {
 
   // Fleet select component (shared across layouts)
   const renderFleetSelect = () => (
-    <Select value={draftFleetValue} onValueChange={setDraftFleetValue}>
+    <Select value={draftFleetValue} onValueChange={selectDraftFleet}>
       <SelectTrigger 
         className={`h-8 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900 ${isPhone ? 'w-full' : 'w-40'}`}
         data-testid="select-fleet-value"
@@ -174,7 +176,7 @@ export const RestHoursDashboard = (): JSX.Element => {
 
   // Additional Group select component (shared across layouts)
   const renderAddGroupSelect = () => (
-    <Select value={draftAddGroupValue} onValueChange={setDraftAddGroupValue}>
+    <Select value={draftAddGroupValue} onValueChange={selectDraftAddGroup}>
       <SelectTrigger 
         className={`h-8 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900 ${isPhone ? 'w-full' : 'w-40'}`}
         data-testid="select-addgroup-value"
