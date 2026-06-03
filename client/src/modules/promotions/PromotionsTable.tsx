@@ -95,8 +95,10 @@ const ProgressBarRenderer = (params: ICellRendererParams & { onEdit?: (data: any
   const percentage = progressData?.percentage ?? 0;
   
   const barColor = meetsThreshold ? 'bg-green-500' : 'bg-[#EAB308]';
+  const isLocked = !!params.data?.checklistLocked;
 
   const handleClick = () => {
+    if (isLocked) return;
     if (params.onEdit) {
       params.onEdit({ ...params.data, initialSection: 'checklist' });
     }
@@ -106,9 +108,9 @@ const ProgressBarRenderer = (params: ICellRendererParams & { onEdit?: (data: any
     <Tooltip>
       <TooltipTrigger asChild>
         <div 
-          className="flex items-center justify-center h-full px-2 cursor-pointer"
+          className={`flex items-center justify-center h-full px-2 ${isLocked ? 'cursor-default opacity-60' : 'cursor-pointer'}`}
           data-testid={`progress-bar-tooltip-${params.data?.crewId}`}
-          onClick={handleClick}
+          onClick={isLocked ? undefined : handleClick}
         >
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
@@ -537,6 +539,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         const trainDocsStatus = computeCriteriaStatus(review, 'a2.8');
         
         const reviewStatus = normalizePromotionStatus(review?.status);
+
+        const checklistLocked = !!(review as any)?.isLockForm
+          && ['Submitted', 'Approved', 'Completed'].includes(reviewStatus);
         
         return {
           crewId: crew.employeeId || crew.empNo || '-',
@@ -559,6 +564,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           reco: recoStatus,
           promotionChecklist: checklistProgressResult.percentage,
           checklistProgressData: checklistProgressResult,
+          checklistLocked,
           otherCriteria: otherCriteriaStatus,
           cesIndex: cesIndexStatus,
           trainDocs: trainDocsStatus,
