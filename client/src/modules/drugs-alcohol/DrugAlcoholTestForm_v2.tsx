@@ -142,8 +142,6 @@ export function DrugAlcoholTestForm_v2({
   const partBRef = useRef<HTMLDivElement>(null);
   const continuousScrollContainerRef = useRef<HTMLDivElement>(null);
   
-  // Track if witness has been auto-copied (first witness selection copies to all empty rows)
-  const witnessAutoCopied = useRef(false);
 
   // Test type labels
   const testTypeLabels = {
@@ -260,9 +258,6 @@ export function DrugAlcoholTestForm_v2({
 
       form.reset(formData as DrugAlcoholTestFormData);
       
-      // Reset witness auto-copy flag when loading existing record
-      // (witnesses are already populated from saved data)
-      witnessAutoCopied.current = true;
     }
   }, [existingRecord, recordUuid, testType, form]);
 
@@ -1454,18 +1449,8 @@ export function DrugAlcoholTestForm_v2({
                                     return rank ? `${name}, ${rank}` : name;
                                   };
                                   const handleWitnessChange = (value: string) => {
-                                    field.onChange(value);
-                                    
-                                    // Auto-copy: first witness selection copies to all rows with empty witness
-                                    if (!witnessAutoCopied.current && value) {
-                                      witnessAutoCopied.current = true;
-                                      const personnelTested = form.getValues('personnelTested') || [];
-                                      personnelTested.forEach((person, i) => {
-                                        if (i !== index && !person.witness) {
-                                          form.setValue(`personnelTested.${i}.witness`, value);
-                                        }
-                                      });
-                                    }
+                                    // '__none__' is the "Clear" option; store it as empty
+                                    field.onChange(value === '__none__' ? '' : value);
                                   };
                                   
                                   return (
@@ -1479,6 +1464,7 @@ export function DrugAlcoholTestForm_v2({
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
+                                          <SelectItem value="__none__">— None —</SelectItem>
                                           {vesselCrew.map((crew, crewIndex) => {
                                             const uniqueKey = crew.id || `crew-${crewIndex}-${crew.firstName}-${crew.familyName}`;
                                             const uniqueValue = crew.id || `crew-${crewIndex}`;
