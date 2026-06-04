@@ -506,9 +506,27 @@ export function DrugAlcoholTestForm_v2({
     try {
       const data = form.getValues();
       const vesselName = getVesselName(data.vesselId || '');
+      const resolveWitnessName = (witnessId: string) => {
+        if (!witnessId) return '';
+
+        const crew = allCrewMembers.find(
+          (c: any) => c.crewUuid === witnessId || c.id === witnessId
+        );
+
+        if (!crew) return witnessId;
+
+        const name = `${crew.firstName || ''} ${crew.familyName || ''}`.trim();
+        const rank = crew.presentRank || '';
+
+        return rank ? `${name}, ${rank}` : name;
+      };
       await generateDrugAlcoholTestPDF({
         ...data,
         vesselName: vesselName || '',
+        personnelTested: (data.personnelTested || []).map((person: any) => ({
+          ...person,
+          witness: resolveWitnessName(person.witness || ''),
+        })),
       });
       toast({
         title: "Export Successful",
