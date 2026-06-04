@@ -305,22 +305,39 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         resizable: true,
         enableRowGroup: false
       },
-      {
-        headerName: 'Status',
-        field: 'status',
-        flex: 0.8,
-        minWidth: 80,
-        cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
-        filter: 'agSetColumnFilter',
-        sortable: true,
-        resizable: true,
-        enableRowGroup: false,
-        valueFormatter: (params: any) => {
-          // Return value as-is since status is now stored with proper capitalization
-          // matching legacy: Draft, Applied, Screening, For Approval, Recruited, Waitlisted, Rejected
-          return params.value || '';
-        }
-      },
+      ...(["recruited", "waitlist", "rejected"].includes(selectedRecruitmentPage)
+        ? [{
+            headerName: 'Date of Recruitment',
+            field: 'recruitmentDate',
+            flex: 1,
+            minWidth: 130,
+            cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
+            filter: 'agTextColumnFilter',
+            sortable: true,
+            resizable: true,
+            enableRowGroup: false,
+            valueFormatter: (params: any) => {
+              if (!params.value) return '';
+              const parsed = parseISO(params.value);
+              return isValid(parsed) ? format(parsed, 'dd-MMM-yyyy') : params.value;
+            }
+          } as ColDef]
+        : [{
+            headerName: 'Status',
+            field: 'status',
+            flex: 0.8,
+            minWidth: 80,
+            cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
+            filter: 'agSetColumnFilter',
+            sortable: true,
+            resizable: true,
+            enableRowGroup: false,
+            valueFormatter: (params: any) => {
+              // Return value as-is since status is now stored with proper capitalization
+              // matching legacy: Draft, Applied, Screening, For Approval, Recruited, Waitlisted, Rejected
+              return params.value || '';
+            }
+          } as ColDef]),
       {
         headerName: 'Actions',
         field: 'actions',
@@ -409,7 +426,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     }
 
     return baseColumns;
-  }, [ActionsCellRenderer, normalizeRank, isPhone, isTablet, isSmallScreen]);
+  }, [ActionsCellRenderer, normalizeRank, isPhone, isTablet, isSmallScreen, selectedRecruitmentPage]);
 
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);

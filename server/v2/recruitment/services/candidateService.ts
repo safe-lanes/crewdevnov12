@@ -15,6 +15,7 @@ import {
   candVesselTypesApplied,
   candPersonalDetails,
   candAddresses,
+  candRecruitmentDecision,
 } from "../../../../shared/v2/recruitment/schema";
 import {
   masterNationalities,
@@ -57,6 +58,7 @@ export interface CandidateListItem extends RecruitmentCandidate {
   nationality: string;
   vesselType: string;
   manningAgent: string;
+  recruitmentDate: string | null;
 }
 
 export class CandidateService {
@@ -297,6 +299,9 @@ export class CandidateService {
         nationalityName: masterNationalities.nationality,
         manningAgentName: candPersonalDetails.manningAgent,
 
+        // Date of Recruitment (C3.3) from the recruitment decision
+        recruitmentDate: candRecruitmentDecision.recruitmentDate,
+
         // Vessel type UUID (will be resolved in next step)
         vesselTypeUuid: candVesselTypesApplied.vesselTypeUuid,
       })
@@ -308,6 +313,13 @@ export class CandidateService {
       .leftJoin(
         masterNationalities,
         eq(recruitmentCandidatesV2.nationalityUuid, masterNationalities.natUuid)
+      )
+      .leftJoin(
+        candRecruitmentDecision,
+        and(
+          eq(recruitmentCandidatesV2.recCanUuid, candRecruitmentDecision.recCanUuid),
+          eq(candRecruitmentDecision.isDeleted, false)
+        )
       )
       .leftJoin(
         candVesselTypesApplied,
@@ -323,7 +335,7 @@ export class CandidateService {
     const candidateMap = new Map<string, CandidateListItem>();
 
     for (const row of candidatesWithMasterData) {
-      const { nationalityName, manningAgentName, vesselTypeUuid, ...candidateData } = row;
+      const { nationalityName, manningAgentName, recruitmentDate, vesselTypeUuid, ...candidateData } = row;
 
       if (!candidateMap.has(row.recCanUuid)) {
         // First time seeing this candidate
@@ -331,6 +343,7 @@ export class CandidateService {
           ...candidateData,
           nationality: nationalityName || row.nationalityUuid || '',
           manningAgent: manningAgentName || '',
+          recruitmentDate: recruitmentDate || null,
           vesselType: '',
         });
       }

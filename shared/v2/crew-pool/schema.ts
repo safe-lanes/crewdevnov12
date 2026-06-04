@@ -30,6 +30,7 @@ export const crewMembersV2 = pgTable("crew_members_v2", {
   presentRank: text("present_rank"),
   rankAppliedFor: text("rank_applied_for"),
   status: text("status"),
+  recruitmentDate: text("recruitment_date"),
   availability: text("availability"),
   nextAvailability: text("next_availability"),
   isActive: boolean("is_active").default(true),

@@ -735,6 +735,7 @@ export const candRecruitmentDecision = pgTable("cand_recruitment_decision", {
   decisionUuid: text("decision_uuid").unique().notNull(),
   recCanUuid: text("rec_can_uuid").notNull(),
   recruitmentStatus: text("recruitment_status"),
+  recruitmentDate: text("recruitment_date"),
   submittedByUuid: text("submitted_by_uuid"),
   submittedDate: text("submitted_date"),
   ...auditColumns,

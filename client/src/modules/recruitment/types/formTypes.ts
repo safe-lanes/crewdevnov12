@@ -425,6 +425,7 @@ export interface CandidateRecruitmentDecision {
   decUuid: string;
   recCanUuid: string;
   recruitmentStatus: string;
+  recruitmentDate?: string | null;
   submittedByUuid: string;
   submittedDate: string;
   assignedGroups?: AssignedGroup[];
@@ -453,6 +454,7 @@ export interface V2CandidateListItem {
   presentRank: string;
   rankAppliedFor: string;
   status: string;
+  recruitmentDate: string | null;
   manningAgent: string;
   createdAt: string;
   updatedAt: string;

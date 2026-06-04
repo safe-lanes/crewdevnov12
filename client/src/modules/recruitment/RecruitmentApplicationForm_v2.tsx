@@ -397,6 +397,7 @@ interface LocalFormData {
   c2FleetGroups: string[];
   c3RecruitmentStatus: string;
   c3AssignedGroups: string[];
+  c3RecruitmentDate: string;
   c3SubmittedBy: string;
   c3SubmittedDate: string;
 }
@@ -519,6 +520,7 @@ const getInitialFormData = (): LocalFormData => ({
   c2FleetGroups: [],
   c3RecruitmentStatus: '',
   c3AssignedGroups: [],
+  c3RecruitmentDate: '',
   c3SubmittedBy: '',
   c3SubmittedDate: '',
 });
@@ -1814,6 +1816,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         c3RecruitmentStatus: decisionData.recruitmentStatus || '',
         c3AssignedGroups: decisionData.assignedGroups?.map(ag => ag.groupUuid) || [],
+        c3RecruitmentDate: decisionData.recruitmentDate || '',
         c3SubmittedBy: decisionData.submittedByUuid || '',
         c3SubmittedDate: decisionData.submittedDate || '',
       }));
@@ -3976,6 +3979,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           recCanUuid,
           data: {
             recruitmentStatus: formData.c3RecruitmentStatus || null,
+            recruitmentDate: formData.c3RecruitmentDate || null,
             submittedByUuid: overrides?.c3SubmittedBy || formData.c3SubmittedBy || null,
             submittedDate: overrides?.c3SubmittedDate || formData.c3SubmittedDate || null,
             assignedGroups: formData.c3AssignedGroups.map(g => ({ groupUuid: g })),
@@ -8955,6 +8959,20 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                             ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">C3.3 Date of Recruitment:</label>
+                      <div className="min-w-[300px]">
+                        <FormattedDateInput
+                          value={formData.c3RecruitmentDate}
+                          onChange={(e) => updateFormData('c3RecruitmentDate', e.target.value)}
+                          className="max-w-[200px]"
+                          data-testid="input-c3-recruitment-date"
+                        />
+                      </div>
                     </div>
                   </div>
 
