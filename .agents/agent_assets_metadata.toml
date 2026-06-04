@@ -11,3 +11,9 @@ id = "SiCsPjP1Pioa2gpq7Zp8M"
 uri = "file://multitenant-production-audit-report.md"
 type = "text"
 title = "SAIL Crewing — Multi-Tenant Production Audit Report"
+
+[[outputs]]
+id = "dJyxphfXDfc7FPJN6BAs3"
+uri = "file://exports/Promotion_Rank_Update_Questions.docx"
+type = "word_document"
+title = "Promotion Rank Update — Domain Expert Questions"
