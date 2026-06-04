@@ -21,6 +21,7 @@ interface FormData {
   rankAppliedFor: string;
   manningAgent: string;
   fileNo: string;
+  c3RecruitmentDate?: string;
   countryOfResidence: string;
   nearestAirport: string;
   residentialAddressLine1: string;
@@ -840,6 +841,8 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   const fileLines = builder.drawWrappedTextAt(displayValue(formData.fileNo), MARGIN, currentY - 12, col1MaxWidth);
   builder.drawTextAt('Manning Agent', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
   builder.drawTextAt(displayValue(formData.manningAgent), fieldStartX, currentY - 12, 9, 'normal');
+  builder.drawTextAt('Date of Recruitment', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
+  builder.drawTextAt(displayValue(formData.c3RecruitmentDate ? formatDate(formData.c3RecruitmentDate) : ''), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
 
   let row3Height = Math.max(baseRowSpacing, 12 + fileLines * 11 + 5);
   builder.setY(currentY - row3Height);

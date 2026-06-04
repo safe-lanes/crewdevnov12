@@ -121,6 +121,7 @@ export interface CrewInfoFormData {
   manningAgent: string;
   crewPool: string;
   employeeId: string;
+  recruitmentDate: string;
   nextAvailability: string;
   countryOfResidence: string;
   nearestAirport: string;
@@ -638,14 +639,23 @@ export async function generateCrewInfoPDF(
 
   builder.drawText('CREW INFORMATION FORM', MARGIN, 14, 'bold', PRIMARY_COLOR);
 
+  const headerRightFontSize = 10;
   const crewId = formData.employeeId || '';
   if (crewId) {
-    const crewIdLabel = 'Crew ID:';
-    const crewIdText = `${crewIdLabel} ${crewId}`;
-    const crewIdFontSize = 10;
-    const crewIdWidth = fontBold.widthOfTextAtSize(crewIdText, crewIdFontSize);
+    const crewIdText = `Crew ID: ${crewId}`;
+    const crewIdWidth = fontBold.widthOfTextAtSize(crewIdText, headerRightFontSize);
     const crewIdX = A4_WIDTH - MARGIN - crewIdWidth;
-    builder.drawTextAt(crewIdText, crewIdX, builder.getY() + 2, crewIdFontSize, 'bold', PRIMARY_COLOR);
+    builder.drawTextAt(crewIdText, crewIdX, builder.getY() + 2, headerRightFontSize, 'bold', PRIMARY_COLOR);
+  }
+
+  const recruitmentDateValue = formData.recruitmentDate ? formatDate(formData.recruitmentDate) : '';
+  if (recruitmentDateValue) {
+    const recText = `Date of Recruitment: ${recruitmentDateValue}`;
+    const recWidth = fontBold.widthOfTextAtSize(recText, headerRightFontSize);
+    const recRightEdge = uploadedPhoto ? A4_WIDTH - MARGIN - PHOTO_WIDTH - 10 : A4_WIDTH - MARGIN;
+    const recX = recRightEdge - recWidth;
+    const recY = builder.getY() + 2 - (crewId ? 14 : 0);
+    builder.drawTextAt(recText, recX, recY, headerRightFontSize, 'bold', PRIMARY_COLOR);
   }
 
   builder.moveDown(LINE_HEIGHT + 6);
