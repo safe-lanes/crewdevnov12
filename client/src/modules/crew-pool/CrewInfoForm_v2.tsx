@@ -224,6 +224,7 @@ interface FormData {
   manningAgent: string;
   crewPool: string;
   employeeId: string;
+  recruitmentDate: string;
   nextAvailability: string;
   
   // A1.2 Address & Contact Info
@@ -682,6 +683,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
+  const [isRecruitmentDateEditOpen, setIsRecruitmentDateEditOpen] = useState(false);
+  const [tempRecruitmentDate, setTempRecruitmentDate] = useState<string>('');
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
   const [isTravelDocDialogOpen, setIsTravelDocDialogOpen] = useState(false);
@@ -1015,6 +1018,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     manningAgent: '',
     crewPool: '',
     employeeId: crewMember?.employeeId || '',
+    recruitmentDate: '',
     nextAvailability: '',
     
     // A1.2 Address & Contact Info
@@ -1281,6 +1285,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           manningAgent: detailedCrewData.manningAgent || '',
           crewPool: detailedCrewData.crewPool || '',
           employeeId: detailedCrewData.employeeId || '',
+          recruitmentDate: detailedCrewData.recruitmentDate || '',
           nextAvailability: detailedCrewData.nextAvailability || '',
           
           // A1.2 Address & Contact Info
@@ -1417,6 +1422,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         manningAgent: '',
         crewPool: '',
         employeeId: '',
+        recruitmentDate: '',
         nextAvailability: '',
         
         // A1.2 Address & Contact Info
@@ -7703,7 +7709,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // V2: Status update mutation (for isActive toggle and nextAvailability)
   const statusUpdateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { isActive?: boolean; nextAvailability?: string } }) => {
+    mutationFn: async ({ id, data }: { id: string; data: { isActive?: boolean; nextAvailability?: string; recruitmentDate?: string } }) => {
       const response = await apiRequest('PATCH', `/api/v2/crew-pool/crew/${id}`, data);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -7757,6 +7763,22 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
     setIsNextAvailabilityEditOpen(false);
     setTempNextAvailability('');
+  };
+
+  // Handle updating date of recruitment (mirrors Next Availability pattern)
+  const handleUpdateRecruitmentDate = async () => {
+    if (!tempRecruitmentDate) return;
+    // V2: Use crewUuid as the primary identifier. For manually added crew that
+    // have not been persisted yet, create the crew record first.
+    let crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
+    if (!crewId) {
+      crewId = await ensureCrewExists();
+    }
+    if (crewId) {
+      statusUpdateMutation.mutate({ id: crewId, data: { recruitmentDate: tempRecruitmentDate } });
+    }
+    setIsRecruitmentDateEditOpen(false);
+    setTempRecruitmentDate('');
   };
 
   const handleSave = () => {
@@ -8175,12 +8197,34 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part B Seafarers' Particulars</h2>
                       <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
                     </div>
-                    {formData.employeeId && (
-                      <div className="text-right">
-                        <span className="text-sm text-gray-500">Crew ID:</span>
-                        <span className="ml-2 text-base font-medium" style={{ color: '#16569e' }} data-testid="text-crew-id">{formData.employeeId}</span>
+                    <div className="text-right space-y-1">
+                      {formData.employeeId && (
+                        <div>
+                          <span className="text-sm text-gray-500">Crew ID:</span>
+                          <span className="ml-2 text-base font-medium" style={{ color: '#16569e' }} data-testid="text-crew-id">{formData.employeeId}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-end">
+                        <span className="text-sm text-gray-500">Date of Recruitment:</span>
+                        <span className="ml-2 text-base font-medium" style={{ color: '#16569e' }} data-testid="text-recruitment-date">
+                          {formData.recruitmentDate ? formatDate(formData.recruitmentDate) : '—'}
+                        </span>
+                        {canEditSection('B') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 ml-2"
+                            onClick={() => {
+                              setTempRecruitmentDate(formData.recruitmentDate || '');
+                              setIsRecruitmentDateEditOpen(true);
+                            }}
+                            data-testid="button-edit-recruitment-date"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                   <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                 </div>
@@ -8540,6 +8584,31 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               Cancel
             </Button>
             <Button onClick={handleUpdateNextAvailability} disabled={!tempNextAvailability}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRecruitmentDateEditOpen} onOpenChange={setIsRecruitmentDateEditOpen}>
+        <DialogContent className="sm:max-w-[350px]">
+          <DialogHeader>
+            <DialogTitle>Set Date of Recruitment</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <label className="text-sm font-medium text-gray-700">Date of Recruitment</label>
+            <FormattedDateInput
+              value={tempRecruitmentDate}
+              onChange={(e) => setTempRecruitmentDate(e.target.value)}
+              className="mt-1"
+              data-testid="input-recruitment-date"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRecruitmentDateEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateRecruitmentDate} disabled={!tempRecruitmentDate}>
               Save
             </Button>
           </DialogFooter>
