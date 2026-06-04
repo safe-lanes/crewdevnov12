@@ -841,8 +841,6 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
   const fileLines = builder.drawWrappedTextAt(displayValue(formData.fileNo), MARGIN, currentY - 12, col1MaxWidth);
   builder.drawTextAt('Manning Agent', fieldStartX, currentY, 8, 'normal', LABEL_COLOR);
   builder.drawTextAt(displayValue(formData.manningAgent), fieldStartX, currentY - 12, 9, 'normal');
-  builder.drawTextAt('Date of Recruitment', fieldStartX + fieldColWidth, currentY, 8, 'normal', LABEL_COLOR);
-  builder.drawTextAt(displayValue(formData.c3RecruitmentDate ? formatDate(formData.c3RecruitmentDate) : ''), fieldStartX + fieldColWidth, currentY - 12, 9, 'normal');
 
   let row3Height = Math.max(baseRowSpacing, 12 + fileLines * 11 + 5);
   builder.setY(currentY - row3Height);
@@ -1302,6 +1300,11 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
     builder.drawText('-', MARGIN + 10, 9, 'normal');
     builder.moveDown(LINE_HEIGHT);
   }
+
+  builder.drawText('C3.3 Date of Recruitment:', MARGIN, 9, 'normal');
+  builder.moveDown(LINE_HEIGHT);
+  builder.drawText(displayValue(formData.c3RecruitmentDate ? formatDate(formData.c3RecruitmentDate) : ''), MARGIN + 10, 9, 'normal');
+  builder.moveDown(LINE_HEIGHT);
   
   builder.drawSubmissionInfo(formData.c3SubmittedBy, formData.c3SubmittedDate);
 }
