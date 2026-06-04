@@ -12,6 +12,7 @@ export interface CandidateCore {
   rankAppliedFor: string;
   status: string;
   uploadedPhoto: string;
+  screeningDate?: string;
 }
 
 export interface CandidateVesselType {

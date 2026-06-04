@@ -28,6 +28,7 @@ export const recruitmentCandidatesV2 = pgTable("recruitment_candidates_v2", {
   rankAppliedFor: text("rank_applied_for"),
   status: text("status").default("Draft"),
   uploadedPhoto: text("uploaded_photo"),
+  screeningDate: text("screening_date"),
   ...auditColumns,
 });
 

@@ -210,6 +210,7 @@ interface LocalFormData {
   rankAppliedFor: string;
   manningAgent: string;
   fileNo: string;
+  screeningDate: string;
   countryOfResidence: string;
   nearestAirport: string;
   residentialAddressLine1: string;
@@ -423,6 +424,7 @@ const getInitialFormData = (): LocalFormData => ({
   rankAppliedFor: '',
   manningAgent: '',
   fileNo: '',
+  screeningDate: '',
   countryOfResidence: '',
   nearestAirport: '',
   residentialAddressLine1: '',
@@ -1066,6 +1068,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         presentRank: candidateData.presentRank || '',
         rankAppliedFor: candidateData.rankAppliedFor || '',
         fileNo: candidateData.fileNo || '',
+        screeningDate: (candidateData as any).screeningDate || '',
         uploadedPhoto: candidateData.uploadedPhoto || '',
       }));
     }
@@ -3256,18 +3259,27 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
         
         const newStatus = getStatusForSection('A5', true);
+
+        // Capture the screening date on first submission and preserve it thereafter
+        // so it reflects when the recruitment process was initiated.
+        const existingScreeningDate = (candidate as any)?.screeningDate || formData.screeningDate;
+        const screeningDate = existingScreeningDate || formatDate(new Date());
+
         await updateCandidateMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
             status: newStatus,
             fileNo: fileNo,
+            screeningDate: screeningDate,
           },
         });
         
-        // Update local formData with the generated file number
-        if (needsNewFileNo && fileNo) {
-          setFormData(prev => ({ ...prev, fileNo }));
-        }
+        // Update local formData with the generated file number and screening date
+        setFormData(prev => ({
+          ...prev,
+          ...(needsNewFileNo && fileNo ? { fileNo } : {}),
+          screeningDate,
+        }));
         
         toast({
           title: "Submitted",
@@ -5686,7 +5698,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
               <div className="space-y-6">{renderA5AdditionalInfo()}</div>
-              <div className="flex justify-end gap-2 mt-6 pt-4">
+              <div className="flex justify-between items-center gap-2 mt-6 pt-4">
+                <div className="text-xs text-gray-500" data-testid="text-a5-screening-date">
+                  {formData.screeningDate && (
+                    <>
+                      <span className="font-medium">Submitted for screening on</span> {formatDate(formData.screeningDate) || formData.screeningDate}
+                    </>
+                  )}
+                </div>
                 <Button className="bg-green-600 hover:bg-green-700 text-white px-8" onClick={handleA5SubmitForScreening} disabled={savingInProgress} data-testid="button-submit-for-screening">
                   {savingInProgress ? 'Saving...' : 'Submit for Screening'}
                 </Button>
