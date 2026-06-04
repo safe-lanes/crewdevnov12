@@ -1302,8 +1302,7 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
   }
 
   builder.drawText('C3.3 Date of Recruitment:', MARGIN, 9, 'normal');
-  builder.moveDown(LINE_HEIGHT);
-  builder.drawText(displayValue(formData.c3RecruitmentDate ? formatDate(formData.c3RecruitmentDate) : ''), MARGIN + 10, 9, 'normal');
+  builder.drawTextAt(displayValue(formData.c3RecruitmentDate ? formatDate(formData.c3RecruitmentDate) : ''), MARGIN + 150, builder.getY(), 9, 'normal');
   builder.moveDown(LINE_HEIGHT);
   
   builder.drawSubmissionInfo(formData.c3SubmittedBy, formData.c3SubmittedDate);
