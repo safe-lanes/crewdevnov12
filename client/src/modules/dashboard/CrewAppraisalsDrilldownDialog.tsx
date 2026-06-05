@@ -141,6 +141,34 @@ export const CrewAppraisalsDrilldownDialog = ({
     enabled: open,
   });
 
+  const { data: vessels = [] } = useQuery<any[]>({
+    queryKey: ["/api/v2/masters/vessels"],
+    staleTime: 60 * 1000,
+    enabled: open,
+  });
+
+  // Resolve the stored vessel reference to the vessel's CURRENT name. Appraisals
+  // store the vessel UUID; we key the map by UUID and also by numeric id / name
+  // so legacy rows still resolve. The name is read from master data, so a later
+  // vessel rename is reflected here.
+  const vesselNameByKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const v of vessels) {
+      const name = v.vessel || v.name || v.vesselName;
+      if (!name) continue;
+      for (const k of [v.vesselUuid, v.uuid, v.entryId, v.id, v.vesselId]) {
+        if (k != null && String(k).trim() !== "") map.set(String(k), name);
+      }
+    }
+    return map;
+  }, [vessels]);
+
+  const resolveVesselName = (value: string | null | undefined): string => {
+    const raw = (value || "").trim();
+    if (!raw) return "";
+    return vesselNameByKey.get(raw) || raw;
+  };
+
   const range = useMemo(() => periodToRange(period), [period]);
 
   const matching = useMemo<AppraisalRow[]>(() => {
@@ -246,10 +274,11 @@ export const CrewAppraisalsDrilldownDialog = ({
                       (a.seafarersName && a.seafarersName.trim()) ||
                       (parsed.seafarersName || "").trim() ||
                       "Unnamed Seafarer";
-                    const vesselName =
+                    const vesselName = resolveVesselName(
                       (a.vessel && a.vessel.trim()) ||
-                      (parsed.vessel || "").trim() ||
-                      "";
+                        (parsed.vessel || "").trim() ||
+                        "",
+                    );
                     const appraisalType =
                       (a.appraisalType && String(a.appraisalType).trim()) ||
                       (parsed.appraisalType || "").trim() ||
