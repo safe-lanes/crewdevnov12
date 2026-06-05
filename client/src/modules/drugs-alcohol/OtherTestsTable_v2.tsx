@@ -24,10 +24,7 @@ interface OtherTestData {
 }
 
 interface OtherTestsTableProps {
-  filterType: "vessel" | "fleet" | "addGroup";
-  selectedVessels: string[];
-  fleetValue: string;
-  addGroupValue: string;
+  filterVesselNames: string[];
   onEdit?: (recordId: number | string) => void;
 }
 
@@ -154,10 +151,7 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
 };
 
 export function OtherTestsTable_v2({
-  filterType,
-  selectedVessels,
-  fleetValue,
-  addGroupValue,
+  filterVesselNames,
   onEdit,
 }: OtherTestsTableProps) {
   const gridRef = useRef<AgGridReact>(null);
@@ -212,17 +206,9 @@ export function OtherTestsTable_v2({
       violations: calculateViolations(record.personnelTested),
     }));
     
-    if (filterType === "vessel") {
-      if (selectedVessels.length === 0) return transformed;
-      return transformed.filter(record => selectedVessels.includes(record.vesselName));
-    } else if (filterType === "fleet") {
-      return transformed;
-    } else if (filterType === "addGroup") {
-      return transformed;
-    }
-    
-    return transformed;
-  }, [testRecords, vesselMap, filterType, selectedVessels, fleetValue, addGroupValue]);
+    if (filterVesselNames.length === 0) return transformed;
+    return transformed.filter(record => filterVesselNames.includes(record.vesselName));
+  }, [testRecords, vesselMap, filterVesselNames]);
   
   const columnDefs = useMemo<ColDef<OtherTestData>[]>(() => [
     {

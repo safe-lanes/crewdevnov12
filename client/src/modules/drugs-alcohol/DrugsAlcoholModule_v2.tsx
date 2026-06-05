@@ -23,6 +23,8 @@ import { useViewport } from '@/hooks/useViewport';
 import { useVesselsV2 } from '@/hooks/v2/useMasterDataV2';
 import { queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useDrugsAlcoholFiltersStore } from '@/stores/drugsAlcoholFiltersStore';
+import { useV2FleetGroups, useV2AdditionalGroups, parseGroupVesselNames } from '@/modules/rest-hours/hooks/useRestHoursV2Data';
 
 export function DrugsAlcoholModule_v2() {
     const [selectedDrugsAlcoholPage, setSelectedDrugsAlcoholPage] = useState<string>("annual");
@@ -132,13 +134,14 @@ export function DrugsAlcoholModule_v2() {
     const isTablet = viewport === 'tablet';
     const isSmallScreen = isPhone || isTablet;
 
-    const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
-    const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
-    const [fleetValue, setFleetValue] = useState("");
-    const [addGroupValue, setAddGroupValue] = useState("");
+    const {
+        filterType, selectedVessels, fleetValue, addGroupValue, summaryVessel,
+        draftFilterType, draftSelectedVessels, draftFleetValue, draftAddGroupValue, draftSummaryVessel,
+        toggleDraftVessel, setDraftSelectedVessels, selectDraftFleet, selectDraftAddGroup,
+        setDraftFilterType, setDraftSummaryVessel, clearDraftFilters,
+        applyFilters, applySummary, syncDraftFromApplied,
+    } = useDrugsAlcoholFiltersStore();
     const [showFilters, setShowFilters] = useState(true);
-    
-    const [summarySelectedVessel, setSummarySelectedVessel] = useState<string>("");
     
     const [showForm, setShowForm] = useState(false);
     const [formTestType, setFormTestType] = useState<'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others'>();
@@ -160,38 +163,56 @@ export function DrugsAlcoholModule_v2() {
         return myVessels[0].vessel;
     }, [isShipUser, myVessels]);
 
+    const { fleetGroups, isLoading: fleetGroupsLoading } = useV2FleetGroups();
+    const { additionalGroups, isLoading: additionalGroupsLoading } = useV2AdditionalGroups();
+
+    useEffect(() => {
+        syncDraftFromApplied();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const resolvedVesselNames = useMemo<string[]>(() => {
+        let names: string[] = [];
+        if (filterType === 'vessel') {
+            names = selectedVessels;
+        } else if (filterType === 'fleet') {
+            names = parseGroupVesselNames(fleetGroups.find(g => String(g.id) === fleetValue)?.vessels);
+        } else if (filterType === 'addGroup') {
+            names = parseGroupVesselNames(additionalGroups.find(g => String(g.id) === addGroupValue)?.vessels);
+        }
+        const valid = new Set(vessels.map((v: any) => v.name));
+        return names.filter(n => valid.has(n));
+    }, [filterType, selectedVessels, fleetValue, addGroupValue, fleetGroups, additionalGroups, vessels]);
+
     useEffect(() => {
         if (isShipUser && myVessels.length > 0 && vessels.length > 0) {
             const myVesselName = myVessels[0].vessel;
             const matchedVessel = vessels.find((v: any) => v.name === myVesselName);
             if (matchedVessel) {
-                setSummarySelectedVessel(matchedVessel.vesselId);
-                setSelectedVessels([matchedVessel.name]);
+                setDraftSelectedVessels([matchedVessel.name]);
+                applyFilters();
+                setDraftSummaryVessel(matchedVessel.vesselId);
+                applySummary();
             }
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isShipUser, myVessels, vessels]);
 
     useEffect(() => {
-        if (!isShipUser && vessels.length > 0 && !summarySelectedVessel) {
-            setSummarySelectedVessel(vessels[0].vesselId);
+        if (!isShipUser && vessels.length > 0 && !summaryVessel) {
+            setDraftSummaryVessel(vessels[0].vesselId);
+            applySummary();
         }
-    }, [isShipUser, vessels, summarySelectedVessel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isShipUser, vessels, summaryVessel]);
 
     const handleClearFilters = () => {
-        setFilterType("vessel");
-        if (!isShipUser) {
-            setSelectedVessels([]);
-        }
-        setFleetValue("");
-        setAddGroupValue("");
+        clearDraftFilters();
+        applyFilters();
     };
 
-    const toggleVessel = (vesselName: string) => {
-        setSelectedVessels(prev => 
-            prev.includes(vesselName) 
-                ? prev.filter(v => v !== vesselName)
-                : [...prev, vesselName]
-        );
+    const handleApplyFilters = () => {
+        applyFilters();
     };
 
     const handleOpenForm = (testType: 'annual' | 'periodic' | 'monthly' | 'post-incident' | 'others', vesselId?: string, recordUuid?: string) => {
@@ -361,8 +382,8 @@ export function DrugsAlcoholModule_v2() {
                     data-testid="select-vessel-multi"
                 >
                     <span className="truncate">
-                        {selectedVessels.length > 0 
-                            ? `${selectedVessels.length} selected` 
+                        {draftSelectedVessels.length > 0 
+                            ? `${draftSelectedVessels.length} selected` 
                             : vesselsLoading ? "Loading..." : "Vessel"
                         }
                     </span>
@@ -377,13 +398,13 @@ export function DrugsAlcoholModule_v2() {
                             className="flex items-center gap-2 py-1.5 px-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
                         >
                             <Checkbox 
-                                checked={selectedVessels.includes(vessel.name)}
-                                onCheckedChange={() => toggleVessel(vessel.name)}
+                                checked={draftSelectedVessels.includes(vessel.name)}
+                                onCheckedChange={() => toggleDraftVessel(vessel.name)}
                                 data-testid={`checkbox-vessel-${vessel.id}`}
                             />
                             <label 
                                 className="text-sm cursor-pointer flex-1"
-                                onClick={() => toggleVessel(vessel.name)}
+                                onClick={() => toggleDraftVessel(vessel.name)}
                             >
                                 {vessel.name}
                             </label>
@@ -396,31 +417,33 @@ export function DrugsAlcoholModule_v2() {
     };
 
     const renderFleetSelect = () => (
-        <Select value={fleetValue} onValueChange={setFleetValue}>
+        <Select value={draftFleetValue} onValueChange={selectDraftFleet}>
             <SelectTrigger 
                 className={`h-8 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900 ${isPhone ? 'w-full' : 'w-40'}`}
                 data-testid="select-fleet-value"
             >
-                <SelectValue placeholder="Select Fleet" />
+                <SelectValue placeholder={fleetGroupsLoading ? "Loading..." : "Select Fleet"} />
             </SelectTrigger>
             <SelectContent>
-                <SelectItem value="fleet1">Fleet Group 1</SelectItem>
-                <SelectItem value="fleet2">Fleet Group 2</SelectItem>
+                {fleetGroups.map((g) => (
+                    <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>
+                ))}
             </SelectContent>
         </Select>
     );
 
     const renderAddGroupSelect = () => (
-        <Select value={addGroupValue} onValueChange={setAddGroupValue}>
+        <Select value={draftAddGroupValue} onValueChange={selectDraftAddGroup}>
             <SelectTrigger 
                 className={`h-8 text-xs text-[#0f172a] dark:text-white placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900 ${isPhone ? 'w-full' : 'w-40'}`}
                 data-testid="select-addGroup-value"
             >
-                <SelectValue placeholder="Select Group" />
+                <SelectValue placeholder={additionalGroupsLoading ? "Loading..." : "Select Group"} />
             </SelectTrigger>
             <SelectContent>
-                <SelectItem value="group1">Group 1</SelectItem>
-                <SelectItem value="group2">Group 2</SelectItem>
+                {additionalGroups.map((g) => (
+                    <SelectItem key={g.id} value={String(g.id)}>{g.name}</SelectItem>
+                ))}
             </SelectContent>
         </Select>
     );
@@ -432,8 +455,8 @@ export function DrugsAlcoholModule_v2() {
             return (
                 <div className="flex flex-col gap-3 mb-4 p-3 bg-transparent rounded-lg" data-testid="filter-container">
                     <RadioGroup 
-                        value={filterType} 
-                        onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
+                        value={draftFilterType} 
+                        onValueChange={(value: "vessel" | "fleet" | "addGroup") => setDraftFilterType(value)}
                         className="flex flex-col gap-3"
                     >
                         <div className="flex flex-col gap-2">
@@ -445,7 +468,7 @@ export function DrugsAlcoholModule_v2() {
                                     data-testid="radio-vessel"
                                 />
                             </div>
-                            {filterType === 'vessel' && renderVesselSelect()}
+                            {draftFilterType === 'vessel' && renderVesselSelect()}
                         </div>
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
@@ -456,7 +479,7 @@ export function DrugsAlcoholModule_v2() {
                                     data-testid="radio-fleet"
                                 />
                             </div>
-                            {filterType === 'fleet' && renderFleetSelect()}
+                            {draftFilterType === 'fleet' && renderFleetSelect()}
                         </div>
                         <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2">
@@ -467,9 +490,17 @@ export function DrugsAlcoholModule_v2() {
                                     data-testid="radio-addGroup"
                                 />
                             </div>
-                            {filterType === 'addGroup' && renderAddGroupSelect()}
+                            {draftFilterType === 'addGroup' && renderAddGroupSelect()}
                         </div>
                     </RadioGroup>
+                    <Button
+                        variant="default"
+                        onClick={handleApplyFilters}
+                        className="h-8 w-full text-[11px]"
+                        data-testid="button-apply-filters"
+                    >
+                        Apply
+                    </Button>
                     <Button
                         variant="outline"
                         onClick={handleClearFilters}
@@ -486,8 +517,8 @@ export function DrugsAlcoholModule_v2() {
             return (
                 <div className="flex flex-col gap-3 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
                     <RadioGroup 
-                        value={filterType} 
-                        onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
+                        value={draftFilterType} 
+                        onValueChange={(value: "vessel" | "fleet" | "addGroup") => setDraftFilterType(value)}
                         className="grid grid-cols-3 gap-4"
                     >
                         <div className="flex flex-col gap-2">
@@ -525,6 +556,14 @@ export function DrugsAlcoholModule_v2() {
                         </div>
                     </RadioGroup>
                     <Button
+                        variant="default"
+                        onClick={handleApplyFilters}
+                        className="h-8 w-16 text-[11px]"
+                        data-testid="button-apply-filters"
+                    >
+                        Apply
+                    </Button>
+                    <Button
                         variant="outline"
                         onClick={handleClearFilters}
                         className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
@@ -539,8 +578,8 @@ export function DrugsAlcoholModule_v2() {
         return (
             <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
                 <RadioGroup 
-                    value={filterType} 
-                    onValueChange={(value: "vessel" | "fleet" | "addGroup") => setFilterType(value)}
+                    value={draftFilterType} 
+                    onValueChange={(value: "vessel" | "fleet" | "addGroup") => setDraftFilterType(value)}
                     className="flex items-center gap-6"
                 >
                     <div className="flex items-center gap-2">
@@ -572,6 +611,14 @@ export function DrugsAlcoholModule_v2() {
                     </div>
                 </RadioGroup>
                 <Button
+                    variant="default"
+                    onClick={handleApplyFilters}
+                    className="h-8 w-16 text-[11px]"
+                    data-testid="button-apply-filters"
+                >
+                    Apply
+                </Button>
+                <Button
                     variant="outline"
                     onClick={handleClearFilters}
                     className="h-8 w-16 text-[#8798ad] text-[11px] border-[#e1e8ed]"
@@ -598,8 +645,8 @@ export function DrugsAlcoholModule_v2() {
                         </span>
                     ) : (
                         <Select 
-                            value={summarySelectedVessel} 
-                            onValueChange={setSummarySelectedVessel}
+                            value={draftSummaryVessel} 
+                            onValueChange={setDraftSummaryVessel}
                             disabled={vesselsLoading}
                         >
                             <SelectTrigger 
@@ -625,16 +672,12 @@ export function DrugsAlcoholModule_v2() {
 
                 {!isShipUser && (
                     <Button
-                        variant="outline"
-                        onClick={() => {
-                            if (vessels.length > 0) {
-                                setSummarySelectedVessel(vessels[0].vesselId);
-                            }
-                        }}
-                        className={`h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] ${isPhone ? 'w-full' : 'w-16'}`}
-                        data-testid="button-clear-filters"
+                        variant="default"
+                        onClick={() => applySummary()}
+                        className={`h-8 text-[11px] ${isPhone ? 'w-full' : 'w-16'}`}
+                        data-testid="button-apply-summary"
                     >
-                        Clear
+                        Apply
                     </Button>
                 )}
             </div>
@@ -660,10 +703,7 @@ export function DrugsAlcoholModule_v2() {
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
                         <AnnualTestTable_v2
-                            filterType={filterType}
-                            selectedVessels={selectedVessels}
-                            fleetValue={fleetValue}
-                            addGroupValue={addGroupValue}
+                            filterVesselNames={resolvedVesselNames}
                             onAdd={(permissions.length === 0 || canCreate("Annual")) ? (vesselId) => handleOpenForm('annual', vesselId) : undefined}
                             onEdit={(permissions.length === 0 || canEdit("Annual")) ? (recordId) => handleOpenForm('annual', undefined, String(recordId)) : undefined}
                         />
@@ -686,10 +726,7 @@ export function DrugsAlcoholModule_v2() {
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
                         <PeriodicTestTable_v2
-                            filterType={filterType}
-                            selectedVessels={selectedVessels}
-                            fleetValue={fleetValue}
-                            addGroupValue={addGroupValue}
+                            filterVesselNames={resolvedVesselNames}
                             onAdd={(permissions.length === 0 || canCreate("Periodic")) ? (vesselId) => handleOpenForm('periodic', vesselId) : undefined}
                             onEdit={(permissions.length === 0 || canEdit("Periodic")) ? (recordId) => handleOpenForm('periodic', undefined, String(recordId)) : undefined}
                         />
@@ -712,10 +749,7 @@ export function DrugsAlcoholModule_v2() {
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
                         <MonthlyTestTable_v2
-                            filterType={filterType}
-                            selectedVessels={selectedVessels}
-                            fleetValue={fleetValue}
-                            addGroupValue={addGroupValue}
+                            filterVesselNames={resolvedVesselNames}
                             onAdd={(permissions.length === 0 || canCreate("Monthly")) ? (vesselId) => handleOpenForm('monthly', vesselId) : undefined}
                             onEdit={(permissions.length === 0 || canEdit("Monthly")) ? (recordId) => handleOpenForm('monthly', undefined, String(recordId)) : undefined}
                         />
@@ -752,10 +786,7 @@ export function DrugsAlcoholModule_v2() {
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
                         <PostIncidentTestTable_v2
-                            filterType={filterType}
-                            selectedVessels={selectedVessels}
-                            fleetValue={fleetValue}
-                            addGroupValue={addGroupValue}
+                            filterVesselNames={resolvedVesselNames}
                             onEdit={(permissions.length === 0 || canEdit("Post Incident")) ? (recordId) => handleOpenForm('post-incident', undefined, String(recordId)) : undefined}
                         />
                     </div>
@@ -791,10 +822,7 @@ export function DrugsAlcoholModule_v2() {
                         </SectionTitleComponents>
                         {renderFullFilterBar()}
                         <OtherTestsTable_v2
-                            filterType={filterType}
-                            selectedVessels={selectedVessels}
-                            fleetValue={fleetValue}
-                            addGroupValue={addGroupValue}
+                            filterVesselNames={resolvedVesselNames}
                             onEdit={(permissions.length === 0 || canEdit("Others")) ? (recordId) => handleOpenForm('others', undefined, String(recordId)) : undefined}
                         />
                     </div>
@@ -804,11 +832,11 @@ export function DrugsAlcoholModule_v2() {
                     <div className="flex flex-col h-full">
                         <SectionTitleComponents title="Summary" />
                         {renderVesselOnlyFilterBar()}
-                        {summarySelectedVessel && (
+                        {summaryVessel && (
                             <SummaryTable_v2 
-                                selectedVessel={summarySelectedVessel}
-                                onAdd={(permissions.length === 0 || canCreate("Summary")) ? (testType) => handleOpenForm(testType, summarySelectedVessel) : undefined}
-                                onEdit={(permissions.length === 0 || canEdit("Summary")) ? (testType, recordId) => handleOpenForm(testType, summarySelectedVessel, String(recordId)) : undefined}
+                                selectedVessel={summaryVessel}
+                                onAdd={(permissions.length === 0 || canCreate("Summary")) ? (testType) => handleOpenForm(testType, summaryVessel) : undefined}
+                                onEdit={(permissions.length === 0 || canEdit("Summary")) ? (testType, recordId) => handleOpenForm(testType, summaryVessel, String(recordId)) : undefined}
                             />
                         )}
                     </div>
