@@ -12,6 +12,7 @@ import {
   crewTrainingController,
   crewSeaServiceController,
   crewMedicalController,
+  crewBriefingController,
   crewTransferController,
   dashboardController,
 } from "./controllers";
@@ -168,6 +169,27 @@ router.patch("/crew/:crewUuid/doctor-visits/:visitUuid", crewMedicalController.u
 router.delete("/crew/:crewUuid/doctor-visits/:visitUuid", crewMedicalController.deleteDoctorVisit);
 router.post("/crew/:crewUuid/doctor-visits/:visitUuid/attachments", crewMedicalController.addDoctorVisitAttachment);
 router.delete("/crew/:crewUuid/doctor-visits/:visitUuid/attachments/:attUuid", crewMedicalController.removeDoctorVisitAttachment);
+
+// ============================================
+// BRIEFINGS (G1)
+// ============================================
+router.get("/crew/:crewUuid/briefings", crewBriefingController.getBriefings);
+router.get("/crew/:crewUuid/briefings/all", crewBriefingController.getAllBriefingData);
+router.post("/crew/:crewUuid/briefings", crewBriefingController.createBriefing);
+router.patch("/crew/:crewUuid/briefings/:briefingUuid", crewBriefingController.updateBriefing);
+router.delete("/crew/:crewUuid/briefings/:briefingUuid", crewBriefingController.deleteBriefing);
+router.post("/crew/:crewUuid/briefings/:briefingUuid/attachments", crewBriefingController.addBriefingAttachment);
+router.delete("/crew/:crewUuid/briefings/:briefingUuid/attachments/:attUuid", crewBriefingController.removeBriefingAttachment);
+
+// ============================================
+// DE-BRIEFINGS (G2)
+// ============================================
+router.get("/crew/:crewUuid/debriefings", crewBriefingController.getDebriefings);
+router.post("/crew/:crewUuid/debriefings", crewBriefingController.createDebriefing);
+router.patch("/crew/:crewUuid/debriefings/:debriefingUuid", crewBriefingController.updateDebriefing);
+router.delete("/crew/:crewUuid/debriefings/:debriefingUuid", crewBriefingController.deleteDebriefing);
+router.post("/crew/:crewUuid/debriefings/:debriefingUuid/attachments", crewBriefingController.addDebriefingAttachment);
+router.delete("/crew/:crewUuid/debriefings/:debriefingUuid/attachments/:attUuid", crewBriefingController.removeDebriefingAttachment);
 
 // ============================================
 // TRANSFER FROM RECRUITMENT

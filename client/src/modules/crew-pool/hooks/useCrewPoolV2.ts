@@ -50,6 +50,8 @@ import {
   mapLegacySeaServiceToV2,
   mapLegacyPreJoiningMedicalToV2,
   mapLegacyDoctorVisitToV2,
+  mapLegacyBriefingToV2,
+  mapLegacyDebriefingToV2,
   mapV2DocumentToLegacy,
   mapV2VisaToLegacy,
   mapV2EducationToLegacy,
@@ -58,6 +60,8 @@ import {
   mapV2SeaServiceToLegacy,
   mapV2PreJoiningMedicalToLegacy,
   mapV2DoctorVisitToLegacy,
+  mapV2BriefingToLegacy,
+  mapV2DebriefingToLegacy,
   mapV2ChildToLegacy,
   mapV2NextOfKinToLegacy,
   type LegacyCrewMember,
@@ -71,6 +75,8 @@ import {
   type LegacySeaService,
   type LegacyPreJoiningMedical,
   type LegacyDoctorVisit,
+  type LegacyBriefing,
+  type LegacyDebriefing,
 } from '../mappers/v2ToLegacyMapper';
 
 const V2_QUERY_KEY = '/api/v2/crew-pool';
@@ -886,6 +892,142 @@ export function useDeleteDoctorVisitV2() {
   });
 }
 
+export function useBriefingsV2(crewUuid: string | null) {
+  return useQuery({
+    queryKey: [V2_QUERY_KEY, 'crew', crewUuid, 'briefings'],
+    queryFn: async () => {
+      if (!crewUuid) return [];
+      const response = await crewPoolApiV2.getBriefings(crewUuid);
+      return (response || []).map(mapV2BriefingToLegacy);
+    },
+    enabled: !!crewUuid,
+  });
+}
+
+export function useSaveBriefingV2() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ crewUuid, data, briefingUuid, attachments }: {
+      crewUuid: string;
+      data: LegacyBriefing;
+      briefingUuid?: string;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
+    }) => {
+      const v2Data = withAuditUser(mapLegacyBriefingToV2(data));
+      let result: any;
+      let entityUuid: string;
+
+      if (briefingUuid) {
+        result = await crewPoolApiV2.updateBriefing(crewUuid, briefingUuid, v2Data);
+        entityUuid = briefingUuid;
+      } else {
+        result = await crewPoolApiV2.createBriefing(crewUuid, v2Data);
+        entityUuid = result?.briefingUuid || result?.briefing_uuid;
+      }
+
+      if (attachments && entityUuid) {
+        const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
+        for (const att of newAttachments) {
+          if (att.fileName && (att.filePath || att.fileData || att.fileUrl)) {
+            await crewPoolApiV2.addBriefingAttachment(crewUuid, entityUuid, {
+              fileName: att.fileName,
+              filePath: att.filePath,
+              fileUrl: att.fileData || att.fileUrl,
+            });
+          }
+        }
+      }
+
+      return result;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useDeleteBriefingV2() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ crewUuid, briefingUuid }: { crewUuid: string; briefingUuid: string }) => {
+      return crewPoolApiV2.deleteBriefing(crewUuid, briefingUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useDebriefingsV2(crewUuid: string | null) {
+  return useQuery({
+    queryKey: [V2_QUERY_KEY, 'crew', crewUuid, 'debriefings'],
+    queryFn: async () => {
+      if (!crewUuid) return [];
+      const response = await crewPoolApiV2.getDebriefings(crewUuid);
+      return (response || []).map(mapV2DebriefingToLegacy);
+    },
+    enabled: !!crewUuid,
+  });
+}
+
+export function useSaveDebriefingV2() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ crewUuid, data, debriefingUuid, attachments }: {
+      crewUuid: string;
+      data: LegacyDebriefing;
+      debriefingUuid?: string;
+      attachments?: Array<{ attUuid?: string; isNew?: boolean; fileName: string; filePath?: string; fileData?: string; fileUrl?: string }>;
+    }) => {
+      const v2Data = withAuditUser(mapLegacyDebriefingToV2(data));
+      let result: any;
+      let entityUuid: string;
+
+      if (debriefingUuid) {
+        result = await crewPoolApiV2.updateDebriefing(crewUuid, debriefingUuid, v2Data);
+        entityUuid = debriefingUuid;
+      } else {
+        result = await crewPoolApiV2.createDebriefing(crewUuid, v2Data);
+        entityUuid = result?.debriefingUuid || result?.debriefing_uuid;
+      }
+
+      if (attachments && entityUuid) {
+        const newAttachments = attachments.filter(att => !att.attUuid || att.isNew);
+        for (const att of newAttachments) {
+          if (att.fileName && (att.filePath || att.fileData || att.fileUrl)) {
+            await crewPoolApiV2.addDebriefingAttachment(crewUuid, entityUuid, {
+              fileName: att.fileName,
+              filePath: att.filePath,
+              fileUrl: att.fileData || att.fileUrl,
+            });
+          }
+        }
+      }
+
+      return result;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useDeleteDebriefingV2() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ crewUuid, debriefingUuid }: { crewUuid: string; debriefingUuid: string }) => {
+      return crewPoolApiV2.deleteDebriefing(crewUuid, debriefingUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
 export function useSaveVesselTypesV2() {
   const queryClient = useQueryClient();
   
@@ -1113,6 +1255,54 @@ export function useRemoveDoctorVisitAttachmentV2() {
   return useMutation({
     mutationFn: async ({ crewUuid, visitUuid, attUuid }: { crewUuid: string; visitUuid: string; attUuid: string }) => {
       return crewPoolApiV2.removeDoctorVisitAttachment(crewUuid, visitUuid, attUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useAddBriefingAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, briefingUuid, data }: { crewUuid: string; briefingUuid: string; data: any }) => {
+      return crewPoolApiV2.addBriefingAttachment(crewUuid, briefingUuid, data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useRemoveBriefingAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, briefingUuid, attUuid }: { crewUuid: string; briefingUuid: string; attUuid: string }) => {
+      return crewPoolApiV2.removeBriefingAttachment(crewUuid, briefingUuid, attUuid);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useAddDebriefingAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, debriefingUuid, data }: { crewUuid: string; debriefingUuid: string; data: any }) => {
+      return crewPoolApiV2.addDebriefingAttachment(crewUuid, debriefingUuid, data);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+    },
+  });
+}
+
+export function useRemoveDebriefingAttachmentV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ crewUuid, debriefingUuid, attUuid }: { crewUuid: string; debriefingUuid: string; attUuid: string }) => {
+      return crewPoolApiV2.removeDebriefingAttachment(crewUuid, debriefingUuid, attUuid);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });

@@ -33,3 +33,8 @@ export {
   type CrewPreJoiningMedicalWithAttachments,
   type CrewDoctorVisitWithAttachments,
 } from "./crewMedicalRepository";
+export {
+  CrewBriefingRepository,
+  type CrewBriefingWithAttachments,
+  type CrewDebriefingWithAttachments,
+} from "./crewBriefingRepository";

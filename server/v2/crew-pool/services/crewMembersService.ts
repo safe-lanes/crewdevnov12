@@ -27,6 +27,10 @@ import {
   crewMedicalAttachments,
   crewDoctorVisits,
   crewDoctorVisitsAttachments,
+  crewBriefings,
+  crewBriefingAttachments,
+  crewDebriefings,
+  crewDebriefingAttachments,
   crewVesselTypesApplied,
 } from "../../../../shared/v2/crew-pool/schema";
 import {
@@ -77,6 +81,8 @@ interface CrewFullProfile {
   seaService: any[];
   medicals: any[];
   doctorVisits: any[];
+  briefings: any[];
+  debriefings: any[];
 }
 
 import {
@@ -1481,6 +1487,79 @@ export const crewMembersService = {
       attachments: doctorVisitAttachments.filter((att: any) => att.visitUuid === visit.visitUuid)
     }));
 
+    // Batch 6: Briefing & De-briefing queries (2 queries, vessel name resolved)
+    const [briefingsWithVessel, debriefingsWithVessel] = await Promise.all([
+      db
+        .select({
+          briefing: crewBriefings,
+          resolvedVesselName: masterVessels.vessel,
+        })
+        .from(crewBriefings)
+        .leftJoin(masterVessels, eq(crewBriefings.vesselUuid, masterVessels.vesselUuid))
+        .where(
+          and(
+            eq(crewBriefings.crewUuid, crewUuid),
+            eq(crewBriefings.isDeleted, false)
+          )
+        )
+        .orderBy(asc(crewBriefings.sortOrder), asc(crewBriefings.createdAt)),
+      db
+        .select({
+          debriefing: crewDebriefings,
+          resolvedVesselName: masterVessels.vessel,
+        })
+        .from(crewDebriefings)
+        .leftJoin(masterVessels, eq(crewDebriefings.vesselUuid, masterVessels.vesselUuid))
+        .where(
+          and(
+            eq(crewDebriefings.crewUuid, crewUuid),
+            eq(crewDebriefings.isDeleted, false)
+          )
+        )
+        .orderBy(asc(crewDebriefings.sortOrder), asc(crewDebriefings.createdAt)),
+    ]);
+
+    const briefings = briefingsWithVessel.map((row: { briefing: any; resolvedVesselName: string | null }) => ({
+      ...row.briefing,
+      vesselName: row.resolvedVesselName || row.briefing.vesselName,
+    }));
+    const debriefings = debriefingsWithVessel.map((row: { debriefing: any; resolvedVesselName: string | null }) => ({
+      ...row.debriefing,
+      vesselName: row.resolvedVesselName || row.debriefing.vesselName,
+    }));
+
+    const briefingUuids = briefings.map((b: any) => b.briefingUuid);
+    const debriefingUuids = debriefings.map((d: any) => d.debriefingUuid);
+
+    // Batch 7: Briefing & De-briefing attachment queries (2 queries)
+    const [briefingAttachments, debriefingAttachments] = await Promise.all([
+      briefingUuids.length > 0
+        ? db.select().from(crewBriefingAttachments).where(
+            and(
+              sql`${crewBriefingAttachments.briefingUuid} = ANY(ARRAY[${sql.raw(briefingUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewBriefingAttachments.isDeleted, false)
+            )
+          )
+        : Promise.resolve([]),
+      debriefingUuids.length > 0
+        ? db.select().from(crewDebriefingAttachments).where(
+            and(
+              sql`${crewDebriefingAttachments.debriefingUuid} = ANY(ARRAY[${sql.raw(debriefingUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewDebriefingAttachments.isDeleted, false)
+            )
+          )
+        : Promise.resolve([]),
+    ]);
+
+    const briefingsWithAttachments = briefings.map((briefing: any) => ({
+      ...briefing,
+      attachments: briefingAttachments.filter((att: any) => att.briefingUuid === briefing.briefingUuid)
+    }));
+    const debriefingsWithAttachments = debriefings.map((debriefing: any) => ({
+      ...debriefing,
+      attachments: debriefingAttachments.filter((att: any) => att.debriefingUuid === debriefing.debriefingUuid)
+    }));
+
     // Process vessel types with resolved names
     const vesselTypes = vesselTypesRaw.map((row: { cvta: any; resolvedVesselTypeName: string | null }) => ({
       ...row.cvta,
@@ -1502,6 +1581,8 @@ export const crewMembersService = {
       seaService: seaServiceWithAttachments,
       medicals: medicalsWithAttachments,
       doctorVisits: doctorVisitsWithAttachments,
+      briefings: briefingsWithAttachments,
+      debriefings: debriefingsWithAttachments,
       vesselTypes,
     };
   },

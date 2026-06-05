@@ -441,3 +441,60 @@ export const crewDoctorVisitsAttachments = pgTable("crew_doctor_visits_attachmen
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });
+
+// ============================================
+// G. BRIEFING & DE-BRIEFING (4 tables)
+// ============================================
+export const crewBriefings = pgTable("crew_briefings", {
+  id: serial("id").primaryKey(),
+  briefingUuid: text("briefing_uuid").notNull().unique(),
+  crewUuid: text("crew_uuid").notNull(),
+  vesselUuid: text("vessel_uuid"),
+  vesselName: text("vessel_name"),
+  joiningRank: text("joining_rank"),
+  dateSignOn: text("date_sign_on"),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
+export const crewBriefingAttachments = pgTable("crew_briefing_attachments", {
+  id: serial("id").primaryKey(),
+  attUuid: text("att_uuid").notNull().unique(),
+  briefingUuid: text("briefing_uuid").notNull(),
+  fileName: text("file_name"),
+  fileType: text("file_type"),
+  fileSize: text("file_size"),
+  filePath: text("file_path"),
+  fileData: text("file_data"),
+  uploadedByUuid: text("uploaded_by_uuid"),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
+export const crewDebriefings = pgTable("crew_debriefings", {
+  id: serial("id").primaryKey(),
+  debriefingUuid: text("debriefing_uuid").notNull().unique(),
+  crewUuid: text("crew_uuid").notNull(),
+  vesselUuid: text("vessel_uuid"),
+  vesselName: text("vessel_name"),
+  rankServed: text("rank_served"),
+  dateSignOn: text("date_sign_on"),
+  dateSignedOff: text("date_signed_off"),
+  reasonForSignOff: text("reason_for_sign_off"),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
+export const crewDebriefingAttachments = pgTable("crew_debriefing_attachments", {
+  id: serial("id").primaryKey(),
+  attUuid: text("att_uuid").notNull().unique(),
+  debriefingUuid: text("debriefing_uuid").notNull(),
+  fileName: text("file_name"),
+  fileType: text("file_type"),
+  fileSize: text("file_size"),
+  filePath: text("file_path"),
+  fileData: text("file_data"),
+  uploadedByUuid: text("uploaded_by_uuid"),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});

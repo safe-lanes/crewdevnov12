@@ -26,6 +26,10 @@ import {
   crewMedicalAttachments,
   crewDoctorVisits,
   crewDoctorVisitsAttachments,
+  crewBriefings,
+  crewBriefingAttachments,
+  crewDebriefings,
+  crewDebriefingAttachments,
 } from "./schema";
 
 // ============================================================================
@@ -214,6 +218,30 @@ export const insertCrewDoctorVisitAttachmentSchema = createInsertSchema(crewDoct
   updatedAt: true,
 });
 
+export const insertCrewBriefingSchema = createInsertSchema(crewBriefings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrewBriefingAttachmentSchema = createInsertSchema(crewBriefingAttachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrewDebriefingSchema = createInsertSchema(crewDebriefings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCrewDebriefingAttachmentSchema = createInsertSchema(crewDebriefingAttachments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // ============================================================================
 // CREW CORE - TYPES
 // ============================================================================
@@ -320,3 +348,19 @@ export type CrewDoctorVisit = typeof crewDoctorVisits.$inferSelect;
 
 export type InsertCrewDoctorVisitAttachment = z.infer<typeof insertCrewDoctorVisitAttachmentSchema>;
 export type CrewDoctorVisitAttachment = typeof crewDoctorVisitsAttachments.$inferSelect;
+
+// ============================================================================
+// BRIEFING & DE-BRIEFING - TYPES
+// ============================================================================
+
+export type InsertCrewBriefing = z.infer<typeof insertCrewBriefingSchema>;
+export type CrewBriefing = typeof crewBriefings.$inferSelect;
+
+export type InsertCrewBriefingAttachment = z.infer<typeof insertCrewBriefingAttachmentSchema>;
+export type CrewBriefingAttachment = typeof crewBriefingAttachments.$inferSelect;
+
+export type InsertCrewDebriefing = z.infer<typeof insertCrewDebriefingSchema>;
+export type CrewDebriefing = typeof crewDebriefings.$inferSelect;
+
+export type InsertCrewDebriefingAttachment = z.infer<typeof insertCrewDebriefingAttachmentSchema>;
+export type CrewDebriefingAttachment = typeof crewDebriefingAttachments.$inferSelect;
