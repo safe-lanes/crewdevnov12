@@ -737,6 +737,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             name="reliefStatus"
                             render={({ field }) => (
                                 <FormItem>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
                                     <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Relief Status</FormLabel>
                                         <FormControl>
@@ -758,6 +760,14 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                             </Select>
                                         </FormControl>
                                     </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" align="start" className="max-w-xs">
+                                            <ol className="list-decimal space-y-1 pl-4 text-xs">
+                                                <li>Selecting 'Signed Off' status will sign off the crew member and remove from the 'On Board Status' section. Archived record will be visible in Vessel &gt; Crew List &gt; Show Archived.</li>
+                                                <li>Before 'Signing Off' ensure the Takeover date is entered in the Taking Over Crew member's Popup (Not Mandatory). This populates the 'Handover date' here.</li>
+                                            </ol>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 </FormItem>
                             )}
                         />
