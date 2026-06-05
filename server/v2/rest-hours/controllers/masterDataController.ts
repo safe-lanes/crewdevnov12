@@ -103,7 +103,9 @@ export const masterDataController = {
             or(
               eq(crewMembersV2.isDeleted, false),
               isNull(crewMembersV2.isDeleted)
-            )
+            ),
+            // Only Signed On crew counted, consistent with the RH Records list.
+            eq(crewAssignments.assignmentType, "OnBoard")
           )
         );
 

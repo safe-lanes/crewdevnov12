@@ -332,6 +332,8 @@ export const crewRecordsService = {
               and(
                 eq(crewAssignments.vesselUuid, vesselId),
                 or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
+                // Only Signed On crew (see getByFilters): excludes Planned/Confirmed/In Transit.
+                eq(crewAssignments.assignmentType, "OnBoard"),
                 lte(crewAssignments.signOnDate, lastDay),
                 or(
                   isNull(crewAssignments.signOffDate),
@@ -460,6 +462,9 @@ export const crewRecordsService = {
             and(
               eq(crewAssignments.vesselUuid, vesselId),
               or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
+              // Only crew who are actually Signed On. assignment_type flips to
+              // "OnBoard" at sign-on; Planned/Confirmed/In Transit stay "Planned".
+              eq(crewAssignments.assignmentType, "OnBoard"),
               // Date-based overlap: signed on before/during month end
               // AND still on board or signed off during/after month start
               lte(crewAssignments.signOnDate, lastDay),

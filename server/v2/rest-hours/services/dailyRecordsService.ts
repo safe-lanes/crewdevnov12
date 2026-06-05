@@ -34,7 +34,9 @@ async function getOnboardCrewCount(vesselId: string, monthValue: string): Promis
     .where(
       and(
         eq(crewAssignments.vesselUuid, vesselId),
-        or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
+        or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
+        // Only Signed On crew counted, consistent with the RH Records list.
+        eq(crewAssignments.assignmentType, "OnBoard")
       )
     );
 
