@@ -1,1 +1,2 @@
 - [Rest Hours masters endpoints](rest-hours-masters-endpoints.md) — fleet/additional groups live under /api/v2/masters, NOT the rest-hours V2_BASE.
+- [Dev server has no backend hot-reload](dev-server-no-backend-watch.md) — new Express routes need a manual workflow restart; otherwise they return the Vite HTML fallback (200) and don't persist.
