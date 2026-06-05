@@ -20,6 +20,7 @@ import { vesselApiV2 } from '../api/vesselApiV2';
 import { apiRequest } from '@/lib/queryClient';
 import { API_BASE_URL } from '@/config/api';
 import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const SIGN_OFF_REASONS = [
     "Contract Completed",
@@ -561,6 +562,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                     name="takeOverDate"
                                     render={({ field }) => (
                                         <FormItem>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
                                             <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                                 <FormLabel className="text-sm text-gray-700">Take Over Date</FormLabel>
                                                 <Popover open={takeOverDateOpen} onOpenChange={setTakeOverDateOpen}>
@@ -598,6 +601,14 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                     </PopoverContent>
                                                 </Popover>
                                             </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="right" align="start" className="max-w-xs">
+                                                    <ol className="list-decimal space-y-1 pl-4 text-xs">
+                                                        <li>Selecting 'Takeover Confirmation' and adding 'Takeover Date' changes the status of the taking over Crew member from Primary (P) to Secondary (S) and vice versa.</li>
+                                                        <li>This step is to record the official handover / Takeover in the system.</li>
+                                                    </ol>
+                                                </TooltipContent>
+                                            </Tooltip>
                                         </FormItem>
                                     )}
                                 />
@@ -607,6 +618,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                     name="takeOverConfirmation"
                                     render={({ field }) => (
                                         <FormItem>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
                                             <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                                 <FormLabel className="text-sm text-gray-700">Take Over Confirmation</FormLabel>
                                                 <FormControl>
@@ -619,6 +632,14 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                     </div>
                                                 </FormControl>
                                             </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="right" align="start" className="max-w-xs">
+                                                    <ol className="list-decimal space-y-1 pl-4 text-xs">
+                                                        <li>Selecting 'Takeover Confirmation' and adding 'Takeover Date' changes the status of the taking over Crew member from Primary (P) to Secondary (S) and vice versa.</li>
+                                                        <li>This step is to record the official handover / Takeover in the system.</li>
+                                                    </ol>
+                                                </TooltipContent>
+                                            </Tooltip>
                                         </FormItem>
                                     )}
                                 />
