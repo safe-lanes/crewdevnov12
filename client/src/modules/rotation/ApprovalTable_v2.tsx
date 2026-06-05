@@ -4,6 +4,7 @@ import { AgGridTable } from '@/components/AgGrid/AgGridTable';
 import { ColDef } from 'ag-grid-community';
 import { format, addMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
@@ -312,6 +313,7 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
   const [displayedRowData, setDisplayedRowData] = useState<ProposalRowV2[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [complianceDialogOpen, setComplianceDialogOpen] = useState(false);
+  const [deploySuccessOpen, setDeploySuccessOpen] = useState(false);
   const gridApiRef = useRef<any>(null);
   const { toast } = useToast();
   const { getVesselName } = useVesselLookup();
@@ -361,25 +363,21 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
       return;
     }
 
-    selectedAssignments.forEach(entryUuid => {
-      deployMutation.mutate(entryUuid, {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation'] });
-          toast({
-            title: "Success",
-            description: "Assignment deployed successfully",
-          });
-          setSelectedAssignments(new Set());
-        },
-        onError: (error: any) => {
-          toast({
-            title: "Error",
-            description: error.message || "Failed to deploy assignment",
-            variant: "destructive",
-          });
-        },
+    const entryUuids = Array.from(selectedAssignments);
+    Promise.all(entryUuids.map(entryUuid => deployMutation.mutateAsync(entryUuid)))
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation'] });
+        setSelectedAssignments(new Set());
+        setDeploySuccessOpen(true);
+      })
+      .catch((error: any) => {
+        queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation'] });
+        toast({
+          title: "Error",
+          description: error?.message || "Failed to deploy assignment",
+          variant: "destructive",
+        });
       });
-    });
   };
 
   const handleReject = () => {
@@ -710,6 +708,27 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
         vesselId={selectedVesselId || undefined}
         simulatedCrew={selectedCrewForCompliance}
       />
+
+      <Dialog open={deploySuccessOpen} onOpenChange={setDeploySuccessOpen}>
+        <DialogContent className="max-w-sm" data-testid="dialog-deploy-success">
+          <DialogHeader>
+            <DialogTitle>Success</DialogTitle>
+            <DialogDescription className="space-y-2 pt-2">
+              <span className="block">Crew members deployed (lined up) on vessel(s) successfully</span>
+              <span className="block">For next step go to:</span>
+              <span className="block">Vessel &gt; [Select] Vessel &gt; Planning Tab &gt; Reliever Status Section</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setDeploySuccessOpen(false)}
+              data-testid="button-deploy-success-got-it"
+            >
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
