@@ -496,7 +496,7 @@ export function DrugsAlcoholModule_v2() {
                     <Button
                         variant="default"
                         onClick={handleApplyFilters}
-                        className="h-8 w-full text-[11px]"
+                        className="h-8 w-full text-[11px] bg-[#16569e] hover:bg-[#0d4a8f] text-white"
                         data-testid="button-apply-filters"
                     >
                         Apply
@@ -558,7 +558,7 @@ export function DrugsAlcoholModule_v2() {
                     <Button
                         variant="default"
                         onClick={handleApplyFilters}
-                        className="h-8 w-16 text-[11px]"
+                        className="h-8 w-16 text-[11px] bg-[#16569e] hover:bg-[#0d4a8f] text-white"
                         data-testid="button-apply-filters"
                     >
                         Apply
@@ -613,7 +613,7 @@ export function DrugsAlcoholModule_v2() {
                 <Button
                     variant="default"
                     onClick={handleApplyFilters}
-                    className="h-8 w-16 text-[11px]"
+                    className="h-8 w-16 text-[11px] bg-[#16569e] hover:bg-[#0d4a8f] text-white"
                     data-testid="button-apply-filters"
                 >
                     Apply
@@ -671,14 +671,29 @@ export function DrugsAlcoholModule_v2() {
                 </div>
 
                 {!isShipUser && (
-                    <Button
-                        variant="default"
-                        onClick={() => applySummary()}
-                        className={`h-8 text-[11px] ${isPhone ? 'w-full' : 'w-16'}`}
-                        data-testid="button-apply-summary"
-                    >
-                        Apply
-                    </Button>
+                    <>
+                        <Button
+                            variant="default"
+                            onClick={() => applySummary()}
+                            className={`h-8 text-[11px] ${isPhone ? 'w-full' : 'w-16'} bg-[#16569e] hover:bg-[#0d4a8f] text-white`}
+                            data-testid="button-apply-summary"
+                        >
+                            Apply
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                if (vessels.length > 0) {
+                                    setDraftSummaryVessel(vessels[0].vesselId);
+                                    applySummary();
+                                }
+                            }}
+                            className={`h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] ${isPhone ? 'w-full' : 'w-16'}`}
+                            data-testid="button-clear-filters"
+                        >
+                            Clear
+                        </Button>
+                    </>
                 )}
             </div>
         );
