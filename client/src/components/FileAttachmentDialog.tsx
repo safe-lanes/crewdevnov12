@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Trash2, FileText, Image as ImageIcon, ExternalLink, Download, X } from 'lucide-react';
+import { Upload, Trash2, FileText, Image as ImageIcon, ExternalLink, Download } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface FileAttachment {
@@ -21,6 +21,7 @@ export interface FileAttachment {
   data: string;
   uploadedAt: string;
   attUuid?: string;
+  viewUrl?: string;
   isDeleted?: boolean;
   isNew?: boolean;
 }
@@ -51,13 +52,6 @@ export function FileAttachmentDialog({
 }: FileAttachmentDialogProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<{ url: string; type: string; name: string } | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (preview?.url) URL.revokeObjectURL(preview.url);
-    };
-  }, [preview]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -187,16 +181,42 @@ export function FileAttachmentDialog({
     return attachment.data || att.fileData || att.filePath || att.fileUrl || '';
   };
 
-  const handlePreview = (attachment: FileAttachment) => {
+  const getViewUrl = (attachment: FileAttachment): string => {
+    const att = attachment as any;
+    return att.viewUrl || '';
+  };
+
+  const downloadViaLink = (href: string, fileName: string, revoke = false) => {
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    if (revoke) {
+      setTimeout(() => URL.revokeObjectURL(href), 1000);
+    }
+  };
+
+  // View a file. Saved attachments expose a same-origin server URL that the
+  // browser can render natively in a new tab (PDFs/images). Unsaved uploads only
+  // exist as an in-memory data URL, which the Replit preview frame blocks from
+  // rendering — for those we fall back to a download.
+  const handleView = (attachment: FileAttachment) => {
     const att = attachment as any;
     const fileName = attachment.name || att.fileName || 'file';
-    const fileType = attachment.type || att.fileType || att.mimeType || '';
-    const fileData = getFileContent(attachment);
+    const viewUrl = getViewUrl(attachment);
 
+    if (viewUrl) {
+      window.open(viewUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    const fileData = getFileContent(attachment);
     if (!fileData) {
       toast({
         title: 'Unable to open file',
-        description: 'No file data available for preview.',
+        description: 'No file data available for this attachment.',
         variant: 'destructive',
       });
       return;
@@ -205,10 +225,14 @@ export function FileAttachmentDialog({
     try {
       if (fileData.startsWith('data:')) {
         const blob = dataUrlToBlob(fileData);
-        const blobUrl = URL.createObjectURL(blob);
-        setPreview({ url: blobUrl, type: fileType, name: fileName });
+        const url = URL.createObjectURL(blob);
+        downloadViaLink(url, fileName, true);
+        toast({
+          title: 'File Downloaded',
+          description: 'Save the record to preview this file in a new tab.',
+        });
       } else {
-        setPreview({ url: fileData, type: fileType, name: fileName });
+        window.open(fileData, '_blank', 'noopener,noreferrer');
       }
     } catch {
       toast({
@@ -219,17 +243,36 @@ export function FileAttachmentDialog({
     }
   };
 
-  const handleDownload = () => {
-    if (!preview) return;
-    const link = document.createElement('a');
-    link.href = preview.url;
-    link.download = preview.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const handleDownload = (attachment: FileAttachment) => {
+    const att = attachment as any;
+    const fileName = attachment.name || att.fileName || 'file';
+    const fileData = getFileContent(attachment);
+    const viewUrl = getViewUrl(attachment);
 
-  const closePreview = () => setPreview(null);
+    try {
+      if (fileData && fileData.startsWith('data:')) {
+        const blob = dataUrlToBlob(fileData);
+        const url = URL.createObjectURL(blob);
+        downloadViaLink(url, fileName, true);
+      } else if (viewUrl) {
+        downloadViaLink(viewUrl, fileName);
+      } else if (fileData) {
+        downloadViaLink(fileData, fileName);
+      } else {
+        toast({
+          title: 'Unable to download file',
+          description: 'No file data available for this attachment.',
+          variant: 'destructive',
+        });
+      }
+    } catch {
+      toast({
+        title: 'Unable to download file',
+        description: 'The file data appears to be corrupted.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -245,177 +288,133 @@ export function FileAttachmentDialog({
   };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className={`sm:max-w-[500px] ${contentClassName ?? ''}`}>
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>
-              {itemName ? `Attachments for: ${itemName}` : 'Upload PDF or image files (JPG, PNG). Max 5MB per file.'}
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className={`sm:max-w-[500px] ${contentClassName ?? ''}`}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            {itemName ? `Attachments for: ${itemName}` : 'Upload PDF or image files (JPG, PNG). Max 5MB per file.'}
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="space-y-4">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png"
-              multiple
-              onChange={handleFileSelect}
-              className="hidden"
-              data-testid="input-file-attachment"
-            />
+        <div className="space-y-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png"
+            multiple
+            onChange={handleFileSelect}
+            className="hidden"
+            data-testid="input-file-attachment"
+          />
 
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full border-dashed border-2 h-20 hover:bg-gray-50"
+            data-testid="button-upload-file"
+          >
+            <div className="flex flex-col items-center gap-1">
+              <Upload className="h-6 w-6 text-gray-400" />
+              <span className="text-sm text-gray-600">Click to upload files</span>
+              <span className="text-xs text-gray-400">PDF, JPG, PNG (max 5MB)</span>
+            </div>
+          </Button>
+
+          {attachments.filter(a => !a.isDeleted).length > 0 && (
+            <ScrollArea className="h-[200px] border rounded-md p-2">
+              <div className="space-y-2">
+                {attachments.filter(a => !a.isDeleted).map((attachment) => (
+                  <div
+                    key={attachment.id}
+                    className="flex items-center gap-3 p-2 border rounded-md bg-gray-50 hover:bg-gray-100"
+                    data-testid={`attachment-item-${attachment.id}`}
+                  >
+                    <div className="flex-shrink-0">
+                      {(attachment.type || (attachment as any).fileType || (attachment as any).mimeType || '')?.startsWith('image/') ? (
+                        <img
+                          src={getFileContent(attachment)}
+                          alt={attachment.name || (attachment as any).fileName}
+                          className="h-10 w-10 object-cover rounded"
+                        />
+                      ) : (
+                        getFileIcon(attachment.type || (attachment as any).fileType || (attachment as any).mimeType || '')
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {attachment.name || (attachment as any).fileName}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formatFileSize(attachment.size || parseInt((attachment as any).fileSize || '0'))}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-gray-500 hover:text-blue-600"
+                        onClick={() => handleView(attachment)}
+                        title="View in new tab"
+                        data-testid={`button-preview-${attachment.id}`}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-gray-500 hover:text-green-600"
+                        onClick={() => handleDownload(attachment)}
+                        title="Download"
+                        data-testid={`button-download-${attachment.id}`}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-gray-500 hover:text-red-600"
+                        onClick={() => handleRemoveAttachment(attachment.id)}
+                        data-testid={`button-remove-${attachment.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+
+          {attachments.filter(a => !a.isDeleted).length === 0 && (
+            <div className="text-center py-6 text-gray-500">
+              <FileText className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">No attachments yet</p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <div className="flex justify-between w-full items-center">
+            <span className="text-sm text-gray-500">
+              {attachments.filter(a => !a.isDeleted).length} file{attachments.filter(a => !a.isDeleted).length !== 1 ? 's' : ''} attached
+            </span>
             <Button
               type="button"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full border-dashed border-2 h-20 hover:bg-gray-50"
-              data-testid="button-upload-file"
+              onClick={() => onOpenChange(false)}
+              data-testid="button-close-attachment-dialog"
             >
-              <div className="flex flex-col items-center gap-1">
-                <Upload className="h-6 w-6 text-gray-400" />
-                <span className="text-sm text-gray-600">Click to upload files</span>
-                <span className="text-xs text-gray-400">PDF, JPG, PNG (max 5MB)</span>
-              </div>
+              Done
             </Button>
-
-            {attachments.filter(a => !a.isDeleted).length > 0 && (
-              <ScrollArea className="h-[200px] border rounded-md p-2">
-                <div className="space-y-2">
-                  {attachments.filter(a => !a.isDeleted).map((attachment) => (
-                    <div
-                      key={attachment.id}
-                      className="flex items-center gap-3 p-2 border rounded-md bg-gray-50 hover:bg-gray-100"
-                      data-testid={`attachment-item-${attachment.id}`}
-                    >
-                      <div className="flex-shrink-0">
-                        {(attachment.type || (attachment as any).fileType || (attachment as any).mimeType || '')?.startsWith('image/') ? (
-                          <img
-                            src={getFileContent(attachment)}
-                            alt={attachment.name || (attachment as any).fileName}
-                            className="h-10 w-10 object-cover rounded"
-                          />
-                        ) : (
-                          getFileIcon(attachment.type || (attachment as any).fileType || (attachment as any).mimeType || '')
-                        )}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {attachment.name || (attachment as any).fileName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatFileSize(attachment.size || parseInt((attachment as any).fileSize || '0'))}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-gray-500 hover:text-blue-600"
-                          onClick={() => handlePreview(attachment)}
-                          data-testid={`button-preview-${attachment.id}`}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-gray-500 hover:text-red-600"
-                          onClick={() => handleRemoveAttachment(attachment.id)}
-                          data-testid={`button-remove-${attachment.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-
-            {attachments.filter(a => !a.isDeleted).length === 0 && (
-              <div className="text-center py-6 text-gray-500">
-                <FileText className="h-10 w-10 mx-auto mb-2 text-gray-300" />
-                <p className="text-sm">No attachments yet</p>
-              </div>
-            )}
           </div>
-
-          <DialogFooter>
-            <div className="flex justify-between w-full items-center">
-              <span className="text-sm text-gray-500">
-                {attachments.filter(a => !a.isDeleted).length} file{attachments.filter(a => !a.isDeleted).length !== 1 ? 's' : ''} attached
-              </span>
-              <Button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                data-testid="button-close-attachment-dialog"
-              >
-                Done
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!preview} onOpenChange={(o) => { if (!o) closePreview(); }}>
-        <DialogContent className="max-w-4xl w-[90vw] h-[85vh] flex flex-col p-0 gap-0">
-          <DialogHeader className="px-4 py-3 border-b flex-row items-center justify-between space-y-0">
-            <DialogTitle className="text-base truncate pr-4">{preview?.name}</DialogTitle>
-            <DialogDescription className="sr-only">File preview</DialogDescription>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handleDownload}
-                title="Download"
-                data-testid="button-download-preview"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={closePreview}
-                title="Close"
-                data-testid="button-close-preview"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 bg-gray-100 overflow-auto">
-            {preview && (
-              preview.type.startsWith('image/') ? (
-                <div className="w-full h-full flex items-center justify-center p-4">
-                  <img
-                    src={preview.url}
-                    alt={preview.name}
-                    className="max-w-full max-h-full object-contain"
-                    data-testid="img-preview"
-                  />
-                </div>
-              ) : (
-                <iframe
-                  src={preview.url}
-                  title={preview.name}
-                  className="w-full h-full border-0"
-                  data-testid="iframe-preview"
-                />
-              )
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

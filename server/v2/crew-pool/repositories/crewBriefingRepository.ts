@@ -198,6 +198,22 @@ export class CrewBriefingRepository {
     return results[0];
   }
 
+  async findBriefingAttachmentByUuid(
+    attUuid: string
+  ): Promise<CrewBriefingAttachment | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(crewBriefingAttachments)
+      .where(
+        and(
+          eq(crewBriefingAttachments.attUuid, attUuid),
+          eq(crewBriefingAttachments.isDeleted, false)
+        )
+      );
+    return results[0];
+  }
+
   async softDeleteBriefingAttachment(attUuid: string): Promise<boolean> {
     const db = getDb();
     const results = await db
@@ -377,6 +393,22 @@ export class CrewBriefingRepository {
         attUuid: uuidv4(),
       })
       .returning();
+    return results[0];
+  }
+
+  async findDebriefingAttachmentByUuid(
+    attUuid: string
+  ): Promise<CrewDebriefingAttachment | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(crewDebriefingAttachments)
+      .where(
+        and(
+          eq(crewDebriefingAttachments.attUuid, attUuid),
+          eq(crewDebriefingAttachments.isDeleted, false)
+        )
+      );
     return results[0];
   }
 

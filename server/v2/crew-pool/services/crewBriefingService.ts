@@ -121,6 +121,17 @@ export const crewBriefingService = {
     }
   },
 
+  async getBriefingAttachmentFile(
+    attUuid: string
+  ): Promise<CrewBriefingAttachment> {
+    const attachment =
+      await crewBriefingRepository.findBriefingAttachmentByUuid(attUuid);
+    if (!attachment) {
+      throw new Error(`Attachment not found: ${attUuid}`);
+    }
+    return attachment;
+  },
+
   // ============ De-briefings ============
   async getDebriefings(crewUuid: string): Promise<CrewDebriefingWithAttachments[]> {
     await crewMembersService.getByUuid(crewUuid);
@@ -183,6 +194,17 @@ export const crewBriefingService = {
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+  },
+
+  async getDebriefingAttachmentFile(
+    attUuid: string
+  ): Promise<CrewDebriefingAttachment> {
+    const attachment =
+      await crewBriefingRepository.findDebriefingAttachmentByUuid(attUuid);
+    if (!attachment) {
+      throw new Error(`Attachment not found: ${attUuid}`);
+    }
+    return attachment;
   },
 
   // ============ Combined Data ============

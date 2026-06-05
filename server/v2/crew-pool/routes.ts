@@ -180,6 +180,7 @@ router.patch("/crew/:crewUuid/briefings/:briefingUuid", crewBriefingController.u
 router.delete("/crew/:crewUuid/briefings/:briefingUuid", crewBriefingController.deleteBriefing);
 router.post("/crew/:crewUuid/briefings/:briefingUuid/attachments", crewBriefingController.addBriefingAttachment);
 router.delete("/crew/:crewUuid/briefings/:briefingUuid/attachments/:attUuid", crewBriefingController.removeBriefingAttachment);
+router.get("/briefing-attachments/:attUuid/raw", crewBriefingController.serveBriefingAttachment);
 
 // ============================================
 // DE-BRIEFINGS (G2)
@@ -190,6 +191,7 @@ router.patch("/crew/:crewUuid/debriefings/:debriefingUuid", crewBriefingControll
 router.delete("/crew/:crewUuid/debriefings/:debriefingUuid", crewBriefingController.deleteDebriefing);
 router.post("/crew/:crewUuid/debriefings/:debriefingUuid/attachments", crewBriefingController.addDebriefingAttachment);
 router.delete("/crew/:crewUuid/debriefings/:debriefingUuid/attachments/:attUuid", crewBriefingController.removeDebriefingAttachment);
+router.get("/debriefing-attachments/:attUuid/raw", crewBriefingController.serveDebriefingAttachment);
 
 // ============================================
 // TRANSFER FROM RECRUITMENT

@@ -1305,6 +1305,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             ...b,
             id: b.id || `BRF-${index + 1}`,
             vesselCode: b.vesselCode || '',
+            attachments: Array.isArray((b as any).attachments)
+              ? (b as any).attachments.map((att: any) =>
+                  att?.attUuid
+                    ? { ...att, viewUrl: `/api/v2/crew-pool/briefing-attachments/${att.attUuid}/raw` }
+                    : att
+                )
+              : (b as any).attachments,
           }));
         })();
         const serverDebriefings = (() => {
@@ -1317,6 +1324,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             ...d,
             id: d.id || `DBF-${index + 1}`,
             vesselCode: d.vesselCode || '',
+            attachments: Array.isArray((d as any).attachments)
+              ? (d as any).attachments.map((att: any) =>
+                  att?.attUuid
+                    ? { ...att, viewUrl: `/api/v2/crew-pool/debriefing-attachments/${att.attUuid}/raw` }
+                    : att
+                )
+              : (d as any).attachments,
           }));
         })();
 
