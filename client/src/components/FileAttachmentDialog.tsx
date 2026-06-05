@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Trash2, FileText, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Upload, Trash2, FileText, Image as ImageIcon, ExternalLink, Download, X } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface FileAttachment {
@@ -51,6 +51,13 @@ export function FileAttachmentDialog({
 }: FileAttachmentDialogProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<{ url: string; type: string; name: string } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (preview?.url) URL.revokeObjectURL(preview.url);
+    };
+  }, [preview]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -163,13 +170,6 @@ export function FileAttachmentDialog({
     }
   };
 
-  // Sanitize text for safe HTML insertion (prevent XSS)
-  const escapeHtml = (text: string): string => {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  };
-
   const dataUrlToBlob = (dataUrl: string): Blob => {
     const [header, base64Data] = dataUrl.split(',');
     const mimeMatch = header.match(/:(.*?);/);
@@ -182,11 +182,16 @@ export function FileAttachmentDialog({
     return new Blob([bytes], { type: mime });
   };
 
+  const getFileContent = (attachment: FileAttachment): string => {
+    const att = attachment as any;
+    return attachment.data || att.fileData || att.filePath || att.fileUrl || '';
+  };
+
   const handlePreview = (attachment: FileAttachment) => {
     const att = attachment as any;
     const fileName = attachment.name || att.fileName || 'file';
-    const fileType = attachment.type || att.fileType || '';
-    const fileData = attachment.data || att.fileData || '';
+    const fileType = attachment.type || att.fileType || att.mimeType || '';
+    const fileData = getFileContent(attachment);
 
     if (!fileData) {
       toast({
@@ -198,65 +203,12 @@ export function FileAttachmentDialog({
     }
 
     try {
-      const blob = dataUrlToBlob(fileData);
-      const blobUrl = URL.createObjectURL(blob);
-
-      const newWindow = window.open();
-      if (newWindow) {
-        const safeName = escapeHtml(fileName);
-
-        if (fileType === 'application/pdf') {
-          newWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <title>${safeName}</title>
-                <style>
-                  body { margin: 0; padding: 0; }
-                  iframe { width: 100%; height: 100vh; border: none; }
-                </style>
-              </head>
-              <body>
-                <iframe src="${blobUrl}"></iframe>
-              </body>
-            </html>
-          `);
-        } else if (fileType.startsWith('image/')) {
-          newWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <title>${safeName}</title>
-                <style>
-                  body { 
-                    margin: 0; 
-                    padding: 20px; 
-                    display: flex; 
-                    justify-content: center; 
-                    align-items: center; 
-                    min-height: calc(100vh - 40px);
-                    background: #f5f5f5;
-                  }
-                  img { max-width: 100%; max-height: 100%; object-fit: contain; }
-                </style>
-              </head>
-              <body>
-                <img src="${blobUrl}" alt="${safeName}" />
-              </body>
-            </html>
-          `);
-        } else {
-          newWindow.location.href = blobUrl;
-        }
-        newWindow.document.close();
-        newWindow.addEventListener('beforeunload', () => URL.revokeObjectURL(blobUrl));
+      if (fileData.startsWith('data:')) {
+        const blob = dataUrlToBlob(fileData);
+        const blobUrl = URL.createObjectURL(blob);
+        setPreview({ url: blobUrl, type: fileType, name: fileName });
       } else {
-        URL.revokeObjectURL(blobUrl);
-        toast({
-          title: 'Unable to open file',
-          description: 'Please check if pop-ups are blocked and try again.',
-          variant: 'destructive',
-        });
+        setPreview({ url: fileData, type: fileType, name: fileName });
       }
     } catch {
       toast({
@@ -266,6 +218,18 @@ export function FileAttachmentDialog({
       });
     }
   };
+
+  const handleDownload = () => {
+    if (!preview) return;
+    const link = document.createElement('a');
+    link.href = preview.url;
+    link.download = preview.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const closePreview = () => setPreview(null);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
@@ -326,14 +290,14 @@ export function FileAttachmentDialog({
                       data-testid={`attachment-item-${attachment.id}`}
                     >
                       <div className="flex-shrink-0">
-                        {(attachment.type || (attachment as any).fileType || '')?.startsWith('image/') ? (
+                        {(attachment.type || (attachment as any).fileType || (attachment as any).mimeType || '')?.startsWith('image/') ? (
                           <img
-                            src={attachment.data || (attachment as any).fileData}
+                            src={getFileContent(attachment)}
                             alt={attachment.name || (attachment as any).fileName}
                             className="h-10 w-10 object-cover rounded"
                           />
                         ) : (
-                          getFileIcon(attachment.type || (attachment as any).fileType || '')
+                          getFileIcon(attachment.type || (attachment as any).fileType || (attachment as any).mimeType || '')
                         )}
                       </div>
                       
@@ -399,6 +363,59 @@ export function FileAttachmentDialog({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!preview} onOpenChange={(o) => { if (!o) closePreview(); }}>
+        <DialogContent className="max-w-4xl w-[90vw] h-[85vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-4 py-3 border-b flex-row items-center justify-between space-y-0">
+            <DialogTitle className="text-base truncate pr-4">{preview?.name}</DialogTitle>
+            <DialogDescription className="sr-only">File preview</DialogDescription>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleDownload}
+                title="Download"
+                data-testid="button-download-preview"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={closePreview}
+                title="Close"
+                data-testid="button-close-preview"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 bg-gray-100 overflow-auto">
+            {preview && (
+              preview.type.startsWith('image/') ? (
+                <div className="w-full h-full flex items-center justify-center p-4">
+                  <img
+                    src={preview.url}
+                    alt={preview.name}
+                    className="max-w-full max-h-full object-contain"
+                    data-testid="img-preview"
+                  />
+                </div>
+              ) : (
+                <iframe
+                  src={preview.url}
+                  title={preview.name}
+                  className="w-full h-full border-0"
+                  data-testid="iframe-preview"
+                />
+              )
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
