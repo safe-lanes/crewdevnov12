@@ -209,6 +209,7 @@ export function DrugAlcoholTestForm_v2({
   const { fields: personnelFields, replace: replacePersonnel, append: appendPersonnel } = useFieldArray({
     control: form.control,
     name: 'personnelTested',
+    keyName: '_fieldId',
   });
 
   // Populate form with existing record data when editing
@@ -1198,7 +1199,7 @@ export function DrugAlcoholTestForm_v2({
                         {personnelFields.map((person, index) => {
                           const isOtherRow = person.id.startsWith('other-');
                           return (
-                          <tr key={person.id} className="border-b hover:bg-gray-50">
+                          <tr key={person._fieldId} className="border-b hover:bg-gray-50">
                             <td className="px-3 py-2 text-sm border-r" style={{ position: 'sticky', left: 0, backgroundColor: 'white', zIndex: 20 }}>
                               {isOtherRow ? (
                                 <FormField
