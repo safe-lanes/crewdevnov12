@@ -2115,6 +2115,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   const [selectedCrew, setSelectedCrew] = useState<{ crewUuid: string; name: string; rank: string } | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [positionSelectOpen, setPositionSelectOpen] = useState(false);
+  const [proposeSuccessOpen, setProposeSuccessOpen] = useState(false);
   const [complianceDialogOpen, setComplianceDialogOpen] = useState(false);
   const [complianceVesselId, setComplianceVesselId] = useState<string | undefined>(undefined);
   const [complianceSimulatedCrew, setComplianceSimulatedCrew] = useState<Array<{ rank: string; crewMemberId: string; crewName: string; joiningDate?: string }>>([]);
@@ -2122,6 +2123,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   const [pendingOccupiedPositions, setPendingOccupiedPositions] = useState<Map<string, string>>(new Map());
   const prevSelectedVesselsRef = useRef<string[]>([]);
   const isInitialLoadRef = useRef(false);
+  const isProposingRef = useRef(false);
   
   // Track saved plan ID for new plans - allows subsequent saves to use PATCH instead of POST
   const [savedPlanId, setSavedPlanId] = useState<number | null>(null);
@@ -2465,10 +2467,14 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
         setSavedPlanId(savedPlan.draftUuid);
       }
       
-      toast({
-        title: "Success",
-        description: existingDraftUuid ? "Rotation plan updated successfully" : "Rotation plan saved as draft successfully",
-      });
+      // Suppress the save toast when this save is part of the propose flow
+      // (the propose flow shows its own confirmation popup instead)
+      if (!isProposingRef.current) {
+        toast({
+          title: "Success",
+          description: existingDraftUuid ? "Rotation plan updated successfully" : "Rotation plan saved as draft successfully",
+        });
+      }
       // Dialog stays open - do NOT close or reset form here
     },
     onError: (error: any) => {
@@ -2489,10 +2495,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation', 'drafts'] });
-      toast({
-        title: "Success",
-        description: "Rotation plan proposed for approval successfully",
-      });
+      setProposeSuccessOpen(true);
       onOpenChange(false);
       setSelectedVessels([]);
       setSelectedRanks([]);
@@ -3060,6 +3063,8 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     }
 
     try {
+      // Flag this save as part of the propose flow so its success toast is suppressed
+      isProposingRef.current = true;
       // First save the plan - mutateAsync returns the parsed JSON (not Response)
       const savedPlan = await saveRotationPlanMutation.mutateAsync(planData);
       
@@ -3081,6 +3086,8 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     } catch (error: any) {
       // Save failed - error toast is already shown by the mutation's onError
       console.error('Save failed before propose:', error);
+    } finally {
+      isProposingRef.current = false;
     }
   };
 
@@ -3417,6 +3424,26 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
         vesselId={complianceVesselId}
         simulatedCrew={complianceSimulatedCrew}
       />
+
+      <Dialog open={proposeSuccessOpen} onOpenChange={setProposeSuccessOpen}>
+        <DialogContent className="max-w-sm" data-testid="dialog-propose-success">
+          <DialogHeader>
+            <DialogTitle>Success</DialogTitle>
+            <DialogDescription className="space-y-2 pt-2">
+              <span className="block">Rotation plan proposed for approval</span>
+              <span className="block">For next step go to: Rotation &gt; Approval Screen</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setProposeSuccessOpen(false)}
+              data-testid="button-propose-success-got-it"
+            >
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
