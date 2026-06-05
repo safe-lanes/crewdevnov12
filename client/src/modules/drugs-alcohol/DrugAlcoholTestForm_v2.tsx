@@ -247,7 +247,11 @@ export function DrugAlcoholTestForm_v2({
         testingEquipment: stripNulls(parseJsonField(existingRecord.testingEquipment)) || [
           { id: `eq-${Date.now()}`, equipmentId: '', makeModel: '', serialNo: '', lastCalibrated: '' }
         ],
-        personnelTested: stripNulls(parseJsonField(existingRecord.personnelTested)) || [],
+        personnelTested: (stripNulls(parseJsonField(existingRecord.personnelTested)) || []).map((p: any) => ({
+          ...p,
+          rank: p.rank ?? '',
+          name: p.name ?? '',
+        })),
         comments: existingRecord.comments || '',
         masterDeputySignature: stripNulls(parseJsonField(existingRecord.masterDeputySignature)) || {
           confirmed: false,
@@ -544,6 +548,31 @@ export function DrugAlcoholTestForm_v2({
   };
 
   const handleFormSubmit = (data: DrugAlcoholTestFormData) => {
+    const rawPersonnel = (form.getValues('personnelTested') as any[]) || [];
+
+    const hasEmptyOther = rawPersonnel.some((p) => {
+      const isOther =
+        p?.id?.startsWith('other-') ||
+        p?.crewId?.startsWith?.('other-');
+
+      return (
+        isOther &&
+        (
+          !String(p?.rank ?? '').trim() ||
+          !String(p?.name ?? '').trim()
+        )
+      );
+    });
+
+    if (hasEmptyOther) {
+      toast({
+        title: 'Missing Rank or Name',
+        description: 'Please enter both Rank and Name for all manually added personnel before saving.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const cleanedData = {
       ...data,
       personnelTested: (data.personnelTested || []).map(person => {
@@ -1197,7 +1226,9 @@ export function DrugAlcoholTestForm_v2({
                       </thead>
                       <tbody>
                         {personnelFields.map((person, index) => {
-                          const isOtherRow = person.id.startsWith('other-');
+                          const isOtherRow =
+                            person.id.startsWith('other-') ||
+                            ((person as any).crewId?.startsWith?.('other-') ?? false);
                           return (
                           <tr key={person._fieldId} className="border-b hover:bg-gray-50">
                             <td className="px-3 py-2 text-sm border-r" style={{ position: 'sticky', left: 0, backgroundColor: 'white', zIndex: 20 }}>
