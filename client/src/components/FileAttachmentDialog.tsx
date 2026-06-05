@@ -198,17 +198,51 @@ export function FileAttachmentDialog({
     }
   };
 
+  // Saved attachments are served from a tenant-protected API endpoint. Fetch
+  // them through window.fetch (patched in lib/tenantFetch to attach the
+  // x-tenant-id + Authorization headers) instead of navigating the browser
+  // straight to the URL — a direct navigation sends no headers and the server
+  // rejects it with "Missing x-tenant-id header".
+  const fetchAsObjectUrl = async (url: string): Promise<string> => {
+    const res = await fetch(url, { credentials: 'same-origin' });
+    if (!res.ok) {
+      throw new Error(`Request failed with status ${res.status}`);
+    }
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  };
+
   // View a file. Saved attachments expose a same-origin server URL that the
   // browser can render natively in a new tab (PDFs/images). Unsaved uploads only
   // exist as an in-memory data URL, which the Replit preview frame blocks from
   // rendering — for those we fall back to a download.
-  const handleView = (attachment: FileAttachment) => {
+  const handleView = async (attachment: FileAttachment) => {
     const att = attachment as any;
     const fileName = attachment.name || att.fileName || 'file';
     const viewUrl = getViewUrl(attachment);
 
     if (viewUrl) {
-      window.open(viewUrl, '_blank', 'noopener,noreferrer');
+      // Open the tab synchronously (inside the click gesture) so popup blockers
+      // allow it, then point it at the fetched blob once it's ready.
+      const newTab = window.open('', '_blank');
+      if (newTab) newTab.opener = null;
+      try {
+        const objectUrl = await fetchAsObjectUrl(viewUrl);
+        if (newTab) {
+          newTab.location.href = objectUrl;
+        } else {
+          // Popup blocked — fall back to a download.
+          downloadViaLink(objectUrl, fileName, true);
+        }
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      } catch {
+        if (newTab) newTab.close();
+        toast({
+          title: 'Unable to open file',
+          description: 'Could not load the attachment from the server.',
+          variant: 'destructive',
+        });
+      }
       return;
     }
 
@@ -243,7 +277,7 @@ export function FileAttachmentDialog({
     }
   };
 
-  const handleDownload = (attachment: FileAttachment) => {
+  const handleDownload = async (attachment: FileAttachment) => {
     const att = attachment as any;
     const fileName = attachment.name || att.fileName || 'file';
     const fileData = getFileContent(attachment);
@@ -255,7 +289,8 @@ export function FileAttachmentDialog({
         const url = URL.createObjectURL(blob);
         downloadViaLink(url, fileName, true);
       } else if (viewUrl) {
-        downloadViaLink(viewUrl, fileName);
+        const objectUrl = await fetchAsObjectUrl(viewUrl);
+        downloadViaLink(objectUrl, fileName, true);
       } else if (fileData) {
         downloadViaLink(fileData, fileName);
       } else {
