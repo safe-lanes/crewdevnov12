@@ -519,14 +519,14 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
     ]);
   }
   
-  if (alcoholDrugTypes.includes('Alcohol')) {
+  if (formData.testType === 'post-incident') {
     builder.drawFieldRow([
       { label: 'Date & Time (Alcohol Test)', value: formatDateTime(formData.alcoholTestDateTime) },
       { label: '', value: '' },
     ], CONTENT_WIDTH / 2);
   }
   
-  if (alcoholDrugTypes.includes('Drug')) {
+  if (formData.testType === 'post-incident') {
     builder.drawFieldRow([
       { label: 'Date & Time (Drug Test)', value: formatDateTime(formData.drugTestDateTime) },
       { label: '', value: '' },
