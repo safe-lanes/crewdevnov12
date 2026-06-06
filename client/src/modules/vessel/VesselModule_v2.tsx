@@ -256,6 +256,7 @@ const useVessels = () => {
                 vesselId: vessel.vesselUuid,
                 name: vessel.vessel || 'Unknown Vessel',
                 vesselType: vessel.vesselType || 'Unknown Type',
+                imoNumber: vessel.imoNumber || '',
             }));
         }
     });
@@ -670,8 +671,22 @@ export function VesselModule_v2(): JSX.Element {
 
     useEffect(() => {
         if (isShipUser && myVessels.length > 0 && vessels.length > 0 && !selectedVessel) {
-            const myVesselIds = new Set(myVessels.map(v => v.vesselId));
-            const matchedVessel = vessels.find((v: any) => myVesselIds.has(v.vesselId));
+            const norm = (val: any) => (val ?? '').toString().trim().toLowerCase();
+            const myVesselIds = new Set(myVessels.map(v => v.vesselId).filter(Boolean));
+            const myVesselNames = new Set(myVessels.map(v => norm(v.vessel)).filter(Boolean));
+            const myVesselImos = new Set(myVessels.map(v => norm(v.imoNumber)).filter(Boolean));
+
+            // Primary match: assigned vesselId (UUID).
+            let matchedVessel = vessels.find((v: any) => myVesselIds.has(v.vesselId));
+            // Fallback: assigned UUID differs, so match by vessel name.
+            if (!matchedVessel) {
+                matchedVessel = vessels.find((v: any) => myVesselNames.has(norm(v.name)));
+            }
+            // Fallback: match by IMO number.
+            if (!matchedVessel) {
+                matchedVessel = vessels.find((v: any) => myVesselImos.has(norm(v.imoNumber)));
+            }
+
             if (matchedVessel) {
                 setSelectedVessel(matchedVessel);
             }
