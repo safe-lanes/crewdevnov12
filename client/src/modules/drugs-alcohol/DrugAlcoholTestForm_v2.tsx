@@ -503,6 +503,31 @@ export function DrugAlcoholTestForm_v2({
   const { toast } = useToast();
 
   const handleSaveDraft = () => {
+    const rawPersonnel = (form.getValues('personnelTested') as any[]) || [];
+
+    const hasEmptyOther = rawPersonnel.some((p) => {
+      const isOther =
+        p?.id?.startsWith('other-') ||
+        p?.crewId?.startsWith?.('other-');
+
+      return (
+        isOther &&
+        (
+          !String(p?.rank ?? '').trim() ||
+          !String(p?.name ?? '').trim()
+        )
+      );
+    });
+
+    if (hasEmptyOther) {
+      toast({
+        title: 'Missing Rank or Name',
+        description: 'Please enter both Rank and Name for all manually added personnel before saving.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const data = form.getValues();
     onSave(data);
   };
