@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useVesselsV2 } from '@/hooks/v2/useMasterDataV2';
+import { PlannedDateCellEditor } from './PlannedDateCellEditor';
 
 interface TestRecord {
   date: string;
@@ -533,6 +534,7 @@ export const MonthlyTestTable_v2: React.FC<MonthlyTestTableProps> = ({
           field: 'plannedDate',
           cellStyle: { fontSize: '12px', color: '#4f5863' },
           editable: true,
+          cellEditor: PlannedDateCellEditor,
         },
         {
           headerName: 'Comments',

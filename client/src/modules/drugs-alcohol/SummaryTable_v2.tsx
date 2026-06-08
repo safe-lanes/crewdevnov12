@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { PlannedDateCellEditor } from './PlannedDateCellEditor';
 
 const HistoryHeaderComponent = (props: any) => {
   const { showAllHistory, setShowAllHistory } = props.context;
@@ -410,6 +411,7 @@ export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableP
         width: 120,
         cellClass: 'flex items-center text-[13px]',
         editable: (params) => params.data?.hasPlanning || false,
+        cellEditor: PlannedDateCellEditor,
       },
       {
         headerName: 'Comments',
