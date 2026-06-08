@@ -45,6 +45,9 @@ export const testCasesV2 = pgTable("test_cases_v2", {
   preconditions: text("preconditions"),
   steps: text("steps"),
   expectedResult: text("expected_result"),
+  testData: text("test_data"),
+  comments: text("comments"),
+  howToTest: text("how_to_test"),
   ...auditColumns,
 });
 

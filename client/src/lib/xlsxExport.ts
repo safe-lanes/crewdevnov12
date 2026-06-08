@@ -3,6 +3,7 @@ import * as XLSX from "xlsx-js-style";
 export interface SheetColumn {
   key: string;
   label: string;
+  width?: number;
 }
 
 function cellValue(value: unknown): string | number | boolean | null {
@@ -57,9 +58,14 @@ export interface XlsxSheet {
   sheetName: string;
   columns: SheetColumn[];
   rows: Array<Record<string, unknown>>;
+  wrap?: boolean;
 }
 
-function buildSheet(columns: SheetColumn[], rows: Array<Record<string, unknown>>): XLSX.WorkSheet {
+function buildSheet(
+  columns: SheetColumn[],
+  rows: Array<Record<string, unknown>>,
+  wrap = false,
+): XLSX.WorkSheet {
   const header = columns.map((c) => c.label);
   const body = rows.map((row) => columns.map((c) => cellValue(row[c.key])));
   const aoa: Array<Array<string | number | boolean | null>> = [header, ...body];
@@ -67,6 +73,7 @@ function buildSheet(columns: SheetColumn[], rows: Array<Record<string, unknown>>
   const ws = XLSX.utils.aoa_to_sheet(aoa);
 
   const colWidths = columns.map((c) => {
+    if (typeof c.width === "number") return { wch: c.width };
     let max = c.label.length;
     for (const row of rows) {
       const v = row[c.key];
@@ -78,11 +85,20 @@ function buildSheet(columns: SheetColumn[], rows: Array<Record<string, unknown>>
   (ws as XLSX.WorkSheet)["!cols"] = colWidths;
 
   const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
-  for (let c = range.s.c; c <= range.e.c; c++) {
-    const addr = XLSX.utils.encode_cell({ r: 0, c });
-    const cell = ws[addr];
-    if (cell) {
-      cell.s = { font: { bold: true } };
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const cell = ws[addr];
+      if (!cell) continue;
+      const isHeader = r === 0;
+      cell.s = {
+        font: { bold: isHeader },
+        alignment: {
+          vertical: "top",
+          wrapText: wrap,
+          horizontal: "left",
+        },
+      };
     }
   }
 
@@ -111,7 +127,7 @@ export function downloadXlsxMultiSheet(filename: string, sheets: XlsxSheet[]): v
     : [{ sheetName: "Report", columns: [], rows: [] }];
 
   for (const sheet of effectiveSheets) {
-    const ws = buildSheet(sheet.columns, sheet.rows);
+    const ws = buildSheet(sheet.columns, sheet.rows, sheet.wrap);
     XLSX.utils.book_append_sheet(wb, ws, uniqueSheetName(sheet.sheetName, used));
   }
 

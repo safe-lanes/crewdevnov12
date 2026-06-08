@@ -82,6 +82,9 @@ interface TestCase {
   preconditions: string | null;
   steps: string | null;
   expectedResult: string | null;
+  testData: string | null;
+  comments: string | null;
+  howToTest: string | null;
 }
 
 const formSchema = z.object({
@@ -94,6 +97,9 @@ const formSchema = z.object({
   preconditions: z.string().optional(),
   steps: z.string().optional(),
   expectedResult: z.string().optional(),
+  testData: z.string().optional(),
+  comments: z.string().optional(),
+  howToTest: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -108,6 +114,9 @@ const emptyValues: FormValues = {
   preconditions: "",
   steps: "",
   expectedResult: "",
+  testData: "",
+  comments: "",
+  howToTest: "",
 };
 
 function priorityVariant(priority: string): "default" | "secondary" | "destructive" | "outline" {
@@ -197,7 +206,10 @@ export function TestCasesModule() {
         (tc.reference || "").toLowerCase().includes(q) ||
         (tc.areaFeature || "").toLowerCase().includes(q) ||
         (tc.steps || "").toLowerCase().includes(q) ||
-        (tc.expectedResult || "").toLowerCase().includes(q)
+        (tc.expectedResult || "").toLowerCase().includes(q) ||
+        (tc.testData || "").toLowerCase().includes(q) ||
+        (tc.howToTest || "").toLowerCase().includes(q) ||
+        (tc.comments || "").toLowerCase().includes(q)
       );
     });
   }, [testCases, moduleFilter, search]);
@@ -226,6 +238,9 @@ export function TestCasesModule() {
       preconditions: tc.preconditions || "",
       steps: tc.steps || "",
       expectedResult: tc.expectedResult || "",
+      testData: tc.testData || "",
+      comments: tc.comments || "",
+      howToTest: tc.howToTest || "",
     });
     setDialogOpen(true);
   };
@@ -266,14 +281,14 @@ export function TestCasesModule() {
     });
 
     const detailColumns = [
-      { key: "reference", label: "Reference" },
-      { key: "title", label: "Title" },
-      { key: "areaFeature", label: "Area / Feature" },
-      { key: "category", label: "Category" },
-      { key: "priority", label: "Priority" },
-      { key: "preconditions", label: "Preconditions" },
-      { key: "steps", label: "Steps" },
-      { key: "expectedResult", label: "Expected Result" },
+      { key: "reference", label: "Test Case ID", width: 12 },
+      { key: "areaFeature", label: "Module/Section", width: 20 },
+      { key: "title", label: "Test Scenario", width: 32 },
+      { key: "steps", label: "Test Steps", width: 45 },
+      { key: "testData", label: "Test Data", width: 25 },
+      { key: "expectedResult", label: "Expected Result", width: 45 },
+      { key: "comments", label: "Comments/Issues", width: 22 },
+      { key: "howToTest", label: "How to Test", width: 70 },
     ];
 
     const sheets: XlsxSheet[] = [
@@ -292,6 +307,7 @@ export function TestCasesModule() {
         sheetName: module,
         columns: detailColumns,
         rows: items as unknown as Array<Record<string, unknown>>,
+        wrap: true,
       })),
     ];
 
@@ -604,6 +620,61 @@ export function TestCasesModule() {
                     <FormLabel>Expected Result</FormLabel>
                     <FormControl>
                       <Textarea rows={2} placeholder="Expected result" {...field} data-testid="input-expected-result" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="testData"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Test Data</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={2}
+                        placeholder='e.g. Navigate to /crew-pool; Rank: Master; Nationality: India'
+                        {...field}
+                        data-testid="input-test-data"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="howToTest"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>How to Test</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={10}
+                        placeholder={
+                          "Goal:\n\u2022 ...\n\nSteps:\n1. Setup \u2014 ...\n2. Action \u2014 ...\n3. Verify \u2014 ...\n\nWhat to Verify:\n\u2022 ...\n\nEdge Cases:\n\u2022 ..."
+                        }
+                        className="font-mono text-xs"
+                        {...field}
+                        data-testid="input-how-to-test"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="comments"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Comments / Issues</FormLabel>
+                    <FormControl>
+                      <Textarea rows={2} placeholder="Comments or known issues" {...field} data-testid="input-comments" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
