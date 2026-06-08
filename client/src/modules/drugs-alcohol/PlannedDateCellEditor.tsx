@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { format, parse, isValid } from 'date-fns';
 
 const toInputValue = (stored?: string): string => {
@@ -13,7 +13,7 @@ const toStoredValue = (input: string): string => {
   return isValid(d) ? format(d, 'dd-MMM-yyyy') : '';
 };
 
-export const PlannedDateCellEditor = forwardRef((props: any, ref) => {
+export const PlannedDateCellEditor = (props: any) => {
   const [value, setValue] = useState<string>(toInputValue(props.value));
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -26,18 +26,20 @@ export const PlannedDateCellEditor = forwardRef((props: any, ref) => {
     }
   }, []);
 
-  useImperativeHandle(ref, () => ({
-    getValue: () => toStoredValue(value),
-  }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = e.target.value;
+    setValue(next);
+    props.onValueChange(toStoredValue(next));
+  };
 
   return (
     <input
       ref={inputRef}
       type="date"
       value={value}
-      onChange={(e) => setValue(e.target.value)}
+      onChange={handleChange}
       className="w-full h-full px-2 text-xs outline-none"
       data-testid="input-planned-date"
     />
   );
-});
+};
