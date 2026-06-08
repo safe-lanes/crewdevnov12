@@ -21,7 +21,8 @@ import {
     X,
     PanelLeft,
     LogOut,
-    UsersRound
+    UsersRound,
+    ClipboardList
 } from "lucide-react";
 
 const navItems = [
@@ -151,6 +152,16 @@ const navItems = [
         href: "/admin",
         menuName: "Admin",
         icon: Settings,
+        activeBg: "#5DADE2",
+        activeText: "white",
+        inactiveBg: "#f1f1f1",
+        inactiveText: "#4f5863",
+    },
+    {
+        label: "Test Cases",
+        href: "/test-cases",
+        menuName: "Test Cases",
+        icon: ClipboardList,
         activeBg: "#5DADE2",
         activeText: "white",
         inactiveBg: "#f1f1f1",

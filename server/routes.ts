@@ -14,6 +14,7 @@ import appraisalsV2Routes from "./v2/appraisals/routes";
 import trainingNeedsV2Routes from "./v2/training-needs/routes";
 import trainingRetentionV2Routes from "./v2/training-retention/routes";
 import reportsV2Routes from "./v2/reports/routes";
+import testCasesV2Routes from "./v2/test-cases/routes";
 import { setupSwagger } from "./swagger";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
 import { storageAccount } from "./storage-accounts";
@@ -106,6 +107,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount v2 reports routes (Reports Generator framework)
   app.use("/api/v2/reports", reportsV2Routes);
+
+  // Mount v2 test cases routes (Crewing Test Case Manager)
+  app.use("/api/v2/test-cases", testCasesV2Routes);
 
   // Mount Swagger API documentation
   setupSwagger(app);

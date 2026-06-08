@@ -26,6 +26,7 @@ const TrainingRetentionModuleComponent = lazy(() => import("./modules/training-r
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const AccountsModule = lazy(() => import("./modules/accounts/AccountsModule").then(m => ({ default: m.AccountsModule })));
+const TestCasesModuleComponent = lazy(() => import("./modules/test-cases").then(m => ({ default: m.TestCasesModule })));
 const NotFound = lazy(() => import("./modules/not-found"));
 
 function PageLoader() {
@@ -150,6 +151,9 @@ function AuthenticatedApp() {
                   </Route>
                   <Route path="/accounts/:path*" component={AccountsModule} />
                   <Route path="/accounts" component={AccountsModule} />
+                  <Route path="/test-cases">
+                    <ProtectedRoute menuName="Test Cases"><TestCasesModuleComponent /></ProtectedRoute>
+                  </Route>
                   <Route component={NotFound} />
                 </Switch>
               </Suspense>
