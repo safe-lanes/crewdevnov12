@@ -700,9 +700,11 @@ export function DrugAlcoholTestForm_v2({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel*</FormLabel>
-                            {isShipUser ? (
+                            {(isShipUser || recordUuid) ? (
                               <div className="h-10 flex items-center text-sm font-medium text-[#0f172a] px-3 bg-gray-50 border border-input rounded-md" data-testid="text-vesselId-locked">
-                                {shipUserVesselName || "No vessel assigned"}
+                                {isShipUser
+                                  ? (shipUserVesselName || "No vessel assigned")
+                                  : (getVesselName(field.value || '') || field.value || "No vessel selected")}
                               </div>
                             ) : (
                               <Select onValueChange={field.onChange} value={field.value}>
