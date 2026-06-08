@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS test_cases_v2 (
   module TEXT NOT NULL,
   reference TEXT,
   title TEXT NOT NULL,
+  area_feature TEXT,
   category TEXT NOT NULL DEFAULT 'Functional',
   priority TEXT NOT NULL DEFAULT 'Medium',
   preconditions TEXT,

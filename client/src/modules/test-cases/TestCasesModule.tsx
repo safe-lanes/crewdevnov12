@@ -76,6 +76,7 @@ interface TestCase {
   module: string;
   reference: string | null;
   title: string;
+  areaFeature: string | null;
   category: string;
   priority: string;
   preconditions: string | null;
@@ -84,11 +85,12 @@ interface TestCase {
 }
 
 const formSchema = z.object({
-  module: z.string().min(1, "Module is required"),
+  module: z.enum(MODULES, { errorMap: () => ({ message: "Module is required" }) }),
   reference: z.string().optional(),
   title: z.string().min(1, "Title is required"),
-  category: z.string().min(1, "Category is required"),
-  priority: z.string().min(1, "Priority is required"),
+  areaFeature: z.string().optional(),
+  category: z.enum(CATEGORIES),
+  priority: z.enum(PRIORITIES),
   preconditions: z.string().optional(),
   steps: z.string().optional(),
   expectedResult: z.string().optional(),
@@ -97,9 +99,10 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const emptyValues: FormValues = {
-  module: "",
+  module: "" as unknown as (typeof MODULES)[number],
   reference: "",
   title: "",
+  areaFeature: "",
   category: "Functional",
   priority: "Medium",
   preconditions: "",
@@ -192,6 +195,7 @@ export function TestCasesModule() {
       return (
         tc.title.toLowerCase().includes(q) ||
         (tc.reference || "").toLowerCase().includes(q) ||
+        (tc.areaFeature || "").toLowerCase().includes(q) ||
         (tc.steps || "").toLowerCase().includes(q) ||
         (tc.expectedResult || "").toLowerCase().includes(q)
       );
@@ -202,7 +206,10 @@ export function TestCasesModule() {
     setEditing(null);
     form.reset({
       ...emptyValues,
-      module: moduleFilter !== "all" ? moduleFilter : "",
+      module:
+        moduleFilter !== "all"
+          ? (moduleFilter as (typeof MODULES)[number])
+          : ("" as unknown as (typeof MODULES)[number]),
     });
     setDialogOpen(true);
   };
@@ -210,11 +217,12 @@ export function TestCasesModule() {
   const openEdit = (tc: TestCase) => {
     setEditing(tc);
     form.reset({
-      module: tc.module,
+      module: tc.module as (typeof MODULES)[number],
       reference: tc.reference || "",
       title: tc.title,
-      category: tc.category,
-      priority: tc.priority,
+      areaFeature: tc.areaFeature || "",
+      category: tc.category as (typeof CATEGORIES)[number],
+      priority: tc.priority as (typeof PRIORITIES)[number],
       preconditions: tc.preconditions || "",
       steps: tc.steps || "",
       expectedResult: tc.expectedResult || "",
@@ -260,6 +268,7 @@ export function TestCasesModule() {
     const detailColumns = [
       { key: "reference", label: "Reference" },
       { key: "title", label: "Title" },
+      { key: "areaFeature", label: "Area / Feature" },
       { key: "category", label: "Category" },
       { key: "priority", label: "Priority" },
       { key: "preconditions", label: "Preconditions" },
@@ -364,6 +373,7 @@ export function TestCasesModule() {
                 <TableHead className="w-[110px]">Reference</TableHead>
                 <TableHead className="w-[150px]">Module</TableHead>
                 <TableHead>Title</TableHead>
+                <TableHead className="w-[170px]">Area / Feature</TableHead>
                 <TableHead className="w-[110px]">Category</TableHead>
                 <TableHead className="w-[100px]">Priority</TableHead>
                 <TableHead className="w-[100px] text-right">Actions</TableHead>
@@ -378,6 +388,9 @@ export function TestCasesModule() {
                   <TableCell className="text-sm">{tc.module}</TableCell>
                   <TableCell className="text-sm font-medium" data-testid={`text-title-${tc.tcUuid}`}>
                     {tc.title}
+                  </TableCell>
+                  <TableCell className="text-sm text-gray-600" data-testid={`text-area-feature-${tc.tcUuid}`}>
+                    {tc.areaFeature || "-"}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{tc.category}</Badge>
@@ -480,6 +493,24 @@ export function TestCasesModule() {
                     <FormLabel>Title</FormLabel>
                     <FormControl>
                       <Input placeholder="Test case title" {...field} data-testid="input-title" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="areaFeature"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Area / Feature</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. Document Management"
+                        {...field}
+                        data-testid="input-area-feature"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
