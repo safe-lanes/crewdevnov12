@@ -157,16 +157,18 @@ const navItems = [
         inactiveBg: "#f1f1f1",
         inactiveText: "#4f5863",
     },
-    {
-        label: "Test Cases",
-        href: "/test-cases",
-        menuName: "Test Cases",
-        icon: ClipboardList,
-        activeBg: "#5DADE2",
-        activeText: "white",
-        inactiveBg: "#f1f1f1",
-        inactiveText: "#4f5863",
-    },
+    // Test Cases menu hidden — page is reachable only via direct /test-cases URL.
+    // Preserved for later restore.
+    // {
+    //     label: "Test Cases",
+    //     href: "/test-cases",
+    //     menuName: "Test Cases",
+    //     icon: ClipboardList,
+    //     activeBg: "#5DADE2",
+    //     activeText: "white",
+    //     inactiveBg: "#f1f1f1",
+    //     inactiveText: "#4f5863",
+    // },
 ];
 
 interface HeaderComponentProps {

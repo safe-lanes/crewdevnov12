@@ -152,7 +152,8 @@ function AuthenticatedApp() {
                   <Route path="/accounts/:path*" component={AccountsModule} />
                   <Route path="/accounts" component={AccountsModule} />
                   <Route path="/test-cases">
-                    <ProtectedRoute menuName="Test Cases"><TestCasesModuleComponent /></ProtectedRoute>
+                    {/* No access-control gating — reachable only via direct URL. */}
+                    <TestCasesModuleComponent />
                   </Route>
                   <Route component={NotFound} />
                 </Switch>

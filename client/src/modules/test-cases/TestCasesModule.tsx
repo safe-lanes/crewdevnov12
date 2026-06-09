@@ -341,15 +341,18 @@ export function TestCasesModule() {
             <Download className="h-4 w-4 mr-2" />
             Export Excel
           </Button>
+          {/* Add Test Case hidden — export-only view. Preserved for later restore.
           {mayCreate && (
             <Button onClick={openCreate} data-testid="button-add-test-case">
               <Plus className="h-4 w-4 mr-2" />
               Add Test Case
             </Button>
           )}
+          */}
         </div>
       </div>
 
+      {/* Management UI hidden — export-only view. Preserved for later restore.
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <Select value={moduleFilter} onValueChange={setModuleFilter}>
           <SelectTrigger className="w-full sm:w-[220px]" data-testid="select-module-filter">
@@ -720,6 +723,7 @@ export function TestCasesModule() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      */}
     </div>
   );
 }
