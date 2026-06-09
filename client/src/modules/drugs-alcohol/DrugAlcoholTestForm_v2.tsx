@@ -283,7 +283,7 @@ export function DrugAlcoholTestForm_v2({
   const activeVesselId = formVesselId || vesselId || '';
   
   // Fetch on-board crew for the active vessel using V2 crew_assignments JOIN
-  const { data: allCrewMembers = [] } = useQuery<any[]>({
+  const { data: allCrewMembers = [], isFetching: isCrewFetching } = useQuery<any[]>({
     queryKey: ['v2', 'drugs-alcohol', 'crew', activeVesselId],
     queryFn: () => drugsAlcoholApiV2.crew.getOnboardByVessel(activeVesselId),
     enabled: !!activeVesselId,
@@ -416,19 +416,29 @@ export function DrugAlcoholTestForm_v2({
   // Populate personnelTested when crew members are loaded or vessel changes
   // Skip if editing (recordUuid provided) as personnel will be loaded from the existing record
   // IMPORTANT: Wait for ranks to load before populating to ensure correct sort order
+  const lastSyncedVesselRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!draftData && !recordUuid && formVesselId && !isLoadingRanks) {
-      // Only populate when creating new records, not when editing
-      // Wait until rank ordering is loaded to ensure correct sort order
-      // Use personnelFields.length from useFieldArray for accurate count
-      const shouldUpdate = personnelFields.length === 0 && vesselCrewPersonnel.length > 0;
-      
-      if (shouldUpdate) {
-        // Use replacePersonnel from useFieldArray for proper state management
-        replacePersonnel(vesselCrewPersonnel);
-      }
-    }
-  }, [vesselCrewPersonnel, formVesselId, draftData, recordUuid, personnelFields.length, replacePersonnel, isLoadingRanks]);
+    // New mode only: keep Part B crew in sync with the selected vessel.
+    if (draftData || recordUuid) return;
+    if (!formVesselId) return;
+
+    // Wait until the selected vessel's crew + ranks have finished loading.
+    if (isCrewFetching || isLoadingRanks) return;
+
+    // Only re-sync when the vessel actually changed.
+    if (lastSyncedVesselRef.current === formVesselId) return;
+
+    replacePersonnel(vesselCrewPersonnel);
+    lastSyncedVesselRef.current = formVesselId;
+  }, [
+    formVesselId,
+    vesselCrewPersonnel,
+    isCrewFetching,
+    isLoadingRanks,
+    draftData,
+    recordUuid,
+    replacePersonnel
+  ]);
 
   // Watch dateTimeTestCompleted to auto-populate date fields in Part B1
   const dateTimeTestCompleted = form.watch('dateTimeTestCompleted');
@@ -454,7 +464,7 @@ export function DrugAlcoholTestForm_v2({
         form.setValue(`personnelTested.${index}.drugTest.date`, datePortion);
       }
     });
-  }, [dateTimeTestCompleted, personnelFields.length, form]);
+  }, [dateTimeTestCompleted, personnelFields, form]);
 
   // Watch digital confirmation state
   const isConfirmed = form.watch('masterDeputySignature.confirmed');
