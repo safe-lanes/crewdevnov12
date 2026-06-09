@@ -676,6 +676,28 @@ export function DrugAlcoholTestForm_v2({
   const showOtherTestsFields = selectedTestType === 'others';
   const showExternalResultsDate = ['annual', 'post-incident', 'others'].includes(selectedTestType);
 
+  const alcoholTestDateTime = form.watch('alcoholTestDateTime');
+  const drugTestDateTime = form.watch('drugTestDateTime');
+
+  const externalResultsMinDate = useMemo(() => {
+    if (selectedTestType === 'post-incident') {
+      const dateParts = [alcoholTestDateTime, drugTestDateTime]
+        .filter((v): v is string => !!v)
+        .map((v) => v.split('T')[0]);
+
+      return dateParts.length ? dateParts.sort()[0] : undefined;
+    }
+
+    return dateTimeTestCompleted
+      ? dateTimeTestCompleted.split('T')[0]
+      : undefined;
+  }, [
+    selectedTestType,
+    dateTimeTestCompleted,
+    alcoholTestDateTime,
+    drugTestDateTime,
+  ]);
+
   // Render continuous sections (Part A & Part B)
   const renderContinuousSections = () => {
     return (
@@ -1023,7 +1045,24 @@ export function DrugAlcoholTestForm_v2({
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Date External Test Results received</FormLabel>
                               <FormControl>
-                                <Input {...field} type="date" className="bg-[#ffffff]" data-testid="input-externalTestResultsDate" />
+                                <Input
+                                  {...field}
+                                  type="date"
+                                  min={externalResultsMinDate}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+
+                                    // Reject dates earlier than the allowed minimum.
+                                    // Allow clearing and allow unrestricted entry when no floor exists.
+                                    if (externalResultsMinDate && v && v < externalResultsMinDate) {
+                                      return;
+                                    }
+
+                                    field.onChange(e);
+                                  }}
+                                  className="bg-[#ffffff]"
+                                  data-testid="input-externalTestResultsDate"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
