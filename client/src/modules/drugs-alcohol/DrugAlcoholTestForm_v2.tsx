@@ -19,6 +19,7 @@ import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAtta
 import { generateDrugAlcoholTestPDF } from '@/lib/generateDrugAlcoholTestPDF';
 import { useToast } from '@/hooks/use-toast';
 import { drugsAlcoholApiV2 } from './api/drugsAlcoholApiV2';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 
 // Equipment entry schema
 const equipmentEntrySchema = z.object({
@@ -883,9 +884,70 @@ export function DrugAlcoholTestForm_v2({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Date & Time Test completed</FormLabel>
-                              <FormControl>
-                                <Input {...field} type="datetime-local" className="bg-[#ffffff]" data-testid="input-dateTimeTestCompleted" />
-                              </FormControl>
+                              <div className="relative">
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    type="datetime-local"
+                                    className="bg-[#ffffff] pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
+                                    data-testid="input-dateTimeTestCompleted"
+                                    onKeyDown={(e) => {
+                                      if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                                        e.preventDefault();
+                                      }
+                                    }}
+                                  />
+                                </FormControl>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                      data-testid="button-open-dateTimeTestCompleted-calendar"
+                                    >
+                                      <Calendar className="h-4 w-4 text-gray-500" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="end">
+                                    <CalendarPicker
+                                      mode="single"
+                                      selected={field.value ? new Date(`${field.value.split('T')[0]}T00:00:00`) : undefined}
+                                      onSelect={(date) => {
+                                        if (!date) return;
+                                        const yyyy = date.getFullYear();
+                                        const mm = String(date.getMonth() + 1).padStart(2, '0');
+                                        const dd = String(date.getDate()).padStart(2, '0');
+                                        const datePart = `${yyyy}-${mm}-${dd}`;
+                                        const now = new Date();
+                                        const timePart =
+                                          field.value && field.value.includes('T') && field.value.split('T')[1]
+                                            ? field.value.split('T')[1]
+                                            : `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                                        field.onChange(`${datePart}T${timePart}`);
+                                      }}
+                                      initialFocus
+                                    />
+                                    <div className="border-t p-3">
+                                      <Input
+                                        type="time"
+                                        value={field.value && field.value.includes('T') ? field.value.split('T')[1] : ''}
+                                        onChange={(e) => {
+                                          if (!field.value) return;
+                                          const now = new Date();
+                                          const datePart = field.value.includes('T') ? field.value.split('T')[0] : field.value;
+                                          const timePart = e.target.value
+                                            ? e.target.value
+                                            : `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                                          field.onChange(`${datePart}T${timePart}`);
+                                        }}
+                                        data-testid="input-time-dateTimeTestCompleted"
+                                      />
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
                               <FormMessage />
                             </FormItem>
                           )}
