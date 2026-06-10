@@ -820,6 +820,24 @@ export const RHRecordingForm = ({
     return cellsMap;
   }, [crewVariableTasks, selectedPeriod]);
 
+  // Days that have at least one COMPLETED variable task.
+  // Drives the auto-flip: such a day's Plan row becomes a Record row on open/load.
+  const completedVtCellsMap = useMemo(() => {
+    if (!selectedPeriod || crewVariableTasks.length === 0) return new Map<number, VariableTaskCells[]>();
+
+    const cellsMap = new Map<number, VariableTaskCells[]>();
+    for (const task of crewVariableTasks) {
+      if (task.status !== 'Completed') continue;
+      const cells = parseVariableTaskToCells(task, selectedPeriod);
+      for (const cell of cells) {
+        const existing = cellsMap.get(cell.day) || [];
+        existing.push(cell);
+        cellsMap.set(cell.day, existing);
+      }
+    }
+    return cellsMap;
+  }, [crewVariableTasks, selectedPeriod]);
+
   // Compute variable task comments map for each day
   // This extracts comments from variable tasks to display in the RH Recording Form
   const variableTaskCommentsMap = useMemo(() => {
@@ -871,7 +889,9 @@ export const RHRecordingForm = ({
     
     setDailyRecords(prevRecords => {
       return prevRecords.map(record => {
-        const newHours = [...template];
+        // Completed VT on this day -> Record mode, blank row except the VT 'a' cells.
+        const hasCompletedVt = completedVtCellsMap.has(record.day);
+        const newHours = hasCompletedVt ? Array(48).fill('') : [...template];
         
         const dayCells = variableTaskCellsMap.get(record.day);
         if (dayCells && dayCells.length > 0) {
@@ -908,7 +928,7 @@ export const RHRecordingForm = ({
         return {
           ...record,
           hours: newHours,
-          isPlan: true,
+          isPlan: hasCompletedVt ? false : true,
           userEdited: false,
           hoursOfRest24hr: restHours,
           hoursOfWork24hr: workHours,
@@ -916,7 +936,13 @@ export const RHRecordingForm = ({
         };
       });
     });
-  }, [fixedTask, open, existingRecord, variableTaskCellsMap, variableTaskCommentsMap, signOnDate, signOffDate]);
+
+    // A Completed VT flips Plan rows to Record on open; mark dirty so the existing
+    // auto-save-on-close persists it (even if the user records nothing).
+    if (completedVtCellsMap.size > 0) {
+      setIsDirty(true);
+    }
+  }, [fixedTask, open, existingRecord, variableTaskCellsMap, variableTaskCommentsMap, completedVtCellsMap, signOnDate, signOffDate]);
 
   // Load existing record data or explicitly maintain clean state
   useEffect(() => {
@@ -936,6 +962,11 @@ export const RHRecordingForm = ({
         
         const hasLatestFixedTask = fixedTask && Array.isArray(fixedTask.seaHours) && fixedTask.seaHours.length === 48;
         const latestTemplate: string[] = hasLatestFixedTask ? (fixedTask.seaHours as unknown as string[]).slice() : [];
+        
+        // Any Plan row on a Completed-VT day will be flipped to Record below.
+        const anyCompletedVtFlip = parsedRecords.some(
+          (r: DailyRecord) => r.isPlan && completedVtCellsMap.has(r.day)
+        );
         
         const updatedRecords = parsedRecords.map((record: DailyRecord) => {
           let hours = record.hours;
@@ -971,6 +1002,22 @@ export const RHRecordingForm = ({
             }
           }
 
+          // Completed VT on this day: if the row is still Plan (saved), flip it to
+          // Record mode and blank the row except the VT 'a' cells. Rows already saved
+          // as Record (isPlan === false) are never touched here.
+          const flipForCompletedVt = record.isPlan && completedVtCellsMap.has(record.day);
+          if (flipForCompletedVt) {
+            hours = Array(48).fill('');
+            const completedDayCells = variableTaskCellsMap.get(record.day);
+            if (completedDayCells && completedDayCells.length > 0) {
+              for (const cellRange of completedDayCells) {
+                for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
+                  hours[i] = 'a';
+                }
+              }
+            }
+          }
+
           const restHours = hours ? hours.filter((h: string) => h === '').length / 2 : 24;
           const workHours = 24 - restHours;
 
@@ -996,6 +1043,7 @@ export const RHRecordingForm = ({
 
           return {
             ...record,
+            isPlan: flipForCompletedVt ? false : record.isPlan,
             hours,
             entryId: record.entryId || `day-${record.day}-primary`,
             occurrence: (record.occurrence || 'primary') as 'primary' | 'duplicate',
@@ -1013,13 +1061,18 @@ export const RHRecordingForm = ({
         
         const recordsWithRetarded = ensureRetardedDayRecords(updatedRecords, parsedDateLineAdjustments);
         setDailyRecords(recordsWithRetarded);
+
+        // Persist the auto-flip via the existing auto-save-on-close.
+        if (anyCompletedVtFlip) {
+          setIsDirty(true);
+        }
       } catch (error) {
         console.error('Failed to parse daily records:', error);
       }
     } else if (isError || existingRecord === undefined) {
       console.log('No existing record found - using clean initialized state');
     }
-  }, [existingRecord, isError, open, parsedDateLineAdjustments, fixedTask, variableTaskCellsMap, variableTaskCommentsMap, signOnDate, signOffDate]);
+  }, [existingRecord, isError, open, parsedDateLineAdjustments, fixedTask, variableTaskCellsMap, variableTaskCommentsMap, completedVtCellsMap, signOnDate, signOffDate]);
 
   // Helper function to compute violatingRanges for hover highlighting
   const computeViolatingRanges = (
