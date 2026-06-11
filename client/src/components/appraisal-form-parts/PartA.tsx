@@ -211,7 +211,20 @@ const PartAComponent: React.FC<PartAProps> = ({
                   <FormItem>
                     <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period To</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" data-testid="input-period-to" />
+                      <Input
+                        {...field}
+                        type="date"
+                        min={form.watch('appraisalPeriodFrom') || undefined}
+                        onChange={(e) => {
+                          const from = form.getValues('appraisalPeriodFrom');
+                          const val = e.target.value;
+                          if (from && val && val < from) return;
+                          field.onChange(e);
+                        }}
+                        placeholder="dd.mm.yyyy"
+                        className="bg-[#ffffff]"
+                        data-testid="input-period-to"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
