@@ -99,13 +99,13 @@ const PartBComponent: React.FC<PartBProps> = ({
               
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[600px]">
+                  <table className="w-full min-w-[600px] table-fixed">
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-[60px]">S.No</th>
                         <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                        {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                        {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-[260px]">Evaluation</th>}
+                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center w-[110px]">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white">
@@ -222,13 +222,14 @@ const PartBComponent: React.FC<PartBProps> = ({
               </div>
               
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <table className="w-full">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[600px] table-fixed">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-[60px]">S.No</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting</th>
-                      {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                      {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-[260px]">Evaluation</th>}
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center w-[110px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white">
@@ -320,6 +321,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
             )}
