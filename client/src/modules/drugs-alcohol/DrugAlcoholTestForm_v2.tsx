@@ -699,6 +699,54 @@ export function DrugAlcoholTestForm_v2({
     drugTestDateTime,
   ]);
 
+  // Post Incident: auto-copy each test date into Part B
+  // (date only, fill empty cells only — mirrors Annual behavior)
+  useEffect(() => {
+    if (selectedTestType !== 'post-incident' || personnelFields.length === 0) return;
+
+    const alcoholDatePortion =
+      showAlcoholFields && alcoholTestDateTime
+        ? alcoholTestDateTime.split('T')[0]
+        : '';
+
+    const drugDatePortion =
+      showDrugFields && drugTestDateTime
+        ? drugTestDateTime.split('T')[0]
+        : '';
+
+    if (!alcoholDatePortion && !drugDatePortion) return;
+
+    personnelFields.forEach((_, index) => {
+      if (alcoholDatePortion) {
+        const cur = form.getValues(`personnelTested.${index}.alcoholTest.date`);
+        if (!cur) {
+          form.setValue(
+            `personnelTested.${index}.alcoholTest.date`,
+            alcoholDatePortion
+          );
+        }
+      }
+
+      if (drugDatePortion) {
+        const cur = form.getValues(`personnelTested.${index}.drugTest.date`);
+        if (!cur) {
+          form.setValue(
+            `personnelTested.${index}.drugTest.date`,
+            drugDatePortion
+          );
+        }
+      }
+    });
+  }, [
+    selectedTestType,
+    showAlcoholFields,
+    showDrugFields,
+    alcoholTestDateTime,
+    drugTestDateTime,
+    personnelFields,
+    form,
+  ]);
+
   // Render continuous sections (Part A & Part B)
   const renderContinuousSections = () => {
     return (
@@ -1022,7 +1070,7 @@ export function DrugAlcoholTestForm_v2({
                               <FormItem>
                                 <FormLabel className="text-xs text-gray-500 tracking-wide">Alcohol Test - Date & Time Completed</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="datetime-local" className="bg-[#ffffff]" data-testid="input-alcoholTestDateTime" />
+                                  <Input {...field} type="datetime-local" disabled={!showAlcoholFields} className="bg-[#ffffff]" data-testid="input-alcoholTestDateTime" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1036,7 +1084,7 @@ export function DrugAlcoholTestForm_v2({
                               <FormItem>
                                 <FormLabel className="text-xs text-gray-500 tracking-wide">Drug Test - Date & Time Completed</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="datetime-local" className="bg-[#ffffff]" data-testid="input-drugTestDateTime" />
+                                  <Input {...field} type="datetime-local" disabled={!showDrugFields} className="bg-[#ffffff]" data-testid="input-drugTestDateTime" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
