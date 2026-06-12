@@ -84,6 +84,19 @@ const targetStage1Schema = z.object({
   comment: z.string().optional(),
 });
 
+// Stage 1 SUBMIT-only schemas: Training Name (B1) and Target Setting Name (B2)
+// are mandatory when the user clicks "Submit Stage 1". Draft saves keep using
+// the lenient schemas above, so saving with blank rows is still allowed. This
+// mirrors the existing Part G2 -> Stage 3 required-name pattern
+// (trainingFollowupStage3Schema).
+const trainingStage1SubmitSchema = trainingStage1Schema.extend({
+  training: z.string().trim().min(1, "Training Name is required."),
+});
+
+const targetStage1SubmitSchema = targetStage1Schema.extend({
+  targetSetting: z.string().trim().min(1, "Target Setting Name is required."),
+});
+
 // Competence Assessment schema
 const competenceAssessmentSchema = z.object({
   id: z.string(),
@@ -197,8 +210,8 @@ const partBSchema = z.object({
 
 // Part B schema for Stage 1 (evaluation optional, empty arrays allowed)
 const partBStage1Schema = z.object({
-  trainings: z.array(trainingStage1Schema).default([]),
-  targets: z.array(targetStage1Schema).default([]),
+  trainings: z.array(trainingStage1SubmitSchema).default([]),
+  targets: z.array(targetStage1SubmitSchema).default([]),
 });
 
 // Part C schema
