@@ -889,30 +889,61 @@ export const vesselPlanningService = {
     return vesselPlanningRepository.create(resolvedData);
   },
 
-  async update(planUuid: string, data: Partial<InsertVesselPlanningV2> & { auditUserUuid?: string }) {
-    const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
-    if (!existing) {
-      throw new Error(`Planning record not found: ${planUuid}`);
-    }
-    
-    // Apply audit user fields
-    const auditedData = applyAuditUser(data, false);
-    
-    // Resolve port values to UUIDs (handles both UUID and port name inputs)
-    const resolvedData = { ...auditedData };
-    if (auditedData.joiningPortUuid) {
-      resolvedData.joiningPortUuid = await resolvePortToUuid(auditedData.joiningPortUuid) || undefined;
-    }
-    if (auditedData.signOffPortUuid) {
-      resolvedData.signOffPortUuid = await resolvePortToUuid(auditedData.signOffPortUuid) || undefined;
-    }
+ async update(planUuid: string, data: Partial<InsertVesselPlanningV2> & { auditUserUuid?: string }) {
+  const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
+  if (!existing) {
+    throw new Error(`Planning record not found: ${planUuid}`);
+  }
 
-    if (resolvedData.relieverCrewUuid === null && existing.isArchived && existing.relieverCrewUuid) {
-      (resolvedData as any).isRelieverArchived = true;
-    }
-    
-    return vesselPlanningRepository.update(planUuid, resolvedData);
-  },
+  const auditedData = applyAuditUser(data, false);
+
+  const resolvedData = { ...auditedData };
+  if (auditedData.joiningPortUuid) {
+    resolvedData.joiningPortUuid = await resolvePortToUuid(auditedData.joiningPortUuid) || undefined;
+  }
+  if (auditedData.signOffPortUuid) {
+    resolvedData.signOffPortUuid = await resolvePortToUuid(auditedData.signOffPortUuid) || undefined;
+  }
+
+  if (resolvedData.relieverCrewUuid === null && existing.isArchived && existing.relieverCrewUuid) {
+    (resolvedData as any).isRelieverArchived = true;
+  }
+
+  const updated = await vesselPlanningRepository.update(planUuid, resolvedData);
+
+  // --- NEW: keep crew_assignments in sync so the Crew Pool dashboard shows correct Relief Due ---
+  const db = getDb();
+
+  // resolve effective values (use incoming change, else fall back to existing planning row)
+  const effectiveCrewUuid = (resolvedData as any).crewUuid ?? existing.crewUuid;
+  const reliefDueChanged = "reliefDue" in resolvedData;
+  const contractChanged = "contractPeriodMonths" in resolvedData;
+
+  if (effectiveCrewUuid && (reliefDueChanged || contractChanged)) {
+    const effectiveReliefDue = reliefDueChanged ? (resolvedData as any).reliefDue : existing.reliefDue;
+    const effectiveContract = contractChanged
+      ? (resolvedData as any).contractPeriodMonths
+      : existing.contractPeriodMonths;
+
+    await db
+      .update(crewAssignments)
+      .set({
+        reliefDue: effectiveReliefDue ?? null,
+        contractPeriod: effectiveContract != null ? String(effectiveContract) : null,
+        updatedByUuid: data.auditUserUuid || null,
+        updatedAt: sql`NOW()`,
+      })
+      .where(
+        and(
+          eq(crewAssignments.crewUuid, effectiveCrewUuid),
+          eq(crewAssignments.vesselUuid, existing.vesselUuid),
+          eq(crewAssignments.isCurrent, true),
+          eq(crewAssignments.assignmentType, "OnBoard"),
+        ),
+      );
+  }
+  return updated;
+},
 
   async archive(planUuid: string, archivedByUuid?: string, auditUserUuid?: string) {
     const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
