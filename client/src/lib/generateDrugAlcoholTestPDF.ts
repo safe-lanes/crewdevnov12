@@ -653,7 +653,7 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
           ? `${formatDate(person.alcoholTest.date)}${person.alcoholTest.time ? ' ' + person.alcoholTest.time : ''}`
           : '';
         rowValues.push(alcoholDateTime);
-        checkmarkCells.push(alcoholChecked);
+        checkmarkCells.push(false);
         rowValues.push(alcoholChecked ? (person.alcoholResults || '') : '');
         checkmarkCells.push(false);
         rowValues.push(alcoholChecked ? (person.alcoholViolation ? 'Yes' : 'No') : '');
@@ -666,7 +666,7 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
           ? `${formatDate(person.drugTest.date)}${person.drugTest.time ? ' ' + person.drugTest.time : ''}`
           : '';
         rowValues.push(drugDateTime);
-        checkmarkCells.push(drugChecked);
+        checkmarkCells.push(false);
         rowValues.push(drugChecked ? (person.drugResults || '') : '');
         checkmarkCells.push(false);
         rowValues.push(drugChecked ? (person.drugViolation ? 'Yes' : 'No') : '');
