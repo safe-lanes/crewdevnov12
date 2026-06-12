@@ -162,6 +162,7 @@ interface FormData {
   selectedApproversForSubmission: string[];
   approvalSubmittedBy: string;
   approvalSubmittedDate: string;
+  screeningDate: string;
   c1Approvers: Array<{id: string, date: string, approver: string, status: string, approval: string, comments?: string}>;
   c2VesselTypes: string[];
   c2FleetGroups: string[];
@@ -1044,6 +1045,19 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     }
   } else {
     builder.drawText('No additional information', MARGIN + 10, 8, 'italic', LABEL_COLOR);
+    builder.moveDown(LINE_HEIGHT);
+  }
+
+  if (formData.screeningDate) {
+    builder.moveDown(8);
+    builder.checkPageBreak();
+    builder.drawText(
+      `Submitted for screening on: ${formatDate(formData.screeningDate)}`,
+      MARGIN,
+      8,
+      'italic',
+      LABEL_COLOR
+    );
     builder.moveDown(LINE_HEIGHT);
   }
 }
