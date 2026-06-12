@@ -529,10 +529,18 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
   builder.drawTextAt('Drug', radioX + 2, builder.getY(), 9);
   builder.moveDown(LINE_HEIGHT * 1.5);
   
-  builder.drawFieldRow([
-    { label: 'Initiated By', value: formData.initiatedBy || '' },
-    { label: 'Date & Time Test Completed', value: formatDateTime(formData.dateTimeTestCompleted) },
-  ], CONTENT_WIDTH / 2);
+  const generalFields = [
+    { label: 'Initiated By', value: formData.initiatedBy || '' }
+  ];
+
+  if (formData.testType !== 'post-incident') {
+    generalFields.push({
+      label: 'Date & Time Test Completed',
+      value: formatDateTime(formData.dateTimeTestCompleted)
+    });
+  }
+
+  builder.drawFieldRow(generalFields, CONTENT_WIDTH / 2);
   
   if (formData.testType === 'post-incident') {
     builder.drawFieldRow([
@@ -544,14 +552,14 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
   
   if (formData.testType === 'post-incident') {
     builder.drawFieldRow([
-      { label: 'Date & Time (Alcohol Test)', value: formatDateTime(formData.alcoholTestDateTime) },
+      { label: 'Alcohol Test - Date & Time Completed', value: formatDateTime(formData.alcoholTestDateTime) },
       { label: '', value: '' },
     ], CONTENT_WIDTH / 2);
   }
   
   if (formData.testType === 'post-incident') {
     builder.drawFieldRow([
-      { label: 'Date & Time (Drug Test)', value: formatDateTime(formData.drugTestDateTime) },
+      { label: 'Drug Test - Date & Time Completed', value: formatDateTime(formData.drugTestDateTime) },
       { label: '', value: '' },
     ], CONTENT_WIDTH / 2);
   }
@@ -571,9 +579,14 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
         builder.moveDown(LINE_HEIGHT);
       }
     }
-    
+  }
+  
+  if (['annual', 'post-incident', 'others'].includes(formData.testType)) {
     builder.drawFieldRow([
-      { label: 'External Test Results Date', value: formatDate(formData.externalTestResultsDate) },
+      {
+        label: 'Date External Test Results received',
+        value: formatDate(formData.externalTestResultsDate)
+      },
     ], CONTENT_WIDTH);
   }
   
