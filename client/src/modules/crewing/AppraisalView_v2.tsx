@@ -1,12 +1,18 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { getScoreColors } from "@/components/appraisal-form-parts/types";
+import {
+  generateAppraisalPDF,
+  type AppraisalPDFPayload,
+  type LabelValue,
+} from "@/lib/generateAppraisalPDF";
 
 interface TrainingEntry { id: string; training?: string; evaluation?: string; comment?: string }
 interface TargetEntry { id: string; targetSetting?: string; evaluation?: string; comment?: string }
@@ -262,6 +268,7 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
 
   const { getName: getDbTrainingName } = useCompanyTrainings();
   const { getVesselName } = useVesselLookup();
+  const { toast } = useToast();
 
   const formVersionId = existingAppraisal?.formVersionId ?? null;
 
@@ -335,6 +342,108 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
 
   const apiError = error as ApiError | null;
 
+  const handleExport = async () => {
+    try {
+      const payload: AppraisalPDFPayload = {
+        headerFormName,
+        docContext:
+          appraisalDateLabel !== DASH
+            ? `${fullName || DASH} · ${appraisalDateLabel}`
+            : (fullName || DASH),
+        appraisalNo,
+        basicFields: [
+          isFieldVisible("seafarersName") && { label: "Seafarer's Name", value: valueOr(data.seafarersName) },
+          isFieldVisible("seafarersRank") && { label: "Rank", value: valueOr(data.seafarersRank) },
+          isFieldVisible("nationality") && { label: "Nationality", value: valueOr(data.nationality) },
+          isFieldVisible("vessel") && { label: "Vessel", value: valueOr(data.vessel ? getVesselName(data.vessel) || data.vessel : data.vessel) },
+          isFieldVisible("signOn") && { label: "Sign On", value: formatDate(data.signOn) },
+          isFieldVisible("appraisalType") && { label: "Appraisal Type", value: valueOr(data.appraisalType || appraisalTypeLabel) },
+          isFieldVisible("appraisalPeriodFrom") && { label: "Appraisal Period (From)", value: formatDate(data.appraisalPeriodFrom) },
+          isFieldVisible("appraisalPeriodTo") && { label: "Appraisal Period (To)", value: formatDate(data.appraisalPeriodTo) },
+          isFieldVisible("personalityIndexCategory") && { label: "Personality Index Category", value: valueOr(data.personalityIndexCategory) },
+          isFieldVisible("primaryAppraiser") && { label: "Primary Appraiser", value: valueOr(data.primaryAppraiser) },
+        ].filter(Boolean) as LabelValue[],
+        statusFields: [
+          { label: "Current Status", value: (() => { const s = existingAppraisal?.status || "draft"; return s.charAt(0).toUpperCase() + s.slice(1); })() },
+          { label: "Last Appraisal Date", value: formatDate(existingAppraisal?.appraisalDate) },
+        ],
+        showB: isSectionVisible("partB"),
+        showB1: isSectionVisible("partB1"),
+        showB2: isSectionVisible("partB2"),
+        showC: isSectionVisible("partC"),
+        showD: isSectionVisible("partD"),
+        showE: isSectionVisible("partE"),
+        showF: isSectionVisible("partF"),
+        showG: isSectionVisible("partG"),
+        trainings: {
+          headers: ["Training", "Evaluation", "Comment"],
+          widths: [0.40, 0.25, 0.35],
+          rows: (data.trainings ?? []).map((r) => [r.training ?? "", r.evaluation ?? "", r.comment ?? ""]),
+        },
+        targets: {
+          headers: ["Target Setting", "Evaluation", "Comment"],
+          widths: [0.40, 0.25, 0.35],
+          rows: (data.targets ?? []).map((r) => [r.targetSetting ?? "", r.evaluation ?? "", r.comment ?? ""]),
+        },
+        competenceScore: existingAppraisal?.competenceRating,
+        competence: {
+          headers: ["Assessment Criteria", "Weight", "Effectiveness", "Comment"],
+          widths: [0.45, 0.10, 0.20, 0.25],
+          rows: (data.competenceAssessments ?? []).map((r) => [r.assessmentCriteria ?? "", r.weight !== undefined ? String(r.weight) : "", r.effectiveness ?? "", r.comment ?? ""]),
+        },
+        behaviouralScore: existingAppraisal?.behavioralRating,
+        behavioural: {
+          headers: ["Assessment Criteria", "Weight", "Effectiveness", "Comment"],
+          widths: [0.45, 0.10, 0.20, 0.25],
+          rows: (data.behaviouralAssessments ?? []).map((r) => [r.assessmentCriteria ?? "", r.weight !== undefined ? String(r.weight) : "", r.effectiveness ?? "", r.comment ?? ""]),
+        },
+        trainingNeeds: {
+          headers: ["Training", "Comment"],
+          widths: [0.45, 0.55],
+          rows: (data.trainingNeeds ?? []).map((r) => [r.training ?? "", r.comment ?? ""]),
+        },
+        overallScore: existingAppraisal?.overallRating,
+        recommendations: {
+          headers: ["Question", "Answer", "Comment"],
+          widths: [0.55, 0.15, 0.30],
+          rows: (data.recommendations ?? []).map((r) => [r.question ?? "", r.answer ?? "", r.comment ?? ""]),
+        },
+        appraiserComments: {
+          headers: ["Name", "Rank", "Comment"],
+          widths: [0.25, 0.20, 0.55],
+          rows: (data.appraiserComments ?? []).map((r) => [r.name ?? "", r.rank ?? "", r.comment ?? ""]),
+        },
+        seafarerComments: {
+          headers: ["Name", "Rank", "Comment"],
+          widths: [0.25, 0.20, 0.55],
+          rows: (data.seafarerComments ?? []).map((r) => [r.name ?? "", r.rank ?? "", r.comment ?? ""]),
+        },
+        officeReviews: {
+          headers: ["Name", "Position", "Feedback"],
+          widths: [0.25, 0.20, 0.55],
+          rows: (data.officeReviews ?? []).map((r) => [r.name ?? "", r.position ?? "", r.feedback ?? ""]),
+        },
+        trainingFollowups: {
+          headers: ["Training", "DB Mapping", "Category", "Status", "Target Date", "Comment"],
+          widths: [0.25, 0.20, 0.15, 0.12, 0.15, 0.13],
+          rows: (data.trainingFollowups ?? []).map((r) => [
+            r.training ?? "",
+            r.correspondingInDB ? (getDbTrainingName(r.correspondingInDB) ?? r.correspondingInDB) : "",
+            r.category ?? "",
+            r.status ?? "",
+            formatDate(r.targetDate),
+            r.comment ?? "",
+          ]),
+        },
+      };
+      await generateAppraisalPDF(payload, fullName || "Appraisal");
+      toast({ title: "Export Successful", description: `Appraisal exported as PDF for ${fullName || "seafarer"}` });
+    } catch (err) {
+      console.error("Failed to export PDF:", err);
+      toast({ title: "Export Failed", description: "Failed to generate PDF. Please try again.", variant: "destructive" });
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4"
@@ -344,15 +453,28 @@ export const AppraisalView: React.FC<AppraisalViewProps> = ({
         {/* Sticky toolbar (non-print) */}
         <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-2.5 border-b border-gray-200 bg-white print:hidden">
           <div className="text-[11px] text-gray-500 uppercase tracking-wider">Read-only view</div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={onClose}
-            data-testid="button-close-view"
-          >
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isLoading || !!apiError || !existingAppraisal}
+              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50 h-8 rounded-md px-3 text-xs hidden sm:flex"
+              data-testid="button-export"
+              onClick={handleExport}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onClose}
+              data-testid="button-close-view"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="px-10 pt-8 pb-10">
