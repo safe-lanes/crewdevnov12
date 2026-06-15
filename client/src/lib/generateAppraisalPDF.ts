@@ -167,7 +167,7 @@ class PDFBuilder {
     this.moveDown(LINE_HEIGHT);
     this.moveDown(4);
     this.line(MARGIN, this.y, MARGIN + CONTENT_WIDTH, this.y, 2, PRIMARY_COLOR);
-    this.moveDown(8);
+    this.moveDown(14);
     const title = formName.toUpperCase();
     this.text(title, MARGIN + (CONTENT_WIDTH - this.widthOf(title, 14, true)) / 2, 14, 'bold', PRIMARY_COLOR);
     this.moveDown(10);
