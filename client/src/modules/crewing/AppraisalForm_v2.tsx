@@ -1007,8 +1007,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       // Calculate ratings from form data
       const competenceScore = calcCompetenceScore(payload.data.competenceAssessments);
       const behavioralScore = calcBehavioralScore(payload.data.behaviouralAssessments);
-      const overallScore = (competenceScore && behavioralScore) 
-        ? ((parseFloat(competenceScore) + parseFloat(behavioralScore)) / 2).toFixed(1) 
+
+      // Average only sections that have a real rating (> 0). Hidden, unrated,
+      // or zero-scoring sections are excluded from the overall.
+      const scores = [competenceScore, behavioralScore]
+        .map(s => (s !== null ? parseFloat(s) : 0))
+        .filter(score => score > 0);
+
+      const overallScore = scores.length > 0
+        ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
         : null;
 
       // Transform form data to backend schema
@@ -1131,8 +1138,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       };
       const competenceScore = calcScore(formData.competenceAssessments);
       const behavioralScore = calcScore(formData.behaviouralAssessments);
-      const overallScore = (competenceScore && behavioralScore)
-        ? ((parseFloat(competenceScore) + parseFloat(behavioralScore)) / 2).toFixed(1)
+
+      // Average only sections that have a real rating (> 0). Hidden, unrated,
+      // or zero-scoring sections are excluded from the overall.
+      const scores = [competenceScore, behavioralScore]
+        .map(s => (s !== null ? parseFloat(s) : 0))
+        .filter(score => score > 0);
+
+      const overallScore = scores.length > 0
+        ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
         : null;
 
       const stageData = {
@@ -1980,11 +1994,17 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     form.setValue("trainingNeeds", updatedTrainingNeeds);
   };
 
-  // Calculate overall score (F1)
+  // Calculate overall score (F1) — average only sections that have a real
+  // rating (> 0). Hidden, unrated, or zero-scoring sections are excluded.
   const calculateOverallScore = () => {
-    const competenceScore = parseFloat(calculateSectionScore());
-    const behaviouralScore = parseFloat(calculateBehaviouralSectionScore());
-    return ((competenceScore + behaviouralScore) / 2).toFixed(1);
+    const scores = [
+      parseFloat(calculateSectionScore()),
+      parseFloat(calculateBehaviouralSectionScore()),
+    ].filter(score => score > 0);
+
+    return scores.length > 0
+      ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
+      : "0.0";
   };
 
   // Recommendation management functions
