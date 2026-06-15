@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Save, Send, Plus, MessageSquare, Edit2, Trash2, Check, ChevronsUpDown, FileText } from "lucide-react";
+import { ArrowLeft, Save, Send, Plus, MessageSquare, Edit2, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
@@ -28,7 +28,6 @@ import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 
 // Import extracted Part components for code splitting
 import { PartA, PartB, PartC, PartD, PartE, PartF, PartG, RequiredMark } from "@/components/appraisal-form-parts";
-import { generateAppraisalPDF, type AppraisalPDFData } from "@/lib/generateAppraisalPDF";
 
 // Comprehensive list of world nationalities
 const NATIONALITIES = [
@@ -458,7 +457,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     && (isSectionVisible('partB1') || isSectionVisible('partB2'));
 
   // Fetch vessels and ranks from persistent storage
-  const { vessels, getVesselId, getVesselName, isLoading: isLoadingVessels } = useVesselLookup();
+  const { vessels, getVesselId } = useVesselLookup();
   const { data: availableRanks = [] } = useQuery<Array<{ id: number; name: string; category: string }>>({
     queryKey: ['/api/v2/admin/available-ranks'],
   });
@@ -1988,72 +1987,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     return ((competenceScore + behaviouralScore) / 2).toFixed(1);
   };
 
-  const handleExport = async () => {
-    try {
-      const v = getFormDataWithSyncedComments();
-      const name = v.seafarersName || 'Seafarer';
-
-      // FIX #2: resolve G2 "Corresponding in DB" to the exact label the screen shows
-      // (matched DB training name, else the typed training name) — never a raw id.
-      const resolvedTrainingFollowups = (v.trainingFollowups ?? []).map(f => {
-        const matched = dbTrainingOptions.find(o => o.id === f.correspondingInDB);
-        return {
-          ...f,
-          correspondingInDB: matched?.name || f.training || ''
-        };
-      });
-
-      const data: AppraisalPDFData = {
-        ...v,
-
-        // FIX #1: show the vessel NAME, not the stored UUID
-        vessel: getVesselName(v.vessel) || v.vessel,
-
-        // FIX #2 applied
-        trainingFollowups: resolvedTrainingFollowups,
-
-        competenceSectionScore: calculateSectionScore(),
-        behaviouralSectionScore: calculateBehaviouralSectionScore(),
-        overallScore: calculateOverallScore(),
-
-        visibility: {
-          showA: canViewSection('A'),
-
-          // FIX #3: also honor the admin config toggle for B and D
-          showB: canViewSection('B') && isSectionVisible('partB'),
-          showB1: isSectionVisible('partB1'),
-          showB2: isSectionVisible('partB2'),
-
-          showC: canViewSection('C'),
-
-          showD: canViewSection('D') && isSectionVisible('partD'),
-
-          showE: canViewSection('E'),
-          showF: canViewSection('F'),
-          showG: canViewSection('G'),
-
-          showEvaluation: showEvaluation,
-          showPersonalityIndex: isFieldVisible('personalityIndexCategory'),
-        },
-      };
-
-      await generateAppraisalPDF(data, name);
-
-      toast({
-        title: "Export Successful",
-        description: `Appraisal form exported as PDF for ${name}`
-      });
-    } catch (error) {
-      console.error('Failed to export PDF:', error);
-
-      toast({
-        title: "Export Failed",
-        description: "Failed to generate PDF. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
   // Recommendation management functions
   const updateRecommendation = (id: string, field: string, value: string) => {
     const currentRecommendations = form.getValues("recommendations");
@@ -2674,17 +2607,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             <h1 className="text-lg sm:text-xl font-bold">Crew Appraisal Form</h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isLoadingVessels || isLoadingDbTrainings}
-              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-white border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50 h-8 rounded-md px-3 text-xs hidden sm:flex"
-              data-testid="button-export"
-              onClick={handleExport}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Export
-            </Button>
             {isStage1Available && (
               <>
                 <Button 
