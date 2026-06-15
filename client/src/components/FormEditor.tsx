@@ -246,7 +246,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const [configurableSections, setConfigurableSections] = useState<Set<string>>(new Set());
   
   // Weight validation dialog state
-  const [showWeightWarning, setShowWeightWarning] = useState(false);
+  const [weightWarningSection, setWeightWarningSection] = useState<'C' | 'D' | null>(null);
   
   // Field visibility state
   const [fieldVisibility, setFieldVisibility] = useState({
@@ -723,11 +723,11 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     const competenceAssessments = formMethods.getValues("competenceAssessments");
     const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
     if (competenceAssessments.length > 0 && calculateTotalWeight() !== 100) {
-      setShowWeightWarning(true);
+      setWeightWarningSection('C');
       return false;
     }
     if (behaviouralAssessments.length > 0 && calculateBehaviouralTotalWeight() !== 100) {
-      setShowWeightWarning(true);
+      setWeightWarningSection('D');
       return false;
     }
     return true;
@@ -982,7 +982,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         const totalWeight = calculateTotalWeight();
         console.log("Weight validation - Competence total weight:", totalWeight, "Config mode:", isConfigMode);
         if (totalWeight !== 100) {
-          setShowWeightWarning(true);
+          setWeightWarningSection('C');
           return; // Stop submission until weights are validated
         }
       }
@@ -991,7 +991,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         const totalWeight = calculateBehaviouralTotalWeight();
         console.log("Weight validation - Behavioural total weight:", totalWeight, "Config mode:", isConfigMode);
         if (totalWeight !== 100) {
-          setShowWeightWarning(true);
+          setWeightWarningSection('D');
           return; // Stop submission until weights are validated
         }
       }
@@ -2496,30 +2496,21 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       </div>
       
       {/* Weight Warning Dialog */}
-      {showWeightWarning && (
+      {weightWarningSection && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
           <div className="bg-white p-4 sm:p-6 rounded-lg max-w-md w-full mx-4">
             <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Weight Validation</h3>
             <p className="text-sm sm:text-base text-gray-600 mb-4">
               Total weight must be 100%. 
-              {(() => {
-                const competenceAssessments = formMethods.getValues("competenceAssessments");
-                const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
-                
-                if (competenceAssessments.length > 0 && calculateTotalWeight() !== 100) {
-                  return `Part C current total is ${calculateTotalWeight()}%.`;
-                }
-                if (behaviouralAssessments.length > 0 && calculateBehaviouralTotalWeight() !== 100) {
-                  return `Part D current total is ${calculateBehaviouralTotalWeight()}%.`;
-                }
-                return "";
-              })()}
+              {weightWarningSection === 'C'
+                ? `Part C current total is ${calculateTotalWeight()}%.`
+                : `Part D current total is ${calculateBehaviouralTotalWeight()}%.`}
               Do you want to equally distribute the weights?
             </p>
             <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-2">
               <Button
                 variant="outline"
-                onClick={() => setShowWeightWarning(false)}
+                onClick={() => setWeightWarningSection(null)}
                 className="text-sm sm:text-base"
                 size="sm"
               >
@@ -2527,16 +2518,21 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               </Button>
               <Button
                 onClick={() => {
-                  const competenceAssessments = formMethods.getValues("competenceAssessments");
-                  const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
-                  
-                  if (competenceAssessments.length > 0 && calculateTotalWeight() !== 100) {
+                  if (weightWarningSection === 'C') {
                     distributeWeightsEqually();
-                  }
-                  if (behaviouralAssessments.length > 0 && calculateBehaviouralTotalWeight() !== 100) {
+
+                    // Part C now fixed — if Part D is also off, show ITS popup next, separately.
+                    const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
+
+                    if (behaviouralAssessments.length > 0 && calculateBehaviouralTotalWeight() !== 100) {
+                      setWeightWarningSection('D');
+                    } else {
+                      setWeightWarningSection(null);
+                    }
+                  } else {
                     distributeBehaviouralWeightsEqually();
+                    setWeightWarningSection(null);
                   }
-                  setShowWeightWarning(false);
                 }}
                 className="text-sm sm:text-base"
                 size="sm"
