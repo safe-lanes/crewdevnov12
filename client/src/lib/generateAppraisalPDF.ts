@@ -228,6 +228,7 @@ class PDFBuilder {
       return;
     }
     table.rows.forEach((r, i) => this.drawRow(r, colW, false, i));
+    this.y -= 8;   // trailing gap below table; no checkBreak, so it can never create a blank page
   }
 
   private drawRow(values: string[], colW: number[], isHeader: boolean, idx: number): void {
