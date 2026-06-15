@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import { PartBProps } from "./types";
+import { RequiredMark } from "./RequiredMark";
 
 const PartBComponent: React.FC<PartBProps> = ({
   form,
@@ -90,7 +91,7 @@ const PartBComponent: React.FC<PartBProps> = ({
             {showB1 && (
             <div data-testid="section-b1">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-medium text-[16px]" style={{ color: '#16569e' }}>B1. Trainings conducted prior joining vessel (To Assess Effectiveness)</h3>
+                <h3 className="font-medium text-[16px]" style={{ color: '#16569e' }}>B1. Trainings conducted prior joining vessel (To Assess Effectiveness)<RequiredMark /></h3>
                 <Button type="button" onClick={addTraining} variant="outline" size="sm" className="text-gray-600 border-gray-300" disabled={lockB1Structural} data-testid="button-add-training">
                   <Plus className="h-4 w-4 mr-1" />
                   Add Training
@@ -214,7 +215,7 @@ const PartBComponent: React.FC<PartBProps> = ({
             {showB2 && (
             <div data-testid="section-b2">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-medium text-[16px]" style={{ color: '#16569e' }}>B2. Target Setting</h3>
+                <h3 className="font-medium text-[16px]" style={{ color: '#16569e' }}>B2. Target Setting<RequiredMark /></h3>
                 <Button type="button" onClick={addTarget} variant="outline" size="sm" className="text-gray-600 border-gray-300" disabled={lockB2} data-testid="button-add-target">
                   <Plus className="h-4 w-4 mr-1" />
                   Add Target
