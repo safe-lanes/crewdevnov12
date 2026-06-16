@@ -1044,10 +1044,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       b2VesselTypes: includeB ? vesselTypes : undefined,
       b2FleetGroups: includeB ? vesselClasses : undefined,
       partBNotes: includeB ? (formData.partBNotes || null) : undefined,
-      promotionConfirmed: includeC ? promotionConfirmed : undefined,
+      promotionConfirmed: includeB ? promotionConfirmed : undefined,
+      promotionTiming: includeB ? promotionTiming : undefined,
       vesselAssigned: includeC ? vesselAssigned : undefined,
       promotionDate: includeC ? promotionDate : undefined,
-      promotionTiming: includeC ? promotionTiming : undefined,
       partCNotes: includeC ? (formData.partCNotes || null) : undefined,
     };
   }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses, effectiveReviewUuid]);
@@ -1101,6 +1101,22 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [collectFormData, saveMutation]);
 
   const handleSubmitPartB = useCallback(() => {
+    if (!promotionConfirmed) {
+      toast({
+        title: "Decision Required",
+        description: "Select a promotion decision (Yes / Waitlist / Rejected) before submitting Part B.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (promotionConfirmed === 'yes' && !promotionTiming) {
+      toast({
+        title: "Promotion Type Required",
+        description: "Select the promotion type (Promoted Onboard / Promoted Prior Joining).",
+        variant: "destructive",
+      });
+      return;
+    }
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
@@ -1108,9 +1124,38 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }, 'b');
     reviewData.status = 'approved';
     saveMutation.mutate({ data: reviewData, action: 'submit-b' });
-  }, [collectFormData, saveMutation]);
+  }, [collectFormData, saveMutation, promotionConfirmed, promotionTiming, toast]);
 
   const handleSubmitPartC = useCallback(() => {
+    // A promotion can only be marked Completed when Part B recorded a "Yes"
+    // decision and a (non-future) Date of Promotion has been entered.
+    if (promotionConfirmed !== 'yes') {
+      toast({
+        title: "Cannot Complete",
+        description: "A promotion can only be completed when the Part B decision is Yes.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!promotionDate) {
+      toast({
+        title: "Date of Promotion Required",
+        description: "Enter the Date of Promotion before completing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const parsedDate = new Date(promotionDate);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    if (!isNaN(parsedDate.getTime()) && parsedDate.getTime() > endOfToday.getTime()) {
+      toast({
+        title: "Invalid Date",
+        description: "The Date of Promotion cannot be in the future.",
+        variant: "destructive",
+      });
+      return;
+    }
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
@@ -1118,7 +1163,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }, 'c');
     reviewData.status = 'completed';
     saveMutation.mutate({ data: reviewData, action: 'submit-c' });
-  }, [collectFormData, saveMutation]);
+  }, [collectFormData, saveMutation, promotionConfirmed, promotionDate, toast]);
 
   const handleSubmit = (data: PromotionReviewFormData) => {
     const reviewData = collectFormData(data, 'a');
@@ -1834,6 +1879,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               vesselClassOptions={b2FleetGroupOptions}
               isLoadingVesselTypeOptions={isLoadingVesselTypesV2}
               isLoadingVesselClassOptions={isLoadingFleetGroupsV2}
+              promotionConfirmed={promotionConfirmed}
+              onSetPromotionConfirmed={setPromotionConfirmed}
+              promotionTiming={promotionTiming}
+              onSetPromotionTiming={setPromotionTiming}
               onSave={handleSaveDraftB}
               onSubmit={confirmSubmitB}
               approverNames={approverMasterData.map(a => a.displayName)}
@@ -1845,15 +1894,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           {activeSection === 'c' && canViewSection('c') && (
             <fieldset disabled={lockState.lockPartC} className="min-w-0 border-0 p-0 m-0">
             <PartCExecution
-              promotionConfirmed={promotionConfirmed}
-              onSetPromotionConfirmed={setPromotionConfirmed}
-              vesselAssigned={vesselAssigned}
-              onSetVesselAssigned={setVesselAssigned}
               promotionDate={promotionDate}
               onSetPromotionDate={setPromotionDate}
-              promotionTiming={promotionTiming}
-              onSetPromotionTiming={setPromotionTiming}
-              vessels={vesselOptions}
               currentUserDisplay={currentUserDisplay}
               onSave={handleSaveDraftC}
               onSubmit={confirmSubmitC}

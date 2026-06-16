@@ -59,6 +59,32 @@ const criteriaMasterRepo = new CriteriaMasterRepository();
 const suitabilityRepo = new SuitabilityRepository();
 const hierarchiesRepo = new PromotionHierarchiesRepository();
 
+// Raised by the promotion workflow guards (future date, next-rank-only, one
+// pending promotion per crew). The controller maps these to HTTP 400 so the
+// user sees a clear validation message instead of a generic 500.
+export class PromotionGuardError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PromotionGuardError";
+  }
+}
+
+// Ordered workflow stages. Higher number = further along the workflow.
+// draft / in progress are both editable starting points (rank 0).
+const STATUS_RANK: Record<string, number> = {
+  "draft": 0,
+  "in progress": 0,
+  "in_progress": 0,
+  "submitted": 1,
+  "for approval": 1,
+  "approved": 2,
+  "completed": 3,
+};
+
+function statusRank(status?: string | null): number {
+  return STATUS_RANK[(status ?? "").trim().toLowerCase()] ?? 0;
+}
+
 function findNextPromotionRank(currentRank: string, hierarchies: any[]): string | null {
   for (const hierarchy of hierarchies) {
     let rankPath: string[];
@@ -76,6 +102,24 @@ function findNextPromotionRank(currentRank: string, hierarchies: any[]): string 
     return null;
   }
   return null;
+}
+
+// True when the given rank appears anywhere in the promotion hierarchies. Used
+// to tell apart "this rank is the most senior (no next rank)" from "this rank
+// is not mapped in any hierarchy at all".
+function isRankInHierarchies(rank: string, hierarchies: any[]): boolean {
+  for (const hierarchy of hierarchies) {
+    let rankPath: string[];
+    try {
+      rankPath = typeof hierarchy.rankPath === 'string'
+        ? JSON.parse(hierarchy.rankPath)
+        : (Array.isArray(hierarchy.rankPath) ? hierarchy.rankPath : []);
+    } catch (e) {
+      rankPath = [];
+    }
+    if (rankPath.includes(rank)) return true;
+  }
+  return false;
 }
 
 function groupBy<T>(items: T[], key: (item: T) => string): Record<string, T[]> {
@@ -458,6 +502,86 @@ export class PromotionReviewsService {
     }
   }
 
+  // Enforce the promotion workflow rules before a write is persisted:
+  //  1. A Date of Promotion may not be in the future.
+  //  2. Only the next rank in the crew member's hierarchy may be promoted
+  //     (checked when the workflow moves forward into submitted/approved/completed).
+  //  3. A crew member may have at most one "pending" promotion — a review that
+  //     has been approved but not yet completed.
+  private async assertPromotionGuards(params: {
+    crewMemberId?: string | null;
+    promotionToRank?: string | null;
+    promotionDate?: string | null;
+    incomingStatus?: string | null;
+    existingStatus?: string | null;
+    reviewUuid?: string | null;
+  }) {
+    const { crewMemberId, promotionToRank, promotionDate, incomingStatus, existingStatus, reviewUuid } = params;
+
+    // 1. No future-dated promotion.
+    if (promotionDate && String(promotionDate).trim()) {
+      const d = new Date(String(promotionDate));
+      if (!isNaN(d.getTime())) {
+        const endOfToday = new Date();
+        endOfToday.setHours(23, 59, 59, 999);
+        if (d.getTime() > endOfToday.getTime()) {
+          throw new PromotionGuardError("The Date of Promotion cannot be in the future.");
+        }
+      }
+    }
+
+    const incomingRank = statusRank(incomingStatus);
+    const existingRank = statusRank(existingStatus);
+    const isForwardTransition = !!incomingStatus && incomingRank > existingRank;
+
+    // 2. Next-rank-only — validated when the review actually advances into
+    //    submitted/approved/completed (not on idempotent re-saves or drafts).
+    if (isForwardTransition && incomingRank >= statusRank("submitted") && crewMemberId && promotionToRank) {
+      const db = getDb();
+      const [crew] = await db
+        .select({ presentRank: crewMembersV2.presentRank })
+        .from(crewMembersV2)
+        .where(eq(crewMembersV2.empNo, crewMemberId));
+      const presentRank = crew?.presentRank?.trim();
+      if (presentRank) {
+        const hierarchies = await hierarchiesRepo.findAll();
+        const expectedNext = findNextPromotionRank(presentRank, hierarchies);
+        if (!expectedNext) {
+          // No next rank resolvable — either the crew is already at the most
+          // senior rank, or the current rank is not mapped in any hierarchy.
+          // Either way the next-rank-only rule cannot be satisfied, so reject.
+          if (isRankInHierarchies(presentRank, hierarchies)) {
+            throw new PromotionGuardError(
+              `"${presentRank}" is already the most senior rank in the hierarchy and cannot be promoted further.`
+            );
+          }
+          throw new PromotionGuardError(
+            `The next rank for "${presentRank}" could not be determined. Check the promotion hierarchy configuration before promoting.`
+          );
+        }
+        if (promotionToRank.trim() !== expectedNext.trim()) {
+          throw new PromotionGuardError(
+            `Only the next rank in the hierarchy can be promoted. Expected "${expectedNext}" for the current rank "${presentRank}".`
+          );
+        }
+      }
+    }
+
+    // 3. One pending promotion per crew — checked only when this review is
+    //    newly entering the approved (pending) stage.
+    if (incomingStatus && incomingRank === statusRank("approved") && existingRank < statusRank("approved") && crewMemberId) {
+      const existingReviews = await reviewsRepo.findByCrewMemberId(crewMemberId);
+      const otherPending = existingReviews.find(
+        (r) => r.reviewUuid !== reviewUuid && statusRank(r.status) === statusRank("approved")
+      );
+      if (otherPending) {
+        throw new PromotionGuardError(
+          "This crew member already has a pending promotion awaiting completion. Complete or clear it before approving another."
+        );
+      }
+    }
+  }
+
   async createReview(data: any) {
     const auditedData = applyAuditUser(data, true);
     const { criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
@@ -469,6 +593,15 @@ export class PromotionReviewsService {
     if (_svt !== undefined && coreFields.selectedVesselTypeForA23b === undefined) {
       coreFields.selectedVesselTypeForA23b = _svt;
     }
+
+    await this.assertPromotionGuards({
+      crewMemberId: coreFields.crewMemberId,
+      promotionToRank: coreFields.promotionToRank,
+      promotionDate: coreFields.promotionDate,
+      incomingStatus: coreFields.status,
+      existingStatus: null,
+      reviewUuid: null,
+    });
 
     // First submission can happen directly via POST (new review submitted for
     // approval). Snapshot the lock flag so later admin toggles don't change it.
@@ -500,13 +633,31 @@ export class PromotionReviewsService {
       coreFields.selectedVesselTypeForA23b = _svt2;
     }
 
+    const existing = await reviewsRepo.findByUuid(reviewUuid);
+    const existingStatusRaw = existing?.status ?? null;
+
+    // Idempotency / no regression: never move a review backwards through the
+    // workflow. Re-saving a review that is already at (or past) the requested
+    // status simply drops the status change so the transition has no effect.
+    if (coreFields.status !== undefined && statusRank(coreFields.status) < statusRank(existingStatusRaw)) {
+      delete coreFields.status;
+    }
+
+    await this.assertPromotionGuards({
+      crewMemberId: coreFields.crewMemberId ?? existing?.crewMemberId ?? null,
+      promotionToRank: coreFields.promotionToRank ?? existing?.promotionToRank ?? null,
+      promotionDate: coreFields.promotionDate,
+      incomingStatus: coreFields.status,
+      existingStatus: existingStatusRaw,
+      reviewUuid,
+    });
+
     // Task #569: snapshot the promotion form's admin lock-form flag onto this
     // review at the first submission (Submit for Approval → status "submitted")
     // so later admin lock/unlock toggles do not retroactively change the lock
     // state of already-submitted reviews. Mirror the appraisal stage-2 snapshot.
     if (coreFields.status === "submitted") {
-      const existing = await reviewsRepo.findByUuid(reviewUuid);
-      const existingStatus = (existing?.status || "").trim().toLowerCase();
+      const existingStatus = (existingStatusRaw || "").trim().toLowerCase();
       const alreadyLocked = ["submitted", "approved", "completed"].includes(existingStatus);
       if (!alreadyLocked) {
         coreFields.isLockForm = await this.resolvePromotionLockFlag();

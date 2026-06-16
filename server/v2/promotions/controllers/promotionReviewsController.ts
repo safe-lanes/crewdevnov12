@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { PromotionReviewsService } from "../services";
-import { promotionReviewWritableSchema } from "../services/promotionReviewsService";
+import { promotionReviewWritableSchema, PromotionGuardError } from "../services/promotionReviewsService";
 
 const service = new PromotionReviewsService();
 
@@ -82,6 +82,9 @@ export class PromotionReviewsController {
       console.log(`[Promotions V2] Created review ${review?.reviewUuid} for crew ${review?.crewMemberId}`);
       res.status(201).json(review);
     } catch (error) {
+      if (error instanceof PromotionGuardError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("[Promotions V2] Failed to create review:", error);
       res.status(500).json({ error: "Failed to create promotion review" });
     }
@@ -99,6 +102,9 @@ export class PromotionReviewsController {
       console.log(`[Promotions V2] Updated review ${reviewUuid}`);
       res.json(review);
     } catch (error) {
+      if (error instanceof PromotionGuardError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("[Promotions V2] Failed to update review:", error);
       res.status(500).json({ error: "Failed to update promotion review" });
     }

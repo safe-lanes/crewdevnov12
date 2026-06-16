@@ -2,25 +2,11 @@ import React, { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Info } from 'lucide-react';
 
-interface VesselOption {
-  id: string;
-  name: string;
-}
-
 interface PartCExecutionProps extends React.HTMLAttributes<HTMLDivElement> {
-  promotionConfirmed: string;
-  onSetPromotionConfirmed: (value: string) => void;
-  vesselAssigned: string;
-  onSetVesselAssigned: (value: string) => void;
   promotionDate: string;
   onSetPromotionDate: (value: string) => void;
-  promotionTiming: string;
-  onSetPromotionTiming: (value: string) => void;
-  vessels?: VesselOption[];
   currentUserDisplay?: string;
   onSave?: () => void;
   onSubmit?: () => void;
@@ -28,15 +14,8 @@ interface PartCExecutionProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const PartCExecution = memo(function PartCExecution({
-  promotionConfirmed,
-  onSetPromotionConfirmed,
-  vesselAssigned,
-  onSetVesselAssigned,
   promotionDate,
   onSetPromotionDate,
-  promotionTiming,
-  onSetPromotionTiming,
-  vessels = [],
   currentUserDisplay = 'Current User, Staff',
   onSave,
   onSubmit,
@@ -53,82 +32,21 @@ export const PartCExecution = memo(function PartCExecution({
 
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-medium text-[#16569e]">C1 Confirmation & Assignment</h3>
+            <h3 className="text-base font-medium text-[#16569e]">C1 Date of Promotion</h3>
             <Info className="h-4 w-4 text-gray-400 cursor-help" />
           </div>
 
           <div className="flex items-center gap-4">
-            <Label className="text-sm w-48">C1.1 Promotion confirmed:</Label>
-            <RadioGroup 
-              value={promotionConfirmed} 
-              onValueChange={onSetPromotionConfirmed}
-              className="flex gap-6"
-              disabled={disabled}
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="yes" id="promotion-yes" data-testid="radio-promotion-yes" />
-                <Label htmlFor="promotion-yes" className="text-sm cursor-pointer">Yes</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="waitlist" id="promotion-waitlist" data-testid="radio-promotion-waitlist" />
-                <Label htmlFor="promotion-waitlist" className="text-sm cursor-pointer">Waitlist</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="rejected" id="promotion-rejected" data-testid="radio-promotion-rejected" />
-                <Label htmlFor="promotion-rejected" className="text-sm cursor-pointer">Rejected</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Label className="text-sm w-48">C1.2 Vessel Assigned:</Label>
-            <Select 
-              value={vesselAssigned}
-              onValueChange={onSetVesselAssigned}
-              disabled={disabled}
-            >
-              <SelectTrigger className="flex-1" data-testid="select-vessel-assigned">
-                <SelectValue placeholder="Select vessel" />
-              </SelectTrigger>
-              <SelectContent>
-                {vessels.length > 0 ? (
-                  vessels.map((vessel) => (
-                    <SelectItem key={vessel.id} value={vessel.id}>
-                      {vessel.name}
-                    </SelectItem>
-                  ))
-                ) : (
-                  <SelectItem value="no-vessels" disabled>No vessels available</SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Label className="text-sm w-48">C1.3 Date of Promotion:</Label>
+            <Label className="text-sm w-48">C1.1 Date of Promotion:</Label>
             <Input 
               type="date" 
               className="w-40"
               placeholder="dd:mm:yy"
               value={promotionDate}
               onChange={(e) => onSetPromotionDate(e.target.value)}
+              disabled={disabled}
               data-testid="input-promotion-date"
             />
-            <RadioGroup 
-              value={promotionTiming} 
-              onValueChange={onSetPromotionTiming}
-              className="flex gap-6 flex-1"
-              disabled={disabled}
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="on-board" id="timing-on-board" data-testid="radio-timing-on-board" />
-                <Label htmlFor="timing-on-board" className="text-sm cursor-pointer">Promoted on board</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="prior-joining" id="timing-prior-joining" data-testid="radio-timing-prior-joining" />
-                <Label htmlFor="timing-prior-joining" className="text-sm cursor-pointer">Promoted prior joining</Label>
-              </div>
-            </RadioGroup>
           </div>
         </div>
 

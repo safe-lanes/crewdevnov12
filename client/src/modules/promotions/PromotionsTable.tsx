@@ -569,6 +569,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
           cesIndex: cesIndexStatus,
           trainDocs: trainDocsStatus,
           status: reviewStatus,
+          promotionTiming: review?.promotionTiming || null,
         };
       })
       .filter(item => item !== null);
@@ -720,7 +721,17 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       flex: 2,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: true
+      resizable: true,
+      cellRenderer: (params: any) => {
+        const value = params.value ?? '-';
+        const showPriorJoining = params.data?.status === 'Approved'
+          && params.data?.promotionTiming === 'prior-joining';
+        return (
+          <span data-testid={`text-next-rank-${params.data?.crewId}`}>
+            {value}{showPriorJoining ? ' (PR)' : ''}
+          </span>
+        );
+      }
     },
     {
       headerName: 'Vessel/ Leave',
