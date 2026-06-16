@@ -1785,7 +1785,7 @@ export const RHRecordingForm = ({
       records.push(createBlankDailyRecord(day, dayOfWeek, 'primary'));
     }
     
-    setDailyRecords(buildTemplatedRecords(records));
+    setDailyRecords(records);
     setRecordMode('Rec');
     setShowPlanning(true);
     setOpaMode(false);
