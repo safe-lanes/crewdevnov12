@@ -200,7 +200,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                       })}
                       {form.watch("trainings").length === 0 && (
                         <tr>
-                          <td colSpan={4} className="p-8 text-center text-gray-500">
+                          <td colSpan={showEvaluation ? 4 : 3} className="p-8 text-center text-gray-500">
                             No trainings added yet. Click "Add Training" to get started.
                           </td>
                         </tr>
@@ -315,7 +315,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                     ))}
                     {form.watch("targets").length === 0 && (
                       <tr>
-                        <td colSpan={4} className="p-8 text-center text-gray-500">
+                        <td colSpan={showEvaluation ? 4 : 3} className="p-8 text-center text-gray-500">
                           No targets added yet. Click "Add Target" to get started.
                         </td>
                       </tr>
