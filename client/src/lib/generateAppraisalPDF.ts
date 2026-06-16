@@ -220,13 +220,13 @@ class PDFBuilder {
 
   drawTable(table: PdfTable): void {
     const colW = table.widths.map((w) => w * CONTENT_WIDTH);
-    this.drawRow(table.headers, colW, true, 0);
     if (!table.rows.length) {
       this.checkBreak(LINE_HEIGHT);
       this.text(table.emptyText || 'No entries.', MARGIN + 4, 8, 'italic', LABEL_COLOR);
       this.moveDown(LINE_HEIGHT);
       return;
     }
+    this.drawRow(table.headers, colW, true, 0);
     table.rows.forEach((r, i) => this.drawRow(r, colW, false, i));
     this.y -= 8;   // trailing gap below table; no checkBreak, so it can never create a blank page
   }
