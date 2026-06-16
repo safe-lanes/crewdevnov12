@@ -1413,6 +1413,46 @@ export const vesselPlanningService = {
       console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 sign-on auto-create skipped:`, e1Err);
     }
 
+    // Prior-joining promotion: a prior-joining promotion only takes effect when
+    // the promotee signs on. If this crew has an approved prior-joining review
+    // pending, complete it now so the rank-propagation engine flips the rank as
+    // of the sign-on date. Best-effort — a promotion hiccup must not block the
+    // sign-on, but failures are logged at error level so they stay visible.
+    try {
+      const finalSignOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
+      const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
+      const crew = await crewMembersService.getByUuid(relieverCrewUuid);
+      const empNo = crew?.empNo;
+
+      if (empNo) {
+        const { PromotionReviewsRepository, ExecutionLedgerRepository } = await import("../../promotions/repositories");
+        const reviewsRepo = new PromotionReviewsRepository();
+        const ledgerRepo = new ExecutionLedgerRepository();
+
+        const reviews = await reviewsRepo.findByCrewMemberId(empNo);
+        const pendingPriorJoining = reviews.find((r) =>
+          (r.status ?? "").trim().toLowerCase() === "approved" &&
+          (r.promotionTiming ?? "").trim().toLowerCase() === "prior-joining"
+        );
+
+        if (pendingPriorJoining) {
+          const alreadyApplied = await ledgerRepo.findByReviewUuid(pendingPriorJoining.reviewUuid);
+          if (!alreadyApplied) {
+            console.log(`🎖️ [VESSEL-PLANNING-V2] Completing prior-joining promotion ${pendingPriorJoining.reviewUuid} for crew ${empNo} on sign-on`);
+            const { PromotionReviewsService } = await import("../../promotions/services");
+            const reviewsService = new PromotionReviewsService();
+            await reviewsService.updateReview(pendingPriorJoining.reviewUuid, {
+              status: "completed",
+              promotionDate: finalSignOnDate,
+              auditUserUuid: data.auditUserUuid,
+            });
+          }
+        }
+      }
+    } catch (promoErr) {
+      console.error(`❌ [VESSEL-PLANNING-V2] Prior-joining promotion completion failed (non-fatal):`, promoErr);
+    }
+
     return result;
   },
 

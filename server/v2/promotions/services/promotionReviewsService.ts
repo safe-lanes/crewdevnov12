@@ -9,6 +9,7 @@ import {
   ChecklistProgressRepository,
   CriteriaMasterRepository,
   SuitabilityRepository,
+  ExecutionLedgerRepository,
 } from "../repositories";
 import { PromotionHierarchiesRepository } from "../../admin/repositories/promotionHierarchiesRepository";
 import { formsService } from "../../admin/services";
@@ -16,7 +17,8 @@ import { applyAuditUser } from "../../admin/utils/auditUser";
 import type { PromotionReviewV2, PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { eq, and, isNull, or } from "drizzle-orm";
+import { promoExecutionLedgerV2 } from "../../../../shared/v2/promotions/schema";
+import { eq, and, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 export const promotionReviewWritableSchema = z.object({
@@ -57,6 +59,7 @@ const approvalsRepo = new ApprovalsRepository();
 const checklistProgressRepo = new ChecklistProgressRepository();
 const criteriaMasterRepo = new CriteriaMasterRepository();
 const suitabilityRepo = new SuitabilityRepository();
+const executionLedgerRepo = new ExecutionLedgerRepository();
 const hierarchiesRepo = new PromotionHierarchiesRepository();
 
 // Raised by the promotion workflow guards (future date, next-rank-only, one
@@ -582,6 +585,202 @@ export class PromotionReviewsService {
     }
   }
 
+  // ── Rank Propagation Engine (Phase 2) ────────────────────────────────────
+  // A promotion is "executed" exactly once. The execution ledger
+  // (promo_execution_ledger_v2, keyed by review_uuid) is the durable guard:
+  // if a ledger row already exists for the review the engine is a no-op, so
+  // re-saving / replaying a completed review never re-applies the rank change.
+
+  // Flip the crew member's present_rank to the promoted rank and record the
+  // ledger row. Idempotent: a no-op when the promotion was already executed.
+  // Errors propagate to the caller — the rank flip is the core deliverable and
+  // a failure must surface rather than silently leave the rank unchanged.
+  async applyPromotedRank(
+    review: PromotionReviewV2,
+    opts: { effectiveDate?: string | null; actorUuid?: string | null } = {},
+  ): Promise<void> {
+    const reviewUuid = review.reviewUuid;
+    const empNo = (review.crewMemberId ?? "").trim();
+    const toRank = (review.promotionToRank ?? "").trim();
+
+    if (!empNo || !toRank) {
+      console.warn(
+        `[promotion-engine] Skipping rank propagation for review ${reviewUuid}: ` +
+        `missing ${!empNo ? "crew member" : "promotion rank"}.`,
+      );
+      return;
+    }
+
+    // Idempotency guard #1 — fast no-op path when already executed.
+    const existingLedger = await executionLedgerRepo.findByReviewUuid(reviewUuid);
+    if (existingLedger) return;
+
+    const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
+    const crew = await crewMembersService.getByEmpNo(empNo);
+    if (!crew) {
+      console.warn(
+        `[promotion-engine] Skipping rank propagation for review ${reviewUuid}: ` +
+        `no crew member found for employee number "${empNo}".`,
+      );
+      return;
+    }
+
+    const fromRank = (crew.presentRank ?? "").trim() || null;
+    const effectiveDate = (opts.effectiveDate ?? review.promotionDate ?? null) || null;
+    const actorUuid = opts.actorUuid ?? (review as any).updatedByUuid ?? null;
+    const { v4: uuidv4 } = await import("uuid");
+
+    // Exactly-once: the ledger insert and the rank flip commit together in one
+    // transaction. ON CONFLICT DO NOTHING on the unique review_uuid means a
+    // concurrent (or replayed) execution inserts nothing and returns no row, so
+    // we skip the rank flip. A crash mid-transaction rolls back BOTH, so a retry
+    // re-applies cleanly — the ledger never persists without the rank update.
+    const db = getDb();
+    await db.transaction(async (tx: typeof db) => {
+      const inserted = await tx
+        .insert(promoExecutionLedgerV2)
+        .values({
+          ledgerUuid: uuidv4(),
+          reviewUuid,
+          crewMemberId: empNo,
+          crewUuid: crew.crewUuid,
+          fromRank,
+          toRank,
+          effectiveDate,
+          promotionTiming: review.promotionTiming ?? null,
+          appliedByUuid: actorUuid,
+        })
+        .onConflictDoNothing({ target: promoExecutionLedgerV2.reviewUuid })
+        .returning({ id: promoExecutionLedgerV2.id });
+
+      // Another execution already owns this promotion — leave the rank to it.
+      if (inserted.length === 0) return;
+
+      // Flip the rank only when it actually differs (the present_rank column is
+      // the single source of truth read by Crew Pool, Reports, Promotions, etc.).
+      if (fromRank !== toRank) {
+        await tx
+          .update(crewMembersV2)
+          .set({
+            presentRank: toRank,
+            updatedAt: sql`NOW()`,
+            updatedByUuid: actorUuid,
+          })
+          .where(eq(crewMembersV2.crewUuid, crew.crewUuid));
+      }
+    });
+  }
+
+  // On-board promotion only: place the promotee into the target rank position
+  // on their current vessel as a Secondary so the existing takeover flow can
+  // complete the swap. Best-effort — a planning hiccup must not block the
+  // promotion itself, mirroring the non-fatal sea-service sync pattern.
+  private async placePromoteeAsSecondary(
+    review: PromotionReviewV2,
+    actorUuid?: string | null,
+  ): Promise<void> {
+    try {
+      const empNo = (review.crewMemberId ?? "").trim();
+      const toRank = (review.promotionToRank ?? "").trim();
+      if (!empNo || !toRank) return;
+
+      const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
+      const crew = await crewMembersService.getByEmpNo(empNo);
+      if (!crew) return;
+
+      const { crewAssignmentsService } = await import("../../crew-pool/services/crewAssignmentsService");
+      const current = await crewAssignmentsService.getCurrent(crew.crewUuid);
+      const vesselUuid = current?.vesselUuid;
+      if (!vesselUuid) {
+        console.warn(
+          `[promotion-engine] On-board promotion ${review.reviewUuid}: crew ${empNo} ` +
+          `has no current vessel assignment; skipping Secondary placement.`,
+        );
+        return;
+      }
+
+      const { vesselPlanningRepository } = await import("../../vessel/repositories");
+
+      // Reuse the rankId convention already on the vessel: find an existing
+      // planning row for the target rank (by name) and copy its rankId. This
+      // avoids guessing how rankId is encoded across the manning matrix.
+      const slots = await vesselPlanningRepository.findByVesselAndRankName(vesselUuid, toRank);
+
+      // Idempotency: already placed (as primary or secondary) on this vessel/rank.
+      const alreadyPlaced = slots.find((s: any) => s.crewUuid === crew.crewUuid);
+      if (alreadyPlaced) return;
+
+      let rankId: string | null = null;
+      if (slots.length > 0) {
+        rankId = slots[0].rankId ?? null;
+        // A Secondary already occupies the slot — don't create a duplicate.
+        const existingSecondary = slots.find(
+          (s: any) => (s.crewStatus ?? "").toLowerCase() === "secondary",
+        );
+        if (existingSecondary) {
+          console.warn(
+            `[promotion-engine] On-board promotion ${review.reviewUuid}: a Secondary ` +
+            `already occupies "${toRank}" on the vessel; skipping placement.`,
+          );
+          return;
+        }
+      } else {
+        // No slot for the target rank yet — resolve the rankId from masters.
+        const db = getDb();
+        const { admAvailableRanksV2 } = await import("../../../../shared/v2/admin/schema");
+        const [rankRow] = await db
+          .select({ rankId: admAvailableRanksV2.rankId })
+          .from(admAvailableRanksV2)
+          .where(and(
+            eq(admAvailableRanksV2.name, toRank),
+            eq(admAvailableRanksV2.isDeleted, false),
+          ))
+          .limit(1);
+        rankId = rankRow?.rankId ?? null;
+      }
+
+      if (!rankId) {
+        console.warn(
+          `[promotion-engine] On-board promotion ${review.reviewUuid}: could not resolve ` +
+          `a rank id for "${toRank}"; skipping Secondary placement.`,
+        );
+        return;
+      }
+
+      const { vesselPlanningService } = await import("../../vessel/services/vesselPlanningService");
+      await vesselPlanningService.create({
+        vesselUuid,
+        crewUuid: crew.crewUuid,
+        rankId,
+        rank: toRank,
+        crewStatus: "secondary",
+        auditUserUuid: actorUuid ?? undefined,
+      } as any);
+    } catch (err) {
+      console.error(
+        `[promotion-engine] On-board Secondary placement failed for review ` +
+        `${review.reviewUuid} (non-fatal):`,
+        err,
+      );
+    }
+  }
+
+  // Fired after a review is persisted. When the review has reached "completed"
+  // the rank propagation engine executes the promotion (idempotently). For
+  // on-board promotions the promotee is additionally placed as a Secondary on
+  // their current vessel to drive the takeover flow.
+  private async runCompletionHook(review: PromotionReviewV2 | null, actorUuid?: string | null) {
+    if (!review) return;
+    if (statusRank(review.status) < statusRank("completed")) return;
+
+    await this.applyPromotedRank(review, { actorUuid });
+
+    const timing = (review.promotionTiming ?? "").trim().toLowerCase();
+    if (timing === "on-board") {
+      await this.placePromoteeAsSecondary(review, actorUuid);
+    }
+  }
+
   async createReview(data: any) {
     const auditedData = applyAuditUser(data, true);
     const { criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
@@ -616,6 +815,8 @@ export class PromotionReviewsService {
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
       b2VesselTypes, b2FleetGroups,
     });
+
+    await this.runCompletionHook(review, coreFields.updatedByUuid ?? null);
 
     return this.getReviewByUuid(review.reviewUuid);
   }
@@ -672,6 +873,8 @@ export class PromotionReviewsService {
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
       b2VesselTypes, b2FleetGroups,
     });
+
+    await this.runCompletionHook(review, coreFields.updatedByUuid ?? null);
 
     return this.getReviewByUuid(reviewUuid);
   }
