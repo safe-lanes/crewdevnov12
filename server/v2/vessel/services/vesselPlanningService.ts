@@ -1081,6 +1081,79 @@ export const vesselPlanningService = {
     return vesselPlanningRepository.findByPlanUuid(planUuid);
   },
 
+  /**
+   * Planning-only sign-off used by the promotion execution flow.
+   *
+   * When a crew member is promoted on-board, the planning row at their OLD rank
+   * must be vacated (signed off) and any secondary reliever at that rank
+   * promoted to primary. Unlike `signOffCrew`, the crew member is NOT leaving
+   * the vessel — they stay physically onboard at their NEW rank — so this does
+   * NOT touch `crew_assignments` (they remain "current"/onboard) and does NOT
+   * update sea-service `toDate` (the rank change and its sea-service split are
+   * owned by the promotion engine). Idempotent: a no-op once the row is archived.
+   */
+  async signOffForRankChange(planUuid: string, data: {
+    signOffDate: string;
+    auditUserUuid?: string;
+  }) {
+    const db = getDb();
+
+    const planning = await vesselPlanningRepository.findByPlanUuid(planUuid);
+    if (!planning) {
+      throw new Error(`Planning record not found: ${planUuid}`);
+    }
+    if (planning.isArchived) return planning; // already signed off — idempotent
+
+    const vesselUuid = planning.vesselUuid;
+    const rankId = planning.rankId;
+
+    let secondaryCrew = (vesselUuid && rankId)
+      ? await vesselPlanningRepository.findSecondaryByVesselAndRank(vesselUuid, rankId, planUuid, planning.rank ?? undefined)
+      : null;
+
+    // Fallback: rankId can be blank/inconsistent on historical rows. If no
+    // secondary matched by rankId, resolve the reliever by rank NAME on the same
+    // vessel (active rows only), excluding the row being signed off. This avoids
+    // stranding a vacant position when a valid secondary exists by rank name.
+    if (!secondaryCrew && vesselUuid && planning.rank) {
+      const byName = await vesselPlanningRepository.findByVesselAndRankName(vesselUuid, planning.rank);
+      secondaryCrew = byName.find(
+        (s) => (s.crewStatus ?? "").toLowerCase() === "secondary" && s.planUuid !== planUuid,
+      ) ?? null;
+    }
+
+    await db.transaction(async (tx) => {
+      console.log(`📋 [VESSEL-PLANNING-V2] Rank-change sign-off + archive (tx): planUuid=${planUuid}, signOffDate=${data.signOffDate}`);
+      await tx
+        .update(vesselPlanningV2)
+        .set({
+          signOffDate: data.signOffDate,
+          reliefStatus: "Signed Off",
+          takeOverDate: null,
+          takeOverConfirmation: false,
+          isArchived: true,
+          archivedDate: new Date().toISOString().split("T")[0],
+          updatedByUuid: data.auditUserUuid || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(vesselPlanningV2.planUuid, planUuid));
+
+      if (secondaryCrew) {
+        console.log(`📋 [VESSEL-PLANNING-V2] Promoting secondary to primary on rank change (tx): planUuid=${secondaryCrew.planUuid}`);
+        await tx
+          .update(vesselPlanningV2)
+          .set({
+            crewStatus: 'primary',
+            updatedByUuid: data.auditUserUuid || null,
+            updatedAt: new Date(),
+          })
+          .where(eq(vesselPlanningV2.planUuid, secondaryCrew.planUuid));
+      }
+    });
+
+    return vesselPlanningRepository.findByPlanUuid(planUuid);
+  },
+
   async getAttachments(planUuid: string) {
     return vesselPlanningAttachmentsRepository.findByPlanUuid(planUuid);
   },

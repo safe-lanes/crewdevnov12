@@ -969,6 +969,7 @@ export class PromotionReviewsService {
   private async placePromoteeAsSecondary(
     review: PromotionReviewV2,
     actorUuid?: string | null,
+    signOnDate?: string | null,
   ): Promise<void> {
     try {
       const empNo = (review.crewMemberId ?? "").trim();
@@ -999,7 +1000,26 @@ export class PromotionReviewsService {
 
       // Idempotency: already placed (as primary or secondary) on this vessel/rank.
       const alreadyPlaced = slots.find((s: any) => s.crewUuid === crew.crewUuid);
-      if (alreadyPlaced) return;
+      if (alreadyPlaced) {
+        // Heal a previously-created placement that is missing its sign-on date
+        // (e.g. one created before the promotion execution recorded a sign-on
+        // date, or by an earlier mis-execution). A normal idempotent re-run
+        // finds the date already set and is a no-op.
+        const desiredSignOn = (signOnDate ?? "").trim();
+        const existingSignOn = (alreadyPlaced.signOnDate ?? "").trim();
+        if (
+          desiredSignOn &&
+          !existingSignOn &&
+          (alreadyPlaced.crewStatus ?? "").toLowerCase() === "secondary"
+        ) {
+          const { vesselPlanningService } = await import("../../vessel/services/vesselPlanningService");
+          await vesselPlanningService.update(alreadyPlaced.planUuid, {
+            signOnDate: desiredSignOn,
+            auditUserUuid: actorUuid ?? undefined,
+          });
+        }
+        return;
+      }
 
       let rankId: string | null = null;
       if (slots.length > 0) {
@@ -1045,6 +1065,7 @@ export class PromotionReviewsService {
         rankId,
         rank: toRank,
         crewStatus: "secondary",
+        signOnDate: (signOnDate ?? "").trim() || undefined,
         auditUserUuid: actorUuid ?? undefined,
       } as any);
     } catch (err) {
@@ -1077,7 +1098,75 @@ export class PromotionReviewsService {
 
     const timing = (review.promotionTiming ?? "").trim().toLowerCase();
     if (timing === "on-board") {
-      await this.placePromoteeAsSecondary(review, actorUuid);
+      // On execution the promotee's rank position changes on the manning matrix:
+      // they sign ON at the new rank (as Secondary, relieving the existing
+      // holder) and their OLD rank position is signed OFF (handing it to the
+      // reliever who was signed on for that rank). The effective date for both
+      // events is the Date of Promotion. The previous rank is read from the
+      // execution ledger written by applyPromotedRank (reliable + idempotent).
+      const ledger = await executionLedgerRepo.findByReviewUuid(review.reviewUuid);
+      const fromRank = (ledger?.fromRank ?? "").trim();
+      const toRank = (review.promotionToRank ?? "").trim();
+
+      await this.placePromoteeAsSecondary(review, actorUuid, effectiveDate);
+
+      if (fromRank && fromRank !== toRank) {
+        await this.signOffPromoteeOldRank(review, fromRank, effectiveDate, actorUuid);
+      }
+    }
+  }
+
+  // On-board promotion only: sign off the promotee's planning row at their
+  // PREVIOUS rank on their current vessel, vacating the position so the reliever
+  // (the Secondary signed on for that rank) takes it over. The crew member stays
+  // onboard at the new rank, so this is a planning-only sign-off — it does not
+  // touch their crew_assignments or sea service. Best-effort + idempotent.
+  private async signOffPromoteeOldRank(
+    review: PromotionReviewV2,
+    fromRank: string,
+    effectiveDate?: string | null,
+    actorUuid?: string | null,
+  ): Promise<void> {
+    try {
+      const empNo = (review.crewMemberId ?? "").trim();
+      const signOffDate = (effectiveDate ?? "").trim();
+      if (!empNo || !fromRank || !signOffDate) return;
+
+      const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
+      const crew = await crewMembersService.getByEmpNo(empNo);
+      if (!crew) return;
+
+      const { crewAssignmentsService } = await import("../../crew-pool/services/crewAssignmentsService");
+      const current = await crewAssignmentsService.getCurrent(crew.crewUuid);
+      const vesselUuid = current?.vesselUuid;
+      if (!vesselUuid) return;
+
+      const { vesselPlanningRepository } = await import("../../vessel/repositories");
+      const slots = await vesselPlanningRepository.findByVesselAndRankName(vesselUuid, fromRank);
+
+      // The promotee's own active planning row at their previous rank. Prefer the
+      // primary row; fall back to any active row they hold at that rank. Once the
+      // row is archived (signed off) it is no longer returned here, so a re-run is
+      // a safe no-op.
+      const oldRow =
+        slots.find(
+          (s: any) =>
+            s.crewUuid === crew.crewUuid &&
+            (s.crewStatus ?? "").toLowerCase() === "primary",
+        ) ?? slots.find((s: any) => s.crewUuid === crew.crewUuid);
+      if (!oldRow) return;
+
+      const { vesselPlanningService } = await import("../../vessel/services/vesselPlanningService");
+      await vesselPlanningService.signOffForRankChange(oldRow.planUuid, {
+        signOffDate,
+        auditUserUuid: actorUuid ?? undefined,
+      });
+    } catch (err) {
+      console.error(
+        `[promotion-engine] On-board old-rank sign-off failed for review ` +
+        `${review.reviewUuid} (non-fatal):`,
+        err,
+      );
     }
   }
 
