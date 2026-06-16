@@ -33,6 +33,25 @@ export function findNextPromotionRank(
 }
 
 /**
+ * Finds the rank a crew member would have held immediately before being
+ * promoted INTO the given rank (the inverse of findNextPromotionRank).
+ * Used to label historical/executed promotion rows with their "from" rank.
+ * @param toRank - The rank that was promoted into
+ * @param hierarchies - Array of promotion hierarchies
+ * @returns The previous (more junior) rank, or null if none/unknown
+ */
+export function findPreviousPromotionRank(
+  toRank: string,
+  hierarchies: PromotionHierarchy[]
+): string | null {
+  const hierarchy = hierarchies.find(h => h.rankPath.includes(toRank));
+  if (!hierarchy) return null;
+  const idx = hierarchy.rankPath.indexOf(toRank);
+  // rankPath is junior→senior, so the previous rank is one index lower.
+  return idx > 0 ? hierarchy.rankPath[idx - 1] : null;
+}
+
+/**
  * Determines if a crew member should be shown in the promotions table
  * @param currentRank - The crew member's current rank
  * @param hierarchies - Array of promotion hierarchies
