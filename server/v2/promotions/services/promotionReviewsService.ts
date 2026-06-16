@@ -692,11 +692,12 @@ export class PromotionReviewsService {
     crewMemberId?: string | null;
     promotionToRank?: string | null;
     promotionDate?: string | null;
+    promotionTiming?: string | null;
     incomingStatus?: string | null;
     existingStatus?: string | null;
     reviewUuid?: string | null;
   }) {
-    const { crewMemberId, promotionToRank, promotionDate, incomingStatus, existingStatus, reviewUuid } = params;
+    const { crewMemberId, promotionToRank, promotionDate, promotionTiming, incomingStatus, existingStatus, reviewUuid } = params;
 
     // 1. No future-dated promotion.
     if (promotionDate && String(promotionDate).trim()) {
@@ -758,6 +759,71 @@ export class PromotionReviewsService {
         throw new PromotionGuardError(
           "This crew member already has a pending promotion awaiting completion. Complete or clear it before approving another."
         );
+      }
+    }
+
+    // 4. On-board promotion — reliever must already be onboard. The promotee's
+    //    existing rank position must not become vacant. Before an on-board
+    //    promotion can be executed (transition into "completed"), a relieving
+    //    crew member must be assigned AND signed onboard as a Secondary at the
+    //    promotee's CURRENT rank on the promotee's current vessel. This guard
+    //    runs before the review is persisted, so a blocked promotion leaves the
+    //    rank, the execution ledger and the vessel-planning rows untouched.
+    const timing = (promotionTiming ?? "").trim().toLowerCase();
+    if (
+      timing === "on-board" &&
+      incomingStatus &&
+      incomingRank === statusRank("completed") &&
+      existingRank < statusRank("completed") &&
+      crewMemberId
+    ) {
+      const noRelieverMessage =
+        "Onboard promotion cannot be completed. A reliever must be assigned and signed onboard for the crew member's current rank before promotion can be executed.";
+
+      const db = getDb();
+      const [crew] = await db
+        .select({ crewUuid: crewMembersV2.crewUuid, presentRank: crewMembersV2.presentRank })
+        .from(crewMembersV2)
+        .where(eq(crewMembersV2.empNo, crewMemberId));
+
+      const currentRank = crew?.presentRank?.trim();
+      // Fail-closed: an on-board completion can only be allowed once a signed-on
+      // reliever is proven. If the promotee, their current rank or their current
+      // vessel cannot be resolved, the reliever condition cannot be satisfied, so
+      // the promotion must be blocked rather than silently allowed.
+      if (!crew?.crewUuid || !currentRank) {
+        throw new PromotionGuardError(noRelieverMessage);
+      }
+
+      const { crewAssignmentsService } = await import("../../crew-pool/services/crewAssignmentsService");
+      const current = await crewAssignmentsService.getCurrent(crew.crewUuid);
+      const vesselUuid = current?.vesselUuid;
+
+      if (!vesselUuid) {
+        // No current vessel assignment — there cannot be an onboard reliever.
+        throw new PromotionGuardError(noRelieverMessage);
+      }
+
+      const { vesselPlanningRepository } = await import("../../vessel/repositories");
+      const slots = await vesselPlanningRepository.findByVesselAndRankName(vesselUuid, currentRank);
+
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+
+      // A valid reliever is a Secondary at the promotee's current rank, on the
+      // same vessel, who is NOT the promotee, and whose sign-on date has
+      // actually arrived (a future-dated/planned reliever is not yet onboard).
+      const hasSignedOnReliever = slots.some((s: any) => {
+        if ((s.crewStatus ?? "").toLowerCase() !== "secondary") return false;
+        if (s.crewUuid === crew.crewUuid) return false;
+        const signOn = (s.signOnDate ?? "").trim();
+        if (!signOn) return false;
+        const d = new Date(signOn);
+        return !isNaN(d.getTime()) && d.getTime() <= endOfToday.getTime();
+      });
+
+      if (!hasSignedOnReliever) {
+        throw new PromotionGuardError(noRelieverMessage);
       }
     }
   }
@@ -1258,6 +1324,7 @@ export class PromotionReviewsService {
       crewMemberId: coreFields.crewMemberId,
       promotionToRank: coreFields.promotionToRank,
       promotionDate: coreFields.promotionDate,
+      promotionTiming: coreFields.promotionTiming,
       incomingStatus: coreFields.status,
       existingStatus: null,
       reviewUuid: null,
@@ -1309,6 +1376,7 @@ export class PromotionReviewsService {
       crewMemberId: coreFields.crewMemberId ?? existing?.crewMemberId ?? null,
       promotionToRank: coreFields.promotionToRank ?? existing?.promotionToRank ?? null,
       promotionDate: coreFields.promotionDate,
+      promotionTiming: coreFields.promotionTiming ?? existing?.promotionTiming ?? null,
       incomingStatus: coreFields.status,
       existingStatus: existingStatusRaw,
       reviewUuid,
