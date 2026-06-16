@@ -673,11 +673,20 @@ export class PromotionReviewsService {
     });
 
     // Phase 3 — split Company sea service so experience is attributed to the old
-    // and new rank (closes the previous-rank line, opens a new-rank line at the
-    // split date). Runs only on first application (ledger-gated) and is itself
-    // idempotent. Best-effort and non-fatal: the committed rank flip is the core
-    // deliverable and must not be rolled back by a sea-service hiccup; Phase 5
-    // backfill can recover a missed split via the same path.
+    // and new rank (closes the previous-rank line at split-date−1, opens a new
+    // new-rank line on the split date). `splitDate` is the per-timing effective
+    // date resolved by runCompletionHook (Part C date on-board / sign-on date
+    // prior-joining). Runs only on first application (ledger-gated) and is itself
+    // idempotent, so a re-run is a safe no-op.
+    //
+    // Deliberately non-fatal: the ledger row + rank flip already committed and
+    // are the atomic core deliverable; they must NOT be rolled back by a
+    // sea-service hiccup (this mirrors the established best-effort policy for
+    // promotion side-effects). Recovery is deterministic rather than silent — a
+    // ledger row that has no matching new-rank Company line is exactly what the
+    // Phase 5 backfill detects and repairs, reusing this same `splitForPromotion`
+    // path. We log every non-success at error/warn level so the gap is visible
+    // until then.
     if (applied) {
       try {
         const { crewSeaServiceService } = await import(
@@ -691,20 +700,19 @@ export class PromotionReviewsService {
           auditUserUuid: actorUuid,
         });
         // A missing/invalid Date of Promotion leaves the rank flipped but the
-        // sea-service history un-split. The flip is intentionally not rolled
-        // back (it is the core deliverable), but surface a clear, recoverable
-        // signal so Phase 5 backfill (which reuses this same path) can repair it.
+        // history un-split — flag it loudly for the deterministic backfill.
         if (split.status === "skipped-invalid-input") {
           console.warn(
-            `[promotion-engine] Sea-service split SKIPPED for review ${reviewUuid}: ` +
-            `missing/invalid split date "${effectiveDate ?? ""}". Rank was flipped; ` +
-            `run the Phase 5 backfill once a valid Date of Promotion is set.`,
+            `[promotion-engine] Sea-service split SKIPPED for review ${reviewUuid} ` +
+            `(crew ${crew.crewUuid}): missing/invalid split date "${effectiveDate ?? ""}". ` +
+            `Rank was flipped; Phase 5 backfill will repair once a valid Date of Promotion is set.`,
           );
         }
       } catch (err) {
         console.error(
-          `[promotion-engine] Sea-service split failed for review ${reviewUuid} ` +
-          `(non-fatal):`,
+          `[promotion-engine] Sea-service split FAILED for review ${reviewUuid} ` +
+          `(crew ${crew.crewUuid}, non-fatal): rank is flipped but history is un-split; ` +
+          `Phase 5 backfill will reconcile this ledger row.`,
           err,
         );
       }
@@ -813,7 +821,16 @@ export class PromotionReviewsService {
     if (!review) return;
     if (statusRank(review.status) < statusRank("completed")) return;
 
-    await this.applyPromotedRank(review, { actorUuid });
+    // Split/effective date by promotion timing (Phase 3 requirement):
+    //   • on-board      → the Part C Date of Promotion.
+    //   • prior-joining → the Sign-On date. A prior-joining promotion is only
+    //     completed by `vesselPlanningService.signOnReliever`, which writes the
+    //     sign-on date into `promotionDate` on the same `updateReview` call that
+    //     sets status=completed.
+    // Both timings therefore carry the correct split date in `review.promotionDate`
+    // by the time we get here, so we pass it explicitly as the effective date.
+    const effectiveDate = (review.promotionDate ?? null) || null;
+    await this.applyPromotedRank(review, { actorUuid, effectiveDate });
 
     const timing = (review.promotionTiming ?? "").trim().toLowerCase();
     if (timing === "on-board") {
