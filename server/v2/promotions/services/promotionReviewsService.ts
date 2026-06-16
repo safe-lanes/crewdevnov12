@@ -962,11 +962,15 @@ export class PromotionReviewsService {
     }
   }
 
-  // On-board promotion only: place the promotee into the target rank position
-  // on their current vessel as a Secondary so the existing takeover flow can
-  // complete the swap. Best-effort — a planning hiccup must not block the
-  // promotion itself, mirroring the non-fatal sea-service sync pattern.
-  private async placePromoteeAsSecondary(
+  // On-board promotion only: place the promotee into the target rank position on
+  // their current vessel. If an active Primary already holds the target rank, the
+  // promotee is placed as Secondary so the existing takeover flow can complete the
+  // swap on the old Primary's sign-off. If the target position is vacant (no active
+  // Primary), the promotee is placed directly as Primary — mirroring the reliever
+  // sign-on vacant-position handling — so the slot is never left with a Secondary
+  // and no Primary. Best-effort — a planning hiccup must not block the promotion
+  // itself, mirroring the non-fatal sea-service sync pattern.
+  private async placePromoteeOnTargetRank(
     review: PromotionReviewV2,
     actorUuid?: string | null,
     signOnDate?: string | null,
@@ -986,7 +990,7 @@ export class PromotionReviewsService {
       if (!vesselUuid) {
         console.warn(
           `[promotion-engine] On-board promotion ${review.reviewUuid}: crew ${empNo} ` +
-          `has no current vessel assignment; skipping Secondary placement.`,
+          `has no current vessel assignment; skipping target-rank placement.`,
         );
         return;
       }
@@ -996,6 +1000,7 @@ export class PromotionReviewsService {
       // Reuse the rankId convention already on the vessel: find an existing
       // planning row for the target rank (by name) and copy its rankId. This
       // avoids guessing how rankId is encoded across the manning matrix.
+      // findByVesselAndRankName already excludes archived/deleted rows.
       const slots = await vesselPlanningRepository.findByVesselAndRankName(vesselUuid, toRank);
 
       // Idempotency: already placed (as primary or secondary) on this vessel/rank.
@@ -1007,11 +1012,7 @@ export class PromotionReviewsService {
         // finds the date already set and is a no-op.
         const desiredSignOn = (signOnDate ?? "").trim();
         const existingSignOn = (alreadyPlaced.signOnDate ?? "").trim();
-        if (
-          desiredSignOn &&
-          !existingSignOn &&
-          (alreadyPlaced.crewStatus ?? "").toLowerCase() === "secondary"
-        ) {
+        if (desiredSignOn && !existingSignOn) {
           const { vesselPlanningService } = await import("../../vessel/services/vesselPlanningService");
           await vesselPlanningService.update(alreadyPlaced.planUuid, {
             signOnDate: desiredSignOn,
@@ -1021,19 +1022,46 @@ export class PromotionReviewsService {
         return;
       }
 
+      // Decide Primary vs Secondary. Only an OCCUPIED Primary counts (crewUuid set):
+      // a vacant manning slot defaults crewStatus to "primary" with no crew, which
+      // must NOT be treated as an existing Primary. When no occupied Primary holds
+      // the rank the position is vacant → promotee becomes Primary; otherwise
+      // Secondary so the existing takeover swap completes.
+      const hasActivePrimary = slots.some(
+        (s: any) => !!s.crewUuid && (s.crewStatus ?? "").toLowerCase() === "primary",
+      );
+      const targetStatus: "primary" | "secondary" = hasActivePrimary ? "secondary" : "primary";
+
       let rankId: string | null = null;
+      let vacantSlot: any = null;
       if (slots.length > 0) {
         rankId = slots[0].rankId ?? null;
-        // A Secondary already occupies the slot — don't create a duplicate.
-        const existingSecondary = slots.find(
-          (s: any) => (s.crewStatus ?? "").toLowerCase() === "secondary",
-        );
-        if (existingSecondary) {
-          console.warn(
-            `[promotion-engine] On-board promotion ${review.reviewUuid}: a Secondary ` +
-            `already occupies "${toRank}" on the vessel; skipping placement.`,
+        if (targetStatus === "secondary") {
+          // An active Secondary row already exists for this rank — don't create a
+          // duplicate. Match by status alone (any active secondary row blocks),
+          // mirroring vesselPlanningService.signOnReliever CASE A, so a corrupt
+          // vacant-secondary row can't spawn parallel secondaries.
+          const existingSecondary = slots.find(
+            (s: any) => (s.crewStatus ?? "").toLowerCase() === "secondary",
           );
-          return;
+          if (existingSecondary) {
+            console.warn(
+              `[promotion-engine] On-board promotion ${review.reviewUuid}: a Secondary ` +
+              `already occupies "${toRank}" on the vessel; skipping placement.`,
+            );
+            return;
+          }
+        } else {
+          // Placing as Primary into a vacant position: reuse an existing vacant
+          // slot row (no crew assigned) so we fill the manning slot instead of
+          // leaving an empty duplicate alongside the new Primary. Pick
+          // deterministically (by planUuid) when several vacant rows exist.
+          vacantSlot =
+            slots
+              .filter((s: any) => !s.crewUuid)
+              .sort((a: any, b: any) =>
+                String(a.planUuid).localeCompare(String(b.planUuid)),
+              )[0] ?? null;
         }
       } else {
         // No slot for the target rank yet — resolve the rankId from masters.
@@ -1053,24 +1081,34 @@ export class PromotionReviewsService {
       if (!rankId) {
         console.warn(
           `[promotion-engine] On-board promotion ${review.reviewUuid}: could not resolve ` +
-          `a rank id for "${toRank}"; skipping Secondary placement.`,
+          `a rank id for "${toRank}"; skipping target-rank placement.`,
         );
         return;
       }
 
       const { vesselPlanningService } = await import("../../vessel/services/vesselPlanningService");
-      await vesselPlanningService.create({
-        vesselUuid,
-        crewUuid: crew.crewUuid,
-        rankId,
-        rank: toRank,
-        crewStatus: "secondary",
-        signOnDate: (signOnDate ?? "").trim() || undefined,
-        auditUserUuid: actorUuid ?? undefined,
-      } as any);
+      if (targetStatus === "primary" && vacantSlot) {
+        // Fill the existing vacant manning slot rather than inserting a duplicate.
+        await vesselPlanningService.update(vacantSlot.planUuid, {
+          crewUuid: crew.crewUuid,
+          crewStatus: "primary",
+          signOnDate: (signOnDate ?? "").trim() || undefined,
+          auditUserUuid: actorUuid ?? undefined,
+        });
+      } else {
+        await vesselPlanningService.create({
+          vesselUuid,
+          crewUuid: crew.crewUuid,
+          rankId,
+          rank: toRank,
+          crewStatus: targetStatus,
+          signOnDate: (signOnDate ?? "").trim() || undefined,
+          auditUserUuid: actorUuid ?? undefined,
+        } as any);
+      }
     } catch (err) {
       console.error(
-        `[promotion-engine] On-board Secondary placement failed for review ` +
+        `[promotion-engine] On-board target-rank placement failed for review ` +
         `${review.reviewUuid} (non-fatal):`,
         err,
       );
@@ -1099,16 +1137,17 @@ export class PromotionReviewsService {
     const timing = (review.promotionTiming ?? "").trim().toLowerCase();
     if (timing === "on-board") {
       // On execution the promotee's rank position changes on the manning matrix:
-      // they sign ON at the new rank (as Secondary, relieving the existing
-      // holder) and their OLD rank position is signed OFF (handing it to the
-      // reliever who was signed on for that rank). The effective date for both
-      // events is the Date of Promotion. The previous rank is read from the
-      // execution ledger written by applyPromotedRank (reliable + idempotent).
+      // they sign ON at the new rank (as Secondary when an existing Primary holds
+      // the rank, or directly as Primary when the position is vacant) and their
+      // OLD rank position is signed OFF (handing it to the reliever who was signed
+      // on for that rank). The effective date for both events is the Date of
+      // Promotion. The previous rank is read from the execution ledger written by
+      // applyPromotedRank (reliable + idempotent).
       const ledger = await executionLedgerRepo.findByReviewUuid(review.reviewUuid);
       const fromRank = (ledger?.fromRank ?? "").trim();
       const toRank = (review.promotionToRank ?? "").trim();
 
-      await this.placePromoteeAsSecondary(review, actorUuid, effectiveDate);
+      await this.placePromoteeOnTargetRank(review, actorUuid, effectiveDate);
 
       if (fromRank && fromRank !== toRank) {
         await this.signOffPromoteeOldRank(review, fromRank, effectiveDate, actorUuid);
