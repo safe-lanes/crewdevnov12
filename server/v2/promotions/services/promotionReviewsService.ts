@@ -343,6 +343,19 @@ function assembleV1Response(
   };
 }
 
+// Shared predicate for an approved-but-not-executed prior-joining promotion.
+// A completed promotion has status "completed" and is naturally excluded.
+// Keep this single source of truth so every planning surface that surfaces
+// "(PR)" stays in lockstep (mirrors vesselPlanningService.signOnReliever).
+function isApprovedPriorJoining(r: {
+  status?: string | null;
+  promotionTiming?: string | null;
+}): boolean {
+  const status = (r.status ?? "").trim().toLowerCase();
+  const timing = (r.promotionTiming ?? "").trim().toLowerCase();
+  return status === "approved" && timing === "prior-joining";
+}
+
 export class PromotionReviewsService {
   async getCriteriaMaster() {
     return criteriaMasterRepo.findAll();
@@ -393,15 +406,71 @@ export class PromotionReviewsService {
       );
 
     for (const r of reviews) {
-      const status = (r.status ?? "").trim().toLowerCase();
-      const timing = (r.promotionTiming ?? "").trim().toLowerCase();
-      if (status !== "approved" || timing !== "prior-joining") continue;
+      if (!isApprovedPriorJoining(r)) continue;
       const crewUuid = empToCrew.get((r.crewMemberId ?? "").trim());
       const toRank = (r.promotionToRank ?? "").trim();
       if (crewUuid && toRank) result.set(crewUuid, { promotionToRank: toRank });
     }
 
     return result;
+  }
+
+  /**
+   * Crew with an APPROVED prior-joining promotion whose TARGET rank equals
+   * `targetRank` — i.e. they will become this rank on sign-on but their
+   * present_rank is still lower. Rotation Planning uses this to surface them in
+   * the target-rank crew pool tagged "(PR)". Same predicate as
+   * getPendingPriorJoiningByCrewUuids; read-only and idempotent.
+   */
+  async getApprovedPriorJoiningPromoteesToRank(
+    targetRank: string,
+  ): Promise<Array<{ crewUuid: string; promotionToRank: string }>> {
+    const wanted = (targetRank ?? "").trim().toLowerCase();
+    if (!wanted) return [];
+
+    const db = getDb();
+
+    const reviews = await db
+      .select()
+      .from(promotionReviewsV2)
+      .where(
+        or(eq(promotionReviewsV2.isDeleted, false), isNull(promotionReviewsV2.isDeleted)),
+      );
+
+    const matched = reviews.filter(
+      (r) =>
+        isApprovedPriorJoining(r) &&
+        (r.promotionToRank ?? "").trim().toLowerCase() === wanted,
+    );
+    if (matched.length === 0) return [];
+
+    const empNos = Array.from(
+      new Set(matched.map((r) => (r.crewMemberId ?? "").trim()).filter((e) => !!e)),
+    );
+    if (empNos.length === 0) return [];
+
+    const crews = await db
+      .select({ crewUuid: crewMembersV2.crewUuid, empNo: crewMembersV2.empNo })
+      .from(crewMembersV2)
+      .where(inArray(crewMembersV2.empNo, empNos));
+
+    const empToCrew = new Map<string, string>();
+    for (const c of crews) {
+      const empNo = (c.empNo ?? "").trim();
+      if (empNo) empToCrew.set(empNo, c.crewUuid);
+    }
+
+    const out: Array<{ crewUuid: string; promotionToRank: string }> = [];
+    const seen = new Set<string>();
+    for (const r of matched) {
+      const crewUuid = empToCrew.get((r.crewMemberId ?? "").trim());
+      const toRank = (r.promotionToRank ?? "").trim();
+      if (crewUuid && toRank && !seen.has(crewUuid)) {
+        seen.add(crewUuid);
+        out.push({ crewUuid, promotionToRank: toRank });
+      }
+    }
+    return out;
   }
 
   async ensurePromotionReviewsForEligibleCrew(): Promise<{ created: number; existing: number }> {
