@@ -83,6 +83,92 @@ function toIsoDay(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Outcome of deciding what a promotion split would do, BEFORE any write.
+type SplitPlan =
+  | { status: "skipped-invalid-input" }
+  | { status: "already-split" }
+  | {
+      status: "create";
+      crewUuid: string;
+      newRank: string;
+      splitIso: string;
+      dayBeforeIso: string;
+      previous: CrewSeaServiceType | null;
+    };
+
+// Decide what `splitForPromotion` would do WITHOUT writing anything. Shared by
+// the live split (which then performs the writes) and the read-only
+// `previewSplitForPromotion` used by the Phase 5 backfill dry-run, so the
+// idempotency rule and the safe close-previous logic live in exactly one place.
+async function resolveSplitPlan(params: {
+  crewUuid: string;
+  newRank: string;
+  splitDate: string;
+  oldRank?: string | null;
+}): Promise<SplitPlan> {
+  const crewUuid = (params.crewUuid ?? "").trim();
+  const newRank = (params.newRank ?? "").trim();
+  const splitDay = parseSeaDate(params.splitDate);
+  if (!crewUuid || !newRank || !splitDay) {
+    return { status: "skipped-invalid-input" };
+  }
+
+  const splitIso = toIsoDay(splitDay);
+
+  const lines = await crewSeaServiceRepository.findByCrewUuidAndType(
+    crewUuid,
+    "company"
+  );
+
+  // Idempotency: a non-deleted new-rank Company line that already starts on,
+  // or already covers, the split date means the split has already happened.
+  const alreadySplit = lines.some((l) => {
+    if ((l.rank ?? "").trim() !== newRank) return false;
+    const from = parseSeaDate(l.fromDate);
+    if (!from) return false;
+    if (toIsoDay(from) === splitIso) return true;
+    const to = parseSeaDate(l.toDate);
+    const coversStart = from.getTime() <= splitDay.getTime();
+    const coversEnd = !to || to.getTime() >= splitDay.getTime();
+    return coversStart && coversEnd;
+  });
+  if (alreadySplit) {
+    return { status: "already-split" };
+  }
+
+  // Previous-rank line to close: a Company line that started before the split
+  // date and is still open (or ends on/after it). Prefer the old rank, then
+  // the most recent such line.
+  const sortByFromDesc = (a: CrewSeaServiceType, b: CrewSeaServiceType) =>
+    (parseSeaDate(b.fromDate)?.getTime() ?? 0) -
+    (parseSeaDate(a.fromDate)?.getTime() ?? 0);
+
+  const openCandidates = lines.filter((l) => {
+    const from = parseSeaDate(l.fromDate);
+    if (!from || from.getTime() >= splitDay.getTime()) return false;
+    const to = parseSeaDate(l.toDate);
+    return !to || to.getTime() >= splitDay.getTime();
+  });
+
+  const oldRank = (params.oldRank ?? "").trim();
+  const previous =
+    (oldRank
+      ? openCandidates
+          .filter((l) => (l.rank ?? "").trim() === oldRank)
+          .sort(sortByFromDesc)[0]
+      : undefined) ??
+    [...openCandidates].sort(sortByFromDesc)[0] ??
+    null;
+
+  // Day immediately before the split date keeps the close-old / open-new
+  // boundary exactly adjacent (no overlap, no gap).
+  const dayBeforeIso = toIsoDay(
+    new Date(splitDay.getTime() - 24 * 60 * 60 * 1000)
+  );
+
+  return { status: "create", crewUuid, newRank, splitIso, dayBeforeIso, previous };
+}
+
 export interface ExperienceMetrics {
   totalSeaTimeMonths: number;
   companySeaTimeMonths: number;
@@ -473,66 +559,16 @@ export const crewSeaServiceService = {
     closedPreviousUuid: string | null;
     status: "created" | "already-split" | "skipped-invalid-input";
   }> {
-    const crewUuid = (params.crewUuid ?? "").trim();
-    const newRank = (params.newRank ?? "").trim();
-    const splitDay = parseSeaDate(params.splitDate);
-    if (!crewUuid || !newRank || !splitDay) {
+    const plan = await resolveSplitPlan(params);
+    if (plan.status === "skipped-invalid-input") {
       return { created: false, closedPreviousUuid: null, status: "skipped-invalid-input" };
     }
-
-    const splitIso = toIsoDay(splitDay);
-    const auditUserUuid = params.auditUserUuid ?? null;
-
-    const lines = await crewSeaServiceRepository.findByCrewUuidAndType(
-      crewUuid,
-      "company"
-    );
-
-    // Idempotency: a non-deleted new-rank Company line that already starts on,
-    // or already covers, the split date means the split has already happened.
-    const alreadySplit = lines.some((l) => {
-      if ((l.rank ?? "").trim() !== newRank) return false;
-      const from = parseSeaDate(l.fromDate);
-      if (!from) return false;
-      if (toIsoDay(from) === splitIso) return true;
-      const to = parseSeaDate(l.toDate);
-      const coversStart = from.getTime() <= splitDay.getTime();
-      const coversEnd = !to || to.getTime() >= splitDay.getTime();
-      return coversStart && coversEnd;
-    });
-    if (alreadySplit) {
+    if (plan.status === "already-split") {
       return { created: false, closedPreviousUuid: null, status: "already-split" };
     }
 
-    // Previous-rank line to close: a Company line that started before the split
-    // date and is still open (or ends on/after it). Prefer the old rank, then
-    // the most recent such line.
-    const sortByFromDesc = (a: CrewSeaServiceType, b: CrewSeaServiceType) =>
-      (parseSeaDate(b.fromDate)?.getTime() ?? 0) -
-      (parseSeaDate(a.fromDate)?.getTime() ?? 0);
-
-    const openCandidates = lines.filter((l) => {
-      const from = parseSeaDate(l.fromDate);
-      if (!from || from.getTime() >= splitDay.getTime()) return false;
-      const to = parseSeaDate(l.toDate);
-      return !to || to.getTime() >= splitDay.getTime();
-    });
-
-    const oldRank = (params.oldRank ?? "").trim();
-    const previous =
-      (oldRank
-        ? openCandidates
-            .filter((l) => (l.rank ?? "").trim() === oldRank)
-            .sort(sortByFromDesc)[0]
-        : undefined) ??
-      [...openCandidates].sort(sortByFromDesc)[0] ??
-      null;
-
-    // Day immediately before the split date keeps the close-old / open-new
-    // boundary exactly adjacent (no overlap, no gap).
-    const dayBeforeIso = toIsoDay(
-      new Date(splitDay.getTime() - 24 * 60 * 60 * 1000)
-    );
+    const auditUserUuid = params.auditUserUuid ?? null;
+    const { crewUuid, newRank, splitIso, dayBeforeIso, previous } = plan;
 
     const db = getDb();
     return db.transaction(async (tx: any) => {
@@ -569,5 +605,21 @@ export const crewSeaServiceService = {
 
       return { created: true, closedPreviousUuid, status: "created" as const };
     });
+  },
+
+  /**
+   * Read-only preview of `splitForPromotion`: reports what the split WOULD do
+   * against the current state without writing anything. Used by the Phase 5
+   * backfill dry-run so the summary reflects the same line-level idempotency
+   * rule as the live path.
+   */
+  async previewSplitForPromotion(params: {
+    crewUuid: string;
+    newRank: string;
+    splitDate: string;
+    oldRank?: string | null;
+  }): Promise<"would-create" | "already-split" | "skipped-invalid-input"> {
+    const plan = await resolveSplitPlan(params);
+    return plan.status === "create" ? "would-create" : plan.status;
   },
 };

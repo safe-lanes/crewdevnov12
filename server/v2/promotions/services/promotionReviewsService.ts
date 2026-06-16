@@ -88,6 +88,58 @@ function statusRank(status?: string | null): number {
   return STATUS_RANK[(status ?? "").trim().toLowerCase()] ?? 0;
 }
 
+// Parse a promotion / approval date string (ISO 8601 or dd/mm/yyyy) into epoch
+// milliseconds for chronological ordering and effective-date resolution.
+// dd/mm/yyyy is tried first so it is not misread as US m/d/y. Overflow values
+// (e.g. 30 Feb) are rejected. Returns null when unparseable.
+function parseEffectiveDateMs(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+
+  const build = (y: number, m1: number, d: number): number | null => {
+    if (isNaN(y) || isNaN(m1) || isNaN(d)) return null;
+    const dt = new Date(Date.UTC(y, m1 - 1, d));
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m1 - 1 || dt.getUTCDate() !== d) {
+      return null;
+    }
+    return dt.getTime();
+  };
+
+  const slash = s.split("/");
+  if (slash.length === 3) {
+    return build(parseInt(slash[2], 10), parseInt(slash[1], 10), parseInt(slash[0], 10));
+  }
+
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    return build(parseInt(iso[1], 10), parseInt(iso[2], 10), parseInt(iso[3], 10));
+  }
+  return null;
+}
+
+// Canonical YYYY-MM-DD for a UTC-midnight epoch (used to feed the resolved
+// effective date back into the rank engine / sea-service split as a string).
+function toIsoDayFromMs(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+// Aggregate outcome of a historical backfill / go-live catch-up run.
+export interface BackfillResult {
+  dryRun: boolean;
+  totalReviews: number;
+  eligible: number;
+  ineligible: number;
+  crewProcessed: number;
+  applied: number; // newly applied this run (ledger did not yet exist)
+  alreadyApplied: number; // skipped because the ledger row already existed
+  rankWrites: number; // present_rank changed (from != to)
+  historyOnly: number; // already at target rank; history-only record
+  seaService: { created: number; alreadySplit: number; skippedInvalid: number };
+  ineligibleReasons: Record<string, number>;
+  errors: string[];
+}
+
 function findNextPromotionRank(currentRank: string, hierarchies: any[]): string | null {
   for (const hierarchy of hierarchies) {
     let rankPath: string[];
@@ -892,6 +944,233 @@ export class PromotionReviewsService {
     if (timing === "on-board") {
       await this.placePromoteeAsSecondary(review, actorUuid);
     }
+  }
+
+  /**
+   * Phase 5 — Historical backfill & go-live catch-up.
+   *
+   * Applies the rank-propagation engine to every historical promotion that was
+   * approved/completed before the engine existed, so present_rank, the ledger
+   * and the Company sea-service history all reflect promotions that happened
+   * before go-live.
+   *
+   * Eligibility: a review is processed only when it is fully approved
+   * (status approved or completed) AND has a resolvable effective date:
+   *   • on-board (and any non prior-joining timing) → Part C Date of Promotion
+   *     (`promotionDate`).
+   *   • prior-joining → the Sign-On date (stored in `promotionDate` once signed
+   *     on); legacy records with no sign-on fall back to their latest Approval
+   *     Date.
+   *
+   * Eligible reviews are grouped per crew and applied oldest-first so the
+   * cumulative present_rank and sea-service boundaries land in the right order.
+   * Everything routes through the Phase 2 engine (`applyPromotedRank`), which is
+   * ledger-gated (exactly-once), flips present_rank only when it differs, and
+   * performs the Phase 3 line-level sea-service split — so re-running is safe.
+   *
+   * Defaults to `dryRun` so the caller can review the summary before any write.
+   *
+   * NOTE: in dry-run the present_rank is never mutated, so the rank-write /
+   * history-only / sea-service counts are best-effort estimates against the
+   * current snapshot when multiple un-applied promotions stack for one crew.
+   * The applied vs already-applied counts (driven by the ledger) are exact.
+   */
+  async applyHistoricalBackfill(
+    opts: { dryRun?: boolean; actorUuid?: string | null } = {},
+  ): Promise<BackfillResult> {
+    const dryRun = opts.dryRun !== false; // default to a safe dry-run
+    const actorUuid = opts.actorUuid ?? null;
+
+    const result: BackfillResult = {
+      dryRun,
+      totalReviews: 0,
+      eligible: 0,
+      ineligible: 0,
+      crewProcessed: 0,
+      applied: 0,
+      alreadyApplied: 0,
+      rankWrites: 0,
+      historyOnly: 0,
+      seaService: { created: 0, alreadySplit: 0, skippedInvalid: 0 },
+      ineligibleReasons: {},
+      errors: [],
+    };
+
+    const markIneligible = (reason: string) => {
+      result.ineligible++;
+      result.ineligibleReasons[reason] = (result.ineligibleReasons[reason] ?? 0) + 1;
+    };
+
+    const allReviews = await reviewsRepo.findAll();
+    result.totalReviews = allReviews.length;
+
+    // Latest parseable Approval Date per review — the fallback effective date for
+    // legacy prior-joining records that never captured a sign-on date.
+    const approvals = await approvalsRepo.findByReviewUuids(
+      allReviews.map((r) => r.reviewUuid),
+    );
+    const approvalMsByReview = new Map<string, number>();
+    for (const a of approvals) {
+      const ms = parseEffectiveDateMs(a.date);
+      if (ms == null) continue;
+      const prev = approvalMsByReview.get(a.reviewUuid);
+      if (prev == null || ms > prev) approvalMsByReview.set(a.reviewUuid, ms);
+    }
+
+    interface EligibleReview {
+      review: PromotionReviewV2;
+      effectiveDate: string;
+      effectiveMs: number;
+    }
+    const eligible: EligibleReview[] = [];
+
+    for (const review of allReviews) {
+      if (statusRank(review.status) < statusRank("approved")) {
+        markIneligible("not-approved");
+        continue;
+      }
+
+      const timing = (review.promotionTiming ?? "").trim().toLowerCase();
+      const promotionMs = parseEffectiveDateMs(review.promotionDate);
+
+      let effectiveMs: number | null = null;
+      let effectiveDate: string | null = null;
+
+      if (timing === "prior-joining") {
+        if (promotionMs != null) {
+          effectiveMs = promotionMs;
+          effectiveDate = (review.promotionDate ?? "").trim();
+        } else {
+          const apprMs = approvalMsByReview.get(review.reviewUuid) ?? null;
+          if (apprMs != null) {
+            effectiveMs = apprMs;
+            effectiveDate = toIsoDayFromMs(apprMs);
+          }
+        }
+      } else if (promotionMs != null) {
+        effectiveMs = promotionMs;
+        effectiveDate = (review.promotionDate ?? "").trim();
+      }
+
+      if (effectiveMs == null || !effectiveDate) {
+        markIneligible(
+          timing === "prior-joining"
+            ? "no-sign-on-or-approval-date"
+            : "no-promotion-date",
+        );
+        continue;
+      }
+
+      if (!(review.crewMemberId ?? "").trim()) {
+        markIneligible("no-crew-member");
+        continue;
+      }
+
+      // A target rank is required: the engine no-ops without one, so a review
+      // missing it cannot be applied and must not be counted as processed.
+      if (!(review.promotionToRank ?? "").trim()) {
+        markIneligible("no-promotion-rank");
+        continue;
+      }
+
+      eligible.push({ review, effectiveDate, effectiveMs });
+    }
+
+    result.eligible = eligible.length;
+
+    // Group per crew and apply oldest-first so cumulative rank / sea-service
+    // boundaries are chronologically correct.
+    const byCrew = new Map<string, EligibleReview[]>();
+    for (const e of eligible) {
+      const key = (e.review.crewMemberId ?? "").trim();
+      const list = byCrew.get(key) ?? [];
+      list.push(e);
+      byCrew.set(key, list);
+    }
+    for (const list of byCrew.values()) {
+      list.sort(
+        (a, b) =>
+          a.effectiveMs - b.effectiveMs ||
+          (a.review.createdAt?.getTime?.() ?? 0) - (b.review.createdAt?.getTime?.() ?? 0) ||
+          a.review.id - b.review.id,
+      );
+    }
+    result.crewProcessed = byCrew.size;
+
+    const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
+    const { crewSeaServiceService } = await import("../../crew-pool/services/crewSeaServiceService");
+
+    for (const [empNo, list] of byCrew) {
+      for (const { review, effectiveDate } of list) {
+        try {
+          // Ledger gate — already executed promotions are a no-op.
+          const existingLedger = await executionLedgerRepo.findByReviewUuid(review.reviewUuid);
+          if (existingLedger) {
+            result.alreadyApplied++;
+            continue;
+          }
+
+          let crew;
+          try {
+            crew = await crewMembersService.getByEmpNo(empNo);
+          } catch {
+            crew = null;
+          }
+          if (!crew) {
+            result.errors.push(
+              `Crew not found for employee ${empNo} (review ${review.reviewUuid})`,
+            );
+            continue;
+          }
+
+          const fromRank = (crew.presentRank ?? "").trim();
+          const toRank = (review.promotionToRank ?? "").trim();
+
+          // Preview the sea-service split against the CURRENT (pre-apply) state so
+          // the summary reflects what this run does, for both dry-run and live.
+          const splitPreview = await crewSeaServiceService.previewSplitForPromotion({
+            crewUuid: crew.crewUuid,
+            newRank: toRank,
+            oldRank: fromRank || null,
+            splitDate: effectiveDate,
+          });
+
+          if (!dryRun) {
+            await this.applyPromotedRank(review, { effectiveDate, actorUuid });
+            // Confirm the engine actually recorded the promotion before counting
+            // it as applied, so the summary cannot overstate what happened.
+            const recorded = await executionLedgerRepo.findByReviewUuid(review.reviewUuid);
+            if (!recorded) {
+              result.errors.push(
+                `Apply recorded no ledger row for review ${review.reviewUuid} (crew ${empNo})`,
+              );
+              continue;
+            }
+          }
+
+          result.applied++;
+          if (fromRank === toRank) result.historyOnly++;
+          else result.rankWrites++;
+          if (splitPreview === "would-create") result.seaService.created++;
+          else if (splitPreview === "already-split") result.seaService.alreadySplit++;
+          else result.seaService.skippedInvalid++;
+        } catch (err) {
+          result.errors.push(
+            `Failed review ${review.reviewUuid} (crew ${empNo}): ` +
+              (err instanceof Error ? err.message : String(err)),
+          );
+        }
+      }
+    }
+
+    console.log(
+      `[promotion-backfill] ${dryRun ? "DRY-RUN" : "LIVE"} — ` +
+        `${result.applied}/${result.eligible} ${dryRun ? "would be" : ""} applied, ` +
+        `${result.alreadyApplied} already applied, ${result.ineligible} ineligible, ` +
+        `${result.errors.length} error(s).`,
+    );
+
+    return result;
   }
 
   async createReview(data: any) {

@@ -10,6 +10,7 @@ router.get("/reviews/by-uuid/:reviewUuid", (req, res) => controller.getReviewByU
 router.get("/reviews/by-id/:id", (req, res) => controller.getReviewById(req, res));
 router.get("/reviews/crew/:crewMemberId", (req, res) => controller.getReviewsByCrewMember(req, res));
 router.get("/reviews/crew/:crewMemberId/rank/:promotionToRank", (req, res) => controller.getReviewByCrewAndRank(req, res));
+router.post("/reviews/backfill", (req, res) => controller.runHistoricalBackfill(req, res));
 router.post("/reviews", (req, res) => controller.createReview(req, res));
 router.patch("/reviews/:reviewUuid", (req, res) => controller.updateReview(req, res));
 router.delete("/reviews/:reviewUuid", (req, res) => controller.deleteReview(req, res));

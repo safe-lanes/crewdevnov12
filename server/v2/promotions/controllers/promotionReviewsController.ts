@@ -110,6 +110,24 @@ export class PromotionReviewsController {
     }
   }
 
+  async runHistoricalBackfill(req: Request, res: Response) {
+    try {
+      // Safe by default: only writes when ?dryRun=false is explicitly passed.
+      const dryRun = String(req.query.dryRun ?? "true").toLowerCase() !== "false";
+      const actorUuid = req.user?.id != null ? String(req.user.id) : null;
+      const result = await service.applyHistoricalBackfill({ dryRun, actorUuid });
+      console.log(
+        `[Promotions V2] Historical backfill ${dryRun ? "dry-run" : "live"}: ` +
+          `${result.applied} applied, ${result.alreadyApplied} already applied, ` +
+          `${result.ineligible} ineligible, ${result.errors.length} error(s)`,
+      );
+      res.json(result);
+    } catch (error) {
+      console.error("[Promotions V2] Failed to run historical backfill:", error);
+      res.status(500).json({ error: "Failed to run historical promotion backfill" });
+    }
+  }
+
   async deleteReview(req: Request, res: Response) {
     try {
       const { reviewUuid } = req.params;
