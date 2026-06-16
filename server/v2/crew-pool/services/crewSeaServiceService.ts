@@ -93,6 +93,10 @@ type SplitPlan =
       newRank: string;
       splitIso: string;
       dayBeforeIso: string;
+      // Date to set as the previous line's `toDate` when closing it. Normally
+      // the day before the split, but clamped so it is never earlier than the
+      // previous line's own `fromDate` (same-day sign-on + promotion case).
+      closePreviousToIso: string;
       previous: CrewSeaServiceType | null;
     };
 
@@ -143,9 +147,14 @@ async function resolveSplitPlan(params: {
     (parseSeaDate(b.fromDate)?.getTime() ?? 0) -
     (parseSeaDate(a.fromDate)?.getTime() ?? 0);
 
+  // Include lines that start ON the split date (`from <= splitDay`), not only
+  // those strictly before it. When a crew signs on and is promoted on the same
+  // day, the current line starts on the split date; excluding it would leave it
+  // open (rendered as "currently on board") and force the new promoted line to
+  // be created with no vessel to copy from.
   const openCandidates = lines.filter((l) => {
     const from = parseSeaDate(l.fromDate);
-    if (!from || from.getTime() >= splitDay.getTime()) return false;
+    if (!from || from.getTime() > splitDay.getTime()) return false;
     const to = parseSeaDate(l.toDate);
     return !to || to.getTime() >= splitDay.getTime();
   });
@@ -166,7 +175,25 @@ async function resolveSplitPlan(params: {
     new Date(splitDay.getTime() - 24 * 60 * 60 * 1000)
   );
 
-  return { status: "create", crewUuid, newRank, splitIso, dayBeforeIso, previous };
+  // When closing the previous line, never set its `toDate` earlier than its own
+  // `fromDate`. For the same-day case (previous starts on the split date) this
+  // clamps the close to the split date itself instead of the day before, which
+  // would otherwise produce an invalid To-before-From line.
+  const previousFrom = previous ? parseSeaDate(previous.fromDate) : null;
+  const closePreviousToIso =
+    previousFrom && previousFrom.getTime() >= splitDay.getTime()
+      ? splitIso
+      : dayBeforeIso;
+
+  return {
+    status: "create",
+    crewUuid,
+    newRank,
+    splitIso,
+    dayBeforeIso,
+    closePreviousToIso,
+    previous,
+  };
 }
 
 export interface ExperienceMetrics {
@@ -568,7 +595,7 @@ export const crewSeaServiceService = {
     }
 
     const auditUserUuid = params.auditUserUuid ?? null;
-    const { crewUuid, newRank, splitIso, dayBeforeIso, previous } = plan;
+    const { crewUuid, newRank, splitIso, closePreviousToIso, previous } = plan;
 
     const db = getDb();
     return db.transaction(async (tx: any) => {
@@ -578,7 +605,7 @@ export const crewSeaServiceService = {
       if (previous) {
         await tx
           .update(crewSeaService)
-          .set({ toDate: dayBeforeIso, updatedAt: now, updatedByUuid: auditUserUuid })
+          .set({ toDate: closePreviousToIso, updatedAt: now, updatedByUuid: auditUserUuid })
           .where(eq(crewSeaService.seaUuid, previous.seaUuid));
         closedPreviousUuid = previous.seaUuid;
       }
