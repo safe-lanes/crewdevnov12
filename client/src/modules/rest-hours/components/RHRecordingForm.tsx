@@ -872,77 +872,103 @@ export const RHRecordingForm = ({
     return commentsMap;
   }, [crewVariableTasks, selectedPeriod]);
 
-  // Apply fixed tasks template and variable tasks overlay to daily records when available (for new forms)
-  // Note: isPlan is set to true (Plan mode) since new records default to planning mode
-  useEffect(() => {
-    if (!open || existingRecord) return;
-    
-    // Only apply if we have fixed task template or variable tasks
-    const hasFixedTask = fixedTask && Array.isArray(fixedTask.seaHours) && fixedTask.seaHours.length === 48;
-    const hasVariableTasks = variableTaskCellsMap.size > 0;
-    
-    if (!hasFixedTask && !hasVariableTasks) return;
-    
-    // Use seaHours as the template (assuming vessel is at sea by default)
-    const seaHoursArray = Array.isArray(fixedTask?.seaHours) ? (fixedTask.seaHours as string[]) : [];
-    const template: string[] = hasFixedTask ? seaHoursArray.slice() : Array(48).fill('');
-    
-    setDailyRecords(prevRecords => {
-      return prevRecords.map(record => {
-        // Completed VT on this day -> Record mode, blank row except the VT 'a' cells.
-        const hasCompletedVt = completedVtCellsMap.has(record.day);
-        const newHours = hasCompletedVt ? Array(48).fill('') : [...template];
-        
-        const dayCells = variableTaskCellsMap.get(record.day);
-        if (dayCells && dayCells.length > 0) {
-          for (const cellRange of dayCells) {
-            for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
-              newHours[i] = 'a';
-            }
+  // Build template-applied rows exactly as a brand-new sheet does:
+  // Fixed Task template + Variable Task overlay in Plan mode (grey),
+  // with Completed-VT days flipped to Record. Shared by new-sheet init and Clear.
+  const buildTemplatedRecords = useCallback((records: DailyRecord[]): DailyRecord[] => {
+    const hasFixedTask =
+      fixedTask &&
+      Array.isArray(fixedTask.seaHours) &&
+      fixedTask.seaHours.length === 48;
+
+    const seaHoursArray = Array.isArray(fixedTask?.seaHours)
+      ? (fixedTask.seaHours as string[])
+      : [];
+
+    const template: string[] = hasFixedTask
+      ? seaHoursArray.slice()
+      : Array(48).fill('');
+
+    return records.map(record => {
+      const hasCompletedVt = completedVtCellsMap.has(record.day);
+
+      const newHours = hasCompletedVt
+        ? Array(48).fill('')
+        : [...template];
+
+      const dayCells = variableTaskCellsMap.get(record.day);
+      if (dayCells && dayCells.length > 0) {
+        for (const cellRange of dayCells) {
+          for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
+            newHours[i] = 'a';
           }
         }
-        
-        const restHours = newHours.filter(h => h === '').length / 2;
-        const workHours = 24 - restHours;
+      }
 
-        // Get comments from variable tasks if available
-        const variableTaskComments = variableTaskCommentsMap.get(record.day) || [];
+      const restHours = newHours.filter(h => h === '').length / 2;
 
-        // apply strict isolation
-        const baseComments = (record.comments || '')
-          .split(',')
-          .map(c => c.trim())
-          .filter(Boolean);
+      const workHours = 24 - restHours;
 
-        // Remove variable task comments if already present (case-insensitive)
-        const normalizedVars = new Set(variableTaskComments.map(c => c.trim().toLowerCase()));
+      const variableTaskComments = variableTaskCommentsMap.get(record.day) || [];
 
-        const cleanedBase = normalizedVars.size > 0
+      const baseComments = (record.comments || '')
+        .split(',')
+        .map(c => c.trim())
+        .filter(Boolean);
+
+      const normalizedVars = new Set(
+        variableTaskComments.map(c => c.trim().toLowerCase())
+      );
+
+      const cleanedBase =
+        normalizedVars.size > 0
           ? baseComments.filter(c => !normalizedVars.has(c.toLowerCase()))
           : baseComments;
 
-        const finalComments = [...cleanedBase, ...variableTaskComments]
-          .filter(Boolean)
-          .join(', ');
+      const finalComments = [...cleanedBase, ...variableTaskComments]
+        .filter(Boolean)
+        .join(', ');
 
-        return {
-          ...record,
-          hours: newHours,
-          isPlan: hasCompletedVt ? false : true,
-          userEdited: false,
-          hoursOfRest24hr: restHours,
-          hoursOfWork24hr: workHours,
-          comments: finalComments,
-        };
-      });
+      return {
+        ...record,
+        hours: newHours,
+        isPlan: hasCompletedVt ? false : true,
+        userEdited: false,
+        hoursOfRest24hr: restHours,
+        hoursOfWork24hr: workHours,
+        comments: finalComments,
+      };
     });
+  }, [
+    fixedTask,
+    completedVtCellsMap,
+    variableTaskCellsMap,
+    variableTaskCommentsMap,
+  ]);
 
-    // A Completed VT flips Plan rows to Record on open; mark dirty so the existing
-    // auto-save-on-close persists it (even if the user records nothing).
+  // Apply fixed tasks template and variable tasks overlay to daily records (for new forms)
+  useEffect(() => {
+    if (!open || existingRecord) return;
+
+    // Apply template for ALL new sheets (Plan mode),
+    // including crews with no tasks.
+    setDailyRecords(prevRecords =>
+      buildTemplatedRecords(prevRecords)
+    );
+
+    // A Completed VT flips Plan rows to Record on open;
+    // mark dirty so auto-save-on-close persists it.
     if (completedVtCellsMap.size > 0) {
       setIsDirty(true);
     }
-  }, [fixedTask, open, existingRecord, variableTaskCellsMap, variableTaskCommentsMap, completedVtCellsMap, signOnDate, signOffDate]);
+  }, [
+    buildTemplatedRecords,
+    open,
+    existingRecord,
+    completedVtCellsMap,
+    signOnDate,
+    signOffDate,
+  ]);
 
   // Load existing record data or explicitly maintain clean state
   useEffect(() => {
@@ -1759,7 +1785,7 @@ export const RHRecordingForm = ({
       records.push(createBlankDailyRecord(day, dayOfWeek, 'primary'));
     }
     
-    setDailyRecords(records);
+    setDailyRecords(buildTemplatedRecords(records));
     setRecordMode('Rec');
     setShowPlanning(true);
     setOpaMode(false);
