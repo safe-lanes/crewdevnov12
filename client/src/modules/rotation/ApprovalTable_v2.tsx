@@ -423,7 +423,11 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
       const proposal = proposals.find(p => p.entryUuid === entryUuid);
       if (proposal && proposal.crewUuid) {
         selected.push({
-          rank: proposal.rank,
+          // Prior-joining promotions take effect on sign-on, so the compliance
+          // preview must simulate the promoted (target) rank, not the current one.
+          rank: proposal.hasPriorJoiningPromotion
+            ? (proposal.promotionToRank || proposal.rank)
+            : proposal.rank,
           crewMemberId: proposal.crewUuid,
           crewName: proposal.crewName,
           joiningDate: proposal.joiningDate,
