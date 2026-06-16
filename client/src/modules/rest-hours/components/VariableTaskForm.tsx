@@ -116,7 +116,11 @@ export const VariableTaskForm = ({
   const watchedFinishDate = form.watch('finishDate');
 
   const vesselCrewMembers = useMemo(() => {
-    const vesselCrew = allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
+    const vesselCrew = allCrewMembers.filter(
+      (crew: any) =>
+        crew.presentVessel === vesselId &&
+        crew.assignmentType === 'OnBoard'
+    );
 
     let filtered = vesselCrew;
     if (watchedStartDate || watchedFinishDate) {
