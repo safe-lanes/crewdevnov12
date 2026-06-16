@@ -30,6 +30,59 @@ function applyAuditUser<T extends object>(data: T, isCreate = false): T & { crea
   return result;
 }
 
+// Build a UTC-midnight Date from a 1-based calendar y/m/d, rejecting overflow
+// values (e.g. 30 Feb, month 13) instead of letting Date roll them over.
+function buildUtcDay(year: number, month1: number, day: number): Date | null {
+  if (isNaN(year) || isNaN(month1) || isNaN(day)) return null;
+  const d = new Date(Date.UTC(year, month1 - 1, day));
+  if (
+    d.getUTCFullYear() !== year ||
+    d.getUTCMonth() !== month1 - 1 ||
+    d.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return d;
+}
+
+// Parse a sea-service date string (ISO 8601 or dd/mm/yyyy) into a UTC-midnight
+// Date. dd/mm/yyyy is checked first because `new Date("01/05/2025")` would
+// otherwise be misread as the US m/d/y order. The calendar date is validated
+// strictly (overflow dates are rejected). Returns null when unparseable.
+function parseSeaDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+
+  // dd/mm/yyyy
+  const slash = s.split("/");
+  if (slash.length === 3) {
+    return buildUtcDay(
+      parseInt(slash[2], 10),
+      parseInt(slash[1], 10),
+      parseInt(slash[0], 10)
+    );
+  }
+
+  // ISO 8601 date or datetime — validate the leading calendar date strictly so
+  // overflow values (e.g. 2025-02-30) are rejected rather than rolled over.
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    return buildUtcDay(
+      parseInt(iso[1], 10),
+      parseInt(iso[2], 10),
+      parseInt(iso[3], 10)
+    );
+  }
+  return null;
+}
+
+// Canonical YYYY-MM-DD for a UTC-midnight Date (used for both storage and
+// calendar-day comparisons regardless of the source format).
+function toIsoDay(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
 export interface ExperienceMetrics {
   totalSeaTimeMonths: number;
   companySeaTimeMonths: number;
@@ -389,6 +442,132 @@ export const crewSeaServiceService = {
       }
 
       return results;
+    });
+  },
+
+  /**
+   * Split a crew member's Company sea-service history when a promotion takes
+   * effect: close the previous-rank line the day before the split date and open
+   * a new Company line for the new rank starting on the split date.
+   *
+   * - Split date = Part C Date of Promotion (on-board) or Sign-On date (prior
+   *   joining); the caller passes the correct value.
+   * - "Years in Rank" restarts automatically because rank experience is summed
+   *   per `rank`, so the new line begins accruing from the split date. "Years
+   *   with Operator" is unaffected because it is calendar tenure from the
+   *   earliest Company `fromDate`, which the later new line does not change.
+   * - Idempotent (Phase 5 backfill reuses this same path): if a non-deleted
+   *   Company line for the new rank already starts on — or already covers — the
+   *   split date, nothing is changed. The previous line is only closed when it
+   *   is still open or ends on/after the split date, so a manually-set earlier
+   *   end date is never shortened and no overlap/gap is introduced.
+   */
+  async splitForPromotion(params: {
+    crewUuid: string;
+    newRank: string;
+    splitDate: string;
+    oldRank?: string | null;
+    auditUserUuid?: string | null;
+  }): Promise<{
+    created: boolean;
+    closedPreviousUuid: string | null;
+    status: "created" | "already-split" | "skipped-invalid-input";
+  }> {
+    const crewUuid = (params.crewUuid ?? "").trim();
+    const newRank = (params.newRank ?? "").trim();
+    const splitDay = parseSeaDate(params.splitDate);
+    if (!crewUuid || !newRank || !splitDay) {
+      return { created: false, closedPreviousUuid: null, status: "skipped-invalid-input" };
+    }
+
+    const splitIso = toIsoDay(splitDay);
+    const auditUserUuid = params.auditUserUuid ?? null;
+
+    const lines = await crewSeaServiceRepository.findByCrewUuidAndType(
+      crewUuid,
+      "company"
+    );
+
+    // Idempotency: a non-deleted new-rank Company line that already starts on,
+    // or already covers, the split date means the split has already happened.
+    const alreadySplit = lines.some((l) => {
+      if ((l.rank ?? "").trim() !== newRank) return false;
+      const from = parseSeaDate(l.fromDate);
+      if (!from) return false;
+      if (toIsoDay(from) === splitIso) return true;
+      const to = parseSeaDate(l.toDate);
+      const coversStart = from.getTime() <= splitDay.getTime();
+      const coversEnd = !to || to.getTime() >= splitDay.getTime();
+      return coversStart && coversEnd;
+    });
+    if (alreadySplit) {
+      return { created: false, closedPreviousUuid: null, status: "already-split" };
+    }
+
+    // Previous-rank line to close: a Company line that started before the split
+    // date and is still open (or ends on/after it). Prefer the old rank, then
+    // the most recent such line.
+    const sortByFromDesc = (a: CrewSeaServiceType, b: CrewSeaServiceType) =>
+      (parseSeaDate(b.fromDate)?.getTime() ?? 0) -
+      (parseSeaDate(a.fromDate)?.getTime() ?? 0);
+
+    const openCandidates = lines.filter((l) => {
+      const from = parseSeaDate(l.fromDate);
+      if (!from || from.getTime() >= splitDay.getTime()) return false;
+      const to = parseSeaDate(l.toDate);
+      return !to || to.getTime() >= splitDay.getTime();
+    });
+
+    const oldRank = (params.oldRank ?? "").trim();
+    const previous =
+      (oldRank
+        ? openCandidates
+            .filter((l) => (l.rank ?? "").trim() === oldRank)
+            .sort(sortByFromDesc)[0]
+        : undefined) ??
+      [...openCandidates].sort(sortByFromDesc)[0] ??
+      null;
+
+    // Day immediately before the split date keeps the close-old / open-new
+    // boundary exactly adjacent (no overlap, no gap).
+    const dayBeforeIso = toIsoDay(
+      new Date(splitDay.getTime() - 24 * 60 * 60 * 1000)
+    );
+
+    const db = getDb();
+    return db.transaction(async (tx: any) => {
+      const now = new Date();
+      let closedPreviousUuid: string | null = null;
+
+      if (previous) {
+        await tx
+          .update(crewSeaService)
+          .set({ toDate: dayBeforeIso, updatedAt: now, updatedByUuid: auditUserUuid })
+          .where(eq(crewSeaService.seaUuid, previous.seaUuid));
+        closedPreviousUuid = previous.seaUuid;
+      }
+
+      await tx.insert(crewSeaService).values({
+        seaUuid: uuidv4(),
+        crewUuid,
+        serviceType: "company",
+        rank: newRank,
+        fromDate: splitIso,
+        toDate: null,
+        vesselUuid: previous?.vesselUuid ?? null,
+        vesselName: previous?.vesselName ?? null,
+        vesselTypeUuid: previous?.vesselTypeUuid ?? null,
+        deadweight: previous?.deadweight ?? null,
+        engineTypePower: previous?.engineTypePower ?? null,
+        ownerOperator: previous?.ownerOperator ?? null,
+        experienceCategories: previous?.experienceCategories ?? null,
+        createdByUuid: auditUserUuid,
+        updatedByUuid: auditUserUuid,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      return { created: true, closedPreviousUuid, status: "created" as const };
     });
   },
 };

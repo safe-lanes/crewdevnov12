@@ -636,6 +636,7 @@ export class PromotionReviewsService {
     // we skip the rank flip. A crash mid-transaction rolls back BOTH, so a retry
     // re-applies cleanly — the ledger never persists without the rank update.
     const db = getDb();
+    let applied = false;
     await db.transaction(async (tx: typeof db) => {
       const inserted = await tx
         .insert(promoExecutionLedgerV2)
@@ -655,6 +656,7 @@ export class PromotionReviewsService {
 
       // Another execution already owns this promotion — leave the rank to it.
       if (inserted.length === 0) return;
+      applied = true;
 
       // Flip the rank only when it actually differs (the present_rank column is
       // the single source of truth read by Crew Pool, Reports, Promotions, etc.).
@@ -669,6 +671,44 @@ export class PromotionReviewsService {
           .where(eq(crewMembersV2.crewUuid, crew.crewUuid));
       }
     });
+
+    // Phase 3 — split Company sea service so experience is attributed to the old
+    // and new rank (closes the previous-rank line, opens a new-rank line at the
+    // split date). Runs only on first application (ledger-gated) and is itself
+    // idempotent. Best-effort and non-fatal: the committed rank flip is the core
+    // deliverable and must not be rolled back by a sea-service hiccup; Phase 5
+    // backfill can recover a missed split via the same path.
+    if (applied) {
+      try {
+        const { crewSeaServiceService } = await import(
+          "../../crew-pool/services/crewSeaServiceService"
+        );
+        const split = await crewSeaServiceService.splitForPromotion({
+          crewUuid: crew.crewUuid,
+          newRank: toRank,
+          oldRank: fromRank,
+          splitDate: effectiveDate ?? "",
+          auditUserUuid: actorUuid,
+        });
+        // A missing/invalid Date of Promotion leaves the rank flipped but the
+        // sea-service history un-split. The flip is intentionally not rolled
+        // back (it is the core deliverable), but surface a clear, recoverable
+        // signal so Phase 5 backfill (which reuses this same path) can repair it.
+        if (split.status === "skipped-invalid-input") {
+          console.warn(
+            `[promotion-engine] Sea-service split SKIPPED for review ${reviewUuid}: ` +
+            `missing/invalid split date "${effectiveDate ?? ""}". Rank was flipped; ` +
+            `run the Phase 5 backfill once a valid Date of Promotion is set.`,
+          );
+        }
+      } catch (err) {
+        console.error(
+          `[promotion-engine] Sea-service split failed for review ${reviewUuid} ` +
+          `(non-fatal):`,
+          err,
+        );
+      }
+    }
   }
 
   // On-board promotion only: place the promotee into the target rank position
