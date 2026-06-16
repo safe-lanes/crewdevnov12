@@ -17,8 +17,8 @@ import { applyAuditUser } from "../../admin/utils/auditUser";
 import type { PromotionReviewV2, PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { promoExecutionLedgerV2 } from "../../../../shared/v2/promotions/schema";
-import { eq, and, isNull, or, sql } from "drizzle-orm";
+import { promoExecutionLedgerV2, promotionReviewsV2 } from "../../../../shared/v2/promotions/schema";
+import { eq, and, isNull, or, sql, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 export const promotionReviewWritableSchema = z.object({
@@ -294,6 +294,62 @@ function assembleV1Response(
 export class PromotionReviewsService {
   async getCriteriaMaster() {
     return criteriaMasterRepo.findAll();
+  }
+
+  /**
+   * For a set of crew (by crewUuid), return which of them have an APPROVED
+   * prior-joining promotion that has not yet been executed — i.e. the promotee
+   * has not signed on, so the rank flip has not happened. These are the
+   * "planned" promotions surfaced as Target Rank "(PR)" in Rotation Planning
+   * and Vessel Planning. Read-only and idempotent.
+   *
+   * Detection mirrors vesselPlanningService.signOnReliever (status "approved" +
+   * timing "prior-joining"); a completed promotion has status "completed" and is
+   * therefore naturally excluded. Keyed by crewUuid — crew without a pending
+   * prior-joining promotion are absent from the map.
+   */
+  async getPendingPriorJoiningByCrewUuids(
+    crewUuids: Array<string | null | undefined>,
+  ): Promise<Map<string, { promotionToRank: string }>> {
+    const result = new Map<string, { promotionToRank: string }>();
+    const unique = Array.from(new Set(crewUuids.filter((u): u is string => !!u)));
+    if (unique.length === 0) return result;
+
+    const db = getDb();
+
+    // Promotion reviews are keyed by employee number, so map crewUuid -> empNo.
+    const crews = await db
+      .select({ crewUuid: crewMembersV2.crewUuid, empNo: crewMembersV2.empNo })
+      .from(crewMembersV2)
+      .where(inArray(crewMembersV2.crewUuid, unique));
+
+    const empToCrew = new Map<string, string>();
+    for (const c of crews) {
+      const empNo = (c.empNo ?? "").trim();
+      if (empNo) empToCrew.set(empNo, c.crewUuid);
+    }
+    if (empToCrew.size === 0) return result;
+
+    const reviews = await db
+      .select()
+      .from(promotionReviewsV2)
+      .where(
+        and(
+          inArray(promotionReviewsV2.crewMemberId, Array.from(empToCrew.keys())),
+          or(eq(promotionReviewsV2.isDeleted, false), isNull(promotionReviewsV2.isDeleted)),
+        ),
+      );
+
+    for (const r of reviews) {
+      const status = (r.status ?? "").trim().toLowerCase();
+      const timing = (r.promotionTiming ?? "").trim().toLowerCase();
+      if (status !== "approved" || timing !== "prior-joining") continue;
+      const crewUuid = empToCrew.get((r.crewMemberId ?? "").trim());
+      const toRank = (r.promotionToRank ?? "").trim();
+      if (crewUuid && toRank) result.set(crewUuid, { promotionToRank: toRank });
+    }
+
+    return result;
   }
 
   async ensurePromotionReviewsForEligibleCrew(): Promise<{ created: number; existing: number }> {

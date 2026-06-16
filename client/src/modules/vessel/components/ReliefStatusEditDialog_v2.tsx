@@ -436,6 +436,19 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             )}
                         />
 
+                        {planningData?.relieverHasPriorJoiningPromotion && (
+                            <div className="grid grid-cols-3 items-center gap-4">
+                                <span className="text-sm text-gray-700">Target Rank:</span>
+                                <span
+                                    className="col-span-2 text-sm font-medium text-[#52baf3]"
+                                    title="This crew member has an approved prior-joining promotion that takes effect on sign-on."
+                                    data-testid="text-reliever-target-rank-pr"
+                                >
+                                    {(planningData?.relieverPromotionToRank || planningData?.rankName || planningData?.rank)} (PR)
+                                </span>
+                            </div>
+                        )}
+
                         <FormField
                             control={form.control}
                             name="relieverNationality"

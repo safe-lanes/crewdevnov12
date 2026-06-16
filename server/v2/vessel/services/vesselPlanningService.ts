@@ -848,16 +848,28 @@ async function getEnglishProficiencyV2(crewUuid: string | null): Promise<string>
 export const vesselPlanningService = {
   async getByVesselUuid(vesselUuid: string) {
     const planningRecords = await vesselPlanningRepository.findByVesselUuid(vesselUuid);
-    
+
+    // Relievers with an approved-but-not-yet-executed prior-joining promotion
+    // are shown with their Target Rank "(PR)". This is display-only enrichment —
+    // the reliever is still excluded from live manning/compliance until sign-on.
+    const { PromotionReviewsService } = await import("../../promotions/services");
+    const reviewsService = new PromotionReviewsService();
+    const priorJoiningMap = await reviewsService.getPendingPriorJoiningByCrewUuids(
+      planningRecords.map((r: any) => r.relieverCrewUuid)
+    );
+
     // Enrich each planning record with document/medical expiry counts
     const enrichedRecords = await Promise.all(
       planningRecords.map(async (record: any) => {
         const { docExpiringCount, medicalExpiring, docExpiryDetails } = await calculateExpiryCountsForCrew(record.crewUuid);
+        const priorJoining = record.relieverCrewUuid ? priorJoiningMap.get(record.relieverCrewUuid) : undefined;
         return {
           ...record,
           docExpiringCount,
           medicalExpiring,
-          docExpiryDetails
+          docExpiryDetails,
+          relieverHasPriorJoiningPromotion: !!priorJoining,
+          relieverPromotionToRank: priorJoining?.promotionToRank ?? null,
         };
       })
     );

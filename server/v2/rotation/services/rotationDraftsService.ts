@@ -490,14 +490,32 @@ export const rotationDraftsService = {
 
     // Get all entries for these drafts and flatten into proposals
     const proposals: any[] = [];
-    
+
+    // Fetch each draft's entries once and cache them; reused both to resolve
+    // prior-joining promotions up front and in the main proposal loop below.
+    const entriesByDraft = new Map<string, any[]>();
+    const proposalCrewUuids: string[] = [];
+    for (const draft of filteredDrafts) {
+      const draftEntries = await rotationEntriesRepository.findByDraftUuid(draft.draftUuid);
+      entriesByDraft.set(draft.draftUuid, draftEntries);
+      for (const e of draftEntries) {
+        if (e.crewUuid) proposalCrewUuids.push(e.crewUuid);
+      }
+    }
+
+    // Proposed crew with an approved-but-not-yet-executed prior-joining promotion
+    // are shown with their Target Rank "(PR)" in Rotation Planning. Resolve once
+    // (read-only) and tag each proposal below.
+    const { PromotionReviewsService } = await import("../../promotions/services");
+    const priorJoiningMap = await new PromotionReviewsService().getPendingPriorJoiningByCrewUuids(proposalCrewUuids);
+
     for (const draft of filteredDrafts) {
       // Filter by draftId if provided
       if (filters?.draftId && draft.draftId !== filters.draftId) {
         continue;
       }
       
-      const rawEntries = await rotationEntriesRepository.findByDraftUuid(draft.draftUuid);
+      const rawEntries = entriesByDraft.get(draft.draftUuid) ?? [];
       
       for (const entry of rawEntries) {
         // Filter by vessels
@@ -629,6 +647,8 @@ export const rotationDraftsService = {
           crewUuid: entry.crewUuid,
           crewMemberId: entry.crewUuid,
           crewName,
+          hasPriorJoiningPromotion: entry.crewUuid ? priorJoiningMap.has(entry.crewUuid) : false,
+          promotionToRank: entry.crewUuid ? (priorJoiningMap.get(entry.crewUuid)?.promotionToRank ?? null) : null,
           signOnDate: entry.signOnDate,
           joiningDate: entry.signOnDate, // Timeline uses joiningDate
           contractPeriod: entry.contractPeriod || 6,
