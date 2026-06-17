@@ -442,6 +442,17 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
       const age = crew?.dob ? calculateAge(crew.dob) : "";
       const vesselType = vesselTypeByName.get(vesselName) || "";
 
+      // Overall score must only appear on the outside table AFTER Stage 2 is
+      // submitted — not from Save and not from Save Draft. In 'draft' and
+      // 'preliminary' (Stage 1) it must stay N/A. Saving still stores the
+      // value as before; this only controls when the table displays it.
+      const isPreStage2 =
+        !appraisal.status ||
+        appraisal.status === 'draft' ||
+        appraisal.status === 'preliminary';
+
+      const showOverall = !isPreStage2 && !!appraisal.overallRating;
+
       return {
         id: appraisal.crewMemberId || String(appraisal.id),
         employeeId: appraisal.crewMemberId || "",
@@ -468,8 +479,8 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
           color: appraisal.behavioralRating ? getRatingColor(appraisal.behavioralRating) : "bg-gray-400 text-white",
         },
         overallRating: {
-          value: appraisal.overallRating || "N/A",
-          color: appraisal.overallRating ? getRatingColor(appraisal.overallRating) : "bg-gray-400 text-white",
+          value: showOverall ? appraisal.overallRating : "N/A",
+          color: showOverall ? getRatingColor(appraisal.overallRating) : "bg-gray-400 text-white",
         },
         appraisalId: appraisal.id,
         appraisalUuid: appraisal.appraisalUuid,
