@@ -205,7 +205,7 @@ export const ManagementFilterBar = ({
         selected={filters.nationalities}
         onChange={update("nationalities")}
       />
-      <div className="ml-auto">
+      <div>
         <Button
           variant="outline"
           onClick={onClear}
