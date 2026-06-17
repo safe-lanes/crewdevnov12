@@ -46,7 +46,7 @@ export const DashboardPage = () => {
           <SectionTitleComponents title="Dashboard">
             <span aria-hidden="true" />
           </SectionTitleComponents>
-          <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
+          <div className="hidden absolute inset-x-0 top-0 flex justify-center pointer-events-none">
             <TabsList
               className="h-auto bg-[#f1f1f1] p-1 rounded-md pointer-events-auto"
               data-testid="tabs-dashboard"
