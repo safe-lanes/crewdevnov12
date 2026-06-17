@@ -130,7 +130,7 @@ export const ManagementFilterBar = ({
   const { data: manningAgentsData = [] } = useManningAgentsV2();
 
   const rankOptions = useMemo(
-    () => Array.from(new Set(rankLabels.filter(Boolean))).sort(),
+    () => Array.from(new Set(rankLabels.filter(Boolean))),
     [rankLabels],
   );
 
