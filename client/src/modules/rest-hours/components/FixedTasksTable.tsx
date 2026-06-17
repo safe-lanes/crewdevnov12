@@ -342,7 +342,11 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
   const { getSortOrder } = useRankOrdering(vesselId);
 
   const vesselCrewMembers = useMemo(() => {
-    let filtered = allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
+    let filtered = allCrewMembers.filter(
+      (crew: any) =>
+        crew.presentVessel === vesselId &&
+        crew.assignmentType === 'OnBoard'
+    );
     if (monthYear) {
       const [y, m] = monthYear.split('-').map(Number);
       const firstDay = `${monthYear}-01`;

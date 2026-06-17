@@ -116,11 +116,30 @@ export const VariableTaskForm = ({
   const watchedFinishDate = form.watch('finishDate');
 
   const vesselCrewMembers = useMemo(() => {
-    const vesselCrew = allCrewMembers.filter((crew: any) => crew.presentVessel === vesselId);
+    // Match RH Records: signed-on crew only
+    let filtered = allCrewMembers.filter(
+      (crew: any) =>
+        crew.presentVessel === vesselId &&
+        crew.assignmentType === 'OnBoard'
+    );
 
-    let filtered = vesselCrew;
+    // Match RH Records: assignment overlaps selected month
+    if (periodValue) {
+      const [y, m] = periodValue.split('-').map(Number);
+      const firstDay = `${periodValue}-01`;
+      const lastDayDate = new Date(y, m, 0);
+      const lastDay = `${y}-${String(m).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+
+      filtered = filtered.filter((crew: any) => {
+        if (crew.signOnDate && crew.signOnDate > lastDay) return false;
+        if (crew.signOffDate && crew.signOffDate < firstDay) return false;
+        return true;
+      });
+    }
+
+    // Existing behavior: further narrow to task dates if entered
     if (watchedStartDate || watchedFinishDate) {
-      filtered = vesselCrew.filter((crew: any) => {
+      filtered = filtered.filter((crew: any) => {
         const signOn = crew.signOnDate;
         if (watchedFinishDate && signOn && signOn > watchedFinishDate) {
           return false;
@@ -132,6 +151,7 @@ export const VariableTaskForm = ({
         return true;
       });
     }
+
     const seen = new Set<string>();
     return filtered.filter((crew: any) => {
       const id = crew.crewMemberId || crew.empNo;
@@ -139,7 +159,7 @@ export const VariableTaskForm = ({
       seen.add(id);
       return true;
     });
-  }, [allCrewMembers, vesselId, watchedStartDate, watchedFinishDate]);
+  }, [allCrewMembers, vesselId, periodValue, watchedStartDate, watchedFinishDate]);
 
   const rankDesignationMap = useMemo(() => {
     const map = new Map<string, any>();

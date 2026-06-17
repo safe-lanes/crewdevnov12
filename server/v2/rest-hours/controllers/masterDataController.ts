@@ -41,6 +41,7 @@ export const masterDataController = {
           familyName: crewMembersV2.familyName,
           presentRank: crewMembersV2.presentRank,
           vesselUuid: crewAssignments.vesselUuid,
+          assignmentType: crewAssignments.assignmentType,
           signOnDate: crewAssignments.signOnDate,
           signOffDate: crewAssignments.signOffDate,
           status: crewMembersV2.status,
