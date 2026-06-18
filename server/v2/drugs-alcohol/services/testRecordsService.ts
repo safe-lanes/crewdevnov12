@@ -311,6 +311,7 @@ export const testRecordsService = {
     rankNames?: string[];
     poolNames?: string[];
     agentNames?: string[];
+    nationalityIds?: string[];
   }): Promise<{ alcoholViolations: number; drugViolations: number }> {
     const filtered = await this._getFilteredViolatingPersonnel(params);
     let alcoholViolations = 0;
@@ -330,6 +331,7 @@ export const testRecordsService = {
     rankNames?: string[];
     poolNames?: string[];
     agentNames?: string[];
+    nationalityIds?: string[];
   }): Promise<
     Array<{
       daUuid: string;
@@ -388,6 +390,7 @@ export const testRecordsService = {
     rankNames?: string[];
     poolNames?: string[];
     agentNames?: string[];
+    nationalityIds?: string[];
   }): Promise<
     Array<{
       daUuid: string;
@@ -403,7 +406,15 @@ export const testRecordsService = {
       drugViolation: boolean | null;
     }>
   > {
-    const { periodFrom, periodTo, vesselNames, rankNames, poolNames, agentNames } = params;
+    const {
+      periodFrom,
+      periodTo,
+      vesselNames,
+      rankNames,
+      poolNames,
+      agentNames,
+      nationalityIds,
+    } = params;
     if (!isValidDateString(periodFrom) || !isValidDateString(periodTo)) {
       throw new Error("Invalid period: periodFrom and periodTo must be YYYY-MM-DD");
     }
@@ -415,6 +426,10 @@ export const testRecordsService = {
     const rankSet = rankNames && rankNames.length > 0 ? new Set(rankNames) : null;
     const poolSet = poolNames && poolNames.length > 0 ? new Set(poolNames) : null;
     const agentSet = agentNames && agentNames.length > 0 ? new Set(agentNames) : null;
+    const natSet =
+      nationalityIds && nationalityIds.length > 0
+        ? new Set(nationalityIds)
+        : null;
 
     const out: Array<{
       daUuid: string;
@@ -450,6 +465,7 @@ export const testRecordsService = {
       if (rankSet && !(row.rank && rankSet.has(row.rank))) continue;
       if (poolSet && !(row.crewPool && poolSet.has(row.crewPool))) continue;
       if (agentSet && !(row.manningAgent && agentSet.has(row.manningAgent))) continue;
+      if (natSet && !(row.nationalityUuid && natSet.has(row.nationalityUuid))) continue;
       out.push({
         daUuid: row.daUuid,
         vesselId: row.vesselId,

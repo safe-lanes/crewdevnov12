@@ -249,6 +249,7 @@ export class TestRecordsRepository {
       rank: string | null;
       crewPool: string | null;
       manningAgent: string | null;
+      nationalityUuid: string | null;
       alcoholViolation: boolean | null;
       drugViolation: boolean | null;
     }>
@@ -268,6 +269,7 @@ export class TestRecordsRepository {
         rank: daPersonnelTestedV2.rank,
         crewPool: crewPersonalDetails.crewPool,
         manningAgent: crewPersonalDetails.manningAgent,
+        nationalityUuid: crewMembersV2.nationalityUuid,
         alcoholViolation: daPersonnelTestedV2.alcoholViolation,
         drugViolation: daPersonnelTestedV2.drugViolation,
       })

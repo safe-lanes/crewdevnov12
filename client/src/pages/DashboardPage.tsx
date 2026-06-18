@@ -190,6 +190,7 @@ export const DashboardPage = () => {
                   vessels={filters.vessels}
                   crewPools={filters.crewPools}
                   manningAgents={filters.manningAgents}
+                  nationalities={filters.nationalities}
                 />
               )}
             />

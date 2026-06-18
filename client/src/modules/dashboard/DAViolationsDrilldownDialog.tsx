@@ -34,6 +34,7 @@ interface DAViolationsDrilldownDialogProps {
   ranks: string[];
   crewPools: string[];
   manningAgents: string[];
+  nationalityIds: string[];
 }
 
 const TEST_TYPE_LABELS: Record<string, string> = {
@@ -92,6 +93,7 @@ async function fetchViolationForms(params: {
   ranks: string[];
   pools: string[];
   agents: string[];
+  nationalityIds: string[];
 }): Promise<ViolationFormSummary[]> {
   const qp = new URLSearchParams();
   qp.set("periodFrom", params.from);
@@ -101,6 +103,7 @@ async function fetchViolationForms(params: {
   params.ranks.forEach((r) => qp.append("rankIds", r));
   params.pools.forEach((p) => qp.append("poolIds", p));
   params.agents.forEach((a) => qp.append("agentIds", a));
+  params.nationalityIds.forEach((n) => qp.append("nationalityIds", n));
   const res = await fetch(
     `/api/v2/drugs-alcohol/test-records/violations?${qp.toString()}`
   );
@@ -118,6 +121,7 @@ export const DAViolationsDrilldownDialog = ({
   ranks,
   crewPools,
   manningAgents,
+  nationalityIds,
 }: DAViolationsDrilldownDialogProps) => {
   const [, setLocation] = useLocation();
 
@@ -134,6 +138,7 @@ export const DAViolationsDrilldownDialog = ({
       ranks,
       crewPools,
       manningAgents,
+      nationalityIds,
     ],
     queryFn: () =>
       fetchViolationForms({
@@ -144,6 +149,7 @@ export const DAViolationsDrilldownDialog = ({
         ranks,
         pools: crewPools,
         agents: manningAgents,
+        nationalityIds,
       }),
     enabled,
     staleTime: 60 * 1000,

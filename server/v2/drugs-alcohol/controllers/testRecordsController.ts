@@ -149,6 +149,9 @@ export const testRecordsController = {
         rankNames: toArrayParam(req.query.rankIds ?? req.query["rankIds[]"]),
         poolNames: toArrayParam(req.query.poolIds ?? req.query["poolIds[]"]),
         agentNames: toArrayParam(req.query.agentIds ?? req.query["agentIds[]"]),
+        nationalityIds: toArrayParam(
+          req.query.nationalityIds ?? req.query["nationalityIds[]"]
+        ),
       });
       res.json(result);
     } catch (error: any) {
@@ -182,6 +185,9 @@ export const testRecordsController = {
         rankNames: toArrayParam(req.query.rankIds ?? req.query["rankIds[]"]),
         poolNames: toArrayParam(req.query.poolIds ?? req.query["poolIds[]"]),
         agentNames: toArrayParam(req.query.agentIds ?? req.query["agentIds[]"]),
+        nationalityIds: toArrayParam(
+          req.query.nationalityIds ?? req.query["nationalityIds[]"]
+        ),
       });
       res.json(result);
     } catch (error: any) {

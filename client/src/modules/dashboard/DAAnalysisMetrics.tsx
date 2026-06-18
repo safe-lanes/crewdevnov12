@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 import { useDrilldownParam } from "./useDrilldownParam";
 import {
@@ -14,6 +15,7 @@ interface DAAnalysisMetricsProps {
   vessels?: string[];
   crewPools?: string[];
   manningAgents?: string[];
+  nationalities?: string[];
 }
 
 interface ViolationCounts {
@@ -64,6 +66,7 @@ async function fetchViolationCounts(params: {
   ranks: string[];
   pools: string[];
   agents: string[];
+  nationalityIds: string[];
 }): Promise<ViolationCounts> {
   const qp = new URLSearchParams();
   qp.set("periodFrom", params.from);
@@ -72,6 +75,7 @@ async function fetchViolationCounts(params: {
   params.ranks.forEach((r) => qp.append("rankIds", r));
   params.pools.forEach((p) => qp.append("poolIds", p));
   params.agents.forEach((a) => qp.append("agentIds", a));
+  params.nationalityIds.forEach((n) => qp.append("nationalityIds", n));
   const res = await fetch(`/api/v2/drugs-alcohol/stats/violations?${qp.toString()}`);
   if (!res.ok) throw new Error("Failed to load D&A violation counts");
   return res.json();
@@ -83,8 +87,23 @@ export const DAAnalysisMetrics = ({
   vessels = [],
   crewPools = [],
   manningAgents = [],
+  nationalities = [],
 }: DAAnalysisMetricsProps) => {
   const range = useMemo(() => periodToRange(period), [period]);
+
+  const { data: nationalityList = [] } = useNationalitiesV2();
+  const nationalityIds = useMemo(() => {
+    if (nationalities.length === 0) return [] as string[];
+    const nameToUuid = new Map<string, string>();
+    (nationalityList as any[]).forEach((n) => {
+      const uuid = n.nationalityUuid || n.uuid || n.id;
+      const name = n?.nationality || n?.name;
+      if (uuid && name) nameToUuid.set(String(name), String(uuid));
+    });
+    return nationalities
+      .map((name) => nameToUuid.get(name))
+      .filter((v): v is string => !!v);
+  }, [nationalities, nationalityList]);
 
   // URL-driven drill-down. The violation type (alcohol/drug) is stored in the
   // existing `rank` slot of the drill-down state — semantically it's just an
@@ -105,6 +124,7 @@ export const DAAnalysisMetrics = ({
       ranks,
       crewPools,
       manningAgents,
+      nationalityIds,
     ],
     queryFn: () =>
       fetchViolationCounts({
@@ -114,6 +134,7 @@ export const DAAnalysisMetrics = ({
         ranks,
         pools: crewPools,
         agents: manningAgents,
+        nationalityIds,
       }),
     enabled: !!range,
     staleTime: 60 * 1000,
@@ -211,6 +232,7 @@ export const DAAnalysisMetrics = ({
         ranks={ranks}
         crewPools={crewPools}
         manningAgents={manningAgents}
+        nationalityIds={nationalityIds}
       />
     </>
   );
