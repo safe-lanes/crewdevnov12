@@ -6,6 +6,7 @@ import { candidateApi } from "@/modules/recruitment/api/candidateApi";
 import { RECRUITED_STATUSES } from "@/modules/recruitment/statusBuckets";
 import { CrewRecruitmentDrilldownDialog } from "./CrewRecruitmentDrilldownDialog";
 import { useDrilldownParam } from "./useDrilldownParam";
+import { useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface CandidateRow {
@@ -118,6 +119,23 @@ export const CrewRecruitmentRankChart = ({
     staleTime: 60 * 1000,
   });
 
+  const { data: nationalityList = [] } = useNationalitiesV2();
+
+  const nationalityNameByUuid = useMemo(() => {
+    const map = new Map<string, string>();
+
+    (nationalityList as any[]).forEach((n) => {
+      const uuid = n.nationalityUuid || n.uuid || n.id;
+      const name = n?.nationality || n?.name;
+
+      if (uuid && name) {
+        map.set(String(uuid), String(name));
+      }
+    });
+
+    return map;
+  }, [nationalityList]);
+
   const chartData = useMemo<RankCount[]>(() => {
     if (!range) return [];
     const counts = new Map<string, number>();
@@ -135,11 +153,13 @@ export const CrewRecruitmentRankChart = ({
       if (!rank) continue;
 
       if (ranks.length > 0 && !ranks.includes(rank)) continue;
-      if (
-        nationalities.length > 0 &&
-        !nationalities.includes((c.nationalityUuid || "") as string)
-      ) {
-        continue;
+      if (nationalities.length > 0) {
+        const nationalityName =
+          nationalityNameByUuid.get(String(c.nationalityUuid || "")) || "";
+
+        if (!nationalities.includes(nationalityName)) {
+          continue;
+        }
       }
       // manningAgent / crewPool live in related tables; with empty arrays the
       // filter is a no-op. When Task #33 supplies values, candidates lacking
@@ -151,7 +171,7 @@ export const CrewRecruitmentRankChart = ({
     return Array.from(counts.entries())
       .map(([rank, count]) => ({ rank, count }))
       .sort((a, b) => b.count - a.count);
-  }, [candidates, range, ranks, nationalities, manningAgents]);
+  }, [candidates, range, ranks, nationalities, manningAgents, nationalityNameByUuid]);
 
   const chartOptions = useMemo<AgChartOptions>(
     () => ({

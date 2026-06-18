@@ -161,17 +161,19 @@ export const CrewRecruitmentDrilldownDialog = ({
       if (!candidateRank || candidateRank !== rank) return false;
 
       if (ranks.length > 0 && !ranks.includes(candidateRank)) return false;
-      if (
-        nationalities.length > 0 &&
-        !nationalities.includes((c.nationalityUuid || "") as string)
-      ) {
-        return false;
+      if (nationalities.length > 0) {
+        const nationalityName =
+          nationalityNameMap.get(String(c.nationalityUuid || "")) || "";
+
+        if (!nationalities.includes(nationalityName)) {
+          return false;
+        }
       }
       if (manningAgents.length > 0) return false;
 
       return true;
     });
-  }, [candidates, range, rank, ranks, nationalities, manningAgents]);
+  }, [candidates, range, rank, ranks, nationalities, manningAgents, nationalityNameMap]);
 
   const sorted = useMemo(
     () =>
