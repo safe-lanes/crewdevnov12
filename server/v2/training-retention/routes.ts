@@ -22,6 +22,7 @@ const querySchema = z
     rankIds: z.array(z.string()).optional().default([]),
     poolIds: z.array(z.string()).optional().default([]),
     agentIds: z.array(z.string()).optional().default([]),
+    nationalityIds: z.array(z.string()).optional().default([]),
   })
   .refine((d) => d.periodFrom <= d.periodTo, {
     message: "periodFrom must be <= periodTo",
@@ -42,11 +43,12 @@ router.get("/retention", async (req: Request, res: Response) => {
       rankIds: toArrayParam(req.query.rankIds ?? req.query["rankIds[]"]),
       poolIds: toArrayParam(req.query.poolIds ?? req.query["poolIds[]"]),
       agentIds: toArrayParam(req.query.agentIds ?? req.query["agentIds[]"]),
+      nationalityIds: toArrayParam(req.query.nationalityIds ?? req.query["nationalityIds[]"]),
     });
     if (!parsed.success) {
       return res.status(400).json({ error: "Invalid query", issues: parsed.error.issues });
     }
-    const { periodFrom, periodTo, rankIds, poolIds, agentIds } = parsed.data;
+    const { periodFrom, periodTo, rankIds, poolIds, agentIds, nationalityIds } = parsed.data;
     const db = getDb();
 
     // ---- Termination counts (S, UT, BT) -----------------------------------
@@ -61,13 +63,23 @@ router.get("/retention", async (req: Request, res: Response) => {
     if (rankIds.length > 0) termConditions.push(inArray(crewTerminations.rankIdSnapshot, rankIds));
     if (poolIds.length > 0) termConditions.push(inArray(crewTerminations.poolIdSnapshot, poolIds));
     if (agentIds.length > 0) termConditions.push(inArray(crewTerminations.manningAgentIdSnapshot, agentIds));
+    if (nationalityIds.length > 0) termConditions.push(inArray(crewMembersV2.nationalityUuid, nationalityIds));
 
-    const termRows = await db
+    const termBaseQuery = db
       .select({
         category: crewTerminations.category,
         count: sql<number>`count(*)::int`,
       })
-      .from(crewTerminations)
+      .from(crewTerminations);
+
+    const termRows = await (
+      nationalityIds.length > 0
+        ? termBaseQuery.innerJoin(
+            crewMembersV2,
+            eq(crewMembersV2.crewUuid, crewTerminations.crewUuid),
+          )
+        : termBaseQuery
+    )
       .where(and(...termConditions))
       .groupBy(crewTerminations.category);
 
@@ -93,6 +105,7 @@ router.get("/retention", async (req: Request, res: Response) => {
       eq(crewMembersV2.isActive, true),
     ];
     if (rankIds.length > 0) activeConditions.push(inArray(crewMembersV2.presentRank, rankIds));
+    if (nationalityIds.length > 0) activeConditions.push(inArray(crewMembersV2.nationalityUuid, nationalityIds));
 
     const needsPersonalJoin = poolIds.length > 0 || agentIds.length > 0;
     let activeCount = 0;

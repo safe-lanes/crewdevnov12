@@ -154,6 +154,7 @@ export const DashboardPage = () => {
                   ranks={filters.ranks}
                   crewPools={filters.crewPools}
                   manningAgents={filters.manningAgents}
+                  nationalities={filters.nationalities}
                 />
               )}
             />

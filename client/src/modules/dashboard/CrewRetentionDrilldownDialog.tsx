@@ -30,6 +30,7 @@ interface CrewRetentionDrilldownDialogProps {
   rankIds: string[];
   poolIds: string[];
   agentIds: string[];
+  nationalityIds: string[];
 }
 
 const FORMULA_ROWS: { criteria: keyof RetentionResponse; description: string }[] = [
@@ -81,6 +82,7 @@ async function fetchRetention(params: {
   rankIds: string[];
   poolIds: string[];
   agentIds: string[];
+  nationalityIds: string[];
 }): Promise<RetentionResponse> {
   const qp = new URLSearchParams();
   qp.set("periodFrom", params.from);
@@ -88,6 +90,7 @@ async function fetchRetention(params: {
   params.rankIds.forEach((r) => qp.append("rankIds", r));
   params.poolIds.forEach((p) => qp.append("poolIds", p));
   params.agentIds.forEach((a) => qp.append("agentIds", a));
+  params.nationalityIds.forEach((nat) => qp.append("nationalityIds", nat));
   const res = await fetch(`/api/v2/training-retention/retention?${qp.toString()}`);
   if (!res.ok) throw new Error("Failed to load retention metrics");
   return res.json();
@@ -103,6 +106,7 @@ export const CrewRetentionDrilldownDialog = ({
   rankIds,
   poolIds,
   agentIds,
+  nationalityIds,
 }: CrewRetentionDrilldownDialogProps) => {
   const [, setLocation] = useLocation();
 
@@ -122,6 +126,7 @@ export const CrewRetentionDrilldownDialog = ({
       rankIds,
       poolIds,
       agentIds,
+      nationalityIds,
     ],
     queryFn: () =>
       fetchRetention({
@@ -130,6 +135,7 @@ export const CrewRetentionDrilldownDialog = ({
         rankIds,
         poolIds,
         agentIds,
+        nationalityIds,
       }),
     enabled,
     staleTime: 60 * 1000,

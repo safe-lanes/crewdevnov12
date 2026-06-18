@@ -5,12 +5,14 @@ import { adminApiV2 } from "@/modules/admin/api/adminApiV2";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 import { useDrilldownParam } from "./useDrilldownParam";
 import { CrewRetentionDrilldownDialog } from "./CrewRetentionDrilldownDialog";
+import { useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
 
 interface CrewRetentionMetricsProps {
   period: PeriodFilterValue;
   ranks?: string[];
   crewPools?: string[];
   manningAgents?: string[];
+  nationalities?: string[];
 }
 
 type Category = "senior" | "officer" | "rating";
@@ -73,6 +75,7 @@ async function fetchRetention(params: {
   rankIds: string[];
   poolIds: string[];
   agentIds: string[];
+  nationalityIds: string[];
 }): Promise<RetentionResponse> {
   const qp = new URLSearchParams();
   qp.set("periodFrom", params.from);
@@ -80,6 +83,7 @@ async function fetchRetention(params: {
   params.rankIds.forEach((r) => qp.append("rankIds", r));
   params.poolIds.forEach((p) => qp.append("poolIds", p));
   params.agentIds.forEach((a) => qp.append("agentIds", a));
+  params.nationalityIds.forEach((nat) => qp.append("nationalityIds", nat));
   const res = await fetch(`/api/v2/training-retention/retention?${qp.toString()}`);
   if (!res.ok) throw new Error("Failed to load retention metrics");
   return res.json();
@@ -90,6 +94,7 @@ export const CrewRetentionMetrics = ({
   ranks = [],
   crewPools = [],
   manningAgents = [],
+  nationalities = [],
 }: CrewRetentionMetricsProps) => {
   const range = useMemo(() => periodToRange(period), [period]);
 
@@ -109,6 +114,20 @@ export const CrewRetentionMetrics = ({
       queryFn: () => adminApiV2.getCompanyRanks(),
       staleTime: 5 * 60 * 1000,
     });
+
+  const { data: nationalityList = [] } = useNationalitiesV2();
+  const nationalityIds = useMemo(() => {
+    if (nationalities.length === 0) return [] as string[];
+    const nameToUuid = new Map<string, string>();
+    (nationalityList as any[]).forEach((n) => {
+      const uuid = n.nationalityUuid || n.uuid || n.id;
+      const name = n?.nationality || n?.name;
+      if (uuid && name) nameToUuid.set(String(name), String(uuid));
+    });
+    return nationalities
+      .map((name) => nameToUuid.get(name))
+      .filter((v): v is string => !!v);
+  }, [nationalities, nationalityList]);
 
   const buckets = useMemo(() => {
     const senior = new Set<string>();
@@ -147,6 +166,7 @@ export const CrewRetentionMetrics = ({
           rankIds,
           crewPools,
           manningAgents,
+          nationalityIds,
         ],
         queryFn: () =>
           fetchRetention({
@@ -155,6 +175,7 @@ export const CrewRetentionMetrics = ({
             rankIds,
             poolIds: crewPools,
             agentIds: manningAgents,
+            nationalityIds,
           }),
         enabled,
         staleTime: 60 * 1000,
@@ -289,6 +310,7 @@ export const CrewRetentionMetrics = ({
         rankIds={selectedCategory ? buckets[selectedCategory] : []}
         poolIds={crewPools}
         agentIds={manningAgents}
+        nationalityIds={nationalityIds}
       />
     </>
   );
