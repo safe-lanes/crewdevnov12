@@ -15,6 +15,7 @@ interface CandidateRow {
   nationalityUuid?: string | null;
   status?: string | null;
   createdAt?: string | Date | null;
+  manningAgent?: string | null;
 }
 
 function escapeHtml(value: string): string {
@@ -164,7 +165,7 @@ export const CrewRecruitmentRankChart = ({
       // manningAgent / crewPool live in related tables; with empty arrays the
       // filter is a no-op. When Task #33 supplies values, candidates lacking
       // those fields on the row should not match.
-      if (manningAgents.length > 0) continue;
+      if (manningAgents.length > 0 && !manningAgents.includes((c.manningAgent || "").trim())) continue;
 
       counts.set(rank, (counts.get(rank) || 0) + 1);
     }

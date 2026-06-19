@@ -26,6 +26,7 @@ interface CandidateRow {
   nationalityUuid?: string | null;
   status?: string | null;
   createdAt?: string | Date | null;
+  manningAgent?: string | null;
 }
 
 interface CrewRecruitmentDrilldownDialogProps {
@@ -169,7 +170,7 @@ export const CrewRecruitmentDrilldownDialog = ({
           return false;
         }
       }
-      if (manningAgents.length > 0) return false;
+      if (manningAgents.length > 0 && !manningAgents.includes((c.manningAgent || "").trim())) return false;
 
       return true;
     });
