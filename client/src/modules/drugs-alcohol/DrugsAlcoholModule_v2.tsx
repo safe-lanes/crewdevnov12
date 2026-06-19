@@ -336,7 +336,7 @@ export function DrugsAlcoholModule_v2() {
         if (!data.vesselId || !data.testType) {
             toast({
                 title: "Missing Required Fields",
-                description: "Please select a vessel and test type before saving.",
+                description: "Please select a Vessel before saving.",
                 variant: "destructive",
             });
             return;
@@ -356,7 +356,7 @@ export function DrugsAlcoholModule_v2() {
         if (!data.vesselId || !data.testType) {
             toast({
                 title: "Missing Required Fields",
-                description: "Please select a vessel and test type before submitting.",
+                description: "Please select a Vessel before submitting.",
                 variant: "destructive",
             });
             return;
