@@ -116,11 +116,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mount v2 alerts routes
   app.use("/api/v2/alerts", alertsV2Routes);
 
-  // Start crewing alert background scanner
-  const scanIntervalMs = process.env.ALERT_SCAN_INTERVAL_MS
-    ? parseInt(process.env.ALERT_SCAN_INTERVAL_MS, 10)
-    : undefined;
-  crewingAlertEngine.start(scanIntervalMs);
+  // Start crewing alert background scanner (multi-tenant only)
+  if (tenantConnectionManager.isMultiTenantEnabled) {
+    const scanIntervalMs = process.env.ALERT_SCAN_INTERVAL_MS
+      ? parseInt(process.env.ALERT_SCAN_INTERVAL_MS, 10)
+      : undefined;
+    crewingAlertEngine.start(scanIntervalMs);
+  } else {
+    console.log('[CrewingAlertEngine] Skipped (multi-tenant mode not enabled)');
+  }
 
   // Mount Swagger API documentation
   setupSwagger(app);
