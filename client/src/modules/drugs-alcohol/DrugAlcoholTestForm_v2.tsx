@@ -782,7 +782,7 @@ export function DrugAlcoholTestForm_v2({
                         name="vesselId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel*</FormLabel>
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel<span className="text-red-500">*</span></FormLabel>
                             {(isShipUser || recordUuid) ? (
                               <div className="h-10 flex items-center text-sm font-medium text-[#0f172a] px-3 bg-gray-50 border border-input rounded-md" data-testid="text-vesselId-locked">
                                 {isShipUser
@@ -829,7 +829,7 @@ export function DrugAlcoholTestForm_v2({
                         name="testType"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs text-gray-500 tracking-wide">Type of Test*</FormLabel>
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">Type of Test<span className="text-red-500">*</span></FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger className="bg-[#ffffff]" data-testid="select-testType">
@@ -857,7 +857,7 @@ export function DrugAlcoholTestForm_v2({
                         name="alcoholDrugType"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs text-gray-500 tracking-wide">Alcohol/ Drug*</FormLabel>
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">Alcohol/ Drug<span className="text-red-500">*</span></FormLabel>
                             <div className="flex flex-row gap-4 bg-[#ffffff] border rounded-md p-3">
                               <div className="flex items-center space-x-2">
                                 <Checkbox

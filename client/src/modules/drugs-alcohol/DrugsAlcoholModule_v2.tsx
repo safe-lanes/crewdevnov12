@@ -341,6 +341,14 @@ export function DrugsAlcoholModule_v2() {
             });
             return;
         }
+        if (!data.alcoholDrugType || data.alcoholDrugType.length === 0) {
+            toast({
+                title: "Missing Required Fields",
+                description: "Please select Alcohol / Drug before saving.",
+                variant: "destructive",
+            });
+            return;
+        }
         saveMutation.mutate({ data, status: 'draft' });
     };
 
@@ -349,6 +357,14 @@ export function DrugsAlcoholModule_v2() {
             toast({
                 title: "Missing Required Fields",
                 description: "Please select a vessel and test type before submitting.",
+                variant: "destructive",
+            });
+            return;
+        }
+        if (!data.alcoholDrugType || data.alcoholDrugType.length === 0) {
+            toast({
+                title: "Missing Required Fields",
+                description: "Please select Alcohol / Drug before submitting.",
                 variant: "destructive",
             });
             return;
