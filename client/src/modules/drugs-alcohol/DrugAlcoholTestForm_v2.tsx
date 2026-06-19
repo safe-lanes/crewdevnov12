@@ -57,6 +57,7 @@ const drugAlcoholTestFormSchema = z.object({
   // Part B - Personnel Details
   personnelTested: z.array(z.object({
     id: z.string(),
+    crewId: z.string().nullable().optional(),
     rank: z.string(),
     name: z.string(),
     alcoholTest: z.object({
@@ -314,6 +315,7 @@ export function DrugAlcoholTestForm_v2({
       })
       .map((crew: any) => ({
         id: crew.crewUuid || crew.id || `crew-${Date.now()}-${Math.random()}`,
+        crewId: crew.crewUuid || null,
         rank: crew.presentRank || '',
         name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim(),
         alcoholTest: { checked: false, date: '', time: '' },

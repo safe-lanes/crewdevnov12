@@ -540,7 +540,7 @@ export const testRecordsService = {
             promises.push(
               personnelTestedRepository.create({
                 testRecordUuid,
-                crewId: item.crewId || item.id || null,
+                crewId: item.crewId || null,
                 rank: item.rank || null,
                 name: item.name || null,
                 alcoholTestChecked: item.alcoholTest?.checked ?? false,
@@ -681,7 +681,7 @@ export const testRecordsService = {
                 keepUuids.push(itemId);
                 promises.push(
                   personnelTestedRepository.updateByUuid(itemId, {
-                    crewId: item.crewId || item.id || null,
+                    crewId: item.crewId || null,
                     rank: item.rank || null,
                     name: item.name || null,
                     alcoholTestChecked: item.alcoholTest?.checked ?? false,
@@ -704,7 +704,7 @@ export const testRecordsService = {
             }
             const created = await personnelTestedRepository.create({
               testRecordUuid,
-              crewId: item.crewId || item.id || null,
+              crewId: item.crewId || null,
               rank: item.rank || null,
               name: item.name || null,
               alcoholTestChecked: item.alcoholTest?.checked ?? false,
