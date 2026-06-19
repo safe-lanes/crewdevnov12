@@ -482,6 +482,8 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         relieverCrewId: planning.relieverCrewUuid,
         relieverCrewUuid: planning.relieverCrewUuid,
         relieverCrewName: planning.relieverCrewName,
+        relieverHasPriorJoiningPromotion: planningAny.relieverHasPriorJoiningPromotion,
+        relieverPromotionToRank: planningAny.relieverPromotionToRank,
         relieverSignOnDate: planning.relieverSignOnDate,
         joiningPort: planning.joiningPortUuid,
         joiningPortName: planning.joiningPortName,
@@ -1046,6 +1048,9 @@ export function VesselModule_v2(): JSX.Element {
                 planUuid: crew.planUuid || crew.id,
                 relieverCrewId: crew.relieverCrewId || crew.crewUuid,
                 relieverCrewName: crew.relieverCrewName || crew.crewName,
+                relieverHasPriorJoiningPromotion: crew.relieverHasPriorJoiningPromotion,
+                relieverPromotionToRank: crew.relieverPromotionToRank,
+                rankName: rankName,
                 relieverNationality: crew.relieverNationality || crew.nationality,
                 joiningStatus: crew.signOnStatus || crew.joiningStatus,
                 relieverContractPeriodMonths: crew.relieverContractPeriodMonths,
@@ -2375,6 +2380,8 @@ export function VesselModule_v2(): JSX.Element {
                                                                 crewUuid: primaryCrew.relieverCrewId,
                                                                 crewName: primaryCrew.relieverCrewName,
                                                                 crewStatus: 'secondary',
+                                                                relieverHasPriorJoiningPromotion: primaryCrew.relieverHasPriorJoiningPromotion,
+                                                                relieverPromotionToRank: primaryCrew.relieverPromotionToRank,
                                                                 relieverNationality: primaryCrew.relieverNationality,
                                                                 relieverSignOnDate: primaryCrew.relieverSignOnDate,
                                                                 signOnPort: primaryCrew.joiningPortUuid || primaryCrew.joiningPort,
@@ -2493,7 +2500,18 @@ export function VesselModule_v2(): JSX.Element {
                                                             </TableCell>
                                                             
                                                             {/* Reliever Status */}
-                                                            <TableCell className="text-xs text-gray-700">{row.relieverData?.crewName || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">
+                                                                {row.relieverData?.crewName || ''}
+                                                                {row.relieverData?.relieverHasPriorJoiningPromotion && (
+                                                                    <span
+                                                                        className="ml-1 font-medium text-[#52baf3]"
+                                                                        title={`Target Rank (Prior Joining promotion): ${row.relieverData?.relieverPromotionToRank || row.rankName}`}
+                                                                        data-testid={`text-reliever-target-rank-pr-${index}`}
+                                                                    >
+                                                                        {(row.relieverData?.relieverPromotionToRank || row.rankName)} (PR)
+                                                                    </span>
+                                                                )}
+                                                            </TableCell>
                                                             <TableCell className="text-xs text-gray-700">{formatDateOnly(row.relieverData?.relieverSignOnDate)}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{row.relieverData?.signOnPortName || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{row.relieverData?.signOnStatus || ''}</TableCell>

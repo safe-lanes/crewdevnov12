@@ -70,6 +70,8 @@ interface CrewMember {
   higherCert?: string;
   performance?: string;
   nextAvailability?: string | null;
+  hasPriorJoiningPromotion?: boolean;
+  promotionToRank?: string | null;
   experience: {
     company: number;
     rank: number;
@@ -1152,7 +1154,7 @@ function CrewColumn({
                 // Show tooltip for purple (deployed awaiting sign on), red (deployed), blue (1 vessel planned), and brown (2+ vessels planned)
                 const hasColoredStatus = nameColor === 'text-purple-600' || nameColor === 'text-red-600' || nameColor === 'text-blue-600' || nameColor === 'text-[#814C02]';
                 const showVesselTooltip = !!vesselInfo && hasColoredStatus;
-                const selectCrew = () => onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.presentRank });
+                const selectCrew = () => onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.hasPriorJoiningPromotion ? (crew.promotionToRank || crew.presentRank) : crew.presentRank });
                 return (
                   <div
                     key={crew.crewUuid}
@@ -1180,6 +1182,14 @@ function CrewColumn({
                               className={`block w-full text-left font-medium text-sm cursor-help bg-transparent p-0 m-0 border-0 ${nameColor}`}
                             >
                               {crew.fullName}
+                              {crew.hasPriorJoiningPromotion && (
+                                <span
+                                  className="ml-1 text-blue-600 dark:text-blue-400"
+                                  data-testid={`text-pr-suffix-${crew.crewUuid}`}
+                                >
+                                  (PR)
+                                </span>
+                              )}
                             </button>
                           </TooltipTrigger>
                           <TooltipContent side="right" className="max-w-xs">
@@ -1191,6 +1201,14 @@ function CrewColumn({
                       ) : (
                         <div className={`font-medium text-sm ${nameColor}`}>
                           {crew.fullName}
+                          {crew.hasPriorJoiningPromotion && (
+                            <span
+                              className="ml-1 text-blue-600 dark:text-blue-400"
+                              data-testid={`text-pr-suffix-${crew.crewUuid}`}
+                            >
+                              (PR)
+                            </span>
+                          )}
                         </div>
                       )}
                       <Tooltip>

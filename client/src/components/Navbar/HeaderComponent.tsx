@@ -4,6 +4,7 @@ import { ModuleNavigator } from '../ModuleNavigator'
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem, deepParseJson } from '@/lib/encryptionService';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import NotificationBell from '../NotificationBell';
 import { 
     LayoutGrid, 
     UserPlus,
@@ -390,39 +391,42 @@ export default function HeaderComponent({
                         </div>
                     </nav>
 
-                    {/* User Profile Avatar */}
-                    <div className="relative flex items-center mr-2 sm:mr-4" ref={profileRef}>
-                        <button
-                            className="flex items-center justify-center w-10 h-10 rounded-full bg-[#16569e] text-white text-sm font-semibold cursor-pointer border-2 border-transparent hover:border-[#51baf4] transition-colors"
-                            onClick={() => setIsProfileOpen(!isProfileOpen)}
-                            data-testid="button-user-profile"
-                            aria-label="User profile menu"
-                        >
-                            {initials}
-                        </button>
+                    {/* Notification Bell & User Profile Avatar */}
+                    <div className="flex items-center gap-3 mr-2 sm:mr-4">
+                        <NotificationBell />
 
-                        {isProfileOpen && (
-                            <div
-                                className="absolute right-0 top-[50px] w-[240px] bg-white rounded-md shadow-lg border border-gray-200 z-[200] py-1"
-                                data-testid="dropdown-user-profile"
+                        <div className="relative flex items-center" ref={profileRef}>
+                            <button
+                                className="flex items-center justify-center w-10 h-10 rounded-full bg-[#16569e] text-white text-sm font-semibold cursor-pointer border-2 border-transparent hover:border-[#51baf4] transition-colors"
+                                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                data-testid="button-user-profile"
+                                aria-label="User profile menu"
                             >
-                                <div className="px-5 py-3">
-                                    <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">User Name :  </span>
-                                    <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-user-name">{userName || '-'}</span>
-                                </div>
-                                <div className="px-5 py-3 border-b border-gray-200">
-                                    <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">Domain Name :  </span>
-                                    <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-domain-name">{domain || '-'}</span>
-                                </div>
-                                <button
-                                    className="flex items-center gap-2 w-full px-5 py-3 text-sm text-gray-800 font-['Roboto',Helvetica] hover:bg-gray-100 cursor-pointer"
-                                    onClick={handleLogout}
-                                    data-testid="button-logout"
+                                {initials}
+                            </button>
+                            {isProfileOpen && (
+                                <div
+                                    className="absolute right-0 top-[50px] w-[240px] bg-white rounded-md shadow-lg border border-gray-200 z-[200] py-1"
+                                    data-testid="dropdown-user-profile"
                                 >
-                                    Logout
-                                </button>
-                            </div>
-                        )}
+                                    <div className="px-5 py-3">
+                                        <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">User Name :  </span>
+                                        <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-user-name">{userName || '-'}</span>
+                                    </div>
+                                    <div className="px-5 py-3 border-b border-gray-200">
+                                        <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">Domain Name :  </span>
+                                        <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-domain-name">{domain || '-'}</span>
+                                    </div>
+                                    <button
+                                        className="flex items-center gap-2 w-full px-5 py-3 text-sm text-gray-800 font-['Roboto',Helvetica] hover:bg-gray-100 cursor-pointer"
+                                        onClick={handleLogout}
+                                        data-testid="button-logout"
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Hamburger menu button - phone only (below 768px) */}

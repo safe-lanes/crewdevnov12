@@ -67,6 +67,8 @@ interface ProposalRowV2 {
   vessel: string;
   vesselUuid: string;
   rank: string;
+  hasPriorJoiningPromotion?: boolean;
+  promotionToRank?: string | null;
   crewName: string;
   crewUuid: string | null;
   joiningDate: string;
@@ -340,6 +342,8 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
       vessel: proposal.vesselName || proposal.vessel || getVesselName(proposal.vesselUuid) || 'Unknown Vessel',
       vesselUuid: proposal.vesselUuid || '',
       rank: proposal.rank || '',
+      hasPriorJoiningPromotion: !!proposal.hasPriorJoiningPromotion,
+      promotionToRank: proposal.promotionToRank || null,
       crewName: proposal.crewName || 'Unknown',
       crewUuid: proposal.crewUuid || null,
       joiningDate: proposal.signOnDate || proposal.joiningDate || '',
@@ -419,7 +423,11 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
       const proposal = proposals.find(p => p.entryUuid === entryUuid);
       if (proposal && proposal.crewUuid) {
         selected.push({
-          rank: proposal.rank,
+          // Prior-joining promotions take effect on sign-on, so the compliance
+          // preview must simulate the promoted (target) rank, not the current one.
+          rank: proposal.hasPriorJoiningPromotion
+            ? (proposal.promotionToRank || proposal.rank)
+            : proposal.rank,
           crewMemberId: proposal.crewUuid,
           crewName: proposal.crewName,
           joiningDate: proposal.joiningDate,
@@ -485,6 +493,14 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
         cellStyle: { fontSize: '13px', color: '#4f5863' },
         sortable: true,
         resizable: false,
+        cellRenderer: (params: any) => {
+          const data = params.data as ProposalRowV2 | undefined;
+          if (data?.hasPriorJoiningPromotion) {
+            const targetRank = data.promotionToRank || data.rank;
+            return `${targetRank} (PR)`;
+          }
+          return params.value ?? '';
+        },
       },
       {
         headerName: 'Proposed Date',

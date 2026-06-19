@@ -8,6 +8,16 @@ import {
   getSeaServiceToDate
 } from "@shared/dateUtils";
 
+import { 
+  type AlertPolicyV2, 
+  type InsertAlertPolicyV2, 
+  type AlertEventV2, 
+  type InsertAlertEventV2, 
+  type AlertDeliveryV2, 
+  type InsertAlertDeliveryV2 
+} from "../shared/v2/alerts/schema";
+
+
 // Static vessel mapping for testing/development (MemStorage/PersistentFileStorage)
 // In production (DatabaseStorage), vessel data is fetched from Master 014
 // Source of truth: Master 014 with UUID-format vessel IDs
@@ -841,12 +851,22 @@ export interface IStorage {
   createPromotionReview(review: InsertPromotionReview): Promise<PromotionReview>;
   getMasterData: (masterType: string) => any;
   syncMasterData: (masterType: string, data: any) => any;
+  getAlertPolicies(): Promise<AlertPolicyV2[]>;
+  getAlertPolicy(apuuid: string): Promise<AlertPolicyV2 | undefined>;
+  getAlertEvents(filters?: { alertType?: string; acknowledged?: boolean }): Promise<AlertEventV2[]>;
+  getAlertEvent(aeuuid: string): Promise<AlertEventV2 | undefined>;
+  createAlertEvent(event: InsertAlertEventV2): Promise<AlertEventV2>;
+  acknowledgeAlertEvent(aeuuid: string, userId: string): Promise<AlertEventV2>;
+  getUnacknowledgedAlertEventsForRole(userType: string, roleName: string | null): Promise<AlertEventV2[]>;
 }
 
 // PersistentFileStorage class - saves data to JSON file for persistence across restarts
 export class PersistentFileStorage implements IStorage {
   private users: Map<number, User>;
   private forms: Map<number, Form>;
+  private alertPolicies: Map<string, AlertPolicyV2>;
+  private alertEvents: Map<string, AlertEventV2>;
+  private alertDeliveries: Map<string, AlertDeliveryV2>;
   private rankGroups: Map<number, RankGroup>;
   private availableRanks: Map<number, AvailableRank>;
   private companyRanks: Map<string, CompanyRank>;
@@ -910,6 +930,39 @@ export class PersistentFileStorage implements IStorage {
     // Initialize all properties first
     this.users = new Map();
     this.forms = new Map();
+    this.alertPolicies = new Map();
+    this.alertEvents = new Map();
+    this.alertDeliveries = new Map();
+    
+    // Seed default alert policies
+    this.alertPolicies.set('policy-visa-exp', {
+      id: 1, apuuid: 'policy-visa-exp', alertType: 'visa_expiration', enabled: true,
+      priority: 'high', emailEnabled: false, inAppEnabled: true, thresholds: '{"daysBefore": 30}',
+      scopeFilters: '{}', recipients: '{"roles": ["admin", "manager"]}', sortOrder: 0,
+      createdAt: new Date(), updatedAt: new Date(), createdByUuid: 'system', updatedByUuid: null,
+      isDeleted: false, isSync: false
+    });
+    this.alertPolicies.set('policy-doc-exp', {
+      id: 2, apuuid: 'policy-doc-exp', alertType: 'document_expiration', enabled: true,
+      priority: 'medium', emailEnabled: false, inAppEnabled: true, thresholds: '{"daysBefore": 30}',
+      scopeFilters: '{}', recipients: '{"roles": ["admin", "manager"]}', sortOrder: 0,
+      createdAt: new Date(), updatedAt: new Date(), createdByUuid: 'system', updatedByUuid: null,
+      isDeleted: false, isSync: false
+    });
+    this.alertPolicies.set('policy-relief-due', {
+      id: 3, apuuid: 'policy-relief-due', alertType: 'relief_due', enabled: true,
+      priority: 'medium', emailEnabled: false, inAppEnabled: true, thresholds: '{"daysBefore": 14}',
+      scopeFilters: '{}', recipients: '{"roles": ["admin", "manager"]}', sortOrder: 0,
+      createdAt: new Date(), updatedAt: new Date(), createdByUuid: 'system', updatedByUuid: null,
+      isDeleted: false, isSync: false
+    });
+    this.alertPolicies.set('policy-appraisal-due', {
+      id: 4, apuuid: 'policy-appraisal-due', alertType: 'appraisal_due', enabled: true,
+      priority: 'low', emailEnabled: false, inAppEnabled: true, thresholds: '{"daysBefore": 7}',
+      scopeFilters: '{}', recipients: '{"roles": ["admin", "manager"]}', sortOrder: 0,
+      createdAt: new Date(), updatedAt: new Date(), createdByUuid: 'system', updatedByUuid: null,
+      isDeleted: false, isSync: false
+    });
     this.rankGroups = new Map();
     this.availableRanks = new Map();
     this.companyRanks = new Map();
@@ -5149,6 +5202,115 @@ export class PersistentFileStorage implements IStorage {
   async syncMasterData(masterType: string, data: any[]): Promise<{ count: number }> {
     console.log(`[PersistentFileStorage] syncMasterData called for ${masterType} with ${data.length} records - no-op in file storage`);
     return { count: 0 };
+  }
+
+  async getAlertPolicies(): Promise<AlertPolicyV2[]> {
+    return Array.from(this.alertPolicies.values());
+  }
+
+  async getAlertPolicy(apuuid: string): Promise<AlertPolicyV2 | undefined> {
+    return this.alertPolicies.get(apuuid);
+  }
+
+  async getAlertEvents(filters?: { alertType?: string; acknowledged?: boolean }): Promise<AlertEventV2[]> {
+    let events = Array.from(this.alertEvents.values()).filter(e => !e.isDeleted);
+    if (filters?.alertType) {
+      events = events.filter(e => e.alertType === filters.alertType);
+    }
+    if (filters?.acknowledged !== undefined) {
+      if (filters.acknowledged) {
+        events = events.filter(e => e.ackBy !== null);
+      } else {
+        events = events.filter(e => e.ackBy === null);
+      }
+    }
+    return events.sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+  }
+
+  async getAlertEvent(aeuuid: string): Promise<AlertEventV2 | undefined> {
+    return this.alertEvents.get(aeuuid);
+  }
+
+  async createAlertEvent(event: InsertAlertEventV2): Promise<AlertEventV2> {
+    const aeuuid = event.aeuuid || `alert-${Date.now()}`;
+    const id = Array.from(this.alertEvents.keys()).length + 1;
+    const newEvent: AlertEventV2 = {
+      id,
+      aeuuid,
+      policyUuid: event.policyUuid,
+      alertType: event.alertType,
+      priority: event.priority,
+      objectType: event.objectType || null,
+      objectId: event.objectId || null,
+      dedupeKey: event.dedupeKey,
+      state: event.state || null,
+      payload: event.payload,
+      ackBy: event.ackBy || null,
+      ackAt: event.ackAt ? new Date(event.ackAt) : null,
+      sortOrder: event.sortOrder || 0,
+      createdAt: event.createdAt ? new Date(event.createdAt) : new Date(),
+      updatedAt: event.updatedAt ? new Date(event.updatedAt) : new Date(),
+      createdByUuid: event.createdByUuid || 'system',
+      updatedByUuid: event.updatedByUuid || null,
+      isDeleted: event.isDeleted || false,
+      isSync: event.isSync || false,
+    };
+    this.alertEvents.set(aeuuid, newEvent);
+    return newEvent;
+  }
+
+  async acknowledgeAlertEvent(aeuuid: string, userId: string): Promise<AlertEventV2> {
+    const event = this.alertEvents.get(aeuuid);
+    if (!event) throw new Error(`Alert event ${aeuuid} not found`);
+    event.ackBy = userId;
+    event.ackAt = new Date();
+    event.updatedAt = new Date();
+    this.alertEvents.set(aeuuid, event);
+    return event;
+  }
+
+  async getUnacknowledgedAlertEventsForRole(userType: string, roleName: string | null): Promise<AlertEventV2[]> {
+    const activeEvents = Array.from(this.alertEvents.values()).filter(e => e.ackBy === null && !e.isDeleted);
+    
+    const normUserType = userType.toLowerCase();
+    const normRoleName = roleName ? roleName.toLowerCase() : "";
+
+    // Admin userType or role can view all alerts
+    // Admin role sees all alerts
+    if (
+      normRoleName === 'admin' ||
+      normRoleName === 'sail admin' ||
+      normRoleName === 'super admin'
+    ) {
+      return activeEvents;
+    }
+    
+    // Otherwise filter policies by recipients.roles list
+    const allowedPolicies = new Set<string>();
+    for (const policy of this.alertPolicies.values()) {
+      if (policy.enabled) {
+        try {
+          const rec = JSON.parse(policy.recipients || '{}');
+          const roles = (rec.roles || []).map((r: string) => r.toLowerCase());
+          if (roles.includes(normUserType) || (normRoleName && roles.includes(normRoleName))) {
+            allowedPolicies.add(policy.apuuid);
+          }
+        } catch {
+          // Ignore invalid JSON
+        }
+      }
+    }
+    
+    return activeEvents.filter(e => allowedPolicies.has(e.policyUuid))
+      .sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bTime - aTime;
+      });
   }
 }
 

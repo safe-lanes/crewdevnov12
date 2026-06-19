@@ -127,6 +127,24 @@ export const promoSuitabilityV2 = pgTable("promo_suitability_v2", {
   ...auditColumns,
 });
 
+// Execution ledger — durable, at-most-once record of an applied promotion.
+// Keyed by review_uuid (unique) so the rank-propagation engine flips the rank
+// exactly once per promotion and a future correction tool can reverse it.
+export const promoExecutionLedgerV2 = pgTable("promo_execution_ledger_v2", {
+  id: serial("id").primaryKey(),
+  ledgerUuid: text("ledger_uuid").notNull().unique(),
+  reviewUuid: text("review_uuid").notNull().unique(),
+  crewMemberId: text("crew_member_id").notNull(),
+  crewUuid: text("crew_uuid"),
+  fromRank: text("from_rank"),
+  toRank: text("to_rank").notNull(),
+  effectiveDate: text("effective_date"),
+  promotionTiming: text("promotion_timing"),
+  appliedByUuid: text("applied_by_uuid"),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
 export const promoChecklistProgressV2 = pgTable("promo_checklist_progress_v2", {
   id: serial("id").primaryKey(),
   cpUuid: text("cp_uuid").notNull().unique(),

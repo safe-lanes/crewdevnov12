@@ -22,6 +22,10 @@ interface PartBApprovalProps extends React.HTMLAttributes<HTMLDivElement> {
   vesselClassOptions?: string[];
   isLoadingVesselTypeOptions?: boolean;
   isLoadingVesselClassOptions?: boolean;
+  promotionConfirmed: string;
+  onSetPromotionConfirmed: (value: string) => void;
+  promotionTiming: string;
+  onSetPromotionTiming: (value: string) => void;
   onSave?: () => void;
   onSubmit?: () => void;
   approverNames?: string[];
@@ -45,6 +49,10 @@ export const PartBApproval = memo(function PartBApproval({
   vesselClassOptions = [],
   isLoadingVesselTypeOptions = false,
   isLoadingVesselClassOptions = false,
+  promotionConfirmed,
+  onSetPromotionConfirmed,
+  promotionTiming,
+  onSetPromotionTiming,
   onSave,
   onSubmit,
   approverNames = [],
@@ -286,6 +294,54 @@ export const PartBApproval = memo(function PartBApproval({
               </Select>
             </div>
           </div>
+        </div>
+
+        <div className="space-y-4 pt-2">
+          <h3 className="text-base font-medium text-[#16569e]">B3 Promotion Decision</h3>
+
+          <div className="flex items-start gap-4">
+            <Label className="text-sm w-48 mt-2">B3.1 Decision:</Label>
+            <RadioGroup
+              value={promotionConfirmed}
+              onValueChange={onSetPromotionConfirmed}
+              className="flex flex-wrap gap-6"
+              data-testid="radiogroup-promotion-decision"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="yes" id="promotion-decision-yes" data-testid="radio-promotion-decision-yes" />
+                <Label htmlFor="promotion-decision-yes" className="text-sm cursor-pointer">Yes</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="waitlist" id="promotion-decision-waitlist" data-testid="radio-promotion-decision-waitlist" />
+                <Label htmlFor="promotion-decision-waitlist" className="text-sm cursor-pointer">Waitlist</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="rejected" id="promotion-decision-rejected" data-testid="radio-promotion-decision-rejected" />
+                <Label htmlFor="promotion-decision-rejected" className="text-sm cursor-pointer">Rejected</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {promotionConfirmed === 'yes' && (
+            <div className="flex items-start gap-4">
+              <Label className="text-sm w-48 mt-2">B3.2 Promotion type:</Label>
+              <RadioGroup
+                value={promotionTiming}
+                onValueChange={onSetPromotionTiming}
+                className="flex flex-wrap gap-6"
+                data-testid="radiogroup-promotion-type"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="on-board" id="promotion-type-on-board" data-testid="radio-promotion-type-on-board" />
+                  <Label htmlFor="promotion-type-on-board" className="text-sm cursor-pointer">Promoted Onboard</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="prior-joining" id="promotion-type-prior-joining" data-testid="radio-promotion-type-prior-joining" />
+                  <Label htmlFor="promotion-type-prior-joining" className="text-sm cursor-pointer">Promoted Prior Joining</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
