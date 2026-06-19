@@ -6,6 +6,7 @@ import { runMigrations } from "./migrationRunner";
 import { tenantConnectionManager } from "./utils/tenantConnectionManager";
 import { tenantMiddleware } from "./middleware/tenantMiddleware";
 import { authMiddleware } from "./middleware/authMiddleware";
+import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -125,6 +126,7 @@ app.use((req, res, next) => {
     isShuttingDown = true;
     
     log(`${signal} received. Shutting down gracefully...`);
+    crewingAlertEngine.stop();
     httpServer.close(async () => {
       log('HTTP server closed.');
       await tenantConnectionManager.closeAll();

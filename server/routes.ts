@@ -15,6 +15,8 @@ import trainingNeedsV2Routes from "./v2/training-needs/routes";
 import trainingRetentionV2Routes from "./v2/training-retention/routes";
 import reportsV2Routes from "./v2/reports/routes";
 import testCasesV2Routes from "./v2/test-cases/routes";
+import alertsV2Routes from "./v2/alerts/routes";
+import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
 import { setupSwagger } from "./swagger";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
 import { storageAccount } from "./storage-accounts";
@@ -110,6 +112,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount v2 test cases routes (Crewing Test Case Manager)
   app.use("/api/v2/test-cases", testCasesV2Routes);
+
+  // Mount v2 alerts routes
+  app.use("/api/v2/alerts", alertsV2Routes);
+
+  // Start crewing alert background scanner
+  const scanIntervalMs = process.env.ALERT_SCAN_INTERVAL_MS
+    ? parseInt(process.env.ALERT_SCAN_INTERVAL_MS, 10)
+    : undefined;
+  crewingAlertEngine.start(scanIntervalMs);
 
   // Mount Swagger API documentation
   setupSwagger(app);

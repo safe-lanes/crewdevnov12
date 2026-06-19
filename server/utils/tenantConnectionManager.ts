@@ -395,6 +395,22 @@ class TenantConnectionManager {
     return this.tenantStorage.getStore()?.tenantId ?? null;
   }
 
+  async getActiveTenants(): Promise<string[]> {
+    if (!this._isMultiTenantEnabled || !this.masterDb) {
+      return [];
+    }
+    try {
+      const result = await this.masterDb
+        .select({ tuid: tenants.tuid })
+        .from(tenants)
+        .where(and(eq(tenants.isActive, true), eq(tenants.isDeleted, false)));
+      return result.map(r => r.tuid);
+    } catch (err: any) {
+      console.error("Error fetching active tenants from master db:", err.message);
+      return [];
+    }
+  }
+
   getPoolMetrics(): {
     activePools: number;
     totalConnections: number;
