@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { appraisalsApiV2 } from "@/modules/crewing/api/appraisalsApiV2";
-import { extractRank } from "./appraisalRank";
+import { extractRank, isStage2Submitted } from "./appraisalRank";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface AppraisalRow {
@@ -23,6 +23,7 @@ interface AppraisalRow {
   appraisalDate?: string | null;
   overallRating?: string | number | null;
   appraisalData?: string | null;
+  stageStatuses?: string | null;
 }
 
 interface CrewAppraisalsDrilldownDialogProps {
@@ -184,6 +185,8 @@ export const CrewAppraisalsDrilldownDialog = ({
       // Mirror the chart: rows without a numeric overall rating are excluded
       // from the bar's average and so should not appear here either.
       if (parseRating(a.overallRating) === null) return false;
+
+      if (!isStage2Submitted(a)) return false;
 
       return true;
     });

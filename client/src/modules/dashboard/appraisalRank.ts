@@ -1,6 +1,7 @@
 export interface AppraisalRowLike {
   seafarersRank?: string | null;
   appraisalData?: string | null;
+  stageStatuses?: string | null;
 }
 
 /**
@@ -20,5 +21,19 @@ export function extractRank(row: AppraisalRowLike): string {
     return typeof r === "string" ? r.trim() : "";
   } catch {
     return "";
+  }
+}
+
+/**
+ * True only when Stage 2 of the appraisal has been submitted.
+ * Stage 3 / reviewed records also qualify because Stage 2 remains completed.
+ */
+export function isStage2Submitted(row: AppraisalRowLike): boolean {
+  if (!row.stageStatuses) return false;
+  try {
+    const parsed = JSON.parse(row.stageStatuses);
+    return parsed?.stage2?.status === "completed";
+  } catch {
+    return false;
   }
 }

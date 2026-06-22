@@ -5,7 +5,7 @@ import type { AgChartOptions, AgChartInstance } from "@/lib/agCharts";
 import { appraisalsApiV2 } from "@/modules/crewing/api/appraisalsApiV2";
 import { CrewAppraisalsDrilldownDialog } from "./CrewAppraisalsDrilldownDialog";
 import { useDrilldownParam } from "./useDrilldownParam";
-import { extractRank } from "./appraisalRank";
+import { extractRank, isStage2Submitted } from "./appraisalRank";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface AppraisalRow {
@@ -18,6 +18,7 @@ interface AppraisalRow {
   overallRating?: string | number | null;
   appraisalDate?: string | null;
   appraisalData?: string | null;
+  stageStatuses?: string | null;
 }
 
 function escapeHtml(value: string): string {
@@ -142,6 +143,8 @@ export const CrewAppraisalsRankChart = ({
 
       const rating = parseRating(a.overallRating);
       if (rating === null) continue;
+
+      if (!isStage2Submitted(a)) continue;
 
       const cur = buckets.get(rank) || { sum: 0, count: 0 };
       cur.sum += rating;
