@@ -139,6 +139,7 @@ export const DashboardPage = () => {
                 selected === "rank" ? (
                   <CrewAppraisalsRankChart
                     period={period}
+                    ranks={filters.ranks}
                     crewPools={filters.crewPools}
                     manningAgents={filters.manningAgents}
                     nationalities={filters.nationalities}

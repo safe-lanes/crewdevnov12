@@ -6,6 +6,7 @@ import { appraisalsApiV2 } from "@/modules/crewing/api/appraisalsApiV2";
 import { CrewAppraisalsDrilldownDialog } from "./CrewAppraisalsDrilldownDialog";
 import { useDrilldownParam } from "./useDrilldownParam";
 import { extractRank, isStage2Submitted } from "./appraisalRank";
+import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface AppraisalRow {
@@ -101,7 +102,7 @@ function parseRating(value: unknown): number | null {
 
 export const CrewAppraisalsRankChart = ({
   period,
-  ranks: _ranks = [],
+  ranks = [],
   crewPools = [],
   manningAgents = [],
   nationalities = [],
@@ -197,6 +198,27 @@ export const CrewAppraisalsRankChart = ({
     return map;
   }, [crew]);
 
+  const { data: companyRanks = [] } = useCompanyRanks();
+
+  const labelByRankName = useMemo(() => {
+    const m = new Map<string, string>();
+
+    for (const r of companyRanks) {
+      const label = (r.label || "").trim();
+      if (!label) continue;
+
+      const name = (r.rank || "").trim();
+
+      if (name) {
+        m.set(name.toLowerCase(), label);
+      }
+
+      m.set(label.toLowerCase(), label);
+    }
+
+    return m;
+  }, [companyRanks]);
+
   const chartData = useMemo<RankAvg[]>(() => {
     if (!range) return [];
     const buckets = new Map<string, { sum: number; count: number }>();
@@ -228,6 +250,14 @@ export const CrewAppraisalsRankChart = ({
         if (!nat || !nationalities.includes(nat)) continue;
       }
 
+      if (ranks.length > 0) {
+        const lbl =
+          labelByRankName.get(rank.trim().toLowerCase()) ??
+          rank.trim();
+
+        if (!ranks.includes(lbl)) continue;
+      }
+
       const cur = buckets.get(rank) || { sum: 0, count: 0 };
       cur.sum += rating;
       cur.count += 1;
@@ -240,7 +270,7 @@ export const CrewAppraisalsRankChart = ({
         count,
       }))
       .sort((a, b) => b.avgRating - a.avgRating);
-  }, [appraisals, range, crewPools, poolByCrewKey, manningAgents, agentByCrewKey, nationalities, nationalityByCrewKey]);
+  }, [appraisals, range, crewPools, poolByCrewKey, manningAgents, agentByCrewKey, nationalities, nationalityByCrewKey, ranks, labelByRankName]);
 
   const chartOptions = useMemo<AgChartOptions>(
     () => ({
@@ -366,7 +396,7 @@ export const CrewAppraisalsRankChart = ({
         onOpenChange={handleDrillDownChange}
         rank={selectedRank}
         period={period}
-        ranks={_ranks}
+        ranks={ranks}
         crewPools={crewPools}
         manningAgents={manningAgents}
         nationalities={nationalities}
