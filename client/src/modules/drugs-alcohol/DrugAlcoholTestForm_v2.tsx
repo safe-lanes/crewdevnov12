@@ -536,6 +536,52 @@ export function DrugAlcoholTestForm_v2({
 
   const { toast } = useToast();
 
+  const sortPersonnelForSave = (personnel: any[]) => {
+    const isOtherRow = (p: any) =>
+      (typeof p?.id === 'string' && p.id.startsWith('other-')) ||
+      (typeof p?.crewId === 'string' && p.crewId.startsWith('other-'));
+
+    const getOtherCreationTime = (p: any): number => {
+        const marker =
+        (typeof p?.crewId === 'string' && p.crewId.startsWith('other-'))
+          ? p.crewId
+          : (typeof p?.id === 'string' && p.id.startsWith('other-'))
+            ? p.id
+            : '';
+
+      const ts = parseInt(marker.split('-')[1] ?? '', 10);
+      return Number.isFinite(ts) ? ts : 0;
+    };
+
+    return [...personnel].sort((a, b) => {
+      const aOther = isOtherRow(a);
+      const bOther = isOtherRow(b);
+
+      // Added Other rows always below real crew
+      if (aOther !== bOther) return aOther ? 1 : -1;
+
+      // Other rows keep creation order
+      if (aOther && bOther) {
+        return getOtherCreationTime(a) - getOtherCreationTime(b);
+      }
+
+      // Real crew hierarchy sort
+      const orderA = getSortOrder(a.rank);
+      const orderB = getSortOrder(b.rank);
+
+      if (orderA !== orderB) return orderA - orderB;
+      const aSuffix = a.rank?.includes('_')
+        ? parseInt(a.rank.split('_')[1]) || 0
+        : 0;
+
+      const bSuffix = b.rank?.includes('_')
+        ? parseInt(b.rank.split('_')[1]) || 0
+        : 0;
+
+      return aSuffix - bSuffix;
+    });
+  };
+
   const handleSaveDraft = () => {
     const rawPersonnel = (form.getValues('personnelTested') as any[]) || [];
 
@@ -563,7 +609,16 @@ export function DrugAlcoholTestForm_v2({
     }
 
     const data = form.getValues();
-    onSave(data);
+
+    const sortedPersonnel = sortPersonnelForSave(
+      (data.personnelTested as any[]) || []
+    );
+    replacePersonnel(sortedPersonnel);
+
+    onSave({
+      ...data,
+      personnelTested: sortedPersonnel,
+    });
   };
 
   const handleExport = async () => {
@@ -643,7 +698,17 @@ export function DrugAlcoholTestForm_v2({
         return person;
       })
     };
-    onSubmit(cleanedData);
+
+    const sortedPersonnel = sortPersonnelForSave(
+      (cleanedData.personnelTested as any[]) || []
+    );
+
+    replacePersonnel(sortedPersonnel);
+
+    onSubmit({
+      ...cleanedData,
+      personnelTested: sortedPersonnel,
+    });
   };
 
   const handleFormError = (errors: any) => {
@@ -1358,8 +1423,12 @@ export function DrugAlcoholTestForm_v2({
                       variant="outline"
                       size="sm"
                       onClick={() => {
+                        const otherKey =
+                          `other-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
                         appendPersonnel({
-                          id: `other-${Date.now()}`,
+                          id: otherKey,
+                          crewId: otherKey,
                           rank: '',
                           name: '',
                           alcoholTest: { checked: false, date: '', time: '' },
