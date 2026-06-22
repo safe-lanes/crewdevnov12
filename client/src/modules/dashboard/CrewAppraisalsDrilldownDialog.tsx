@@ -24,6 +24,13 @@ interface AppraisalRow {
   overallRating?: string | number | null;
   appraisalData?: string | null;
   stageStatuses?: string | null;
+  crewMemberId?: string | null;
+}
+
+interface CrewPoolLookupRow {
+  crewUuid?: string | null;
+  empNo?: string | null;
+  crewPool?: string | null;
 }
 
 interface CrewAppraisalsDrilldownDialogProps {
@@ -132,6 +139,7 @@ export const CrewAppraisalsDrilldownDialog = ({
   onOpenChange,
   rank,
   period,
+  crewPools = [],
 }: CrewAppraisalsDrilldownDialogProps) => {
   const [, setLocation] = useLocation();
 
@@ -147,6 +155,42 @@ export const CrewAppraisalsDrilldownDialog = ({
     staleTime: 60 * 1000,
     enabled: open,
   });
+
+  const { data: crew } = useQuery<CrewPoolLookupRow[]>({
+    queryKey: ["/api/v2/crew-pool/crew/details", { view: "all", all: true }],
+    queryFn: async ({ signal }) => {
+      const PAGE_SIZE = 1000;
+      const all: CrewPoolLookupRow[] = [];
+      let offset = 0;
+      for (let i = 0; i < 100; i++) {
+        const response = await fetch(
+          `/api/v2/crew-pool/crew/details?view=all&limit=${PAGE_SIZE}&offset=${offset}`,
+          { signal },
+        );
+        if (!response.ok) throw new Error("Failed to fetch crew list");
+        const json = await response.json();
+        const page = json.data ?? [];
+        all.push(...page);
+        const total = json.pagination?.total ?? all.length;
+        offset += PAGE_SIZE;
+        if (page.length < PAGE_SIZE || all.length >= total) break;
+      }
+      return all;
+    },
+    staleTime: 60 * 1000,
+    enabled: open && crewPools.length > 0,
+  });
+
+  const poolByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const pool = (c.crewPool || "").trim();
+      if (!pool) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), pool);
+      if (c.empNo) map.set(String(c.empNo), pool);
+    }
+    return map;
+  }, [crew]);
 
   // Resolve the stored vessel reference to the vessel's CURRENT name. Appraisals
   // store the vessel UUID; we key the map by UUID and also by numeric id / name
@@ -188,9 +232,14 @@ export const CrewAppraisalsDrilldownDialog = ({
 
       if (!isStage2Submitted(a)) return false;
 
+      if (crewPools.length > 0) {
+        const pool = poolByCrewKey.get((a.crewMemberId || "").trim());
+        if (!pool || !crewPools.includes(pool)) return false;
+      }
+
       return true;
     });
-  }, [appraisals, range, rank]);
+  }, [appraisals, range, rank, crewPools, poolByCrewKey]);
 
   const sorted = useMemo(
     () =>

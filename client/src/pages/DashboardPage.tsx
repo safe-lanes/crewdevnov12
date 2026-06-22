@@ -139,6 +139,7 @@ export const DashboardPage = () => {
                 selected === "rank" ? (
                   <CrewAppraisalsRankChart
                     period={period}
+                    crewPools={filters.crewPools}
                     chartRef={chartRef}
                   />
                 ) : null

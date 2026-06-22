@@ -19,6 +19,13 @@ interface AppraisalRow {
   appraisalDate?: string | null;
   appraisalData?: string | null;
   stageStatuses?: string | null;
+  crewMemberId?: string | null;
+}
+
+interface CrewPoolLookupRow {
+  crewUuid?: string | null;
+  empNo?: string | null;
+  crewPool?: string | null;
 }
 
 function escapeHtml(value: string): string {
@@ -93,7 +100,7 @@ function parseRating(value: unknown): number | null {
 export const CrewAppraisalsRankChart = ({
   period,
   ranks: _ranks = [],
-  crewPools: _crewPools = [],
+  crewPools = [],
   manningAgents: _manningAgents = [],
   nationalities: _nationalities = [],
   chartRef,
@@ -130,6 +137,42 @@ export const CrewAppraisalsRankChart = ({
     staleTime: 60 * 1000,
   });
 
+  const { data: crew } = useQuery<CrewPoolLookupRow[]>({
+    queryKey: ["/api/v2/crew-pool/crew/details", { view: "all", all: true }],
+    queryFn: async ({ signal }) => {
+      const PAGE_SIZE = 1000;
+      const all: CrewPoolLookupRow[] = [];
+      let offset = 0;
+      for (let i = 0; i < 100; i++) {
+        const response = await fetch(
+          `/api/v2/crew-pool/crew/details?view=all&limit=${PAGE_SIZE}&offset=${offset}`,
+          { signal },
+        );
+        if (!response.ok) throw new Error("Failed to fetch crew list");
+        const json = await response.json();
+        const page = json.data ?? [];
+        all.push(...page);
+        const total = json.pagination?.total ?? all.length;
+        offset += PAGE_SIZE;
+        if (page.length < PAGE_SIZE || all.length >= total) break;
+      }
+      return all;
+    },
+    staleTime: 60 * 1000,
+    enabled: crewPools.length > 0,
+  });
+
+  const poolByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const pool = (c.crewPool || "").trim();
+      if (!pool) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), pool);
+      if (c.empNo) map.set(String(c.empNo), pool);
+    }
+    return map;
+  }, [crew]);
+
   const chartData = useMemo<RankAvg[]>(() => {
     if (!range) return [];
     const buckets = new Map<string, { sum: number; count: number }>();
@@ -146,6 +189,11 @@ export const CrewAppraisalsRankChart = ({
 
       if (!isStage2Submitted(a)) continue;
 
+      if (crewPools.length > 0) {
+        const pool = poolByCrewKey.get((a.crewMemberId || "").trim());
+        if (!pool || !crewPools.includes(pool)) continue;
+      }
+
       const cur = buckets.get(rank) || { sum: 0, count: 0 };
       cur.sum += rating;
       cur.count += 1;
@@ -158,7 +206,7 @@ export const CrewAppraisalsRankChart = ({
         count,
       }))
       .sort((a, b) => b.avgRating - a.avgRating);
-  }, [appraisals, range]);
+  }, [appraisals, range, crewPools, poolByCrewKey]);
 
   const chartOptions = useMemo<AgChartOptions>(
     () => ({
@@ -285,7 +333,7 @@ export const CrewAppraisalsRankChart = ({
         rank={selectedRank}
         period={period}
         ranks={_ranks}
-        crewPools={_crewPools}
+        crewPools={crewPools}
         manningAgents={_manningAgents}
         nationalities={_nationalities}
       />
