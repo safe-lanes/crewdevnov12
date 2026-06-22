@@ -328,6 +328,27 @@ export function DrugAlcoholTestForm_v2({
       }));
   }, [allCrewMembers, activeVesselId, getSortOrder]);
 
+  const sortedVesselCrew = useMemo(() => {
+    return [...allCrewMembers].sort((a: any, b: any) => {
+      const orderA = getSortOrder(a.presentRank);
+      const orderB = getSortOrder(b.presentRank);
+
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+
+      const aSuffix = a.presentRank?.includes('_')
+        ? parseInt(a.presentRank.split('_')[1]) || 0
+        : 0;
+
+      const bSuffix = b.presentRank?.includes('_')
+        ? parseInt(b.presentRank.split('_')[1]) || 0
+        : 0;
+
+      return aSuffix - bSuffix;
+    });
+  }, [allCrewMembers, getSortOrder]);
+
   // Get logged-in user's designation from sessionStorage for digital confirmation
   const loggedInUserDesignation = useMemo(() => {
     if (typeof window !== 'undefined' && window.sessionStorage) {
@@ -1678,7 +1699,7 @@ export function DrugAlcoholTestForm_v2({
                                 name={`personnelTested.${index}.witness`}
                                 render={({ field }) => {
                                   // V2: allCrewMembers is already filtered by vessel via the API endpoint
-                                  const vesselCrew = allCrewMembers;
+                                  const vesselCrew = sortedVesselCrew;
                                   const getCrewDisplayName = (crewId: string) => {
                                     const crew = vesselCrew.find((c: any) => c.crewUuid === crewId || c.id === crewId);
                                     if (!crew) return crewId;
