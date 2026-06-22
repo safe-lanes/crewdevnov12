@@ -17,3 +17,9 @@ id = "dJyxphfXDfc7FPJN6BAs3"
 uri = "file://exports/Promotion_Rank_Update_Questions.docx"
 type = "word_document"
 title = "Promotion Rank Update — Domain Expert Questions"
+
+[[outputs]]
+id = "tlALGiLpidGwnTHQyIsKQ"
+uri = "file://exports/RH_After_Promotion_Questions.docx"
+type = "word_document"
+title = "Rest Hours after Promotion — Questions for Domain Expert"
