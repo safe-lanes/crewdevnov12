@@ -31,6 +31,7 @@ interface CrewPoolLookupRow {
   crewUuid?: string | null;
   empNo?: string | null;
   crewPool?: string | null;
+  manningAgentName?: string | null;
 }
 
 interface CrewAppraisalsDrilldownDialogProps {
@@ -140,6 +141,7 @@ export const CrewAppraisalsDrilldownDialog = ({
   rank,
   period,
   crewPools = [],
+  manningAgents = [],
 }: CrewAppraisalsDrilldownDialogProps) => {
   const [, setLocation] = useLocation();
 
@@ -178,7 +180,7 @@ export const CrewAppraisalsDrilldownDialog = ({
       return all;
     },
     staleTime: 60 * 1000,
-    enabled: open && crewPools.length > 0,
+    enabled: open && (crewPools.length > 0 || manningAgents.length > 0),
   });
 
   const poolByCrewKey = useMemo(() => {
@@ -188,6 +190,17 @@ export const CrewAppraisalsDrilldownDialog = ({
       if (!pool) continue;
       if (c.crewUuid) map.set(String(c.crewUuid), pool);
       if (c.empNo) map.set(String(c.empNo), pool);
+    }
+    return map;
+  }, [crew]);
+
+  const agentByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const agent = (c.manningAgentName || "").trim();
+      if (!agent) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), agent);
+      if (c.empNo) map.set(String(c.empNo), agent);
     }
     return map;
   }, [crew]);
@@ -237,9 +250,14 @@ export const CrewAppraisalsDrilldownDialog = ({
         if (!pool || !crewPools.includes(pool)) return false;
       }
 
+      if (manningAgents.length > 0) {
+        const agent = agentByCrewKey.get((a.crewMemberId || "").trim());
+        if (!agent || !manningAgents.includes(agent)) return false;
+      }
+
       return true;
     });
-  }, [appraisals, range, rank, crewPools, poolByCrewKey]);
+  }, [appraisals, range, rank, crewPools, poolByCrewKey, manningAgents, agentByCrewKey]);
 
   const sorted = useMemo(
     () =>

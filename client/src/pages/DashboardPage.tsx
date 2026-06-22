@@ -140,6 +140,7 @@ export const DashboardPage = () => {
                   <CrewAppraisalsRankChart
                     period={period}
                     crewPools={filters.crewPools}
+                    manningAgents={filters.manningAgents}
                     chartRef={chartRef}
                   />
                 ) : null
