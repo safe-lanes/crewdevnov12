@@ -141,6 +141,7 @@ export const DashboardPage = () => {
                     period={period}
                     crewPools={filters.crewPools}
                     manningAgents={filters.manningAgents}
+                    nationalities={filters.nationalities}
                     chartRef={chartRef}
                   />
                 ) : null

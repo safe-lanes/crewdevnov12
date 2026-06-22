@@ -27,6 +27,7 @@ interface CrewPoolLookupRow {
   empNo?: string | null;
   crewPool?: string | null;
   manningAgentName?: string | null;
+  nationality?: string | null;
 }
 
 function escapeHtml(value: string): string {
@@ -103,7 +104,7 @@ export const CrewAppraisalsRankChart = ({
   ranks: _ranks = [],
   crewPools = [],
   manningAgents = [],
-  nationalities: _nationalities = [],
+  nationalities = [],
   chartRef,
 }: CrewAppraisalsRankChartProps) => {
   const [isMounted, setIsMounted] = useState(false);
@@ -160,7 +161,7 @@ export const CrewAppraisalsRankChart = ({
       return all;
     },
     staleTime: 60 * 1000,
-    enabled: crewPools.length > 0 || manningAgents.length > 0,
+    enabled: crewPools.length > 0 || manningAgents.length > 0 || nationalities.length > 0,
   });
 
   const poolByCrewKey = useMemo(() => {
@@ -181,6 +182,17 @@ export const CrewAppraisalsRankChart = ({
       if (!agent) continue;
       if (c.crewUuid) map.set(String(c.crewUuid), agent);
       if (c.empNo) map.set(String(c.empNo), agent);
+    }
+    return map;
+  }, [crew]);
+
+  const nationalityByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const nat = (c.nationality || "").trim();
+      if (!nat) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), nat);
+      if (c.empNo) map.set(String(c.empNo), nat);
     }
     return map;
   }, [crew]);
@@ -211,6 +223,11 @@ export const CrewAppraisalsRankChart = ({
         if (!agent || !manningAgents.includes(agent)) continue;
       }
 
+      if (nationalities.length > 0) {
+        const nat = nationalityByCrewKey.get((a.crewMemberId || "").trim());
+        if (!nat || !nationalities.includes(nat)) continue;
+      }
+
       const cur = buckets.get(rank) || { sum: 0, count: 0 };
       cur.sum += rating;
       cur.count += 1;
@@ -223,7 +240,7 @@ export const CrewAppraisalsRankChart = ({
         count,
       }))
       .sort((a, b) => b.avgRating - a.avgRating);
-  }, [appraisals, range, crewPools, poolByCrewKey, manningAgents, agentByCrewKey]);
+  }, [appraisals, range, crewPools, poolByCrewKey, manningAgents, agentByCrewKey, nationalities, nationalityByCrewKey]);
 
   const chartOptions = useMemo<AgChartOptions>(
     () => ({
@@ -352,7 +369,7 @@ export const CrewAppraisalsRankChart = ({
         ranks={_ranks}
         crewPools={crewPools}
         manningAgents={manningAgents}
-        nationalities={_nationalities}
+        nationalities={nationalities}
       />
     </>
   );
