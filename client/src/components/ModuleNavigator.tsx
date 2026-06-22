@@ -20,8 +20,8 @@ export function ModuleNavigator({ currentModule, onModuleChange }: ModuleNavigat
   // Check conditions from localStorage and sessionStorage
   const isIncident = localStorage.getItem("isIncident") === "true";
   const isSafety = localStorage.getItem("isSafety") === "true";
-  const technicalAccess = sessionStorage.getItem("technicalAccess") === "granted";
-  const crewingAccess = sessionStorage.getItem("crewingAccess") === "granted";
+  const technicalAccess = localStorage.getItem("isTechnical") === "true";
+  const crewingAccess = localStorage.getItem("isCrewing") === "true";
   const userType = sessionStorage.getItem("userType");
 
   return (
