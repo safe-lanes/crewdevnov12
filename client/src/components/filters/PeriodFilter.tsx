@@ -262,7 +262,7 @@ export const PeriodFilter = ({ value, onChange, className }: PeriodFilterProps) 
                   type="date"
                   value={dateFrom ? format(dateFrom, 'yyyy-MM-dd') : ''}
                   onChange={(e) => setDateFrom(parseDateInput(e.target.value))}
-                  className="w-full text-xs h-9 bg-white dark:bg-neutral-900 [&::-webkit-calendar-picker-indicator]:ml-auto"
+                  className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
                   data-testid="date-from-trigger"
                 />
               </div>
@@ -273,7 +273,7 @@ export const PeriodFilter = ({ value, onChange, className }: PeriodFilterProps) 
                   type="date"
                   value={dateTo ? format(dateTo, 'yyyy-MM-dd') : ''}
                   onChange={(e) => setDateTo(parseDateInput(e.target.value))}
-                  className="w-full text-xs h-9 bg-white dark:bg-neutral-900 [&::-webkit-calendar-picker-indicator]:ml-auto"
+                  className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
                   data-testid="date-to-trigger"
                 />
               </div>
