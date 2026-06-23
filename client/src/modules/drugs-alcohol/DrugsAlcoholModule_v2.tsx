@@ -861,7 +861,18 @@ export function DrugsAlcoholModule_v2() {
             case "summary":
                 return (
                     <div className="flex flex-col h-full">
-                        <SectionTitleComponents title="Summary" />
+                        <SectionTitleComponents title="Summary">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowFilters(!showFilters)}
+                                className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
+                                data-testid="button-toggle-filters"
+                            >
+                                <Filter className="h-4 w-4" />
+                                Filters
+                            </Button>
+                        </SectionTitleComponents>
                         {renderVesselOnlyFilterBar()}
                         {summaryVessel && (
                             <SummaryTable_v2 
