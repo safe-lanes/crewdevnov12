@@ -1,11 +1,20 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format } from 'date-fns';
+
+// Parse a native date input value ('yyyy-MM-dd') into a local Date (no timezone shift).
+function parseDateInput(value: string): Date | undefined {
+  if (!value) return undefined;
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day);
+}
 
 type FilterMode = 'year' | 'year-quarter' | 'year-month' | 'date-range';
 
@@ -249,50 +258,24 @@ export const PeriodFilter = ({ value, onChange, className }: PeriodFilterProps) 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs text-gray-600 dark:text-gray-400">Date From</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left text-xs h-9"
-                      data-testid="date-from-trigger"
-                    >
-                      <Calendar className="mr-2 h-3 w-3" />
-                      {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Select date'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={dateFrom}
-                      onSelect={setDateFrom}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Input
+                  type="date"
+                  value={dateFrom ? format(dateFrom, 'yyyy-MM-dd') : ''}
+                  onChange={(e) => setDateFrom(parseDateInput(e.target.value))}
+                  className="w-full text-xs h-9 bg-white dark:bg-neutral-900"
+                  data-testid="date-from-trigger"
+                />
               </div>
 
               <div className="space-y-2">
                 <Label className="text-xs text-gray-600 dark:text-gray-400">Date To</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left text-xs h-9"
-                      data-testid="date-to-trigger"
-                    >
-                      <Calendar className="mr-2 h-3 w-3" />
-                      {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Select date'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={dateTo}
-                      onSelect={setDateTo}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Input
+                  type="date"
+                  value={dateTo ? format(dateTo, 'yyyy-MM-dd') : ''}
+                  onChange={(e) => setDateTo(parseDateInput(e.target.value))}
+                  className="w-full text-xs h-9 bg-white dark:bg-neutral-900"
+                  data-testid="date-to-trigger"
+                />
               </div>
             </div>
           )}
