@@ -300,6 +300,53 @@ async function enrichRecordsWithComputedFields(
 
     const { _signOnDate, _signOffDate, ...cleanRecord } = record as any;
 
+    // Per-rank sign-on/off for a promotion (split) month. Each rank-period row
+    // must show the period it represents, not the raw employment sign-on that is
+    // stamped on every row in getByFilters. A NULL window (non-promotion month)
+    // leaves both dates untouched, so behaviour stays byte-identical.
+    let displaySignOn: string | null = _signOnDate ?? null;
+    let displaySignOff: string | null = _signOffDate ?? null;
+    let rankSignOnOffInfo: string | null | undefined;
+    // Only recompute when this row has an assignment-hydrated employment sign-on
+    // (_signOnDate). Read paths that don't hydrate assignment dates keep their
+    // existing sign-on/off untouched, so they stay byte-identical.
+    if (
+      matchedDaily &&
+      (matchedDaily.applicableFrom || matchedDaily.applicableTo) &&
+      record.monthValue &&
+      _signOnDate
+    ) {
+      const { firstDay, lastDay } = getMonthBounds(record.monthValue);
+      const empSignOn: string | null = _signOnDate ?? null;
+      const windowFrom = matchedDaily.applicableFrom ?? null;
+
+      // Sign-on = the later of the employment sign-on and this rank period's start
+      // (so the promoted row starts on the promotion date). Safe for both timings.
+      if (windowFrom) {
+        displaySignOn = (empSignOn && empSignOn > windowFrom) ? empSignOn : windowFrom;
+      }
+
+      // Sign-off = the start of the immediately following rank period (the handover
+      // / promotion date) — ON-BOARD case ONLY, i.e. the crew was already aboard
+      // before the promotion (employment sign-on precedes the handover date). For a
+      // prior-joining promotion the crew signs on at the new rank, so the employment
+      // sign-on equals the handover date and no synthetic sign-off is added.
+      const thisFrom = matchedDaily.applicableFrom ?? null;
+      let nextStart: string | null = null;
+      for (const d of dailyList) {
+        if (d === matchedDaily) continue;
+        const f = d.applicableFrom ?? null;
+        if (f && thisFrom && f > thisFrom && (!nextStart || f < nextStart)) {
+          nextStart = f;
+        }
+      }
+      if (nextStart && empSignOn && empSignOn < nextStart) {
+        displaySignOff = nextStart;
+      }
+
+      rankSignOnOffInfo = buildSignOnOffInfo(displaySignOn, displaySignOff, firstDay, lastDay);
+    }
+
     return {
       ...cleanRecord,
       ...(liveRecordingPercent !== undefined ? { recordingStatusPercent: liveRecordingPercent } : {}),
@@ -307,8 +354,9 @@ async function enrichRecordsWithComputedFields(
       ...(livePredictedViolations !== undefined ? { predictedViolations: livePredictedViolations } : {}),
       ...(liveTotalNCs !== undefined ? { totalNCs: liveTotalNCs } : {}),
       activityConflicting: liveActivityConflicting,
-      signOnDate: _signOnDate ?? null,
-      signOffDate: _signOffDate ?? null,
+      ...(rankSignOnOffInfo !== undefined ? { signOnOffInfo: rankSignOnOffInfo } : {}),
+      signOnDate: displaySignOn,
+      signOffDate: displaySignOff,
       predictedNCs: cappedPredictedNCs,
       vesselName,
       violationDates: violationDatesJson,
