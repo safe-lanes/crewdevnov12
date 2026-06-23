@@ -20,8 +20,6 @@ import accountsV2Routes from "./v2/accounts/routes";
 import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
 import { setupSwagger } from "./swagger";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
-import { storageAccount } from "./storage-accounts";
-import { insertPayElementSchema, insertContractPayElementSchema } from "@shared/schema";
 import { normalizeCrewMemberForTable, calculateCrewStatus } from "@shared/crew-mapping";
 import { tenantConnectionManager, TenantNotFoundError, TenantInactiveError } from "./utils/tenantConnectionManager";
 
@@ -544,95 +542,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("❌ Failed to fetch crew members with filters:", error);
       res.status(500).json({ error: "Failed to fetch crew members" });
-    }
-  });
-
-  // Accounts Payable / Payroll Integration API Routes
-  // Pay Elements API routes (Rate Tables & Rules)
-  app.get("/api/pay-elements", async (req, res) => {
-    try {
-      const payElements = await storageAccount.getPayElements();
-      res.json(payElements);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch pay elements" });
-    }
-  });
-
-  app.post("/api/pay-elements", async (req, res) => {
-    try {
-      const result = insertPayElementSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({ error: "Invalid pay element data", details: result.error.issues });
-      }
-      const payElement = await storageAccount.createPayElement(result.data);
-      res.json(payElement);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create pay element" });
-    }
-  });
-
-  app.put("/api/pay-elements/:id", async (req, res) => {
-    try {
-      const id = req.params.id;
-      const result = insertPayElementSchema.partial().safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({ error: "Invalid pay element data", details: result.error.issues });
-      }
-      const payElement = await storageAccount.updatePayElement(id, result.data);
-      if (!payElement) {
-        return res.status(404).json({ error: "Pay element not found" });
-      }
-      res.json(payElement);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update pay element" });
-    }
-  });
-
-  app.put("/api/pay-elements/:id", async (req, res) => {
-    try {
-      const id = req.params.id;
-      const result = insertPayElementSchema.partial().safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({ error: "Invalid pay element data", details: result.error.issues });
-      }
-      const payElement = await storageAccount.updatePayElement(id, result.data);
-      if (!payElement) {
-        return res.status(404).json({ error: "Pay element not found" });
-      }
-      res.json(payElement);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update pay element" });
-    }
-  });
-
-  // Contract Pay Elements API routes
-  app.put("/api/contract-pay-elements/:id", async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const result = insertContractPayElementSchema.partial().safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({ error: "Invalid contract pay element data", details: result.error.issues });
-      }
-      const contractPayElement = await storageAccount.updateContractPayElement(id, result.data);
-      if (!contractPayElement) {
-        return res.status(404).json({ error: "Contract pay element not found" });
-      }
-      res.json(contractPayElement);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to update contract pay element" });
-    }
-  });
-
-  app.post("/api/contract-pay-elements", async (req, res) => {
-    try {
-      const result = insertContractPayElementSchema.safeParse(req.body);
-      if (!result.success) {
-        return res.status(400).json({ error: "Invalid contract pay element data", details: result.error.issues });
-      }
-      const contractPayElement = await storageAccount.createContractPayElement(result.data);
-      res.json(contractPayElement);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to create contract pay element" });
     }
   });
 

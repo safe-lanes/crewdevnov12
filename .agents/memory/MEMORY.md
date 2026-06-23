@@ -7,3 +7,4 @@
 - [Accounts contract inheritance](accounts-contract-inheritance.md) — contracts auto-create per crew+group (partial unique) & inherit masters applicable=false; seed Portage values by flipping REAL inherited elements, not a parallel DEMO library.
 - [Accounts V2 payrun domain](accounts-payrun-domain.md) — payrun totals recomputed server-side from entries; PayrunDetailWorkspace entries UI unrouted (drift); dedup via partial unique index.
 - [Audit user sourcing](accounts-audit-user-sourcing.md) — parent JWT has no uuid; derive audit user from req.user.id server-side, never from request body/query.
+- [Accounts V1 fully removed](accounts-v1-removed.md) — all V1 Accounts routes/schema gone; but client store/wageRuns, store/payElements, components/wage|payroll are LIVE V2-adjacent (local types), do NOT delete.
