@@ -4,5 +4,6 @@
 - [Appraisal form live vs dead parts](appraisal-form-duplicate-parts.md) — live form renders extracted <PartA..G> from client/src/components/appraisal-form-parts/; inline Part A/B inside AppraisalForm_v2.tsx is DEAD (gated by activeSection==="information").
 - [Promotion rank propagation](promotion-rank-propagation.md) — promotions flip crew_members_v2.present_rank exactly-once via a transactional review_uuid ledger; on-board fires at completion, prior-joining fires at sign-on.
 - [Promotion list history rows](promotion-list-history-rows.md) — Crew Promotion list emits per crew an active next-rank row PLUS a historical row per completed review; not one row per crew.
+- [Accounts contract inheritance](accounts-contract-inheritance.md) — contracts auto-create per crew+group (partial unique) & inherit masters applicable=false; seed Portage values by flipping REAL inherited elements, not a parallel DEMO library.
 - [Accounts V2 payrun domain](accounts-payrun-domain.md) — payrun totals recomputed server-side from entries; PayrunDetailWorkspace entries UI unrouted (drift); dedup via partial unique index.
 - [Audit user sourcing](accounts-audit-user-sourcing.md) — parent JWT has no uuid; derive audit user from req.user.id server-side, never from request body/query.

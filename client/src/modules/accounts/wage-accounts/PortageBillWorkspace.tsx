@@ -124,15 +124,15 @@ export function PortageBillWorkspace() {
   const [selectedMonth, setSelectedMonth] = useState("2025-01");
   
   // Get payroll data for all crew members - using the same hook call structure always
-  const { data: payrollData1, isLoading: isLoading1 } = usePayrollData("2025-05-14");
-  const { data: payrollData2, isLoading: isLoading2 } = usePayrollData("2025-03-12");
-  const { data: payrollData3, isLoading: isLoading3 } = usePayrollData("2025-02-12");
+  const { data: payrollData1, isLoading: isLoading1 } = usePayrollData("DEMO-CREW-PB-001");
+  const { data: payrollData2, isLoading: isLoading2 } = usePayrollData("DEMO-CREW-PB-002");
+  const { data: payrollData3, isLoading: isLoading3 } = usePayrollData("DEMO-CREW-PB-003");
 
   // Create crew data array
   const crewPayrollData = [
-    { crew: { id: "2025-05-14", name: "James Wilson", rank: "Captain" }, payrollData: payrollData1, isLoading: isLoading1 },
-    { crew: { id: "2025-03-12", name: "Sarah Chen", rank: "Chief Engineer" }, payrollData: payrollData2, isLoading: isLoading2 },
-    { crew: { id: "2025-02-12", name: "Mike Rodriguez", rank: "Second Officer" }, payrollData: payrollData3, isLoading: isLoading3 }
+    { crew: { id: "DEMO-CREW-PB-001", name: "James Wilson", rank: "Master" }, payrollData: payrollData1, isLoading: isLoading1 },
+    { crew: { id: "DEMO-CREW-PB-002", name: "Sarah Chen", rank: "Chief Engineer" }, payrollData: payrollData2, isLoading: isLoading2 },
+    { crew: { id: "DEMO-CREW-PB-003", name: "Mike Rodriguez", rank: "Second Officer" }, payrollData: payrollData3, isLoading: isLoading3 }
   ];
 
   // Filter out crew members without data for now
