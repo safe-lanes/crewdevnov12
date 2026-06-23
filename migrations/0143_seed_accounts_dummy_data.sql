@@ -88,7 +88,7 @@ VALUES
   ('DEMO-PR-001', 'Vessel 1', '2025-01', 'draft',     'USD', 3,  24850,  2, 'Demo User', FALSE),
   ('DEMO-PR-002', 'Vessel 2', '2025-01', 'validated', 'USD', 18, 220500, 0, 'Demo User', FALSE),
   ('DEMO-PR-003', 'Vessel 1', '2024-12', 'approved',  'USD', 11, 138000, 1, 'Demo User', FALSE),
-  ('DEMO-PR-004', 'Vessel 3', '2025-01', 'paid',      'USD', 9,  99000,  0, 'Demo User', TRUE)
+  ('DEMO-PR-004', 'Vessel 3', '2025-01', 'paid',      'USD', 9,  99000,  0, 'Demo User', FALSE)
 ON CONFLICT DO NOTHING;
 
 -- ============================================================
