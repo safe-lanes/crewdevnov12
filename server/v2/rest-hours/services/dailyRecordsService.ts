@@ -101,6 +101,15 @@ function dateInMonth(date: string | null | undefined, firstDay: string, lastDay:
   return date >= firstDay && date <= lastDay;
 }
 
+// The ISO day immediately before `date` (UTC-safe). Used to end an assignment's
+// stats window the day before the next assignment's sign-on at a handover so the
+// handover day belongs solely to the later rank period.
+function previousDay(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
 function formatDateDisplay(date: string): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const parts = date.split('-');
@@ -275,6 +284,15 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
       }
     }
 
+    // A mid-month promotion splits the month into per-rank daily records (more
+    // than one distinct rank). When that has happened, a previous assignment
+    // that signs OFF on the exact day the next one signs ON is a genuine rank
+    // handover (e.g. a prior-joining promotion redeployed on the same vessel)
+    // and BOTH periods must survive so each rank gets its own crew row. Without
+    // a rank split (e.g. a same-rank re-sign on the same day) the boundary-
+    // touching pair collapses exactly as before — behaviour is byte-identical.
+    const hasRankSplit = new Set(dailyRecords.map(r => r.rank)).size > 1;
+
     let resolvedAssignments = assignments;
     if (assignments.length > 1) {
       const sorted = [...assignments].sort(
@@ -288,7 +306,14 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
         }
         const prev = kept[kept.length - 1];
         const prevOff = prev.signOffDate;
-        if (prevOff && curr.signOnDate && curr.signOnDate > prevOff) {
+        // Separate period when the next sign-on is strictly after the previous
+        // sign-off (a gap), or exactly on it when a rank split confirms the
+        // handover (the sign-off date is the last day of the old rank period).
+        const isSeparatePeriod = !!prevOff && !!curr.signOnDate && (
+          curr.signOnDate > prevOff ||
+          (curr.signOnDate === prevOff && hasRankSplit)
+        );
+        if (isSeparatePeriod) {
           kept.push(curr);
         } else {
           const prevDate = prev.signOnDate || '';
@@ -316,10 +341,22 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
       const dailyRecordsJson = dailyRecord.dailyRecords || '[]';
       const recordWindow = windowToDayRange(dailyRecord, monthYear);
 
-      for (const assignment of effectiveAssignments) {
+      for (let ai = 0; ai < effectiveAssignments.length; ai++) {
+        const assignment = effectiveAssignments[ai];
         const effectiveSignOff = assignment.isCurrent ? null : assignment.signOffDate;
-        const assignmentRange = (assignment.signOnDate || effectiveSignOff)
-          ? getApplicableDayRange(assignment.signOnDate, effectiveSignOff, firstDay, lastDay, monthYear)
+        // For the stats/day-range ONLY, end this assignment's window the day
+        // before the next assignment's sign-on when they meet at a handover
+        // boundary, so the handover day belongs solely to the later rank period
+        // (otherwise the boundary day would also fall inside this assignment and
+        // produce a spurious one-day row for the other rank). The displayed
+        // sign-on/off below still uses the real sign-off date.
+        const nextSignOn = effectiveAssignments[ai + 1]?.signOnDate ?? null;
+        let rangeSignOff = effectiveSignOff;
+        if (nextSignOn && (rangeSignOff === null || nextSignOn <= rangeSignOff)) {
+          rangeSignOff = previousDay(nextSignOn);
+        }
+        const assignmentRange = (assignment.signOnDate || rangeSignOff)
+          ? getApplicableDayRange(assignment.signOnDate, rangeSignOff, firstDay, lastDay, monthYear)
           : undefined;
 
         const dayRange = intersectRanges(recordWindow, assignmentRange);

@@ -578,6 +578,19 @@ export const crewRecordsService = {
           assignmentsByCrewId.set(crewId, list);
         }
 
+        // Distinct persisted ranks per crew this month. More than one rank means
+        // a mid-month promotion split persisted a per-rank record for each rank,
+        // so a previous assignment that signs off on the exact day the next one
+        // signs on is a genuine rank handover and both periods must survive.
+        // Without a rank split the boundary-touching pair collapses as before.
+        const distinctRanksByCrewId = new Map<string, Set<string>>();
+        for (const r of allRecords) {
+          if (r.vesselId !== vesselId) continue;
+          const set = distinctRanksByCrewId.get(r.crewMemberId) || new Set<string>();
+          if (r.rank) set.add(r.rank);
+          distinctRanksByCrewId.set(r.crewMemberId, set);
+        }
+
         const resolvedAssignments: { key: string; crewId: string; assignment: CrewAssignment }[] = [];
         for (const [crewId, assignments] of assignmentsByCrewId) {
           if (assignments.length === 1) {
@@ -587,6 +600,8 @@ export const crewRecordsService = {
 
           assignments.sort((a, b) => (a.signOnDate || '').localeCompare(b.signOnDate || ''));
 
+          const hasRankSplit = (distinctRanksByCrewId.get(crewId)?.size || 0) > 1;
+
           const kept: CrewAssignment[] = [];
           for (const curr of assignments) {
             if (kept.length === 0) {
@@ -595,7 +610,11 @@ export const crewRecordsService = {
             }
             const prev = kept[kept.length - 1];
             const prevOff = (prev.signOffDate && prev.signOffDate !== '') ? prev.signOffDate : null;
-            if (prevOff && curr.signOnDate && curr.signOnDate > prevOff) {
+            const isSeparatePeriod = !!prevOff && !!curr.signOnDate && (
+              curr.signOnDate > prevOff ||
+              (curr.signOnDate === prevOff && hasRankSplit)
+            );
+            if (isSeparatePeriod) {
               kept.push(curr);
             } else {
               const prevDate = prev.signOnDate || '';
