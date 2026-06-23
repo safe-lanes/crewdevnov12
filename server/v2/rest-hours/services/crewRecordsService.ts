@@ -578,18 +578,49 @@ export const crewRecordsService = {
           assignmentsByCrewId.set(crewId, list);
         }
 
-        // Distinct persisted ranks per crew this month. More than one rank means
-        // a mid-month promotion split persisted a per-rank record for each rank,
-        // so a previous assignment that signs off on the exact day the next one
-        // signs on is a genuine rank handover and both periods must survive.
-        // Without a rank split the boundary-touching pair collapses as before.
-        const distinctRanksByCrewId = new Map<string, Set<string>>();
-        for (const r of allRecords) {
-          if (r.vesselId !== vesselId) continue;
-          const set = distinctRanksByCrewId.get(r.crewMemberId) || new Set<string>();
-          if (r.rank) set.add(r.rank);
-          distinctRanksByCrewId.set(r.crewMemberId, set);
+        // Per-rank DAILY records are the source of truth for whether this month is
+        // split across ranks (a mid-month promotion writes one daily record per
+        // rank window). Derive the split signal and per-window rank from the daily
+        // records — NOT from persisted crew summary rows, which may be missing the
+        // old-rank row precisely in the scenario we need to detect (so they would
+        // report a single rank and wrongly collapse the boundary-touching pair).
+        const dailyForVessel = monthValue
+          ? await dailyRecordsRepository.findAll({ vesselId, monthYear: monthValue })
+          : [];
+        const dailyRecordsByCrewId = new Map<string, RhDailyRecordV2[]>();
+        for (const dr of dailyForVessel) {
+          const list = dailyRecordsByCrewId.get(dr.crewMemberId) || [];
+          list.push(dr);
+          dailyRecordsByCrewId.set(dr.crewMemberId, list);
         }
+        // More than one daily rank means a genuine rank handover, so a previous
+        // assignment that signs off on the exact day the next one signs on must
+        // survive as a separate period. Without a rank split the boundary-touching
+        // pair collapses as before (byte-identical).
+        const distinctRanksByCrewId = new Map<string, Set<string>>();
+        for (const [cid, drs] of Array.from(dailyRecordsByCrewId.entries())) {
+          const set = new Set<string>();
+          for (const dr of drs) if (dr.rank) set.add(dr.rank);
+          distinctRanksByCrewId.set(cid, set);
+        }
+
+        // Map an assignment period to the rank of the daily-record window that
+        // contains its sign-on date (fallbacks: first daily rank, then the crew's
+        // present rank). Used to label synthetic old-rank rows with the correct
+        // rank instead of the crew's current (promoted) rank.
+        const rankForAssignment = (cid: string, signOnDate: string | null): string | null => {
+          const drs = dailyRecordsByCrewId.get(cid) || [];
+          if (drs.length === 0) return null;
+          if (signOnDate) {
+            const containing = drs.find(dr => {
+              const wFrom = dr.applicableFrom || null;
+              const wTo = dr.applicableTo || null;
+              return (!wFrom || wFrom <= signOnDate) && (!wTo || wTo >= signOnDate);
+            });
+            if (containing?.rank) return containing.rank;
+          }
+          return drs[0].rank || null;
+        };
 
         const resolvedAssignments: { key: string; crewId: string; assignment: CrewAssignment }[] = [];
         for (const [crewId, assignments] of assignmentsByCrewId) {
@@ -696,16 +727,25 @@ export const crewRecordsService = {
             continue;
           }
 
-          // Multiple resolved assignments (sign-off/sign-on same month): keep one
-          // record per assignment, matched by sign-on/off info.
+          // Multiple resolved assignments (rank handover, or sign-off/sign-on the
+          // same month): match each assignment to a persisted record of its OWN
+          // rank — derived from the daily-record window that contains the
+          // assignment's sign-on date. This prevents a surviving record of one
+          // rank (e.g. the promoted Master row) from being mis-assigned to the
+          // other rank's assignment, which would mislabel the synthetic old-rank
+          // row. When the daily window gives no rank signal (no RH daily records,
+          // e.g. a plain sign-off/sign-on with no recording yet) we keep the
+          // legacy sign-on/off-based matching (byte-identical).
+          const expectedRank = rankForAssignment(crewId, assignment.signOnDate);
+          const pool = expectedRank
+            ? candidateRecords.filter(r => (r.rank || '') === expectedRank)
+            : candidateRecords;
+
           let bestRecord: RecordWithAssignment | null = null;
-          if (candidateRecords.length === 1) {
-            bestRecord = candidateRecords[0];
-          } else if (candidateRecords.length > 1) {
-            bestRecord = candidateRecords.find(r => r.signOnOffInfo === assignmentSignOnOff) || null;
-            if (!bestRecord) {
-              bestRecord = candidateRecords[0];
-            }
+          if (pool.length === 1) {
+            bestRecord = pool[0];
+          } else if (pool.length > 1) {
+            bestRecord = pool.find(r => r.signOnOffInfo === assignmentSignOnOff) || pool[0];
           }
 
           if (bestRecord) {
@@ -734,7 +774,7 @@ export const crewRecordsService = {
             rhCrewRecordUuid: `placeholder-${assignment.crewUuid}-${assignment.signOnDate || ''}-${monthValue}`,
             vesselId: vesselId,
             crewMemberId: crewId,
-            rank: assignment.presentRank || 'Unknown',
+            rank: rankForAssignment(crewId, assignment.signOnDate) || assignment.presentRank || 'Unknown',
             name: `${assignment.firstName || ''} ${assignment.familyName || ''}`.trim() || 'Unknown',
             month: formatMonthDisplay(monthValue),
             monthValue: monthValue,
