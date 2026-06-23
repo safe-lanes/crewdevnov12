@@ -29,14 +29,15 @@ ON CONFLICT (name) DO NOTHING;
 INSERT INTO adm_menumaster_ac (muid, name, display_name, route, parent_menu, is_active, sort_order)
 SELECT gen_random_uuid(), s.name, s.display_name, s.route, p.muid, true, s.sort_order
 FROM (VALUES
-  ('Rate Tables & Rules', 'Rate Tables & Rules', '/accounts/rate-tables',         1),
-  ('Contract Data',       'Contract Data',       '/accounts/contract-data',       2),
-  ('CBA Tables',          'CBA Tables',          '/accounts/cba-tables',          3),
-  ('Portage Bill',        'Portage Bill',        '/accounts/portage-bill',        4),
-  ('Allotments Manager',  'Allotments Manager',  '/accounts/allotments-manager',  5),
-  ('Advances & Bond',     'Advances & Bond',     '/accounts/advances-bond',       6),
-  ('Bank Files & Returns','Bank Files & Returns','/accounts/bank-files-returns',  7),
-  ('Account Reports',     'Reports',             '/accounts/reports',             8)
+  ('Payrun Board',        'Payrun Board',        '/accounts/payrun-board',        1),
+  ('Rate Tables & Rules', 'Rate Tables & Rules', '/accounts/rate-tables',         2),
+  ('Contract Data',       'Contract Data',       '/accounts/contract-data',       3),
+  ('CBA Tables',          'CBA Tables',          '/accounts/cba-tables',          4),
+  ('Portage Bill',        'Portage Bill',        '/accounts/portage-bill',        5),
+  ('Allotments Manager',  'Allotments Manager',  '/accounts/allotments-manager',  6),
+  ('Advances & Bond',     'Advances & Bond',     '/accounts/advances-bond',       7),
+  ('Bank Files & Returns','Bank Files & Returns','/accounts/bank-files-returns',  8),
+  ('Account Reports',     'Reports',             '/accounts/reports',             9)
 ) AS s(name, display_name, route, sort_order)
 CROSS JOIN (SELECT muid FROM adm_menumaster_ac WHERE name = 'Account' AND parent_menu IS NULL LIMIT 1) p
 ON CONFLICT (name) DO NOTHING;
