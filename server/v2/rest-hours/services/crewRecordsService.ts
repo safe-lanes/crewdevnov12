@@ -6,6 +6,7 @@ import { eq, and, or, isNull, inArray, lte, gte } from "drizzle-orm";
 import type {
   RhCrewRecordV2,
   InsertRhCrewRecordV2,
+  RhDailyRecordV2,
 } from "../../../../shared/v2/rest-hours/types";
 import {
   getViolationDates,
@@ -95,6 +96,13 @@ function getApplicableDayRange(
   return { from, to };
 }
 
+// Normalize a rank for matching crew-record rank against daily-record rank
+// (strip trailing suffixes like "_1", trim, lowercase).
+function normalizeRank(rank: string | null | undefined): string {
+  if (!rank) return '';
+  return rank.replace(/_\d+$/, '').trim().toLowerCase();
+}
+
 // ─── Audit helper ─────────────────────────────────────────────────────────────
 
 function applyAuditUser<T extends object>(
@@ -166,7 +174,11 @@ async function enrichRecordsWithComputedFields(
   const vesselIds = Array.from(new Set(records.map(r => r.vesselId)));
   const vesselNameMap = await resolveVesselNames(vesselIds);
 
-  const dailyRecordsMap = new Map<string, string>();
+  // Group daily records per crew/vessel/month. A promotion month has more than
+  // one record (one per rank window); a normal month has exactly one. We keep the
+  // full record (rank + applicable window) so each crew row can be enriched from
+  // ONLY its own rank's daily grid + applicable period.
+  const dailyRecordsMap = new Map<string, RhDailyRecordV2[]>();
   for (const vesselId of vesselIds) {
     const monthValues = Array.from(new Set(
       records
@@ -180,7 +192,9 @@ async function enrichRecordsWithComputedFields(
       });
       for (const dr of dailyRecords) {
         const key = `${dr.crewMemberId}-${dr.vesselId}-${dr.monthYear}`;
-        dailyRecordsMap.set(key, dr.dailyRecords);
+        const arr = dailyRecordsMap.get(key) || [];
+        arr.push(dr);
+        dailyRecordsMap.set(key, arr);
       }
     }
   }
@@ -204,7 +218,22 @@ async function enrichRecordsWithComputedFields(
   return records.map(record => {
     const vesselName = vesselNameMap.get(record.vesselId) || '';
     const key = `${record.crewMemberId}-${record.vesselId}-${record.monthValue}`;
-    const dailyRecordsJson = dailyRecordsMap.get(key);
+    const dailyList = dailyRecordsMap.get(key) || [];
+
+    // Pick the daily grid that belongs to THIS crew row's rank. With a single
+    // record (non-promotion month) the first/only entry is used, keeping behaviour
+    // byte-identical. With multiple rank-period records (promotion month) we match
+    // by rank, falling back to the full-month (NULL window) record if present.
+    let matchedDaily: RhDailyRecordV2 | undefined;
+    if (dailyList.length <= 1) {
+      matchedDaily = dailyList[0];
+    } else {
+      matchedDaily =
+        dailyList.find(d => normalizeRank(d.rank) === normalizeRank(record.rank)) ??
+        dailyList.find(d => !d.applicableFrom && !d.applicableTo) ??
+        dailyList[dailyList.length - 1];
+    }
+    const dailyRecordsJson = matchedDaily?.dailyRecords;
 
     let violationDatesJson: string | null = null;
     let predictedViolationDatesJson: string | null = null;
@@ -217,9 +246,24 @@ async function enrichRecordsWithComputedFields(
 
     if (dailyRecordsJson && record.monthValue) {
       const { firstDay, lastDay } = getMonthBounds(record.monthValue);
-      const dayRange = (record._signOnDate || record._signOffDate)
+      let dayRange = (record._signOnDate || record._signOffDate)
         ? getApplicableDayRange(record._signOnDate, record._signOffDate, firstDay, lastDay, record.monthValue)
         : undefined;
+
+      // Constrain to this rank's applicable window (promotion month). A NULL
+      // window means the whole month, so non-promotion records are unchanged.
+      if (matchedDaily && (matchedDaily.applicableFrom || matchedDaily.applicableTo)) {
+        const windowRange = getApplicableDayRange(
+          matchedDaily.applicableFrom,
+          matchedDaily.applicableTo,
+          firstDay,
+          lastDay,
+          record.monthValue
+        );
+        dayRange = dayRange
+          ? { from: Math.max(dayRange.from, windowRange.from), to: Math.min(dayRange.to, windowRange.to) }
+          : windowRange;
+      }
 
       const vDates = getViolationDates(dailyRecordsJson, complianceMode, opaMode, false, dayRange);
       const pDates = getViolationDates(dailyRecordsJson, complianceMode, opaMode, true, dayRange);
