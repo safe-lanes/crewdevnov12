@@ -7,6 +7,8 @@ import {
   accAllotmentsV2,
   accAdvancesV2,
   accBondItemsV2,
+  accPayrunsV2,
+  accPayrunEntriesV2,
 } from "./schema";
 
 const auditOmit = {
@@ -71,3 +73,23 @@ export const insertAccBondItemV2Schema = createInsertSchema(
 ).omit(auditOmit);
 export type InsertAccBondItemV2 = z.infer<typeof insertAccBondItemV2Schema>;
 export type AccBondItemV2 = typeof accBondItemsV2.$inferSelect;
+
+// ============================================
+// PAYRUNS
+// ============================================
+export const insertAccPayrunV2Schema = createInsertSchema(accPayrunsV2).omit(
+  auditOmit,
+);
+export type InsertAccPayrunV2 = z.infer<typeof insertAccPayrunV2Schema>;
+export type AccPayrunV2 = typeof accPayrunsV2.$inferSelect;
+
+// ============================================
+// PAYRUN ENTRIES
+// ============================================
+export const insertAccPayrunEntryV2Schema = createInsertSchema(
+  accPayrunEntriesV2,
+).omit(auditOmit);
+export type InsertAccPayrunEntryV2 = z.infer<
+  typeof insertAccPayrunEntryV2Schema
+>;
+export type AccPayrunEntryV2 = typeof accPayrunEntriesV2.$inferSelect;

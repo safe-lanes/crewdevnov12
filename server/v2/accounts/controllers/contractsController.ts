@@ -3,6 +3,22 @@ import { getAuditUserUuid } from "./_auth";
 import { contractsService } from "../services";
 
 export const contractsController = {
+  // GET /contracts?crewUuid=&vesselGroup=&status=
+  async getAll(req: Request, res: Response) {
+    try {
+      const { crewUuid, vesselGroup, status } = req.query;
+      const records = await contractsService.getAll({
+        crewUuid: crewUuid as string | undefined,
+        vesselGroup: vesselGroup as string | undefined,
+        status: status as string | undefined,
+      });
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching contracts:", error);
+      res.status(500).json({ error: "Failed to fetch contracts" });
+    }
+  },
+
   // GET /contract-data/:crewUuid?vesselGroup=
   async getContractData(req: Request, res: Response) {
     try {

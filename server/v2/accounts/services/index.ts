@@ -4,3 +4,4 @@ export { contractPayElementsService } from "./contractPayElementsService";
 export { allotmentsService } from "./allotmentsService";
 export { advancesService } from "./advancesService";
 export { bondItemsService } from "./bondItemsService";
+export { payrunsService } from "./payrunsService";

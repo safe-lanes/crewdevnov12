@@ -33,6 +33,14 @@ function payElementAppliesToGroup(
 }
 
 export const contractsService = {
+  async getAll(filters?: {
+    crewUuid?: string;
+    vesselGroup?: string;
+    status?: string;
+  }): Promise<AccContractV2[]> {
+    return contractsRepository.findAll(filters);
+  },
+
   async getByUuid(contractUuid: string): Promise<AccContractV2> {
     const record = await contractsRepository.findByUuid(contractUuid);
     if (!record) {

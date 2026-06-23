@@ -6,6 +6,7 @@ import {
   allotmentsController,
   advancesController,
   bondItemsController,
+  payrunsController,
 } from "./controllers";
 
 const router = Router();
@@ -25,6 +26,7 @@ router.delete("/pay-elements/:uuid", payElementsController.delete);
 // ============================================
 // Returns { contractData, earnings, deductions } for a crew member + vessel group,
 // auto-creating a draft contract and inheriting master pay elements on first access.
+router.get("/contracts", contractsController.getAll);
 router.get("/contract-data/:crewUuid", contractsController.getContractData);
 router.get("/contracts/:uuid", contractsController.getByUuid);
 router.put("/contracts/:uuid/status", contractsController.updateStatus);
@@ -83,5 +85,17 @@ router.post("/bond-items", bondItemsController.create);
 router.put("/bond-items/:uuid", bondItemsController.update);
 router.patch("/bond-items/:uuid", bondItemsController.update);
 router.delete("/bond-items/:uuid", bondItemsController.delete);
+
+// ============================================
+// PAYRUNS (Payrun Board + Detail)
+// ============================================
+router.get("/payruns", payrunsController.getAll);
+router.get("/payruns/:uuid", payrunsController.getByUuid);
+router.post("/payruns", payrunsController.create);
+router.put("/payruns/:uuid", payrunsController.update);
+router.patch("/payruns/:uuid", payrunsController.update);
+router.delete("/payruns/:uuid", payrunsController.delete);
+router.get("/payruns/:uuid/entries", payrunsController.getEntries);
+router.put("/payruns/:uuid/entries", payrunsController.saveEntries);
 
 export default router;

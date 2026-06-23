@@ -28,6 +28,7 @@ export type PayrunStatus = "draft" | "validated" | "approved" | "paid" | "posted
 
 export interface PayrunDetailFormData {
   id: string;
+  payrunUuid?: string;
   period: string;
   vessel: string;
   fxPolicy: string;

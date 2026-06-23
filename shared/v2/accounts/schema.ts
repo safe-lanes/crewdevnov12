@@ -190,3 +190,54 @@ export const accBondItemsV2 = pgTable(
     crewIdx: index("idx_acc_bond_items_v2_crew").on(table.crewUuid),
   }),
 );
+
+// ============================================
+// PAYRUNS (per vessel + period)
+// ============================================
+export const accPayrunsV2 = pgTable(
+  "acc_payruns_v2",
+  {
+    id: serial("id").primaryKey(),
+    payrunUuid: text("payrun_uuid").notNull().unique(),
+    vesselUuid: text("vessel_uuid"),
+    vessel: text("vessel").notNull(),
+    period: text("period").notNull(),
+    status: text("status").notNull().default("draft"), // draft | validated | approved | paid | posted
+    currency: text("currency").notNull().default("USD"),
+    crewCount: integer("crew_count").notNull().default(0),
+    netTotal: integer("net_total").notNull().default(0),
+    warnings: integer("warnings").notNull().default(0),
+    lastUpdatedBy: text("last_updated_by"),
+    isOffCycle: boolean("is_off_cycle").notNull().default(false),
+    ...auditColumns,
+  },
+  (table) => ({
+    vesselIdx: index("idx_acc_payruns_v2_vessel").on(table.vesselUuid),
+    statusIdx: index("idx_acc_payruns_v2_status").on(table.status),
+  }),
+);
+
+// ============================================
+// PAYRUN ENTRIES (per crew line within a payrun)
+// ============================================
+export const accPayrunEntriesV2 = pgTable(
+  "acc_payrun_entries_v2",
+  {
+    id: serial("id").primaryKey(),
+    payrunEntryUuid: text("payrun_entry_uuid").notNull().unique(),
+    payrunUuid: text("payrun_uuid").notNull(),
+    crewUuid: text("crew_uuid").notNull(),
+    crewName: text("crew_name"),
+    rank: text("rank"),
+    grossEarnings: integer("gross_earnings").notNull().default(0),
+    totalDeductions: integer("total_deductions").notNull().default(0),
+    netPay: integer("net_pay").notNull().default(0),
+    currency: text("currency").notNull().default("USD"),
+    status: text("status").notNull().default("draft"),
+    ...auditColumns,
+  },
+  (table) => ({
+    payrunIdx: index("idx_acc_payrun_entries_v2_payrun").on(table.payrunUuid),
+    crewIdx: index("idx_acc_payrun_entries_v2_crew").on(table.crewUuid),
+  }),
+);

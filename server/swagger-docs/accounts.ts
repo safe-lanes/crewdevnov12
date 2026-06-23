@@ -349,4 +349,115 @@
  *       200: { description: Bond item deleted }
  */
 
+/**
+ * @openapi
+ * /api/v2/accounts/payruns:
+ *   get:
+ *     tags: [Accounts]
+ *     summary: List tenant-scoped pay runs (Payrun Board)
+ *     parameters:
+ *       - in: query
+ *         name: vesselUuid
+ *         schema: { type: string }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [draft, validated, approved, paid, posted] }
+ *     responses:
+ *       200: { description: Array of pay runs }
+ *   post:
+ *     tags: [Accounts]
+ *     summary: Create a pay run
+ *     responses:
+ *       201: { description: Pay run created }
+ *       400: { description: Invalid pay run data }
+ *
+ * /api/v2/accounts/payruns/{uuid}:
+ *   get:
+ *     tags: [Accounts]
+ *     summary: Get a pay run by uuid
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Pay run details }
+ *       404: { description: Pay run not found }
+ *   put:
+ *     tags: [Accounts]
+ *     summary: Update a pay run
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Pay run updated }
+ *   patch:
+ *     tags: [Accounts]
+ *     summary: Update a pay run (partial)
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Pay run updated }
+ *   delete:
+ *     tags: [Accounts]
+ *     summary: Soft-delete a pay run (and its entries)
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       204: { description: Pay run deleted }
+ *
+ * /api/v2/accounts/payruns/{uuid}/entries:
+ *   get:
+ *     tags: [Accounts]
+ *     summary: List per-crew entries for a pay run
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Array of pay run entries }
+ *       404: { description: Pay run not found }
+ *   put:
+ *     tags: [Accounts]
+ *     summary: Replace the per-crew entries for a pay run (recomputes totals)
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Saved pay run entries }
+ *       400: { description: Invalid pay run entries data }
+ *       404: { description: Pay run not found }
+ */
+
+/**
+ * @openapi
+ * /api/v2/accounts/contracts:
+ *   get:
+ *     tags: [Accounts]
+ *     summary: List tenant-scoped contracts
+ *     parameters:
+ *       - in: query
+ *         name: crewUuid
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vesselGroup
+ *         schema: { type: string }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string }
+ *     responses:
+ *       200: { description: Array of contracts }
+ */
+
 export {};

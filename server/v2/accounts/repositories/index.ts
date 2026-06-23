@@ -4,3 +4,5 @@ export { ContractPayElementsRepository } from "./contractPayElementsRepository";
 export { AllotmentsRepository } from "./allotmentsRepository";
 export { AdvancesRepository } from "./advancesRepository";
 export { BondItemsRepository } from "./bondItemsRepository";
+export { PayrunsRepository } from "./payrunsRepository";
+export { PayrunEntriesRepository } from "./payrunEntriesRepository";
