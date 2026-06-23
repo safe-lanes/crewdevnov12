@@ -571,7 +571,15 @@ export const dailyRecordsService = {
   ): Promise<RhDailyRecordV2> {
     await this.getByUuid(rhDailyUuid);
 
-    const dataWithAudit = applyAuditUser(data, false);
+    // The identity/unique-key columns (crewMemberId, vesselId, monthYear, rank)
+    // must never change on an update — they define the row's identity and the
+    // unique index (crew_member_id, vessel_id, month_year, rank). After a
+    // mid-month promotion a crew has two per-rank records; the recording form
+    // sends the crew's CURRENT present_rank, so saving the old-rank row would
+    // otherwise try to set rank to the new rank and collide with the new-rank
+    // record. Strip these columns so an update only ever modifies the data.
+    const { crewMemberId, vesselId, monthYear, rank, ...mutableData } = data;
+    const dataWithAudit = applyAuditUser(mutableData, false);
     const updated = await dailyRecordsRepository.update(rhDailyUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update daily record: ${rhDailyUuid}`);
