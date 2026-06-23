@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo, useCallback } from "react";
+import { useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,7 +119,8 @@ export function PortageBillWorkspace() {
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   
   // Filter states
-  const [selectedVessel, setSelectedVessel] = useState("mv-atlantic-star");
+  const { data: vessels = [] } = useVesselsV2();
+  const [selectedVessel, setSelectedVessel] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("2025-01");
   
   // Get payroll data for all crew members - using the same hook call structure always
@@ -356,16 +358,7 @@ export function PortageBillWorkspace() {
 
   // Get display values for selected filters
   const getVesselName = (value: string) => {
-    const vessels = {
-      "mv-atlantic-star": "MV Atlantic Star",
-      "mv-atlantic-explorer": "MV Atlantic Explorer", 
-      "mv-pacific-voyager": "MV Pacific Voyager",
-      "mv-northern-star": "MV Northern Star",
-      "mv-southern-cross": "MV Southern Cross",
-      "mv-eastern-dawn": "MV Eastern Dawn",
-      "mv-western-wind": "MV Western Wind"
-    };
-    return vessels[value as keyof typeof vessels] || "MV Atlantic Star";
+    return value === "all" ? "All Vessels" : value;
   };
 
   const getMonthName = (value: string) => {
@@ -451,13 +444,12 @@ export function PortageBillWorkspace() {
               <SelectValue placeholder="Select Vessel" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="mv-atlantic-star">MV Atlantic Star</SelectItem>
-              <SelectItem value="mv-atlantic-explorer">MV Atlantic Explorer</SelectItem>
-              <SelectItem value="mv-pacific-voyager">MV Pacific Voyager</SelectItem>
-              <SelectItem value="mv-northern-star">MV Northern Star</SelectItem>
-              <SelectItem value="mv-southern-cross">MV Southern Cross</SelectItem>
-              <SelectItem value="mv-eastern-dawn">MV Eastern Dawn</SelectItem>
-              <SelectItem value="mv-western-wind">MV Western Wind</SelectItem>
+              <SelectItem value="all">All Vessels</SelectItem>
+              {vessels.map((v: any) => (
+                <SelectItem key={v.vesselUuid} value={v.vessel} data-testid={`option-vessel-${v.vesselUuid}`}>
+                  {v.vessel}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 

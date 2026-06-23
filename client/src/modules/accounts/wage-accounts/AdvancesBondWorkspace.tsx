@@ -4,6 +4,8 @@
  */
 
 import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -187,7 +189,11 @@ export function AdvancesBondWorkspace() {
   const [activeTab, setActiveTab] = useState("advances");
   const [isNewAdvanceOpen, setIsNewAdvanceOpen] = useState(false);
   const [isImportBondOpen, setIsImportBondOpen] = useState(false);
-  const [selectedVessel, setSelectedVessel] = useState("mv-atlantic-star");
+  const { data: vessels = [] } = useVesselsV2();
+  const { data: crewList = [] } = useQuery<any[]>({
+    queryKey: ["/api/v2/crew-pool/crew"],
+  });
+  const [selectedVessel, setSelectedVessel] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("2025-01");
   const [selectedAdvanceCap, setSelectedAdvanceCap] = useState("2000");
   const [newAdvanceData, setNewAdvanceData] = useState({
@@ -274,9 +280,11 @@ export function AdvancesBondWorkspace() {
                         <SelectValue placeholder="Select crew member" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="CREW001">James Wilson (Captain)</SelectItem>
-                        <SelectItem value="CREW002">Sarah Chen (Chief Engineer)</SelectItem>
-                        <SelectItem value="CREW003">Mike Rodriguez (Second Officer)</SelectItem>
+                        {crewList.map((c: any) => (
+                          <SelectItem key={c.crewUuid} value={c.crewUuid} data-testid={`option-crew-${c.crewUuid}`}>
+                            {`${c.firstName || ''} ${c.familyName || ''}`.trim()}{c.presentRank ? ` (${c.presentRank})` : ''}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -381,13 +389,12 @@ export function AdvancesBondWorkspace() {
               <SelectValue placeholder="Select Vessel" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="mv-atlantic-star">MV Atlantic Star</SelectItem>
-              <SelectItem value="mv-atlantic-explorer">MV Atlantic Explorer</SelectItem>
-              <SelectItem value="mv-pacific-voyager">MV Pacific Voyager</SelectItem>
-              <SelectItem value="mv-northern-star">MV Northern Star</SelectItem>
-              <SelectItem value="mv-southern-cross">MV Southern Cross</SelectItem>
-              <SelectItem value="mv-eastern-dawn">MV Eastern Dawn</SelectItem>
-              <SelectItem value="mv-western-wind">MV Western Wind</SelectItem>
+              <SelectItem value="all">All Vessels</SelectItem>
+              {vessels.map((v: any) => (
+                <SelectItem key={v.vesselUuid} value={v.vessel} data-testid={`option-vessel-${v.vesselUuid}`}>
+                  {v.vessel}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
