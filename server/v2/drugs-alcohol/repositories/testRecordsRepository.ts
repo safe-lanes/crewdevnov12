@@ -1,4 +1,4 @@
-import { eq, and, desc, ne } from "drizzle-orm";
+import { eq, and, asc, desc, ne } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   daTestRecordsV2,
@@ -69,7 +69,8 @@ export class TestRecordsRepository {
       db
         .select()
         .from(daPersonnelTestedV2)
-        .where(eq(daPersonnelTestedV2.isDeleted, false)),
+        .where(eq(daPersonnelTestedV2.isDeleted, false))
+        .orderBy(asc(daPersonnelTestedV2.sortOrder)),
       db
         .select()
         .from(daSignaturesV2)
@@ -162,7 +163,8 @@ export class TestRecordsRepository {
             eq(daPersonnelTestedV2.testRecordUuid, daUuid),
             eq(daPersonnelTestedV2.isDeleted, false)
           )
-        ),
+        )
+        .orderBy(asc(daPersonnelTestedV2.sortOrder)),
       db
         .select()
         .from(daSignaturesV2)
