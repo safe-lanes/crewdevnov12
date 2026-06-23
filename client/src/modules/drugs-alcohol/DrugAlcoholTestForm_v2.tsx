@@ -21,6 +21,12 @@ import { useToast } from '@/hooks/use-toast';
 import { drugsAlcoholApiV2 } from './api/drugsAlcoholApiV2';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 
+function getCurrentLocalDateTime() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 // Equipment entry schema
 const equipmentEntrySchema = z.object({
   id: z.string(),
@@ -833,6 +839,72 @@ export function DrugAlcoholTestForm_v2({
     drugTestDateTime,
     personnelFields,
     form,
+  ]);
+
+  // Auto-fill test-completion date/time + handle Type-of-Test switches.
+  // NEW forms only. Never overwrites existing/saved values (fills only when empty).
+  // Crossing the Post-Incident boundary (either direction) clears the now-stale
+  // Part A date(s) and the Part B date cells, then re-fills for the active type.
+  const prevTestTypeRef = useRef(selectedTestType);
+
+  useEffect(() => {
+    // New forms only — existing records and drafts are never touched.
+    if (recordUuid || draftData) {
+      prevTestTypeRef.current = selectedTestType;
+      return;
+    }
+
+    const prev = prevTestTypeRef.current;
+    const next = selectedTestType;
+
+    const crossingIntoPost =
+      prev !== next && next === 'post-incident';
+
+    const crossingOutOfPost =
+      prev !== next &&
+      prev === 'post-incident' &&
+      next !== 'post-incident';
+
+    prevTestTypeRef.current = next;
+
+    // 1) On a Post-Incident boundary crossing, clear stale Part A + Part B dates.
+    if (crossingIntoPost || crossingOutOfPost) {
+      if (crossingIntoPost) {
+        form.setValue('dateTimeTestCompleted', '');
+      } else {
+        form.setValue('alcoholTestDateTime', '');
+        form.setValue('drugTestDateTime', '');
+      }
+
+      personnelFields.forEach((_, i) => {
+        form.setValue(`personnelTested.${i}.alcoholTest.date`, '');
+        form.setValue(`personnelTested.${i}.drugTest.date`, '');
+      });
+    }
+
+    // 2) Auto-fill the field(s) relevant to the current type, only when empty.
+    if (next === 'post-incident') {
+      if (showAlcoholFields && !form.getValues('alcoholTestDateTime')) {
+        form.setValue('alcoholTestDateTime', getCurrentLocalDateTime());
+      }
+
+      if (showDrugFields && !form.getValues('drugTestDateTime')) {
+        form.setValue('drugTestDateTime', getCurrentLocalDateTime());
+      }
+    } else {
+      if (!form.getValues('dateTimeTestCompleted')) {
+        form.setValue('dateTimeTestCompleted', getCurrentLocalDateTime());
+      }
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    recordUuid,
+    draftData,
+    selectedTestType,
+    showAlcoholFields,
+    showDrugFields,
+    personnelFields,
   ]);
 
   // Render continuous sections (Part A & Part B)
