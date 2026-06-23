@@ -84,12 +84,18 @@ export const rhDailyRecordsV2 = pgTable("rh_daily_records_v2", {
   showPlanning: boolean("show_planning").default(false),
   opaMode: boolean("opa_mode").default(false),
   watchkeeper: boolean("watchkeeper").default(false),
+  // Rank-period applicability window (promotion month). NULL = whole month, so
+  // every non-promotion record behaves exactly as before. Days outside
+  // [applicableFrom, applicableTo] render as N/A / non-editable for this record.
+  applicableFrom: text("applicable_from"),
+  applicableTo: text("applicable_to"),
   ...auditColumns,
 }, (table) => ({
   uniqueCrewVesselMonth: uniqueIndex("rh_daily_records_v2_unique_idx").on(
     table.crewMemberId,
     table.vesselId,
-    table.monthYear
+    table.monthYear,
+    table.rank
   ),
 }));
 
@@ -158,6 +164,11 @@ export const rhFixedTasksV2 = pgTable("rh_fixed_tasks_v2", {
   monthYear: text("month_year").notNull(),
   seaHours: text("sea_hours").notNull(),
   portHours: text("port_hours").notNull(),
+  // Rank-period applicability window (promotion month). NULL = whole month.
+  applicableFrom: text("applicable_from"),
+  applicableTo: text("applicable_to"),
+  // Old-rank fixed-task row is locked read-only once the new-rank row is created.
+  isLocked: boolean("is_locked").notNull().default(false),
   ...auditColumns,
 });
 

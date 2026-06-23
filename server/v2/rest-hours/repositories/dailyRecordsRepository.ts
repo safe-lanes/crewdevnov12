@@ -49,11 +49,14 @@ export class DailyRecordsRepository {
     return results[0];
   }
 
-  async findByKey(
+  // All rank-period records for a crew/vessel/month, ordered chronologically by
+  // their applicability window (full-month / null window first). In the common
+  // non-promotion case this returns a single record.
+  async findAllByKey(
     crewMemberId: string,
     vesselId: string,
     monthYear: string
-  ): Promise<RhDailyRecordV2 | undefined> {
+  ): Promise<RhDailyRecordV2[]> {
     const db = getDb();
     const results = await db
       .select()
@@ -66,7 +69,33 @@ export class DailyRecordsRepository {
           eq(rhDailyRecordsV2.isDeleted, false)
         )
       );
-    return results[0];
+    return results.sort(
+      (a: RhDailyRecordV2, b: RhDailyRecordV2) =>
+        (a.applicableFrom ?? '').localeCompare(b.applicableFrom ?? '')
+    );
+  }
+
+  // Single "active" record for a crew/vessel/month. With no split (the common
+  // case) there is exactly one record and this is byte-identical to before. When
+  // a promotion has split the month, the latest rank period is returned so legacy
+  // single-record callers see the current rank. When `rank` is supplied and a
+  // split exists, the record for that specific rank period is returned so each
+  // rank row in the UI edits its own window.
+  async findByKey(
+    crewMemberId: string,
+    vesselId: string,
+    monthYear: string,
+    rank?: string
+  ): Promise<RhDailyRecordV2 | undefined> {
+    const all = await this.findAllByKey(crewMemberId, vesselId, monthYear);
+    if (all.length <= 1) return all[0];
+    if (rank) {
+      const byRank = all.filter((r: RhDailyRecordV2) => r.rank === rank);
+      if (byRank.length > 0) return byRank[byRank.length - 1];
+    }
+    const fullMonth = all.find((r: RhDailyRecordV2) => !r.applicableFrom && !r.applicableTo);
+    if (fullMonth) return fullMonth;
+    return all[all.length - 1];
   }
 
   async create(

@@ -523,10 +523,10 @@ export const RHRecordingForm = ({
   // Fetch existing record if available
   // V1 pattern: /api/rest-hours-daily-records/by-key/:crewMemberId/:vesselId/:monthYear
   const { data: existingRecord, isError } = useQuery<RestHoursDailyRecord>({
-    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
+    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod, initialRank],
     queryFn: async () => {
       try {
-        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, selectedVesselId, selectedPeriod);
+        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, selectedVesselId, selectedPeriod, initialRank || undefined);
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
           return null; // No existing record found
@@ -1877,8 +1877,20 @@ export const RHRecordingForm = ({
       to = parseInt(effectiveSignOffDate.split('-')[2], 10);
     }
 
+    // When a promotion has split the month, this record only applies to its own
+    // rank-period window [applicableFrom, applicableTo]. Intersect that window so
+    // days belonging to the other rank period render as N/A / non-editable.
+    const applicableFrom = (existingRecord as any)?.applicableFrom as string | null | undefined;
+    const applicableTo = (existingRecord as any)?.applicableTo as string | null | undefined;
+    if (applicableFrom && applicableFrom >= firstDay && applicableFrom <= lastDay) {
+      from = Math.max(from, parseInt(applicableFrom.split('-')[2], 10));
+    }
+    if (applicableTo && applicableTo >= firstDay && applicableTo <= lastDay) {
+      to = Math.min(to, parseInt(applicableTo.split('-')[2], 10));
+    }
+
     return { from, to };
-  }, [selectedPeriod, effectiveSignOnDate, effectiveSignOffDate]);
+  }, [selectedPeriod, effectiveSignOnDate, effectiveSignOffDate, existingRecord]);
 
   // Generate display rows - now 1:1 mapping since retarded days have separate records
   const displayRows = useMemo(() => {

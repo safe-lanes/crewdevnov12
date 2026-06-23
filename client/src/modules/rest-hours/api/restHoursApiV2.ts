@@ -225,8 +225,11 @@ export const restHoursApiV2 = {
     },
 
     // V1 pattern: /api/rest-hours-daily-records/by-key/:crewMemberId/:vesselId/:monthYear
-    async getByKey(crewMemberId: string, vesselId: string, monthYear: string) {
-      const url = `${V2_BASE}/daily-records/by-key/${encodeURIComponent(crewMemberId)}/${encodeURIComponent(vesselId)}/${encodeURIComponent(monthYear)}`;
+    // When `rank` is supplied, a promotion-split month returns the record for that
+    // specific rank period so each rank row edits its own applicability window.
+    async getByKey(crewMemberId: string, vesselId: string, monthYear: string, rank?: string) {
+      const query = rank ? `?rank=${encodeURIComponent(rank)}` : '';
+      const url = `${V2_BASE}/daily-records/by-key/${encodeURIComponent(crewMemberId)}/${encodeURIComponent(vesselId)}/${encodeURIComponent(monthYear)}${query}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch daily record by key');
       return response.json();

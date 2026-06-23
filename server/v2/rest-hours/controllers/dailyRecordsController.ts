@@ -20,10 +20,12 @@ export const dailyRecordsController = {
   async getByKey(req: Request, res: Response) {
     try {
       const { crewMemberId, vesselId, monthYear } = req.params;
+      const rank = typeof req.query.rank === "string" ? req.query.rank : undefined;
       const record = await dailyRecordsService.getByKey(
         crewMemberId,
         vesselId,
-        monthYear
+        monthYear,
+        rank
       );
       if (!record) {
         return res.status(404).json({ error: "Daily record not found" });

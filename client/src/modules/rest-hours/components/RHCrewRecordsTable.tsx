@@ -591,6 +591,10 @@ export function RHCrewRecordsTable({ vesselId, monthValue, selectedRanks, search
         <AgGridReact
           ref={gridRef}
           rowData={records}
+          getRowId={(params) => {
+            const r = params.data as RestHoursCrewRecord;
+            return `${r.crewMemberId}-${r.rank ?? ''}-${r.monthValue}-${(r as any).signOnOffInfo ?? ''}`;
+          }}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
           gridOptions={{ theme: 'legacy' }}

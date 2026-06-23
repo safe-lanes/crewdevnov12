@@ -959,6 +959,38 @@ export class PromotionReviewsService {
           err,
         );
       }
+
+      // Phase 3b — split Rest Hours the same way: close the promotion month's
+      // existing record at split-date−1 and open a new new-rank record for the
+      // remainder, so RH compliance is attributed per rank. Same non-fatal,
+      // ledger-gated, idempotent policy as the sea-service split above — the rank
+      // flip is the committed core and must not be rolled back by an RH hiccup.
+      try {
+        const { rhPromotionService } = await import(
+          "../../rest-hours/services/rhPromotionService"
+        );
+        const rhSplit = await rhPromotionService.splitForPromotion({
+          crewUuid: crew.crewUuid ?? "",
+          empNo: empNo ?? "",
+          newRank: toRank ?? "",
+          oldRank: fromRank ?? "",
+          splitDate: effectiveDate ?? "",
+          auditUserUuid: actorUuid,
+        });
+        if (rhSplit.status === "skipped-invalid-input") {
+          console.warn(
+            `[promotion-engine] Rest-hours split SKIPPED for review ${reviewUuid} ` +
+            `(crew ${crew.crewUuid}): missing/invalid split date "${effectiveDate ?? ""}". ` +
+            `Rank was flipped; RH records will be created under the new rank on next save.`,
+          );
+        }
+      } catch (err) {
+        console.error(
+          `[promotion-engine] Rest-hours split FAILED for review ${reviewUuid} ` +
+          `(crew ${crew.crewUuid}, non-fatal): rank is flipped but the RH month is un-split.`,
+          err,
+        );
+      }
     }
   }
 
