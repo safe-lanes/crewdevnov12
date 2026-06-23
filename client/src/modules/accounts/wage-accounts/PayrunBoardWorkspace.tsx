@@ -7,6 +7,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 import type { AccPayrunV2 } from "@shared/v2/accounts/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -192,6 +193,9 @@ export function PayrunBoardWorkspace() {
   const { data: payruns = [], isLoading } = useQuery<AccPayrunV2[]>({
     queryKey: [PAYRUNS_KEY],
   });
+
+  // Tenant-scoped vessels (V2 masters) for the filter + create form
+  const { data: vessels = [] } = useVesselsV2();
 
   const saveMutation = useMutation({
     mutationFn: async (data: PayrunDetailFormData) => {
@@ -526,12 +530,17 @@ export function PayrunBoardWorkspace() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Vessels</SelectItem>
-              <SelectItem value="atlantic">MV Atlantic Explorer</SelectItem>
-              <SelectItem value="pacific">MV Pacific Voyager</SelectItem>
-              <SelectItem value="northern">MV Northern Star</SelectItem>
-              <SelectItem value="southern">MV Southern Cross</SelectItem>
-              <SelectItem value="eastern">MV Eastern Dawn</SelectItem>
-              <SelectItem value="western">MV Western Wind</SelectItem>
+              {vessels
+                .filter((v: any) => v?.vessel)
+                .map((v: any) => (
+                  <SelectItem
+                    key={v.vesselUuid ?? v.vessel}
+                    value={v.vessel}
+                    data-testid={`select-vessel-${v.vesselUuid ?? v.vessel}`}
+                  >
+                    {v.vessel}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
 
