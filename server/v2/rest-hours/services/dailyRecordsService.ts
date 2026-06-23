@@ -291,7 +291,7 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
     // and BOTH periods must survive so each rank gets its own crew row. Without
     // a rank split (e.g. a same-rank re-sign on the same day) the boundary-
     // touching pair collapses exactly as before — behaviour is byte-identical.
-    const hasRankSplit = new Set(dailyRecords.map(r => r.rank)).size > 1;
+    const hasRankSplit = new Set(dailyRecords.map(r => r.rank).filter(Boolean)).size > 1;
 
     let resolvedAssignments = assignments;
     if (assignments.length > 1) {

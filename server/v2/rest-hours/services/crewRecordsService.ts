@@ -604,22 +604,40 @@ export const crewRecordsService = {
           distinctRanksByCrewId.set(cid, set);
         }
 
-        // Map an assignment period to the rank of the daily-record window that
-        // contains its sign-on date (fallbacks: first daily rank, then the crew's
-        // present rank). Used to label synthetic old-rank rows with the correct
-        // rank instead of the crew's current (promoted) rank.
-        const rankForAssignment = (cid: string, signOnDate: string | null): string | null => {
-          const drs = dailyRecordsByCrewId.get(cid) || [];
+        // Map an assignment period to the rank of the daily-record window with the
+        // GREATEST overlap against the assignment's in-month range. Overlap (not
+        // sign-on containment) is required because an assignment can start before
+        // the month under review, in which case its sign-on lies outside every
+        // window and containment would wrongly fall back to an arbitrary rank.
+        // Windows and the assignment are clamped to the month; ties break toward
+        // the earliest window (deterministic, independent of repository order).
+        // Fallbacks: earliest daily rank, then null.
+        const dayNum = (d: string) => Math.floor(Date.parse(`${d}T00:00:00Z`) / 86400000);
+        const rankForAssignment = (
+          cid: string,
+          signOnDate: string | null,
+          signOffDate: string | null,
+        ): string | null => {
+          const drs = (dailyRecordsByCrewId.get(cid) || [])
+            .slice()
+            .sort((a, b) => (a.applicableFrom || '').localeCompare(b.applicableFrom || ''));
           if (drs.length === 0) return null;
-          if (signOnDate) {
-            const containing = drs.find(dr => {
-              const wFrom = dr.applicableFrom || null;
-              const wTo = dr.applicableTo || null;
-              return (!wFrom || wFrom <= signOnDate) && (!wTo || wTo >= signOnDate);
-            });
-            if (containing?.rank) return containing.rank;
+          const aStart = signOnDate && signOnDate > firstDay ? signOnDate : firstDay;
+          const aEnd = signOffDate && signOffDate !== '' && signOffDate < lastDay ? signOffDate : lastDay;
+          let best: RhDailyRecordV2 | null = null;
+          let bestOverlap = -1;
+          for (const dr of drs) {
+            const wFrom = dr.applicableFrom && dr.applicableFrom > firstDay ? dr.applicableFrom : firstDay;
+            const wTo = dr.applicableTo && dr.applicableTo !== '' && dr.applicableTo < lastDay ? dr.applicableTo : lastDay;
+            const lo = aStart > wFrom ? aStart : wFrom;
+            const hi = aEnd < wTo ? aEnd : wTo;
+            const overlap = hi >= lo ? dayNum(hi) - dayNum(lo) + 1 : -1;
+            if (overlap > bestOverlap) {
+              bestOverlap = overlap;
+              best = dr;
+            }
           }
-          return drs[0].rank || null;
+          return best?.rank || drs[0].rank || null;
         };
 
         const resolvedAssignments: { key: string; crewId: string; assignment: CrewAssignment }[] = [];
@@ -736,7 +754,7 @@ export const crewRecordsService = {
           // row. When the daily window gives no rank signal (no RH daily records,
           // e.g. a plain sign-off/sign-on with no recording yet) we keep the
           // legacy sign-on/off-based matching (byte-identical).
-          const expectedRank = rankForAssignment(crewId, assignment.signOnDate);
+          const expectedRank = rankForAssignment(crewId, assignment.signOnDate, effectiveSignOffDate);
           const pool = expectedRank
             ? candidateRecords.filter(r => (r.rank || '') === expectedRank)
             : candidateRecords;
@@ -774,7 +792,7 @@ export const crewRecordsService = {
             rhCrewRecordUuid: `placeholder-${assignment.crewUuid}-${assignment.signOnDate || ''}-${monthValue}`,
             vesselId: vesselId,
             crewMemberId: crewId,
-            rank: rankForAssignment(crewId, assignment.signOnDate) || assignment.presentRank || 'Unknown',
+            rank: rankForAssignment(crewId, assignment.signOnDate, effectiveSignOffDate) || assignment.presentRank || 'Unknown',
             name: `${assignment.firstName || ''} ${assignment.familyName || ''}`.trim() || 'Unknown',
             month: formatMonthDisplay(monthValue),
             monthValue: monthValue,
