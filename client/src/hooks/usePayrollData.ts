@@ -27,7 +27,7 @@ export interface CrewPayrollData {
   crewRank: string;
   vessel: string;
   contractData: {
-    id: number;
+    id: string;
     currency: string;
     vesselGroup: string;
   };
@@ -57,19 +57,19 @@ export function usePayrollData(crewMemberId: string | null) {
         console.log(`📊 Fetching combined payroll data for crew: ${crewMemberId}`);
         
         // 1. Fetch Contract Data (includes inherited elements from Rate Tables & Rules)
-        const contractResponse = await fetch(`/api/contract-data/${crewMemberId}`);
+        const contractResponse = await fetch(`/api/v2/accounts/contract-data/${crewMemberId}`);
         if (!contractResponse.ok) {
           throw new Error(`Failed to fetch contract data: ${contractResponse.status}`);
         }
         const contractData = await contractResponse.json();
         
-        // 2. Fetch Crew Member Info
-        const crewResponse = await fetch(`/api/crew-members`);
+        // 2. Fetch Crew Member Info (native V2 crew pool)
+        const crewResponse = await fetch(`/api/v2/crew-pool/crew`);
         if (!crewResponse.ok) {
           throw new Error(`Failed to fetch crew members: ${crewResponse.status}`);
         }
         const crewMembers = await crewResponse.json();
-        const crewMember = crewMembers.find((c: any) => c.id === crewMemberId);
+        const crewMember = crewMembers.find((c: any) => c.crewUuid === crewMemberId);
         
         if (!crewMember) {
           throw new Error(`Crew member not found: ${crewMemberId}`);
@@ -93,11 +93,11 @@ export function usePayrollData(crewMemberId: string | null) {
 
         const result: CrewPayrollData = {
           crewMemberId,
-          crewName: `${crewMember.firstName} ${crewMember.lastName}`,
-          crewRank: crewMember.rank || 'Unknown',
-          vessel: crewMember.vessel || '',
+          crewName: `${crewMember.firstName} ${crewMember.familyName || ''}`.trim(),
+          crewRank: crewMember.presentRank || 'Unknown',
+          vessel: crewMember.empNo || '',
           contractData: {
-            id: contractData.contractData?.id || 0,
+            id: contractData.contractData?.contractUuid || '',
             currency: contractData.contractData?.currency || 'USD',
             vesselGroup: contractData.contractData?.vesselGroup || 'all-vessels'
           },
@@ -182,7 +182,7 @@ export function usePayrollData(crewMemberId: string | null) {
 async function fetchAllotments(crewMemberId: string) {
   try {
     console.log(`🏦 Fetching allotments for crew: ${crewMemberId}`);
-    const response = await fetch(`/api/allotments/crew/${crewMemberId}`);
+    const response = await fetch(`/api/v2/accounts/allotments/crew/${crewMemberId}`);
     if (!response.ok) throw new Error('Failed to fetch allotments');
     return response.json();
   } catch (error) {
@@ -194,7 +194,7 @@ async function fetchAllotments(crewMemberId: string) {
 async function fetchAdvances(crewMemberId: string) {
   try {
     console.log(`💰 Fetching advances for crew: ${crewMemberId}`);
-    const response = await fetch(`/api/advances/crew/${crewMemberId}`);
+    const response = await fetch(`/api/v2/accounts/advances/crew/${crewMemberId}`);
     if (!response.ok) throw new Error('Failed to fetch advances');
     return response.json();
   } catch (error) {
@@ -206,7 +206,7 @@ async function fetchAdvances(crewMemberId: string) {
 async function fetchBonds(crewMemberId: string) {
   try {
     console.log(`🛒 Fetching bond purchases for crew: ${crewMemberId}`);
-    const response = await fetch(`/api/bond-items/crew/${crewMemberId}`);
+    const response = await fetch(`/api/v2/accounts/bond-items/crew/${crewMemberId}`);
     if (!response.ok) throw new Error('Failed to fetch bond items');
     return response.json();
   } catch (error) {

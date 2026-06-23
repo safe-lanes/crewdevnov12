@@ -1,31 +1,54 @@
 /**
  * Contract Data Store
- * Manages crew member contract wage information with automatic inheritance from Rate Tables & Rules
+ * Manages crew member contract wage information with automatic inheritance from
+ * Rate Tables & Rules. Backed by the native V2 Accounts API (/api/v2/accounts).
  */
 
 import { create } from 'zustand';
-import type { ContractData, ContractPayElement } from '@shared/schema';
+import type {
+  AccContractV2,
+  AccContractPayElementV2,
+} from '@shared/v2/accounts/types';
+
+const V2_BASE = '/api/v2/accounts';
 
 interface ContractDataState {
   // Current contract data
-  contractData: ContractData | null;
-  earnings: ContractPayElement[];
-  deductions: ContractPayElement[];
+  contractData: AccContractV2 | null;
+  earnings: AccContractPayElementV2[];
+  deductions: AccContractPayElementV2[];
   isLoading: boolean;
-  
+
   // UI state
   selectedCrewId: string | null;
-  
+
   // Actions
-  fetchContractData: (crewMemberId: string, vesselGroup?: string) => Promise<void>;
-  updatePayElementApplicability: (elementId: number, applicable: boolean) => Promise<void>;
-  updatePayElementValue: (elementId: number, value: string | null) => Promise<void>;
-  addCustomPayElement: (element: Partial<ContractPayElement>) => Promise<void>;
-  removeCustomPayElement: (elementId: number) => Promise<void>;
-  updateContractStatus: (contractId: number, status: 'draft' | 'active') => Promise<void>;
-  updateContractEffectiveDate: (contractId: number, effectiveDate: string) => Promise<void>;
+  fetchContractData: (crewUuid: string, vesselGroup?: string) => Promise<void>;
+  updatePayElementApplicability: (
+    contractPayElementUuid: string,
+    applicable: boolean,
+  ) => Promise<void>;
+  updatePayElementValue: (
+    contractPayElementUuid: string,
+    value: string | null,
+  ) => Promise<void>;
+  addCustomPayElement: (
+    element: Partial<AccContractPayElementV2>,
+  ) => Promise<void>;
+  removeCustomPayElement: (contractPayElementUuid: string) => Promise<void>;
+  updateContractStatus: (
+    contractUuid: string,
+    status: 'draft' | 'active',
+  ) => Promise<void>;
+  updateContractEffectiveDate: (
+    contractUuid: string,
+    effectiveDate: string,
+  ) => Promise<void>;
   setSelectedCrewId: (id: string | null) => void;
 }
+
+const sortByOrder = (a: AccContractPayElementV2, b: AccContractPayElementV2) =>
+  (a.sortOrder || 0) - (b.sortOrder || 0);
 
 export const useContractDataStore = create<ContractDataState>((set, get) => ({
   // Initial state
@@ -34,22 +57,24 @@ export const useContractDataStore = create<ContractDataState>((set, get) => ({
   deductions: [],
   isLoading: false,
   selectedCrewId: null,
-  
+
   // Fetch contract data with automatic pay element inheritance
-  fetchContractData: async (crewMemberId: string, vesselGroup = "all-vessels") => {
+  fetchContractData: async (crewUuid: string, vesselGroup = 'all-vessels') => {
     set({ isLoading: true });
     try {
-      const response = await fetch(`/api/contract-data/${crewMemberId}?vesselGroup=${vesselGroup}`);
+      const response = await fetch(
+        `${V2_BASE}/contract-data/${crewUuid}?vesselGroup=${vesselGroup}`,
+      );
       if (!response.ok) {
         throw new Error('Failed to fetch contract data');
       }
       const data = await response.json();
-      
+
       set({
         contractData: data.contractData,
-        earnings: data.earnings.sort((a: ContractPayElement, b: ContractPayElement) => (a.sortOrder || 0) - (b.sortOrder || 0)),
-        deductions: data.deductions.sort((a: ContractPayElement, b: ContractPayElement) => (a.sortOrder || 0) - (b.sortOrder || 0)),
-        isLoading: false
+        earnings: (data.earnings || []).sort(sortByOrder),
+        deductions: (data.deductions || []).sort(sortByOrder),
+        isLoading: false,
       });
     } catch (error) {
       console.error('Error fetching contract data:', error);
@@ -57,29 +82,42 @@ export const useContractDataStore = create<ContractDataState>((set, get) => ({
       throw error;
     }
   },
-  
+
   // Update pay element applicability (toggle on/off)
-  updatePayElementApplicability: async (elementId: number, applicable: boolean) => {
+  updatePayElementApplicability: async (contractPayElementUuid, applicable) => {
     try {
-      const response = await fetch(`/api/contract-pay-elements/${elementId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ applicable })
-      });
-      
+      const response = await fetch(
+        `${V2_BASE}/contract-pay-elements/${contractPayElementUuid}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ applicable }),
+        },
+      );
+
       if (!response.ok) {
         throw new Error('Failed to update pay element applicability');
       }
-      
-      const updatedElement = await response.json();
-      
+
+      const updatedElement: AccContractPayElementV2 = await response.json();
+
       set((state) => {
-        const updateArray = (arr: ContractPayElement[]) =>
-          arr.map(item => item.id === elementId ? updatedElement : item);
-        
+        const updateArray = (arr: AccContractPayElementV2[]) =>
+          arr.map((item) =>
+            item.contractPayElementUuid === contractPayElementUuid
+              ? updatedElement
+              : item,
+          );
+
         return {
-          earnings: updatedElement.type === 'earning' ? updateArray(state.earnings) : state.earnings,
-          deductions: updatedElement.type === 'deduction' ? updateArray(state.deductions) : state.deductions
+          earnings:
+            updatedElement.type === 'earning'
+              ? updateArray(state.earnings)
+              : state.earnings,
+          deductions:
+            updatedElement.type === 'deduction'
+              ? updateArray(state.deductions)
+              : state.deductions,
         };
       });
     } catch (error) {
@@ -87,29 +125,42 @@ export const useContractDataStore = create<ContractDataState>((set, get) => ({
       throw error;
     }
   },
-  
+
   // Update pay element value
-  updatePayElementValue: async (elementId: number, value: string | null) => {
+  updatePayElementValue: async (contractPayElementUuid, value) => {
     try {
-      const response = await fetch(`/api/contract-pay-elements/${elementId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value })
-      });
-      
+      const response = await fetch(
+        `${V2_BASE}/contract-pay-elements/${contractPayElementUuid}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value }),
+        },
+      );
+
       if (!response.ok) {
         throw new Error('Failed to update pay element value');
       }
-      
-      const updatedElement = await response.json();
-      
+
+      const updatedElement: AccContractPayElementV2 = await response.json();
+
       set((state) => {
-        const updateArray = (arr: ContractPayElement[]) =>
-          arr.map(item => item.id === elementId ? updatedElement : item);
-        
+        const updateArray = (arr: AccContractPayElementV2[]) =>
+          arr.map((item) =>
+            item.contractPayElementUuid === contractPayElementUuid
+              ? updatedElement
+              : item,
+          );
+
         return {
-          earnings: updatedElement.type === 'earning' ? updateArray(state.earnings) : state.earnings,
-          deductions: updatedElement.type === 'deduction' ? updateArray(state.deductions) : state.deductions
+          earnings:
+            updatedElement.type === 'earning'
+              ? updateArray(state.earnings)
+              : state.earnings,
+          deductions:
+            updatedElement.type === 'deduction'
+              ? updateArray(state.deductions)
+              : state.deductions,
         };
       });
     } catch (error) {
@@ -117,60 +168,67 @@ export const useContractDataStore = create<ContractDataState>((set, get) => ({
       throw error;
     }
   },
-  
+
   // Add custom pay element
-  addCustomPayElement: async (element: Partial<ContractPayElement>) => {
+  addCustomPayElement: async (element) => {
     const { contractData } = get();
     if (!contractData) {
       throw new Error('No contract data available');
     }
-    
+
     try {
-      const response = await fetch('/api/contract-pay-elements', {
+      const response = await fetch(`${V2_BASE}/contract-pay-elements`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          ...element, 
-          contractId: contractData.id,
-          isCustom: true, 
-          isInherited: false 
-        })
+        body: JSON.stringify({
+          ...element,
+          contractUuid: contractData.contractUuid,
+          isCustom: true,
+          isInherited: false,
+        }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to create custom pay element');
       }
-      
-      const newElement = await response.json();
-      
+
+      const newElement: AccContractPayElementV2 = await response.json();
+
       set((state) => ({
-        earnings: newElement.type === 'earning' 
-          ? [...state.earnings, newElement].sort((a, b) => a.sortOrder - b.sortOrder)
-          : state.earnings,
-        deductions: newElement.type === 'deduction' 
-          ? [...state.deductions, newElement].sort((a, b) => a.sortOrder - b.sortOrder)
-          : state.deductions
+        earnings:
+          newElement.type === 'earning'
+            ? [...state.earnings, newElement].sort(sortByOrder)
+            : state.earnings,
+        deductions:
+          newElement.type === 'deduction'
+            ? [...state.deductions, newElement].sort(sortByOrder)
+            : state.deductions,
       }));
     } catch (error) {
       console.error('Error adding custom pay element:', error);
       throw error;
     }
   },
-  
+
   // Remove custom pay element
-  removeCustomPayElement: async (elementId: number) => {
+  removeCustomPayElement: async (contractPayElementUuid) => {
     try {
-      const response = await fetch(`/api/contract-pay-elements/${elementId}`, {
-        method: 'DELETE'
-      });
-      
+      const response = await fetch(
+        `${V2_BASE}/contract-pay-elements/${contractPayElementUuid}`,
+        { method: 'DELETE' },
+      );
+
       if (!response.ok) {
         throw new Error('Failed to delete custom pay element');
       }
-      
+
       set((state) => ({
-        earnings: state.earnings.filter(item => item.id !== elementId),
-        deductions: state.deductions.filter(item => item.id !== elementId)
+        earnings: state.earnings.filter(
+          (item) => item.contractPayElementUuid !== contractPayElementUuid,
+        ),
+        deductions: state.deductions.filter(
+          (item) => item.contractPayElementUuid !== contractPayElementUuid,
+        ),
       }));
     } catch (error) {
       console.error('Error removing custom pay element:', error);
@@ -179,52 +237,64 @@ export const useContractDataStore = create<ContractDataState>((set, get) => ({
   },
 
   // Update contract status
-  updateContractStatus: async (contractId: number, status: 'draft' | 'active') => {
+  updateContractStatus: async (contractUuid, status) => {
     try {
-      const response = await fetch(`/api/contract-data/${contractId}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      
+      const response = await fetch(
+        `${V2_BASE}/contracts/${contractUuid}/status`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status }),
+        },
+      );
+
       if (!response.ok) {
         throw new Error('Failed to update contract status');
       }
-      
-      const updatedContract = await response.json();
-      
+
+      const updatedContract: AccContractV2 = await response.json();
+
       set((state) => ({
-        contractData: state.contractData?.id === contractId ? updatedContract : state.contractData
+        contractData:
+          state.contractData?.contractUuid === contractUuid
+            ? updatedContract
+            : state.contractData,
       }));
     } catch (error) {
       console.error('Error updating contract status:', error);
       throw error;
     }
   },
-  
+
   // Update contract effective date
-  updateContractEffectiveDate: async (contractId: number, effectiveDate: string) => {
+  updateContractEffectiveDate: async (contractUuid, effectiveDate) => {
     try {
-      const response = await fetch(`/api/contract-data/${contractId}/effective-date`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ effectiveDate })
-      });
-      
+      const response = await fetch(
+        `${V2_BASE}/contracts/${contractUuid}/effective-date`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ effectiveDate }),
+        },
+      );
+
       if (!response.ok) {
         throw new Error('Failed to update contract effective date');
       }
-      
-      const updatedContract = await response.json();
-      
+
+      const updatedContract: AccContractV2 = await response.json();
+
       set((state) => ({
-        contractData: state.contractData?.id === contractId ? updatedContract : state.contractData
+        contractData:
+          state.contractData?.contractUuid === contractUuid
+            ? updatedContract
+            : state.contractData,
       }));
     } catch (error) {
       console.error('Error updating contract effective date:', error);
       throw error;
     }
   },
-  
-  setSelectedCrewId: (id) => set({ selectedCrewId: id })
+
+  setSelectedCrewId: (id) => set({ selectedCrewId: id }),
 }));
