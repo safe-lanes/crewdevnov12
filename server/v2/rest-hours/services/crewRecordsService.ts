@@ -529,6 +529,16 @@ export const crewRecordsService = {
           }
         }
 
+        // How many resolved assignments does each crew have this month? A single
+        // resolved assignment can still map to MULTIPLE crew records when the
+        // crew was promoted mid-month (the per-rank split from Task #601): one
+        // record per rank period. Multiple resolved assignments only happen on a
+        // genuine sign-off/sign-on within the same month.
+        const assignmentCountByCrewId = new Map<string, number>();
+        for (const ra of resolvedAssignments) {
+          assignmentCountByCrewId.set(ra.crewId, (assignmentCountByCrewId.get(ra.crewId) || 0) + 1);
+        }
+
         const matchedRecordIds = new Set<number>();
         const matchedKeys = new Set<string>();
         for (const { key, crewId, assignment } of resolvedAssignments) {
@@ -544,6 +554,39 @@ export const crewRecordsService = {
             r => r.vesselId === vesselId && r.crewMemberId === crewId && !matchedRecordIds.has(r.id)
           );
 
+          if (candidateRecords.length === 0) continue;
+
+          const isSingleAssignment = (assignmentCountByCrewId.get(crewId) || 0) === 1;
+
+          // Single resolved assignment: surface the best record for EACH distinct
+          // rank. For the common (non-promotion) case there is exactly one rank,
+          // so this collapses to a single record — byte-identical to before.
+          // For a mid-month promotion there are multiple ranks, so we keep one
+          // row per rank instead of dropping the old-rank row.
+          if (isSingleAssignment) {
+            const recordsByRank = new Map<string, RecordWithAssignment[]>();
+            for (const r of candidateRecords) {
+              const rk = r.rank || '';
+              const list = recordsByRank.get(rk) || [];
+              list.push(r);
+              recordsByRank.set(rk, list);
+            }
+
+            for (const rankRecords of Array.from(recordsByRank.values())) {
+              const bestRecord = rankRecords.length === 1
+                ? rankRecords[0]
+                : (rankRecords.find((r: RecordWithAssignment) => r.signOnOffInfo === assignmentSignOnOff) || rankRecords[0]);
+              matchedRecordIds.add(bestRecord.id);
+              bestRecord.signOnOffInfo = assignmentSignOnOff;
+              bestRecord._signOnDate = assignment.signOnDate;
+              bestRecord._signOffDate = effectiveSignOffDate;
+            }
+            matchedKeys.add(key);
+            continue;
+          }
+
+          // Multiple resolved assignments (sign-off/sign-on same month): keep one
+          // record per assignment, matched by sign-on/off info.
           let bestRecord: RecordWithAssignment | null = null;
           if (candidateRecords.length === 1) {
             bestRecord = candidateRecords[0];
