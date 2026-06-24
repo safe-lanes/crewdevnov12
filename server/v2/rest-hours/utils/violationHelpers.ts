@@ -182,9 +182,18 @@ export function calculateRecordingPercentage(
       (applicableTo - applicableFrom + 1) + dayCountAdjustment
     );
 
+    const advancedDays = new Set<number>(
+      Array.isArray(datelineAdjustments)
+        ? datelineAdjustments
+            .filter(a => a.type === 'advanced')
+            .map(a => a.day)
+        : []
+    );
+
     const filledDays = dailyRecords.filter((day: any) => {
       const isPlan = day.isPlan === true;
       if (isPlan) return false;
+      if (day.day != null && advancedDays.has(day.day)) return false;
       if (applicableDayRange && day.day != null) {
         if (day.day < applicableFrom || day.day > applicableTo) return false;
       }
