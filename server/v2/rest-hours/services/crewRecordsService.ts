@@ -15,6 +15,7 @@ import {
   calculateRecordingPercentage,
 } from "../utils/violationHelpers";
 import { detectActivityConflict } from "../utils/activityConflictHelpers";
+import { rankResolutionService } from "./rankResolutionService";
 
 const crewRecordsRepository = new CrewRecordsRepository();
 const dailyRecordsRepository = new DailyRecordsRepository();
@@ -775,6 +776,20 @@ export const crewRecordsService = {
           }
         }
 
+        // For unrecorded months there are no daily records, so rankForAssignment
+        // yields null and the placeholder would otherwise fall back to the crew's
+        // LIVE present_rank — which back-propagates a later promotion onto earlier
+        // months (e.g. a June promotion relabelling March). Resolve the rank each
+        // crew held at the END of the viewed month from the promotion ledger so a
+        // month entirely before the promotion shows the prior rank, while a month
+        // on/after the promotion shows the new rank. Batched once per vessel.
+        const placeholderCrewIds = resolvedAssignments
+          .filter(({ key }) => !matchedKeys.has(key))
+          .map(({ crewId }) => crewId);
+        const rankAsOfMonthEnd = placeholderCrewIds.length > 0
+          ? await rankResolutionService.resolveRanksAsOfDate(placeholderCrewIds, lastDay)
+          : {};
+
         for (const { key, crewId, assignment } of resolvedAssignments) {
           if (matchedKeys.has(key)) continue;
 
@@ -792,7 +807,7 @@ export const crewRecordsService = {
             rhCrewRecordUuid: `placeholder-${assignment.crewUuid}-${assignment.signOnDate || ''}-${monthValue}`,
             vesselId: vesselId,
             crewMemberId: crewId,
-            rank: rankForAssignment(crewId, assignment.signOnDate, effectiveSignOffDate) || assignment.presentRank || 'Unknown',
+            rank: rankForAssignment(crewId, assignment.signOnDate, effectiveSignOffDate) || rankAsOfMonthEnd[crewId] || assignment.presentRank || 'Unknown',
             name: `${assignment.firstName || ''} ${assignment.familyName || ''}`.trim() || 'Unknown',
             month: formatMonthDisplay(monthValue),
             monthValue: monthValue,

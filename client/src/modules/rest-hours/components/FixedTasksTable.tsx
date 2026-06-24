@@ -419,6 +419,35 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     return vesselCrewMembers.map(c => c.empNo).join(',');
   }, [vesselCrewMembers]);
 
+  const rosterEmpNos = useMemo(() => {
+    return vesselCrewMembers.map((c: any) => c.empNo).filter(Boolean);
+  }, [vesselCrewMembers]);
+
+  // End of the selected month — the as-of date for resolving each crew's
+  // historical rank from promotion history.
+  const monthEndDate = useMemo(() => {
+    if (!monthYear) return '';
+    const [y, m] = monthYear.split('-').map(Number);
+    const lastDayDate = new Date(y, m, 0);
+    return `${y}-${String(m).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+  }, [monthYear]);
+
+  // Resolve the rank each crew member held during this month from promotion
+  // history. For a crew promoted later (e.g. June), an earlier month (March)
+  // resolves to the prior rank instead of their current present_rank.
+  const { data: rankAsOfMonth = {} } = useQuery<Record<string, string>>({
+    queryKey: ['v2', 'rest-hours', 'fixed-tasks', 'ranks-as-of-date', monthEndDate, crewMemberIds],
+    queryFn: () => restHoursApiV2.variableTasks.getRanksAsOfDate(monthEndDate, rosterEmpNos),
+    enabled: !!monthEndDate && rosterEmpNos.length > 0,
+  });
+
+  const rankAsOfMonthKey = useMemo(() => {
+    return Object.entries(rankAsOfMonth)
+      .map(([k, v]) => `${k}:${v}`)
+      .sort()
+      .join(',');
+  }, [rankAsOfMonth]);
+
   const existingTaskIds = useMemo(() => {
     return existingTasks.map(t => `${t.crewMemberId}-${t.id}`).join(',');
   }, [existingTasks]);
@@ -469,8 +498,18 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
         
         return localIsEmpty && serverHasData;
       });
+
+      // Check if the historical (as-of-month) rank resolved after init and now
+      // differs from a row that has no stored server task. The stored task's rank
+      // always wins; only placeholder rows (no server task) follow promotion history.
+      const needsRankRefresh = crewTasks.some(task => {
+        const serverTask = pickActiveFixedTask(existingTasks, task.crewMemberId, monthYear);
+        if (serverTask) return false;
+        const historical = rankAsOfMonth[task.crewMemberId];
+        return !!historical && historical !== task.rank;
+      });
       
-      if (hasRosterChange || needsServerDataMerge) {
+      if (hasRosterChange || needsServerDataMerge || needsRankRefresh) {
         // Merge: keep existing crew data (if has local edits), add new crew, remove departed crew
         setCrewTasks(prev => {
           const existingByCrewId = new Map(prev.map(t => [t.crewMemberId, t]));
@@ -488,7 +527,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
               if (localIsEmpty && serverHasData) {
                 return {
                   ...existingLocal,
-                  rank: (existingServer as any)?.rank || existingLocal.rank,
+                  rank: (existingServer as any)?.rank || rankAsOfMonth[crew.empNo] || existingLocal.rank,
                   seaHours: parseHoursData(existingServer?.seaHours),
                   portHours: parseHoursData(existingServer?.portHours),
                   taskId: existingServer?.id || existingLocal.taskId,
@@ -498,7 +537,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
               
               return {
                 ...existingLocal,
-                rank: (existingServer as any)?.rank || existingLocal.rank,
+                rank: (existingServer as any)?.rank || rankAsOfMonth[crew.empNo] || existingLocal.rank,
                 taskId: existingServer?.id || existingLocal.taskId,
                 fixedTaskUuid: (existingServer as any)?.fixedTaskUuid || existingLocal.fixedTaskUuid,
               };
@@ -507,7 +546,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
             return {
               crewMemberId: crew.empNo,
               crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
-              rank: (existingServer as any)?.rank || crew.presentRank || '',
+              rank: (existingServer as any)?.rank || rankAsOfMonth[crew.empNo] || crew.presentRank || '',
               seaHours: parseHoursData(existingServer?.seaHours),
               portHours: parseHoursData(existingServer?.portHours),
               taskId: existingServer?.id,
@@ -520,7 +559,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
           const serverTask = pickActiveFixedTask(existingTasks, task.crewMemberId, monthYear);
           return {
             ...task,
-            rank: (serverTask as any)?.rank || task.rank,
+            rank: (serverTask as any)?.rank || rankAsOfMonth[task.crewMemberId] || task.rank,
             taskId: serverTask?.id || task.taskId,
             fixedTaskUuid: (serverTask as any)?.fixedTaskUuid || task.fixedTaskUuid,
           };
@@ -537,7 +576,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       return {
         crewMemberId: crew.empNo,
         crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
-        rank: (existingTask as any)?.rank || crew.presentRank || '',
+        rank: (existingTask as any)?.rank || rankAsOfMonth[crew.empNo] || crew.presentRank || '',
         seaHours: parseHoursData(existingTask?.seaHours),
         portHours: parseHoursData(existingTask?.portHours),
         taskId: existingTask?.id,
@@ -548,7 +587,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     setCrewTasks(tasks);
     hasInitializedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [crewMemberIds, existingTaskIds, vesselId, monthYear]);
+  }, [crewMemberIds, existingTaskIds, vesselId, monthYear, rankAsOfMonthKey]);
 
   // Save mutation
   const saveMutation = useMutation({
