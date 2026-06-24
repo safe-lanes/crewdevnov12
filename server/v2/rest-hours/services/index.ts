@@ -6,4 +6,5 @@ export { officeCommentsService } from "./officeCommentsService";
 export { ncReportsService } from "./ncReportsService";
 export { fixedTasksService } from "./fixedTasksService";
 export { variableTasksService } from "./variableTasksService";
+export { rankResolutionService } from "./rankResolutionService";
 export { datelineService } from "./datelineService";

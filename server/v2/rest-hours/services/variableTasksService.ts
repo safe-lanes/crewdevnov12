@@ -4,11 +4,61 @@ import type {
   InsertRhVariableTaskV2,
 } from "../../../../shared/v2/rest-hours/types";
 import { detectActivityConflict } from "../utils/activityConflictHelpers";
+import { rankResolutionService, toIsoDate } from "./rankResolutionService";
 
 const variableTasksRepository = new VariableTasksRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
 const dailyRecordsRepository = new DailyRecordsRepository();
 const vesselRecordsRepository = new VesselRecordsRepository();
+
+/**
+ * Authoritatively stamp each involved crew member's rank with the rank they
+ * held on the task's start date, derived from the promotion ledger. This keeps
+ * the `crew_involved_details` snapshot historically correct for new, back-dated,
+ * and edited tasks regardless of what rank the client submitted.
+ *
+ * The crew rank lives only inside the `crew_involved_details` JSON
+ * (`{ crew: [{ id, rank, name, department }], ... }`). Crew are matched by id
+ * (empNo / crew_member_id); a member whose rank cannot be resolved keeps the
+ * rank already on the payload. Non-fatal: any failure leaves the payload as-is.
+ */
+async function stampHistoricalRanks<T extends { crewInvolvedDetails?: string | null; startDateTimeSort?: string | null; startDateTime?: string | null }>(
+  data: T,
+  fallbackStart?: string | null,
+): Promise<T> {
+  try {
+    if (!data.crewInvolvedDetails) return data;
+
+    const isoDate =
+      toIsoDate(data.startDateTimeSort) ||
+      toIsoDate(fallbackStart) ||
+      toIsoDate(data.startDateTime);
+    if (!isoDate) return data;
+
+    const details = JSON.parse(data.crewInvolvedDetails);
+    if (!details || !Array.isArray(details.crew) || details.crew.length === 0) {
+      return data;
+    }
+
+    const crewIds = details.crew
+      .map((c: any) => c?.id)
+      .filter((id: any): id is string => typeof id === "string" && id.length > 0);
+    if (crewIds.length === 0) return data;
+
+    const rankMap = await rankResolutionService.resolveRanksAsOfDate(crewIds, isoDate);
+
+    details.crew = details.crew.map((c: any) =>
+      c && typeof c.id === "string" && rankMap[c.id]
+        ? { ...c, rank: rankMap[c.id] }
+        : c
+    );
+
+    return { ...data, crewInvolvedDetails: JSON.stringify(details) };
+  } catch (error) {
+    console.error("[variable-tasks] Failed to stamp historical ranks (non-fatal):", error);
+    return data;
+  }
+}
 
 function applyAuditUser<T extends object>(
   data: T,
@@ -70,7 +120,8 @@ export const variableTasksService = {
       throw new Error("Period value is required");
     }
 
-    const dataWithAudit = applyAuditUser(data, true);
+    const dataWithRanks = await stampHistoricalRanks(data);
+    const dataWithAudit = applyAuditUser(dataWithRanks, true);
     return variableTasksRepository.create(dataWithAudit);
   },
 
@@ -78,9 +129,10 @@ export const variableTasksService = {
     variableTaskUuid: string,
     data: Partial<InsertRhVariableTaskV2> & { auditUserUuid?: string }
   ): Promise<RhVariableTaskV2> {
-    await this.getByUuid(variableTaskUuid);
+    const existing = await this.getByUuid(variableTaskUuid);
 
-    const dataWithAudit = applyAuditUser(data, false);
+    const dataWithRanks = await stampHistoricalRanks(data, existing.startDateTimeSort);
+    const dataWithAudit = applyAuditUser(dataWithRanks, false);
     const updated = await variableTasksRepository.update(variableTaskUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update variable task: ${variableTaskUuid}`);

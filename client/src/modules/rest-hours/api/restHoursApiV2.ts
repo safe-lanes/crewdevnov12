@@ -495,6 +495,19 @@ export const restHoursApiV2 = {
       return response.json();
     },
 
+    // Resolve the rank each crew member held on a given date (from promotion
+    // history). Returns a map of crewMemberId (empNo) -> rank.
+    async getRanksAsOfDate(date: string, crewMemberIds: string[]): Promise<Record<string, string>> {
+      const ids = Array.from(new Set(crewMemberIds.filter(Boolean)));
+      if (!date || ids.length === 0) return {};
+      const searchParams = new URLSearchParams();
+      searchParams.set('date', date);
+      searchParams.set('crewMemberIds', ids.join(','));
+      const response = await fetch(`${V2_BASE}/variable-tasks/ranks-as-of-date?${searchParams}`);
+      if (!response.ok) throw new Error('Failed to resolve ranks as of date');
+      return response.json();
+    },
+
     async create(data: any) {
       const response = await apiRequest('POST', `${V2_BASE}/variable-tasks`, withAuditUser(data));
       if (!response.ok) {

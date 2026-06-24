@@ -5,3 +5,4 @@
 - [Promotion rank propagation](promotion-rank-propagation.md) — promotions flip crew_members_v2.present_rank exactly-once via a transactional review_uuid ledger; on-board fires at completion, prior-joining fires at sign-on.
 - [RH per-rank record split](rh-promotion-record-split.md) — promotion splits the RH month into per-rank windows (applicable_from/to); NULL window = full month = byte-identical legacy path; idempotency must check window coverage, not rank alone.
 - [Promotion list history rows](promotion-list-history-rows.md) — Crew Promotion list emits per crew an active next-rank row PLUS a historical row per completed review; not one row per crew.
+- [Rank as-of-date resolution](rank-as-of-date.md) — RH rank for a given date comes from the promotion ledger (effectiveDate<=date→toRank; before earliest→fromRank; else present_rank); effectiveDate==date binds the new rank.

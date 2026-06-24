@@ -170,6 +170,22 @@ export const VariableTaskForm = ({
     return map;
   }, [companyRanks]);
 
+  // Crew ids (empNo) of the eligible roster, used to resolve each member's rank
+  // as of the task's start date so the form shows the rank valid on that date
+  // (not the current/promoted rank).
+  const rosterCrewIds = useMemo(() => {
+    const ids = vesselCrewMembers
+      .map((crew: any) => crew.empNo || crew.crewMemberId || String(crew.id))
+      .filter(Boolean);
+    return Array.from(new Set(ids)) as string[];
+  }, [vesselCrewMembers]);
+
+  const { data: rankAsOfDateMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ['v2', 'rest-hours', 'variable-tasks', 'ranks-as-of-date', watchedStartDate, rosterCrewIds],
+    queryFn: () => restHoursApiV2.variableTasks.getRanksAsOfDate(watchedStartDate, rosterCrewIds),
+    enabled: open && !!watchedStartDate && rosterCrewIds.length > 0,
+  });
+
   const categorizedCrew = useMemo(() => {
     const deckCateringCrew: Array<{ id: string; rank: string; name: string; rankData: any }> = [];
     const engineCrew: Array<{ id: string; rank: string; name: string; rankData: any }> = [];
@@ -178,9 +194,14 @@ export const VariableTaskForm = ({
       const rankData = rankDesignationMap.get(crew.presentRank);
       if (!rankData) return;
 
+      const id = crew.empNo || crew.crewMemberId || String(crew.id);
+      // Department bucketing stays on the current rank, but the displayed and
+      // stored rank reflects the rank held on the task's start date.
+      const rankAsOfDate = rankAsOfDateMap[id] || crew.presentRank;
+
       const crewItem = {
-        id: crew.empNo || crew.crewMemberId || String(crew.id),
-        rank: crew.presentRank,
+        id,
+        rank: rankAsOfDate,
         name: `${crew.firstName || ''} ${crew.familyName || crew.lastName || ''}`.trim(),
         rankData,
       };
@@ -194,7 +215,7 @@ export const VariableTaskForm = ({
     });
 
     return { deckCateringCrew, engineCrew };
-  }, [vesselCrewMembers, rankDesignationMap]);
+  }, [vesselCrewMembers, rankDesignationMap, rankAsOfDateMap]);
 
   // Helper function to get crew IDs for a specific group
   const getCrewIdsForGroup = (groupId: string): string[] => {

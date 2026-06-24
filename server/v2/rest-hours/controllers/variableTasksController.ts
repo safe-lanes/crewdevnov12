@@ -1,7 +1,31 @@
 import { Request, Response } from "express";
-import { variableTasksService } from "../services";
+import { z } from "zod";
+import { variableTasksService, rankResolutionService } from "../services";
+
+const rankAsOfDateQuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
+  crewMemberIds: z
+    .string()
+    .min(1, "crewMemberIds is required")
+    .transform((s) => s.split(",").map((v) => v.trim()).filter(Boolean)),
+});
 
 export const variableTasksController = {
+  async getRanksAsOfDate(req: Request, res: Response) {
+    try {
+      const parsed = rankAsOfDateQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid query" });
+      }
+      const { date, crewMemberIds } = parsed.data;
+      const ranks = await rankResolutionService.resolveRanksAsOfDate(crewMemberIds, date);
+      res.json(ranks);
+    } catch (error) {
+      console.error("Error resolving ranks as of date:", error);
+      res.status(500).json({ error: "Failed to resolve ranks as of date" });
+    }
+  },
+
   async getAll(req: Request, res: Response) {
     try {
       const { vesselId, vesselUuid, periodValue } = req.query;
