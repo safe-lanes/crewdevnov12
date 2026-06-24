@@ -12,6 +12,7 @@ import { detectActivityConflict } from "../utils/activityConflictHelpers";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { eq, and, or, isNull, lte, gte } from "drizzle-orm";
+import { rankResolutionService } from "./rankResolutionService";
 
 const dailyRecordsRepository = new DailyRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
@@ -614,6 +615,37 @@ export const dailyRecordsService = {
     }
 
     const dataWithAudit = applyAuditUser(data, true);
+
+    // Stamp the rank actually held during the saved month rather than trusting
+    // the client payload (which sends the crew's CURRENT present_rank). Editing a
+    // month BEFORE a promotion would otherwise create the record at the new rank.
+    // Resolve the as-of-month-end rank from the promotion ledger, matching the
+    // read-side placeholder rule, and only when this is the FIRST record for the
+    // month: a mid-month promotion's per-rank windows are generated via the
+    // repository (bypassing this path) and edited via update (which strips rank),
+    // so once split records exist the client-supplied window rank is trusted and
+    // never collapsed. Falls back to the client rank when resolution yields none.
+    try {
+      const existing = await dailyRecordsRepository.findAllByKey(
+        data.crewMemberId,
+        data.vesselId,
+        data.monthYear
+      );
+      if (existing.length === 0) {
+        const { lastDay } = getMonthBounds(data.monthYear);
+        const rankMap = await rankResolutionService.resolveRanksAsOfDate(
+          [data.crewMemberId],
+          lastDay
+        );
+        const asOfRank = rankMap[data.crewMemberId];
+        if (asOfRank) {
+          dataWithAudit.rank = asOfRank;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to resolve as-of rank during daily record create:', e);
+    }
+
     const record = await dailyRecordsRepository.create(dataWithAudit);
 
     await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear);
