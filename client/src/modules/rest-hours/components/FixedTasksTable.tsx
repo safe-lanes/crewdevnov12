@@ -57,6 +57,34 @@ const hasActualHoursData = (data: string | string[] | null | undefined): boolean
   return parsed.some(h => h !== '');
 };
 
+// Select the single "active" fixed-task record for a crew/month.
+// Mirrors the backend repository's findByKey: with one record it is a no-op;
+// after a promotion split (old locked row + new unlocked row in the same month)
+// it prefers the unlocked row, then the full-month window, then the latest
+// window. This keeps the displayed rank tied to the stored record (so historical
+// months keep their original rank) rather than the crew's current rank.
+const pickActiveFixedTask = (
+  tasks: FixedTask[],
+  crewMemberId: string,
+  monthYear: string
+): FixedTask | undefined => {
+  const matches = tasks
+    .filter((t) => t.crewMemberId === crewMemberId && t.monthYear === monthYear)
+    .sort((a, b) =>
+      (((a as any).applicableFrom as string) ?? '').localeCompare(
+        ((b as any).applicableFrom as string) ?? ''
+      )
+    );
+  if (matches.length <= 1) return matches[0];
+  const unlocked = matches.filter((t) => !(t as any).isLocked);
+  const pool = unlocked.length > 0 ? unlocked : matches;
+  const fullMonth = pool.find(
+    (t) => !(t as any).applicableFrom && !(t as any).applicableTo
+  );
+  if (fullMonth) return fullMonth;
+  return pool[pool.length - 1];
+};
+
 // Helper function to get cell background color
 const getCellBackgroundColor = (value: string): string => {
   if (value === 'w' || value === 'd') return '#E5E7EB'; // Grey for all work
@@ -425,14 +453,14 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       
       // Check if we need to update taskIds (after initial save creates new tasks)
       const needsTaskIdUpdate = crewTasks.some(task => {
-        const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId && t.monthYear === monthYear);
+        const serverTask = pickActiveFixedTask(existingTasks, task.crewMemberId, monthYear);
         return serverTask && !task.taskId && serverTask.id;
       });
       
       // Check if server data arrived after we initialized with empty arrays
       // This happens when crew members load before fixed tasks query completes
       const needsServerDataMerge = crewTasks.some(task => {
-        const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId && t.monthYear === monthYear);
+        const serverTask = pickActiveFixedTask(existingTasks, task.crewMemberId, monthYear);
         if (!serverTask) return false;
         
         // Check if local task has empty data but server has real data
@@ -449,7 +477,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
           
           return vesselCrewMembers.map((crew: any) => {
             const existingLocal = existingByCrewId.get(crew.empNo);
-            const existingServer = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.empNo && t.monthYear === monthYear);
+            const existingServer = pickActiveFixedTask(existingTasks, crew.empNo, monthYear);
             
             if (existingLocal) {
               // Check if local data is empty but server has data
@@ -460,6 +488,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
               if (localIsEmpty && serverHasData) {
                 return {
                   ...existingLocal,
+                  rank: (existingServer as any)?.rank || existingLocal.rank,
                   seaHours: parseHoursData(existingServer?.seaHours),
                   portHours: parseHoursData(existingServer?.portHours),
                   taskId: existingServer?.id || existingLocal.taskId,
@@ -469,6 +498,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
               
               return {
                 ...existingLocal,
+                rank: (existingServer as any)?.rank || existingLocal.rank,
                 taskId: existingServer?.id || existingLocal.taskId,
                 fixedTaskUuid: (existingServer as any)?.fixedTaskUuid || existingLocal.fixedTaskUuid,
               };
@@ -477,7 +507,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
             return {
               crewMemberId: crew.empNo,
               crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
-              rank: crew.presentRank || '',
+              rank: (existingServer as any)?.rank || crew.presentRank || '',
               seaHours: parseHoursData(existingServer?.seaHours),
               portHours: parseHoursData(existingServer?.portHours),
               taskId: existingServer?.id,
@@ -487,9 +517,10 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
         });
       } else if (needsTaskIdUpdate) {
         setCrewTasks(prev => prev.map(task => {
-          const serverTask = existingTasks.find((t: FixedTask) => t.crewMemberId === task.crewMemberId && t.monthYear === monthYear);
+          const serverTask = pickActiveFixedTask(existingTasks, task.crewMemberId, monthYear);
           return {
             ...task,
+            rank: (serverTask as any)?.rank || task.rank,
             taskId: serverTask?.id || task.taskId,
             fixedTaskUuid: (serverTask as any)?.fixedTaskUuid || task.fixedTaskUuid,
           };
@@ -501,12 +532,12 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
     // Initial load - build from server data (parse JSON strings if needed)
     // Use empNo (A000001 format) for crewMemberId consistency with V1 and crew_assignments
     const tasks: CrewTaskData[] = vesselCrewMembers.map((crew: any) => {
-      const existingTask = existingTasks.find((t: FixedTask) => t.crewMemberId === crew.empNo && t.monthYear === monthYear);
+      const existingTask = pickActiveFixedTask(existingTasks, crew.empNo, monthYear);
       
       return {
         crewMemberId: crew.empNo,
         crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
-        rank: crew.presentRank || '',
+        rank: (existingTask as any)?.rank || crew.presentRank || '',
         seaHours: parseHoursData(existingTask?.seaHours),
         portHours: parseHoursData(existingTask?.portHours),
         taskId: existingTask?.id,
