@@ -21,10 +21,36 @@ export function toIsoDate(value: string | null | undefined): string | null {
 }
 
 /**
- * Given a crew member's promotion ledger rows (effective date asc) plus their
- * current rank, return the rank that was valid on `isoDate`:
- *  - the `toRank` of the latest entry whose effectiveDate <= isoDate;
- *  - if isoDate precedes the earliest entry, that entry's `fromRank`;
+ * Recorded-at ordinal for a ledger row, used to decide which applied promotion
+ * is authoritative. A missing/unparseable `createdAt` is treated as the oldest
+ * possible so it can never spuriously win against a row with a real timestamp.
+ */
+function recordedAt(entry: PromoExecutionLedgerV2): number {
+  const t = entry.createdAt ? new Date(entry.createdAt as unknown as string).getTime() : NaN;
+  return Number.isFinite(t) ? t : -Infinity;
+}
+
+/**
+ * True when `a` was recorded more recently than `b`. Ties on the recorded
+ * timestamp (e.g. rows written in the same transaction) break deterministically
+ * by the serial `id` so ordering is stable.
+ */
+function recordedAfter(a: PromoExecutionLedgerV2, b: PromoExecutionLedgerV2): boolean {
+  const ra = recordedAt(a);
+  const rb = recordedAt(b);
+  if (ra !== rb) return ra > rb;
+  return (a.id ?? 0) > (b.id ?? 0);
+}
+
+/**
+ * Given a crew member's promotion ledger rows plus their current rank, return
+ * the rank that was valid on `isoDate`:
+ *  - among entries whose effectiveDate <= isoDate, the `toRank` of the one that
+ *    was recorded most recently (id as a stable tiebreaker). The most recently
+ *    applied promotion is authoritative, so ledger rows whose effective dates
+ *    are out of order relative to the rank progression still resolve correctly;
+ *  - if isoDate precedes every entry, the earliest-by-effective-date entry's
+ *    `fromRank` (the rank held before any promotion);
  *  - if there are no usable entries, the current `presentRank`.
  */
 function rankAsOf(
@@ -32,31 +58,30 @@ function rankAsOf(
   isoDate: string,
   presentRank: string | null,
 ): string | null {
-  const valid = entries
-    .filter((e) => toIsoDate(e.effectiveDate) !== null)
-    .sort((a, b) => {
-      const da = toIsoDate(a.effectiveDate)!;
-      const db = toIsoDate(b.effectiveDate)!;
-      if (da < db) return -1;
-      if (da > db) return 1;
-      return 0;
-    });
+  const valid = entries.filter((e) => toIsoDate(e.effectiveDate) !== null);
 
   if (valid.length === 0) return presentRank;
 
-  let resolved: string | null = null;
+  // The most recently recorded promotion already in force on isoDate wins.
+  let inForce: PromoExecutionLedgerV2 | null = null;
   for (const entry of valid) {
     if (toIsoDate(entry.effectiveDate)! <= isoDate) {
-      resolved = entry.toRank;
-    } else {
-      break;
+      if (inForce === null || recordedAfter(entry, inForce)) {
+        inForce = entry;
+      }
     }
   }
 
-  if (resolved !== null) return resolved;
+  if (inForce !== null) return inForce.toRank;
 
-  // isoDate is before the first promotion ⇒ the rank held before it.
-  return valid[0].fromRank ?? presentRank;
+  // isoDate is before every promotion ⇒ the rank held before the earliest one.
+  let earliest = valid[0];
+  for (const entry of valid) {
+    if (toIsoDate(entry.effectiveDate)! < toIsoDate(earliest.effectiveDate)!) {
+      earliest = entry;
+    }
+  }
+  return earliest.fromRank ?? presentRank;
 }
 
 export const rankResolutionService = {
