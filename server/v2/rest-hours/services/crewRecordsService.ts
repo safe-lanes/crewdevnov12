@@ -321,10 +321,31 @@ async function enrichRecordsWithComputedFields(
       const empSignOn: string | null = _signOnDate ?? null;
       const windowFrom = matchedDaily.applicableFrom ?? null;
 
-      // Sign-on = the later of the employment sign-on and this rank period's start
-      // (so the promoted row starts on the promotion date). Safe for both timings.
-      if (windowFrom) {
+      // Inspect the sibling rank windows for this crew/month: does an EARLIER
+      // window exist (this row is a promoted-INTO rank), and what is the start of
+      // the immediately following window (the handover date)?
+      const thisFrom = matchedDaily.applicableFrom ?? null;
+      let hasEarlierWindow = false;
+      let nextStart: string | null = null;
+      for (const d of dailyList) {
+        if (d === matchedDaily) continue;
+        const f = d.applicableFrom ?? null;
+        if (!f || !thisFrom) continue;
+        if (f < thisFrom) hasEarlierWindow = true;
+        if (f > thisFrom && (!nextStart || f < nextStart)) nextStart = f;
+      }
+
+      // Sign-on: the window start is a genuine sign-on event only for a
+      // promoted-INTO window (one preceded by an earlier rank window this month) —
+      // there the window start IS the promotion/handover date. For the EARLIEST
+      // window the start is just the month boundary, not a real sign-on, so use the
+      // crew's real employment sign-on instead. A prior-month join then correctly
+      // stays out of the viewed month and renders a blank S.On (only the sign-off /
+      // handover shows), while a genuine mid-month join is preserved.
+      if (windowFrom && hasEarlierWindow) {
         displaySignOn = (empSignOn && empSignOn > windowFrom) ? empSignOn : windowFrom;
+      } else {
+        displaySignOn = empSignOn;
       }
 
       // Sign-off = the start of the immediately following rank period (the handover
@@ -332,15 +353,6 @@ async function enrichRecordsWithComputedFields(
       // before the promotion (employment sign-on precedes the handover date). For a
       // prior-joining promotion the crew signs on at the new rank, so the employment
       // sign-on equals the handover date and no synthetic sign-off is added.
-      const thisFrom = matchedDaily.applicableFrom ?? null;
-      let nextStart: string | null = null;
-      for (const d of dailyList) {
-        if (d === matchedDaily) continue;
-        const f = d.applicableFrom ?? null;
-        if (f && thisFrom && f > thisFrom && (!nextStart || f < nextStart)) {
-          nextStart = f;
-        }
-      }
       if (nextStart && empSignOn && empSignOn < nextStart) {
         displaySignOff = nextStart;
       }
