@@ -746,17 +746,23 @@ export const RHRecordingForm = ({
     records: DailyRecord[],
     adjustments: DateLineAdjustment[]
   ): DailyRecord[] => {
-    if (adjustments.length === 0) return records;
-    
     const retardedDays = new Set(
-      adjustments.filter(adj => adj.type === 'retarded').map(adj => adj.day)
+      adjustments
+        .filter(adj => adj.type === 'retarded')
+        .map(adj => adj.day)
     );
-    
-    if (retardedDays.size === 0) return records;
-    
+
     const result: DailyRecord[] = [];
-    
+
     for (const record of records) {
+      // Prune stale duplicate rows: a 'duplicate' row whose day is no longer
+      // marked Retarded must be removed (e.g. after reverting Retarded -> Normal
+      // on an already-saved sheet). New/unsaved sheets never hit this because
+      // they have no stored duplicate rows to begin with.
+      if (record.occurrence === 'duplicate' && !retardedDays.has(record.day)) {
+        continue;
+      }
+
       // Always add the primary record (normalize if needed)
       const primaryRecord = {
         ...record,
@@ -764,23 +770,27 @@ export const RHRecordingForm = ({
         occurrence: (record.occurrence || 'primary') as 'primary' | 'duplicate',
       };
       result.push(primaryRecord);
-      
+
       // If this is a retarded day, check if we need to add a duplicate record
       if (retardedDays.has(record.day)) {
         // Check if duplicate already exists in the input records
         const existingDuplicate = records.find(
           r => r.day === record.day && r.occurrence === 'duplicate'
         );
-        
+
         if (!existingDuplicate) {
           // Create a new blank duplicate record
-          const duplicateRecord = createBlankDailyRecord(record.day, record.dayOfWeek, 'duplicate');
+          const duplicateRecord = createBlankDailyRecord(
+            record.day,
+            record.dayOfWeek,
+            'duplicate'
+          );
           result.push(duplicateRecord);
         }
         // If duplicate exists, it will be added in its own iteration
       }
     }
-    
+
     return result;
   };
 
