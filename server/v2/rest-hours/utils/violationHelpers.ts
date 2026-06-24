@@ -149,7 +149,8 @@ export function calculateNCs(
 export function calculateRecordingPercentage(
   dailyRecordsJson: string,
   monthYear: string,
-  applicableDayRange?: { from: number; to: number }
+  applicableDayRange?: { from: number; to: number },
+  datelineAdjustments?: { day: number; type: 'advanced' | 'retarded' }[]
 ): number {
   try {
     const dailyRecords = JSON.parse(dailyRecordsJson);
@@ -162,7 +163,24 @@ export function calculateRecordingPercentage(
 
     const applicableFrom = applicableDayRange?.from ?? 1;
     const applicableTo = applicableDayRange?.to ?? daysInMonth;
-    const applicableDays = applicableTo - applicableFrom + 1;
+
+    // Date Line adjustments change how many days are recordable in the period:
+    // an "advanced" day is skipped (one fewer required day), a "retarded" day
+    // is lived twice (one extra required day). Only count adjustments that fall
+    // inside the applicable range.
+    let dayCountAdjustment = 0;
+    if (Array.isArray(datelineAdjustments)) {
+      for (const adj of datelineAdjustments) {
+        if (adj.day < applicableFrom || adj.day > applicableTo) continue;
+        if (adj.type === 'advanced') dayCountAdjustment -= 1;
+        else if (adj.type === 'retarded') dayCountAdjustment += 1;
+      }
+    }
+
+    const applicableDays = Math.max(
+      1,
+      (applicableTo - applicableFrom + 1) + dayCountAdjustment
+    );
 
     const filledDays = dailyRecords.filter((day: any) => {
       const isPlan = day.isPlan === true;

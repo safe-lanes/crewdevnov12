@@ -1,4 +1,4 @@
-import { DailyRecordsRepository, CrewRecordsRepository, VesselRecordsRepository, VariableTasksRepository } from "../repositories";
+import { DailyRecordsRepository, CrewRecordsRepository, VesselRecordsRepository, VariableTasksRepository, DatelineRepository } from "../repositories";
 import type {
   RhDailyRecordV2,
   InsertRhDailyRecordV2,
@@ -17,6 +17,7 @@ const dailyRecordsRepository = new DailyRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
 const variableTasksRepository = new VariableTasksRepository();
 const vesselRecordsRepository = new VesselRecordsRepository();
+const datelineRepository = new DatelineRepository();
 
 async function getOnboardCrewCount(vesselId: string, monthValue: string): Promise<number> {
   const db = getDb();
@@ -334,6 +335,24 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
 
     const matchedRecordUuids = new Set<string>();
 
+    let datelineAdjustments: { day: number; type: 'advanced' | 'retarded' }[] = [];
+
+    try {
+      const adjRows = await datelineRepository.findAll({
+        vesselId,
+        monthValue: monthYear,
+      });
+
+      if (adjRows.length > 0) {
+        datelineAdjustments = JSON.parse(adjRows[0].adjustments) || [];
+      }
+    } catch (e) {
+      console.error(
+        'Failed to load date line adjustments during postSaveSync:',
+        e
+      );
+    }
+
     // Outer loop: each rank period (daily record). Inner loop: each assignment.
     // The summary day range is the intersection of the rank window and the
     // assignment window so that each rank period produces its own crew row.
@@ -365,7 +384,7 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
           continue;
         }
 
-        const recordingPercent = calculateRecordingPercentage(dailyRecordsJson, monthYear, dayRange);
+        const recordingPercent = calculateRecordingPercentage(dailyRecordsJson, monthYear, dayRange, datelineAdjustments);
         const totalViolations = countViolationDays(dailyRecordsJson, 'Rest', false, false, dayRange);
         const predictedViolations = countViolationDays(dailyRecordsJson, 'Rest', false, true, dayRange);
         const { totalNCs, predictedNCs } = calculateNCs(dailyRecordsJson, 'Rest', false, dayRange);

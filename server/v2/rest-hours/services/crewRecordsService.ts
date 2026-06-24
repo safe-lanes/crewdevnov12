@@ -1,4 +1,4 @@
-import { CrewRecordsRepository, DailyRecordsRepository, VariableTasksRepository } from "../repositories";
+import { CrewRecordsRepository, DailyRecordsRepository, VariableTasksRepository, DatelineRepository } from "../repositories";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { masterVessels } from "../../../../shared/schema";
@@ -20,6 +20,7 @@ import { rankResolutionService } from "./rankResolutionService";
 const crewRecordsRepository = new CrewRecordsRepository();
 const dailyRecordsRepository = new DailyRecordsRepository();
 const variableTasksRepository = new VariableTasksRepository();
+const datelineRepository = new DatelineRepository();
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
 
@@ -200,6 +201,32 @@ async function enrichRecordsWithComputedFields(
     }
   }
 
+  const datelineMap = new Map<string, { day: number; type: 'advanced' | 'retarded' }[]>();
+  for (const vesselId of vesselIds) {
+    const monthValues = Array.from(
+      new Set(
+        records
+          .filter(r => r.vesselId === vesselId)
+          .map(r => r.monthValue)
+      )
+    );
+    for (const monthValue of monthValues) {
+      const adjRows = await datelineRepository.findAll({ vesselId, monthValue });
+
+      let parsed: { day: number; type: 'advanced' | 'retarded' }[] = [];
+
+      if (adjRows.length > 0) {
+        try {
+          parsed = JSON.parse(adjRows[0].adjustments) || [];
+        } catch (e) {
+          console.error('Failed to parse date line adjustments for recording percentage:', e);
+        }
+      }
+
+      datelineMap.set(`${vesselId}-${monthValue}`, parsed);
+    }
+  }
+
   const variableTasksMap = new Map<string, Awaited<ReturnType<typeof variableTasksRepository.findAll>>>();
   for (const vesselId of vesselIds) {
     const monthValues = Array.from(new Set(
@@ -278,7 +305,12 @@ async function enrichRecordsWithComputedFields(
       liveTotalNCs = liveNCs.totalNCs;
       livePredictedNCs = liveNCs.predictedNCs;
 
-      liveRecordingPercent = calculateRecordingPercentage(dailyRecordsJson, record.monthValue, dayRange);
+      liveRecordingPercent = calculateRecordingPercentage(
+        dailyRecordsJson,
+        record.monthValue,
+        dayRange,
+        datelineMap.get(`${record.vesselId}-${record.monthValue}`)
+      );
     }
 
     let liveActivityConflicting = false;
