@@ -988,20 +988,26 @@ export function DrugAlcoholTestForm_v2({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs text-gray-500 tracking-wide">Type of Test<span className="text-red-500">*</span></FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="bg-[#ffffff]" data-testid="select-testType">
-                                  <SelectValue placeholder="Type of Test" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="annual">Annual D&A Test</SelectItem>
-                                <SelectItem value="periodic">Periodic Alcohol Test</SelectItem>
-                                <SelectItem value="monthly">Monthly Alcohol Test</SelectItem>
-                                <SelectItem value="post-incident">Post Incident Test</SelectItem>
-                                <SelectItem value="others">Other Tests</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            {recordUuid ? (
+                              <div className="h-10 flex items-center text-sm font-medium text-[#0f172a] px-3 bg-gray-50 border border-input rounded-md" data-testid="text-testType-locked">
+                                {testTypeLabels[field.value as keyof typeof testTypeLabels] || field.value || "No test type selected"}
+                              </div>
+                            ) : (
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="bg-[#ffffff]" data-testid="select-testType">
+                                    <SelectValue placeholder="Type of Test" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="annual">Annual D&A Test</SelectItem>
+                                  <SelectItem value="periodic">Periodic Alcohol Test</SelectItem>
+                                  <SelectItem value="monthly">Monthly Alcohol Test</SelectItem>
+                                  <SelectItem value="post-incident">Post Incident Test</SelectItem>
+                                  <SelectItem value="others">Other Tests</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}
