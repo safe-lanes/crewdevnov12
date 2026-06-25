@@ -159,7 +159,19 @@ export const promoChecklistProgressV2 = pgTable("promo_checklist_progress_v2", {
   date: text("date"),
   verificationsData: text("verifications_data"),
   commentsData: text("comments_data"),
-  attachmentsData: text("attachments_data"),
+  deprecatedAttachmentsData: text("deprecated_attachments_data"),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
+export const promoChecklistAttachmentsV2 = pgTable("promo_checklist_attachments_v2", {
+  id: serial("id").primaryKey(),
+  attUuid: text("att_uuid").notNull().unique(),
+  checklistProgressUuid: text("checklist_progress_uuid").notNull(),
+  fileName: text("file_name").notNull(),
+  filePath: text("file_path").notNull(),
+  fileSize: text("file_size"),
+  fileType: text("file_type"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });

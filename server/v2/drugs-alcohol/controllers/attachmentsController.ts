@@ -17,7 +17,7 @@ export const attachmentsController = {
       const result = attachments.map((a) => ({
         id: a.attUuid,
         attUuid: a.attUuid,
-        name: a.filename || "",
+        name: a.fileName || "",
         type: a.fileType || "",
         size: a.fileSize ? parseInt(a.fileSize, 10) : 0,
         data: a.fileData || "",
@@ -50,7 +50,7 @@ export const attachmentsController = {
 
       const attachment = await attachmentsRepository.create({
         testRecordUuid,
-        filename: name,
+        fileName: name,
         fileType: type || null,
         fileSize: size?.toString() || null,
         fileData: data,
@@ -65,7 +65,7 @@ export const attachmentsController = {
       res.status(201).json({
         id: attachment.attUuid,
         attUuid: attachment.attUuid,
-        name: attachment.filename || "",
+        name: attachment.fileName || "",
         type: attachment.fileType || "",
         size: attachment.fileSize ? parseInt(attachment.fileSize, 10) : 0,
         data: attachment.fileData || "",

@@ -71,7 +71,7 @@ function transformToV1Response(record: TestRecordWithChildren): any {
 
   const attachmentsJson = record.attachments.map((a) => ({
     id: a.attUuid,
-    name: a.filename,
+    name: a.fileName,
     type: a.fileType,
     size: a.fileSize,
     data: a.fileData,
@@ -591,7 +591,7 @@ export const testRecordsService = {
             promises.push(
               attachmentsRepository.create({
                 testRecordUuid,
-                filename: item.name || null,
+                fileName: item.name || null,
                 fileType: item.type || null,
                 fileSize: item.size?.toString() || null,
                 fileData: item.data || null,
@@ -791,7 +791,7 @@ export const testRecordsService = {
                 keepUuids.push(attUuid);
                 promises.push(
                   attachmentsRepository.updateByUuid(attUuid, {
-                    filename: item.name || null,
+                    fileName: item.name || null,
                     fileType: item.type || null,
                     fileSize: item.size?.toString() || null,
                     fileData: item.data || null,
@@ -807,7 +807,7 @@ export const testRecordsService = {
             }
             const created = await attachmentsRepository.create({
               testRecordUuid,
-              filename: item.name || null,
+              fileName: item.name || null,
               fileType: item.type || null,
               fileSize: item.size?.toString() || null,
               fileData: item.data || null,

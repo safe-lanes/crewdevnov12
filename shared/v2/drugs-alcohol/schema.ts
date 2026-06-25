@@ -91,7 +91,7 @@ export const daAttachmentsV2 = pgTable("da_attachments_v2", {
   id: serial("id").primaryKey(),
   attUuid: text("att_uuid").notNull().unique(),
   testRecordUuid: text("test_record_uuid").notNull(),
-  filename: text("filename"),
+  fileName: text("file_name"),
   fileType: text("file_type"),
   uploadDate: text("upload_date"),
   uploadedBy: text("uploaded_by"),

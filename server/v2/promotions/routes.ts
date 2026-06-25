@@ -14,5 +14,6 @@ router.post("/reviews/backfill", (req, res) => controller.runHistoricalBackfill(
 router.post("/reviews", (req, res) => controller.createReview(req, res));
 router.patch("/reviews/:reviewUuid", (req, res) => controller.updateReview(req, res));
 router.delete("/reviews/:reviewUuid", (req, res) => controller.deleteReview(req, res));
+router.get("/attachments/:attUuid/raw", (req, res) => controller.serveRawAttachment(req, res));
 
 export default router;

@@ -84,7 +84,7 @@ export class TrainingNeedsRepository {
       }
     }
 
-    const unusedIds = existing.filter(e => !usedExistingIds.includes(e.id)).map(e => e.id);
+    const unusedIds = existing.filter((e: any) => !usedExistingIds.includes(e.id)).map((e: any) => e.id);
     if (unusedIds.length > 0) {
       await db
         .update(promoTrainingNeedsV2)

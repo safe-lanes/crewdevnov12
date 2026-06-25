@@ -91,7 +91,7 @@ export class ChecklistProgressRepository {
             date: item.date,
             verificationsData: item.verificationsData ?? null,
             commentsData: item.commentsData ?? null,
-            attachmentsData: item.attachmentsData ?? null,
+            deprecatedAttachmentsData: item.deprecatedAttachmentsData ?? null,
             sortOrder: i,
             updatedAt: new Date(),
           })

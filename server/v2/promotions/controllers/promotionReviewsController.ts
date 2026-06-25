@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import { PromotionReviewsService } from "../services";
 import { promotionReviewWritableSchema, PromotionGuardError } from "../services/promotionReviewsService";
+import { getDb } from "../../db.js";
+import { promoChecklistAttachmentsV2 } from "../../../../shared/v2/promotions/schema.js";
+import { eq, and } from "drizzle-orm";
+import { serveAttachmentFromFilePath } from "../../shared/serveAttachmentHelper.js";
 
 const service = new PromotionReviewsService();
 
@@ -138,6 +142,42 @@ export class PromotionReviewsController {
     } catch (error) {
       console.error("[Promotions V2] Failed to delete review:", error);
       res.status(500).json({ error: "Failed to delete promotion review" });
+    }
+  }
+
+  async serveRawAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      if (!attUuid) {
+        return res.status(400).json({ error: "attUuid is required" });
+      }
+
+      const db = getDb();
+      const results = await db
+        .select()
+        .from(promoChecklistAttachmentsV2)
+        .where(
+          and(
+            eq(promoChecklistAttachmentsV2.attUuid, attUuid),
+            eq(promoChecklistAttachmentsV2.isDeleted, false)
+          )
+        )
+        .limit(1);
+
+      const attachment = results[0];
+      if (!attachment) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+
+      await serveAttachmentFromFilePath(res, {
+        filePath: attachment.filePath,
+        fileData: null,
+        fileName: attachment.fileName,
+        fileType: attachment.fileType,
+      });
+    } catch (error) {
+      console.error("[Promotions V2] Failed to serve raw attachment:", error);
+      res.status(500).json({ error: "Failed to serve raw attachment" });
     }
   }
 }
