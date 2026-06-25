@@ -27,6 +27,7 @@ interface CandidateRow {
   status?: string | null;
   createdAt?: string | Date | null;
   manningAgent?: string | null;
+  crewPool?: string | null;
 }
 
 interface CrewRecruitmentDrilldownDialogProps {
@@ -120,7 +121,7 @@ export const CrewRecruitmentDrilldownDialog = ({
   rank,
   period,
   ranks = [],
-  crewPools: _crewPools = [],
+  crewPools = [],
   manningAgents = [],
   nationalities = [],
 }: CrewRecruitmentDrilldownDialogProps) => {
@@ -171,10 +172,11 @@ export const CrewRecruitmentDrilldownDialog = ({
         }
       }
       if (manningAgents.length > 0 && !manningAgents.includes((c.manningAgent || "").trim())) return false;
+      if (crewPools.length > 0 && !crewPools.includes((c.crewPool || "").trim())) return false;
 
       return true;
     });
-  }, [candidates, range, rank, ranks, nationalities, manningAgents, nationalityNameMap]);
+  }, [candidates, range, rank, ranks, nationalities, manningAgents, crewPools, nationalityNameMap]);
 
   const sorted = useMemo(
     () =>
