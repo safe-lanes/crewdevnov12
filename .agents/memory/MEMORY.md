@@ -6,3 +6,4 @@
 - [RH per-rank record split](rh-promotion-record-split.md) — promotion splits the RH month into per-rank windows (applicable_from/to); NULL window = full month = byte-identical legacy path; idempotency must check window coverage, not rank alone.
 - [Promotion list history rows](promotion-list-history-rows.md) — Crew Promotion list emits per crew an active next-rank row PLUS a historical row per completed review; not one row per crew.
 - [Rank as-of-date resolution](rank-as-of-date.md) — RH rank for a given date comes from the promotion ledger (effectiveDate<=date→toRank; before earliest→fromRank; else present_rank); effectiveDate==date binds the new rank.
+- [Promotion attachment storage](promotion-attachment-storage.md) — promo_checklist_attachments_v2 is canonical; never write deprecated_attachments_data on save, dedupe on read, emit fileName/fileSize, idempotent insert on att_uuid, frontend round-trips attUuid/filePath/viewUrl.

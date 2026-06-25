@@ -280,25 +280,40 @@ function assembleV1Response(
     const section = sectionsMap.get(cp.sectionId)!;
     let verifications: any[] = [];
     let comments: any[] = [];
-    let attachments: any[] = [];
+    let legacyAttachments: any[] = [];
     try { verifications = (cp as any).verificationsData ? JSON.parse((cp as any).verificationsData) : []; } catch {}
     try { comments = (cp as any).commentsData ? JSON.parse((cp as any).commentsData) : []; } catch {}
-    try { attachments = (cp as any).deprecatedAttachmentsData ? JSON.parse((cp as any).deprecatedAttachmentsData) : []; } catch {}
-    
-    // Merge new filesystem attachments
-    const newAttsForProgress = attachmentsList
+    try { legacyAttachments = (cp as any).deprecatedAttachmentsData ? JSON.parse((cp as any).deprecatedAttachmentsData) : []; } catch {}
+    if (!Array.isArray(legacyAttachments)) legacyAttachments = [];
+
+    // Filesystem-backed attachments (canonical source of truth) for this assessment point.
+    // Emit both fileName/fileSize (legacy/frontend shape) and name/size so every consumer renders correctly.
+    const tableAttachments = attachmentsList
       .filter((att) => att.checklistProgressUuid === cp.cpUuid)
-      .map((att) => ({
-        id: att.attUuid,
-        name: att.fileName,
-        size: att.fileSize ? parseInt(att.fileSize, 10) : 0,
-        type: att.fileType || "",
-        uploadedAt: att.createdAt?.toISOString() || "",
-        filePath: att.filePath,
-        viewUrl: `/api/v2/promotions/attachments/${att.attUuid}/raw`
-      }));
-    
-    attachments = [...attachments, ...newAttsForProgress];
+      .map((att) => {
+        const size = att.fileSize ? parseInt(att.fileSize, 10) : 0;
+        return {
+          id: att.attUuid,
+          attUuid: att.attUuid,
+          fileName: att.fileName,
+          fileSize: size,
+          name: att.fileName,
+          size,
+          type: att.fileType || "",
+          uploadedAt: att.createdAt?.toISOString() || "",
+          filePath: att.filePath,
+          viewUrl: `/api/v2/promotions/attachments/${att.attUuid}/raw`,
+        };
+      });
+
+    // De-dupe: table rows win; only append legacy JSON entries not already represented in the table.
+    const tableAttIds = new Set(tableAttachments.map((a) => a.id));
+    const legacyOnly = legacyAttachments.filter((a: any) => {
+      const lid = a?.attUuid || a?.id;
+      return !lid || !tableAttIds.has(lid);
+    });
+
+    const attachments = [...tableAttachments, ...legacyOnly];
 
     section.assessmentPoints.push({
       id: cp.assessmentPointId,
@@ -1780,7 +1795,7 @@ export class PromotionReviewsService {
               date: latestVerification?.date || null,
               verificationsData: point.verifications?.length > 0 ? JSON.stringify(point.verifications) : null,
               commentsData: point.comments?.length > 0 ? JSON.stringify(point.comments) : null,
-              deprecatedAttachmentsData: point.attachments?.length > 0 ? JSON.stringify(point.attachments) : null,
+              deprecatedAttachmentsData: null, // attachments persist in promo_checklist_attachments_v2; never re-serialize into the deprecated JSON column
               sortOrder: sortIdx++,
             });
           }
@@ -1828,17 +1843,24 @@ export class PromotionReviewsService {
                   )
                 );
               
+              const existingByUuid = new Map<string, any>(
+                dbAttachments.map((da: any) => [da.attUuid, da])
+              );
               const keepUuids: string[] = [];
               
               for (const att of attachments) {
-                // If attachment is already uploaded and has filePath, keep it
-                if (att.filePath && !att.isDeleted) {
-                  keepUuids.push(att.id || att.attUuid);
+                if (att.isDeleted) continue;
+                
+                const candidateUuid = att.attUuid || att.id;
+                
+                // Already persisted (matched by id/attUuid, or carrying a server file path) -> keep, never re-insert
+                if ((candidateUuid && existingByUuid.has(candidateUuid)) || att.filePath) {
+                  if (candidateUuid) keepUuids.push(candidateUuid);
                   continue;
                 }
                 
-                // If attachment is new and has base64 data, save it
-                if (att.data && !att.isDeleted) {
+                // Genuinely new attachment with base64 data -> persist to disk + table (conflict-safe)
+                if (att.data) {
                   const decoded = decodeStoredFile(att.data, att.type);
                   if (decoded) {
                     const { buffer, mime } = decoded;
@@ -1851,7 +1873,7 @@ export class PromotionReviewsService {
                       buffer
                     );
                     
-                    const attUuid = att.id || att.attUuid || uuidv4();
+                    const attUuid = candidateUuid || uuidv4();
                     
                     await db.insert(promoChecklistAttachmentsV2).values({
                       attUuid,
@@ -1860,7 +1882,7 @@ export class PromotionReviewsService {
                       filePath,
                       fileSize: att.fileSize?.toString() || att.size?.toString() || buffer.length.toString(),
                       fileType: att.fileType || att.type || mime,
-                    });
+                    }).onConflictDoNothing();
                     
                     keepUuids.push(attUuid);
                   }

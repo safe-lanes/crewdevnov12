@@ -64,12 +64,15 @@ interface ChecklistVerification {
 
 interface ChecklistAttachment {
   id: string;
+  attUuid?: string;
   fileName: string;
   fileSize: number;
   uploadDate: string;
   type?: string;
   data?: string;
   uploadedAt?: string;
+  filePath?: string;
+  viewUrl?: string;
 }
 
 interface AssessmentPoint {
@@ -356,7 +359,10 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     size: att.fileSize,
     data: att.data ?? '',
     uploadedAt: att.uploadedAt ?? att.uploadDate ?? '',
-  });
+    attUuid: att.attUuid,
+    viewUrl: att.viewUrl,
+    ...(att.filePath ? { filePath: att.filePath } : {}),
+  } as FileAttachment);
 
   type FileAttachmentLike = FileAttachment & { uploadDate?: string };
   const toChecklistAttachment = (att: FileAttachmentLike): ChecklistAttachment => {
@@ -364,6 +370,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     const isValidIso = !!isoParsed && !Number.isNaN(isoParsed.getTime()) && /\d{4}-\d{2}-\d{2}T/.test(att.uploadedAt ?? '');
     return {
       id: att.id,
+      attUuid: (att as any).attUuid,
       fileName: att.name,
       fileSize: att.size,
       uploadDate: isValidIso
@@ -372,6 +379,8 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
       type: att.type,
       data: att.data,
       uploadedAt: att.uploadedAt,
+      filePath: (att as any).filePath,
+      viewUrl: (att as any).viewUrl,
     };
   };
 
