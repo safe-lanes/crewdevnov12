@@ -73,6 +73,22 @@ function periodToSnapshotDate(period: PeriodFilterValue): Date | null {
   return null;
 }
 
+function periodToFromDate(period: PeriodFilterValue): Date | null {
+  if (period.mode === "year" && period.year) {
+    return new Date(period.year, 0, 1);
+  }
+  if (period.mode === "year-quarter" && period.year && period.quarter) {
+    return new Date(period.year, (period.quarter - 1) * 3, 1);
+  }
+  if (period.mode === "year-month" && period.year && period.month) {
+    return new Date(period.year, period.month - 1, 1);
+  }
+  if (period.mode === "date-range" && period.dateFrom) {
+    return period.dateFrom;
+  }
+  return null;
+}
+
 function parseDate(value: unknown): Date | null {
   if (!value) return null;
   if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
@@ -147,6 +163,11 @@ export const CrewPoolRankChart = ({
 
   const chartData = useMemo<RankCount[]>(() => {
     if (!snapshotDate) return [];
+
+    // If the selected period STARTS in the future, there is no pool data yet.
+    const fromDate = periodToFromDate(period);
+    if (fromDate && fromDate.getTime() > Date.now()) return [];
+
     const counts = new Map<string, number>();
     for (const c of crew) {
       // Existed on snapshot date
@@ -154,16 +175,10 @@ export const CrewPoolRankChart = ({
       if (!created) continue;
       if (created.getTime() > snapshotDate.getTime()) continue;
 
-      // Not terminated / not‑for‑rehire as of snapshot date.
-      // First pass: apply current status retroactively (per task #38 scope).
+      // Always exclude not-for-rehire and terminated crew, regardless of dates.
       if (c.notForHire === true) continue;
       const statusLower = (c.status || "").toLowerCase();
-      if (statusLower === "terminated") {
-        // If we have a termination date and it's after the snapshot, the
-        // crew was still in the pool on that date.
-        const termDate = parseDate(c.lastTerminationDate);
-        if (!termDate || termDate.getTime() <= snapshotDate.getTime()) continue;
-      }
+      if (statusLower === "terminated") continue;
 
       const rank = (c.presentRank || "").trim();
       if (!rank) continue;
@@ -193,7 +208,7 @@ export const CrewPoolRankChart = ({
     return Array.from(counts.entries())
       .map(([rank, count]) => ({ rank, count }))
       .sort((a, b) => b.count - a.count);
-  }, [crew, snapshotDate, ranks, nationalities, manningAgents, crewPools, vessels]);
+  }, [crew, snapshotDate, period, ranks, nationalities, manningAgents, crewPools, vessels]);
 
   const chartOptions = useMemo<AgChartOptions>(
     () => ({

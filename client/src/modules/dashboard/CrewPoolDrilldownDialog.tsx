@@ -67,6 +67,22 @@ function periodToSnapshotDate(period: PeriodFilterValue): Date | null {
   return null;
 }
 
+function periodToFromDate(period: PeriodFilterValue): Date | null {
+  if (period.mode === "year" && period.year) {
+    return new Date(period.year, 0, 1);
+  }
+  if (period.mode === "year-quarter" && period.year && period.quarter) {
+    return new Date(period.year, (period.quarter - 1) * 3, 1);
+  }
+  if (period.mode === "year-month" && period.year && period.month) {
+    return new Date(period.year, period.month - 1, 1);
+  }
+  if (period.mode === "date-range" && period.dateFrom) {
+    return period.dateFrom;
+  }
+  return null;
+}
+
 function formatPeriod(period: PeriodFilterValue): string {
   if (period.mode === "year" && period.year) return String(period.year);
   if (period.mode === "year-quarter" && period.year && period.quarter)
@@ -155,19 +171,21 @@ export const CrewPoolDrilldownDialog = ({
 
   const matching = useMemo<CrewRow[]>(() => {
     if (!rank || !snapshotDate) return [];
+
+    // If the selected period STARTS in the future, there is no pool data yet.
+    const fromDate = periodToFromDate(period);
+    if (fromDate && fromDate.getTime() > Date.now()) return [];
+
     return crew.filter((c) => {
       // Mirror chart: existed on snapshot date
       const created = parseDate(c.createdAt);
       if (!created) return false;
       if (created.getTime() > snapshotDate.getTime()) return false;
 
-      // Mirror chart: not terminated / not-for-rehire as of snapshot date
+      // Mirror chart: always exclude not-for-rehire and terminated crew.
       if (c.notForHire === true) return false;
       const statusLower = (c.status || "").toLowerCase();
-      if (statusLower === "terminated") {
-        const termDate = parseDate(c.lastTerminationDate);
-        if (!termDate || termDate.getTime() <= snapshotDate.getTime()) return false;
-      }
+      if (statusLower === "terminated") return false;
 
       const rowRank = (c.presentRank || "").trim();
       if (!rowRank || rowRank !== rank) return false;
@@ -193,7 +211,7 @@ export const CrewPoolDrilldownDialog = ({
       }
       return true;
     });
-  }, [crew, snapshotDate, rank, ranks, nationalities, manningAgents, crewPools, vessels]);
+  }, [crew, snapshotDate, period, rank, ranks, nationalities, manningAgents, crewPools, vessels]);
 
   const sorted = useMemo(
     () =>
