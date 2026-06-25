@@ -422,12 +422,56 @@ export const RHRecordingForm = ({
   const selectedCrewMember = useMemo(() => {
     return filteredCrewMembers.find((cm: any) => cm.crewMemberId === selectedCrewMemberId || cm.empNo === selectedCrewMemberId);
   }, [filteredCrewMembers, selectedCrewMemberId]);
-  
+
+  // End of the selected month — the as-of date for resolving each crew's
+  // historical rank from promotion history.
+  const monthEndDate = useMemo(() => {
+    if (!selectedPeriod) return '';
+    const [y, m] = selectedPeriod.split('-').map(Number);
+    const lastDayDate = new Date(y, m, 0);
+    return `${y}-${String(m).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+  }, [selectedPeriod]);
+
+  const rosterEmpNos = useMemo(() => {
+    return filteredCrewMembers.map((cm: any) => cm.empNo || cm.crewMemberId).filter(Boolean);
+  }, [filteredCrewMembers]);
+
+  // Resolve the rank each crew member held during the viewed month from
+  // promotion history. For a crew promoted later, an earlier month resolves to
+  // the prior rank instead of their current present_rank — so editing a past
+  // month shows the rank that actually applied then. (Mirrors FixedTasksTable.)
+  const { data: rankAsOfMonth = {} } = useQuery<Record<string, string>>({
+    queryKey: ['v2', 'rest-hours', 'recording-form', 'ranks-as-of-date', monthEndDate, rosterEmpNos],
+    queryFn: () => restHoursApiV2.variableTasks.getRanksAsOfDate(monthEndDate, rosterEmpNos),
+    enabled: open && !!monthEndDate && rosterEmpNos.length > 0,
+  });
+
+  // Resolve the period-applicable rank for a crew member shown in the selector:
+  // the as-of-month-end rank from promotion history, falling back to present_rank.
+  const getDisplayRank = useCallback((cm: any): string => {
+    const id = cm?.empNo || cm?.crewMemberId;
+    return (id && rankAsOfMonth[id]) || cm?.presentRank || '';
+  }, [rankAsOfMonth]);
+
   // Derived values from selections
   const crewMemberName = selectedCrewMember
     ? [selectedCrewMember.firstName, selectedCrewMember.middleName, selectedCrewMember.familyName].filter(Boolean).join(' ')
     : initialCrewMemberName;
-  const rank = selectedCrewMember?.presentRank || initialRank;
+  // True while the selection still matches the record the form was opened with.
+  // In that state `initialRank` is the stored per-rank value (it carries
+  // selectedRecord.rank from RHCrewRecordsTable), so it correctly reflects which
+  // rank period (e.g. an old-rank row in a promotion/split month) was opened.
+  const isInitialSelection =
+    selectedCrewMemberId === initialCrewMemberId && selectedPeriod === initialMonthValue;
+  // Effective rank for display/export/payload: prefer the stored record's rank
+  // for the opened record, otherwise the as-of-month-end rank for the selected
+  // crew (from promotion history), then current present_rank.
+  const rank =
+    (isInitialSelection && initialRank) ||
+    (selectedCrewMember ? getDisplayRank(selectedCrewMember) : '') ||
+    selectedCrewMember?.presentRank ||
+    initialRank ||
+    '';
   const vesselName = getVesselName(selectedVesselId);
 
   // Format month for display (e.g., "2024, Mar")
@@ -2230,11 +2274,22 @@ export const RHRecordingForm = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {filteredCrewMembers.map((cm: any) => (
-                  <SelectItem key={cm.crewMemberId || cm.empNo} value={cm.crewMemberId || cm.empNo}>
-                    {cm.presentRank}, {cm.firstName}{cm.middleName ? ' ' + cm.middleName : ''} {cm.familyName}
-                  </SelectItem>
-                ))}
+                {filteredCrewMembers.map((cm: any) => {
+                  const cmId = cm.crewMemberId || cm.empNo;
+                  // For the row the form was opened with, show its stored rank so a
+                  // promotion/split month displays the exact per-rank row being
+                  // edited (not the month-end rank). All other options resolve to
+                  // the as-of-month-end rank from promotion history.
+                  const optionRank =
+                    isInitialSelection && cmId === selectedCrewMemberId && initialRank
+                      ? initialRank
+                      : getDisplayRank(cm);
+                  return (
+                    <SelectItem key={cmId} value={cmId}>
+                      {optionRank}, {cm.firstName}{cm.middleName ? ' ' + cm.middleName : ''} {cm.familyName}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
