@@ -496,6 +496,7 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         relieverContractEndRangeEndMonths: planning.relieverContractEndRangeEndMonths,
         deploymentChecklistCompleted: planning.deploymentChecklistCompleted,
         applicableDocsChecked: planning.applicableDocsChecked,
+        adminAccept: planning.adminAccept,
         isArchived: planning.isArchived,
         isRelieverArchived: planning.isRelieverArchived,
         archivedDate: planning.archivedDate,
@@ -551,7 +552,25 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
         enabled: !!crewUuid && !!effectiveDepartment,
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     });
-    
+
+    const { toast } = useToast();
+    const adminAcceptMutation = useUpdatePlanningV2();
+    const planUuid = rankPlanningData?.planUuid;
+    const adminAcceptValue = rankPlanningData?.adminAccept === false ? 'no' : 'yes';
+
+    const handleAdminAcceptChange = async (value: string) => {
+        if (!planUuid) return;
+        try {
+            await adminAcceptMutation.mutateAsync({ planUuid, data: { adminAccept: value === 'yes' } });
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error?.message || "Failed to update Admin Accept",
+                variant: "destructive",
+            });
+        }
+    };
+
     return (
         <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
             <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-officer-rank-${index + 1}`}>
@@ -570,7 +589,17 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
                 {officerData?.issuingCountry || ''}
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-admin-accept-${index + 1}`}>
-                Yes
+                {planUuid ? (
+                    <Select value={adminAcceptValue} onValueChange={handleAdminAcceptChange} disabled={adminAcceptMutation.isPending}>
+                        <SelectTrigger className="h-7 w-[70px] text-xs" data-testid={`select-officer-admin-accept-${index + 1}`}>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="yes" data-testid={`option-admin-accept-yes-${index + 1}`}>Yes</SelectItem>
+                            <SelectItem value="no" data-testid={`option-admin-accept-no-${index + 1}`}>No</SelectItem>
+                        </SelectContent>
+                    </Select>
+                ) : ''}
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-tanker-${index + 1}`}>
                 {officerData?.tankerCert || ''}
