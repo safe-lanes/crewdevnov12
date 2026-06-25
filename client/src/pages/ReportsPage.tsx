@@ -60,12 +60,13 @@ const REPORT_TREE: ReportCategory[] = [
       { id: "rec-recruited", label: "Recruited" },
       { id: "rec-waitlist", label: "Waitlist" },
       { id: "rec-rejected", label: "Rejected" },
-      { id: "rec-applications-by-source", label: "Applications by Source" },
-      { id: "rec-interview-pipeline", label: "Interview Pipeline" },
-      { id: "rec-offers-issued", label: "Offers Issued" },
-      { id: "rec-joining-status", label: "Joining Status" },
-      { id: "rec-medical-pending", label: "Medical Pending" },
-      { id: "rec-document-pending", label: "Document Pending" },
+      // Temporarily hidden from Reports sidebar (uncomment to restore)
+      // { id: "rec-applications-by-source", label: "Applications by Source" },
+      // { id: "rec-interview-pipeline", label: "Interview Pipeline" },
+      // { id: "rec-offers-issued", label: "Offers Issued" },
+      // { id: "rec-joining-status", label: "Joining Status" },
+      // { id: "rec-medical-pending", label: "Medical Pending" },
+      // { id: "rec-document-pending", label: "Document Pending" },
     ],
   },
   {
@@ -74,14 +75,15 @@ const REPORT_TREE: ReportCategory[] = [
     icon: Ship,
     children: [
       { id: "vsl-crew-on-board", label: "Crew on Board by Vessel" },
-      { id: "vsl-manning-status", label: "Vessel Manning Status" },
-      { id: "vsl-vacancies", label: "Vacancies by Vessel" },
       { id: "vsl-crew-changes", label: "Crew Changes by Vessel" },
-      { id: "vsl-owner-manning", label: "Owner-wise Manning" },
-      { id: "vsl-flag-manning", label: "Flag-wise Manning" },
-      { id: "vsl-visit-schedule", label: "Vessel Visit Schedule" },
-      { id: "vsl-signon-signoff", label: "Sign-on/Sign-off Log" },
-      { id: "vsl-compliance-summary", label: "Vessel Compliance Summary" },
+      // Temporarily hidden from Reports sidebar (uncomment to restore)
+      // { id: "vsl-manning-status", label: "Vessel Manning Status" },
+      // { id: "vsl-vacancies", label: "Vacancies by Vessel" },
+      // { id: "vsl-owner-manning", label: "Owner-wise Manning" },
+      // { id: "vsl-flag-manning", label: "Flag-wise Manning" },
+      // { id: "vsl-visit-schedule", label: "Vessel Visit Schedule" },
+      // { id: "vsl-signon-signoff", label: "Sign-on/Sign-off Log" },
+      // { id: "vsl-compliance-summary", label: "Vessel Compliance Summary" },
     ],
   },
   {
@@ -105,7 +107,8 @@ const REPORT_TREE: ReportCategory[] = [
     label: "Rotation",
     icon: RefreshCw,
     children: [
-      { id: "rot-overdue-relief", label: "Crew Overdue for Relief" },
+      // Temporarily hidden from Reports sidebar (uncomment to restore)
+      // { id: "rot-overdue-relief", label: "Crew Overdue for Relief" },
       { id: "rot-planned-reliefs", label: "Planned Reliefs Within N Days" },
     ],
   },
@@ -114,7 +117,8 @@ const REPORT_TREE: ReportCategory[] = [
     label: "Promotion",
     icon: TrendingUp,
     children: [
-      { id: "promo-meeting-criteria", label: "Crew Meeting Promotion Criteria" },
+      // Temporarily hidden from Reports sidebar (uncomment to restore)
+      // { id: "promo-meeting-criteria", label: "Crew Meeting Promotion Criteria" },
       { id: "promo-approved-ytd", label: "Promotions Approved YTD" },
     ],
   },
@@ -123,18 +127,22 @@ const REPORT_TREE: ReportCategory[] = [
     label: "Appraisals",
     icon: ClipboardList,
     children: [
-      { id: "appr-pending", label: "Pending Appraisals" },
+      // Temporarily hidden from Reports sidebar (uncomment to restore)
+      // { id: "appr-pending", label: "Pending Appraisals" },
       { id: "appr-scores-summary", label: "Appraisal Scores Summary" },
     ],
   },
-  {
-    id: "drug-alcohol",
-    label: "Drug & Alcohol",
-    icon: FlaskConical,
-    children: [
-      { id: "da-tests-due", label: "D&A Tests Due" },
-    ],
-  },
+  // Temporarily hidden from Reports sidebar (uncomment to restore).
+  // Only child ("D&A Tests Due") is hidden, so the whole category is hidden
+  // to avoid showing an empty category.
+  // {
+  //   id: "drug-alcohol",
+  //   label: "Drug & Alcohol",
+  //   icon: FlaskConical,
+  //   children: [
+  //     { id: "da-tests-due", label: "D&A Tests Due" },
+  //   ],
+  // },
   {
     id: "rest-hours",
     label: "Rest Hours",
