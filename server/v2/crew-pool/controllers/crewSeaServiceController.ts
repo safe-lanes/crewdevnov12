@@ -158,7 +158,7 @@ export const crewSeaServiceController = {
       }
 
       const stored = await persistIncoming(
-        "crew-sea-service",
+        "crew-pool/crew-sea-service",
         fileName,
         rawValue,
         resolvedFileType,

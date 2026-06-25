@@ -92,7 +92,7 @@ async function backfillTenant(connectionString: string, domainName: string, labe
         // Save file to disk
         try {
           const filePath = await fileStorageService.writeAttachment(
-            "promotions",
+            "promotions/briefing",
             finalName,
             buffer,
             domainName

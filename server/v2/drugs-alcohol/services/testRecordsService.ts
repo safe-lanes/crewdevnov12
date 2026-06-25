@@ -44,7 +44,7 @@ async function persistAttachmentItem(
   const decoded = decodeStoredFile(raw, fileType ?? null);
   if (decoded) {
     const storedPath = await fileStorageService.writeAttachment(
-      "drugs-alcohol",
+      "drugs-alcohol/test-records",
       fileName,
       decoded.buffer,
     );

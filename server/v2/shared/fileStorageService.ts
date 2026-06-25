@@ -129,7 +129,11 @@ function resolveDomain(domainOverride?: string): string {
 
 /**
  * Writes raw buffer to private filesystem under
- * .private/{domain}/{module}/{timestamp}_{random8}_{filename}.
+ * .private/{domain}/{group}/{entity}/{timestamp}_{random8}_{filename}.
+ *
+ * `module` may be a nested "group/entity" path so attachments are grouped by
+ * their owning module on disk; each "/"-segment is sanitized independently.
+ * Legacy callers passing a single flat segment continue to work unchanged.
  *
  * The tenant/domain is resolved internally from the request context; pass
  * `domainOverride` only from out-of-request contexts (e.g. backfill scripts).
@@ -147,9 +151,22 @@ export async function writeAttachment(
 
   const domain = resolveDomain(domainOverride);
 
-  // Sanitize tenant domain and module name to prevent path traversal in directory structure
+  // Sanitize tenant domain to prevent path traversal in directory structure
   const cleanDomain = domain.replace(/[^a-zA-Z0-9_\-]/g, "_");
-  const cleanModule = module.replace(/[^a-zA-Z0-9_\-]/g, "_");
+
+  // The module identifier may be a nested "group/entity" path so attachments are
+  // grouped by their owning module on disk (e.g. "crew-pool/crew-sea-service").
+  // Split on "/", drop empty and traversal segments, then sanitize each segment
+  // independently so a malicious value can never escape the module folder.
+  const cleanModuleSegments = module
+    .split("/")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0 && segment !== "." && segment !== "..")
+    .map((segment) => segment.replace(/[^a-zA-Z0-9_\-]/g, "_"))
+    .filter((segment) => segment.length > 0);
+  if (cleanModuleSegments.length === 0) {
+    cleanModuleSegments.push("misc");
+  }
 
   const sanitizedName = sanitizeFileName(fileName);
   const timestamp = Date.now();
@@ -157,14 +174,14 @@ export async function writeAttachment(
   const uniqueName = `${timestamp}_${randomSuffix}_${sanitizedName}`;
 
   // Establish full target directory path
-  const targetDir = path.join(PRIVATE_ROOT, cleanDomain, cleanModule);
+  const targetDir = path.join(PRIVATE_ROOT, cleanDomain, ...cleanModuleSegments);
   await fs.mkdir(targetDir, { recursive: true });
 
   const targetPath = path.join(targetDir, uniqueName);
   await fs.writeFile(targetPath, buffer);
 
-  // Return relative path from PRIVATE_ROOT (e.g. "domain/module/uniqueName")
-  return path.join(cleanDomain, cleanModule, uniqueName).replace(/\\/g, "/");
+  // Return relative path from PRIVATE_ROOT (e.g. "domain/group/entity/uniqueName")
+  return path.join(cleanDomain, ...cleanModuleSegments, uniqueName).replace(/\\/g, "/");
 }
 
 /**

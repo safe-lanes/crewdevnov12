@@ -587,7 +587,7 @@ export const crewSeaServiceService = {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
               const stored = await persistReconcileAttachment(
-                "crew-sea-service",
+                "crew-pool/crew-sea-service",
                 att.fileName,
                 att.filePath,
                 att.fileData,

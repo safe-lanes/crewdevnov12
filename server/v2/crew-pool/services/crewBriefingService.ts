@@ -324,7 +324,7 @@ export const crewBriefingService = {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
               const stored = await persistReconcileAttachment(
-                "crew-briefing",
+                "crew-pool/crew-briefing",
                 att.fileName,
                 att.filePath,
                 att.fileData,
@@ -418,7 +418,7 @@ export const crewBriefingService = {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
               const stored = await persistReconcileAttachment(
-                "crew-debriefing",
+                "crew-pool/crew-debriefing",
                 att.fileName,
                 att.filePath,
                 att.fileData,

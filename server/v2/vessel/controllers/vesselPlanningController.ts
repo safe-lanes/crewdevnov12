@@ -206,7 +206,7 @@ export const vesselPlanningController = {
       }
 
       const stored = await persistIncoming(
-        "vessel-planning",
+        "vessel/vessel-planning",
         resolvedFileName,
         rawValue,
         resolvedFileType,

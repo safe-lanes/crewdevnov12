@@ -145,7 +145,7 @@ export const crewTrainingController = {
       }
 
       const stored = await persistIncoming(
-        "crew-training",
+        "crew-pool/crew-training",
         fileName,
         rawValue,
         resolvedFileType,

@@ -142,7 +142,7 @@ export const crewBriefingController = {
       }
 
       const stored = await persistIncoming(
-        "crew-briefing",
+        "crew-pool/crew-briefing",
         fileName,
         rawValue,
         resolvedFileType,
@@ -273,7 +273,7 @@ export const crewBriefingController = {
       }
 
       const stored = await persistIncoming(
-        "crew-debriefing",
+        "crew-pool/crew-debriefing",
         fileName,
         rawValue,
         resolvedFileType,

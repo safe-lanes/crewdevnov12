@@ -115,7 +115,7 @@ export const attachmentsController = {
 
       // Write new base64 uploads to disk; only the relative path is persisted.
       const stored = await persistIncoming(
-        "drugs-alcohol",
+        "drugs-alcohol/test-records",
         name,
         data,
         type || null,

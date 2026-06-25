@@ -158,7 +158,7 @@ export const screeningB1Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b1Uuid } = req.params;
-      const data = await buildAttachmentData("screening-b1", req.body);
+      const data = await buildAttachmentData("recruitment/screening-b1", req.body);
       const result = await screeningB1Service.createAttachment(b1Uuid, data);
       res.status(201).json(result);
     } catch (error) {
@@ -311,7 +311,7 @@ export const screeningB2Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b2Uuid } = req.params;
-      const data = await buildAttachmentData("screening-b2", req.body);
+      const data = await buildAttachmentData("recruitment/screening-b2", req.body);
       const result = await screeningB2Service.createAttachment(b2Uuid, data);
       res.status(201).json(result);
     } catch (error) {
@@ -475,7 +475,7 @@ export const screeningB3Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b3Uuid } = req.params;
-      const data = await buildAttachmentData("screening-b3", req.body);
+      const data = await buildAttachmentData("recruitment/screening-b3", req.body);
       const result = await screeningB3Service.createAttachment(b3Uuid, data);
       res.status(201).json(result);
     } catch (error) {
@@ -639,7 +639,7 @@ export const screeningB4Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b4Uuid } = req.params;
-      const data = await buildAttachmentData("screening-b4", req.body);
+      const data = await buildAttachmentData("recruitment/screening-b4", req.body);
       const result = await screeningB4Service.createAttachment(b4Uuid, data);
       res.status(201).json(result);
     } catch (error) {
@@ -803,7 +803,7 @@ export const screeningB5Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b5Uuid } = req.params;
-      const data = await buildAttachmentData("screening-b5", req.body);
+      const data = await buildAttachmentData("recruitment/screening-b5", req.body);
       const result = await screeningB5Service.createAttachment(b5Uuid, data);
       res.status(201).json(result);
     } catch (error) {
@@ -967,7 +967,7 @@ export const screeningB6Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b6Uuid } = req.params;
-      const data = await buildAttachmentData("screening-b6", req.body);
+      const data = await buildAttachmentData("recruitment/screening-b6", req.body);
       const result = await screeningB6Service.createAttachment(b6Uuid, data);
       res.status(201).json(result);
     } catch (error) {
@@ -1206,7 +1206,7 @@ export const screeningB8Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b8Uuid } = req.params;
-      const data = await buildAttachmentData("screening-b8", req.body);
+      const data = await buildAttachmentData("recruitment/screening-b8", req.body);
       const result = await screeningB8Service.createAttachment(b8Uuid, data);
       res.status(201).json(result);
     } catch (error) {

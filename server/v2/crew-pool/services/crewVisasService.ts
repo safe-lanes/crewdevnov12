@@ -259,7 +259,7 @@ export const crewVisasService = {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
               const stored = await persistReconcileAttachment(
-                "crew-visas",
+                "crew-pool/crew-visas",
                 att.fileName,
                 att.filePath,
                 att.fileData,

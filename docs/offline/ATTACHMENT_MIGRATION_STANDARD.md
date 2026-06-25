@@ -31,10 +31,13 @@ The following columns are not subject to a strict naming or presence mandate and
 ### Storage Root & Directory Convention
 All attachment binaries must be saved to the filesystem under a private root directory at the project root:
 ```
-.private/{domainname}/{modulename}/
+.private/{domainname}/{modulegroup}/{entityname}/
 ```
 *   `domainname`: Product/tenant domain (e.g. `rsms`, `sail`, `demo`) resolved dynamically from request context.
-*   `modulename`: The module identifier (e.g. `recruitment`, `medical`, `drugs-alcohol`, `briefing`).
+*   `modulegroup`: The owning module the attachment belongs to (e.g. `crew-pool`, `recruitment`, `drugs-alcohol`, `vessel`, `promotions`). Attachments are grouped by module so all of a module's entities live under one folder.
+*   `entityname`: The specific entity within the module (e.g. `crew-sea-service`, `recruitment-licenses`, `screening-b1`, `test-records`, `vessel-planning`, `briefing`).
+
+The module identifier passed to `writeAttachment` is a nested `"{modulegroup}/{entityname}"` string; it is split on `/`, each segment is sanitized independently, and empty/traversal segments are dropped so a value can never escape its module folder. Legacy attachments persisted under the older flat `.private/{domainname}/{modulename}/` layout continue to resolve unchanged, because reads always derive from the stored relative `file_path`.
 
 ### Directory Auto-Creation
 The directory structure must be created recursively at runtime before writing a file if it does not already exist.

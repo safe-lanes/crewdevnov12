@@ -129,7 +129,7 @@ export async function getDocumentAttachments(req: Request, res: Response) {
 export async function createDocumentAttachment(req: Request, res: Response) {
   try {
     const { docUuid } = req.params;
-    const data = await buildAttachmentData("recruitment-documents", req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-documents", req.body);
     const attachment = await documentsService.createDocumentAttachment(docUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
@@ -169,7 +169,7 @@ export async function getVisaAttachments(req: Request, res: Response) {
 export async function createVisaAttachment(req: Request, res: Response) {
   try {
     const { visaUuid } = req.params;
-    const data = await buildAttachmentData("recruitment-visas", req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-visas", req.body);
     const attachment = await documentsService.createVisaAttachment(visaUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
@@ -209,7 +209,7 @@ export async function getEducationAttachments(req: Request, res: Response) {
 export async function createEducationAttachment(req: Request, res: Response) {
   try {
     const { eduUuid } = req.params;
-    const data = await buildAttachmentData("recruitment-education", req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-education", req.body);
     const attachment = await documentsService.createEducationAttachment(eduUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
@@ -249,7 +249,7 @@ export async function getLicenseAttachments(req: Request, res: Response) {
 export async function createLicenseAttachment(req: Request, res: Response) {
   try {
     const { licUuid } = req.params;
-    const data = await buildAttachmentData("recruitment-licenses", req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-licenses", req.body);
     const attachment = await documentsService.createLicenseAttachment(licUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
@@ -289,7 +289,7 @@ export async function getTrainingAttachments(req: Request, res: Response) {
 export async function createTrainingAttachment(req: Request, res: Response) {
   try {
     const { trainUuid } = req.params;
-    const data = await buildAttachmentData("recruitment-training", req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-training", req.body);
     const attachment = await documentsService.createTrainingAttachment(trainUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
@@ -329,7 +329,7 @@ export async function getSeaServiceAttachments(req: Request, res: Response) {
 export async function createSeaServiceAttachment(req: Request, res: Response) {
   try {
     const { seaUuid } = req.params;
-    const data = await buildAttachmentData("recruitment-sea-service", req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-sea-service", req.body);
     const attachment = await documentsService.createSeaServiceAttachment(seaUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
@@ -369,7 +369,7 @@ export async function getAdditionalInfoAttachments(req: Request, res: Response) 
 export async function createAdditionalInfoAttachment(req: Request, res: Response) {
   try {
     const { infoUuid } = req.params;
-    const data = await buildAttachmentData("recruitment-additional-info", req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-additional-info", req.body);
     const attachment = await documentsService.createAdditionalInfoAttachment(infoUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
