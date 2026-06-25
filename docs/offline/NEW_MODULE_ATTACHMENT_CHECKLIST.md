@@ -51,7 +51,7 @@ Ensure your folder path matches the pattern:
 ```
 .private/{domainname}/{modulename}/
 ```
-*   `domainname` must be obtained dynamically via request context/tenant middleware.
+*   `domainname` is resolved automatically by `writeAttachment` from the active tenant context (AsyncLocalStorage), falling back to `main`. Pass an explicit `domainOverride` only for out-of-request flows such as the backfill script.
 *   `modulename` must be lowercase and hyphen-separated.
 
 ### 2. Service Layer Operations
@@ -59,7 +59,7 @@ In your service class (e.g., `server/v2/my-module/services/myModuleService.ts`):
 *   Import `fileStorageService` from `server/v2/shared/fileStorageService`.
 *   **Write Flow**: When uploading, call `fileStorageService.writeAttachment` with the file buffer to write it to disk and obtain a relative path. Store only the relative path and metadata in the database:
     ```typescript
-    const filePath = await fileStorageService.writeAttachment(tenantDomain, "my-module", fileName, buffer);
+    const filePath = await fileStorageService.writeAttachment("my-module", fileName, buffer);
     await attachmentsRepository.create({
       parentUuid,
       fileName,

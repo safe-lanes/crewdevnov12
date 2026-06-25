@@ -24,6 +24,40 @@ import type {
   CrewDebriefingAttachment,
 } from "../../../../shared/v2/crew-pool/types";
 import { resolveVesselUuid } from "./masterDataResolver";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+
+/**
+ * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
+ * a base64 data URL in file_path (no disk file) — those are skipped.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
+
+/**
+ * Persist a new reconcile attachment value to disk when it is base64; otherwise
+ * keep the provided relative path. Never returns base64 for storage.
+ */
+async function persistReconcileAttachment(
+  moduleName: string,
+  fileName: string,
+  filePath?: string,
+  fileData?: string,
+): Promise<{ filePath: string | null; fileData: null }> {
+  const raw = fileData || filePath || "";
+  const decoded = decodeStoredFile(raw, null);
+  if (decoded) {
+    const storedPath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath: storedPath, fileData: null };
+  }
+  return { filePath: filePath || null, fileData: null };
+}
 
 const crewBriefingRepository = new CrewBriefingRepository();
 
@@ -115,10 +149,13 @@ export const crewBriefingService = {
   },
 
   async removeBriefingAttachment(attUuid: string): Promise<void> {
+    const attachment =
+      await crewBriefingRepository.findBriefingAttachmentByUuid(attUuid);
     const success = await crewBriefingRepository.softDeleteBriefingAttachment(attUuid);
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+    await deleteAttachmentFile(attachment?.filePath);
   },
 
   async getBriefingAttachmentFile(
@@ -190,10 +227,13 @@ export const crewBriefingService = {
   },
 
   async removeDebriefingAttachment(attUuid: string): Promise<void> {
+    const attachment =
+      await crewBriefingRepository.findDebriefingAttachmentByUuid(attUuid);
     const success = await crewBriefingRepository.softDeleteDebriefingAttachment(attUuid);
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+    await deleteAttachmentFile(attachment?.filePath);
   },
 
   async getDebriefingAttachmentFile(
@@ -283,12 +323,18 @@ export const crewBriefingService = {
         if (item.attachments) {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
+              const stored = await persistReconcileAttachment(
+                "crew-briefing",
+                att.fileName,
+                att.filePath,
+                att.fileData,
+              );
               await tx.insert(crewBriefingAttachments).values({
                 attUuid: uuidv4(),
                 briefingUuid,
                 fileName: att.fileName,
-                filePath: att.filePath || null,
-                fileData: att.fileData || null,
+                filePath: stored.filePath,
+                fileData: stored.fileData,
                 createdAt: now,
                 updatedAt: now,
               });
@@ -371,12 +417,18 @@ export const crewBriefingService = {
         if (item.attachments) {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
+              const stored = await persistReconcileAttachment(
+                "crew-debriefing",
+                att.fileName,
+                att.filePath,
+                att.fileData,
+              );
               await tx.insert(crewDebriefingAttachments).values({
                 attUuid: uuidv4(),
                 debriefingUuid,
                 fileName: att.fileName,
-                filePath: att.filePath || null,
-                fileData: att.fileData || null,
+                filePath: stored.filePath,
+                fileData: stored.fileData,
                 createdAt: now,
                 updatedAt: now,
               });

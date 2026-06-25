@@ -22,7 +22,6 @@ import { eq, and, isNull, or, sql, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { fileStorageService } from "../../shared/fileStorageService.js";
 import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
-import { tenantConnectionManager } from "../../../utils/tenantConnectionManager.js";
 import { v4 as uuidv4 } from "uuid";
 
 export const promotionReviewWritableSchema = z.object({
@@ -1819,8 +1818,7 @@ export class PromotionReviewsService {
         
         if (progressObj.sections && Array.isArray(progressObj.sections)) {
           const db = getDb();
-          const tenantId = tenantConnectionManager.getCurrentTenantId() || "main";
-          
+
           for (const section of progressObj.sections) {
             if (!section.assessmentPoints || !Array.isArray(section.assessmentPoints)) continue;
             for (const point of section.assessmentPoints) {
@@ -1867,7 +1865,6 @@ export class PromotionReviewsService {
                     const cleanName = att.fileName || att.name || "attachment";
                     
                     const filePath = await fileStorageService.writeAttachment(
-                      tenantId,
                       "promotions",
                       cleanName,
                       buffer

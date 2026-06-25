@@ -25,6 +25,40 @@ import type {
   InsertCrewTrainingAttachment,
   CrewTrainingAttachment,
 } from "../../../../shared/v2/crew-pool/types";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+
+/**
+ * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
+ * a base64 data URL in file_path (no disk file) — those are skipped.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
+
+/**
+ * Persist a new reconcile attachment value to disk when it is base64; otherwise
+ * keep the provided relative path. Never returns base64 for storage.
+ */
+async function persistReconcileAttachment(
+  moduleName: string,
+  fileName: string,
+  filePath?: string,
+  fileData?: string,
+): Promise<{ filePath: string | null; fileData: null }> {
+  const raw = fileData || filePath || "";
+  const decoded = decodeStoredFile(raw, null);
+  if (decoded) {
+    const storedPath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath: storedPath, fileData: null };
+  }
+  return { filePath: filePath || null, fileData: null };
+}
 
 const crewLicensesRepository = new CrewLicensesRepository();
 const crewTrainingRepository = new CrewTrainingRepository();
@@ -198,10 +232,24 @@ export const crewCertificatesService = {
   },
 
   async removeLicenseAttachment(attUuid: string): Promise<void> {
+    const attachment =
+      await crewLicensesRepository.findAttachmentByUuid(attUuid);
     const success = await crewLicensesRepository.softDeleteAttachment(attUuid);
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+    await deleteAttachmentFile(attachment?.filePath);
+  },
+
+  async getLicenseAttachmentFile(
+    attUuid: string,
+  ): Promise<CrewLicenseAttachment> {
+    const attachment =
+      await crewLicensesRepository.findAttachmentByUuid(attUuid);
+    if (!attachment) {
+      throw new Error(`Attachment not found: ${attUuid}`);
+    }
+    return attachment;
   },
 
   /**
@@ -266,12 +314,18 @@ export const crewCertificatesService = {
         if (item.attachments) {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
+              const stored = await persistReconcileAttachment(
+                "crew-licenses",
+                att.fileName,
+                att.filePath,
+                att.fileData,
+              );
               await tx.insert(crewLicensesAttachments).values({
                 attUuid: uuidv4(),
                 licUuid,
                 fileName: att.fileName,
-                filePath: att.filePath || null,
-                fileData: att.fileData || null,
+                filePath: stored.filePath,
+                fileData: stored.fileData,
                 createdAt: now,
                 updatedAt: now,
               });
@@ -354,10 +408,24 @@ export const crewCertificatesService = {
   },
 
   async removeTrainingAttachment(attUuid: string): Promise<void> {
+    const attachment =
+      await crewTrainingRepository.findAttachmentByUuid(attUuid);
     const success = await crewTrainingRepository.softDeleteAttachment(attUuid);
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+    await deleteAttachmentFile(attachment?.filePath);
+  },
+
+  async getTrainingAttachmentFile(
+    attUuid: string,
+  ): Promise<CrewTrainingAttachment> {
+    const attachment =
+      await crewTrainingRepository.findAttachmentByUuid(attUuid);
+    if (!attachment) {
+      throw new Error(`Attachment not found: ${attUuid}`);
+    }
+    return attachment;
   },
 
   /**
@@ -422,12 +490,18 @@ export const crewCertificatesService = {
         if (item.attachments) {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
+              const stored = await persistReconcileAttachment(
+                "crew-training",
+                att.fileName,
+                att.filePath,
+                att.fileData,
+              );
               await tx.insert(crewTrainingAttachments).values({
                 attUuid: uuidv4(),
                 trainUuid,
                 fileName: att.fileName,
-                filePath: att.filePath || null,
-                fileData: att.fileData || null,
+                filePath: stored.filePath,
+                fileData: stored.fileData,
                 createdAt: now,
                 updatedAt: now,
               });

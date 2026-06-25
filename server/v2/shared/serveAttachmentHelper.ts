@@ -16,7 +16,8 @@ const INLINE_RENDERABLE_MIMES = new Set([
  */
 export function decodeStoredFile(
   stored: string | null | undefined,
-  fallbackType?: string | null
+  fallbackType?: string | null,
+  allowRawBase64 = false
 ): { buffer: Buffer; mime: string } | null {
   if (!stored) return null;
 
@@ -30,6 +31,19 @@ export function decodeStoredFile(
       ? Buffer.from(payload, "base64")
       : Buffer.from(decodeURIComponent(payload), "utf-8");
     return { buffer, mime };
+  }
+
+  // Out-of-request callers (e.g. the backfill script) may hold legacy values
+  // stored as bare base64 without the data-URL scheme. Only attempt this when
+  // explicitly opted in, so request-time serving stays strict.
+  if (allowRawBase64) {
+    try {
+      const buffer = Buffer.from(stored, "base64");
+      if (buffer.length === 0) return null;
+      return { buffer, mime: fallbackType || "application/octet-stream" };
+    } catch {
+      return null;
+    }
   }
 
   return null;

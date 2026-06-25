@@ -9,6 +9,73 @@ import {
   screeningB7Service,
   screeningB8Service,
 } from "../services/screeningService";
+import {
+  fileStorageService,
+  AttachmentValidationError,
+} from "../../shared/fileStorageService.js";
+import {
+  serveAttachmentFromFilePath,
+  decodeStoredFile,
+} from "../../shared/serveAttachmentHelper.js";
+
+/**
+ * Normalize a stored attachment record for serving. Legacy rows written by the
+ * pre-migration code path may carry a base64 data URL wrongly persisted in the
+ * file_path column; treat any data: value as fileData so the shared helper's
+ * dual-read path serves it instead of attempting a (failing) disk read.
+ */
+function normalizeForServe(att: {
+  fileName?: string | null;
+  fileType?: string | null;
+  filePath?: string | null;
+  fileData?: string | null;
+}) {
+  const filePathIsDataUrl = !!att.filePath && att.filePath.startsWith("data:");
+  return {
+    filePath: filePathIsDataUrl ? null : att.filePath ?? null,
+    fileData: att.fileData ?? (filePathIsDataUrl ? att.filePath ?? null : null),
+    fileName: att.fileName ?? null,
+    fileType: att.fileType ?? null,
+  };
+}
+
+/**
+ * Convert an incoming attachment value (base64 data URL or an already-stored
+ * relative disk path) into the persisted {filePath, fileData} pair. New base64
+ * uploads are written to disk via the shared service so only the relative path
+ * is stored; base64 is never persisted to the database.
+ */
+async function persistIncoming(
+  moduleName: string,
+  fileName: string,
+  rawValue: string,
+  fileType?: string | null,
+): Promise<{ filePath: string; fileData: null }> {
+  const decoded = decodeStoredFile(rawValue, fileType);
+  if (decoded) {
+    const filePath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath, fileData: null };
+  }
+  // Not base64 — assume the client supplied an already-stored relative path.
+  return { filePath: rawValue, fileData: null };
+}
+
+/**
+ * Build the attachment insert payload from the request body, writing any new
+ * base64 upload to disk. Falls back to passing the body unchanged when no file
+ * value is present.
+ */
+async function buildAttachmentData(moduleName: string, body: any) {
+  const rawValue = body?.fileData ?? body?.fileUrl ?? body?.filePath ?? body?.data ?? "";
+  if (!rawValue) return body;
+  const fileName = body?.fileName || body?.name || "attachment";
+  const persisted = await persistIncoming(moduleName, fileName, String(rawValue), body?.fileType);
+  return { ...body, filePath: persisted.filePath, fileData: persisted.fileData };
+}
 
 export const screeningB1Controller = {
   async get(req: Request, res: Response) {
@@ -91,11 +158,29 @@ export const screeningB1Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b1Uuid } = req.params;
-      const result = await screeningB1Service.createAttachment(b1Uuid, req.body);
+      const data = await buildAttachmentData("screening-b1", req.body);
+      const result = await screeningB1Service.createAttachment(b1Uuid, data);
       res.status(201).json(result);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error creating B1 attachment:", error);
       res.status(500).json({ error: "Failed to create B1 attachment" });
+    }
+  },
+
+  async serveAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      const record = await screeningB1Service.getAttachmentFile(attUuid);
+      await serveAttachmentFromFilePath(res, normalizeForServe(record));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      console.error("Error serving B1 attachment:", error);
+      res.status(500).json({ error: "Failed to serve attachment" });
     }
   },
 
@@ -226,11 +311,29 @@ export const screeningB2Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b2Uuid } = req.params;
-      const result = await screeningB2Service.createAttachment(b2Uuid, req.body);
+      const data = await buildAttachmentData("screening-b2", req.body);
+      const result = await screeningB2Service.createAttachment(b2Uuid, data);
       res.status(201).json(result);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error creating B2 attachment:", error);
       res.status(500).json({ error: "Failed to create B2 attachment" });
+    }
+  },
+
+  async serveAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      const record = await screeningB2Service.getAttachmentFile(attUuid);
+      await serveAttachmentFromFilePath(res, normalizeForServe(record));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      console.error("Error serving B2 attachment:", error);
+      res.status(500).json({ error: "Failed to serve attachment" });
     }
   },
 
@@ -372,11 +475,29 @@ export const screeningB3Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b3Uuid } = req.params;
-      const result = await screeningB3Service.createAttachment(b3Uuid, req.body);
+      const data = await buildAttachmentData("screening-b3", req.body);
+      const result = await screeningB3Service.createAttachment(b3Uuid, data);
       res.status(201).json(result);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error creating B3 attachment:", error);
       res.status(500).json({ error: "Failed to create B3 attachment" });
+    }
+  },
+
+  async serveAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      const record = await screeningB3Service.getAttachmentFile(attUuid);
+      await serveAttachmentFromFilePath(res, normalizeForServe(record));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      console.error("Error serving B3 attachment:", error);
+      res.status(500).json({ error: "Failed to serve attachment" });
     }
   },
 
@@ -518,11 +639,29 @@ export const screeningB4Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b4Uuid } = req.params;
-      const result = await screeningB4Service.createAttachment(b4Uuid, req.body);
+      const data = await buildAttachmentData("screening-b4", req.body);
+      const result = await screeningB4Service.createAttachment(b4Uuid, data);
       res.status(201).json(result);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error creating B4 attachment:", error);
       res.status(500).json({ error: "Failed to create B4 attachment" });
+    }
+  },
+
+  async serveAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      const record = await screeningB4Service.getAttachmentFile(attUuid);
+      await serveAttachmentFromFilePath(res, normalizeForServe(record));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      console.error("Error serving B4 attachment:", error);
+      res.status(500).json({ error: "Failed to serve attachment" });
     }
   },
 
@@ -664,11 +803,29 @@ export const screeningB5Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b5Uuid } = req.params;
-      const result = await screeningB5Service.createAttachment(b5Uuid, req.body);
+      const data = await buildAttachmentData("screening-b5", req.body);
+      const result = await screeningB5Service.createAttachment(b5Uuid, data);
       res.status(201).json(result);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error creating B5 attachment:", error);
       res.status(500).json({ error: "Failed to create B5 attachment" });
+    }
+  },
+
+  async serveAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      const record = await screeningB5Service.getAttachmentFile(attUuid);
+      await serveAttachmentFromFilePath(res, normalizeForServe(record));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      console.error("Error serving B5 attachment:", error);
+      res.status(500).json({ error: "Failed to serve attachment" });
     }
   },
 
@@ -810,11 +967,29 @@ export const screeningB6Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b6Uuid } = req.params;
-      const result = await screeningB6Service.createAttachment(b6Uuid, req.body);
+      const data = await buildAttachmentData("screening-b6", req.body);
+      const result = await screeningB6Service.createAttachment(b6Uuid, data);
       res.status(201).json(result);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error creating B6 attachment:", error);
       res.status(500).json({ error: "Failed to create B6 attachment" });
+    }
+  },
+
+  async serveAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      const record = await screeningB6Service.getAttachmentFile(attUuid);
+      await serveAttachmentFromFilePath(res, normalizeForServe(record));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      console.error("Error serving B6 attachment:", error);
+      res.status(500).json({ error: "Failed to serve attachment" });
     }
   },
 
@@ -1031,11 +1206,29 @@ export const screeningB8Controller = {
   async createAttachment(req: Request, res: Response) {
     try {
       const { b8Uuid } = req.params;
-      const result = await screeningB8Service.createAttachment(b8Uuid, req.body);
+      const data = await buildAttachmentData("screening-b8", req.body);
+      const result = await screeningB8Service.createAttachment(b8Uuid, data);
       res.status(201).json(result);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error creating B8 attachment:", error);
       res.status(500).json({ error: "Failed to create B8 attachment" });
+    }
+  },
+
+  async serveAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      const record = await screeningB8Service.getAttachmentFile(attUuid);
+      await serveAttachmentFromFilePath(res, normalizeForServe(record));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      console.error("Error serving B8 attachment:", error);
+      res.status(500).json({ error: "Failed to serve attachment" });
     }
   },
 

@@ -30,6 +30,16 @@ import type {
   ScreeningB8Shortlisting,
   InsertScreeningB8Shortlisting,
 } from "../../../../shared/v2/recruitment/types";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+
+/**
+ * Delete a stored attachment binary from disk. Skips base64 data: values
+ * (legacy rows) and silently ignores missing files.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
 
 function extractAuditUser(userUuid?: string, data?: Record<string, unknown>): string | null {
   if (userUuid) return userUuid;
@@ -143,7 +153,16 @@ export class ScreeningB1Service {
   }
 
   async deleteAttachment(id: number): Promise<boolean> {
-    return screeningB1Repository.deleteAttachment(id);
+    const attachment = await screeningB1Repository.findAttachmentById(id);
+    const success = await screeningB1Repository.deleteAttachment(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getAttachmentFile(attUuid: string) {
+    const attachment = await screeningB1Repository.findAttachmentByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 }
 
@@ -233,7 +252,16 @@ export class ScreeningB2Service {
   }
 
   async deleteAttachment(id: number): Promise<boolean> {
-    return screeningB2Repository.deleteAttachment(id);
+    const attachment = await screeningB2Repository.findAttachmentById(id);
+    const success = await screeningB2Repository.deleteAttachment(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getAttachmentFile(attUuid: string) {
+    const attachment = await screeningB2Repository.findAttachmentByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 }
 
@@ -323,7 +351,16 @@ export class ScreeningB3Service {
   }
 
   async deleteAttachment(id: number): Promise<boolean> {
-    return screeningB3Repository.deleteAttachment(id);
+    const attachment = await screeningB3Repository.findAttachmentById(id);
+    const success = await screeningB3Repository.deleteAttachment(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getAttachmentFile(attUuid: string) {
+    const attachment = await screeningB3Repository.findAttachmentByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 }
 
@@ -413,7 +450,16 @@ export class ScreeningB4Service {
   }
 
   async deleteAttachment(id: number): Promise<boolean> {
-    return screeningB4Repository.deleteAttachment(id);
+    const attachment = await screeningB4Repository.findAttachmentById(id);
+    const success = await screeningB4Repository.deleteAttachment(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getAttachmentFile(attUuid: string) {
+    const attachment = await screeningB4Repository.findAttachmentByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 }
 
@@ -503,7 +549,16 @@ export class ScreeningB5Service {
   }
 
   async deleteAttachment(id: number): Promise<boolean> {
-    return screeningB5Repository.deleteAttachment(id);
+    const attachment = await screeningB5Repository.findAttachmentById(id);
+    const success = await screeningB5Repository.deleteAttachment(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getAttachmentFile(attUuid: string) {
+    const attachment = await screeningB5Repository.findAttachmentByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 }
 
@@ -607,7 +662,16 @@ export class ScreeningB6Service {
   }
 
   async deleteAttachment(id: number): Promise<boolean> {
-    return screeningB6Repository.deleteAttachment(id);
+    const attachment = await screeningB6Repository.findAttachmentById(id);
+    const success = await screeningB6Repository.deleteAttachment(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getAttachmentFile(attUuid: string) {
+    const attachment = await screeningB6Repository.findAttachmentByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 }
 
@@ -748,7 +812,16 @@ export class ScreeningB8Service {
   }
 
   async deleteAttachment(id: number): Promise<boolean> {
-    return screeningB8Repository.deleteAttachment(id);
+    const attachment = await screeningB8Repository.findAttachmentById(id);
+    const success = await screeningB8Repository.deleteAttachment(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getAttachmentFile(attUuid: string) {
+    const attachment = await screeningB8Repository.findAttachmentByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 }
 

@@ -2,6 +2,47 @@ import { Request, Response } from "express";
 import { crewCertificatesService } from "../services";
 import { insertCrewTrainingCourseSchema } from "@shared/v2/crew-pool/types";
 import { z } from "zod";
+import {
+  fileStorageService,
+  AttachmentValidationError,
+} from "../../shared/fileStorageService.js";
+import {
+  serveAttachmentFromFilePath,
+  decodeStoredFile,
+} from "../../shared/serveAttachmentHelper.js";
+
+function normalizeForServe(att: {
+  fileName?: string | null;
+  fileType?: string | null;
+  filePath?: string | null;
+  fileData?: string | null;
+}) {
+  const filePathIsDataUrl = !!att.filePath && att.filePath.startsWith("data:");
+  return {
+    filePath: filePathIsDataUrl ? null : att.filePath ?? null,
+    fileData: att.fileData ?? (filePathIsDataUrl ? att.filePath ?? null : null),
+    fileName: att.fileName ?? null,
+    fileType: att.fileType ?? null,
+  };
+}
+
+async function persistIncoming(
+  moduleName: string,
+  fileName: string,
+  rawValue: string,
+  fileType?: string | null,
+): Promise<{ filePath: string; fileData: null }> {
+  const decoded = decodeStoredFile(rawValue, fileType);
+  if (decoded) {
+    const filePath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath, fileData: null };
+  }
+  return { filePath: rawValue, fileData: null };
+}
 
 export const crewTrainingController = {
   async getAll(req: Request, res: Response) {
@@ -94,26 +135,37 @@ export const crewTrainingController = {
     try {
       const { trainUuid } = req.params;
       const { fileName, filePath, fileUrl, fileType, mimeType, fileSize } = req.body;
-      const resolvedFilePath = filePath || fileUrl || '';
+      const rawValue = filePath || fileUrl || "";
       const resolvedFileType = fileType || mimeType || "application/octet-stream";
 
-      if (!fileName || !resolvedFilePath) {
+      if (!fileName || !rawValue) {
         return res
           .status(400)
           .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
+      const stored = await persistIncoming(
+        "crew-training",
+        fileName,
+        rawValue,
+        resolvedFileType,
+      );
+
       const attachment = await crewCertificatesService.addTrainingAttachment(
         trainUuid,
         {
           fileName,
-          filePath: resolvedFilePath,
+          filePath: stored.filePath,
+          fileData: stored.fileData,
           fileType: resolvedFileType,
           fileSize: fileSize || "0",
         }
       );
       res.status(201).json(attachment);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: "Failed to add attachment" });
     }
   },
@@ -125,6 +177,20 @@ export const crewTrainingController = {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to remove attachment" });
+    }
+  },
+
+  async serveAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      const attachment =
+        await crewCertificatesService.getTrainingAttachmentFile(attUuid);
+      await serveAttachmentFromFilePath(res, normalizeForServe(attachment));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      return res.status(500).json({ error: "Failed to load attachment" });
     }
   },
 };

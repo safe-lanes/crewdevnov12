@@ -17,6 +17,40 @@ import type {
   CrewSeaServiceAttachment,
 } from "../../../../shared/v2/crew-pool/types";
 import { resolveVesselUuid, resolveVesselTypeUuid } from "./masterDataResolver";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+
+/**
+ * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
+ * a base64 data URL in file_path (no disk file) — those are skipped.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
+
+/**
+ * Persist a new reconcile attachment value to disk when it is base64; otherwise
+ * keep the provided relative path. Never returns base64 for storage.
+ */
+async function persistReconcileAttachment(
+  moduleName: string,
+  fileName: string,
+  filePath?: string,
+  fileData?: string,
+): Promise<{ filePath: string | null; fileData: null }> {
+  const raw = fileData || filePath || "";
+  const decoded = decodeStoredFile(raw, null);
+  if (decoded) {
+    const storedPath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath: storedPath, fileData: null };
+  }
+  return { filePath: filePath || null, fileData: null };
+}
 
 const crewSeaServiceRepository = new CrewSeaServiceRepository();
 
@@ -341,11 +375,23 @@ export const crewSeaServiceService = {
   },
 
   async removeAttachment(attUuid: string): Promise<void> {
+    const attachment =
+      await crewSeaServiceRepository.findAttachmentByUuid(attUuid);
     const success =
       await crewSeaServiceRepository.softDeleteAttachment(attUuid);
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+    await deleteAttachmentFile(attachment?.filePath);
+  },
+
+  async getAttachmentFile(attUuid: string): Promise<CrewSeaServiceAttachment> {
+    const attachment =
+      await crewSeaServiceRepository.findAttachmentByUuid(attUuid);
+    if (!attachment) {
+      throw new Error(`Attachment not found: ${attUuid}`);
+    }
+    return attachment;
   },
 
   async getTotalExperience(crewUuid: string) {
@@ -540,12 +586,18 @@ export const crewSeaServiceService = {
         if (item.attachments) {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
+              const stored = await persistReconcileAttachment(
+                "crew-sea-service",
+                att.fileName,
+                att.filePath,
+                att.fileData,
+              );
               await tx.insert(crewSeaServiceAttachments).values({
                 attUuid: uuidv4(),
                 seaUuid,
                 fileName: att.fileName,
-                filePath: att.filePath || null,
-                fileData: att.fileData || null,
+                filePath: stored.filePath,
+                fileData: stored.fileData,
                 createdAt: now,
                 updatedAt: now,
               });

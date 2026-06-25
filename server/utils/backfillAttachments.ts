@@ -1,11 +1,7 @@
 import pg from "pg";
 import { fileStorageService } from "../v2/shared/fileStorageService.js";
+import { decodeStoredFile } from "../v2/shared/serveAttachmentHelper.js";
 import { v4 as uuidv4 } from "uuid";
-import dotenv from "dotenv";
-import path from "path";
-
-// Load environment variables from .env
-dotenv.config();
 
 const { Pool } = pg;
 
@@ -17,31 +13,6 @@ interface ChecklistAttachment {
   data: string; // Base64 data URL
   uploadedAt?: string;
   uploadDate?: string;
-}
-
-/**
- * Parses the base64 payload from data URL or raw base64.
- */
-function extractBase64(stored: string): { buffer: Buffer; mime: string } | null {
-  if (stored.startsWith("data:")) {
-    const match = stored.match(/^data:([^;,]*)(;base64)?,([\s\S]*)$/);
-    if (!match) return null;
-    const mime = match[1] || "application/octet-stream";
-    const isBase64 = !!match[2];
-    const payload = match[3];
-    const buffer = isBase64
-      ? Buffer.from(payload, "base64")
-      : Buffer.from(decodeURIComponent(payload), "utf-8");
-    return { buffer, mime };
-  } else {
-    // Attempt raw base64 decode if it doesn't have the data URL scheme
-    try {
-      const buffer = Buffer.from(stored, "base64");
-      return { buffer, mime: "application/octet-stream" };
-    } catch {
-      return null;
-    }
-  }
 }
 
 /**
@@ -108,7 +79,7 @@ async function backfillTenant(connectionString: string, domainName: string, labe
           continue;
         }
 
-        const decoded = extractBase64(att.data);
+        const decoded = decodeStoredFile(att.data, att.type, true);
         if (!decoded) {
           console.error(`      ❌ Failed to decode base64 for file '${att.name}', skipping.`);
           continue;
@@ -121,10 +92,10 @@ async function backfillTenant(connectionString: string, domainName: string, labe
         // Save file to disk
         try {
           const filePath = await fileStorageService.writeAttachment(
-            domainName,
             "promotions",
             finalName,
-            buffer
+            buffer,
+            domainName
           );
 
           // Write record to the new attachments table

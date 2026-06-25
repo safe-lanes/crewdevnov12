@@ -2,6 +2,60 @@ import { Request, Response } from "express";
 import { vesselPlanningService, getAllForConflictDetection } from "../services";
 import { insertVesselPlanningV2Schema } from "../../../../shared/v2/vessel/schema";
 import { z } from "zod";
+import {
+  fileStorageService,
+  AttachmentValidationError,
+} from "../../shared/fileStorageService.js";
+import {
+  serveAttachmentFromFilePath,
+  decodeStoredFile,
+} from "../../shared/serveAttachmentHelper.js";
+
+/**
+ * Normalize a stored attachment record for serving. Legacy rows written by the
+ * pre-migration code path may carry a base64 data URL wrongly persisted in the
+ * file_path column; treat any data: value as fileData so the shared helper's
+ * dual-read path serves it instead of attempting a (failing) disk read.
+ */
+function normalizeForServe(att: {
+  fileName?: string | null;
+  fileType?: string | null;
+  filePath?: string | null;
+  fileData?: string | null;
+}) {
+  const filePathIsDataUrl = !!att.filePath && att.filePath.startsWith("data:");
+  return {
+    filePath: filePathIsDataUrl ? null : att.filePath ?? null,
+    fileData: att.fileData ?? (filePathIsDataUrl ? att.filePath ?? null : null),
+    fileName: att.fileName ?? null,
+    fileType: att.fileType ?? null,
+  };
+}
+
+/**
+ * Convert an incoming attachment value (base64 data URL or an already-stored
+ * relative disk path) into the persisted {filePath, fileData} pair. New base64
+ * uploads are written to disk via the shared service so only the relative path
+ * is stored; base64 is never persisted to the database.
+ */
+async function persistIncoming(
+  moduleName: string,
+  fileName: string,
+  rawValue: string,
+  fileType?: string | null,
+): Promise<{ filePath: string; fileData: null }> {
+  const decoded = decodeStoredFile(rawValue, fileType);
+  if (decoded) {
+    const filePath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath, fileData: null };
+  }
+  // Not base64 — assume the client supplied an already-stored relative path.
+  return { filePath: rawValue, fileData: null };
+}
 
 export const vesselPlanningController = {
   /**
@@ -115,6 +169,7 @@ export const vesselPlanningController = {
         fileSize: parseInt(att.fileSize || '0', 10),
         uploadedBy: att.uploadedByUuid || '',
         uploadDate: att.uploadDate,
+        viewUrl: `/api/v2/vessel/planning/attachments/${att.attUuid}/raw`,
       }));
       
       res.json(formattedAttachments);
@@ -127,9 +182,50 @@ export const vesselPlanningController = {
   async addAttachment(req: Request, res: Response) {
     try {
       const { planUuid } = req.params;
-      const attachment = await vesselPlanningService.addAttachment(planUuid, req.body);
+      const {
+        filename,
+        fileName,
+        filePath,
+        fileUrl,
+        fileData,
+        data,
+        fileType,
+        mimeType,
+        fileSize,
+        uploadedByUuid,
+      } = req.body;
+
+      const resolvedFileName = fileName || filename || "";
+      const rawValue = fileData || filePath || fileUrl || data || "";
+      const resolvedFileType = fileType || mimeType || "application/octet-stream";
+
+      if (!resolvedFileName || !rawValue) {
+        return res
+          .status(400)
+          .json({ error: "fileName and fileData/filePath are required" });
+      }
+
+      const stored = await persistIncoming(
+        "vessel-planning",
+        resolvedFileName,
+        rawValue,
+        resolvedFileType,
+      );
+
+      const attachment = await vesselPlanningService.addAttachment(planUuid, {
+        fileName: resolvedFileName,
+        filePath: stored.filePath,
+        fileData: stored.fileData,
+        fileType: resolvedFileType,
+        fileSize: fileSize != null ? String(fileSize) : "0",
+        uploadedByUuid: uploadedByUuid || null,
+        uploadDate: new Date().toISOString(),
+      });
       res.status(201).json(attachment);
     } catch (error: any) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
@@ -146,6 +242,20 @@ export const vesselPlanningController = {
     } catch (error) {
       console.error("Error deleting attachment:", error);
       res.status(500).json({ error: "Failed to delete attachment" });
+    }
+  },
+
+  async serveAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      const attachment = await vesselPlanningService.getAttachmentFile(attUuid);
+      await serveAttachmentFromFilePath(res, normalizeForServe(attachment));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      console.error("Error serving attachment:", error);
+      return res.status(500).json({ error: "Failed to load attachment" });
     }
   },
 

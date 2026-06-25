@@ -5,78 +5,59 @@ import {
   insertCrewDebriefingSchema,
 } from "@shared/v2/crew-pool/types";
 import { z } from "zod";
+import {
+  fileStorageService,
+  AttachmentValidationError,
+} from "../../shared/fileStorageService.js";
+import {
+  serveAttachmentFromFilePath,
+  decodeStoredFile,
+} from "../../shared/serveAttachmentHelper.js";
 
 /**
- * Decode a stored attachment value into raw bytes + mime type.
- * Stored content is typically a base64 data URL ("data:<mime>;base64,<payload>").
- * Returns null when the value is empty or not a usable data URL.
+ * Normalize a stored attachment record for serving. Legacy rows written by the
+ * pre-migration code path may carry a base64 data URL wrongly persisted in the
+ * file_path column; treat any data: value as fileData so the shared helper's
+ * dual-read path serves it instead of attempting a (failing) disk read.
  */
-function decodeStoredFile(
-  stored: string | null | undefined,
-  fallbackType?: string | null
-): { buffer: Buffer; mime: string } | null {
-  if (!stored) return null;
-
-  if (stored.startsWith("data:")) {
-    const match = stored.match(/^data:([^;,]*)(;base64)?,([\s\S]*)$/);
-    if (!match) return null;
-    const mime = match[1] || fallbackType || "application/octet-stream";
-    const isBase64 = !!match[2];
-    const payload = match[3];
-    const buffer = isBase64
-      ? Buffer.from(payload, "base64")
-      : Buffer.from(decodeURIComponent(payload), "utf-8");
-    return { buffer, mime };
-  }
-
-  return null;
+function normalizeForServe(att: {
+  fileName?: string | null;
+  fileType?: string | null;
+  filePath?: string | null;
+  fileData?: string | null;
+}) {
+  const filePathIsDataUrl = !!att.filePath && att.filePath.startsWith("data:");
+  return {
+    filePath: filePathIsDataUrl ? null : att.filePath ?? null,
+    fileData: att.fileData ?? (filePathIsDataUrl ? att.filePath ?? null : null),
+    fileName: att.fileName ?? null,
+    fileType: att.fileType ?? null,
+  };
 }
 
-// MIME types that are safe to render inline in the browser. Anything else
-// (e.g. text/html, image/svg+xml) is forced to download to prevent a stored
-// data URL from executing as same-origin script.
-const INLINE_RENDERABLE_MIMES = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-]);
-
-function serveAttachment(
-  res: Response,
-  attachment: {
-    fileName?: string | null;
-    fileType?: string | null;
-    filePath?: string | null;
-    fileData?: string | null;
+/**
+ * Convert an incoming attachment value (base64 data URL or an already-stored
+ * relative disk path) into the persisted {filePath, fileData} pair. New base64
+ * uploads are written to disk via the shared service so only the relative path
+ * is stored; base64 is never persisted to the database.
+ */
+async function persistIncoming(
+  moduleName: string,
+  fileName: string,
+  rawValue: string,
+  fileType?: string | null,
+): Promise<{ filePath: string; fileData: null }> {
+  const decoded = decodeStoredFile(rawValue, fileType);
+  if (decoded) {
+    const filePath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath, fileData: null };
   }
-) {
-  const stored = attachment.filePath || attachment.fileData;
-  const decoded = decodeStoredFile(stored, attachment.fileType);
-
-  if (!decoded) {
-    return res.status(404).json({ error: "File content not available" });
-  }
-
-  const fileName = attachment.fileName || "file";
-  const safeName = fileName.replace(/[\r\n"]/g, "_");
-  const mime = decoded.mime.toLowerCase().trim();
-  const canRenderInline = INLINE_RENDERABLE_MIMES.has(mime);
-
-  // Never reflect an arbitrary/unsafe MIME inline. Unknown types are served as
-  // a generic binary download so they cannot run in the same origin.
-  res.setHeader(
-    "Content-Type",
-    canRenderInline ? mime : "application/octet-stream"
-  );
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Content-Length", decoded.buffer.length);
-  res.setHeader(
-    "Content-Disposition",
-    `${canRenderInline ? "inline" : "attachment"}; filename="${safeName}"`
-  );
-  res.setHeader("Cache-Control", "private, max-age=0, must-revalidate");
-  return res.send(decoded.buffer);
+  // Not base64 — assume the client supplied an already-stored relative path.
+  return { filePath: rawValue, fileData: null };
 }
 
 export const crewBriefingController = {
@@ -151,26 +132,37 @@ export const crewBriefingController = {
     try {
       const { briefingUuid } = req.params;
       const { fileName, filePath, fileUrl, fileType, mimeType, fileSize } = req.body;
-      const resolvedFilePath = filePath || fileUrl || "";
+      const rawValue = filePath || fileUrl || "";
       const resolvedFileType = fileType || mimeType || "application/octet-stream";
 
-      if (!fileName || !resolvedFilePath) {
+      if (!fileName || !rawValue) {
         return res
           .status(400)
           .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
+      const stored = await persistIncoming(
+        "crew-briefing",
+        fileName,
+        rawValue,
+        resolvedFileType,
+      );
+
       const attachment = await crewBriefingService.addBriefingAttachment(
         briefingUuid,
         {
           fileName,
-          filePath: resolvedFilePath,
+          filePath: stored.filePath,
+          fileData: stored.fileData,
           fileType: resolvedFileType,
           fileSize: fileSize || "0",
         }
       );
       res.status(201).json(attachment);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: "Failed to add attachment" });
     }
   },
@@ -191,7 +183,7 @@ export const crewBriefingController = {
       const attachment = await crewBriefingService.getBriefingAttachmentFile(
         attUuid
       );
-      return serveAttachment(res, attachment);
+      await serveAttachmentFromFilePath(res, normalizeForServe(attachment));
     } catch (error: any) {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: "Attachment not found" });
@@ -271,26 +263,37 @@ export const crewBriefingController = {
     try {
       const { debriefingUuid } = req.params;
       const { fileName, filePath, fileUrl, fileType, mimeType, fileSize } = req.body;
-      const resolvedFilePath = filePath || fileUrl || "";
+      const rawValue = filePath || fileUrl || "";
       const resolvedFileType = fileType || mimeType || "application/octet-stream";
 
-      if (!fileName || !resolvedFilePath) {
+      if (!fileName || !rawValue) {
         return res
           .status(400)
           .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
+      const stored = await persistIncoming(
+        "crew-debriefing",
+        fileName,
+        rawValue,
+        resolvedFileType,
+      );
+
       const attachment = await crewBriefingService.addDebriefingAttachment(
         debriefingUuid,
         {
           fileName,
-          filePath: resolvedFilePath,
+          filePath: stored.filePath,
+          fileData: stored.fileData,
           fileType: resolvedFileType,
           fileSize: fileSize || "0",
         }
       );
       res.status(201).json(attachment);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: "Failed to add attachment" });
     }
   },
@@ -311,7 +314,7 @@ export const crewBriefingController = {
       const attachment = await crewBriefingService.getDebriefingAttachmentFile(
         attUuid
       );
-      return serveAttachment(res, attachment);
+      await serveAttachmentFromFilePath(res, normalizeForServe(attachment));
     } catch (error: any) {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: "Attachment not found" });

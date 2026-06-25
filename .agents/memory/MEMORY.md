@@ -7,3 +7,4 @@
 - [Promotion list history rows](promotion-list-history-rows.md) — Crew Promotion list emits per crew an active next-rank row PLUS a historical row per completed review; not one row per crew.
 - [Rank as-of-date resolution](rank-as-of-date.md) — RH rank for a given date comes from the promotion ledger (effectiveDate<=date→toRank; before earliest→fromRank; else present_rank); effectiveDate==date binds the new rank.
 - [Promotion attachment storage](promotion-attachment-storage.md) — promo_checklist_attachments_v2 is canonical; never write deprecated_attachments_data on save, dedupe on read, emit fileName/fileSize, idempotent insert on att_uuid, frontend round-trips attUuid/filePath/viewUrl.
+- [Attachment filesystem migration](attachment-migration-filesystem.md) — disk uploads need BOTH a /raw route AND client viewUrl on same base path; recruitment screening B7 (Training Needs) has NO attachments.

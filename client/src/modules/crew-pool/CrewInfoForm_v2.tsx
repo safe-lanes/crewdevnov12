@@ -1202,6 +1202,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         const localOnlyBriefings = preserveLocalRows ? prev.briefings.filter((b: any) => !b.briefingUuid) : [];
         const localOnlyDebriefings = preserveLocalRows ? prev.debriefings.filter((d: any) => !d.debriefingUuid) : [];
 
+        const withViewUrl = (items: any[], basePath: string) =>
+          (items || []).map((it: any) => ({
+            ...it,
+            attachments: Array.isArray(it?.attachments)
+              ? it.attachments.map((att: any) =>
+                  att?.attUuid ? { ...att, viewUrl: `${basePath}/${att.attUuid}/raw` } : att
+                )
+              : it?.attachments,
+          }));
+
         const serverDocs = Array.isArray(detailedCrewData.documents) 
           ? detailedCrewData.documents 
           : detailedCrewData.documents 
@@ -1400,15 +1410,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           nokRelationship: detailedCrewData.nokRelationship || '',
           
           // Complex data arrays - merge server data with local-only rows during deletes
-          documents: [...serverDocs, ...localOnlyDocs],
-          visas: [...serverVisas, ...localOnlyVisas],
-          education: [...serverEdu, ...localOnlyEdu],
-          licenses: [...serverLicenses, ...localOnlyLicenses],
-          trainingCourses: [...serverTraining, ...localOnlyTraining],
-          currentCompanySeaService: [...serverCurrentSS, ...localOnlyCurrentSS],
-          externalSeaService: [...serverExternalSS, ...localOnlyExternalSS],
-          preJoiningMedicals: [...serverMedicals, ...localOnlyMedicals],
-          doctorVisits: [...serverDoctorVisits, ...localOnlyDoctorVisits],
+          documents: [...withViewUrl(serverDocs, '/api/v2/crew-pool/documents/attachments'), ...localOnlyDocs],
+          visas: [...withViewUrl(serverVisas, '/api/v2/crew-pool/visas/attachments'), ...localOnlyVisas],
+          education: [...withViewUrl(serverEdu, '/api/v2/crew-pool/education/attachments'), ...localOnlyEdu],
+          licenses: [...withViewUrl(serverLicenses, '/api/v2/crew-pool/licenses/attachments'), ...localOnlyLicenses],
+          trainingCourses: [...withViewUrl(serverTraining, '/api/v2/crew-pool/training/attachments'), ...localOnlyTraining],
+          currentCompanySeaService: [...withViewUrl(serverCurrentSS, '/api/v2/crew-pool/sea-service/attachments'), ...localOnlyCurrentSS],
+          externalSeaService: [...withViewUrl(serverExternalSS, '/api/v2/crew-pool/sea-service/attachments'), ...localOnlyExternalSS],
+          preJoiningMedicals: [...withViewUrl(serverMedicals, '/api/v2/crew-pool/medical/attachments'), ...localOnlyMedicals],
+          doctorVisits: [...withViewUrl(serverDoctorVisits, '/api/v2/crew-pool/doctor-visits/attachments'), ...localOnlyDoctorVisits],
           briefings: [...serverBriefings, ...localOnlyBriefings],
           debriefings: [...serverDebriefings, ...localOnlyDebriefings],
         };

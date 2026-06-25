@@ -21,6 +21,7 @@ interface HandoverAttachment {
   fileSize: number;
   uploadedBy: string;
   uploadDate: string;
+  viewUrl?: string;
 }
 
 interface HandoverAttachmentsDialogProps {
@@ -192,6 +193,13 @@ export function HandoverAttachmentsDialog({
   };
 
   const handlePreview = (attachment: HandoverAttachment) => {
+    // Prefer the authenticated /raw streaming endpoint when available (new
+    // filesystem-backed attachments). The route serves PDF/image inline with
+    // the correct Content-Type. Fall back to legacy base64 fileData rendering.
+    if (attachment.viewUrl) {
+      window.open(attachment.viewUrl, '_blank');
+      return;
+    }
     const newWindow = window.open('', '_blank');
     if (newWindow) {
       if (attachment.fileType === 'application/pdf') {

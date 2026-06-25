@@ -7,6 +7,17 @@ import { masterPorts, masterVessels, masterVesselTypes, masterNationalities, mas
 import { admCompanyTrainingsV2, admAvailableRanksV2 } from "../../../../shared/v2/admin/schema";
 import { eq, and, sql, desc, or, isNull, aliasedTable, inArray } from "drizzle-orm";
 import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+
+/**
+ * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
+ * a base64 data URL in file_path (no disk file) — those are skipped.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
 
 function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
   const auditUserUuid = (data as any).auditUserUuid || null;
@@ -1166,8 +1177,18 @@ export const vesselPlanningService = {
     return vesselPlanningAttachmentsRepository.create({ ...data, planUuid });
   },
 
+  async getAttachmentFile(attUuid: string): Promise<VesselPlanningAttachmentsV2> {
+    const attachment = await vesselPlanningAttachmentsRepository.findByUuid(attUuid);
+    if (!attachment) {
+      throw new Error(`Attachment not found: ${attUuid}`);
+    }
+    return attachment;
+  },
+
   async deleteAttachment(attUuid: string) {
-    return vesselPlanningAttachmentsRepository.softDelete(attUuid);
+    const attachment = await vesselPlanningAttachmentsRepository.findByUuid(attUuid);
+    await vesselPlanningAttachmentsRepository.softDelete(attUuid);
+    await deleteAttachmentFile(attachment?.filePath);
   },
 
   async updateReliever(planUuid: string, relieverData: {

@@ -90,6 +90,22 @@ export class DocumentAttachmentsRepository {
     ).orderBy(asc(candDocumentsAttachments.sortOrder), asc(candDocumentsAttachments.createdAt));
   }
 
+  async findByUuid(attUuid: string): Promise<CandDocumentAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candDocumentsAttachments).where(
+      eq(candDocumentsAttachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findById(id: number): Promise<CandDocumentAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candDocumentsAttachments).where(
+      eq(candDocumentsAttachments.id, id)
+    );
+    return results[0];
+  }
+
   async create(data: InsertDocumentAttachment): Promise<CandDocumentAttachment> {
     const db = getDb();
     const results = await db.insert(candDocumentsAttachments).values(data).returning();
@@ -150,6 +166,22 @@ export class VisaAttachmentsRepository {
     return db.select().from(candVisasAttachments).where(
       and(eq(candVisasAttachments.visaUuid, visaUuid), eq(candVisasAttachments.isDeleted, false))
     ).orderBy(asc(candVisasAttachments.sortOrder), asc(candVisasAttachments.createdAt));
+  }
+
+  async findByUuid(attUuid: string): Promise<CandVisaAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candVisasAttachments).where(
+      eq(candVisasAttachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findById(id: number): Promise<CandVisaAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candVisasAttachments).where(
+      eq(candVisasAttachments.id, id)
+    );
+    return results[0];
   }
 
   async create(data: InsertVisaAttachment): Promise<CandVisaAttachment> {
@@ -214,6 +246,22 @@ export class EducationAttachmentsRepository {
     ).orderBy(asc(candEducationAttachments.sortOrder), asc(candEducationAttachments.createdAt));
   }
 
+  async findByUuid(attUuid: string): Promise<CandEducationAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candEducationAttachments).where(
+      eq(candEducationAttachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findById(id: number): Promise<CandEducationAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candEducationAttachments).where(
+      eq(candEducationAttachments.id, id)
+    );
+    return results[0];
+  }
+
   async create(data: InsertEducationAttachment): Promise<CandEducationAttachment> {
     const db = getDb();
     const results = await db.insert(candEducationAttachments).values(data).returning();
@@ -274,6 +322,22 @@ export class LicenseAttachmentsRepository {
     return db.select().from(candLicensesAttachments).where(
       and(eq(candLicensesAttachments.licUuid, licUuid), eq(candLicensesAttachments.isDeleted, false))
     ).orderBy(asc(candLicensesAttachments.sortOrder), asc(candLicensesAttachments.createdAt));
+  }
+
+  async findByUuid(attUuid: string): Promise<CandLicenseAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candLicensesAttachments).where(
+      eq(candLicensesAttachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findById(id: number): Promise<CandLicenseAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candLicensesAttachments).where(
+      eq(candLicensesAttachments.id, id)
+    );
+    return results[0];
   }
 
   async create(data: InsertLicenseAttachment): Promise<CandLicenseAttachment> {
@@ -338,6 +402,22 @@ export class TrainingAttachmentsRepository {
     ).orderBy(asc(candTrainingAttachments.sortOrder), asc(candTrainingAttachments.createdAt));
   }
 
+  async findByUuid(attUuid: string): Promise<CandTrainingAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candTrainingAttachments).where(
+      eq(candTrainingAttachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findById(id: number): Promise<CandTrainingAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candTrainingAttachments).where(
+      eq(candTrainingAttachments.id, id)
+    );
+    return results[0];
+  }
+
   async create(data: InsertTrainingAttachment): Promise<CandTrainingAttachment> {
     const db = getDb();
     const results = await db.insert(candTrainingAttachments).values(data).returning();
@@ -400,6 +480,22 @@ export class SeaServiceAttachmentsRepository {
     ).orderBy(asc(candSeaServiceAttachments.sortOrder), asc(candSeaServiceAttachments.createdAt));
   }
 
+  async findByUuid(attUuid: string): Promise<CandSeaServiceAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candSeaServiceAttachments).where(
+      eq(candSeaServiceAttachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findById(id: number): Promise<CandSeaServiceAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candSeaServiceAttachments).where(
+      eq(candSeaServiceAttachments.id, id)
+    );
+    return results[0];
+  }
+
   async create(data: InsertSeaServiceAttachment): Promise<CandSeaServiceAttachment> {
     const db = getDb();
     const results = await db.insert(candSeaServiceAttachments).values(data).returning();
@@ -460,6 +556,22 @@ export class AdditionalInfoAttachmentsRepository {
     return db.select().from(candAdditionalInfoAttachments).where(
       and(eq(candAdditionalInfoAttachments.infoUuid, infoUuid), eq(candAdditionalInfoAttachments.isDeleted, false))
     ).orderBy(asc(candAdditionalInfoAttachments.sortOrder), asc(candAdditionalInfoAttachments.createdAt));
+  }
+
+  async findByUuid(attUuid: string): Promise<CandAdditionalInfoAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candAdditionalInfoAttachments).where(
+      eq(candAdditionalInfoAttachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findById(id: number): Promise<CandAdditionalInfoAttachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(candAdditionalInfoAttachments).where(
+      eq(candAdditionalInfoAttachments.id, id)
+    );
+    return results[0];
   }
 
   async create(data: InsertAdditionalInfoAttachment): Promise<CandAdditionalInfoAttachment> {

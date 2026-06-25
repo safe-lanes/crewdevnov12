@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -52,6 +52,10 @@ export function FileAttachmentDialog({
 }: FileAttachmentDialogProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Resolved thumbnail object URLs for saved image attachments served from the
+  // tenant-protected raw endpoint (a plain <img src=viewUrl> sends no auth
+  // headers, so we fetch through window.fetch and render the resulting blob).
+  const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -212,6 +216,40 @@ export function FileAttachmentDialog({
     return URL.createObjectURL(blob);
   };
 
+  // Resolve image thumbnails. Saved attachments are streamed from the
+  // tenant-protected raw endpoint (viewUrl), which requires auth headers — so
+  // we fetch each into an object URL. Unsaved uploads keep their in-memory data
+  // URL (handled directly in render). Object URLs are revoked on cleanup.
+  useEffect(() => {
+    let active = true;
+    const created: string[] = [];
+    (async () => {
+      const next: Record<string, string> = {};
+      for (const att of attachments) {
+        const type = (att.type ||
+          (att as any).fileType ||
+          (att as any).mimeType ||
+          '') as string;
+        if (att.isDeleted || !type.startsWith('image/')) continue;
+        const viewUrl = getViewUrl(att);
+        if (!viewUrl) continue;
+        try {
+          const objectUrl = await fetchAsObjectUrl(viewUrl);
+          created.push(objectUrl);
+          next[String(att.id)] = objectUrl;
+        } catch {
+          // Ignore — render falls back to the generic file icon.
+        }
+      }
+      if (active) setThumbUrls(next);
+      else created.forEach((u) => URL.revokeObjectURL(u));
+    })();
+    return () => {
+      active = false;
+      created.forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, [attachments]);
+
   // View a file. Saved attachments expose a same-origin server URL that the
   // browser can render natively in a new tab (PDFs/images). Unsaved uploads only
   // exist as an in-memory data URL, which the Replit preview frame blocks from
@@ -367,15 +405,32 @@ export function FileAttachmentDialog({
                     data-testid={`attachment-item-${attachment.id}`}
                   >
                     <div className="flex-shrink-0">
-                      {(attachment.type || (attachment as any).fileType || (attachment as any).mimeType || '')?.startsWith('image/') ? (
-                        <img
-                          src={getFileContent(attachment)}
-                          alt={attachment.name || (attachment as any).fileName}
-                          className="h-10 w-10 object-cover rounded"
-                        />
-                      ) : (
-                        getFileIcon(attachment.type || (attachment as any).fileType || (attachment as any).mimeType || '')
-                      )}
+                      {(() => {
+                        const type =
+                          attachment.type ||
+                          (attachment as any).fileType ||
+                          (attachment as any).mimeType ||
+                          '';
+                        const isImage = type?.startsWith('image/');
+                        const content = getFileContent(attachment);
+                        const dataUrl =
+                          content && content.startsWith('data:') ? content : '';
+                        // Prefer the authenticated viewUrl blob; fall back to an
+                        // unsaved upload's in-memory data URL. Never point <img>
+                        // at a bare disk path (it would 404 as a broken image).
+                        const thumbSrc =
+                          thumbUrls[String(attachment.id)] || dataUrl;
+                        return isImage && thumbSrc ? (
+                          <img
+                            src={thumbSrc}
+                            alt={attachment.name || (attachment as any).fileName}
+                            className="h-10 w-10 object-cover rounded"
+                            data-testid={`img-thumbnail-${attachment.id}`}
+                          />
+                        ) : (
+                          getFileIcon(type || '')
+                        );
+                      })()}
                     </div>
                     
                     <div className="flex-1 min-w-0">

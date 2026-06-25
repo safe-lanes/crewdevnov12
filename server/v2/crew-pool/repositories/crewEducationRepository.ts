@@ -141,6 +141,17 @@ export class CrewEducationRepository {
   }
 
   // ============ Attachments ============
+  async findAttachmentByUuid(
+    attUuid: string
+  ): Promise<CrewEducationAttachment | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(crewEducationAttachments)
+      .where(eq(crewEducationAttachments.attUuid, attUuid));
+    return results[0];
+  }
+
   async findAttachmentsByEduUuid(
     eduUuid: string
   ): Promise<CrewEducationAttachment[]> {

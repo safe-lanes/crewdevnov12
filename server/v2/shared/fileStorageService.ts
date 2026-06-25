@@ -1,10 +1,13 @@
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
-import { Readable } from "stream";
+import { tenantConnectionManager } from "../../utils/tenantConnectionManager.js";
 
 // Ensure the private storage directory is resolved relative to project root
 const PRIVATE_ROOT = path.resolve(".private");
+
+// Standard §4: server-side ceiling of 5 MB on every stored attachment.
+export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 // Simple extension-to-mime map supporting mandatory and common types
 const MIME_MAP: Record<string, string> = {
@@ -13,6 +16,72 @@ const MIME_MAP: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
 };
+
+// Standard §4: MIME-signature allow-list. Only these renderable types may be
+// written to disk; the check is performed against the real file bytes (magic
+// numbers) rather than the client-declared content-type.
+const ALLOWED_MIME_TYPES = new Set<string>([
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+]);
+
+/**
+ * Raised when an attachment fails server-side validation (size ceiling or
+ * MIME-signature allow-list). Controllers should map this to an HTTP 400 so the
+ * user sees a clear validation message instead of a generic 500.
+ */
+export class AttachmentValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AttachmentValidationError";
+  }
+}
+
+/**
+ * Detect the MIME type of a buffer from its leading magic bytes. Returns null
+ * when the signature does not match a supported type.
+ */
+export function detectMimeBySignature(buffer: Buffer): string | null {
+  if (buffer.length >= 5 && buffer.subarray(0, 5).toString("latin1") === "%PDF-") {
+    return "application/pdf";
+  }
+  if (
+    buffer.length >= 8 &&
+    buffer.subarray(0, 8).equals(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    )
+  ) {
+    return "image/png";
+  }
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "image/jpeg";
+  }
+  return null;
+}
+
+/**
+ * Enforce the server-side size ceiling and MIME-signature allow-list on a
+ * buffer before it is written to disk. Throws AttachmentValidationError when the
+ * buffer is empty, exceeds 5 MB, or is not a permitted (PDF/PNG/JPEG) type.
+ */
+export function validateAttachmentBuffer(buffer: Buffer): string {
+  if (!buffer || buffer.length === 0) {
+    throw new AttachmentValidationError("Attachment is empty.");
+  }
+  if (buffer.length > MAX_ATTACHMENT_BYTES) {
+    throw new AttachmentValidationError(
+      `Attachment exceeds the ${Math.floor(MAX_ATTACHMENT_BYTES / (1024 * 1024))} MB size limit.`,
+    );
+  }
+  const detected = detectMimeBySignature(buffer);
+  if (!detected || !ALLOWED_MIME_TYPES.has(detected)) {
+    throw new AttachmentValidationError(
+      "Unsupported file type. Only PDF, PNG, and JPEG files are allowed.",
+    );
+  }
+  return detected;
+}
 
 /**
  * Sanitizes a filename to prevent path traversal, special characters, and Windows reserved names.
@@ -36,25 +105,48 @@ export function sanitizeFileName(name: string): string {
     sanitizedBase = `safe_${sanitizedBase}`;
   }
 
-  // 4. Enforce length constraints
-  // Maximum length of prefix + sanitized base + ext is 255.
-  // We limit the base to 100 characters to leave plenty of room for epoch timestamp (13 chars) + random8 (8 chars) + delimiters.
-  if (sanitizedBase.length > 100) {
-    sanitizedBase = sanitizedBase.substring(0, 100);
+  // 4. Enforce length constraints (Standard §4: total filename <= 255; limit
+  // the sanitized base to 200 to stay safe while leaving room for the
+  // {timestamp}_{random8}_ prefix and extension.
+  if (sanitizedBase.length > 200) {
+    sanitizedBase = sanitizedBase.substring(0, 200);
   }
 
   return `${sanitizedBase}${ext}`;
 }
 
 /**
- * Writes raw buffer to private filesystem under .private/{domain}/{module}/{timestamp}_{random8}_{filename}
+ * Resolve the tenant/domain folder name for attachment storage from the current
+ * request context (AsyncLocalStorage), falling back to "main" when no tenant is
+ * bound. Callers running inside a request no longer need to pass the domain;
+ * out-of-request callers (e.g. the backfill script) may pass an explicit
+ * override.
+ */
+function resolveDomain(domainOverride?: string): string {
+  if (domainOverride && domainOverride.trim()) return domainOverride;
+  return tenantConnectionManager.getCurrentTenantId() || "main";
+}
+
+/**
+ * Writes raw buffer to private filesystem under
+ * .private/{domain}/{module}/{timestamp}_{random8}_{filename}.
+ *
+ * The tenant/domain is resolved internally from the request context; pass
+ * `domainOverride` only from out-of-request contexts (e.g. backfill scripts).
+ * The buffer is validated against the size ceiling and MIME-signature
+ * allow-list before any bytes touch the disk.
  */
 export async function writeAttachment(
-  domain: string,
   module: string,
   fileName: string,
-  buffer: Buffer
+  buffer: Buffer,
+  domainOverride?: string,
 ): Promise<string> {
+  // Server-side double-guard: size ceiling + MIME-signature allow-list.
+  validateAttachmentBuffer(buffer);
+
+  const domain = resolveDomain(domainOverride);
+
   // Sanitize tenant domain and module name to prevent path traversal in directory structure
   const cleanDomain = domain.replace(/[^a-zA-Z0-9_\-]/g, "_");
   const cleanModule = module.replace(/[^a-zA-Z0-9_\-]/g, "_");
@@ -76,16 +168,27 @@ export async function writeAttachment(
 }
 
 /**
+ * Resolve a stored relative path to an absolute path strictly inside
+ * PRIVATE_ROOT. Throws on traversal. Segment-aware: a sibling directory whose
+ * name merely shares the PRIVATE_ROOT prefix cannot pass a naive startsWith.
+ */
+function resolveInsidePrivateRoot(filePath: string): string {
+  const resolvedPath = path.resolve(PRIVATE_ROOT, filePath);
+  const relative = path.relative(PRIVATE_ROOT, resolvedPath);
+  if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Access Denied: Path traversal detected.");
+  }
+  return resolvedPath;
+}
+
+/**
  * Reads an attachment from disk by relative path. Prevents path traversal.
  */
 export async function readAttachment(
-  filePath: string
+  filePath: string,
 ): Promise<{ stream: NodeJS.ReadableStream; mimeType: string }> {
   // Resolve path and ensure it remains strictly inside PRIVATE_ROOT to block path traversal
-  const resolvedPath = path.resolve(PRIVATE_ROOT, filePath);
-  if (!resolvedPath.startsWith(PRIVATE_ROOT)) {
-    throw new Error("Access Denied: Path traversal detected.");
-  }
+  const resolvedPath = resolveInsidePrivateRoot(filePath);
 
   // Check if file exists
   try {
@@ -103,8 +206,36 @@ export async function readAttachment(
   return { stream, mimeType };
 }
 
+/**
+ * Permanently remove an attachment file from disk by relative path. Safe to call
+ * when the file is already gone (missing files are ignored). Path traversal is
+ * blocked the same way as reads.
+ */
+export async function deleteAttachment(filePath: string | null | undefined): Promise<void> {
+  if (!filePath) return;
+  let resolvedPath: string;
+  try {
+    resolvedPath = resolveInsidePrivateRoot(filePath);
+  } catch (err) {
+    console.error(`deleteAttachment refused traversal for path ${filePath}:`, err);
+    return;
+  }
+  try {
+    await fs.unlink(resolvedPath);
+  } catch (err: any) {
+    if (err?.code !== "ENOENT") {
+      console.error(`deleteAttachment failed for path ${filePath}:`, err);
+    }
+  }
+}
+
 export const fileStorageService = {
   sanitizeFileName,
   writeAttachment,
   readAttachment,
+  deleteAttachment,
+  validateAttachmentBuffer,
+  detectMimeBySignature,
+  AttachmentValidationError,
+  MAX_ATTACHMENT_BYTES,
 };

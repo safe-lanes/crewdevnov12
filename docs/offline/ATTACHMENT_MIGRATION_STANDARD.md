@@ -117,18 +117,23 @@ export interface FileStorageService {
   /**
    * Writes file data to disk under the structured directory path.
    * Auto-creates the required subdirectories recursively.
-   * 
-   * @param domain The active tenant domain (e.g., 'rsms', 'sail')
+   * Validates size (<= 5 MB) and MIME signature (PDF/PNG/JPEG allow-list)
+   * before writing, throwing AttachmentValidationError on violation.
+   *
    * @param module The module identifier (e.g., 'recruitment', 'medical')
    * @param fileName The original user-provided filename
    * @param buffer The raw file bytes as a Buffer
+   * @param domainOverride Optional explicit tenant domain. When omitted the
+   *        active tenant is resolved internally from request context
+   *        (AsyncLocalStorage), falling back to 'main'. Pass this only for
+   *        out-of-request flows such as the backfill script.
    * @returns The relative file path to be persisted in the DB (e.g., 'domain/module/prefix_file.pdf')
    */
   writeAttachment(
-    domain: string,
     module: string,
     fileName: string,
-    buffer: Buffer
+    buffer: Buffer,
+    domainOverride?: string
   ): Promise<string>;
 
   /**

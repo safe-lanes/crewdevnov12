@@ -296,6 +296,15 @@ export class VesselPlanningAttachmentsRepository {
       .orderBy(vesselPlanningAttachmentsV2.sortOrder);
   }
 
+  async findByUuid(attUuid: string): Promise<VesselPlanningAttachmentsV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(vesselPlanningAttachmentsV2)
+      .where(eq(vesselPlanningAttachmentsV2.attUuid, attUuid));
+    return results[0];
+  }
+
   async create(data: Omit<InsertVesselPlanningAttachmentsV2, "attUuid">): Promise<VesselPlanningAttachmentsV2> {
     const db = getDb();
     const results = await db

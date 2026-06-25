@@ -207,6 +207,17 @@ export class CrewMedicalRepository {
     return results[0];
   }
 
+  async findAttachmentByUuid(
+    attUuid: string
+  ): Promise<CrewMedicalAttachment | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(crewMedicalAttachments)
+      .where(eq(crewMedicalAttachments.attUuid, attUuid));
+    return results[0];
+  }
+
   async softDeleteMedicalAttachment(attUuid: string): Promise<boolean> {
     const db = getDb();
     const results = await db
@@ -344,6 +355,17 @@ export class CrewMedicalRepository {
   }
 
   // ============ Doctor Visit Attachments ============
+  async findVisitAttachmentByUuid(
+    attUuid: string
+  ): Promise<CrewDoctorVisitAttachment | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(crewDoctorVisitsAttachments)
+      .where(eq(crewDoctorVisitsAttachments.attUuid, attUuid));
+    return results[0];
+  }
+
   async findVisitAttachmentsByVisitUuid(
     visitUuid: string
   ): Promise<CrewDoctorVisitAttachment[]> {

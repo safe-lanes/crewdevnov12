@@ -160,6 +160,22 @@ export class ScreeningB1Repository {
     ).orderBy(asc(screeningB1Attachments.sortOrder), asc(screeningB1Attachments.createdAt));
   }
 
+  async findAttachmentByUuid(attUuid: string): Promise<ScreeningB1Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB1Attachments).where(
+      eq(screeningB1Attachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findAttachmentById(id: number): Promise<ScreeningB1Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB1Attachments).where(
+      eq(screeningB1Attachments.id, id)
+    );
+    return results[0];
+  }
+
   async createAttachment(data: InsertScreeningB1Attachment): Promise<ScreeningB1Attachment> {
     const db = getDb();
     const results = await db.insert(screeningB1Attachments).values(data).returning();
@@ -260,6 +276,22 @@ export class ScreeningB2Repository {
     return db.select().from(screeningB2Attachments).where(
       and(eq(screeningB2Attachments.b2Uuid, b2Uuid), eq(screeningB2Attachments.isDeleted, false))
     ).orderBy(asc(screeningB2Attachments.sortOrder), asc(screeningB2Attachments.createdAt));
+  }
+
+  async findAttachmentByUuid(attUuid: string): Promise<ScreeningB2Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB2Attachments).where(
+      eq(screeningB2Attachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findAttachmentById(id: number): Promise<ScreeningB2Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB2Attachments).where(
+      eq(screeningB2Attachments.id, id)
+    );
+    return results[0];
   }
 
   async createAttachment(data: InsertScreeningB2Attachment): Promise<ScreeningB2Attachment> {
@@ -373,6 +405,22 @@ export class ScreeningB3Repository {
     ).orderBy(asc(screeningB3Attachments.sortOrder), asc(screeningB3Attachments.createdAt));
   }
 
+  async findAttachmentByUuid(attUuid: string): Promise<ScreeningB3Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB3Attachments).where(
+      eq(screeningB3Attachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findAttachmentById(id: number): Promise<ScreeningB3Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB3Attachments).where(
+      eq(screeningB3Attachments.id, id)
+    );
+    return results[0];
+  }
+
   async createAttachment(data: InsertScreeningB3Attachment): Promise<ScreeningB3Attachment> {
     const db = getDb();
     const results = await db.insert(screeningB3Attachments).values(data).returning();
@@ -484,6 +532,22 @@ export class ScreeningB4Repository {
     ).orderBy(asc(screeningB4Attachments.sortOrder), asc(screeningB4Attachments.createdAt));
   }
 
+  async findAttachmentByUuid(attUuid: string): Promise<ScreeningB4Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB4Attachments).where(
+      eq(screeningB4Attachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findAttachmentById(id: number): Promise<ScreeningB4Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB4Attachments).where(
+      eq(screeningB4Attachments.id, id)
+    );
+    return results[0];
+  }
+
   async createAttachment(data: InsertScreeningB4Attachment): Promise<ScreeningB4Attachment> {
     const db = getDb();
     const results = await db.insert(screeningB4Attachments).values(data).returning();
@@ -593,6 +657,22 @@ export class ScreeningB5Repository {
     return db.select().from(screeningB5Attachments).where(
       and(eq(screeningB5Attachments.b5Uuid, b5Uuid), eq(screeningB5Attachments.isDeleted, false))
     ).orderBy(asc(screeningB5Attachments.sortOrder), asc(screeningB5Attachments.createdAt));
+  }
+
+  async findAttachmentByUuid(attUuid: string): Promise<ScreeningB5Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB5Attachments).where(
+      eq(screeningB5Attachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findAttachmentById(id: number): Promise<ScreeningB5Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB5Attachments).where(
+      eq(screeningB5Attachments.id, id)
+    );
+    return results[0];
   }
 
   async createAttachment(data: InsertScreeningB5Attachment): Promise<ScreeningB5Attachment> {
@@ -725,6 +805,22 @@ export class ScreeningB6Repository {
     return db.select().from(screeningB6Attachments).where(
       and(eq(screeningB6Attachments.b6Uuid, b6Uuid), eq(screeningB6Attachments.isDeleted, false))
     ).orderBy(asc(screeningB6Attachments.sortOrder), asc(screeningB6Attachments.createdAt));
+  }
+
+  async findAttachmentByUuid(attUuid: string): Promise<ScreeningB6Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB6Attachments).where(
+      eq(screeningB6Attachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findAttachmentById(id: number): Promise<ScreeningB6Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB6Attachments).where(
+      eq(screeningB6Attachments.id, id)
+    );
+    return results[0];
   }
 
   async createAttachment(data: InsertScreeningB6Attachment): Promise<ScreeningB6Attachment> {
@@ -932,6 +1028,22 @@ export class ScreeningB8Repository {
     return db.select().from(screeningB8Attachments).where(
       and(eq(screeningB8Attachments.b8Uuid, b8Uuid), eq(screeningB8Attachments.isDeleted, false))
     ).orderBy(asc(screeningB8Attachments.sortOrder), asc(screeningB8Attachments.createdAt));
+  }
+
+  async findAttachmentByUuid(attUuid: string): Promise<ScreeningB8Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB8Attachments).where(
+      eq(screeningB8Attachments.attUuid, attUuid)
+    );
+    return results[0];
+  }
+
+  async findAttachmentById(id: number): Promise<ScreeningB8Attachment | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB8Attachments).where(
+      eq(screeningB8Attachments.id, id)
+    );
+    return results[0];
   }
 
   async createAttachment(data: InsertScreeningB8Attachment): Promise<ScreeningB8Attachment> {
