@@ -196,7 +196,7 @@ const partASchema = z.object({
   signOn: z.string().optional(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
   appraisalPeriodFrom: z.string().optional(),
-  appraisalPeriodTo: z.string().optional(),
+  appraisalPeriodTo: z.string().min(1, "Appraisal Period To date is required"),
   personalityIndexCategory: z.string().optional(),
   primaryAppraiser: z.string().optional(),
 });
