@@ -1315,7 +1315,7 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
     builder.moveDown(LINE_HEIGHT);
   }
 
-  builder.drawText('C3.3 Date of Recruitment:', MARGIN, 9, 'normal');
+  builder.drawText(`C3.3 Date${({ Yes: ' of Recruitment', Waitlist: ' of Waitlisting', Rejected: ' of Rejection' } as Record<string, string>)[formData.c3RecruitmentStatus] || ''}:`, MARGIN, 9, 'normal');
   builder.drawTextAt(displayValue(formData.c3RecruitmentDate ? formatDate(formData.c3RecruitmentDate) : ''), MARGIN + 150, builder.getY(), 9, 'normal');
   builder.moveDown(LINE_HEIGHT);
   

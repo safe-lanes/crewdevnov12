@@ -9005,7 +9005,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
                   <div>
                     <div className="flex justify-between items-center">
-                      <label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">C3.3 Date of Recruitment: <span className="text-red-500">*</span></label>
+                      <label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">C3.3 Date{({ Yes: ' of Recruitment', Waitlist: ' of Waitlisting', Rejected: ' of Rejection' } as Record<string, string>)[formData.c3RecruitmentStatus] || ''}: <span className="text-red-500">*</span></label>
                       <div className="min-w-[300px]">
                         <FormattedDateInput
                           value={formData.c3RecruitmentDate}
