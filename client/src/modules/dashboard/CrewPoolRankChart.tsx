@@ -14,6 +14,7 @@ interface CrewRow {
   lastTerminationDate?: string | null;
   createdAt?: string | Date | null;
   nationalityUuid?: string | null;
+  nationality?: string | null;
   manningAgentName?: string | null;
   crewPool?: string | null;
   presentVessel?: string | null;
@@ -186,7 +187,7 @@ export const CrewPoolRankChart = ({
       if (ranks.length > 0 && !ranks.includes(rank)) continue;
       if (
         nationalities.length > 0 &&
-        !nationalities.includes((c.nationalityUuid || "") as string)
+        !nationalities.includes((c.nationality || "") as string)
       ) {
         continue;
       }
