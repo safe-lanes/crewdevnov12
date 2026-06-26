@@ -16,6 +16,7 @@ interface CandidateRow {
   status?: string | null;
   createdAt?: string | Date | null;
   manningAgent?: string | null;
+  recruitmentDate?: string | null;   // ← ADD THIS
   crewPool?: string | null;
 }
 
@@ -147,7 +148,7 @@ export const CrewRecruitmentRankChart = ({
       // also be counted as recruits on the chart.
       if (!c.status || !RECRUITED_STATUSES.has(String(c.status))) continue;
 
-      const recruited = parseDate(c.createdAt);
+      const recruited = parseDate(c.recruitmentDate);
       if (!recruited) continue;
       if (recruited < range.from || recruited > range.to) continue;
 

@@ -26,6 +26,7 @@ interface CandidateRow {
   nationalityUuid?: string | null;
   status?: string | null;
   createdAt?: string | Date | null;
+  recruitmentDate?: string | null;   // ← ADD THIS
   manningAgent?: string | null;
   crewPool?: string | null;
 }
@@ -155,7 +156,7 @@ export const CrewRecruitmentDrilldownDialog = ({
       // bucket. Without this, Waitlist / Draft / etc. show up here too.
       if (!c.status || !RECRUITED_STATUSES.has(String(c.status))) return false;
 
-      const recruited = parseDate(c.createdAt);
+      const recruited = parseDate(c.recruitmentDate);
       if (!recruited) return false;
       if (recruited < range.from || recruited > range.to) return false;
 
@@ -181,8 +182,8 @@ export const CrewRecruitmentDrilldownDialog = ({
   const sorted = useMemo(
     () =>
       [...matchingCandidates].sort((a, b) => {
-        const da = parseDate(a.createdAt)?.getTime() ?? 0;
-        const db = parseDate(b.createdAt)?.getTime() ?? 0;
+        const da = parseDate(a.recruitmentDate)?.getTime() ?? 0;
+        const db = parseDate(b.recruitmentDate)?.getTime() ?? 0;
         return db - da;
       }),
     [matchingCandidates],
@@ -245,7 +246,7 @@ export const CrewRecruitmentDrilldownDialog = ({
                       Nationality
                     </th>
                     <th className="w-[13%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">
-                      Date Applied
+                      Date of Recruitment
                     </th>
                     <th className="w-[12%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">
                       Status
@@ -275,7 +276,7 @@ export const CrewRecruitmentDrilldownDialog = ({
                         <td className="px-4 py-2 text-sm">{c.presentRank || ""}</td>
                         <td className="px-4 py-2 text-sm">{nationalityName}</td>
                         <td className="px-4 py-2 text-sm">
-                          {formatDate(c.createdAt)}
+                          {formatDate(c.recruitmentDate)}
                         </td>
                         <td className="px-4 py-2 text-sm">
                           {c.status ? (
