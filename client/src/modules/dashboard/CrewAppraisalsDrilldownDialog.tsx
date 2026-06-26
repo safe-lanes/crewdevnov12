@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { appraisalsApiV2 } from "@/modules/crewing/api/appraisalsApiV2";
-import { extractRank, isStage2Submitted } from "./appraisalRank";
+import { extractRank, isStage2Submitted, extractAppraisalPeriodTo } from "./appraisalRank";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface AppraisalRow {
@@ -245,7 +245,7 @@ export const CrewAppraisalsDrilldownDialog = ({
   const matching = useMemo<AppraisalRow[]>(() => {
     if (!rank || !range) return [];
     return appraisals.filter((a) => {
-      const date = parseDate(a.appraisalDate);
+      const date = parseDate(extractAppraisalPeriodTo(a));
       if (!date) return false;
       if (date < range.from || date > range.to) return false;
 
@@ -280,8 +280,8 @@ export const CrewAppraisalsDrilldownDialog = ({
   const sorted = useMemo(
     () =>
       [...matching].sort((a, b) => {
-        const da = parseDate(a.appraisalDate)?.getTime() ?? 0;
-        const db = parseDate(b.appraisalDate)?.getTime() ?? 0;
+        const da = parseDate(extractAppraisalPeriodTo(a))?.getTime() ?? 0;
+        const db = parseDate(extractAppraisalPeriodTo(b))?.getTime() ?? 0;
         return db - da;
       }),
     [matching],
@@ -344,7 +344,7 @@ export const CrewAppraisalsDrilldownDialog = ({
                       Appraisal Type
                     </th>
                     <th className="w-[12%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">
-                      Appraisal Date
+                      Appraisal Period To
                     </th>
                     <th className="w-[10%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">
                       Overall Rating
@@ -387,7 +387,7 @@ export const CrewAppraisalsDrilldownDialog = ({
                         <td className="px-4 py-2 text-sm">{vesselName}</td>
                         <td className="px-4 py-2 text-sm">{appraisalType}</td>
                         <td className="px-4 py-2 text-sm">
-                          {formatDate(a.appraisalDate)}
+                          {formatDate(extractAppraisalPeriodTo(a))}
                         </td>
                         <td className="px-4 py-2 text-sm">{ratingLabel}</td>
                         <td className="px-4 py-2 text-center">
