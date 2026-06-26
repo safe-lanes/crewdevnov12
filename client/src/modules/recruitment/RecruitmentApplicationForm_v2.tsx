@@ -3181,7 +3181,29 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
   };
 
+  // C3.3 Date of Recruitment becomes mandatory once a C3.1 recruitment status is chosen.
+  // Returns false (and shows a dynamic toast) only when a status is selected but the date is empty.
+  const validateC3RecruitmentDate = (): boolean => {
+    if (formData.c3RecruitmentStatus && !(formData.c3RecruitmentDate || '').trim()) {
+      const c3DateMessages: Record<string, string> = {
+        Yes: 'Please enter the Date of Recruitment',
+        Waitlist: 'Please enter the Date of Waitlisting',
+        Rejected: 'Please enter the Date of Rejection',
+      };
+      toast({
+        title: "Validation Error",
+        description: c3DateMessages[formData.c3RecruitmentStatus] || 'Please enter the Date of Recruitment',
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
   const handleSaveOnly = async () => {
+    // C3.3 Date is mandatory when a C3.1 status is selected (Approval screen only)
+    if (activeSection === 'C' && !validateC3RecruitmentDate()) return;
+
     await handleSaveAndContinue();
     
     // If on Section B or C, also save screening/approval data
@@ -8983,7 +9005,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
                   <div>
                     <div className="flex justify-between items-center">
-                      <label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">C3.3 Date of Recruitment:</label>
+                      <label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">C3.3 Date of Recruitment: <span className="text-red-500">*</span></label>
                       <div className="min-w-[300px]">
                         <FormattedDateInput
                           value={formData.c3RecruitmentDate}
@@ -9014,6 +9036,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <Button 
                   className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
                   onClick={() => {
+                    if (!validateC3RecruitmentDate()) return;
                     const currentDate = formatDate(new Date());
                     setFormData(prev => ({ ...prev, c3SubmittedBy: currentUserDisplay, c3SubmittedDate: currentDate }));
                     handleSaveScreening(false, false, { c3SubmittedBy: currentUserDisplay, c3SubmittedDate: currentDate });
