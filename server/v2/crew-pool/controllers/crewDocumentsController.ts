@@ -80,9 +80,10 @@ export const crewDocumentsController = {
         .omit({ docUuid: true, crewUuid: true })
         .parse(req.body);
       console.log('[V2 Documents] Validated data:', JSON.stringify(validatedData, null, 2));
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const document = await crewDocumentsService.create(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       console.log('[V2 Documents] Created document:', JSON.stringify(document, null, 2));
       res.status(201).json(document);
@@ -102,7 +103,11 @@ export const crewDocumentsController = {
     try {
       const { docUuid } = req.params;
       const validatedData = insertCrewDocumentSchema.partial().parse(req.body);
-      const document = await crewDocumentsService.update(docUuid, validatedData);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const document = await crewDocumentsService.update(docUuid, {
+        ...validatedData,
+        auditUserUuid,
+      });
       res.json(document);
     } catch (error: any) {
       if (error instanceof z.ZodError) {

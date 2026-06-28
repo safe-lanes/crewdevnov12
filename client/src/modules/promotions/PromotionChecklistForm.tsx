@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X, Paperclip, MessageSquare, CheckCircle2, Loader2, Pencil } from 'lucide-react';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { getCrewUserId } from '@/lib/crewUser';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -300,7 +301,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         }
       });
       
-      await apiRequest('PATCH', `/api/v2/promotions/reviews/${reviewIdentifier}`, { checklistProgressData });
+      await apiRequest('PATCH', `/api/v2/promotions/reviews/${reviewIdentifier}`, { checklistProgressData, auditUserUuid: getCrewUserId() });
       
       queryClient.invalidateQueries({ queryKey: ['/api/v2/promotions/reviews'] });
       queryClient.invalidateQueries({ 

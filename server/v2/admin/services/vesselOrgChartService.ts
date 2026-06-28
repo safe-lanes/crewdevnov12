@@ -9,7 +9,7 @@ export const vesselOrgChartService = {
     return vesselOrgChartRepo.findAll();
   },
 
-  async saveAll(entries: InsertAdmVesselOrgChartV2[]): Promise<AdmVesselOrgChartV2[]> {
+  async saveAll(entries: (InsertAdmVesselOrgChartV2 & { auditUserUuid?: string | null })[]): Promise<AdmVesselOrgChartV2[]> {
     return vesselOrgChartRepo.saveAll(entries.map(entry => applyAuditUser(entry, true)));
   },
 };

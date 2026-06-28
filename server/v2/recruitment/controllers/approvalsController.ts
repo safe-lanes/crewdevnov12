@@ -71,7 +71,8 @@ export const approvalsController = {
   async createApproval(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await approvalsService.createApproval(recCanUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await approvalsService.createApproval(recCanUuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating approval:", error);
@@ -83,7 +84,8 @@ export const approvalsController = {
     try {
       const id = parseInt(req.params.id, 10);
       if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-      const result = await approvalsService.updateApproval(id, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await approvalsService.updateApproval(id, { ...req.body, auditUserUuid });
       if (!result) return res.status(404).json({ error: "Not found" });
       res.json(result);
     } catch (error) {
@@ -122,9 +124,10 @@ export const suitabilityController = {
     try {
       const { recCanUuid } = req.params;
       const { vesselTypes, fleetGroups, ...suitabilityData } = req.body;
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       
       // Upsert the main suitability record
-      const result = await suitabilityService.upsertSuitability(recCanUuid, suitabilityData);
+      const result = await suitabilityService.upsertSuitability(recCanUuid, { ...suitabilityData, auditUserUuid });
       
       // Handle vessel types if provided - use reconciliation pattern
       if (vesselTypes && Array.isArray(vesselTypes) && result.suitUuid) {
@@ -155,7 +158,7 @@ export const suitabilityController = {
         // Add new vessel types with sort order
         for (const uuid of toAdd) {
           const sortOrder = resolvedIncoming.indexOf(uuid);
-          await suitabilityService.addVesselType(result.suitUuid, uuid, undefined, null, sortOrder);
+          await suitabilityService.addVesselType(result.suitUuid, uuid, undefined, auditUserUuid, sortOrder);
         }
 
         // Update sort order for all kept items
@@ -195,7 +198,7 @@ export const suitabilityController = {
         // Add new fleet groups with sort order
         for (const uuid of toAdd) {
           const sortOrder = resolvedIncoming.indexOf(uuid);
-          await suitabilityService.addFleetGroup(result.suitUuid, uuid, undefined, null, sortOrder);
+          await suitabilityService.addFleetGroup(result.suitUuid, uuid, undefined, auditUserUuid, sortOrder);
         }
 
         // Update sort order for all kept items
@@ -235,7 +238,8 @@ export const suitabilityController = {
       if (!resolvedUuid) {
         return res.status(400).json({ error: `Could not resolve vessel type: ${vesselTypeUuid}` });
       }
-      const result = await suitabilityService.addVesselType(suitUuid, resolvedUuid);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await suitabilityService.addVesselType(suitUuid, resolvedUuid, undefined, auditUserUuid);
       res.status(201).json(result);
     } catch (error) {
       console.error("Error adding vessel type:", error);
@@ -263,7 +267,8 @@ export const suitabilityController = {
       if (!resolvedUuid) {
         return res.status(400).json({ error: `Could not resolve fleet group: ${fleetGroupUuid}` });
       }
-      const result = await suitabilityService.addFleetGroup(suitUuid, resolvedUuid);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await suitabilityService.addFleetGroup(suitUuid, resolvedUuid, undefined, auditUserUuid);
       res.status(201).json(result);
     } catch (error) {
       console.error("Error adding fleet group:", error);
@@ -289,9 +294,10 @@ export const recruitmentDecisionController = {
     try {
       const { recCanUuid } = req.params;
       const { assignedGroups, ...decisionData } = req.body;
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       
       // Upsert the main decision record
-      const result = await recruitmentDecisionService.upsertDecision(recCanUuid, decisionData);
+      const result = await recruitmentDecisionService.upsertDecision(recCanUuid, { ...decisionData, auditUserUuid });
       
       // Handle assigned groups if provided
       if (assignedGroups && Array.isArray(assignedGroups) && result.decisionUuid) {
@@ -300,7 +306,7 @@ export const recruitmentDecisionController = {
         // Add new assigned groups
         for (const ag of assignedGroups) {
           if (ag.groupUuid) {
-            await recruitmentDecisionService.addAssignedGroup(result.decisionUuid, ag.groupUuid);
+            await recruitmentDecisionService.addAssignedGroup(result.decisionUuid, ag.groupUuid, undefined, auditUserUuid);
           }
         }
       }
@@ -329,7 +335,8 @@ export const recruitmentDecisionController = {
     try {
       const { decisionUuid } = req.params;
       const { groupUuid } = req.body;
-      const result = await recruitmentDecisionService.addAssignedGroup(decisionUuid, groupUuid);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await recruitmentDecisionService.addAssignedGroup(decisionUuid, groupUuid, undefined, auditUserUuid);
       res.status(201).json(result);
     } catch (error) {
       console.error("Error adding assigned group:", error);

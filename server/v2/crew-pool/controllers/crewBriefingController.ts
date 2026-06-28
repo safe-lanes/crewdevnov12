@@ -81,9 +81,10 @@ export const crewBriefingController = {
       const validatedData = insertCrewBriefingSchema
         .omit({ briefingUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const briefing = await crewBriefingService.createBriefing(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.status(201).json(briefing);
     } catch (error: any) {
@@ -100,9 +101,10 @@ export const crewBriefingController = {
     try {
       const { briefingUuid } = req.params;
       const validatedData = insertCrewBriefingSchema.partial().parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const briefing = await crewBriefingService.updateBriefing(
         briefingUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(briefing);
     } catch (error: any) {
@@ -212,9 +214,10 @@ export const crewBriefingController = {
       const validatedData = insertCrewDebriefingSchema
         .omit({ debriefingUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const debriefing = await crewBriefingService.createDebriefing(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.status(201).json(debriefing);
     } catch (error: any) {
@@ -231,9 +234,10 @@ export const crewBriefingController = {
     try {
       const { debriefingUuid } = req.params;
       const validatedData = insertCrewDebriefingSchema.partial().parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const debriefing = await crewBriefingService.updateDebriefing(
         debriefingUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(debriefing);
     } catch (error: any) {

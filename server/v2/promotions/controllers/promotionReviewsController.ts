@@ -82,7 +82,8 @@ export class PromotionReviewsController {
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid promotion review payload", details: parsed.error.flatten() });
       }
-      const review = await service.createReview(parsed.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const review = await service.createReview({ ...parsed.data, auditUserUuid });
       console.log(`[Promotions V2] Created review ${review?.reviewUuid} for crew ${review?.crewMemberId}`);
       res.status(201).json(review);
     } catch (error) {
@@ -101,7 +102,8 @@ export class PromotionReviewsController {
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid promotion review payload", details: parsed.error.flatten() });
       }
-      const review = await service.updateReview(reviewUuid, parsed.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const review = await service.updateReview(reviewUuid, { ...parsed.data, auditUserUuid });
       if (!review) return res.status(404).json({ error: "Promotion review not found" });
       console.log(`[Promotions V2] Updated review ${reviewUuid}`);
       res.json(review);

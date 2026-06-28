@@ -73,7 +73,9 @@ export const rankGroupsController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid rank group data", details: result.error.issues });
       }
-      const rankGroup = await rankGroupsService.create(result.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const payload = { ...result.data, auditUserUuid };
+      const rankGroup = await rankGroupsService.create(payload);
       res.json(rankGroup);
     } catch (error: any) {
       if (error.message?.includes("already assigned")) {
@@ -97,7 +99,9 @@ export const rankGroupsController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid rank group data", details: result.error.issues });
       }
-      const rankGroup = await rankGroupsService.updateById(id, result.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const payload = { ...result.data, auditUserUuid };
+      const rankGroup = await rankGroupsService.updateById(id, payload);
       res.json(rankGroup);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -119,7 +123,8 @@ export const rankGroupsController = {
       }
       const { configuration } = req.body;
       const configStr = typeof configuration === "string" ? configuration : JSON.stringify(configuration);
-      const rankGroup = await rankGroupsService.updateConfigurationById(id, configStr);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const rankGroup = await rankGroupsService.updateConfigurationById(id, configStr, auditUserUuid);
       res.json(rankGroup);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -138,7 +143,8 @@ export const rankGroupsController = {
       }
       const { configuration } = req.body;
       const configStr = typeof configuration === "string" ? configuration : JSON.stringify(configuration);
-      const rankGroup = await rankGroupsService.releaseConfigurationById(id, configStr);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const rankGroup = await rankGroupsService.releaseConfigurationById(id, configStr, auditUserUuid);
       res.json(rankGroup);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

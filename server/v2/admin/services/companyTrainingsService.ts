@@ -53,7 +53,7 @@ export const companyTrainingsService = {
     return results;
   },
 
-  async reorder(orders: Array<{ id: number; sortOrder: number }>): Promise<void> {
-    return companyTrainingsRepo.reorder(orders);
+  async reorder(orders: Array<{ id: number; sortOrder: number }>, auditUserUuid: string | null = null): Promise<void> {
+    return companyTrainingsRepo.reorder(orders, auditUserUuid);
   },
 };

@@ -95,9 +95,10 @@ export const crewSeaServiceController = {
       const validatedData = insertCrewSeaServiceSchema
         .omit({ seaUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const seaService = await crewSeaServiceService.create(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.status(201).json(seaService);
     } catch (error: any) {
@@ -116,9 +117,10 @@ export const crewSeaServiceController = {
       const validatedData = insertCrewSeaServiceSchema
         .partial()
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const seaService = await crewSeaServiceService.update(
         seaUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(seaService);
     } catch (error: any) {

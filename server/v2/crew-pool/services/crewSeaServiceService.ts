@@ -256,7 +256,7 @@ export const crewSeaServiceService = {
 
   async create(
     crewUuid: string,
-    data: Omit<InsertCrewSeaService, "seaUuid" | "crewUuid"> & { vessel?: string; vesselType?: string }
+    data: Omit<InsertCrewSeaService, "seaUuid" | "crewUuid"> & { vessel?: string; vesselType?: string; auditUserUuid?: string | null }
   ): Promise<CrewSeaServiceType> {
     await crewMembersService.getByUuid(crewUuid);
 
@@ -277,7 +277,7 @@ export const crewSeaServiceService = {
 
   async update(
     seaUuid: string,
-    data: Partial<InsertCrewSeaService> & { vessel?: string; vesselType?: string }
+    data: Partial<InsertCrewSeaService> & { vessel?: string; vesselType?: string; auditUserUuid?: string | null }
   ): Promise<CrewSeaServiceType> {
     await this.getByUuid(seaUuid);
 

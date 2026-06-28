@@ -50,7 +50,9 @@ export const vesselOrgChartController = {
       if (hasCycle(parsed.data)) {
         return res.status(400).json({ error: "Circular hierarchy detected" });
       }
-      const records = await vesselOrgChartService.saveAll(parsed.data);
+      const auditUserUuid = req.body?.[0]?.auditUserUuid ?? null;
+      const entries = parsed.data.map((entry) => ({ auditUserUuid, ...entry }));
+      const records = await vesselOrgChartService.saveAll(entries);
       res.json(records);
     } catch (error: any) {
       console.error("Error saving vessel org chart:", error);

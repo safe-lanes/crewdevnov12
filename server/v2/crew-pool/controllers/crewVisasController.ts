@@ -79,7 +79,11 @@ export const crewVisasController = {
       const validatedData = insertCrewVisaSchema
         .omit({ visaUuid: true, crewUuid: true })
         .parse(req.body);
-      const visa = await crewVisasService.create(crewUuid, validatedData);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const visa = await crewVisasService.create(crewUuid, {
+        ...validatedData,
+        auditUserUuid,
+      });
       res.status(201).json(visa);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -95,7 +99,11 @@ export const crewVisasController = {
     try {
       const { visaUuid } = req.params;
       const validatedData = insertCrewVisaSchema.partial().parse(req.body);
-      const visa = await crewVisasService.update(visaUuid, validatedData);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const visa = await crewVisasService.update(visaUuid, {
+        ...validatedData,
+        auditUserUuid,
+      });
       res.json(visa);
     } catch (error: any) {
       if (error instanceof z.ZodError) {

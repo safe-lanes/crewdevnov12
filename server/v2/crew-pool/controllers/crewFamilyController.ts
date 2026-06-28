@@ -27,9 +27,10 @@ export const crewFamilyController = {
       const validatedData = insertCrewFamilyInfoSchema
         .omit({ famUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const familyInfo = await crewProfileService.upsertFamilyInfo(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(familyInfo);
     } catch (error: any) {
@@ -64,9 +65,10 @@ export const crewFamilyController = {
       const validatedData = insertCrewChildSchema
         .omit({ childUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const child = await crewProfileService.createChild(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.status(201).json(child);
     } catch (error: any) {
@@ -86,9 +88,10 @@ export const crewFamilyController = {
     try {
       const { childUuid } = req.params;
       const validatedData = insertCrewChildSchema.partial().parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const child = await crewProfileService.updateChild(
         childUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(child);
     } catch (error: any) {
@@ -133,9 +136,10 @@ export const crewFamilyController = {
       const validatedData = insertCrewNextOfKinSchema
         .omit({ nokUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const nextOfKin = await crewProfileService.upsertNextOfKin(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(nextOfKin);
     } catch (error: any) {

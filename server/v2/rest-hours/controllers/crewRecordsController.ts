@@ -64,7 +64,8 @@ export const crewRecordsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const record = await crewRecordsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await crewRecordsService.create({ ...req.body, auditUserUuid });
       res.status(201).json(record);
     } catch (error: any) {
       if (error.message?.includes("required")) {
@@ -78,7 +79,8 @@ export const crewRecordsController = {
   async update(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
-      const record = await crewRecordsService.update(uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await crewRecordsService.update(uuid, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

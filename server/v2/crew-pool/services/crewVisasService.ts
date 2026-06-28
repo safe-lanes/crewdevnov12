@@ -70,7 +70,7 @@ export const crewVisasService = {
 
   async create(
     crewUuid: string,
-    data: Omit<InsertCrewVisa, "visaUuid" | "crewUuid"> & { country?: string | null }
+    data: Omit<InsertCrewVisa, "visaUuid" | "crewUuid"> & { country?: string | null; auditUserUuid?: string | null }
   ): Promise<CrewVisa> {
     await crewMembersService.getByUuid(crewUuid);
 
@@ -94,7 +94,7 @@ export const crewVisasService = {
 
   async update(
     visaUuid: string,
-    data: Partial<InsertCrewVisa> & { country?: string | null }
+    data: Partial<InsertCrewVisa> & { country?: string | null; auditUserUuid?: string | null }
   ): Promise<CrewVisa> {
     await this.getByUuid(visaUuid);
 

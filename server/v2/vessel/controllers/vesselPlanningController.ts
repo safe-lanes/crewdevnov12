@@ -116,7 +116,8 @@ export const vesselPlanningController = {
       const validatedData = insertVesselPlanningV2Schema
         .omit({ planUuid: true })
         .parse(req.body);
-      const planning = await vesselPlanningService.create(validatedData);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const planning = await vesselPlanningService.create({ ...validatedData, auditUserUuid });
       res.status(201).json(planning);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -267,6 +268,7 @@ export const vesselPlanningController = {
     try {
       const { planUuid } = req.params;
       const { signOnDate, signOnPort, contractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths } = req.body;
+      const auditUserUuid = req.body?.auditUserUuid ?? undefined;
       
       const planning = await vesselPlanningService.signOnReliever(planUuid, {
         signOnDate,
@@ -274,6 +276,7 @@ export const vesselPlanningController = {
         contractPeriodMonths,
         contractEndRangeStartMonths,
         contractEndRangeEndMonths,
+        auditUserUuid,
       });
       
       res.json(planning);
@@ -300,6 +303,7 @@ export const vesselPlanningController = {
     try {
       const { planUuid } = req.params;
       const { joiningStatus, relieverSignOnDate, joiningPortUuid, relieverContractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths } = req.body;
+      const auditUserUuid = req.body?.auditUserUuid ?? undefined;
       
       if (!joiningStatus) {
         return res.status(400).json({ error: "joiningStatus is required" });
@@ -312,6 +316,7 @@ export const vesselPlanningController = {
           contractPeriodMonths: relieverContractPeriodMonths,
           contractEndRangeStartMonths,
           contractEndRangeEndMonths,
+          auditUserUuid,
         });
         return res.json(planning);
       }
@@ -320,6 +325,7 @@ export const vesselPlanningController = {
         relieverSignOnDate,
         joiningPortUuid,
         relieverContractPeriodMonths,
+        auditUserUuid,
       });
       
       res.json(planning);

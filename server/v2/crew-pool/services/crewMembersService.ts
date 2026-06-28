@@ -277,7 +277,7 @@ export const crewMembersService = {
   },
 
   async create(
-    data: Omit<InsertCrewMemberV2, "crewUuid"> & { nationality?: string; vesselType?: string }
+    data: Omit<InsertCrewMemberV2, "crewUuid"> & { nationality?: string; vesselType?: string; auditUserUuid?: string | null }
   ): Promise<CrewMemberV2> {
     if (!data.firstName) {
       throw new Error("First name is required");
@@ -364,7 +364,7 @@ export const crewMembersService = {
 
   async update(
     crewUuid: string,
-    data: Partial<InsertCrewMemberV2> & { nationality?: string; vesselType?: string }
+    data: Partial<InsertCrewMemberV2> & { nationality?: string; vesselType?: string; auditUserUuid?: string | null }
   ): Promise<CrewMemberV2> {
     await this.getByUuid(crewUuid);
 

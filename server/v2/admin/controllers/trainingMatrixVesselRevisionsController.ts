@@ -42,7 +42,8 @@ export const trainingMatrixVesselRevisionsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const record = await trainingMatrixVesselRevisionsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await trainingMatrixVesselRevisionsService.create({ ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       console.error("Error creating training matrix vessel revision:", error);
@@ -63,7 +64,8 @@ export const trainingMatrixVesselRevisionsController = {
 
   async submit(req: Request, res: Response) {
     try {
-      const result = await trainingMatrixVesselRevisionsService.submit(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await trainingMatrixVesselRevisionsService.submit({ ...req.body, auditUserUuid });
       res.json(result);
     } catch (error: any) {
       console.error("Error submitting training matrix vessel revision:", error);

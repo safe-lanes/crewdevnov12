@@ -80,9 +80,10 @@ export const crewMedicalController = {
       const validatedData = insertCrewPreJoiningMedicalSchema
         .omit({ medUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const medical = await crewMedicalService.createMedical(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.status(201).json(medical);
     } catch (error: any) {
@@ -101,9 +102,10 @@ export const crewMedicalController = {
       const validatedData = insertCrewPreJoiningMedicalSchema
         .partial()
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const medical = await crewMedicalService.updateMedical(
         medUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(medical);
     } catch (error: any) {
@@ -211,9 +213,10 @@ export const crewMedicalController = {
       const validatedData = insertCrewDoctorVisitSchema
         .omit({ visitUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const visit = await crewMedicalService.createVisit(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.status(201).json(visit);
     } catch (error: any) {
@@ -232,9 +235,10 @@ export const crewMedicalController = {
       const validatedData = insertCrewDoctorVisitSchema
         .partial()
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const visit = await crewMedicalService.updateVisit(
         visitUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(visit);
     } catch (error: any) {

@@ -319,6 +319,8 @@ export class AppraisalResultsService {
     submittedBy: string,
     extra?: { competenceRating?: string | null; behavioralRating?: string | null; overallRating?: string | null },
   ) {
+    const auditUserUuid = (data as any)?.auditUserUuid ?? null;
+
     const appraisal = await appraisalResultsRepo.findById(id);
     if (!appraisal) return null;
 
@@ -380,6 +382,7 @@ export class AppraisalResultsService {
       status: newStatus,
       submittedBy,
       submittedAt: new Date(),
+      updatedByUuid: auditUserUuid,
     };
 
     if (stage === "stage1") {
@@ -429,8 +432,8 @@ export class AppraisalResultsService {
 
     if (stage === "stage1") {
       await Promise.all([
-        trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainings || []),
-        targetsRepo.syncForAppraisal(appraisal.appraisalUuid, data.targets || []),
+        trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainings || [], auditUserUuid),
+        targetsRepo.syncForAppraisal(appraisal.appraisalUuid, data.targets || [], auditUserUuid),
       ]);
     } else if (stage === "stage2") {
       // Task #500: persist the current B1 trainings (and targets) snapshot
@@ -438,18 +441,18 @@ export class AppraisalResultsService {
       // includes them so legacy callers that omit `trainings`/`targets`
       // leave existing persisted rows untouched.
       const stage2Writes: Promise<unknown>[] = [
-        competenceAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.competenceAssessments || []),
-        behaviouralAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.behaviouralAssessments || []),
-        trainingNeedsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingNeeds || []),
-        recommendationsRepo.syncForAppraisal(appraisal.appraisalUuid, data.recommendations || []),
-        appraiserCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.appraiserComments || []),
-        seafarerCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.seafarerComments || []),
+        competenceAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.competenceAssessments || [], auditUserUuid),
+        behaviouralAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.behaviouralAssessments || [], auditUserUuid),
+        trainingNeedsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingNeeds || [], auditUserUuid),
+        recommendationsRepo.syncForAppraisal(appraisal.appraisalUuid, data.recommendations || [], auditUserUuid),
+        appraiserCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.appraiserComments || [], auditUserUuid),
+        seafarerCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.seafarerComments || [], auditUserUuid),
       ];
       if (Array.isArray((data as any)?.trainings)) {
-        stage2Writes.push(trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings));
+        stage2Writes.push(trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings, auditUserUuid));
       }
       if (Array.isArray((data as any)?.targets)) {
-        stage2Writes.push(targetsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).targets));
+        stage2Writes.push(targetsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).targets, auditUserUuid));
       }
       await Promise.all(stage2Writes);
     } else if (stage === "stage3") {
@@ -457,11 +460,11 @@ export class AppraisalResultsService {
       // Section G. If the client omits `trainings` we leave the existing
       // persisted rows untouched.
       const stage3Writes: Promise<unknown>[] = [
-        officeReviewsRepo.syncForAppraisal(appraisal.appraisalUuid, data.officeReviews || []),
-        trainingFollowupsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingFollowups || []),
+        officeReviewsRepo.syncForAppraisal(appraisal.appraisalUuid, data.officeReviews || [], auditUserUuid),
+        trainingFollowupsRepo.syncForAppraisal(appraisal.appraisalUuid, data.trainingFollowups || [], auditUserUuid),
       ];
       if (Array.isArray((data as any)?.trainings)) {
-        stage3Writes.push(trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings));
+        stage3Writes.push(trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings, auditUserUuid));
       }
       await Promise.all(stage3Writes);
     }

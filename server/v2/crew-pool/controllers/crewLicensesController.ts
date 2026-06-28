@@ -82,9 +82,10 @@ export const crewLicensesController = {
       const validatedData = insertCrewLicenseSchema
         .omit({ licUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const license = await crewCertificatesService.createLicense(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.status(201).json(license);
     } catch (error: any) {
@@ -101,9 +102,10 @@ export const crewLicensesController = {
     try {
       const { licUuid } = req.params;
       const validatedData = insertCrewLicenseSchema.partial().parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const license = await crewCertificatesService.updateLicense(
         licUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(license);
     } catch (error: any) {

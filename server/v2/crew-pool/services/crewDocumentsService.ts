@@ -71,7 +71,7 @@ export const crewDocumentsService = {
 
   async create(
     crewUuid: string,
-    data: Omit<InsertCrewDocument, "docUuid" | "crewUuid"> & { issuingCountry?: string }
+    data: Omit<InsertCrewDocument, "docUuid" | "crewUuid"> & { issuingCountry?: string; auditUserUuid?: string | null }
   ): Promise<CrewDocument> {
     await crewMembersService.getByUuid(crewUuid);
 
@@ -98,7 +98,7 @@ export const crewDocumentsService = {
 
   async update(
     docUuid: string,
-    data: Partial<InsertCrewDocument> & { issuingCountry?: string }
+    data: Partial<InsertCrewDocument> & { issuingCountry?: string; auditUserUuid?: string | null }
   ): Promise<CrewDocument> {
     await this.getByUuid(docUuid);
 

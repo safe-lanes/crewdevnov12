@@ -92,7 +92,8 @@ export const screeningB1Controller = {
   async upsert(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await screeningB1Service.upsert(recCanUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB1Service.upsert(recCanUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error upserting B1:", error);
@@ -114,7 +115,8 @@ export const screeningB1Controller = {
   async createComment(req: Request, res: Response) {
     try {
       const { b1Uuid } = req.params;
-      const result = await screeningB1Service.createComment(b1Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB1Service.createComment(b1Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B1 comment:", error);
@@ -125,7 +127,8 @@ export const screeningB1Controller = {
   async updateComment(req: Request, res: Response) {
     try {
       const { commentUuid } = req.params;
-      const result = await screeningB1Service.updateComment(commentUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB1Service.updateComment(commentUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B1 comment:", error);
@@ -159,7 +162,8 @@ export const screeningB1Controller = {
     try {
       const { b1Uuid } = req.params;
       const data = await buildAttachmentData("recruitment/screening-b1", req.body);
-      const result = await screeningB1Service.createAttachment(b1Uuid, data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB1Service.createAttachment(b1Uuid, { ...data, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       if (error instanceof AttachmentValidationError) {
@@ -212,7 +216,8 @@ export const screeningB2Controller = {
   async upsert(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await screeningB2Service.upsert(recCanUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB2Service.upsert(recCanUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error upserting B2:", error);
@@ -234,7 +239,8 @@ export const screeningB2Controller = {
   async createItem(req: Request, res: Response) {
     try {
       const { b2Uuid } = req.params;
-      const result = await screeningB2Service.createItem(b2Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB2Service.createItem(b2Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B2 item:", error);
@@ -245,7 +251,8 @@ export const screeningB2Controller = {
   async updateItem(req: Request, res: Response) {
     try {
       const { refUuid } = req.params;
-      const result = await screeningB2Service.updateItem(refUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB2Service.updateItem(refUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B2 item:", error);
@@ -267,7 +274,8 @@ export const screeningB2Controller = {
   async createComment(req: Request, res: Response) {
     try {
       const { b2Uuid } = req.params;
-      const result = await screeningB2Service.createComment(b2Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB2Service.createComment(b2Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B2 comment:", error);
@@ -278,7 +286,8 @@ export const screeningB2Controller = {
   async updateComment(req: Request, res: Response) {
     try {
       const { commentUuid } = req.params;
-      const result = await screeningB2Service.updateComment(commentUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB2Service.updateComment(commentUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B2 comment:", error);
@@ -312,7 +321,8 @@ export const screeningB2Controller = {
     try {
       const { b2Uuid } = req.params;
       const data = await buildAttachmentData("recruitment/screening-b2", req.body);
-      const result = await screeningB2Service.createAttachment(b2Uuid, data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB2Service.createAttachment(b2Uuid, { ...data, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       if (error instanceof AttachmentValidationError) {
@@ -376,7 +386,8 @@ export const screeningB3Controller = {
   async upsert(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await screeningB3Service.upsert(recCanUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB3Service.upsert(recCanUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error upserting B3:", error);
@@ -398,7 +409,8 @@ export const screeningB3Controller = {
   async createAuthority(req: Request, res: Response) {
     try {
       const { b3Uuid } = req.params;
-      const result = await screeningB3Service.createAuthority(b3Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB3Service.createAuthority(b3Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B3 authority:", error);
@@ -420,7 +432,8 @@ export const screeningB3Controller = {
   async createComment(req: Request, res: Response) {
     try {
       const { b3Uuid } = req.params;
-      const result = await screeningB3Service.createComment(b3Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB3Service.createComment(b3Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B3 comment:", error);
@@ -431,7 +444,8 @@ export const screeningB3Controller = {
   async updateComment(req: Request, res: Response) {
     try {
       const { commentUuid } = req.params;
-      const result = await screeningB3Service.updateComment(commentUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB3Service.updateComment(commentUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B3 comment:", error);
@@ -453,7 +467,8 @@ export const screeningB3Controller = {
   async updateAuthority(req: Request, res: Response) {
     try {
       const { authUuid } = req.params;
-      const result = await screeningB3Service.updateAuthority(authUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB3Service.updateAuthority(authUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B3 authority:", error);
@@ -476,7 +491,8 @@ export const screeningB3Controller = {
     try {
       const { b3Uuid } = req.params;
       const data = await buildAttachmentData("recruitment/screening-b3", req.body);
-      const result = await screeningB3Service.createAttachment(b3Uuid, data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB3Service.createAttachment(b3Uuid, { ...data, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       if (error instanceof AttachmentValidationError) {
@@ -540,7 +556,8 @@ export const screeningB4Controller = {
   async upsert(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await screeningB4Service.upsert(recCanUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB4Service.upsert(recCanUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error upserting B4:", error);
@@ -562,7 +579,8 @@ export const screeningB4Controller = {
   async createCertItem(req: Request, res: Response) {
     try {
       const { b4Uuid } = req.params;
-      const result = await screeningB4Service.createCertItem(b4Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB4Service.createCertItem(b4Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B4 cert item:", error);
@@ -584,7 +602,8 @@ export const screeningB4Controller = {
   async createComment(req: Request, res: Response) {
     try {
       const { b4Uuid } = req.params;
-      const result = await screeningB4Service.createComment(b4Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB4Service.createComment(b4Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B4 comment:", error);
@@ -595,7 +614,8 @@ export const screeningB4Controller = {
   async updateComment(req: Request, res: Response) {
     try {
       const { commentUuid } = req.params;
-      const result = await screeningB4Service.updateComment(commentUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB4Service.updateComment(commentUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B4 comment:", error);
@@ -617,7 +637,8 @@ export const screeningB4Controller = {
   async updateCertItem(req: Request, res: Response) {
     try {
       const { certUuid } = req.params;
-      const result = await screeningB4Service.updateCertItem(certUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB4Service.updateCertItem(certUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B4 cert item:", error);
@@ -640,7 +661,8 @@ export const screeningB4Controller = {
     try {
       const { b4Uuid } = req.params;
       const data = await buildAttachmentData("recruitment/screening-b4", req.body);
-      const result = await screeningB4Service.createAttachment(b4Uuid, data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB4Service.createAttachment(b4Uuid, { ...data, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       if (error instanceof AttachmentValidationError) {
@@ -704,7 +726,8 @@ export const screeningB5Controller = {
   async upsert(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await screeningB5Service.upsert(recCanUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB5Service.upsert(recCanUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error upserting B5:", error);
@@ -726,7 +749,8 @@ export const screeningB5Controller = {
   async createTestItem(req: Request, res: Response) {
     try {
       const { b5Uuid } = req.params;
-      const result = await screeningB5Service.createTestItem(b5Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB5Service.createTestItem(b5Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B5 test item:", error);
@@ -748,7 +772,8 @@ export const screeningB5Controller = {
   async createComment(req: Request, res: Response) {
     try {
       const { b5Uuid } = req.params;
-      const result = await screeningB5Service.createComment(b5Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB5Service.createComment(b5Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B5 comment:", error);
@@ -759,7 +784,8 @@ export const screeningB5Controller = {
   async updateComment(req: Request, res: Response) {
     try {
       const { commentUuid } = req.params;
-      const result = await screeningB5Service.updateComment(commentUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB5Service.updateComment(commentUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B5 comment:", error);
@@ -781,7 +807,8 @@ export const screeningB5Controller = {
   async updateTestItem(req: Request, res: Response) {
     try {
       const { testUuid } = req.params;
-      const result = await screeningB5Service.updateTestItem(testUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB5Service.updateTestItem(testUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B5 test item:", error);
@@ -804,7 +831,8 @@ export const screeningB5Controller = {
     try {
       const { b5Uuid } = req.params;
       const data = await buildAttachmentData("recruitment/screening-b5", req.body);
-      const result = await screeningB5Service.createAttachment(b5Uuid, data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB5Service.createAttachment(b5Uuid, { ...data, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       if (error instanceof AttachmentValidationError) {
@@ -868,7 +896,8 @@ export const screeningB6Controller = {
   async upsert(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await screeningB6Service.upsert(recCanUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB6Service.upsert(recCanUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error upserting B6:", error);
@@ -890,7 +919,8 @@ export const screeningB6Controller = {
   async createInterviewItem(req: Request, res: Response) {
     try {
       const { b6Uuid } = req.params;
-      const result = await screeningB6Service.createInterviewItem(b6Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB6Service.createInterviewItem(b6Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B6 interview item:", error);
@@ -912,7 +942,8 @@ export const screeningB6Controller = {
   async createComment(req: Request, res: Response) {
     try {
       const { b6Uuid } = req.params;
-      const result = await screeningB6Service.createComment(b6Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB6Service.createComment(b6Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B6 comment:", error);
@@ -923,7 +954,8 @@ export const screeningB6Controller = {
   async updateComment(req: Request, res: Response) {
     try {
       const { commentUuid } = req.params;
-      const result = await screeningB6Service.updateComment(commentUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB6Service.updateComment(commentUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B6 comment:", error);
@@ -945,7 +977,8 @@ export const screeningB6Controller = {
   async updateInterviewItem(req: Request, res: Response) {
     try {
       const { intUuid } = req.params;
-      const result = await screeningB6Service.updateInterviewItem(intUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB6Service.updateInterviewItem(intUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B6 interview item:", error);
@@ -968,7 +1001,8 @@ export const screeningB6Controller = {
     try {
       const { b6Uuid } = req.params;
       const data = await buildAttachmentData("recruitment/screening-b6", req.body);
-      const result = await screeningB6Service.createAttachment(b6Uuid, data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB6Service.createAttachment(b6Uuid, { ...data, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       if (error instanceof AttachmentValidationError) {
@@ -1032,7 +1066,8 @@ export const screeningB7Controller = {
   async upsert(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await screeningB7Service.upsert(recCanUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB7Service.upsert(recCanUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error upserting B7:", error);
@@ -1054,7 +1089,8 @@ export const screeningB7Controller = {
   async createTrainingItem(req: Request, res: Response) {
     try {
       const { b7Uuid } = req.params;
-      const result = await screeningB7Service.createTrainingItem(b7Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB7Service.createTrainingItem(b7Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B7 training item:", error);
@@ -1065,7 +1101,8 @@ export const screeningB7Controller = {
   async updateTrainingItem(req: Request, res: Response) {
     try {
       const { trainItemUuid } = req.params;
-      const result = await screeningB7Service.updateTrainingItem(trainItemUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB7Service.updateTrainingItem(trainItemUuid, { ...req.body, auditUserUuid });
       if (!result) {
         return res.status(404).json({ error: "B7 training item not found" });
       }
@@ -1103,7 +1140,8 @@ export const screeningB8Controller = {
   async upsert(req: Request, res: Response) {
     try {
       const { recCanUuid } = req.params;
-      const result = await screeningB8Service.upsert(recCanUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB8Service.upsert(recCanUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error upserting B8:", error);
@@ -1125,7 +1163,8 @@ export const screeningB8Controller = {
   async createApprover(req: Request, res: Response) {
     try {
       const { b8Uuid } = req.params;
-      const result = await screeningB8Service.createApprover(b8Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB8Service.createApprover(b8Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B8 approver:", error);
@@ -1162,7 +1201,8 @@ export const screeningB8Controller = {
   async createComment(req: Request, res: Response) {
     try {
       const { b8Uuid } = req.params;
-      const result = await screeningB8Service.createComment(b8Uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB8Service.createComment(b8Uuid, { ...req.body, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       console.error("Error creating B8 comment:", error);
@@ -1173,7 +1213,8 @@ export const screeningB8Controller = {
   async updateComment(req: Request, res: Response) {
     try {
       const { commentUuid } = req.params;
-      const result = await screeningB8Service.updateComment(commentUuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB8Service.updateComment(commentUuid, { ...req.body, auditUserUuid });
       res.json(result);
     } catch (error) {
       console.error("Error updating B8 comment:", error);
@@ -1207,7 +1248,8 @@ export const screeningB8Controller = {
     try {
       const { b8Uuid } = req.params;
       const data = await buildAttachmentData("recruitment/screening-b8", req.body);
-      const result = await screeningB8Service.createAttachment(b8Uuid, data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await screeningB8Service.createAttachment(b8Uuid, { ...data, auditUserUuid });
       res.status(201).json(result);
     } catch (error) {
       if (error instanceof AttachmentValidationError) {

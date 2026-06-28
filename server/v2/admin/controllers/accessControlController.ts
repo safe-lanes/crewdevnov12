@@ -14,7 +14,8 @@ export const accessControlController = {
 
   async createMenu(req: Request, res: Response) {
     try {
-      const record = await accessControlService.createMenu(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await accessControlService.createMenu({ ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       console.error("Error creating menu:", error);
@@ -25,7 +26,8 @@ export const accessControlController = {
   async updateMenu(req: Request, res: Response) {
     try {
       const { muid } = req.params;
-      const record = await accessControlService.updateMenuByUuid(muid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await accessControlService.updateMenuByUuid(muid, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -62,7 +64,8 @@ export const accessControlController = {
 
   async createRole(req: Request, res: Response) {
     try {
-      const record = await accessControlService.createRole(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await accessControlService.createRole({ ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       console.error("Error creating role:", error);
@@ -73,7 +76,8 @@ export const accessControlController = {
   async updateRole(req: Request, res: Response) {
     try {
       const { ruid } = req.params;
-      const record = await accessControlService.updateRoleByUuid(ruid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await accessControlService.updateRoleByUuid(ruid, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

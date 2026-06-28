@@ -136,7 +136,7 @@ export const crewCertificatesService = {
 
   async createLicense(
     crewUuid: string,
-    data: Omit<InsertCrewLicense, "licUuid" | "crewUuid"> & { issuingCountry?: string }
+    data: Omit<InsertCrewLicense, "licUuid" | "crewUuid"> & { issuingCountry?: string; auditUserUuid?: string | null }
   ): Promise<CrewLicense> {
     await crewMembersService.getByUuid(crewUuid);
 
@@ -166,7 +166,7 @@ export const crewCertificatesService = {
 
   async updateLicense(
     licUuid: string,
-    data: Partial<InsertCrewLicense> & { issuingCountry?: string }
+    data: Partial<InsertCrewLicense> & { issuingCountry?: string; auditUserUuid?: string | null }
   ): Promise<CrewLicense> {
     await this.getLicenseByUuid(licUuid);
 
@@ -348,7 +348,7 @@ export const crewCertificatesService = {
 
   async createTraining(
     crewUuid: string,
-    data: Omit<InsertCrewTrainingCourse, "trainUuid" | "crewUuid">
+    data: Omit<InsertCrewTrainingCourse, "trainUuid" | "crewUuid"> & { auditUserUuid?: string | null }
   ): Promise<CrewTrainingCourse> {
     await crewMembersService.getByUuid(crewUuid);
 
@@ -366,7 +366,7 @@ export const crewCertificatesService = {
 
   async updateTraining(
     trainUuid: string,
-    data: Partial<InsertCrewTrainingCourse>
+    data: Partial<InsertCrewTrainingCourse> & { auditUserUuid?: string | null }
   ): Promise<CrewTrainingCourse> {
     await this.getTrainingByUuid(trainUuid);
     const dataWithAudit = applyAuditUser(data, false);

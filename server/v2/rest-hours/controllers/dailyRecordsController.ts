@@ -56,7 +56,8 @@ export const dailyRecordsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const record = await dailyRecordsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await dailyRecordsService.create({ ...req.body, auditUserUuid });
       res.status(201).json(record);
     } catch (error: any) {
       if (error.message?.includes("required")) {
@@ -70,7 +71,8 @@ export const dailyRecordsController = {
   async update(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
-      const record = await dailyRecordsService.update(uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await dailyRecordsService.update(uuid, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

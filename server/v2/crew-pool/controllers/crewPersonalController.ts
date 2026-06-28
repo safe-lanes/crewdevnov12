@@ -26,9 +26,10 @@ export const crewPersonalController = {
       const validatedData = insertCrewPersonalDetailsSchema
         .omit({ cpdUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const details = await crewProfileService.upsertPersonalDetails(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(details);
     } catch (error: any) {
@@ -63,9 +64,10 @@ export const crewPersonalController = {
       const validatedData = insertCrewAddressSchema
         .omit({ addrUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const address = await crewProfileService.upsertAddress(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(address);
     } catch (error: any) {

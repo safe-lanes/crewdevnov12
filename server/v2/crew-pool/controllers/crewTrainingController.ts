@@ -82,9 +82,10 @@ export const crewTrainingController = {
       const validatedData = insertCrewTrainingCourseSchema
         .omit({ trainUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const training = await crewCertificatesService.createTraining(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.status(201).json(training);
     } catch (error: any) {
@@ -103,9 +104,10 @@ export const crewTrainingController = {
       const validatedData = insertCrewTrainingCourseSchema
         .partial()
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const training = await crewCertificatesService.updateTraining(
         trainUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(training);
     } catch (error: any) {

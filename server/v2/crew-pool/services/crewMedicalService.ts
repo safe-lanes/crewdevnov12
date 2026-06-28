@@ -83,7 +83,7 @@ export const crewMedicalService = {
 
   async createMedical(
     crewUuid: string,
-    data: Omit<InsertCrewPreJoiningMedical, "medUuid" | "crewUuid"> & { vessel?: string }
+    data: Omit<InsertCrewPreJoiningMedical, "medUuid" | "crewUuid"> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewPreJoiningMedical> {
     await crewMembersService.getByUuid(crewUuid);
     
@@ -96,7 +96,7 @@ export const crewMedicalService = {
 
   async updateMedical(
     medUuid: string,
-    data: Partial<InsertCrewPreJoiningMedical> & { vessel?: string }
+    data: Partial<InsertCrewPreJoiningMedical> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewPreJoiningMedical> {
     await this.getMedicalByUuid(medUuid);
 
@@ -194,7 +194,7 @@ export const crewMedicalService = {
 
   async createVisit(
     crewUuid: string,
-    data: Omit<InsertCrewDoctorVisit, "visitUuid" | "crewUuid">
+    data: Omit<InsertCrewDoctorVisit, "visitUuid" | "crewUuid"> & { auditUserUuid?: string | null }
   ): Promise<CrewDoctorVisit> {
     await crewMembersService.getByUuid(crewUuid);
     const dataWithAudit = applyAuditUser(data, true);
@@ -203,7 +203,7 @@ export const crewMedicalService = {
 
   async updateVisit(
     visitUuid: string,
-    data: Partial<InsertCrewDoctorVisit>
+    data: Partial<InsertCrewDoctorVisit> & { auditUserUuid?: string | null }
   ): Promise<CrewDoctorVisit> {
     await this.getVisitByUuid(visitUuid);
     const dataWithAudit = applyAuditUser(data, false);

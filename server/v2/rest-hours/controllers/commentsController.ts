@@ -32,7 +32,8 @@ export const commentsController = {
 
   async createVesselComment(req: Request, res: Response) {
     try {
-      const comment = await vesselCommentsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const comment = await vesselCommentsService.create({ ...req.body, auditUserUuid });
       res.status(201).json(comment);
     } catch (error: any) {
       if (error.message?.includes("required")) {
@@ -46,7 +47,8 @@ export const commentsController = {
   async updateVesselComment(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
-      const comment = await vesselCommentsService.update(uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const comment = await vesselCommentsService.update(uuid, { ...req.body, auditUserUuid });
       res.json(comment);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -101,7 +103,8 @@ export const commentsController = {
 
   async createOfficeComment(req: Request, res: Response) {
     try {
-      const comment = await officeCommentsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const comment = await officeCommentsService.create({ ...req.body, auditUserUuid });
       res.status(201).json(comment);
     } catch (error: any) {
       if (error.message?.includes("required")) {
@@ -115,7 +118,8 @@ export const commentsController = {
   async updateOfficeComment(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
-      const comment = await officeCommentsService.update(uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const comment = await officeCommentsService.update(uuid, { ...req.body, auditUserUuid });
       res.json(comment);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

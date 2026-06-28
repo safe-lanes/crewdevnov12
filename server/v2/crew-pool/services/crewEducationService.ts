@@ -48,7 +48,7 @@ export const crewEducationService = {
 
   async create(
     crewUuid: string,
-    data: Omit<InsertCrewEducation, "eduUuid" | "crewUuid">
+    data: Omit<InsertCrewEducation, "eduUuid" | "crewUuid"> & { auditUserUuid?: string | null }
   ): Promise<CrewEducation> {
     await crewMembersService.getByUuid(crewUuid);
     const dataWithAudit = applyAuditUser(data, true);
@@ -57,7 +57,7 @@ export const crewEducationService = {
 
   async update(
     eduUuid: string,
-    data: Partial<InsertCrewEducation>
+    data: Partial<InsertCrewEducation> & { auditUserUuid?: string | null }
   ): Promise<CrewEducation> {
     await this.getByUuid(eduUuid);
     const dataWithAudit = applyAuditUser(data, false);

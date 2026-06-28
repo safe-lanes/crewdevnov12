@@ -98,7 +98,7 @@ export const crewBriefingService = {
 
   async createBriefing(
     crewUuid: string,
-    data: Omit<InsertCrewBriefing, "briefingUuid" | "crewUuid"> & { vessel?: string }
+    data: Omit<InsertCrewBriefing, "briefingUuid" | "crewUuid"> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewBriefing> {
     await crewMembersService.getByUuid(crewUuid);
     const resolvedData = await resolveVesselField(data);
@@ -108,7 +108,7 @@ export const crewBriefingService = {
 
   async updateBriefing(
     briefingUuid: string,
-    data: Partial<InsertCrewBriefing> & { vessel?: string }
+    data: Partial<InsertCrewBriefing> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewBriefing> {
     await this.getBriefingByUuid(briefingUuid);
     const resolvedData = await resolveVesselField(data);
@@ -176,7 +176,7 @@ export const crewBriefingService = {
 
   async createDebriefing(
     crewUuid: string,
-    data: Omit<InsertCrewDebriefing, "debriefingUuid" | "crewUuid"> & { vessel?: string }
+    data: Omit<InsertCrewDebriefing, "debriefingUuid" | "crewUuid"> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewDebriefing> {
     await crewMembersService.getByUuid(crewUuid);
     const resolvedData = await resolveVesselField(data);
@@ -186,7 +186,7 @@ export const crewBriefingService = {
 
   async updateDebriefing(
     debriefingUuid: string,
-    data: Partial<InsertCrewDebriefing> & { vessel?: string }
+    data: Partial<InsertCrewDebriefing> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewDebriefing> {
     await this.getDebriefingByUuid(debriefingUuid);
     const resolvedData = await resolveVesselField(data);
