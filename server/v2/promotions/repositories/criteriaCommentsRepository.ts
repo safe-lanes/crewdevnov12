@@ -33,7 +33,7 @@ export class CriteriaCommentsRepository {
     return results[0];
   }
 
-  async replaceForReview(reviewUuid: string, comments: Omit<InsertPromoCriteriaCommentV2, "ccUuid" | "reviewUuid">[]): Promise<PromoCriteriaCommentV2[]> {
+  async replaceForReview(reviewUuid: string, comments: Omit<InsertPromoCriteriaCommentV2, "ccUuid" | "reviewUuid">[], auditUserUuid: string | null = null): Promise<PromoCriteriaCommentV2[]> {
     const db = getDb();
     const existing = await db
       .select()
@@ -44,7 +44,7 @@ export class CriteriaCommentsRepository {
       if (existing.length > 0) {
         await db
           .update(promoCriteriaCommentsV2)
-          .set({ isDeleted: true, updatedAt: new Date() })
+          .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
           .where(and(eq(promoCriteriaCommentsV2.reviewUuid, reviewUuid), eq(promoCriteriaCommentsV2.isDeleted, false)));
       }
       return [];
@@ -65,14 +65,14 @@ export class CriteriaCommentsRepository {
         usedExistingIds.push(match.id);
         const updated = await db
           .update(promoCriteriaCommentsV2)
-          .set({ commentUser: c.commentUser, commentText: c.commentText, sortOrder: i, updatedAt: new Date() })
+          .set({ commentUser: c.commentUser, commentText: c.commentText, sortOrder: i, updatedAt: new Date(), updatedByUuid: auditUserUuid })
           .where(eq(promoCriteriaCommentsV2.id, match.id))
           .returning();
         results.push(updated[0]);
       } else {
         const inserted = await db
           .insert(promoCriteriaCommentsV2)
-          .values({ ...c, ccUuid: uuidv4(), reviewUuid, sortOrder: i })
+          .values({ ...c, ccUuid: uuidv4(), reviewUuid, sortOrder: i, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid })
           .returning();
         results.push(inserted[0]);
       }
@@ -82,7 +82,7 @@ export class CriteriaCommentsRepository {
     if (unusedIds.length > 0) {
       await db
         .update(promoCriteriaCommentsV2)
-        .set({ isDeleted: true, updatedAt: new Date() })
+        .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
         .where(inArray(promoCriteriaCommentsV2.id, unusedIds));
     }
 

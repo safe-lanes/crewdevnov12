@@ -248,7 +248,7 @@ async function getCrewAssignmentsForMonth(
   }
 }
 
-async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: string) {
+async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: string, auditUserUuid: string | null = null) {
   try {
     // All rank-period records for the month. Non-promotion months have exactly
     // one record with a NULL window, so the loop below collapses to the original
@@ -430,6 +430,7 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
             predictedNCs,
             activityConflicting,
             signOnOffInfo,
+            updatedByUuid: auditUserUuid,
           });
         } else {
           await crewRecordsRepository.create({
@@ -446,18 +447,20 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
             totalNCs,
             predictedViolations,
             predictedNCs,
+            createdByUuid: auditUserUuid,
+            updatedByUuid: auditUserUuid,
           });
         }
       }
     }
 
-    await updateVesselRecordSync(vesselId, monthYear);
+    await updateVesselRecordSync(vesselId, monthYear, auditUserUuid);
   } catch (error) {
     console.error('Failed to sync crew/vessel records after daily record save:', error);
   }
 }
 
-async function updateVesselRecordSync(vesselId: string, monthValue: string) {
+async function updateVesselRecordSync(vesselId: string, monthValue: string, auditUserUuid: string | null = null) {
   try {
     const crewRecords = await crewRecordsRepository.findAll({
       vesselId,
@@ -534,6 +537,7 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
         crewWithPredictedViolations,
         predictedNCs,
         crewWithPredictedNCs,
+        updatedByUuid: auditUserUuid,
       });
     } else {
       await vesselRecordsRepository.create({
@@ -554,6 +558,8 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
         predictedNCs,
         crewWithPredictedNCs,
         officeReviewStatus: '',
+        createdByUuid: auditUserUuid,
+        updatedByUuid: auditUserUuid,
       });
     }
   } catch (error) {
@@ -596,9 +602,10 @@ export const dailyRecordsService = {
   async resyncSummaries(
     crewMemberId: string,
     vesselId: string,
-    monthYear: string
+    monthYear: string,
+    auditUserUuid: string | null = null
   ): Promise<void> {
-    await postSaveSync(crewMemberId, vesselId, monthYear);
+    await postSaveSync(crewMemberId, vesselId, monthYear, auditUserUuid);
   },
 
   async create(
@@ -648,7 +655,7 @@ export const dailyRecordsService = {
 
     const record = await dailyRecordsRepository.create(dataWithAudit);
 
-    await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear);
+    await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear, data.auditUserUuid ?? null);
 
     return record;
   },
@@ -673,19 +680,19 @@ export const dailyRecordsService = {
       throw new Error(`Failed to update daily record: ${rhDailyUuid}`);
     }
 
-    await postSaveSync(updated.crewMemberId, updated.vesselId, updated.monthYear);
+    await postSaveSync(updated.crewMemberId, updated.vesselId, updated.monthYear, data.auditUserUuid ?? null);
 
     return updated;
   },
 
-  async delete(rhDailyUuid: string): Promise<void> {
+  async delete(rhDailyUuid: string, auditUserUuid: string | null = null): Promise<void> {
     const record = await this.getByUuid(rhDailyUuid);
     const success = await dailyRecordsRepository.softDelete(rhDailyUuid);
     if (!success) {
       throw new Error(`Failed to delete daily record: ${rhDailyUuid}`);
     }
 
-    await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear);
+    await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear, auditUserUuid);
   },
 
   async backfillViolations(params: {

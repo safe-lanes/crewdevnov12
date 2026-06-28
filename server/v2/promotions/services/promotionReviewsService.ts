@@ -975,6 +975,8 @@ export class PromotionReviewsService {
           effectiveDate,
           promotionTiming: review.promotionTiming ?? null,
           appliedByUuid: actorUuid,
+          createdByUuid: actorUuid,
+          updatedByUuid: actorUuid,
         })
         .onConflictDoNothing({ target: promoExecutionLedgerV2.reviewUuid })
         .returning({ id: promoExecutionLedgerV2.id });
@@ -1584,7 +1586,7 @@ export class PromotionReviewsService {
       criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
       b2VesselTypes, b2FleetGroups,
-    });
+    }, coreFields.updatedByUuid ?? null);
 
     await this.runCompletionHook(review, coreFields.updatedByUuid ?? null);
 
@@ -1643,7 +1645,7 @@ export class PromotionReviewsService {
       criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
       b2VesselTypes, b2FleetGroups,
-    });
+    }, coreFields.updatedByUuid ?? null);
 
     await this.runCompletionHook(review, coreFields.updatedByUuid ?? null);
 
@@ -1654,7 +1656,7 @@ export class PromotionReviewsService {
     return reviewsRepo.softDelete(reviewUuid);
   }
 
-  private async saveChildData(reviewUuid: string, data: any) {
+  private async saveChildData(reviewUuid: string, data: any, auditUserUuid: string | null = null) {
     const tasks: Promise<any>[] = [];
 
     if (data.criteriaVerifiedStatus !== undefined || data.criteriaMeetsStatus !== undefined) {
@@ -1665,7 +1667,7 @@ export class PromotionReviewsService {
         tasks.push(criteriaStatusRepo.upsert(reviewUuid, code, {
           verifiedStatus: verified[code] ?? null,
           meetsStatus: meets[code] ?? null,
-        }));
+        }, auditUserUuid));
       }
     }
 
@@ -1678,7 +1680,7 @@ export class PromotionReviewsService {
         minScore: t.minScore || t.min_score || null,
         score: t.score || null,
         result: t.result || null,
-      }))));
+      })), auditUserUuid));
     }
 
     if (data.criteriaComments !== undefined) {
@@ -1722,8 +1724,8 @@ export class PromotionReviewsService {
           }
         }
       }
-      tasks.push(criteriaCommentsRepo.replaceForReview(reviewUuid, criteriaCommentRows));
-      tasks.push(trainingCommentsRepo.replaceForReview(reviewUuid, trainingCommentRows));
+      tasks.push(criteriaCommentsRepo.replaceForReview(reviewUuid, criteriaCommentRows, auditUserUuid));
+      tasks.push(trainingCommentsRepo.replaceForReview(reviewUuid, trainingCommentRows, auditUserUuid));
     }
 
     if (data.trainingNeeds !== undefined) {
@@ -1735,7 +1737,7 @@ export class PromotionReviewsService {
         category: n.category || null,
         status: n.status || null,
         completionDate: n.completionDate || n.completion_date || null,
-      }))));
+      })), auditUserUuid));
     }
 
     if (data.approvalData !== undefined || data.selectedApproversForSubmission !== undefined) {
@@ -1768,7 +1770,7 @@ export class PromotionReviewsService {
           });
         }
       }
-      tasks.push(approvalsRepo.replaceForReview(reviewUuid, approvalRows));
+      tasks.push(approvalsRepo.replaceForReview(reviewUuid, approvalRows, auditUserUuid));
     }
 
     if (data.checklistProgressData !== undefined) {
@@ -1814,7 +1816,7 @@ export class PromotionReviewsService {
       }
 
       const saveChecklistProgressAndAttachments = async () => {
-        const savedProgress = await checklistProgressRepo.replaceForReview(reviewUuid, items);
+        const savedProgress = await checklistProgressRepo.replaceForReview(reviewUuid, items, auditUserUuid);
         
         if (progressObj.sections && Array.isArray(progressObj.sections)) {
           const db = getDb();
@@ -1879,6 +1881,8 @@ export class PromotionReviewsService {
                       filePath,
                       fileSize: att.fileSize?.toString() || att.size?.toString() || buffer.length.toString(),
                       fileType: att.fileType || att.type || mime,
+                      createdByUuid: auditUserUuid,
+                      updatedByUuid: auditUserUuid,
                     }).onConflictDoNothing();
                     
                     keepUuids.push(attUuid);
@@ -1891,7 +1895,7 @@ export class PromotionReviewsService {
               if (toDelete.length > 0) {
                 await db
                   .update(promoChecklistAttachmentsV2)
-                  .set({ isDeleted: true, updatedAt: new Date() })
+                  .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
                   .where(
                     inArray(
                       promoChecklistAttachmentsV2.attUuid,
@@ -1928,7 +1932,7 @@ export class PromotionReviewsService {
         ?? (existing?.vesselTypes ?? []);
       const fleetGroups = toNames(data.b2FleetGroups, ['name', 'fleetGroup'])
         ?? (existing?.fleetGroups ?? []);
-      tasks.push(suitabilityRepo.upsertForReview(reviewUuid, { vesselTypes, fleetGroups }));
+      tasks.push(suitabilityRepo.upsertForReview(reviewUuid, { vesselTypes, fleetGroups }, auditUserUuid));
     }
 
     if (tasks.length > 0) await Promise.all(tasks);

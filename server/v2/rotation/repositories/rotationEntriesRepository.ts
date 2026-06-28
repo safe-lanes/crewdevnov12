@@ -67,32 +67,35 @@ export class RotationEntriesRepository {
     return results[0];
   }
 
-  async create(data: Omit<InsertRotationEntriesV2, "entryUuid">): Promise<RotationEntriesV2> {
+  async create(data: Omit<InsertRotationEntriesV2, "entryUuid">, auditUserUuid: string | null = null): Promise<RotationEntriesV2> {
     const db = getDb();
     const results = await db
       .insert(rotationEntriesV2)
       .values({
         ...data,
         entryUuid: uuidv4(),
+        createdByUuid: auditUserUuid,
+        updatedByUuid: auditUserUuid,
       })
       .returning();
     return results[0];
   }
 
-  async update(entryUuid: string, data: Partial<InsertRotationEntriesV2>): Promise<RotationEntriesV2> {
+  async update(entryUuid: string, data: Partial<InsertRotationEntriesV2>, auditUserUuid: string | null = null): Promise<RotationEntriesV2> {
     const db = getDb();
     const results = await db
       .update(rotationEntriesV2)
       .set({
         ...data,
         updatedAt: new Date(),
+        updatedByUuid: auditUserUuid,
       })
       .where(eq(rotationEntriesV2.entryUuid, entryUuid))
       .returning();
     return results[0];
   }
 
-  async reactivate(entryUuid: string, data: Partial<InsertRotationEntriesV2>): Promise<RotationEntriesV2> {
+  async reactivate(entryUuid: string, data: Partial<InsertRotationEntriesV2>, auditUserUuid: string | null = null): Promise<RotationEntriesV2> {
     const db = getDb();
     const results = await db
       .update(rotationEntriesV2)
@@ -100,6 +103,7 @@ export class RotationEntriesRepository {
         ...data,
         isDeleted: false,
         updatedAt: new Date(),
+        updatedByUuid: auditUserUuid,
       })
       .where(eq(rotationEntriesV2.entryUuid, entryUuid))
       .returning();
@@ -131,11 +135,11 @@ export class RotationEntriesRepository {
     }));
   }
 
-  async softDelete(entryUuid: string): Promise<void> {
+  async softDelete(entryUuid: string, auditUserUuid: string | null = null): Promise<void> {
     const db = getDb();
     await db
       .update(rotationEntriesV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
+      .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
       .where(eq(rotationEntriesV2.entryUuid, entryUuid));
   }
 

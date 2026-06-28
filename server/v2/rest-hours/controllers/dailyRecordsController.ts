@@ -86,7 +86,8 @@ export const dailyRecordsController = {
   async delete(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
-      await dailyRecordsService.delete(uuid);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      await dailyRecordsService.delete(uuid, auditUserUuid);
       res.status(204).send();
     } catch (error: any) {
       if (error.message?.includes("not found")) {
