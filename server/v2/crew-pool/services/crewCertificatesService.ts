@@ -1,6 +1,7 @@
 import { eq, and, ilike } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
   CrewLicensesRepository,
   CrewTrainingRepository,
@@ -62,16 +63,6 @@ async function persistReconcileAttachment(
 
 const crewLicensesRepository = new CrewLicensesRepository();
 const crewTrainingRepository = new CrewTrainingRepository();
-
-// Helper to extract and apply audit user fields
-function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
-  const auditUserUuid = (data as any).auditUserUuid || null;
-  const result = { ...data } as any;
-  delete result.auditUserUuid;
-  if (isCreate) result.createdByUuid = auditUserUuid;
-  result.updatedByUuid = auditUserUuid;
-  return result;
-}
 
 // Generate next license ID in format LIC001, LIC002, etc.
 async function generateLicenseId(): Promise<string> {
@@ -268,7 +259,8 @@ export const crewCertificatesService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewLicense[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -281,7 +273,7 @@ export const crewCertificatesService = {
         if (item.isDeleted && item.licUuid) {
           await tx
             .update(crewLicenses)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewLicenses.licUuid, item.licUuid));
           continue;
         }
@@ -291,7 +283,7 @@ export const crewCertificatesService = {
         if (item.licUuid) {
           const [updated] = await tx
             .update(crewLicenses)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewLicenses.licUuid, item.licUuid))
             .returning();
           licUuid = item.licUuid;
@@ -300,13 +292,13 @@ export const crewCertificatesService = {
           licUuid = uuidv4();
           const [created] = await tx
             .insert(crewLicenses)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               licUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -320,15 +312,15 @@ export const crewCertificatesService = {
                 att.filePath,
                 att.fileData,
               );
-              await tx.insert(crewLicensesAttachments).values({
+              await tx.insert(crewLicensesAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 licUuid,
                 fileName: att.fileName,
                 filePath: stored.filePath,
                 fileData: stored.fileData,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }
@@ -444,7 +436,8 @@ export const crewCertificatesService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewTrainingCourse[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -457,7 +450,7 @@ export const crewCertificatesService = {
         if (item.isDeleted && item.trainUuid) {
           await tx
             .update(crewTrainingCourses)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewTrainingCourses.trainUuid, item.trainUuid));
           continue;
         }
@@ -467,7 +460,7 @@ export const crewCertificatesService = {
         if (item.trainUuid) {
           const [updated] = await tx
             .update(crewTrainingCourses)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewTrainingCourses.trainUuid, item.trainUuid))
             .returning();
           trainUuid = item.trainUuid;
@@ -476,13 +469,13 @@ export const crewCertificatesService = {
           trainUuid = uuidv4();
           const [created] = await tx
             .insert(crewTrainingCourses)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               trainUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -496,15 +489,15 @@ export const crewCertificatesService = {
                 att.filePath,
                 att.fileData,
               );
-              await tx.insert(crewTrainingAttachments).values({
+              await tx.insert(crewTrainingAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 trainUuid,
                 fileName: att.fileName,
                 filePath: stored.filePath,
                 fileData: stored.fileData,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }

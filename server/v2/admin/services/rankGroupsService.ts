@@ -326,37 +326,37 @@ export const rankGroupsService = {
     return updated;
   },
 
-  async archiveById(id: number): Promise<AdmRankGroupV2> {
+  async archiveById(id: number, auditUserUuid: string | null = null): Promise<AdmRankGroupV2> {
     const existing = await rankGroupsRepo.findById(id);
     if (!existing) throw new Error(`Rank group not found: ${id}`);
-    const result = await rankGroupsRepo.archiveById(id);
+    const result = await rankGroupsRepo.archiveById(id, auditUserUuid);
     if (!result) throw new Error(`Rank group not found: ${id}`);
     await syncFormRankGroup(existing.formId);
     return result;
   },
 
-  async archive(rgUuid: string): Promise<AdmRankGroupV2> {
+  async archive(rgUuid: string, auditUserUuid: string | null = null): Promise<AdmRankGroupV2> {
     const existing = await rankGroupsRepo.findByUuid(rgUuid);
     if (!existing) throw new Error(`Rank group not found: ${rgUuid}`);
-    const result = await rankGroupsRepo.archive(rgUuid);
+    const result = await rankGroupsRepo.archive(rgUuid, auditUserUuid);
     if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
     await syncFormRankGroup(existing.formId);
     return result;
   },
 
-  async unarchiveById(id: number): Promise<AdmRankGroupV2> {
+  async unarchiveById(id: number, auditUserUuid: string | null = null): Promise<AdmRankGroupV2> {
     const existing = await rankGroupsRepo.findById(id);
     if (!existing) throw new Error(`Rank group not found: ${id}`);
-    const result = await rankGroupsRepo.unarchiveById(id);
+    const result = await rankGroupsRepo.unarchiveById(id, auditUserUuid);
     if (!result) throw new Error(`Rank group not found: ${id}`);
     await syncFormRankGroup(existing.formId);
     return result;
   },
 
-  async unarchive(rgUuid: string): Promise<AdmRankGroupV2> {
+  async unarchive(rgUuid: string, auditUserUuid: string | null = null): Promise<AdmRankGroupV2> {
     const existing = await rankGroupsRepo.findByUuid(rgUuid);
     if (!existing) throw new Error(`Rank group not found: ${rgUuid}`);
-    const result = await rankGroupsRepo.unarchive(rgUuid);
+    const result = await rankGroupsRepo.unarchive(rgUuid, auditUserUuid);
     if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
     await syncFormRankGroup(existing.formId);
     return result;

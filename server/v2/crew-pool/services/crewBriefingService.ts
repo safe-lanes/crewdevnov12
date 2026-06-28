@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
   CrewBriefingRepository,
   type CrewBriefingWithAttachments,
@@ -60,16 +61,6 @@ async function persistReconcileAttachment(
 }
 
 const crewBriefingRepository = new CrewBriefingRepository();
-
-// Helper to extract and apply audit user fields
-function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
-  const auditUserUuid = (data as any).auditUserUuid || null;
-  const result = { ...data } as any;
-  delete result.auditUserUuid;
-  if (isCreate) result.createdByUuid = auditUserUuid;
-  result.updatedByUuid = auditUserUuid;
-  return result;
-}
 
 // Resolve vessel name/UUID to UUID; preserve vesselName text for display fallback
 async function resolveVesselField<T extends Record<string, any>>(
@@ -269,7 +260,8 @@ export const crewBriefingService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewBriefing[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -290,7 +282,7 @@ export const crewBriefingService = {
         if (item.isDeleted && item.briefingUuid) {
           await tx
             .update(crewBriefings)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewBriefings.briefingUuid, item.briefingUuid));
           continue;
         }
@@ -300,7 +292,7 @@ export const crewBriefingService = {
         if (item.briefingUuid) {
           const [updated] = await tx
             .update(crewBriefings)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewBriefings.briefingUuid, item.briefingUuid))
             .returning();
           briefingUuid = item.briefingUuid;
@@ -309,13 +301,13 @@ export const crewBriefingService = {
           briefingUuid = uuidv4();
           const [created] = await tx
             .insert(crewBriefings)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               briefingUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -329,15 +321,15 @@ export const crewBriefingService = {
                 att.filePath,
                 att.fileData,
               );
-              await tx.insert(crewBriefingAttachments).values({
+              await tx.insert(crewBriefingAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 briefingUuid,
                 fileName: att.fileName,
                 filePath: stored.filePath,
                 fileData: stored.fileData,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }
@@ -363,7 +355,8 @@ export const crewBriefingService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewDebriefing[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -384,7 +377,7 @@ export const crewBriefingService = {
         if (item.isDeleted && item.debriefingUuid) {
           await tx
             .update(crewDebriefings)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewDebriefings.debriefingUuid, item.debriefingUuid));
           continue;
         }
@@ -394,7 +387,7 @@ export const crewBriefingService = {
         if (item.debriefingUuid) {
           const [updated] = await tx
             .update(crewDebriefings)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewDebriefings.debriefingUuid, item.debriefingUuid))
             .returning();
           debriefingUuid = item.debriefingUuid;
@@ -403,13 +396,13 @@ export const crewBriefingService = {
           debriefingUuid = uuidv4();
           const [created] = await tx
             .insert(crewDebriefings)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               debriefingUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -423,15 +416,15 @@ export const crewBriefingService = {
                 att.filePath,
                 att.fileData,
               );
-              await tx.insert(crewDebriefingAttachments).values({
+              await tx.insert(crewDebriefingAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 debriefingUuid,
                 fileName: att.fileName,
                 filePath: stored.filePath,
                 fileData: stored.fileData,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }

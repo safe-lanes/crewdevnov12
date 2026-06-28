@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewAssignments } from "../../../../shared/v2/crew-pool/schema";
 import type {
@@ -60,7 +60,7 @@ export class CrewAssignmentsRepository {
     if (data.isCurrent) {
       await db
         .update(crewAssignments)
-        .set({ isCurrent: false, updatedAt: new Date() })
+        .set({ isCurrent: false, updatedAt: sql`now()` })
         .where(
           and(
             eq(crewAssignments.crewUuid, data.crewUuid),
@@ -91,7 +91,7 @@ export class CrewAssignmentsRepository {
       if (existing) {
         await db
           .update(crewAssignments)
-          .set({ isCurrent: false, updatedAt: new Date() })
+          .set({ isCurrent: false, updatedAt: sql`now()` })
           .where(
             and(
               eq(crewAssignments.crewUuid, existing.crewUuid),
@@ -103,7 +103,7 @@ export class CrewAssignmentsRepository {
 
     const results = await db
       .update(crewAssignments)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...data, updatedAt: sql`now()` })
       .where(eq(crewAssignments.assignUuid, assignUuid))
       .returning();
     return results[0];
@@ -113,7 +113,7 @@ export class CrewAssignmentsRepository {
     const db = getDb();
     const results = await db
       .update(crewAssignments)
-      .set({ isDeleted: true, updatedAt: new Date() })
+      .set({ isDeleted: true, updatedAt: sql`now()` })
       .where(eq(crewAssignments.assignUuid, assignUuid))
       .returning();
     return results.length > 0;
@@ -137,13 +137,13 @@ export class CrewAssignmentsRepository {
     // Unset all current assignments for this crew
     await db
       .update(crewAssignments)
-      .set({ isCurrent: false, updatedAt: new Date() })
+      .set({ isCurrent: false, updatedAt: sql`now()` })
       .where(eq(crewAssignments.crewUuid, crewUuid));
 
     // Set the specified assignment as current
     const results = await db
       .update(crewAssignments)
-      .set({ isCurrent: true, updatedAt: new Date() })
+      .set({ isCurrent: true, updatedAt: sql`now()` })
       .where(eq(crewAssignments.assignUuid, assignUuid))
       .returning();
 

@@ -94,7 +94,8 @@ export async function updateDocument(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const doc = await documentsService.updateDocument(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const doc = await documentsService.updateDocument(id, data, auditUserUuid ?? undefined);
     if (!doc) return res.status(404).json({ error: "Not found" });
     res.json(doc);
   } catch (error) {
@@ -421,7 +422,8 @@ export async function updateVisa(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const visa = await documentsService.updateVisa(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const visa = await documentsService.updateVisa(id, data, auditUserUuid ?? undefined);
     if (!visa) return res.status(404).json({ error: "Not found" });
     res.json(visa);
   } catch (error) {
@@ -468,7 +470,8 @@ export async function updateEducation(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const edu = await documentsService.updateEducation(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const edu = await documentsService.updateEducation(id, data, auditUserUuid ?? undefined);
     if (!edu) return res.status(404).json({ error: "Not found" });
     res.json(edu);
   } catch (error) {
@@ -515,7 +518,8 @@ export async function updateLicense(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const license = await documentsService.updateLicense(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const license = await documentsService.updateLicense(id, data, auditUserUuid ?? undefined);
     if (!license) return res.status(404).json({ error: "Not found" });
     res.json(license);
   } catch (error) {
@@ -562,7 +566,8 @@ export async function updateTrainingCourse(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const course = await documentsService.updateTrainingCourse(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const course = await documentsService.updateTrainingCourse(id, data, auditUserUuid ?? undefined);
     if (!course) return res.status(404).json({ error: "Not found" });
     res.json(course);
   } catch (error) {
@@ -609,7 +614,8 @@ export async function updateSeaService(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const ss = await documentsService.updateSeaService(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const ss = await documentsService.updateSeaService(id, data, auditUserUuid ?? undefined);
     if (!ss) return res.status(404).json({ error: "Not found" });
     res.json(ss);
   } catch (error) {

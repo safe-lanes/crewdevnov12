@@ -155,7 +155,8 @@ export const rankGroupsController = {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid rank group ID" });
       }
-      const rankGroup = await rankGroupsService.archiveById(id);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const rankGroup = await rankGroupsService.archiveById(id, auditUserUuid);
       res.json(rankGroup);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -172,7 +173,8 @@ export const rankGroupsController = {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid rank group ID" });
       }
-      const rankGroup = await rankGroupsService.unarchiveById(id);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const rankGroup = await rankGroupsService.unarchiveById(id, auditUserUuid);
       res.json(rankGroup);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

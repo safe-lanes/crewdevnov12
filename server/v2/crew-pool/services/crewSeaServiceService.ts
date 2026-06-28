@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
   CrewSeaServiceRepository,
   type CrewSeaServiceWithAttachments,
@@ -53,16 +54,6 @@ async function persistReconcileAttachment(
 }
 
 const crewSeaServiceRepository = new CrewSeaServiceRepository();
-
-// Helper to extract and apply audit user fields
-function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
-  const auditUserUuid = (data as any).auditUserUuid || null;
-  const result = { ...data } as any;
-  delete result.auditUserUuid;
-  if (isCreate) result.createdByUuid = auditUserUuid;
-  result.updatedByUuid = auditUserUuid;
-  return result;
-}
 
 // Build a UTC-midnight Date from a 1-based calendar y/m/d, rejecting overflow
 // values (e.g. 30 Feb, month 13) instead of letting Date roll them over.
@@ -531,7 +522,8 @@ export const crewSeaServiceService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewSeaServiceType[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -553,7 +545,7 @@ export const crewSeaServiceService = {
         if (item.isDeleted && item.seaUuid) {
           await tx
             .update(crewSeaService)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewSeaService.seaUuid, item.seaUuid));
           continue;
         }
@@ -563,7 +555,7 @@ export const crewSeaServiceService = {
         if (item.seaUuid) {
           const [updated] = await tx
             .update(crewSeaService)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewSeaService.seaUuid, item.seaUuid))
             .returning();
           seaUuid = item.seaUuid;
@@ -572,13 +564,13 @@ export const crewSeaServiceService = {
           seaUuid = uuidv4();
           const [created] = await tx
             .insert(crewSeaService)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               seaUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -592,15 +584,15 @@ export const crewSeaServiceService = {
                 att.filePath,
                 att.fileData,
               );
-              await tx.insert(crewSeaServiceAttachments).values({
+              await tx.insert(crewSeaServiceAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 seaUuid,
                 fileName: att.fileName,
                 filePath: stored.filePath,
                 fileData: stored.fileData,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }

@@ -130,7 +130,8 @@ export const accessControlController = {
       if (!Array.isArray(permissions)) {
         return res.status(400).json({ error: "permissions must be an array" });
       }
-      const records = await accessControlService.savePermissions(ruid, permissions);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const records = await accessControlService.savePermissions(ruid, permissions, auditUserUuid);
       res.json(records);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

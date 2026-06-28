@@ -8,3 +8,4 @@
 - [Rank as-of-date resolution](rank-as-of-date.md) — RH rank for a given date comes from the promotion ledger (effectiveDate<=date→toRank; before earliest→fromRank; else present_rank); effectiveDate==date binds the new rank.
 - [Promotion attachment storage](promotion-attachment-storage.md) — promo_checklist_attachments_v2 is canonical; never write deprecated_attachments_data on save, dedupe on read, emit fileName/fileSize, idempotent insert on att_uuid, frontend round-trips attUuid/filePath/viewUrl.
 - [Attachment filesystem migration](attachment-migration-filesystem.md) — disk uploads need BOTH a /raw route AND client viewUrl on same base path; recruitment screening B7 (Training Needs) has NO attachments.
+- [Centralized audit-stamp helper](audit-stamp-helper.md) — one applyAuditUser in admin/utils sets updatedAt=sql`now()`; crew-pool reconcile services had duplicate local copies (TS2440) lacking it — delete local, keep import.

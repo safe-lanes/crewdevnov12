@@ -97,7 +97,8 @@ export const availableRanksController = {
       if (!Array.isArray(orders)) {
         return res.status(400).json({ error: "Invalid reorder data: body must be an array of {id, sortOrder}" });
       }
-      const success = await availableRanksService.reorder(orders);
+      const auditUserUuid = orders[0]?.auditUserUuid ?? null;
+      const success = await availableRanksService.reorder(orders, auditUserUuid);
       if (!success) {
         return res.status(500).json({ error: "Failed to update rank orders" });
       }

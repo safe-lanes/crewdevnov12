@@ -3,6 +3,7 @@ import { getDb } from "../../db";
 import { admRankGroupsV2 } from "../../../../shared/v2/admin/schema";
 import type { AdmRankGroupV2, InsertAdmRankGroupV2 } from "../../../../shared/v2/admin/types";
 import { v4 as uuidv4 } from "uuid";
+import { applyAuditUser } from "../utils/auditUser";
 
 export class RankGroupsRepository {
   async findAll(): Promise<AdmRankGroupV2[]> {
@@ -77,41 +78,41 @@ export class RankGroupsRepository {
     return results[0];
   }
 
-  async archiveById(id: number): Promise<AdmRankGroupV2 | undefined> {
+  async archiveById(id: number, auditUserUuid: string | null = null): Promise<AdmRankGroupV2 | undefined> {
     const db = getDb();
     const results = await db
       .update(admRankGroupsV2)
-      .set({ archivedAt: new Date(), updatedAt: new Date() })
+      .set(applyAuditUser({ archivedAt: new Date(), auditUserUuid }))
       .where(and(eq(admRankGroupsV2.id, id), eq(admRankGroupsV2.isDeleted, false)))
       .returning();
     return results[0];
   }
 
-  async archive(rgUuid: string): Promise<AdmRankGroupV2 | undefined> {
+  async archive(rgUuid: string, auditUserUuid: string | null = null): Promise<AdmRankGroupV2 | undefined> {
     const db = getDb();
     const results = await db
       .update(admRankGroupsV2)
-      .set({ archivedAt: new Date(), updatedAt: new Date() })
+      .set(applyAuditUser({ archivedAt: new Date(), auditUserUuid }))
       .where(and(eq(admRankGroupsV2.rgUuid, rgUuid), eq(admRankGroupsV2.isDeleted, false)))
       .returning();
     return results[0];
   }
 
-  async unarchiveById(id: number): Promise<AdmRankGroupV2 | undefined> {
+  async unarchiveById(id: number, auditUserUuid: string | null = null): Promise<AdmRankGroupV2 | undefined> {
     const db = getDb();
     const results = await db
       .update(admRankGroupsV2)
-      .set({ archivedAt: null, updatedAt: new Date() })
+      .set(applyAuditUser({ archivedAt: null, auditUserUuid }))
       .where(and(eq(admRankGroupsV2.id, id), eq(admRankGroupsV2.isDeleted, false)))
       .returning();
     return results[0];
   }
 
-  async unarchive(rgUuid: string): Promise<AdmRankGroupV2 | undefined> {
+  async unarchive(rgUuid: string, auditUserUuid: string | null = null): Promise<AdmRankGroupV2 | undefined> {
     const db = getDb();
     const results = await db
       .update(admRankGroupsV2)
-      .set({ archivedAt: null, updatedAt: new Date() })
+      .set(applyAuditUser({ archivedAt: null, auditUserUuid }))
       .where(and(eq(admRankGroupsV2.rgUuid, rgUuid), eq(admRankGroupsV2.isDeleted, false)))
       .returning();
     return results[0];

@@ -1,6 +1,7 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
   CrewDocumentsRepository,
   type CrewDocumentWithAttachments,
@@ -53,16 +54,6 @@ async function persistReconcileAttachment(
 }
 
 const crewDocumentsRepository = new CrewDocumentsRepository();
-
-// Helper to extract and apply audit user fields
-function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
-  const auditUserUuid = (data as any).auditUserUuid || null;
-  const result = { ...data } as any;
-  delete result.auditUserUuid;
-  if (isCreate) result.createdByUuid = auditUserUuid;
-  result.updatedByUuid = auditUserUuid;
-  return result;
-}
 
 export const crewDocumentsService = {
   async getAll(crewUuid: string): Promise<CrewDocumentWithAttachments[]> {
@@ -198,7 +189,8 @@ export const crewDocumentsService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewDocument[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -229,7 +221,7 @@ export const crewDocumentsService = {
         if (item.isDeleted && item.docUuid) {
           await tx
             .update(crewDocuments)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewDocuments.docUuid, item.docUuid));
           continue;
         }
@@ -239,7 +231,7 @@ export const crewDocumentsService = {
         if (item.docUuid) {
           const [updated] = await tx
             .update(crewDocuments)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewDocuments.docUuid, item.docUuid))
             .returning();
           docUuid = item.docUuid;
@@ -248,13 +240,13 @@ export const crewDocumentsService = {
           docUuid = uuidv4();
           const [created] = await tx
             .insert(crewDocuments)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               docUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -268,15 +260,15 @@ export const crewDocumentsService = {
                 att.filePath,
                 att.fileData,
               );
-              await tx.insert(crewDocumentsAttachments).values({
+              await tx.insert(crewDocumentsAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 docUuid,
                 fileName: att.fileName,
                 filePath: stored.filePath,
                 fileData: stored.fileData,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }

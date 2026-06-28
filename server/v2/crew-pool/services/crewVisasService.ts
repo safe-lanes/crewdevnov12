@@ -1,6 +1,7 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
   CrewVisasRepository,
   type CrewVisaWithAttachments,
@@ -52,16 +53,6 @@ async function persistReconcileAttachment(
 }
 
 const crewVisasRepository = new CrewVisasRepository();
-
-// Helper to extract and apply audit user fields
-function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
-  const auditUserUuid = (data as any).auditUserUuid || null;
-  const result = { ...data } as any;
-  delete result.auditUserUuid;
-  if (isCreate) result.createdByUuid = auditUserUuid;
-  result.updatedByUuid = auditUserUuid;
-  return result;
-}
 
 export const crewVisasService = {
   async getAll(crewUuid: string): Promise<CrewVisaWithAttachments[]> {
@@ -197,7 +188,8 @@ export const crewVisasService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewVisa[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -225,7 +217,7 @@ export const crewVisasService = {
         if (item.isDeleted && item.visaUuid) {
           await tx
             .update(crewVisas)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewVisas.visaUuid, item.visaUuid));
           continue;
         }
@@ -235,7 +227,7 @@ export const crewVisasService = {
         if (item.visaUuid) {
           const [updated] = await tx
             .update(crewVisas)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewVisas.visaUuid, item.visaUuid))
             .returning();
           visaUuid = item.visaUuid;
@@ -244,13 +236,13 @@ export const crewVisasService = {
           visaUuid = uuidv4();
           const [created] = await tx
             .insert(crewVisas)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               visaUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -264,15 +256,15 @@ export const crewVisasService = {
                 att.filePath,
                 att.fileData,
               );
-              await tx.insert(crewVisasAttachments).values({
+              await tx.insert(crewVisasAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 visaUuid,
                 fileName: att.fileName,
                 filePath: stored.filePath,
                 fileData: stored.fileData,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }

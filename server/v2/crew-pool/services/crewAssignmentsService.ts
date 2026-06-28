@@ -1,6 +1,7 @@
 import { eq, and, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { applyAuditUser } from "../../admin/utils/auditUser";
 import { CrewAssignmentsRepository } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
 import { crewAssignments } from "../../../../shared/v2/crew-pool/schema";
@@ -50,7 +51,7 @@ export const crewAssignmentsService = {
 
   async update(
     assignUuid: string,
-    data: Partial<InsertCrewAssignment>
+    data: Partial<InsertCrewAssignment> & { auditUserUuid?: string | null }
   ): Promise<CrewAssignment> {
     await this.getByUuid(assignUuid);
 
@@ -62,7 +63,10 @@ export const crewAssignmentsService = {
       }
     }
 
-    const updated = await crewAssignmentsRepository.update(assignUuid, data);
+    const updated = await crewAssignmentsRepository.update(
+      assignUuid,
+      applyAuditUser(data)
+    );
     if (!updated) {
       throw new Error(`Failed to update assignment: ${assignUuid}`);
     }
@@ -101,6 +105,7 @@ export const crewAssignmentsService = {
       vesselName?: string;
       rank?: string;
       notes?: string;
+      auditUserUuid?: string | null;
     }
   ): Promise<CrewAssignment> {
     const db = getDb();
@@ -108,15 +113,13 @@ export const crewAssignmentsService = {
 
     const assignmentType = data.assignmentType || "primary";
     const signOnDate = data.signOnDate || new Date();
+    const auditUserUuid = data.auditUserUuid ?? null;
 
     return db.transaction(async (tx: any) => {
       if (assignmentType === "primary") {
         await tx
           .update(crewAssignments)
-          .set({
-            isCurrent: false,
-            updatedAt: new Date(),
-          })
+          .set(applyAuditUser({ isCurrent: false, auditUserUuid }))
           .where(
             and(
               eq(crewAssignments.crewUuid, crewUuid),
@@ -134,24 +137,29 @@ export const crewAssignmentsService = {
 
       const [assignment] = await tx
         .insert(crewAssignments)
-        .values({
-          assignUuid: uuidv4(),
-          crewUuid,
-          vesselUuid,
-          vesselName: data.vesselName ?? null,
-          rank: data.rank ?? null,
-          signOnDate: signOnDateStr,
-          reliefDue: data.reliefDue
-            ? typeof data.reliefDue === "string"
-              ? data.reliefDue
-              : data.reliefDue.toISOString().split("T")[0]
-            : null,
-          contractPeriod: data.contractPeriod ?? null,
-          assignmentType,
-          isCurrent: true,
-          createdAt: now,
-          updatedAt: now,
-        })
+        .values(
+          applyAuditUser(
+            {
+              assignUuid: uuidv4(),
+              crewUuid,
+              vesselUuid,
+              vesselName: data.vesselName ?? null,
+              rank: data.rank ?? null,
+              signOnDate: signOnDateStr,
+              reliefDue: data.reliefDue
+                ? typeof data.reliefDue === "string"
+                  ? data.reliefDue
+                  : data.reliefDue.toISOString().split("T")[0]
+                : null,
+              contractPeriod: data.contractPeriod ?? null,
+              assignmentType,
+              isCurrent: true,
+              createdAt: now,
+              auditUserUuid,
+            },
+            true
+          )
+        )
         .returning();
 
       return assignment;
@@ -167,9 +175,11 @@ export const crewAssignmentsService = {
       signOffDate?: Date | string;
       signOffReason?: string;
       signOffNotes?: string;
+      auditUserUuid?: string | null;
     }
   ): Promise<CrewAssignment | null> {
     const db = getDb();
+    const auditUserUuid = data.auditUserUuid ?? null;
 
     const [current] = await db
       .select()
@@ -195,12 +205,14 @@ export const crewAssignmentsService = {
 
     const [updated] = await db
       .update(crewAssignments)
-      .set({
-        signOffDate: signOffDateStr,
-        reason: data.signOffReason || null,
-        isCurrent: false,
-        updatedAt: new Date(),
-      })
+      .set(
+        applyAuditUser({
+          signOffDate: signOffDateStr,
+          reason: data.signOffReason || null,
+          isCurrent: false,
+          auditUserUuid,
+        })
+      )
       .where(eq(crewAssignments.assignUuid, current.assignUuid))
       .returning();
 
