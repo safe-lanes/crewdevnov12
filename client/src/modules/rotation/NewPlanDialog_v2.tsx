@@ -18,6 +18,7 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useManningAgentsV2, useCrewPoolsV2, useVesselTypesV2, useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
 import { ComplianceMatrixDialog_v2 as ComplianceMatrixDialog } from '@/modules/vessel/ComplianceMatrixDialog_v2';
+import { getCrewUserId } from '@/lib/crewUser';
 
 // Format date as DD-MMM-YY (e.g., "15 Dec 25")
 function formatAvailabilityDate(dateString: string | null | undefined): string {
@@ -2998,7 +2999,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     // Only include these fields when creating a new plan (no editPlan AND no savedPlanId)
     if (!existingDraftUuid) {
       planData.lastEdited = new Date().toISOString();
-      planData.createdByUuid = localStorage.getItem('crewUserId') || 'unknown';
+      planData.createdByUuid = getCrewUserId() || 'unknown';
       planData.planStatus = 'In Draft';
     }
 
@@ -3076,7 +3077,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     // Only include these fields when creating a new plan (no editPlan AND no savedPlanId)
     if (!existingDraftUuid) {
       planData.lastEdited = new Date().toISOString();
-      planData.createdByUuid = localStorage.getItem('crewUserId') || 'unknown';
+      planData.createdByUuid = getCrewUserId() || 'unknown';
       planData.planStatus = 'In Draft';
     }
 

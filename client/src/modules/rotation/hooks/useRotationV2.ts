@@ -1,16 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rotationApiV2, CreateDraftInput, CreateEntryInput, RotationCrewV2 } from '../api/rotationApiV2';
+import { getCrewUserId } from '@/lib/crewUser';
 
 const V2_QUERY_KEY = '/api/v2/rotation';
 const V2_STALE_TIME = 0;
-
-function getCrewUserId(): string | null {
-  try {
-    return localStorage.getItem("crewUserId") || null;
-  } catch {
-    return null;
-  }
-}
 
 function withAuditUser<T>(data: T): T {
   const auditUserUuid = getCrewUserId();

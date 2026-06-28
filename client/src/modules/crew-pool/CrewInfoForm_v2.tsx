@@ -42,6 +42,7 @@ import { VisaSelectionDialog } from './VisaSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem, deepParseJson } from '@/lib/encryptionService';
+import { getCrewUserId } from '@/lib/crewUser';
 import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
@@ -115,14 +116,6 @@ import {
   mapLegacyBriefingToV2,
   mapLegacyDebriefingToV2,
 } from './mappers/v2ToLegacyMapper';
-
-function getCrewUserId(): string | null {
-  try {
-    return localStorage.getItem("crewUserId") || null;
-  } catch {
-    return null;
-  }
-}
 
 function withAuditUser<T>(data: T): T {
   const auditUserUuid = getCrewUserId();
@@ -821,16 +814,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
 
     let resolvedUserId = userId || '';
-    try {
-      if (!resolvedUserId) {
-        const decryptedId = getDecryptedSessionStorageItem('crewUserId', true);
-        resolvedUserId = extractStringValue(decryptedId);
-      }
-      if (!resolvedUserId) resolvedUserId = sessionStorage.getItem('crewUserId') || '';
-      if (!resolvedUserId) resolvedUserId = localStorage.getItem('crewUserId') || '';
-    } catch {
-      resolvedUserId = resolvedUserId || sessionStorage.getItem('crewUserId') || localStorage.getItem('crewUserId') || '';
-    }
+    if (!resolvedUserId) resolvedUserId = getCrewUserId() || '';
 
     return { name: resolvedName, role: resolvedRole, userId: resolvedUserId };
   }, [isTerminateOpen, roleName, userId]);
