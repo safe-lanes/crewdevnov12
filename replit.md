@@ -89,6 +89,44 @@ Apply these to **every new table**:
 - Restart the "Start application" workflow after backend changes (the backend has no hot-reload).
 - Add stable, descriptive `data-testid` attributes to interactive and data-bearing UI elements.
 
+## AI Coding Principles (Karpathy-Inspired)
+
+### 1. Think Before Coding
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+- State assumptions explicitly — if uncertain, ask rather than guess
+- Present multiple interpretations — don't pick silently when ambiguity exists
+- Push back when warranted — if a simpler approach exists, say so
+- Stop when confused — name what's unclear and ask for clarification
+
+### 2. Simplicity First
+**Minimum code that solves the problem. Nothing speculative.**
+- No features beyond what was asked
+- No abstractions for single-use code
+- No "flexibility" or "configurability" that wasn't requested
+- No error handling for impossible scenarios
+- If 200 lines could be 50, rewrite it
+- **The test:** Would a senior engineer say this is overcomplicated? If yes, simplify.
+
+### 3. Surgical Changes
+**Touch only what you must. Clean up only your own mess.**
+- Don't "improve" adjacent code, comments, or formatting
+- Don't refactor things that aren't broken
+- Match existing style, even if you'd do it differently
+- If you notice unrelated dead code, mention it — don't delete it
+
+### 4. Goal-Driven Execution
+**Leverage through tests-first, verifiable success criteria.**
+- Define what "done" looks like before writing code
+- Write or reference tests that prove the change works
+- Prefer verifiable outcomes over vague improvements
+
+| Principle | Addresses |
+|-----------|-----------|
+| **Think Before Coding** | Wrong assumptions, hidden confusion, missing tradeoffs |
+| **Simplicity First** | Overcomplication, bloated abstractions |
+| **Surgical Changes** | Orthogonal edits, touching code you shouldn't |
+| **Goal-Driven Execution** | Leverage through tests-first, verifiable success criteria |
+
 ## User Preferences
 - Functional components with hooks, TypeScript strict mode
 - async/await, consistent error handling
@@ -109,3 +147,4 @@ Apply these to **every new table**:
 - `docs/jwt-authentication-flow.md` — JWT auth flowcharts and middleware chain
 - `docs/MIGRATION-GUIDE.md` — Migration guidelines
 - `docs/DEVELOPER-ONBOARDING.md` — Developer onboarding guide
+ 
