@@ -13,6 +13,8 @@ import {
   serveAttachmentFromFilePath,
   decodeStoredFile,
 } from "../../shared/serveAttachmentHelper.js";
+import { resolveCrewFolderByEntity } from "../../shared/attachmentScope.js";
+import { crewPreJoiningMedicals, crewDoctorVisits } from "@shared/v2/crew-pool/schema";
 
 function normalizeForServe(att: {
   fileName?: string | null;
@@ -144,8 +146,13 @@ export const crewMedicalController = {
           .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
+      const crewFolder = await resolveCrewFolderByEntity(
+        crewPreJoiningMedicals,
+        crewPreJoiningMedicals.medUuid,
+        medUuid,
+      );
       const stored = await persistIncoming(
-        "crew-pool/crew-medical",
+        `crewpool/medical/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,
@@ -277,8 +284,13 @@ export const crewMedicalController = {
           .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
+      const crewFolder = await resolveCrewFolderByEntity(
+        crewDoctorVisits,
+        crewDoctorVisits.visitUuid,
+        visitUuid,
+      );
       const stored = await persistIncoming(
-        "crew-pool/crew-doctor-visits",
+        `crewpool/medical/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,

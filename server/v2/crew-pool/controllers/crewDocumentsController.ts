@@ -10,6 +10,8 @@ import {
   serveAttachmentFromFilePath,
   decodeStoredFile,
 } from "../../shared/serveAttachmentHelper.js";
+import { resolveCrewFolderByEntity } from "../../shared/attachmentScope.js";
+import { crewDocuments } from "@shared/v2/crew-pool/schema";
 
 /**
  * Normalize a stored attachment record for serving. Legacy rows written by the
@@ -145,8 +147,13 @@ export const crewDocumentsController = {
           .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
+      const crewFolder = await resolveCrewFolderByEntity(
+        crewDocuments,
+        crewDocuments.docUuid,
+        docUuid,
+      );
       const stored = await persistIncoming(
-        "crew-pool/crew-documents",
+        `crewpool/documents/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,

@@ -13,6 +13,8 @@ import {
   serveAttachmentFromFilePath,
   decodeStoredFile,
 } from "../../shared/serveAttachmentHelper.js";
+import { resolveCrewFolderByEntity } from "../../shared/attachmentScope.js";
+import { crewBriefings, crewDebriefings } from "@shared/v2/crew-pool/schema";
 
 /**
  * Normalize a stored attachment record for serving. Legacy rows written by the
@@ -143,8 +145,13 @@ export const crewBriefingController = {
           .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
+      const crewFolder = await resolveCrewFolderByEntity(
+        crewBriefings,
+        crewBriefings.briefingUuid,
+        briefingUuid,
+      );
       const stored = await persistIncoming(
-        "crew-pool/crew-briefing",
+        `crewpool/briefing/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,
@@ -276,8 +283,13 @@ export const crewBriefingController = {
           .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
+      const crewFolder = await resolveCrewFolderByEntity(
+        crewDebriefings,
+        crewDebriefings.debriefingUuid,
+        debriefingUuid,
+      );
       const stored = await persistIncoming(
-        "crew-pool/crew-debriefing",
+        `crewpool/debriefing/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,

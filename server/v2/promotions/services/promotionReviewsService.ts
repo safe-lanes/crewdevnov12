@@ -1821,6 +1821,17 @@ export class PromotionReviewsService {
         if (progressObj.sections && Array.isArray(progressObj.sections)) {
           const db = getDb();
 
+          // Resolve the crew folder (employee number) once for this review so new
+          // attachment files are grouped under promotion/{empNo}/. crew_member_id
+          // on the review IS the employee number; fall back to the review UUID.
+          const reviewRows = await db
+            .select({ crewMemberId: promotionReviewsV2.crewMemberId })
+            .from(promotionReviewsV2)
+            .where(eq(promotionReviewsV2.reviewUuid, reviewUuid))
+            .limit(1);
+          const promotionCrewFolder =
+            (reviewRows[0]?.crewMemberId || "").toString().trim() || reviewUuid;
+
           for (const section of progressObj.sections) {
             if (!section.assessmentPoints || !Array.isArray(section.assessmentPoints)) continue;
             for (const point of section.assessmentPoints) {
@@ -1867,7 +1878,7 @@ export class PromotionReviewsService {
                     const cleanName = att.fileName || att.name || "attachment";
                     
                     const filePath = await fileStorageService.writeAttachment(
-                      "promotions/briefing",
+                      `promotion/${promotionCrewFolder}`,
                       cleanName,
                       buffer
                     );

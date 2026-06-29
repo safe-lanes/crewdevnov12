@@ -10,6 +10,7 @@ import {
   serveAttachmentFromFilePath,
   decodeStoredFile,
 } from "../../shared/serveAttachmentHelper.js";
+import { resolveVesselFolderFromPlanUuid } from "../../shared/attachmentScope.js";
 
 /**
  * Normalize a stored attachment record for serving. Legacy rows written by the
@@ -206,8 +207,9 @@ export const vesselPlanningController = {
           .json({ error: "fileName and fileData/filePath are required" });
       }
 
+      const vesselFolder = await resolveVesselFolderFromPlanUuid(planUuid);
       const stored = await persistIncoming(
-        "vessel/vessel-planning",
+        `${vesselFolder}/vessel`,
         resolvedFileName,
         rawValue,
         resolvedFileType,

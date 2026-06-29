@@ -10,6 +10,8 @@ import {
   serveAttachmentFromFilePath,
   decodeStoredFile,
 } from "../../shared/serveAttachmentHelper.js";
+import { resolveCrewFolderByEntity } from "../../shared/attachmentScope.js";
+import { crewTrainingCourses } from "@shared/v2/crew-pool/schema";
 
 function normalizeForServe(att: {
   fileName?: string | null;
@@ -146,8 +148,13 @@ export const crewTrainingController = {
           .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
+      const crewFolder = await resolveCrewFolderByEntity(
+        crewTrainingCourses,
+        crewTrainingCourses.trainUuid,
+        trainUuid,
+      );
       const stored = await persistIncoming(
-        "crew-pool/crew-training",
+        `crewpool/training/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,

@@ -9,6 +9,8 @@ import {
   serveAttachmentFromFilePath,
   decodeStoredFile,
 } from "../../shared/serveAttachmentHelper.js";
+import { resolveVesselFolderByEntity } from "../../shared/attachmentScope.js";
+import { daTestRecordsV2 } from "../../../../shared/v2/drugs-alcohol/schema";
 
 const attachmentsRepository = new AttachmentsRepository();
 
@@ -114,8 +116,14 @@ export const attachmentsController = {
       const auditUserUuid = req.body.auditUserUuid || null;
 
       // Write new base64 uploads to disk; only the relative path is persisted.
+      const vesselFolder = await resolveVesselFolderByEntity(
+        daTestRecordsV2,
+        daTestRecordsV2.daUuid,
+        daTestRecordsV2.vesselId,
+        testRecordUuid,
+      );
       const stored = await persistIncoming(
-        "drugs-alcohol/test-records",
+        `${vesselFolder}/drugsalcohol`,
         name,
         data,
         type || null,

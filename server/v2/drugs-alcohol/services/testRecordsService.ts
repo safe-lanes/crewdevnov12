@@ -12,6 +12,7 @@ import type {
 } from "../../../../shared/v2/drugs-alcohol/schema";
 import { fileStorageService } from "../../shared/fileStorageService.js";
 import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+import { resolveVesselFolder } from "../../shared/attachmentScope.js";
 
 const testRecordsRepository = new TestRecordsRepository();
 const equipmentRepository = new EquipmentRepository();
@@ -35,6 +36,7 @@ async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
  * trips.
  */
 async function persistAttachmentItem(
+  moduleName: string,
   fileName: string,
   data?: string | null,
   filePath?: string | null,
@@ -44,7 +46,7 @@ async function persistAttachmentItem(
   const decoded = decodeStoredFile(raw, fileType ?? null);
   if (decoded) {
     const storedPath = await fileStorageService.writeAttachment(
-      "drugs-alcohol/test-records",
+      moduleName,
       fileName,
       decoded.buffer,
     );
@@ -272,7 +274,8 @@ export const testRecordsService = {
 
     const record = await testRecordsRepository.create(parentData);
 
-    await this._createChildren(record.daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid);
+    const vesselFolder = await resolveVesselFolder(data.vesselId);
+    await this._createChildren(record.daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid, vesselFolder);
 
     return this.getByUuid(record.daUuid);
   },
@@ -338,7 +341,8 @@ export const testRecordsService = {
 
     await testRecordsRepository.update(daUuid, parentData);
 
-    await this._upsertChildren(daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid);
+    const vesselFolder = await resolveVesselFolder(data.vesselId || existing.vesselId);
+    await this._upsertChildren(daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid, vesselFolder);
 
     return this.getByUuid(daUuid);
   },
@@ -551,7 +555,8 @@ export const testRecordsService = {
     personnelTested?: string,
     masterDeputySignature?: string,
     attachmentFile?: string,
-    auditUserUuid?: string
+    auditUserUuid?: string,
+    vesselFolder?: string
   ): Promise<void> {
     const promises: Promise<any>[] = [];
 
@@ -636,6 +641,7 @@ export const testRecordsService = {
           for (let i = 0; i < items.length; i++) {
             const item = items[i];
             const stored = await persistAttachmentItem(
+              `${vesselFolder || "unknown-vessel"}/drugsalcohol`,
               item.name || "attachment",
               item.data,
               item.filePath,
@@ -672,7 +678,8 @@ export const testRecordsService = {
     personnelTested?: string,
     masterDeputySignature?: string,
     attachmentFile?: string,
-    auditUserUuid?: string
+    auditUserUuid?: string,
+    vesselFolder?: string
   ): Promise<void> {
     const promises: Promise<any>[] = [];
 
@@ -843,6 +850,7 @@ export const testRecordsService = {
               if (existing) {
                 keepUuids.push(attUuid);
                 const stored = await persistAttachmentItem(
+                  `${vesselFolder || "unknown-vessel"}/drugsalcohol`,
                   item.name || "attachment",
                   item.data,
                   item.filePath ?? existing.filePath,
@@ -865,6 +873,7 @@ export const testRecordsService = {
               }
             }
             const stored = await persistAttachmentItem(
+              `${vesselFolder || "unknown-vessel"}/drugsalcohol`,
               item.name || "attachment",
               item.data,
               item.filePath,
