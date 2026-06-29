@@ -40,6 +40,8 @@ Note that 3 of the 10 misses (items 2 and 3) mutate `crew_assignments` — a cor
 
 **Bottom line:** The recommendation in the prior docs to add a DB-level `set_updated_at` trigger (or schema-level `$onUpdate`) remains the correct *defense-in-depth* fix — it would close all 10 gaps and prevent regressions. But the system is **not** broadly unreliable today; it is reliable except for the 10 enumerated sites (plus the 2 legacy methods pending reachability verification).
 
+> **Remediation status (29-Jun-2026):** The schema-level ORM auto-stamp has since been implemented. Every per-domain `auditColumns.updatedAt` now carries `.$onUpdate(() => new Date())`, so all 10 VERIFIED-MISSING sites — which are all Drizzle `.update()` calls — now stamp `updated_at` automatically without any change to the call sites. This closes the 10 gaps at the ORM layer. It does **not** cover writes that bypass Drizzle's query builder (raw `sql` UPDATEs, external/`psql` writes); a DB-level `BEFORE UPDATE` trigger remains the stronger, exhaustive guarantee and is still recommended. The 2 legacy `database.ts` methods (§3.2) and the inbound-sync re-stamp concern remain open.
+
 ---
 
 ## 2. Per-Table Inventory
@@ -217,6 +219,8 @@ Ordered by how often the path runs in production and the severity for sync (soft
 
 1. **Targeted fix:** add `updatedAt: new Date()` (or `sql\`NOW()\``) to the 10 VERIFIED-MISSING `.set()` objects (and force it in the 2 legacy methods once reachability is confirmed).
 2. **Defense-in-depth (recommended by both prior docs):** add a `set_updated_at` BEFORE-UPDATE trigger to every V2 table — or a schema-level `$onUpdate(() => new Date())` on the shared `auditColumns.updatedAt` — so future write paths cannot regress. With this in place, the `updated_at` watermark becomes trustworthy regardless of call-site discipline.
+   - **DONE (ORM layer, 29-Jun-2026):** `.$onUpdate(() => new Date())` was added to all per-domain `auditColumns.updatedAt` definitions, closing the 10 Drizzle-update gaps automatically. Note: `$onUpdate` runs the value through the column's date mapper, so a `sql\`now()\`` expression is **not** supported there — `new Date()` (app-server clock) is the working form.
+   - **STILL RECOMMENDED:** the DB-level `BEFORE UPDATE` trigger, because the ORM hook does not fire for raw `sql` UPDATEs or writes from outside the app.
 
 ---
 
