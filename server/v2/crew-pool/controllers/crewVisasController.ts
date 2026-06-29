@@ -149,7 +149,7 @@ export const crewVisasController = {
         visaUuid,
       );
       const stored = await persistIncoming(
-        `crewpool/visas/${crewFolder}`,
+        `crew-pool/visas/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,

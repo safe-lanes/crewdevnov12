@@ -153,7 +153,7 @@ export const crewDocumentsController = {
         docUuid,
       );
       const stored = await persistIncoming(
-        `crewpool/documents/${crewFolder}`,
+        `crew-pool/documents/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,

@@ -152,7 +152,7 @@ export const crewMedicalController = {
         medUuid,
       );
       const stored = await persistIncoming(
-        `crewpool/medical/${crewFolder}`,
+        `crew-pool/medical/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,
@@ -290,7 +290,7 @@ export const crewMedicalController = {
         visitUuid,
       );
       const stored = await persistIncoming(
-        `crewpool/medical/${crewFolder}`,
+        `crew-pool/medical/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,

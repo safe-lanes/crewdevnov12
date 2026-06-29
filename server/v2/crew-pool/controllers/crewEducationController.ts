@@ -134,7 +134,7 @@ export const crewEducationController = {
         eduUuid,
       );
       const stored = await persistIncoming(
-        `crewpool/education/${crewFolder}`,
+        `crew-pool/education/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,

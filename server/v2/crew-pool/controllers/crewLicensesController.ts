@@ -152,7 +152,7 @@ export const crewLicensesController = {
         licUuid,
       );
       const stored = await persistIncoming(
-        `crewpool/licenses/${crewFolder}`,
+        `crew-pool/licenses/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,

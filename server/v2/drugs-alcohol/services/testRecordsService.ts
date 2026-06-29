@@ -641,7 +641,7 @@ export const testRecordsService = {
           for (let i = 0; i < items.length; i++) {
             const item = items[i];
             const stored = await persistAttachmentItem(
-              `${vesselFolder || "unknown-vessel"}/drugsalcohol`,
+              `${vesselFolder || "unknown-vessel"}/drugs-alcohol`,
               item.name || "attachment",
               item.data,
               item.filePath,
@@ -850,7 +850,7 @@ export const testRecordsService = {
               if (existing) {
                 keepUuids.push(attUuid);
                 const stored = await persistAttachmentItem(
-                  `${vesselFolder || "unknown-vessel"}/drugsalcohol`,
+                  `${vesselFolder || "unknown-vessel"}/drugs-alcohol`,
                   item.name || "attachment",
                   item.data,
                   item.filePath ?? existing.filePath,
@@ -873,7 +873,7 @@ export const testRecordsService = {
               }
             }
             const stored = await persistAttachmentItem(
-              `${vesselFolder || "unknown-vessel"}/drugsalcohol`,
+              `${vesselFolder || "unknown-vessel"}/drugs-alcohol`,
               item.name || "attachment",
               item.data,
               item.filePath,

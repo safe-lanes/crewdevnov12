@@ -123,7 +123,7 @@ export const attachmentsController = {
         testRecordUuid,
       );
       const stored = await persistIncoming(
-        `${vesselFolder}/drugsalcohol`,
+        `${vesselFolder}/drugs-alcohol`,
         name,
         data,
         type || null,

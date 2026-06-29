@@ -1878,7 +1878,7 @@ export class PromotionReviewsService {
                     const cleanName = att.fileName || att.name || "attachment";
                     
                     const filePath = await fileStorageService.writeAttachment(
-                      `promotion/${promotionCrewFolder}`,
+                      `promotions/${promotionCrewFolder}`,
                       cleanName,
                       buffer
                     );

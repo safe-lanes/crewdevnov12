@@ -151,7 +151,7 @@ export const crewBriefingController = {
         briefingUuid,
       );
       const stored = await persistIncoming(
-        `crewpool/briefing/${crewFolder}`,
+        `crew-pool/briefing/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,
@@ -289,7 +289,7 @@ export const crewBriefingController = {
         debriefingUuid,
       );
       const stored = await persistIncoming(
-        `crewpool/debriefing/${crewFolder}`,
+        `crew-pool/debriefing/${crewFolder}`,
         fileName,
         rawValue,
         resolvedFileType,
