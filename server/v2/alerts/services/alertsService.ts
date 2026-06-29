@@ -179,35 +179,39 @@ export class AlertsService {
             if (!isNaN(expiryDate.getTime())) {
               const daysLeft = differenceInDays(expiryDate, today);
               if (daysLeft <= docDaysThreshold && daysLeft >= -90) {
-                const dedupeKey = `doc-${crew.crewUuid}-${doc.documentName}-${doc.expiry}`;
+                const dedupeKey = `doc-${crew.crewUuid}-${doc.docUuid}-${doc.expiry}`;
                 if (!existingDedupeKeys.has(dedupeKey)) {
-                  const alertState = daysLeft < 0 ? 'expired' : 'expiring';
-                  const message = daysLeft < 0
-                    ? `Document (${doc.documentName}) for crew member ${crewName} has expired on ${doc.expiry}.`
-                    : `Document (${doc.documentName}) for crew member ${crewName} is expiring in ${daysLeft} days (on ${doc.expiry}).`;
+                  try {
+                    const alertState = daysLeft < 0 ? 'expired' : 'expiring';
+                    const message = daysLeft < 0
+                      ? `Document (${doc.documentName}) for crew member ${crewName} has expired on ${doc.expiry}.`
+                      : `Document (${doc.documentName}) for crew member ${crewName} is expiring in ${daysLeft} days (on ${doc.expiry}).`;
 
-                  await alertsRepository.createAlertEvent({
-                    policyUuid: docPolicy.apuuid,
-                    alertType: 'document_expiration',
-                    priority: docPolicy.priority,
-                    objectType: 'crew_member',
-                    objectId: crew.crewUuid,
-                    dedupeKey,
-                    state: alertState,
-                    payload: JSON.stringify({
-                      alertMessage: message,
-                      crewName,
-                      crewId: crew.crewUuid,
-                      documentName: doc.documentName,
-                      expiryDate: doc.expiry,
-                      link: `/crew-pool`
-                    }),
-                    createdByUuid: 'system',
-                    isDeleted: false,
-                    isSync: false,
-                  });
-                  existingDedupeKeys.add(dedupeKey);
-                  results.docAlerts++;
+                    await alertsRepository.createAlertEvent({
+                      policyUuid: docPolicy.apuuid,
+                      alertType: 'document_expiration',
+                      priority: docPolicy.priority,
+                      objectType: 'crew_member',
+                      objectId: crew.crewUuid,
+                      dedupeKey,
+                      state: alertState,
+                      payload: JSON.stringify({
+                        alertMessage: message,
+                        crewName,
+                        crewId: crew.crewUuid,
+                        documentName: doc.documentName,
+                        expiryDate: doc.expiry,
+                        link: `/crew-pool`
+                      }),
+                      createdByUuid: 'system',
+                      isDeleted: false,
+                      isSync: false,
+                    });
+                    existingDedupeKeys.add(dedupeKey);
+                    results.docAlerts++;
+                  } catch (err) {
+                    console.error(`[AlertsService] Failed to create document_expiration alert for crew ${crew.crewUuid}, doc ${doc.docUuid}:`, err);
+                  }
                 }
               }
             }
