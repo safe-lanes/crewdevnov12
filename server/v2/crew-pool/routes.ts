@@ -39,6 +39,11 @@ router.post("/crew/:crewUuid/unarchive", crewMembersController.unarchive);
 router.post("/crew/:crewUuid/terminations", crewMembersController.terminateEmployment);
 
 // ============================================
+// DASHBOARD (crew-pool charts)
+// ============================================
+router.post("/dashboard/ranks-as-of", dashboardController.getRanksAsOf);
+
+// ============================================
 // ASSIGNMENTS
 // ============================================
 router.get("/crew/:crewUuid/assignments", crewAssignmentsController.getAll);
