@@ -5,12 +5,20 @@ import type { AgChartOptions, AgChartInstance } from "@/lib/agCharts";
 import { CrewPromotionsDrilldownDialog } from "./CrewPromotionsDrilldownDialog";
 import { useDrilldownParam } from "./useDrilldownParam";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
+import { apiRequest } from "@/lib/queryClient";
 
 interface PromotionReviewRow {
   promotionToRank?: string | null;
   promotionConfirmed?: string | null;
   promotionDate?: string | null;
   status?: string | null;
+  crewMemberId?: string | null;
+}
+
+interface CrewPoolLookupRow {
+  crewUuid?: string | null;
+  empNo?: string | null;
+  crewPool?: string | null;
 }
 
 function escapeHtml(value: string): string {
@@ -75,11 +83,11 @@ function parseDate(value: unknown): Date | null {
   return null;
 }
 
-// NOTE: `crewPools`, `manningAgents`, and `nationalities` are accepted to match
-// the dashboard filter-bar shape used by the other cards, but they are
-// currently no-ops here: `promotion_reviews_v2` rows do not carry those fields,
-// so applying them at the row level would either zero the chart out or require
-// a backend join. Tracked as follow-up task #59.
+// NOTE: `manningAgents` and `nationalities` are accepted to match the dashboard
+// filter-bar shape used by the other cards, but they are currently no-ops here:
+// `promotion_reviews_v2` rows do not carry those fields. `crewPools` IS applied:
+// each promotion's `crewMemberId` is mapped to its crew pool via the crew lookup
+// below (same approach as the Crew Appraisals card).
 export const CrewPromotionsRankChart = ({
   period,
   ranks = [],
@@ -119,6 +127,41 @@ export const CrewPromotionsRankChart = ({
     staleTime: 60 * 1000,
   });
 
+  const { data: crew } = useQuery<CrewPoolLookupRow[]>({
+    queryKey: ["/api/v2/crew-pool/crew/details", "crew-promotions-pool"],
+    queryFn: async () => {
+      const PAGE_SIZE = 1000;
+      const all: CrewPoolLookupRow[] = [];
+      let offset = 0;
+      for (let i = 0; i < 100; i++) {
+        const res = await apiRequest(
+          "GET",
+          `/api/v2/crew-pool/crew/details?view=all&limit=${PAGE_SIZE}&offset=${offset}`,
+        );
+        const json = await res.json();
+        const page = json.data ?? [];
+        all.push(...page);
+        const total = json.pagination?.total ?? all.length;
+        offset += PAGE_SIZE;
+        if (page.length < PAGE_SIZE || all.length >= total) break;
+      }
+      return all;
+    },
+    staleTime: 60 * 1000,
+    enabled: crewPools.length > 0,
+  });
+
+  const poolByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const pool = (c.crewPool || "").trim();
+      if (!pool) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), pool);
+      if (c.empNo) map.set(String(c.empNo), pool);
+    }
+    return map;
+  }, [crew]);
+
   const chartData = useMemo<RankCount[]>(() => {
     if (!range) return [];
     const counts = new Map<string, number>();
@@ -135,6 +178,11 @@ export const CrewPromotionsRankChart = ({
       const rank = (r.promotionToRank || "").trim();
       if (!rank) continue;
 
+      if (crewPools.length > 0) {
+        const pool = poolByCrewKey.get((r.crewMemberId || "").trim());
+        if (!pool || !crewPools.includes(pool)) continue;
+      }
+
       if (ranks.length > 0 && !ranks.includes(rank)) continue;
 
       counts.set(rank, (counts.get(rank) || 0) + 1);
@@ -142,7 +190,7 @@ export const CrewPromotionsRankChart = ({
     return Array.from(counts.entries())
       .map(([rank, count]) => ({ rank, count }))
       .sort((a, b) => b.count - a.count);
-  }, [reviews, range, ranks]);
+  }, [reviews, range, ranks, crewPools, poolByCrewKey]);
 
   const chartOptions = useMemo<AgChartOptions>(
     () => ({
