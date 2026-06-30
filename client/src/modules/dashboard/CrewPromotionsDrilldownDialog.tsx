@@ -185,7 +185,7 @@ export const CrewPromotionsDrilldownDialog = ({
     return reviews.filter((r) => {
       const status = (r.status || "").toLowerCase();
       const confirmed = (r.promotionConfirmed || "").toLowerCase();
-      if (status !== "approved") return false;
+      if (status !== "completed") return false;
       if (confirmed !== "yes") return false;
 
       const date = parseDate(r.promotionDate);

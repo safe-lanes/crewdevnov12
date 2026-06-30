@@ -125,7 +125,7 @@ export const CrewPromotionsRankChart = ({
     for (const r of reviews) {
       const status = (r.status || "").toLowerCase();
       const confirmed = (r.promotionConfirmed || "").toLowerCase();
-      if (status !== "approved") continue;
+      if (status !== "completed") continue;
       if (confirmed !== "yes") continue;
 
       const date = parseDate(r.promotionDate);
