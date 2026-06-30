@@ -1,8 +1,0 @@
-- [Rest Hours masters endpoints](rest-hours-masters-endpoints.md) — fleet/additional groups live under /api/v2/masters, NOT the rest-hours V2_BASE.
-- [Rest Hours crew list source](rest-hours-crew-list-source.md) — RH crew list/counts derive from crew_assignments; "Signed On only" = assignment_type='OnBoard' (not joining_status).
-- [Dev server has no backend hot-reload](dev-server-no-backend-watch.md) — new Express routes need a manual workflow restart; otherwise they return the Vite HTML fallback (200) and don't persist.
-- [Appraisal form live vs dead parts](appraisal-form-duplicate-parts.md) — live form renders extracted <PartA..G> from client/src/components/appraisal-form-parts/; inline Part A/B inside AppraisalForm_v2.tsx is DEAD (gated by activeSection==="information").
-- [Promotion rank propagation](promotion-rank-propagation.md) — promotions flip crew_members_v2.present_rank exactly-once via a transactional review_uuid ledger; on-board fires at completion, prior-joining fires at sign-on.
-- [RH per-rank record split](rh-promotion-record-split.md) — promotion splits the RH month into per-rank windows (applicable_from/to); NULL window = full month = byte-identical legacy path; idempotency must check window coverage, not rank alone.
-- [Promotion list history rows](promotion-list-history-rows.md) — Crew Promotion list emits per crew an active next-rank row PLUS a historical row per completed review; not one row per crew.
-- [Rank as-of-date resolution](rank-as-of-date.md) — RH rank for a given date comes from the promotion ledger (effectiveDate<=date→toRank; before earliest→fromRank; else present_rank); effectiveDate==date binds the new rank.
