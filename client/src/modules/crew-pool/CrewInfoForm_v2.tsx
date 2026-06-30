@@ -748,6 +748,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [nokEmailError, setNokEmailError] = useState('');
   const [mobileError, setMobileError] = useState('');
   const [firstNameError, setFirstNameError] = useState('');
+  const [recruitmentDateError, setRecruitmentDateError] = useState('');
   const [dobError, setDobError] = useState('');
   const [docDateErrors, setDocDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
   const [visaDateErrors, setVisaDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
@@ -6330,6 +6331,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       setFirstNameError('');
     }
 
+    // B header: Date of Recruitment (required, mirrors First Name)
+    if (canEditSection('B') && !(formData.recruitmentDate || '').trim()) {
+      setRecruitmentDateError('Date of Recruitment is required.');
+      hasErrors = true;
+    } else {
+      setRecruitmentDateError('');
+    }
+
     // B1: DOB
     if (formData.dateOfBirth) {
       const dErr = validateDob(formData.dateOfBirth);
@@ -8313,6 +8322,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
     if (crewId) {
       statusUpdateMutation.mutate({ id: crewId, data: { recruitmentDate: tempRecruitmentDate } });
+      setRecruitmentDateError('');
     }
     setIsRecruitmentDateEditOpen(false);
     setTempRecruitmentDate('');
@@ -8742,7 +8752,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         </div>
                       )}
                       <div className="flex items-center justify-end">
-                        <span className="text-sm text-gray-500">Date of Recruitment:</span>
+                        <span className="text-sm text-gray-500">Date of Recruitment: <span className="text-red-500">*</span></span>
                         <span className="ml-2 text-base font-medium" style={{ color: '#16569e' }} data-testid="text-recruitment-date">
                           {formData.recruitmentDate ? formatDate(formData.recruitmentDate) : '—'}
                         </span>
@@ -8761,6 +8771,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           </Button>
                         )}
                       </div>
+                      {recruitmentDateError && (
+                        <p className="text-xs text-red-500" data-testid="text-recruitment-date-error">{recruitmentDateError}</p>
+                      )}
                     </div>
                   </div>
                   <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
