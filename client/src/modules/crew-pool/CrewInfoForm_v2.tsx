@@ -8318,6 +8318,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     // have not been persisted yet, create the crew record first.
     let crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     if (!crewId) {
+      // New unsaved crew: First Name is required before the crew can be created.
+      if (!(formData.firstName || '').trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Fill the First Name before selecting the Date of Recruitment.",
+          variant: "destructive",
+        });
+        return;
+      }
       crewId = await ensureCrewExists();
     }
     if (crewId) {
