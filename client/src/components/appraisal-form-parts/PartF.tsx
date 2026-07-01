@@ -468,7 +468,7 @@ const PartFComponent: React.FC<PartFProps> = ({
               </Button>
               <Button
                 type="button"
-                className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8"
+                className="bg-green-600 hover:bg-green-700 text-white px-8"
                 onClick={() => handleStageSubmission('stage2')}
                 disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || isPostStage2}
                 data-testid="button-submit-stage-2"
