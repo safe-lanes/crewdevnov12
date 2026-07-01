@@ -35,6 +35,7 @@ interface CrewPoolLookupRow {
   crewUuid?: string | null;
   empNo?: string | null;
   crewPool?: string | null;
+  manningAgentName?: string | null;
 }
 
 interface CrewPromotionsDrilldownDialogProps {
@@ -129,7 +130,7 @@ export const CrewPromotionsDrilldownDialog = ({
   period,
   ranks = [],
   crewPools = [],
-  manningAgents: _manningAgents = [],
+  manningAgents = [],
   nationalities: _nationalities = [],
 }: CrewPromotionsDrilldownDialogProps) => {
   const [, setLocation] = useLocation();
@@ -167,7 +168,7 @@ export const CrewPromotionsDrilldownDialog = ({
       return all;
     },
     staleTime: 60 * 1000,
-    enabled: open && crewPools.length > 0,
+    enabled: open && (crewPools.length > 0 || manningAgents.length > 0),
   });
 
   const poolByCrewKey = useMemo(() => {
@@ -177,6 +178,17 @@ export const CrewPromotionsDrilldownDialog = ({
       if (!pool) continue;
       if (c.crewUuid) map.set(String(c.crewUuid), pool);
       if (c.empNo) map.set(String(c.empNo), pool);
+    }
+    return map;
+  }, [crew]);
+
+  const agentByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew) {
+      const agent = (c.manningAgentName || "").trim();
+      if (!agent) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), agent);
+      if (c.empNo) map.set(String(c.empNo), agent);
     }
     return map;
   }, [crew]);
@@ -239,12 +251,17 @@ export const CrewPromotionsDrilldownDialog = ({
         if (!pool || !crewPools.includes(pool)) return false;
       }
 
+      if (manningAgents.length > 0) {
+        const agent = agentByCrewKey.get((r.crewMemberId || "").trim());
+        if (!agent || !manningAgents.includes(agent)) return false;
+      }
+
       const rowRank = (r.promotionToRank || "").trim();
       if (rowRank !== rank) return false;
       if (ranks.length > 0 && !ranks.includes(rowRank)) return false;
       return true;
     });
-  }, [reviews, range, rank, ranks, crewPools, poolByCrewKey]);
+  }, [reviews, range, rank, ranks, crewPools, poolByCrewKey, manningAgents, agentByCrewKey]);
 
   const sorted = useMemo(
     () =>
