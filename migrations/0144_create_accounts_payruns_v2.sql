@@ -1,4 +1,4 @@
--- Migration 0142: Accounts V2 payruns + payrun entries
+-- Migration 0144: Accounts V2 payruns + payrun entries
 -- Date: 2026-06-23
 -- Description: Persists pay runs (per vessel + period) and their per-crew entries,
 --              replacing the previous mock/in-memory Payrun Board/Detail data.

@@ -1,4 +1,4 @@
--- Migration 0140: Seed standard maritime pay elements (Accounts V2)
+-- Migration 0142: Seed standard maritime pay elements (Accounts V2)
 -- Date: 2026-06-23
 -- Description: Seeds the acc_pay_elements_v2 master library (Rate Tables & Rules)
 --              with a standard set of maritime earnings and deductions.

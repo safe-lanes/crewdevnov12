@@ -73,12 +73,12 @@ All calls flow through `tenantFetch` (auto-injects `x-tenant-id` + Bearer token)
 
 ## RBAC
 
-`migrations/0139_add_account_rbac_menus.sql` seeds the "Account" top-level menu
+`migrations/0141_add_account_rbac_menus.sql` seeds the "Account" top-level menu
 and eight submenus. Administrators must grant access; the menu is registered but
 not auto-granted.
 
 ## Seed Data
 
-`migrations/0140_seed_accounts_pay_elements.sql` seeds a standard maritime set of
+`migrations/0142_seed_accounts_pay_elements.sql` seeds a standard maritime set of
 earnings and deductions into `acc_pay_elements_v2`, idempotent per tenant (each
 row guarded by a `NOT EXISTS` check on `code`).

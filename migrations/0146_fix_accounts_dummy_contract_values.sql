@@ -1,6 +1,6 @@
--- Migration 0144: Fix demo contract pay values for Portage Bill
+-- Migration 0146: Fix demo contract pay values for Portage Bill
 -- Date: 2026-06-23
--- Description: Migration 0143 seeded a separate DEMO-* master pay-element library
+-- Description: Migration 0145 seeded a separate DEMO-* master pay-element library
 --              and standalone DEMO-CT-* contracts. The Accounts module, however,
 --              auto-creates one contract per crew (unique on crew_uuid+vessel_group)
 --              and inherits the REAL master pay elements as applicable=false.

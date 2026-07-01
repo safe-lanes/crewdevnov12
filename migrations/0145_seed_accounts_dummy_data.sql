@@ -1,4 +1,4 @@
--- Migration 0143: Seed dummy/demo data for Accounts (Payrun Board + Portage Bill)
+-- Migration 0145: Seed dummy/demo data for Accounts (Payrun Board + Portage Bill)
 -- Date: 2026-06-23
 -- Description: Inserts clearly-labeled DEMO sample data so the Payrun Board and
 --              Portage Bill screens render with realistic figures out of the box.

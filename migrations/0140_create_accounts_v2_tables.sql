@@ -1,4 +1,4 @@
--- Migration 0138: Create native V2 Accounts (payroll) tables.
+-- Migration 0140: Create native V2 Accounts (payroll) tables.
 -- Mirrors the V1 in-memory payroll entities as multi-tenant, audited _v2 tables
 -- following the V2 conventions (serial id + *_uuid business key, UUID-based FKs,
 -- shared audit columns, soft delete). Idempotent (IF NOT EXISTS), auto-runs per

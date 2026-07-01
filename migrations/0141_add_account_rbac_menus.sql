@@ -1,4 +1,4 @@
--- Migration 0139: RBAC — register the Account (payroll) module in Access Control.
+-- Migration 0141: RBAC — register the Account (payroll) module in Access Control.
 -- Adds the 'Account' top-level menu plus its in-module sections as submenus,
 -- matching the nav order in HeaderComponent (between Reports and Admin) and the
 -- section routes used by client/src/modules/accounts/AccountsModule.tsx.

@@ -1,4 +1,4 @@
--- Migration 0141: Accounts V2 uniqueness guards (data integrity)
+-- Migration 0143: Accounts V2 uniqueness guards (data integrity)
 -- Date: 2026-06-23
 -- Description: Prevents duplicate draft contracts per crew member + vessel group,
 --              and duplicate inherited pay elements per contract, under
