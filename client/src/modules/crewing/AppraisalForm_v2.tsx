@@ -2461,7 +2461,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           </Button>
           <Button 
             type="button"
-            className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+            className="bg-green-600 hover:bg-green-700 text-white px-8" 
             onClick={() => handleStageSubmission('stage1')}
             disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending || isPostStage1}
             data-testid="button-submit-stage1"
@@ -3428,7 +3428,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                         </Button>
                         <Button 
                           type="button"
-                          className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                          className="bg-green-600 hover:bg-green-700 text-white px-8" 
                           onClick={() => handleStageSubmission('stage1')}
                           disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
                         >
@@ -4171,7 +4171,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           </Button>
                           <Button 
                             type="button"
-                            className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                            className="bg-green-600 hover:bg-green-700 text-white px-8" 
                             onClick={() => handleStageSubmission('stage2')}
                             disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'submitted' || appraisalStatus === 'reviewed'}
                           >
@@ -4466,7 +4466,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           </Button>
                           <Button 
                             type="button"
-                            className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                            className="bg-green-600 hover:bg-green-700 text-white px-8" 
                             onClick={() => handleStageSubmission('stage3')}
                             disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'reviewed'}
                           >

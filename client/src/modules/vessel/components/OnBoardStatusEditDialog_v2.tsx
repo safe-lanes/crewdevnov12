@@ -891,7 +891,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                         <div className="flex justify-end gap-2 pt-4">
                             <Button 
                                 type="submit"
-                                className="bg-[#14b8a6] hover:bg-[#14b8a6]/90"
+                                className="bg-green-600 hover:bg-green-700"
                                 disabled={!isOnboardCrewAssigned || updatePlanningV2.isPending || createPlanningV2.isPending}
                                 data-testid="button-submit-onboard"
                             >

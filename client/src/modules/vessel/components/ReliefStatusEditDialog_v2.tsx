@@ -728,7 +728,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                         <div className="flex justify-end gap-2 pt-4">
                             <Button 
                                 type="submit"
-                                className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-[#14b8a6] hover:bg-[#14b8a6]/90"}
+                                className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
                                 disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict}
                                 data-testid="button-submit-relief"
                             >
