@@ -823,13 +823,17 @@ export const RHRecordingForm = ({
         );
 
         if (!existingDuplicate) {
-          // Create a new blank duplicate record
-          const duplicateRecord = createBlankDailyRecord(
+          // Create a new duplicate seeded with the day's planned template
+          // (Fixed Task + Variable Task overlay) in Plan mode — matching a
+          // fresh planned row. buildTemplatedRecords forces duplicates to Plan
+          // (grey), including on Completed-VT days.
+          const blankDuplicate = createBlankDailyRecord(
             record.day,
             record.dayOfWeek,
             'duplicate'
           );
-          result.push(duplicateRecord);
+          const [templatedDuplicate] = buildTemplatedRecords([blankDuplicate]);
+          result.push(templatedDuplicate);
         }
         // If duplicate exists, it will be added in its own iteration
       }
@@ -944,9 +948,12 @@ export const RHRecordingForm = ({
       : Array(48).fill('');
 
     return records.map(record => {
+      const isDuplicate = record.occurrence === 'duplicate';
       const hasCompletedVt = completedVtCellsMap.has(record.day);
 
-      const newHours = hasCompletedVt
+      // Duplicates (retarded rows) always show the full planned template in
+      // grey; only primary rows blank the template on a Completed-VT day.
+      const newHours = (hasCompletedVt && !isDuplicate)
         ? Array(48).fill('')
         : [...template];
 
@@ -986,7 +993,7 @@ export const RHRecordingForm = ({
       return {
         ...record,
         hours: newHours,
-        isPlan: hasCompletedVt ? false : true,
+        isPlan: isDuplicate ? true : (hasCompletedVt ? false : true),
         userEdited: false,
         hoursOfRest24hr: restHours,
         hoursOfWork24hr: workHours,
@@ -1085,7 +1092,12 @@ export const RHRecordingForm = ({
           // Completed VT on this day: if the row is still Plan (saved), flip it to
           // Record mode and blank the row except the VT 'a' cells. Rows already saved
           // as Record (isPlan === false) are never touched here.
-          const flipForCompletedVt = record.isPlan && completedVtCellsMap.has(record.day);
+          // Never auto-flip a retarded (duplicate) row to Record; it must
+          // persist as a planned (grey) row. Only primary rows auto-flip.
+          const flipForCompletedVt =
+            record.occurrence !== 'duplicate' &&
+            record.isPlan &&
+            completedVtCellsMap.has(record.day);
           if (flipForCompletedVt) {
             hours = Array(48).fill('');
             const completedDayCells = variableTaskCellsMap.get(record.day);
