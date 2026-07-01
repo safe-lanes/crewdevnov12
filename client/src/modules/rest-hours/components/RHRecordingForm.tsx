@@ -2829,6 +2829,7 @@ export const RHRecordingForm = ({
                 onClick={handleSave}
                 disabled={saveMutation.isPending}
                 data-testid="button-save"
+                className="bg-[#16569e] hover:bg-[#114a87] text-white"
               >
                 {saveMutation.isPending ? 'Saving...' : 'Save'}
               </Button>
