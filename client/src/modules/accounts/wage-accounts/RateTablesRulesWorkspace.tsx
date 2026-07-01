@@ -7,7 +7,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { PayElement as ApiPayElement } from '@shared/schema';
+import type { AccPayElementV2 } from '@shared/v2/accounts/types';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,8 +60,8 @@ import {
   Hash
 } from "lucide-react";
 
-// Use shared PayElement type from schema
-type PayElement = ApiPayElement;
+// Native V2 pay element, with `id` aliased to the business uuid for the grid.
+type PayElement = Omit<AccPayElementV2, 'id'> & { id: string };
 
 interface CBATable {
   id: string;
@@ -232,16 +232,17 @@ export function RateTablesRulesWorkspace() {
 
   // Fetch pay elements from API
   const { data: payElements = [], isLoading: isLoadingPayElements, error: payElementsError, refetch } = useQuery<PayElement[]>({
-    queryKey: ['/api/pay-elements'],
+    queryKey: ['/api/v2/accounts/pay-elements'],
     queryFn: async () => {
       console.log('🌐 Fetching pay elements from API...');
-      const response = await fetch('/api/pay-elements');
+      const response = await fetch('/api/v2/accounts/pay-elements');
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       const data = await response.json();
       console.log('📥 Fetched pay elements:', data.length, 'items');
-      return data;
+      // Map V2 records so the component continues to key off `id` (= payElementUuid)
+      return (data as any[]).map((record) => ({ ...record, id: record.payElementUuid }));
     },
     staleTime: 0, // Always refetch
     refetchOnMount: true,
@@ -262,7 +263,6 @@ export function RateTablesRulesWorkspace() {
       console.log('🚀 MUTATION STARTED - About to create pay element:', newElement);
       
       const payload = {
-        id: `PE_${Date.now()}`,
         name: newElement.payElementName,
         code: newElement.payElementCode || newElement.payElementName.toUpperCase().replace(/\s+/g, '_'),
         type: newElement.type,
@@ -280,7 +280,7 @@ export function RateTablesRulesWorkspace() {
       console.log('📤 API PAYLOAD:', payload);
       
       try {
-        const response = await fetch('/api/pay-elements', {
+        const response = await fetch('/api/v2/accounts/pay-elements', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -309,7 +309,7 @@ export function RateTablesRulesWorkspace() {
       
       // Force immediate refetch
       console.log('🔄 Force refetching pay elements...');
-      await queryClient.invalidateQueries({ queryKey: ['/api/pay-elements'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/v2/accounts/pay-elements'] });
       await refetch();
       
       toast({
@@ -333,7 +333,6 @@ export function RateTablesRulesWorkspace() {
       console.log('🔄 UPDATE MUTATION STARTED - About to update pay element:', updatedElement);
       
       const payload = {
-        id: updatedElement.payElementId,
         name: updatedElement.payElementName,
         code: updatedElement.payElementCode,
         type: updatedElement.type,
@@ -351,7 +350,7 @@ export function RateTablesRulesWorkspace() {
       console.log('📤 UPDATE API PAYLOAD:', payload);
       
       try {
-        const response = await fetch(`/api/pay-elements/${updatedElement.payElementId}`, {
+        const response = await fetch(`/api/v2/accounts/pay-elements/${updatedElement.payElementId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -380,7 +379,7 @@ export function RateTablesRulesWorkspace() {
       
       // Force immediate refetch
       console.log('🔄 Force refetching pay elements after update...');
-      await queryClient.invalidateQueries({ queryKey: ['/api/pay-elements'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/v2/accounts/pay-elements'] });
       await refetch();
       
       toast({

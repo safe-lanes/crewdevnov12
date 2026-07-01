@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
+import { apiRequest } from "@/lib/queryClient";
 
 interface PromotionReviewRow {
   reviewUuid?: string | null;
@@ -28,6 +29,12 @@ interface CrewMemberRow {
   firstName?: string | null;
   middleName?: string | null;
   familyName?: string | null;
+}
+
+interface CrewPoolLookupRow {
+  crewUuid?: string | null;
+  empNo?: string | null;
+  crewPool?: string | null;
 }
 
 interface CrewPromotionsDrilldownDialogProps {
@@ -121,7 +128,7 @@ export const CrewPromotionsDrilldownDialog = ({
   rank,
   period,
   ranks = [],
-  crewPools: _crewPools = [],
+  crewPools = [],
   manningAgents: _manningAgents = [],
   nationalities: _nationalities = [],
 }: CrewPromotionsDrilldownDialogProps) => {
@@ -138,6 +145,41 @@ export const CrewPromotionsDrilldownDialog = ({
     staleTime: 60 * 1000,
     enabled: open,
   });
+
+  const { data: crew = [] } = useQuery<CrewPoolLookupRow[]>({
+    queryKey: ["/api/v2/crew-pool/crew/details", "crew-promotions-pool"],
+    queryFn: async () => {
+      const PAGE_SIZE = 1000;
+      const all: CrewPoolLookupRow[] = [];
+      let offset = 0;
+      for (let i = 0; i < 100; i++) {
+        const res = await apiRequest(
+          "GET",
+          `/api/v2/crew-pool/crew/details?view=all&limit=${PAGE_SIZE}&offset=${offset}`,
+        );
+        const json = await res.json();
+        const page = json.data ?? [];
+        all.push(...page);
+        const total = json.pagination?.total ?? all.length;
+        offset += PAGE_SIZE;
+        if (page.length < PAGE_SIZE || all.length >= total) break;
+      }
+      return all;
+    },
+    staleTime: 60 * 1000,
+    enabled: open && crewPools.length > 0,
+  });
+
+  const poolByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew) {
+      const pool = (c.crewPool || "").trim();
+      if (!pool) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), pool);
+      if (c.empNo) map.set(String(c.empNo), pool);
+    }
+    return map;
+  }, [crew]);
 
   const { data: vessels = [] } = useQuery<any[]>({
     queryKey: ["/api/v2/masters/vessels"],
@@ -185,19 +227,24 @@ export const CrewPromotionsDrilldownDialog = ({
     return reviews.filter((r) => {
       const status = (r.status || "").toLowerCase();
       const confirmed = (r.promotionConfirmed || "").toLowerCase();
-      if (status !== "approved") return false;
+      if (status !== "completed") return false;
       if (confirmed !== "yes") return false;
 
       const date = parseDate(r.promotionDate);
       if (!date) return false;
       if (date < range.from || date > range.to) return false;
 
+      if (crewPools.length > 0) {
+        const pool = poolByCrewKey.get((r.crewMemberId || "").trim());
+        if (!pool || !crewPools.includes(pool)) return false;
+      }
+
       const rowRank = (r.promotionToRank || "").trim();
       if (rowRank !== rank) return false;
       if (ranks.length > 0 && !ranks.includes(rowRank)) return false;
       return true;
     });
-  }, [reviews, range, rank, ranks]);
+  }, [reviews, range, rank, ranks, crewPools, poolByCrewKey]);
 
   const sorted = useMemo(
     () =>

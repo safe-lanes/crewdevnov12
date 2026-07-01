@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from "react";
+import { useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -233,6 +234,7 @@ const customFieldOptions = [
 ];
 
 export function ReportsWorkspace() {
+  const { data: vessels = [] } = useVesselsV2();
   const [isNewReportOpen, setIsNewReportOpen] = useState(false);
   const [isColumnBuilderOpen, setIsColumnBuilderOpen] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
@@ -351,8 +353,11 @@ export function ReportsWorkspace() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Vessels</SelectItem>
-                  <SelectItem value="atlantic">MV Atlantic Star</SelectItem>
-                  <SelectItem value="pacific">MV Pacific Dawn</SelectItem>
+                  {vessels.map((v: any) => (
+                    <SelectItem key={v.vesselUuid} value={v.vessel} data-testid={`option-vessel-${v.vesselUuid}`}>
+                      {v.vessel}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select defaultValue="current">

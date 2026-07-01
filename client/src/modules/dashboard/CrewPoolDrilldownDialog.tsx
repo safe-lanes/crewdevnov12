@@ -15,6 +15,8 @@ import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 interface CrewRow {
   id?: number | string;
   crewUuid?: string | null;
+  empNo?: string | null;
+  recruitmentDate?: string | null;
   firstName?: string | null;
   middleName?: string | null;
   familyName?: string | null;
@@ -24,6 +26,7 @@ interface CrewRow {
   lastTerminationDate?: string | null;
   createdAt?: string | Date | null;
   nationalityUuid?: string | null;
+  nationality?: string | null;
   manningAgentName?: string | null;
   crewPool?: string | null;
   presentVessel?: string | null;
@@ -155,6 +158,41 @@ export const CrewPoolDrilldownDialog = ({
     enabled: open,
   });
 
+  const empNos = useMemo(
+    () =>
+      Array.from(
+        new Set(crew.map((c) => c.empNo).filter((x): x is string => !!x)),
+      ),
+    [crew],
+  );
+
+  const snapshotIsoForRanks = useMemo(() => {
+    const s = periodToSnapshotDate(period);
+    if (!s) return null;
+    const y = s.getFullYear();
+    const m = String(s.getMonth() + 1).padStart(2, "0");
+    const d = String(s.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, [period]);
+
+  const { data: rankAsOf = {} } = useQuery<Record<string, string>>({
+    queryKey: ["/api/v2/crew-pool/dashboard/ranks-as-of", snapshotIsoForRanks, empNos],
+    queryFn: async ({ signal }) => {
+      if (!snapshotIsoForRanks || empNos.length === 0) return {};
+      const response = await fetch("/api/v2/crew-pool/dashboard/ranks-as-of", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: snapshotIsoForRanks, empNos }),
+        signal,
+      });
+      if (!response.ok) throw new Error("Failed to resolve ranks as of date");
+      const json = await response.json();
+      return (json?.data ?? {}) as Record<string, string>;
+    },
+    enabled: open && !!snapshotIsoForRanks && empNos.length > 0,
+    staleTime: 60 * 1000,
+  });
+
   const { data: nationalityList = [] } = useNationalitiesV2({ enabled: open });
 
   const nationalityNameMap = useMemo(() => {
@@ -177,23 +215,25 @@ export const CrewPoolDrilldownDialog = ({
     if (fromDate && fromDate.getTime() > Date.now()) return [];
 
     return crew.filter((c) => {
-      // Mirror chart: existed on snapshot date
-      const created = parseDate(c.createdAt);
-      if (!created) return false;
-      if (created.getTime() > snapshotDate.getTime()) return false;
+      // Mirror chart: strict recruitment date on/before snapshot.
+      const recruited = parseDate(c.recruitmentDate);
+      if (!recruited) return false;
+      if (recruited.getTime() > snapshotDate.getTime()) return false;
 
-      // Mirror chart: always exclude not-for-rehire and terminated crew.
-      if (c.notForHire === true) return false;
-      const statusLower = (c.status || "").toLowerCase();
-      if (statusLower === "terminated") return false;
+      // Mirror chart: excluded only if terminated on/before snapshot.
+      const terminated = parseDate(c.lastTerminationDate);
+      if (terminated && terminated.getTime() <= snapshotDate.getTime()) return false;
 
-      const rowRank = (c.presentRank || "").trim();
+      // Mirror chart: compare against the rank held as of the snapshot.
+      const rowRank = (
+        (c.empNo ? rankAsOf[c.empNo] : undefined) ?? c.presentRank ?? ""
+      ).trim();
       if (!rowRank || rowRank !== rank) return false;
 
       if (ranks.length > 0 && !ranks.includes(rowRank)) return false;
       if (
         nationalities.length > 0 &&
-        !nationalities.includes((c.nationalityUuid || "") as string)
+        !nationalities.includes((c.nationality || "") as string)
       ) {
         return false;
       }
@@ -211,7 +251,7 @@ export const CrewPoolDrilldownDialog = ({
       }
       return true;
     });
-  }, [crew, snapshotDate, period, rank, ranks, nationalities, manningAgents, crewPools, vessels]);
+  }, [crew, snapshotDate, period, rank, rankAsOf, ranks, nationalities, manningAgents, crewPools, vessels]);
 
   const sorted = useMemo(
     () =>
@@ -302,7 +342,7 @@ export const CrewPoolDrilldownDialog = ({
                         data-testid={`row-drilldown-crew-${key}`}
                       >
                         <td className="px-4 py-2 text-sm">{buildName(c)}</td>
-                        <td className="px-4 py-2 text-sm">{c.presentRank || ""}</td>
+                        <td className="px-4 py-2 text-sm">{((c.empNo ? rankAsOf[c.empNo] : undefined) ?? c.presentRank) || ""}</td>
                         <td className="px-4 py-2 text-sm">{nationalityName}</td>
                         <td className="px-4 py-2 text-sm">{c.presentVesselName || ""}</td>
                         <td className="px-4 py-2 text-sm">{c.crewPool || ""}</td>

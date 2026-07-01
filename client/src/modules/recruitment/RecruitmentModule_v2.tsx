@@ -307,7 +307,11 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
       },
       ...(["recruited", "waitlist", "rejected"].includes(selectedRecruitmentPage)
         ? [{
-            headerName: 'Date of Recruitment',
+            headerName: selectedRecruitmentPage === 'waitlist'
+              ? 'Date of Waitlisting'
+              : selectedRecruitmentPage === 'rejected'
+              ? 'Date of Rejection'
+              : 'Date of Recruitment',
             field: 'recruitmentDate',
             flex: 1,
             minWidth: 130,

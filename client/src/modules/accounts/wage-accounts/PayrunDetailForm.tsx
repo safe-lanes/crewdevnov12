@@ -3,7 +3,8 @@
  * Purpose: Form interface opened from Edit action in Payrun Board
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,7 @@ export type PayrunStatus = "draft" | "validated" | "approved" | "paid" | "posted
 
 export interface PayrunDetailFormData {
   id: string;
+  payrunUuid?: string;
   period: string;
   vessel: string;
   fxPolicy: string;
@@ -58,25 +60,59 @@ interface CrewMember {
   net: number;
 }
 
-// Mock crew members data to match the attached image
-const mockCrewMembers: CrewMember[] = [
-  { id: "2025-05-14", name: "James Wilson", rank: "Captain", basic: 8500, net: 7374.75 },
-  { id: "2025-03-12", name: "Sarah Chen", rank: "Chief Engineer", basic: 7200, net: 6072.15 },
-  { id: "2025-02-12", name: "Mike Rodriguez", rank: "Second Officer", basic: 5500, net: 4715.50 }
-];
-
 export function PayrunDetailForm({ isOpen, onClose, payrunData, onSave }: PayrunDetailFormProps) {
   const [formData, setFormData] = useState<PayrunDetailFormData | null>(payrunData);
   const [selectedCrewMember, setSelectedCrewMember] = useState<CrewMember | null>(null);
-  
-  const { 
-    initialize, 
-    selectCrew, 
-    selectedCrewId, 
+
+  const {
+    initialize,
+    selectCrew,
+    selectedCrewId,
     crewMap,
     setStatus,
-    status: storeStatus 
+    status: storeStatus
   } = useWageRun();
+
+  const payrunUuid = payrunData?.payrunUuid;
+  const vesselName = payrunData?.vessel;
+
+  // Tenant-scoped crew (V2 crew-pool), restricted to the payrun's vessel
+  const { data: enrichedCrew = [], isLoading: crewLoading } = useQuery<any[]>({
+    queryKey: ["/api/v2/crew-pool/crew/enriched"],
+    enabled: isOpen,
+  });
+
+  // Persisted per-crew payroll lines for this payrun (amounts)
+  const { data: payrunEntries = [] } = useQuery<any[]>({
+    queryKey: [`/api/v2/accounts/payruns/${payrunUuid}/entries`],
+    enabled: isOpen && !!payrunUuid,
+  });
+
+  // Bind the crew sidebar from V2 crew data, merging persisted entry amounts
+  const crewMembers = useMemo<CrewMember[]>(() => {
+    const amountByCrew = new Map<string, { basic: number; net: number }>();
+    for (const e of payrunEntries) {
+      if (!e?.crewUuid) continue;
+      amountByCrew.set(e.crewUuid, {
+        basic: e.grossEarnings ?? 0,
+        net: e.netPay ?? 0,
+      });
+    }
+
+    return enrichedCrew
+      .filter((c: any) => !vesselName || c?.vesselName === vesselName)
+      .map((c: any) => {
+        const amounts = amountByCrew.get(c.crewUuid) ?? { basic: 0, net: 0 };
+        const name = [c.firstName, c.familyName].filter(Boolean).join(" ").trim();
+        return {
+          id: c.crewUuid,
+          name: name || c.empNo || "Unknown",
+          rank: c.presentRank || "—",
+          basic: amounts.basic,
+          net: amounts.net,
+        };
+      });
+  }, [enrichedCrew, payrunEntries, vesselName]);
 
   // Update formData when payrunData changes
   useEffect(() => {
@@ -222,8 +258,17 @@ export function PayrunDetailForm({ isOpen, onClose, payrunData, onSave }: Payrun
           {/* Crew List - Left Panel */}
           <div className="w-80 border-r border-gray-200 bg-white overflow-y-auto">
             <div className="p-4">
+              {crewLoading ? (
+                <div className="text-sm text-gray-500 p-3" data-testid="text-crew-loading">
+                  Loading crew…
+                </div>
+              ) : crewMembers.length === 0 ? (
+                <div className="text-sm text-gray-500 p-3" data-testid="text-crew-empty">
+                  No crew assigned to {vesselName || "this vessel"}.
+                </div>
+              ) : (
               <div className="space-y-2">
-                {mockCrewMembers.map((member) => {
+                {crewMembers.map((member) => {
                   const crewData = crewMap[member.id];
                   const netPay = crewData?.totals?.net ?? member.net;
                   
@@ -254,6 +299,7 @@ export function PayrunDetailForm({ isOpen, onClose, payrunData, onSave }: Payrun
                   );
                 })}
               </div>
+              )}
             </div>
           </div>
 

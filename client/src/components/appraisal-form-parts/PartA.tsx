@@ -209,7 +209,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                 name="appraisalPeriodTo"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period To</FormLabel>
+                    <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period To<RequiredMark /></FormLabel>
                     <FormControl>
                       <Input
                         {...field}

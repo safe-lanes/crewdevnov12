@@ -5,7 +5,7 @@ import type { AgChartOptions, AgChartInstance } from "@/lib/agCharts";
 import { appraisalsApiV2 } from "@/modules/crewing/api/appraisalsApiV2";
 import { CrewAppraisalsDrilldownDialog } from "./CrewAppraisalsDrilldownDialog";
 import { useDrilldownParam } from "./useDrilldownParam";
-import { extractRank, isStage2Submitted } from "./appraisalRank";
+import { extractRank, isStage2Submitted, extractAppraisalPeriodTo } from "./appraisalRank";
 import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
@@ -223,7 +223,7 @@ export const CrewAppraisalsRankChart = ({
     if (!range) return [];
     const buckets = new Map<string, { sum: number; count: number }>();
     for (const a of appraisals) {
-      const date = parseDate(a.appraisalDate);
+      const date = parseDate(extractAppraisalPeriodTo(a));
       if (!date) continue;
       if (date < range.from || date > range.to) continue;
 

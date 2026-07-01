@@ -4,6 +4,11 @@
  */
 
 import React, { useState, useMemo, useCallback } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
+import type { AccPayrunV2 } from "@shared/v2/accounts/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +44,7 @@ import {
 export type PayrunStatus = "draft" | "validated" | "approved" | "paid" | "posted";
 
 export interface PayrunRowData {
+  payrunUuid: string;
   vessel: string;
   period: string;
   status: PayrunStatus;
@@ -49,6 +55,43 @@ export interface PayrunRowData {
   lastUpdatedBy: string;
   updatedDate: string;
   isOffCycle?: boolean;
+}
+
+const PAYRUNS_KEY = "/api/v2/accounts/payruns";
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+// Format an ISO timestamp as DD-MMM-YYYY HH:mm (project date convention)
+function formatUpdatedDate(value: string | Date | null | undefined): string {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "—";
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = MONTHS[d.getMonth()];
+  const year = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${day}-${month}-${year} ${hh}:${mm}`;
+}
+
+// Map a persisted payrun record to the grid row shape
+function toRowData(p: AccPayrunV2): PayrunRowData {
+  return {
+    payrunUuid: p.payrunUuid,
+    vessel: p.vessel,
+    period: p.period,
+    status: (p.status as PayrunStatus) || "draft",
+    crewCount: p.crewCount ?? 0,
+    netTotal: p.netTotal ?? 0,
+    currency: p.currency || "USD",
+    warnings: p.warnings ?? 0,
+    lastUpdatedBy: p.lastUpdatedBy || "—",
+    updatedDate: formatUpdatedDate(p.updatedAt),
+    isOffCycle: p.isOffCycle ?? false,
+  };
 }
 
 
@@ -114,83 +157,26 @@ const WarningsRenderer = (params: ICellRendererParams) => {
 
 
 
-// Mock data for demonstration
-const mockPayrunData: PayrunRowData[] = [
-  {
-    vessel: "MV Atlantic Explorer",
-    period: "Jan 01 - Jan 31, 2025",
-    status: "validated",
-    crewCount: 24,
-    netTotal: 125000,
-    currency: "USD",
-    warnings: 2,
-    lastUpdatedBy: "John Smith",
-    updatedDate: "Jan 12, 04:00",
-    isOffCycle: false
-  },
-  {
-    vessel: "MV Pacific Voyager",
-    period: "Jan 01 - Jan 31, 2025",
-    status: "draft",
-    crewCount: 18,
-    netTotal: 95000,
-    currency: "USD",
-    warnings: 5,
-    lastUpdatedBy: "Mary Johnson",
-    updatedDate: "Jan 11, 04:00",
-    isOffCycle: false
-  },
-  {
-    vessel: "MV Northern Star",
-    period: "Jan 01 - Jan 31, 2025",
-    status: "approved",
-    crewCount: 22,
-    netTotal: 115000,
-    currency: "USD",
-    warnings: 0,
-    lastUpdatedBy: "Sarah Chen",
-    updatedDate: "Jan 10, 03:30",
-    isOffCycle: false
-  },
-  {
-    vessel: "MV Southern Cross",
-    period: "Jan 01 - Jan 31, 2025",
-    status: "paid",
-    crewCount: 20,
-    netTotal: 108000,
-    currency: "EUR",
-    warnings: 1,
-    lastUpdatedBy: "Mike Rodriguez",
-    updatedDate: "Jan 09, 05:15",
-    isOffCycle: false
-  },
-  {
-    vessel: "MV Eastern Dawn",
-    period: "Jan 01 - Jan 31, 2025",
-    status: "posted",
-    crewCount: 26,
-    netTotal: 135000,
-    currency: "USD",
-    warnings: 0,
-    lastUpdatedBy: "Lisa Wang",
-    updatedDate: "Jan 08, 02:45",
-    isOffCycle: false
-  },
-  {
-    vessel: "MV Western Wind",
-    period: "Jan 15 - Jan 31, 2025",
-    status: "draft",
-    crewCount: 15,
-    netTotal: 62000,
-    currency: "GBP",
-    warnings: 3,
-    lastUpdatedBy: "Tom Wilson",
-    updatedDate: "Jan 15, 06:00",
-    isOffCycle: true
-  }
-];
+const EMPTY_NEW_PAYRUN: PayrunDetailFormData = {
+  id: "",
+  payrunUuid: undefined,
+  period: "",
+  vessel: "",
+  fxPolicy: "Static Rate",
+  template: "Standard Crew",
+  lastCalcTimestamp: "—",
+  status: "draft",
+  isOffCycle: false,
+  crewCount: 0,
+  netTotal: 0,
+  currency: "USD",
+  warnings: 0,
+  lastUpdatedBy: "",
+  updatedDate: "",
+};
 
 export function PayrunBoardWorkspace() {
+  const { toast } = useToast();
   const [selectedVessel, setSelectedVessel] = useState("all");
   const [selectedPeriod, setPeriodVessel] = useState("current");
   const [selectedStatus, setSelectedStatus] = useState("all");
@@ -202,14 +188,62 @@ export function PayrunBoardWorkspace() {
   const [selectedPayrun, setSelectedPayrun] = useState<PayrunDetailFormData | null>(null);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [validationPayrunId, setValidationPayrunId] = useState<string | null>(null);
-  
 
+  // Persisted payruns (tenant-scoped via tenantFetch/queryClient)
+  const { data: payruns = [], isLoading } = useQuery<AccPayrunV2[]>({
+    queryKey: [PAYRUNS_KEY],
+  });
 
+  // Tenant-scoped vessels (V2 masters) for the filter + create form
+  const { data: vessels = [] } = useVesselsV2();
 
+  const saveMutation = useMutation({
+    mutationFn: async (data: PayrunDetailFormData) => {
+      const payload = {
+        vessel: data.vessel,
+        period: data.period,
+        status: data.status,
+        currency: data.currency,
+        crewCount: data.crewCount,
+        netTotal: data.netTotal,
+        warnings: data.warnings,
+        isOffCycle: data.isOffCycle,
+      };
+      if (data.payrunUuid) {
+        const res = await apiRequest(
+          "PATCH",
+          `${PAYRUNS_KEY}/${data.payrunUuid}`,
+          payload,
+        );
+        return res.json();
+      }
+      const res = await apiRequest("POST", PAYRUNS_KEY, payload);
+      return res.json();
+    },
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: [PAYRUNS_KEY] });
+      setIsFormOpen(false);
+      toast({
+        title: variables.payrunUuid ? "Payrun updated" : "Payrun created",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to save payrun",
+        description: error?.message ?? "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const rows = useMemo<PayrunRowData[]>(
+    () => payruns.map(toRowData),
+    [payruns],
+  );
 
   // Filter data based on selected filters
   const filteredData = useMemo(() => {
-    return mockPayrunData.filter(payrun => {
+    return rows.filter(payrun => {
       if (selectedVessel !== "all" && !payrun.vessel.toLowerCase().includes(selectedVessel.toLowerCase())) {
         return false;
       }
@@ -221,7 +255,7 @@ export function PayrunBoardWorkspace() {
       }
       return true;
     });
-  }, [selectedVessel, selectedStatus, showOffCycle]);
+  }, [rows, selectedVessel, selectedStatus, showOffCycle]);
 
   // Grid ready handler
   const onGridReady = useCallback((params: GridReadyEvent) => {
@@ -252,6 +286,7 @@ export function PayrunBoardWorkspace() {
       // Convert row data to PayrunDetailFormData format
       const formData: PayrunDetailFormData = {
         id: params.data.vessel + '-' + params.data.period,
+        payrunUuid: params.data.payrunUuid,
         period: params.data.period,
         vessel: params.data.vessel,
         fxPolicy: "Static Rate",
@@ -471,7 +506,14 @@ export function PayrunBoardWorkspace() {
               <Download className="w-4 h-4" />
               Export
             </Button>
-            <Button className="gap-1 bg-[#52baf3] hover:bg-[#4ab1ea] text-white">
+            <Button
+              className="gap-1 bg-[#52baf3] hover:bg-[#4ab1ea] text-white"
+              onClick={() => {
+                setSelectedPayrun(EMPTY_NEW_PAYRUN);
+                setIsFormOpen(true);
+              }}
+              data-testid="button-new-payrun"
+            >
               <Plus className="w-4 h-4" />
               New Pay Run
             </Button>
@@ -488,12 +530,17 @@ export function PayrunBoardWorkspace() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Vessels</SelectItem>
-              <SelectItem value="atlantic">MV Atlantic Explorer</SelectItem>
-              <SelectItem value="pacific">MV Pacific Voyager</SelectItem>
-              <SelectItem value="northern">MV Northern Star</SelectItem>
-              <SelectItem value="southern">MV Southern Cross</SelectItem>
-              <SelectItem value="eastern">MV Eastern Dawn</SelectItem>
-              <SelectItem value="western">MV Western Wind</SelectItem>
+              {vessels
+                .filter((v: any) => v?.vessel)
+                .map((v: any) => (
+                  <SelectItem
+                    key={v.vesselUuid ?? v.vessel}
+                    value={v.vessel}
+                    data-testid={`select-vessel-${v.vesselUuid ?? v.vessel}`}
+                  >
+                    {v.vessel}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
 
@@ -611,10 +658,7 @@ export function PayrunBoardWorkspace() {
         }}
         payrunData={selectedPayrun}
         onSave={(data: PayrunDetailFormData) => {
-          console.log('Saving payrun data:', data);
-          // Here you would typically update the backend
-          // For now, just close the modal
-          setIsFormOpen(false);
+          saveMutation.mutate(data);
         }}
       />
 

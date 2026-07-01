@@ -26,6 +26,10 @@ import {
   masterFleetGroups,
   masterVessels,
 } from "../../../../shared/schema";
+import {
+  crewMembersV2,
+  crewPersonalDetails,
+} from "../../../../shared/v2/crew-pool/schema";
 
 import type {
   RecruitmentCandidate,
@@ -59,6 +63,7 @@ export interface CandidateListItem extends RecruitmentCandidate {
   vesselType: string;
   manningAgent: string;
   recruitmentDate: string | null;
+  crewPool: string | null;
 }
 
 export class CandidateService {
@@ -298,6 +303,7 @@ export class CandidateService {
         // Resolved master data (ACTUAL NAMES, NOT UUIDs)
         nationalityName: masterNationalities.nationality,
         manningAgentName: candPersonalDetails.manningAgent,
+        crewPoolName: crewPersonalDetails.crewPool,
 
         // Date of Recruitment (C3.3) from the recruitment decision
         recruitmentDate: candRecruitmentDecision.recruitmentDate,
@@ -309,6 +315,20 @@ export class CandidateService {
       .leftJoin(
         candPersonalDetails,
         eq(recruitmentCandidatesV2.recCanUuid, candPersonalDetails.recCanUuid)
+      )
+      .leftJoin(
+        crewMembersV2,
+        and(
+          eq(recruitmentCandidatesV2.recCanUuid, crewMembersV2.sourceRecCanUuid),
+          eq(crewMembersV2.isDeleted, false)
+        )
+      )
+      .leftJoin(
+        crewPersonalDetails,
+        and(
+          eq(crewMembersV2.crewUuid, crewPersonalDetails.crewUuid),
+          eq(crewPersonalDetails.isDeleted, false)
+        )
       )
       .leftJoin(
         masterNationalities,
@@ -335,7 +355,7 @@ export class CandidateService {
     const candidateMap = new Map<string, CandidateListItem>();
 
     for (const row of candidatesWithMasterData) {
-      const { nationalityName, manningAgentName, recruitmentDate, vesselTypeUuid, ...candidateData } = row;
+      const { nationalityName, manningAgentName, recruitmentDate, vesselTypeUuid, crewPoolName, ...candidateData } = row;
 
       if (!candidateMap.has(row.recCanUuid)) {
         // First time seeing this candidate
@@ -345,6 +365,7 @@ export class CandidateService {
           manningAgent: manningAgentName || '',
           recruitmentDate: recruitmentDate || null,
           vesselType: '',
+          crewPool: crewPoolName || null,
         });
       }
 
