@@ -20,6 +20,7 @@ interface CrewPoolLookupRow {
   empNo?: string | null;
   crewPool?: string | null;
   manningAgentName?: string | null;
+  nationality?: string | null;
 }
 
 function escapeHtml(value: string): string {
@@ -84,11 +85,11 @@ function parseDate(value: unknown): Date | null {
   return null;
 }
 
-// NOTE: `nationalities` is accepted to match the dashboard filter-bar shape used
-// by the other cards, but it is currently a no-op here: `promotion_reviews_v2`
-// rows do not carry that field. `crewPools` and `manningAgents` ARE applied:
-// each promotion's `crewMemberId` is mapped to its crew pool / manning agent via
-// the crew lookup below (same approach as the Crew Appraisals card).
+// NOTE: `crewPools`, `manningAgents`, and `nationalities` are all applied here.
+// `promotion_reviews_v2` rows do not carry those fields directly, so each
+// promotion's `crewMemberId` is mapped to its crew pool / manning agent /
+// nationality via the crew lookup below (same approach as the Crew Appraisals
+// card).
 export const CrewPromotionsRankChart = ({
   period,
   ranks = [],
@@ -149,7 +150,7 @@ export const CrewPromotionsRankChart = ({
       return all;
     },
     staleTime: 60 * 1000,
-    enabled: crewPools.length > 0 || manningAgents.length > 0,
+    enabled: crewPools.length > 0 || manningAgents.length > 0 || nationalities.length > 0,
   });
 
   const poolByCrewKey = useMemo(() => {
@@ -170,6 +171,17 @@ export const CrewPromotionsRankChart = ({
       if (!agent) continue;
       if (c.crewUuid) map.set(String(c.crewUuid), agent);
       if (c.empNo) map.set(String(c.empNo), agent);
+    }
+    return map;
+  }, [crew]);
+
+  const nationalityByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const nat = (c.nationality || "").trim();
+      if (!nat) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), nat);
+      if (c.empNo) map.set(String(c.empNo), nat);
     }
     return map;
   }, [crew]);
@@ -200,6 +212,11 @@ export const CrewPromotionsRankChart = ({
         if (!agent || !manningAgents.includes(agent)) continue;
       }
 
+      if (nationalities.length > 0) {
+        const nat = nationalityByCrewKey.get((r.crewMemberId || "").trim());
+        if (!nat || !nationalities.includes(nat)) continue;
+      }
+
       if (ranks.length > 0 && !ranks.includes(rank)) continue;
 
       counts.set(rank, (counts.get(rank) || 0) + 1);
@@ -207,7 +224,7 @@ export const CrewPromotionsRankChart = ({
     return Array.from(counts.entries())
       .map(([rank, count]) => ({ rank, count }))
       .sort((a, b) => b.count - a.count);
-  }, [reviews, range, ranks, crewPools, poolByCrewKey, manningAgents, agentByCrewKey]);
+  }, [reviews, range, ranks, crewPools, poolByCrewKey, manningAgents, agentByCrewKey, nationalities, nationalityByCrewKey]);
 
   const chartOptions = useMemo<AgChartOptions>(
     () => ({

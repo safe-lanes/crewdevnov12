@@ -36,6 +36,7 @@ interface CrewPoolLookupRow {
   empNo?: string | null;
   crewPool?: string | null;
   manningAgentName?: string | null;
+  nationality?: string | null;
 }
 
 interface CrewPromotionsDrilldownDialogProps {
@@ -131,7 +132,7 @@ export const CrewPromotionsDrilldownDialog = ({
   ranks = [],
   crewPools = [],
   manningAgents = [],
-  nationalities: _nationalities = [],
+  nationalities = [],
 }: CrewPromotionsDrilldownDialogProps) => {
   const [, setLocation] = useLocation();
 
@@ -168,7 +169,7 @@ export const CrewPromotionsDrilldownDialog = ({
       return all;
     },
     staleTime: 60 * 1000,
-    enabled: open && (crewPools.length > 0 || manningAgents.length > 0),
+    enabled: open && (crewPools.length > 0 || manningAgents.length > 0 || nationalities.length > 0),
   });
 
   const poolByCrewKey = useMemo(() => {
@@ -189,6 +190,17 @@ export const CrewPromotionsDrilldownDialog = ({
       if (!agent) continue;
       if (c.crewUuid) map.set(String(c.crewUuid), agent);
       if (c.empNo) map.set(String(c.empNo), agent);
+    }
+    return map;
+  }, [crew]);
+
+  const nationalityByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew) {
+      const nat = (c.nationality || "").trim();
+      if (!nat) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), nat);
+      if (c.empNo) map.set(String(c.empNo), nat);
     }
     return map;
   }, [crew]);
@@ -256,12 +268,17 @@ export const CrewPromotionsDrilldownDialog = ({
         if (!agent || !manningAgents.includes(agent)) return false;
       }
 
+      if (nationalities.length > 0) {
+        const nat = nationalityByCrewKey.get((r.crewMemberId || "").trim());
+        if (!nat || !nationalities.includes(nat)) return false;
+      }
+
       const rowRank = (r.promotionToRank || "").trim();
       if (rowRank !== rank) return false;
       if (ranks.length > 0 && !ranks.includes(rowRank)) return false;
       return true;
     });
-  }, [reviews, range, rank, ranks, crewPools, poolByCrewKey, manningAgents, agentByCrewKey]);
+  }, [reviews, range, rank, ranks, crewPools, poolByCrewKey, manningAgents, agentByCrewKey, nationalities, nationalityByCrewKey]);
 
   const sorted = useMemo(
     () =>
