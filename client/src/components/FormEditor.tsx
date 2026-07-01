@@ -2237,7 +2237,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               return (
             <Button 
               onClick={() => { void saveDraft(); }}
-              className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+              className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm bg-[#60a5fa] hover:bg-[#3b82f6] text-white"
               size="sm"
               disabled={createDraftMutation.isPending || !currentRankGroup}
               title={!currentRankGroup ? "Please select a rank group first" : undefined}
