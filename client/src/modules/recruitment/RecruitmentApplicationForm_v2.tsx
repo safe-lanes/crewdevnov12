@@ -476,7 +476,7 @@ const getInitialFormData = (): LocalFormData => ({
   b6Interviews: [{ id: '1', date: '', interviewer: '', status: '', result: '', comments: '' }],
   b6InterviewItems: [],
   b6InterviewComments: {},
-  b7TrainingNeeds: [{ id: '1', training: '', identifiedBy: '', category: '', dueDate: '', comments: '' }],
+  b7TrainingNeeds: [],
   b8Shortlisted: '',
   b8SelectedApprovers: [],
   b2ReferenceItems: [],
