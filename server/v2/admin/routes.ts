@@ -142,6 +142,7 @@ router.get("/access-control/roles/:ruid/permissions", accessControlController.ge
 router.put("/access-control/roles/:ruid/permissions", accessControlController.savePermissions);
 
 router.get("/vessel-org-chart", vesselOrgChartController.getAll);
+router.get("/vessel-org-chart/rank-scope", vesselOrgChartController.getRankScope);
 router.post("/vessel-org-chart", vesselOrgChartController.saveAll);
 
 export default router;
