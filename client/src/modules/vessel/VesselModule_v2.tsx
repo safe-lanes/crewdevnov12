@@ -520,9 +520,10 @@ interface OfficerMatrixRowV2Props {
     rankDepartment: 'deck' | 'engine' | null;
     handleViewCrewClick: (planning: any) => void;
     vesselUuid?: string | null;
+    isShipUser?: boolean;
 }
 
-function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, handleViewCrewClick, vesselUuid }: OfficerMatrixRowV2Props) {
+function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, handleViewCrewClick, vesselUuid, isShipUser }: OfficerMatrixRowV2Props) {
     const crewUuid = rankPlanningData?.crewUuid;
     const fullRankName = rank.displayRole || rank.role || rank.rank;
     const baseRankName = (fullRankName || '').split('_')[0].trim().toLowerCase();
@@ -632,7 +633,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
                 {officerData?.englishProficiency || ''}
             </TableCell>
             <TableCell className="text-xs" data-testid={`cell-officer-actions-${index + 1}`}>
-                {crewUuid ? (
+                {crewUuid && !isShipUser ? (
                     <Button 
                         variant="ghost" 
                         size="icon"
@@ -2025,14 +2026,16 @@ export function VesselModule_v2(): JSX.Element {
                                                                         </TableCell>
                                                                     )}
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-view-${index + 1}`}>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="icon"
-                                                                            onClick={() => handleViewCrewClick(planning)}
-                                                                            data-testid={`button-view-crew-${index + 1}`}
-                                                                        >
-                                                                            <Eye className="h-4 w-4 text-gray-500" />
-                                                                        </Button>
+                                                                        {!isShipUser && (
+                                                                            <Button 
+                                                                                variant="ghost" 
+                                                                                size="icon"
+                                                                                onClick={() => handleViewCrewClick(planning)}
+                                                                                data-testid={`button-view-crew-${index + 1}`}
+                                                                            >
+                                                                                <Eye className="h-4 w-4 text-gray-500" />
+                                                                            </Button>
+                                                                        )}
                                                                     </TableCell>
                                                                 </>
                                                             )}
@@ -2299,6 +2302,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                 rankDepartment={rankDepartment}
                                                                 handleViewCrewClick={handleViewCrewClick}
                                                                 vesselUuid={selectedVessel?.vesselId || null}
+                                                                isShipUser={isShipUser}
                                                             />
                                                         );
                                                     })
