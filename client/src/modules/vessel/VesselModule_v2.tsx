@@ -659,8 +659,9 @@ export function VesselModule_v2(): JSX.Element {
         return all.filter(p => canView(pageToMenu[p] || p));
     }, [permissions, canView]);
 
+    const isShipUser = userType === 'Ship';
     const showAppraisalColumn = permissions.length === 0 || canView('Appraisal');
-    const showHandoverColumn = permissions.length === 0 || canView('Handover');
+    const showHandoverColumn = permissions.length === 0 || canView('Handover') || isShipUser;
     const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
     const [vesselValue, setVesselValue] = useState("");
     const [fleetValue, setFleetValue] = useState("");
@@ -693,7 +694,6 @@ export function VesselModule_v2(): JSX.Element {
     const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
     const [reliefDialogData, setReliefDialogData] = useState<{ rank: string; rankId: string; planningData: any } | null>(null);
 
-    const isShipUser = userType === 'Ship';
     const showAppraisalColumnArchived = showAppraisalColumn && !isShipUser;
 
     const { toast } = useToast();
