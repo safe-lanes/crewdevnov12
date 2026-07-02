@@ -3,7 +3,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Save, Send, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText, AlertTriangle, Paperclip } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText, AlertTriangle, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -2061,15 +2061,6 @@ export function DrugAlcoholTestForm_v2({
           <div className="flex justify-end gap-3 mt-6">
             <Button
               type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 text-white px-6"
-              data-testid="button-delete-form"
-            >
-              Delete
-            </Button>
-            <Button
-              type="button"
               onClick={form.handleSubmit(handleFormSubmit, handleFormError)}
               className="bg-green-600 hover:bg-green-700 text-white px-6"
               data-testid="button-submit-form"
@@ -2134,6 +2125,27 @@ export function DrugAlcoholTestForm_v2({
               <FileText className="h-4 w-4 mr-2" />
               Export
             </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700 text-white px-3 hidden sm:flex items-center gap-2 h-8 rounded-md text-xs"
+              data-testid="button-delete-form"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              className="sm:hidden bg-red-600 hover:bg-red-700 text-white"
+              data-testid="button-delete-form-mobile"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
             <Button 
               variant="outline" 
               size="sm"
@@ -2152,23 +2164,6 @@ export function DrugAlcoholTestForm_v2({
               data-testid="button-save-draft-mobile"
             >
               <Save className="h-4 w-4" />
-            </Button>
-            <Button 
-              size="sm"
-              onClick={form.handleSubmit(handleFormSubmit, handleFormError)}
-              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#16569e] hover:bg-[#16569e]/90"
-              data-testid="button-submit"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Submit
-            </Button>
-            <Button 
-              size="sm"
-              onClick={form.handleSubmit(handleFormSubmit, handleFormError)}
-              className="sm:hidden bg-[#16569e] hover:bg-[#16569e]/90"
-              data-testid="button-submit-mobile"
-            >
-              <Send className="h-4 w-4" />
             </Button>
           </div>
         </div>
