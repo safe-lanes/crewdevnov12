@@ -92,7 +92,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               <Select 
                 value={selectedVesselTypeForA2_3b} 
                 onValueChange={onVesselTypeChange}
-                disabled={disabled}
+                disabled={disabled || row.verified === 'na'}
               >
                 <SelectTrigger className="h-8 text-xs" data-testid="select-vessel-type-a23b">
                   <SelectValue placeholder="Select Vessel Type" />
@@ -108,7 +108,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               )}
             </div>
           ) : (
-            row.resultFromDb
+            (row.id === 'a2.3d' && row.verified === 'na') ? null : row.resultFromDb
           )}
         </TableCell>
         <TableCell>
@@ -140,6 +140,8 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
             ) : row.verified === 'na' ? (
               <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded" data-testid={`badge-meets-na-${row.id}`}>NA</span>
             ) : null
+          ) : (row.id === 'a2.3b' || row.id === 'a2.3d') && row.verified === 'na' ? (
+            null
           ) : (
             getMeetsCriterionBadge(row.required, row.resultFromDb, row)
           )}

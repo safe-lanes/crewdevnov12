@@ -995,7 +995,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             criteriaMeetsStatus[parentId] = 'pending';
           }
         } else {
-          const anyChildNo = childMeetsValues.some(v => v === 'no');
+          const anyChildNo = childIds.some((id, i) => childMeetsValues[i] === 'no' && criteriaVerifiedStatus[id] !== 'na');
           if (anyChildNo) {
             criteriaMeetsStatus[parentId] = 'pending';
           } else {
@@ -1255,6 +1255,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       const anyChildNotMet = childrenIds.some(childId => {
         const child = criteriaData.find(row => row.id === childId);
         if (!child) return false;
+        if (child.verified === 'na') return false;
         return getMeetsCriterion(child.required, child.resultFromDb) === 'not-met';
       });
       if (anyChildNotMet) return 'pending';
