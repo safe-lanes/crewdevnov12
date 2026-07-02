@@ -994,10 +994,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           } else {
             criteriaMeetsStatus[parentId] = 'pending';
           }
-        } else if (childMeetsValues.some(v => v === 'yes')) {
-          criteriaMeetsStatus[parentId] = 'yes';
         } else {
-          criteriaMeetsStatus[parentId] = 'pending';
+          const anyChildNo = childMeetsValues.some(v => v === 'no');
+          if (anyChildNo) {
+            criteriaMeetsStatus[parentId] = 'pending';
+          } else {
+            const childVerifiedVals = childIds.map(id => criteriaVerifiedStatus[id] || '');
+            const allOk = childMeetsValues.every((v, i) => v === 'yes' || childVerifiedVals[i] === 'na');
+            criteriaMeetsStatus[parentId] = allOk ? 'yes' : 'pending';
+          }
         }
       }
     });
@@ -1247,12 +1252,18 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     if (parentId === 'a2.3') {
       const childrenIds = getChildrenIds(parentId);
       if (childrenIds.length === 0) return 'pending';
-      const anyChildMeets = childrenIds.some(childId => {
+      const anyChildNotMet = childrenIds.some(childId => {
         const child = criteriaData.find(row => row.id === childId);
         if (!child) return false;
-        return getMeetsCriterion(child.required, child.resultFromDb) === 'met';
+        return getMeetsCriterion(child.required, child.resultFromDb) === 'not-met';
       });
-      return anyChildMeets ? 'yes' : 'pending';
+      if (anyChildNotMet) return 'pending';
+      const allChildrenOk = childrenIds.every(childId => {
+        const child = criteriaData.find(row => row.id === childId);
+        if (!child) return false;
+        return getMeetsCriterion(child.required, child.resultFromDb) === 'met' || child.verified === 'na';
+      });
+      return allChildrenOk ? 'yes' : 'pending';
     }
 
     const childrenIds = getChildrenIds(parentId);
