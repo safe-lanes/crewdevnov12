@@ -693,6 +693,7 @@ export function VesselModule_v2(): JSX.Element {
     const [reliefDialogData, setReliefDialogData] = useState<{ rank: string; rankId: string; planningData: any } | null>(null);
 
     const isShipUser = userType === 'Ship';
+    const showAppraisalColumnArchived = showAppraisalColumn && !isShipUser;
 
     const { toast } = useToast();
     const [, setLocation] = useLocation();
@@ -1651,7 +1652,7 @@ export function VesselModule_v2(): JSX.Element {
                                                     {showArchived ? (
                                                         <>
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Actual Sign Off Date</TableHead>
-                                                            {showAppraisalColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
+                                                            {showAppraisalColumnArchived && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
                                                             {showHandoverColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>}
                                                         </>
                                                     ) : (
@@ -1724,7 +1725,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-signoff-date-${index + 1}`}>
                                                                         {formatDateOnly(planning.signOffDate || planning.archivedDate)}
                                                                     </TableCell>
-                                                                    {showAppraisalColumn && (
+                                                                    {showAppraisalColumnArchived && (
                                                                         <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
                                                                             {(() => {
                                                                                 const crewAppraisals = allAppraisals
