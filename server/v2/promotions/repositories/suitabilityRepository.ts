@@ -40,6 +40,7 @@ export class SuitabilityRepository {
   async upsertForReview(
     reviewUuid: string,
     data: { vesselTypes?: string[]; fleetGroups?: string[] },
+    auditUserUuid: string | null = null,
   ): Promise<void> {
     const db = getDb();
     const vesselTypes = cleanNames(data.vesselTypes);
@@ -52,6 +53,8 @@ export class SuitabilityRepository {
         reviewUuid,
         vesselTypes,
         fleetGroups,
+        createdByUuid: auditUserUuid,
+        updatedByUuid: auditUserUuid,
       })
       .onConflictDoUpdate({
         target: promoSuitabilityV2.reviewUuid,
@@ -60,6 +63,7 @@ export class SuitabilityRepository {
           fleetGroups,
           isDeleted: false,
           updatedAt: new Date(),
+          updatedByUuid: auditUserUuid,
         },
       });
   }

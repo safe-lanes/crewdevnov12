@@ -123,6 +123,7 @@ export const crewProfileService = {
     data: Parameters<typeof crewPersonalRepository.upsertPersonalDetails>[1] & {
       placeOfBirthCountry?: string;
       dob?: string | null;
+      auditUserUuid?: string | null;
     }
   ) {
     await crewMembersService.getByUuid(crewUuid);
@@ -153,6 +154,7 @@ export const crewProfileService = {
     crewUuid: string,
     data: Parameters<typeof crewPersonalRepository.upsertAddress>[1] & {
       countryOfResidence?: string;
+      auditUserUuid?: string | null;
     }
   ) {
     await crewMembersService.getByUuid(crewUuid);
@@ -176,7 +178,7 @@ export const crewProfileService = {
 
   async upsertFamilyInfo(
     crewUuid: string,
-    data: Parameters<typeof crewFamilyRepository.upsertFamilyInfo>[1]
+    data: Parameters<typeof crewFamilyRepository.upsertFamilyInfo>[1] & { auditUserUuid?: string | null }
   ) {
     await crewMembersService.getByUuid(crewUuid);
     const dataWithAudit = applyAuditUser(data, false);
@@ -185,7 +187,7 @@ export const crewProfileService = {
 
   async upsertNextOfKin(
     crewUuid: string,
-    data: Parameters<typeof crewFamilyRepository.upsertNextOfKin>[1]
+    data: Parameters<typeof crewFamilyRepository.upsertNextOfKin>[1] & { auditUserUuid?: string | null }
   ) {
     await crewMembersService.getByUuid(crewUuid);
     const dataWithAudit = applyAuditUser(data, false);
@@ -204,7 +206,7 @@ export const crewProfileService = {
 
   async createChild(
     crewUuid: string,
-    data: Omit<InsertCrewChild, "childUuid" | "crewUuid">
+    data: Omit<InsertCrewChild, "childUuid" | "crewUuid"> & { auditUserUuid?: string | null }
   ): Promise<CrewChild> {
     await crewMembersService.getByUuid(crewUuid);
     const dataWithAudit = applyAuditUser(data, true);
@@ -213,7 +215,7 @@ export const crewProfileService = {
 
   async updateChild(
     childUuid: string,
-    data: Partial<InsertCrewChild>
+    data: Partial<InsertCrewChild> & { auditUserUuid?: string | null }
   ): Promise<CrewChild> {
     const dataWithAudit = applyAuditUser(data, false);
     const updated = await crewFamilyRepository.updateChild(childUuid, dataWithAudit);

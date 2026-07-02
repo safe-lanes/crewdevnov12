@@ -42,7 +42,8 @@ export const trainingMatrixVesselDraftsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const record = await trainingMatrixVesselDraftsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await trainingMatrixVesselDraftsService.create({ ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       console.error("Error creating training matrix vessel draft:", error);
@@ -56,7 +57,8 @@ export const trainingMatrixVesselDraftsController = {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid training matrix vessel draft ID" });
       }
-      const record = await trainingMatrixVesselDraftsService.updateById(id, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await trainingMatrixVesselDraftsService.updateById(id, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -86,7 +88,8 @@ export const trainingMatrixVesselDraftsController = {
 
   async upsert(req: Request, res: Response) {
     try {
-      const record = await trainingMatrixVesselDraftsService.upsert(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await trainingMatrixVesselDraftsService.upsert({ ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       console.error("Error upserting training matrix vessel draft:", error);

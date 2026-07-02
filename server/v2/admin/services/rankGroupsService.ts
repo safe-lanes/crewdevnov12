@@ -19,7 +19,7 @@ async function syncFormRankGroup(formId: number): Promise<void> {
   await formsRepo.updateById(formId, { rankGroup: rankGroupNames || "" });
 }
 
-async function upsertDraftVersion(formId: number, rankGroupId: number, configuration: string): Promise<void> {
+async function upsertDraftVersion(formId: number, rankGroupId: number, configuration: string, auditUserUuid: string | null = null): Promise<void> {
   const form = await formsRepo.findById(formId);
   if (!form) throw new Error(`Form not found: ${formId}`);
 
@@ -32,7 +32,7 @@ async function upsertDraftVersion(formId: number, rankGroupId: number, configura
 
   const existingDraft = await formVersionsRepo.findDraftByRankGroupId(rankGroupId);
   if (existingDraft) {
-    await formVersionsRepo.updateById(existingDraft.id, applyAuditUser({ configuration, versionDate }));
+    await formVersionsRepo.updateById(existingDraft.id, applyAuditUser({ configuration, versionDate, auditUserUuid }));
     console.log(`✏️  [V2 DRAFT] Updated existing draft v${existingDraft.versionNo} for form ${formId}, rankGroup ${rankGroupId}`);
     return;
   }
@@ -52,6 +52,7 @@ async function upsertDraftVersion(formId: number, rankGroupId: number, configura
     status: "draft",
     configuration,
     releasedAt: null,
+    auditUserUuid,
   }, true));
 
   console.log(`✅ [V2 DRAFT] Created draft v${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId}`);
@@ -64,6 +65,7 @@ async function upsertDraftVersion(formId: number, rankGroupId: number, configura
 async function releaseAndMirrorConfiguration(
   rankGroupId: number,
   configuration: string,
+  auditUserUuid: string | null = null,
 ): Promise<{ formId: number; rankGroupName: string; versionNo: string }> {
   const db = getDb();
   return db.transaction(async (tx: any) => {
@@ -109,6 +111,7 @@ async function releaseAndMirrorConfiguration(
         status: "released",
         configuration,
         releasedAt: now,
+        auditUserUuid,
       }, true));
 
     const deletedDrafts = await tx
@@ -126,7 +129,7 @@ async function releaseAndMirrorConfiguration(
 
     await tx
       .update(admRankGroupsV2)
-      .set(applyAuditUser({ configuration, updatedAt: new Date() }))
+      .set(applyAuditUser({ configuration, auditUserUuid }))
       .where(and(eq(admRankGroupsV2.id, rankGroupId), eq(admRankGroupsV2.isDeleted, false)));
 
     console.log(`✅ [V2 RELEASE] Created released v${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId} ("${rankGroupName}")`);
@@ -294,21 +297,21 @@ export const rankGroupsService = {
     return result;
   },
 
-  async updateConfigurationById(id: number, configuration: string): Promise<AdmRankGroupV2> {
+  async updateConfigurationById(id: number, configuration: string, auditUserUuid: string | null = null): Promise<AdmRankGroupV2> {
     console.log(`📝 [V2 CONFIG SAVE] Saving draft configuration for rank group id=${id}, config length=${configuration.length}`);
     // Per spec: draft path must NOT write to adm_rank_groups_v2.configuration.
     // Released form versions are the sole source of truth for runtime.
     const existing = await rankGroupsRepo.findById(id);
     if (!existing) throw new Error(`Rank group not found: ${id}`);
-    await upsertDraftVersion(existing.formId, id, configuration);
+    await upsertDraftVersion(existing.formId, id, configuration, auditUserUuid);
     console.log(`✅ [V2 CONFIG SAVE] Draft saved for rank group "${existing.name}" (id=${id}, formId=${existing.formId})`);
     return existing;
   },
 
-  async updateConfiguration(rgUuid: string, configuration: string): Promise<AdmRankGroupV2> {
+  async updateConfiguration(rgUuid: string, configuration: string, auditUserUuid: string | null = null): Promise<AdmRankGroupV2> {
     const existing = await rankGroupsRepo.findByUuid(rgUuid);
     if (!existing) throw new Error(`Rank group not found: ${rgUuid}`);
-    await upsertDraftVersion(existing.formId, existing.id, configuration);
+    await upsertDraftVersion(existing.formId, existing.id, configuration, auditUserUuid);
     return existing;
   },
 
@@ -318,45 +321,45 @@ export const rankGroupsService = {
   // adm_rank_groups_v2.configuration so legacy runtime readers keep working.
   // A future task will switch the Promotion editor to the appraisal-style
   // draft list and remove the legacy snapshot.
-  async releaseConfigurationById(id: number, configuration: string): Promise<AdmRankGroupV2> {
+  async releaseConfigurationById(id: number, configuration: string, auditUserUuid: string | null = null): Promise<AdmRankGroupV2> {
     console.log(`📝 [V2 RELEASE SAVE] Releasing configuration for rank group id=${id}, config length=${configuration.length}`);
-    await releaseAndMirrorConfiguration(id, configuration);
+    await releaseAndMirrorConfiguration(id, configuration, auditUserUuid);
     const updated = await rankGroupsRepo.findById(id);
     if (!updated) throw new Error(`Rank group not found: ${id}`);
     return updated;
   },
 
-  async archiveById(id: number): Promise<AdmRankGroupV2> {
+  async archiveById(id: number, auditUserUuid: string | null = null): Promise<AdmRankGroupV2> {
     const existing = await rankGroupsRepo.findById(id);
     if (!existing) throw new Error(`Rank group not found: ${id}`);
-    const result = await rankGroupsRepo.archiveById(id);
+    const result = await rankGroupsRepo.archiveById(id, auditUserUuid);
     if (!result) throw new Error(`Rank group not found: ${id}`);
     await syncFormRankGroup(existing.formId);
     return result;
   },
 
-  async archive(rgUuid: string): Promise<AdmRankGroupV2> {
+  async archive(rgUuid: string, auditUserUuid: string | null = null): Promise<AdmRankGroupV2> {
     const existing = await rankGroupsRepo.findByUuid(rgUuid);
     if (!existing) throw new Error(`Rank group not found: ${rgUuid}`);
-    const result = await rankGroupsRepo.archive(rgUuid);
+    const result = await rankGroupsRepo.archive(rgUuid, auditUserUuid);
     if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
     await syncFormRankGroup(existing.formId);
     return result;
   },
 
-  async unarchiveById(id: number): Promise<AdmRankGroupV2> {
+  async unarchiveById(id: number, auditUserUuid: string | null = null): Promise<AdmRankGroupV2> {
     const existing = await rankGroupsRepo.findById(id);
     if (!existing) throw new Error(`Rank group not found: ${id}`);
-    const result = await rankGroupsRepo.unarchiveById(id);
+    const result = await rankGroupsRepo.unarchiveById(id, auditUserUuid);
     if (!result) throw new Error(`Rank group not found: ${id}`);
     await syncFormRankGroup(existing.formId);
     return result;
   },
 
-  async unarchive(rgUuid: string): Promise<AdmRankGroupV2> {
+  async unarchive(rgUuid: string, auditUserUuid: string | null = null): Promise<AdmRankGroupV2> {
     const existing = await rankGroupsRepo.findByUuid(rgUuid);
     if (!existing) throw new Error(`Rank group not found: ${rgUuid}`);
-    const result = await rankGroupsRepo.unarchive(rgUuid);
+    const result = await rankGroupsRepo.unarchive(rgUuid, auditUserUuid);
     if (!result) throw new Error(`Rank group not found: ${rgUuid}`);
     await syncFormRankGroup(existing.formId);
     return result;

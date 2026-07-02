@@ -33,7 +33,7 @@ export class ApprovalsRepository {
     return results[0];
   }
 
-  async replaceForReview(reviewUuid: string, approvals: Omit<InsertPromoApprovalV2, "apUuid" | "reviewUuid">[]): Promise<PromoApprovalV2[]> {
+  async replaceForReview(reviewUuid: string, approvals: Omit<InsertPromoApprovalV2, "apUuid" | "reviewUuid">[], auditUserUuid: string | null = null): Promise<PromoApprovalV2[]> {
     const db = getDb();
     const allRows = await db
       .select()
@@ -47,7 +47,7 @@ export class ApprovalsRepository {
       if (existing.length > 0) {
         await db
           .update(promoApprovalsV2)
-          .set({ isDeleted: true, updatedAt: new Date() })
+          .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
           .where(and(eq(promoApprovalsV2.reviewUuid, reviewUuid), eq(promoApprovalsV2.isDeleted, false)));
       }
       return [];
@@ -100,6 +100,7 @@ export class ApprovalsRepository {
             sortOrder: i,
             isDeleted: false,
             updatedAt: new Date(),
+            updatedByUuid: auditUserUuid,
           })
           .where(eq(promoApprovalsV2.id, match.id))
           .returning();
@@ -107,7 +108,7 @@ export class ApprovalsRepository {
       } else {
         const inserted = await db
           .insert(promoApprovalsV2)
-          .values({ ...a, apUuid: uuidv4(), reviewUuid, sortOrder: i })
+          .values({ ...a, apUuid: uuidv4(), reviewUuid, sortOrder: i, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid })
           .returning();
         results.push(inserted[0]);
       }
@@ -117,7 +118,7 @@ export class ApprovalsRepository {
     if (unusedActiveIds.length > 0) {
       await db
         .update(promoApprovalsV2)
-        .set({ isDeleted: true, updatedAt: new Date() })
+        .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
         .where(inArray(promoApprovalsV2.id, unusedActiveIds));
     }
 

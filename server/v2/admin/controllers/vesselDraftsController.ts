@@ -42,7 +42,8 @@ export const vesselDraftsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const record = await vesselDraftsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await vesselDraftsService.create({ ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       console.error("Error creating vessel draft:", error);
@@ -56,7 +57,8 @@ export const vesselDraftsController = {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid vessel draft ID" });
       }
-      const record = await vesselDraftsService.updateById(id, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await vesselDraftsService.updateById(id, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -86,7 +88,8 @@ export const vesselDraftsController = {
 
   async upsert(req: Request, res: Response) {
     try {
-      const record = await vesselDraftsService.upsert(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await vesselDraftsService.upsert({ ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       console.error("Error upserting vessel draft:", error);

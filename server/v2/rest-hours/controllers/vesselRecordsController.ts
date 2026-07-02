@@ -55,7 +55,8 @@ export const vesselRecordsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const record = await vesselRecordsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await vesselRecordsService.create({ ...req.body, auditUserUuid });
       res.status(201).json(enrichRecordWithReviewStatuses(record));
     } catch (error: any) {
       if (error.message?.includes("required")) {
@@ -69,7 +70,8 @@ export const vesselRecordsController = {
   async update(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
-      const record = await vesselRecordsService.update(uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await vesselRecordsService.update(uuid, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

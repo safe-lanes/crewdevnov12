@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { getCrewUserId } from '@/lib/crewUser';
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -935,7 +936,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Training Matrix Vessel Draft mutations
   const tmSaveDraftMutation = useMutation({
     mutationFn: async ({ vesselId, draftData }: { vesselId: string; draftData: any }) => {
-      const auditUserUuid = localStorage.getItem("crewUserId") || undefined;
+      const auditUserUuid = getCrewUserId() || undefined;
       return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-drafts/upsert', { vesselId, draftData, auditUserUuid });
     },
     onSuccess: (_data, variables) => {
@@ -960,7 +961,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const tmSubmitRevisionMutation = useMutation({
     mutationFn: async ({ vesselId, revisionDate, revisionData }: { vesselId: string; revisionDate: string; revisionData: any }) => {
-      const auditUserUuid = localStorage.getItem("crewUserId") || undefined;
+      const auditUserUuid = getCrewUserId() || undefined;
       return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData, auditUserUuid });
     },
     onSuccess: (_data, variables) => {
@@ -3524,7 +3525,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const createRankGroupMutation = useMutation({
     mutationFn: async (data: { formId: number; name: string; ranks: string[] }) => {
-      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      const auditUserUuid = getCrewUserId();
       return await apiRequest("POST", "/api/v2/admin/rank-groups", { ...data, auditUserUuid });
     },
     onSuccess: () => {
@@ -3538,7 +3539,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const updateRankGroupMutation = useMutation({
     mutationFn: async (data: { id: number; name: string; ranks: string[] }) => {
-      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      const auditUserUuid = getCrewUserId();
       return await apiRequest("PUT", `/api/v2/admin/rank-groups/${data.id}`, { name: data.name, ranks: data.ranks, auditUserUuid });
     },
     onSuccess: () => {
@@ -3611,7 +3612,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const createFormMutation = useMutation({
     mutationFn: async (data: { name: string; category: string; rankGroup: string; versionNo: string; versionDate: string }) => {
-      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      const auditUserUuid = getCrewUserId();
       return await apiRequest("POST", "/api/v2/admin/forms", { ...data, auditUserUuid });
     },
     onSuccess: () => {

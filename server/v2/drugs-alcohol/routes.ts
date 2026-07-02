@@ -14,6 +14,7 @@ router.patch("/test-records/:uuid/planned", testRecordsController.updatePlannedF
 router.patch("/test-records/:uuid", testRecordsController.update);
 router.delete("/test-records/:uuid", testRecordsController.delete);
 
+router.get("/attachments/:attUuid/raw", attachmentsController.serveAttachment);
 router.get("/attachments/:testRecordUuid", attachmentsController.getByTestRecord);
 router.post("/attachments/:testRecordUuid", attachmentsController.create);
 router.delete("/attachments/:attUuid", attachmentsController.delete);

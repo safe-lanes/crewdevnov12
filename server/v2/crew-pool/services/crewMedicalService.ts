@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
   CrewMedicalRepository,
   type CrewPreJoiningMedicalWithAttachments,
@@ -24,18 +25,42 @@ import type {
   CrewDoctorVisitAttachment,
 } from "../../../../shared/v2/crew-pool/types";
 import { resolveVesselUuid } from "./masterDataResolver";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+
+/**
+ * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
+ * a base64 data URL in file_path (no disk file) — those are skipped.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
+
+/**
+ * Persist a new reconcile attachment value to disk when it is base64; otherwise
+ * keep the provided relative path. Never returns base64 for storage.
+ */
+async function persistReconcileAttachment(
+  moduleName: string,
+  fileName: string,
+  filePath?: string,
+  fileData?: string,
+): Promise<{ filePath: string | null; fileData: null }> {
+  const raw = fileData || filePath || "";
+  const decoded = decodeStoredFile(raw, null);
+  if (decoded) {
+    const storedPath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath: storedPath, fileData: null };
+  }
+  return { filePath: filePath || null, fileData: null };
+}
 
 const crewMedicalRepository = new CrewMedicalRepository();
-
-// Helper to extract and apply audit user fields
-function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
-  const auditUserUuid = (data as any).auditUserUuid || null;
-  const result = { ...data } as any;
-  delete result.auditUserUuid;
-  if (isCreate) result.createdByUuid = auditUserUuid;
-  result.updatedByUuid = auditUserUuid;
-  return result;
-}
 
 export const crewMedicalService = {
   // ============ Pre-Joining Medicals ============
@@ -58,7 +83,7 @@ export const crewMedicalService = {
 
   async createMedical(
     crewUuid: string,
-    data: Omit<InsertCrewPreJoiningMedical, "medUuid" | "crewUuid"> & { vessel?: string }
+    data: Omit<InsertCrewPreJoiningMedical, "medUuid" | "crewUuid"> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewPreJoiningMedical> {
     await crewMembersService.getByUuid(crewUuid);
     
@@ -71,7 +96,7 @@ export const crewMedicalService = {
 
   async updateMedical(
     medUuid: string,
-    data: Partial<InsertCrewPreJoiningMedical> & { vessel?: string }
+    data: Partial<InsertCrewPreJoiningMedical> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewPreJoiningMedical> {
     await this.getMedicalByUuid(medUuid);
 
@@ -130,11 +155,25 @@ export const crewMedicalService = {
   },
 
   async removeMedicalAttachment(attUuid: string): Promise<void> {
+    const attachment =
+      await crewMedicalRepository.findAttachmentByUuid(attUuid);
     const success =
       await crewMedicalRepository.softDeleteMedicalAttachment(attUuid);
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+    await deleteAttachmentFile(attachment?.filePath);
+  },
+
+  async getMedicalAttachmentFile(
+    attUuid: string
+  ): Promise<CrewMedicalAttachment> {
+    const attachment =
+      await crewMedicalRepository.findAttachmentByUuid(attUuid);
+    if (!attachment) {
+      throw new Error(`Attachment not found: ${attUuid}`);
+    }
+    return attachment;
   },
 
   // ============ Doctor Visits ============
@@ -155,7 +194,7 @@ export const crewMedicalService = {
 
   async createVisit(
     crewUuid: string,
-    data: Omit<InsertCrewDoctorVisit, "visitUuid" | "crewUuid">
+    data: Omit<InsertCrewDoctorVisit, "visitUuid" | "crewUuid"> & { auditUserUuid?: string | null }
   ): Promise<CrewDoctorVisit> {
     await crewMembersService.getByUuid(crewUuid);
     const dataWithAudit = applyAuditUser(data, true);
@@ -164,7 +203,7 @@ export const crewMedicalService = {
 
   async updateVisit(
     visitUuid: string,
-    data: Partial<InsertCrewDoctorVisit>
+    data: Partial<InsertCrewDoctorVisit> & { auditUserUuid?: string | null }
   ): Promise<CrewDoctorVisit> {
     await this.getVisitByUuid(visitUuid);
     const dataWithAudit = applyAuditUser(data, false);
@@ -198,11 +237,25 @@ export const crewMedicalService = {
   },
 
   async removeVisitAttachment(attUuid: string): Promise<void> {
+    const attachment =
+      await crewMedicalRepository.findVisitAttachmentByUuid(attUuid);
     const success =
       await crewMedicalRepository.softDeleteVisitAttachment(attUuid);
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+    await deleteAttachmentFile(attachment?.filePath);
+  },
+
+  async getVisitAttachmentFile(
+    attUuid: string
+  ): Promise<CrewDoctorVisitAttachment> {
+    const attachment =
+      await crewMedicalRepository.findVisitAttachmentByUuid(attUuid);
+    if (!attachment) {
+      throw new Error(`Attachment not found: ${attUuid}`);
+    }
+    return attachment;
   },
 
   // ============ Fitness Status ============
@@ -272,7 +325,8 @@ export const crewMedicalService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewPreJoiningMedical[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -294,7 +348,7 @@ export const crewMedicalService = {
         if (item.isDeleted && item.medUuid) {
           await tx
             .update(crewPreJoiningMedicals)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewPreJoiningMedicals.medUuid, item.medUuid));
           continue;
         }
@@ -304,7 +358,7 @@ export const crewMedicalService = {
         if (item.medUuid) {
           const [updated] = await tx
             .update(crewPreJoiningMedicals)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewPreJoiningMedicals.medUuid, item.medUuid))
             .returning();
           medUuid = item.medUuid;
@@ -313,13 +367,13 @@ export const crewMedicalService = {
           medUuid = uuidv4();
           const [created] = await tx
             .insert(crewPreJoiningMedicals)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               medUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -327,15 +381,15 @@ export const crewMedicalService = {
         if (item.attachments) {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
-              await tx.insert(crewMedicalAttachments).values({
+              await tx.insert(crewMedicalAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 medUuid,
                 fileName: att.fileName,
                 filePath: att.filePath || null,
                 fileData: att.fileData || null,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }
@@ -361,7 +415,8 @@ export const crewMedicalService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewDoctorVisit[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -374,7 +429,7 @@ export const crewMedicalService = {
         if (item.isDeleted && item.visitUuid) {
           await tx
             .update(crewDoctorVisits)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewDoctorVisits.visitUuid, item.visitUuid));
           continue;
         }
@@ -384,7 +439,7 @@ export const crewMedicalService = {
         if (item.visitUuid) {
           const [updated] = await tx
             .update(crewDoctorVisits)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewDoctorVisits.visitUuid, item.visitUuid))
             .returning();
           visitUuid = item.visitUuid;
@@ -393,13 +448,13 @@ export const crewMedicalService = {
           visitUuid = uuidv4();
           const [created] = await tx
             .insert(crewDoctorVisits)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               visitUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -407,15 +462,15 @@ export const crewMedicalService = {
         if (item.attachments) {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
-              await tx.insert(crewDoctorVisitsAttachments).values({
+              await tx.insert(crewDoctorVisitsAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 visitUuid,
                 fileName: att.fileName,
                 filePath: att.filePath || null,
                 fileData: att.fileData || null,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }

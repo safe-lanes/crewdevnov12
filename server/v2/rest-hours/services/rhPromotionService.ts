@@ -197,7 +197,7 @@ export const rhPromotionService = {
 
     // 4. Refresh crew/vessel summaries so both rank periods surface as rows.
     try {
-      await dailyRecordsService.resyncSummaries(empNo, vesselId, monthYear);
+      await dailyRecordsService.resyncSummaries(empNo, vesselId, monthYear, auditUserUuid ?? null);
     } catch (err) {
       console.error(
         `[rh-promotion] Summary resync failed for ${empNo} ${monthYear} (non-fatal):`,

@@ -17,9 +17,12 @@ import { applyAuditUser } from "../../admin/utils/auditUser";
 import type { PromotionReviewV2, PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { promoExecutionLedgerV2, promotionReviewsV2 } from "../../../../shared/v2/promotions/schema";
+import { promoExecutionLedgerV2, promotionReviewsV2, promoChecklistAttachmentsV2 } from "../../../../shared/v2/promotions/schema";
 import { eq, and, isNull, or, sql, inArray } from "drizzle-orm";
 import { z } from "zod";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+import { v4 as uuidv4 } from "uuid";
 
 export const promotionReviewWritableSchema = z.object({
   crewMemberId: z.string().optional(),
@@ -197,6 +200,7 @@ function assembleV1Response(
   approvals: any[],
   checklistProgress: any[],
   suitability: PromoSuitabilityV2 | null = null,
+  attachmentsList: any[] = [],
 ) {
   const criteriaVerifiedStatus: Record<string, string> = {};
   const criteriaMeetsStatus: Record<string, string> = {};
@@ -275,10 +279,41 @@ function assembleV1Response(
     const section = sectionsMap.get(cp.sectionId)!;
     let verifications: any[] = [];
     let comments: any[] = [];
-    let attachments: any[] = [];
+    let legacyAttachments: any[] = [];
     try { verifications = (cp as any).verificationsData ? JSON.parse((cp as any).verificationsData) : []; } catch {}
     try { comments = (cp as any).commentsData ? JSON.parse((cp as any).commentsData) : []; } catch {}
-    try { attachments = (cp as any).attachmentsData ? JSON.parse((cp as any).attachmentsData) : []; } catch {}
+    try { legacyAttachments = (cp as any).deprecatedAttachmentsData ? JSON.parse((cp as any).deprecatedAttachmentsData) : []; } catch {}
+    if (!Array.isArray(legacyAttachments)) legacyAttachments = [];
+
+    // Filesystem-backed attachments (canonical source of truth) for this assessment point.
+    // Emit both fileName/fileSize (legacy/frontend shape) and name/size so every consumer renders correctly.
+    const tableAttachments = attachmentsList
+      .filter((att) => att.checklistProgressUuid === cp.cpUuid)
+      .map((att) => {
+        const size = att.fileSize ? parseInt(att.fileSize, 10) : 0;
+        return {
+          id: att.attUuid,
+          attUuid: att.attUuid,
+          fileName: att.fileName,
+          fileSize: size,
+          name: att.fileName,
+          size,
+          type: att.fileType || "",
+          uploadedAt: att.createdAt?.toISOString() || "",
+          filePath: att.filePath,
+          viewUrl: `/api/v2/promotions/attachments/${att.attUuid}/raw`,
+        };
+      });
+
+    // De-dupe: table rows win; only append legacy JSON entries not already represented in the table.
+    const tableAttIds = new Set(tableAttachments.map((a) => a.id));
+    const legacyOnly = legacyAttachments.filter((a: any) => {
+      const lid = a?.attUuid || a?.id;
+      return !lid || !tableAttIds.has(lid);
+    });
+
+    const attachments = [...tableAttachments, ...legacyOnly];
+
     section.assessmentPoints.push({
       id: cp.assessmentPointId,
       text: (cp as any).assessmentPointText || '',
@@ -438,15 +473,15 @@ export class PromotionReviewsService {
       );
 
     const matched = reviews.filter(
-      (r) =>
+      (r: any) =>
         isApprovedPriorJoining(r) &&
         (r.promotionToRank ?? "").trim().toLowerCase() === wanted,
     );
     if (matched.length === 0) return [];
 
     const empNos = Array.from(
-      new Set(matched.map((r) => (r.crewMemberId ?? "").trim()).filter((e) => !!e)),
-    );
+      new Set(matched.map((r: any) => (r.crewMemberId ?? "").trim()).filter((e: any) => !!e)),
+    ) as string[];
     if (empNos.length === 0) return [];
 
     const crews = await db
@@ -585,6 +620,21 @@ export class PromotionReviewsService {
     const cpMap = groupBy(allChecklistProgress, i => i.reviewUuid);
     const suitByReview = new Map(allSuitability.map(s => [s.reviewUuid, s]));
 
+    const cpUuids = allChecklistProgress.map(item => item.cpUuid);
+    let attachmentsList: any[] = [];
+    if (cpUuids.length > 0) {
+      const db = getDb();
+      attachmentsList = await db
+        .select()
+        .from(promoChecklistAttachmentsV2)
+        .where(
+          and(
+            inArray(promoChecklistAttachmentsV2.checklistProgressUuid, cpUuids),
+            eq(promoChecklistAttachmentsV2.isDeleted, false)
+          )
+        );
+    }
+
     return reviews.map(review => assembleV1Response(
       review,
       csMap[review.reviewUuid] || [],
@@ -595,6 +645,7 @@ export class PromotionReviewsService {
       apMap[review.reviewUuid] || [],
       cpMap[review.reviewUuid] || [],
       suitByReview.get(review.reviewUuid) ?? null,
+      attachmentsList,
     ));
   }
 
@@ -613,7 +664,22 @@ export class PromotionReviewsService {
       suitabilityRepo.findByReviewUuid(reviewUuid),
     ]);
 
-    return assembleV1Response(review, cs, ct, cc, tc, tn, ap, cp, suit);
+    const cpUuids = cp.map(item => item.cpUuid);
+    let attachmentsList: any[] = [];
+    if (cpUuids.length > 0) {
+      const db = getDb();
+      attachmentsList = await db
+        .select()
+        .from(promoChecklistAttachmentsV2)
+        .where(
+          and(
+            inArray(promoChecklistAttachmentsV2.checklistProgressUuid, cpUuids),
+            eq(promoChecklistAttachmentsV2.isDeleted, false)
+          )
+        );
+    }
+
+    return assembleV1Response(review, cs, ct, cc, tc, tn, ap, cp, suit, attachmentsList);
   }
 
   async getReviewById(id: number) {
@@ -647,6 +713,21 @@ export class PromotionReviewsService {
     const cpMap = groupBy(cp, i => i.reviewUuid);
     const suitByReview = new Map(suit.map(s => [s.reviewUuid, s]));
 
+    const cpUuids = cp.map(item => item.cpUuid);
+    let attachmentsList: any[] = [];
+    if (cpUuids.length > 0) {
+      const db = getDb();
+      attachmentsList = await db
+        .select()
+        .from(promoChecklistAttachmentsV2)
+        .where(
+          and(
+            inArray(promoChecklistAttachmentsV2.checklistProgressUuid, cpUuids),
+            eq(promoChecklistAttachmentsV2.isDeleted, false)
+          )
+        );
+    }
+
     return reviews.map(review => assembleV1Response(
       review,
       csMap[review.reviewUuid] || [],
@@ -657,6 +738,7 @@ export class PromotionReviewsService {
       apMap[review.reviewUuid] || [],
       cpMap[review.reviewUuid] || [],
       suitByReview.get(review.reviewUuid) ?? null,
+      attachmentsList,
     ));
   }
 
@@ -893,6 +975,8 @@ export class PromotionReviewsService {
           effectiveDate,
           promotionTiming: review.promotionTiming ?? null,
           appliedByUuid: actorUuid,
+          createdByUuid: actorUuid,
+          updatedByUuid: actorUuid,
         })
         .onConflictDoNothing({ target: promoExecutionLedgerV2.reviewUuid })
         .returning({ id: promoExecutionLedgerV2.id });
@@ -1502,7 +1586,7 @@ export class PromotionReviewsService {
       criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
       b2VesselTypes, b2FleetGroups,
-    });
+    }, coreFields.updatedByUuid ?? null);
 
     await this.runCompletionHook(review, coreFields.updatedByUuid ?? null);
 
@@ -1561,7 +1645,7 @@ export class PromotionReviewsService {
       criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
       trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
       b2VesselTypes, b2FleetGroups,
-    });
+    }, coreFields.updatedByUuid ?? null);
 
     await this.runCompletionHook(review, coreFields.updatedByUuid ?? null);
 
@@ -1572,7 +1656,7 @@ export class PromotionReviewsService {
     return reviewsRepo.softDelete(reviewUuid);
   }
 
-  private async saveChildData(reviewUuid: string, data: any) {
+  private async saveChildData(reviewUuid: string, data: any, auditUserUuid: string | null = null) {
     const tasks: Promise<any>[] = [];
 
     if (data.criteriaVerifiedStatus !== undefined || data.criteriaMeetsStatus !== undefined) {
@@ -1583,7 +1667,7 @@ export class PromotionReviewsService {
         tasks.push(criteriaStatusRepo.upsert(reviewUuid, code, {
           verifiedStatus: verified[code] ?? null,
           meetsStatus: meets[code] ?? null,
-        }));
+        }, auditUserUuid));
       }
     }
 
@@ -1596,7 +1680,7 @@ export class PromotionReviewsService {
         minScore: t.minScore || t.min_score || null,
         score: t.score || null,
         result: t.result || null,
-      }))));
+      })), auditUserUuid));
     }
 
     if (data.criteriaComments !== undefined) {
@@ -1640,8 +1724,8 @@ export class PromotionReviewsService {
           }
         }
       }
-      tasks.push(criteriaCommentsRepo.replaceForReview(reviewUuid, criteriaCommentRows));
-      tasks.push(trainingCommentsRepo.replaceForReview(reviewUuid, trainingCommentRows));
+      tasks.push(criteriaCommentsRepo.replaceForReview(reviewUuid, criteriaCommentRows, auditUserUuid));
+      tasks.push(trainingCommentsRepo.replaceForReview(reviewUuid, trainingCommentRows, auditUserUuid));
     }
 
     if (data.trainingNeeds !== undefined) {
@@ -1653,7 +1737,7 @@ export class PromotionReviewsService {
         category: n.category || null,
         status: n.status || null,
         completionDate: n.completionDate || n.completion_date || null,
-      }))));
+      })), auditUserUuid));
     }
 
     if (data.approvalData !== undefined || data.selectedApproversForSubmission !== undefined) {
@@ -1686,7 +1770,7 @@ export class PromotionReviewsService {
           });
         }
       }
-      tasks.push(approvalsRepo.replaceForReview(reviewUuid, approvalRows));
+      tasks.push(approvalsRepo.replaceForReview(reviewUuid, approvalRows, auditUserUuid));
     }
 
     if (data.checklistProgressData !== undefined) {
@@ -1712,7 +1796,7 @@ export class PromotionReviewsService {
               date: latestVerification?.date || null,
               verificationsData: point.verifications?.length > 0 ? JSON.stringify(point.verifications) : null,
               commentsData: point.comments?.length > 0 ? JSON.stringify(point.comments) : null,
-              attachmentsData: point.attachments?.length > 0 ? JSON.stringify(point.attachments) : null,
+              deprecatedAttachmentsData: null, // attachments persist in promo_checklist_attachments_v2; never re-serialize into the deprecated JSON column
               sortOrder: sortIdx++,
             });
           }
@@ -1730,7 +1814,112 @@ export class PromotionReviewsService {
           }
         }
       }
-      tasks.push(checklistProgressRepo.replaceForReview(reviewUuid, items));
+
+      const saveChecklistProgressAndAttachments = async () => {
+        const savedProgress = await checklistProgressRepo.replaceForReview(reviewUuid, items, auditUserUuid);
+        
+        if (progressObj.sections && Array.isArray(progressObj.sections)) {
+          const db = getDb();
+
+          // Resolve the crew folder (employee number) once for this review so new
+          // attachment files are grouped under promotion/{empNo}/. crew_member_id
+          // on the review IS the employee number; fall back to the review UUID.
+          const reviewRows = await db
+            .select({ crewMemberId: promotionReviewsV2.crewMemberId })
+            .from(promotionReviewsV2)
+            .where(eq(promotionReviewsV2.reviewUuid, reviewUuid))
+            .limit(1);
+          const promotionCrewFolder =
+            (reviewRows[0]?.crewMemberId || "").toString().trim() || reviewUuid;
+
+          for (const section of progressObj.sections) {
+            if (!section.assessmentPoints || !Array.isArray(section.assessmentPoints)) continue;
+            for (const point of section.assessmentPoints) {
+              const matchedProgress = savedProgress.find(
+                (p) => p.sectionId === section.id && p.assessmentPointId === point.id
+              );
+              if (!matchedProgress) continue;
+              
+              const cpUuid = matchedProgress.cpUuid;
+              const attachments = point.attachments || [];
+              
+              // Get existing files in DB
+              const dbAttachments = await db
+                .select()
+                .from(promoChecklistAttachmentsV2)
+                .where(
+                  and(
+                    eq(promoChecklistAttachmentsV2.checklistProgressUuid, cpUuid),
+                    eq(promoChecklistAttachmentsV2.isDeleted, false)
+                  )
+                );
+              
+              const existingByUuid = new Map<string, any>(
+                dbAttachments.map((da: any) => [da.attUuid, da])
+              );
+              const keepUuids: string[] = [];
+              
+              for (const att of attachments) {
+                if (att.isDeleted) continue;
+                
+                const candidateUuid = att.attUuid || att.id;
+                
+                // Already persisted (matched by id/attUuid, or carrying a server file path) -> keep, never re-insert
+                if ((candidateUuid && existingByUuid.has(candidateUuid)) || att.filePath) {
+                  if (candidateUuid) keepUuids.push(candidateUuid);
+                  continue;
+                }
+                
+                // Genuinely new attachment with base64 data -> persist to disk + table (conflict-safe)
+                if (att.data) {
+                  const decoded = decodeStoredFile(att.data, att.type);
+                  if (decoded) {
+                    const { buffer, mime } = decoded;
+                    const cleanName = att.fileName || att.name || "attachment";
+                    
+                    const filePath = await fileStorageService.writeAttachment(
+                      `promotions/${promotionCrewFolder}`,
+                      cleanName,
+                      buffer
+                    );
+                    
+                    const attUuid = candidateUuid || uuidv4();
+                    
+                    await db.insert(promoChecklistAttachmentsV2).values({
+                      attUuid,
+                      checklistProgressUuid: cpUuid,
+                      fileName: cleanName,
+                      filePath,
+                      fileSize: att.fileSize?.toString() || att.size?.toString() || buffer.length.toString(),
+                      fileType: att.fileType || att.type || mime,
+                      createdByUuid: auditUserUuid,
+                      updatedByUuid: auditUserUuid,
+                    }).onConflictDoNothing();
+                    
+                    keepUuids.push(attUuid);
+                  }
+                }
+              }
+              
+              // Soft delete removed attachments
+              const toDelete = dbAttachments.filter((da: any) => !keepUuids.includes(da.attUuid));
+              if (toDelete.length > 0) {
+                await db
+                  .update(promoChecklistAttachmentsV2)
+                  .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
+                  .where(
+                    inArray(
+                      promoChecklistAttachmentsV2.attUuid,
+                      toDelete.map((da: any) => da.attUuid)
+                    )
+                  );
+              }
+            }
+          }
+        }
+      };
+
+      tasks.push(saveChecklistProgressAndAttachments());
     }
 
     if (data.b2VesselTypes !== undefined || data.b2FleetGroups !== undefined) {
@@ -1754,7 +1943,7 @@ export class PromotionReviewsService {
         ?? (existing?.vesselTypes ?? []);
       const fleetGroups = toNames(data.b2FleetGroups, ['name', 'fleetGroup'])
         ?? (existing?.fleetGroups ?? []);
-      tasks.push(suitabilityRepo.upsertForReview(reviewUuid, { vesselTypes, fleetGroups }));
+      tasks.push(suitabilityRepo.upsertForReview(reviewUuid, { vesselTypes, fleetGroups }, auditUserUuid));
     }
 
     if (tasks.length > 0) await Promise.all(tasks);

@@ -1,14 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { crewPoolApiV2 } from '../api/crewPoolApiV2';
-
-// Helper to get crewUserId from localStorage with null fallback
-function getCrewUserId(): string | null {
-  try {
-    return localStorage.getItem("crewUserId") || null;
-  } catch {
-    return null;
-  }
-}
+import { getCrewUserId } from '@/lib/crewUser';
 
 // Inject audit user UUID into request data
 function withAuditUser<T>(data: T): T {

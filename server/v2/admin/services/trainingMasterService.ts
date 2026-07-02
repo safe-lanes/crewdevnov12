@@ -106,7 +106,7 @@ export const trainingMasterService = {
     return results;
   },
 
-  async reorder(orders: Array<{ id: number; sortOrder: number }>): Promise<void> {
-    return trainingMasterRepo.reorder(orders);
+  async reorder(orders: Array<{ id: number; sortOrder: number }>, auditUserUuid: string | null = null): Promise<void> {
+    return trainingMasterRepo.reorder(orders, auditUserUuid);
   },
 };

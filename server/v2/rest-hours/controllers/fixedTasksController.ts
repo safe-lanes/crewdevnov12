@@ -59,7 +59,8 @@ export const fixedTasksController = {
         data.vesselId = data.vesselUuid;
         delete data.vesselUuid;
       }
-      const task = await fixedTasksService.create(data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const task = await fixedTasksService.create({ ...data, auditUserUuid });
       res.status(201).json(task);
     } catch (error: any) {
       if (error.message?.includes("required")) {
@@ -78,7 +79,8 @@ export const fixedTasksController = {
         data.vesselId = data.vesselUuid;
         delete data.vesselUuid;
       }
-      const task = await fixedTasksService.update(uuid, data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const task = await fixedTasksService.update(uuid, { ...data, auditUserUuid });
       res.json(task);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

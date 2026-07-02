@@ -39,7 +39,9 @@ export const formsController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form data", details: result.error.issues });
       }
-      const form = await formsService.create(result.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const payload = { ...result.data, auditUserUuid };
+      const form = await formsService.create(payload);
       res.json(form);
     } catch (error) {
       console.error("Error creating form:", error);
@@ -60,7 +62,9 @@ export const formsController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form data", details: result.error.issues });
       }
-      const form = await formsService.updateById(id, result.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const payload = { ...result.data, auditUserUuid };
+      const form = await formsService.updateById(id, payload);
       res.json(form);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -82,7 +86,9 @@ export const formsController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid payload", details: result.error.issues });
       }
-      const form = await formsService.updateById(id, { isLockForm: result.data.isLockForm });
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const payload = { isLockForm: result.data.isLockForm, auditUserUuid };
+      const form = await formsService.updateById(id, payload);
       res.json(form);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -182,7 +188,9 @@ export const formsController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form version data", details: result.error.issues });
       }
-      const version = await formsService.createVersionByFormId(formId, result.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const payload = { ...result.data, auditUserUuid };
+      const version = await formsService.createVersionByFormId(formId, payload);
       res.json(version);
     } catch (error: any) {
       const msg: string = error.message || "";
@@ -227,7 +235,9 @@ export const formsController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form version data", details: result.error.issues });
       }
-      const version = await formsService.updateVersionById(id, result.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const payload = { ...result.data, auditUserUuid };
+      const version = await formsService.updateVersionById(id, payload);
       res.json(version);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -244,7 +254,8 @@ export const formsController = {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid version ID" });
       }
-      const version = await formsService.releaseVersionById(id);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const version = await formsService.releaseVersionById(id, auditUserUuid);
       res.json(version);
     } catch (error: any) {
       const msg: string = error.message || "";

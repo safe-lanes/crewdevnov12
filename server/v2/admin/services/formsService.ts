@@ -264,6 +264,7 @@ export const formsService = {
     if (!data.rankGroupId) {
       throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
     }
+    const auditUserUuid = (data as any).auditUserUuid ?? null;
     // Server-controlled metadata: ignore client-supplied versionNo / releasedAt / status.
     // All new versions are drafts; release happens via releaseVersionById.
     // versionDate IS honored when supplied (admin-picked date); falls back to today.
@@ -283,6 +284,7 @@ export const formsService = {
           configuration: data.configuration ?? null,
           sharedConfig: data.sharedConfig ?? null,
           versionDate: pickedVersionDate,
+          auditUserUuid,
         }),
       );
       if (!updated) throw new Error(`Form version not found: ${existingDraft.id}`);
@@ -303,6 +305,7 @@ export const formsService = {
       versionDate: pickedVersionDate,
       status: "draft",
       releasedAt: null,
+      auditUserUuid,
     }, true));
   },
 
@@ -324,7 +327,7 @@ export const formsService = {
     return version;
   },
 
-  async releaseVersionById(id: number): Promise<AdmFormVersionV2> {
+  async releaseVersionById(id: number, auditUserUuid: string | null = null): Promise<AdmFormVersionV2> {
     const existing = await formVersionsRepo.findById(id);
     if (!existing) throw new Error(`Form version not found: ${id}`);
     if (existing.status !== "draft") {
@@ -343,6 +346,7 @@ export const formsService = {
       status: "released",
       versionDate,
       releasedAt: now,
+      auditUserUuid,
     }));
     if (!version) throw new Error(`Form version not found: ${id}`);
 

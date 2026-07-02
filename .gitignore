@@ -27,3 +27,7 @@ replit.md
 
 # Agent working files
 .agents
+
+# Private attachments storage root
+.private/
+

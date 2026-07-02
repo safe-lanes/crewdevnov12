@@ -74,9 +74,9 @@ export const accessControlService = {
     return { permissions, roleName: roleName || null, roleId: ruid };
   },
 
-  async savePermissions(roleUuid: string, permissions: Array<{ menuId: string; canview: boolean; cancreate: boolean; canedit: boolean; candelete: boolean }>): Promise<AdmRoleAccessAc[]> {
+  async savePermissions(roleUuid: string, permissions: Array<{ menuId: string; canview: boolean; cancreate: boolean; canedit: boolean; candelete: boolean }>, auditUserUuid: string | null = null): Promise<AdmRoleAccessAc[]> {
     const role = await accessControlRepo.findRoleByUuid(roleUuid);
     if (!role) throw new Error(`Role not found: ${roleUuid}`);
-    return accessControlRepo.upsertPermissions(roleUuid, permissions);
+    return accessControlRepo.upsertPermissions(roleUuid, permissions, auditUserUuid);
   },
 };

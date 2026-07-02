@@ -29,7 +29,7 @@ router.patch("/source/recruitment/:uuid", async (req: AuthedRequest, res: Respon
   try {
     const parsed = sourcePatchSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid", details: parsed.error.flatten() });
-    const ok = await repo.patchRecruitment(req.params.uuid, parsed.data, req.user?.uuid ?? null);
+    const ok = await repo.patchRecruitment(req.params.uuid, parsed.data, req.body?.auditUserUuid ?? null);
     if (!ok) return res.status(404).json({ error: "Not found" });
     res.json({ ok: true });
   } catch (err) {
@@ -42,7 +42,7 @@ router.patch("/source/appraisal/:uuid", async (req: AuthedRequest, res: Response
   try {
     const parsed = sourcePatchSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid", details: parsed.error.flatten() });
-    const ok = await repo.patchAppraisal(req.params.uuid, parsed.data, req.user?.uuid ?? null);
+    const ok = await repo.patchAppraisal(req.params.uuid, parsed.data, req.body?.auditUserUuid ?? null);
     if (!ok) return res.status(404).json({ error: "Not found" });
     res.json({ ok: true });
   } catch (err) {
@@ -55,7 +55,7 @@ router.patch("/source/promotion/:uuid", async (req: AuthedRequest, res: Response
   try {
     const parsed = sourcePatchSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid", details: parsed.error.flatten() });
-    const ok = await repo.patchPromotion(req.params.uuid, parsed.data, req.user?.uuid ?? null);
+    const ok = await repo.patchPromotion(req.params.uuid, parsed.data, req.body?.auditUserUuid ?? null);
     if (!ok) return res.status(404).json({ error: "Not found" });
     res.json({ ok: true });
   } catch (err) {
@@ -68,7 +68,7 @@ router.post("/others", async (req: AuthedRequest, res: Response) => {
   try {
     const parsed = insertTrainingNeedOtherSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid", details: parsed.error.flatten() });
-    const auditUserUuid = req.user?.uuid ?? null;
+    const auditUserUuid = req.body?.auditUserUuid ?? null;
     const created = await repo.createOther(parsed.data, auditUserUuid);
     res.status(201).json(created);
   } catch (err) {
@@ -81,7 +81,7 @@ router.patch("/others/:uuid", async (req: AuthedRequest, res: Response) => {
   try {
     const parsed = insertTrainingNeedOtherSchema.partial().safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid", details: parsed.error.flatten() });
-    const auditUserUuid = req.user?.uuid ?? null;
+    const auditUserUuid = req.body?.auditUserUuid ?? null;
     const updated = await repo.updateOther(req.params.uuid, parsed.data, auditUserUuid);
     if (!updated) return res.status(404).json({ error: "Not found" });
     res.json(updated);

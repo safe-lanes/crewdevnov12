@@ -17,7 +17,8 @@ export const companyRanksController = {
       if (!Array.isArray(req.body)) {
         return res.status(400).json({ error: "Request body must be an array" });
       }
-      const records = await companyRanksService.saveAll(req.body);
+      const auditUserUuid = req.body[0]?.auditUserUuid ?? null;
+      const records = await companyRanksService.saveAll(req.body.map((r: any) => ({ auditUserUuid, ...r })));
       res.json(records);
     } catch (error: any) {
       console.error("Error saving company ranks:", error);

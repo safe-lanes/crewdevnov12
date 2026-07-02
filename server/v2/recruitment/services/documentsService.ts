@@ -63,6 +63,16 @@ import type {
   InsertAdditionalInfo,
   InsertAdditionalInfoAttachment,
 } from "../../../../shared/v2/recruitment/types";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+
+/**
+ * Delete a stored attachment binary from disk. Skips base64 data: values
+ * (legacy rows) and silently ignores missing files.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
 
 export class DocumentsService {
   // Optimized: Single JOIN query instead of N+1
@@ -127,7 +137,16 @@ export class DocumentsService {
   }
 
   async deleteDocumentAttachment(id: number): Promise<boolean> {
-    return documentAttachmentsRepository.softDelete(id);
+    const attachment = await documentAttachmentsRepository.findById(id);
+    const success = await documentAttachmentsRepository.softDelete(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getDocumentAttachmentFile(attUuid: string): Promise<CandDocumentAttachment> {
+    const attachment = await documentAttachmentsRepository.findByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 
   async createDocumentAttachment(docUuid: string, data: Partial<InsertDocumentAttachment>, createdByUuid?: string): Promise<CandDocumentAttachment> {
@@ -201,7 +220,16 @@ export class DocumentsService {
   }
 
   async deleteVisaAttachment(id: number): Promise<boolean> {
-    return visaAttachmentsRepository.softDelete(id);
+    const attachment = await visaAttachmentsRepository.findById(id);
+    const success = await visaAttachmentsRepository.softDelete(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getVisaAttachmentFile(attUuid: string): Promise<CandVisaAttachment> {
+    const attachment = await visaAttachmentsRepository.findByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 
   async createVisaAttachment(visaUuid: string, data: Partial<InsertVisaAttachment>, createdByUuid?: string): Promise<CandVisaAttachment> {
@@ -275,7 +303,16 @@ export class DocumentsService {
   }
 
   async deleteEducationAttachment(id: number): Promise<boolean> {
-    return educationAttachmentsRepository.softDelete(id);
+    const attachment = await educationAttachmentsRepository.findById(id);
+    const success = await educationAttachmentsRepository.softDelete(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getEducationAttachmentFile(attUuid: string): Promise<CandEducationAttachment> {
+    const attachment = await educationAttachmentsRepository.findByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 
   async createEducationAttachment(eduUuid: string, data: Partial<InsertEducationAttachment>, createdByUuid?: string): Promise<CandEducationAttachment> {
@@ -349,7 +386,16 @@ export class DocumentsService {
   }
 
   async deleteLicenseAttachment(id: number): Promise<boolean> {
-    return licenseAttachmentsRepository.softDelete(id);
+    const attachment = await licenseAttachmentsRepository.findById(id);
+    const success = await licenseAttachmentsRepository.softDelete(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getLicenseAttachmentFile(attUuid: string): Promise<CandLicenseAttachment> {
+    const attachment = await licenseAttachmentsRepository.findByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 
   async createLicenseAttachment(licUuid: string, data: Partial<InsertLicenseAttachment>, createdByUuid?: string): Promise<CandLicenseAttachment> {
@@ -423,7 +469,16 @@ export class DocumentsService {
   }
 
   async deleteTrainingAttachment(id: number): Promise<boolean> {
-    return trainingAttachmentsRepository.softDelete(id);
+    const attachment = await trainingAttachmentsRepository.findById(id);
+    const success = await trainingAttachmentsRepository.softDelete(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getTrainingAttachmentFile(attUuid: string): Promise<CandTrainingAttachment> {
+    const attachment = await trainingAttachmentsRepository.findByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 
   async createTrainingAttachment(trainUuid: string, data: Partial<InsertTrainingAttachment>, createdByUuid?: string): Promise<CandTrainingAttachment> {
@@ -497,7 +552,16 @@ export class DocumentsService {
   }
 
   async deleteSeaServiceAttachment(id: number): Promise<boolean> {
-    return seaServiceAttachmentsRepository.softDelete(id);
+    const attachment = await seaServiceAttachmentsRepository.findById(id);
+    const success = await seaServiceAttachmentsRepository.softDelete(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getSeaServiceAttachmentFile(attUuid: string): Promise<CandSeaServiceAttachment> {
+    const attachment = await seaServiceAttachmentsRepository.findByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 
   async createSeaServiceAttachment(seaUuid: string, data: Partial<InsertSeaServiceAttachment>, createdByUuid?: string): Promise<CandSeaServiceAttachment> {
@@ -571,7 +635,16 @@ export class DocumentsService {
   }
 
   async deleteAdditionalInfoAttachment(id: number): Promise<boolean> {
-    return additionalInfoAttachmentsRepository.softDelete(id);
+    const attachment = await additionalInfoAttachmentsRepository.findById(id);
+    const success = await additionalInfoAttachmentsRepository.softDelete(id);
+    await deleteAttachmentFile(attachment?.filePath);
+    return success;
+  }
+
+  async getAdditionalInfoAttachmentFile(attUuid: string): Promise<CandAdditionalInfoAttachment> {
+    const attachment = await additionalInfoAttachmentsRepository.findByUuid(attUuid);
+    if (!attachment) throw new Error(`Attachment not found: ${attUuid}`);
+    return attachment;
   }
 
   async createAdditionalInfoAttachment(infoUuid: string, data: Partial<InsertAdditionalInfoAttachment>, createdByUuid?: string): Promise<CandAdditionalInfoAttachment> {

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const auditColumns = {
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
   createdByUuid: text("created_by_uuid"),
   updatedByUuid: text("updated_by_uuid"),
   isDeleted: boolean("is_deleted").default(false),
@@ -13,7 +13,7 @@ const auditColumns = {
 
 const rotationDraftsAuditColumns = {
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
   isDeleted: boolean("is_deleted").default(false),
   isSync: boolean("is_sync").default(false),
 };

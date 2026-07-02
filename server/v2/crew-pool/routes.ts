@@ -199,6 +199,18 @@ router.delete("/crew/:crewUuid/debriefings/:debriefingUuid/attachments/:attUuid"
 router.get("/debriefing-attachments/:attUuid/raw", crewBriefingController.serveDebriefingAttachment);
 
 // ============================================
+// ATTACHMENT RAW STREAMING ROUTES (filesystem)
+// ============================================
+router.get("/documents/attachments/:attUuid/raw", crewDocumentsController.serveAttachment);
+router.get("/visas/attachments/:attUuid/raw", crewVisasController.serveAttachment);
+router.get("/education/attachments/:attUuid/raw", crewEducationController.serveAttachment);
+router.get("/licenses/attachments/:attUuid/raw", crewLicensesController.serveAttachment);
+router.get("/training/attachments/:attUuid/raw", crewTrainingController.serveAttachment);
+router.get("/sea-service/attachments/:attUuid/raw", crewSeaServiceController.serveAttachment);
+router.get("/medical/attachments/:attUuid/raw", crewMedicalController.serveMedicalAttachment);
+router.get("/doctor-visits/attachments/:attUuid/raw", crewMedicalController.serveDoctorVisitAttachment);
+
+// ============================================
 // TRANSFER FROM RECRUITMENT
 // ============================================
 router.post("/transfer/recruitment", crewTransferController.transferFromRecruitment);

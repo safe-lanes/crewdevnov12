@@ -5,6 +5,49 @@ import {
   insertCrewDoctorVisitSchema,
 } from "@shared/v2/crew-pool/types";
 import { z } from "zod";
+import {
+  fileStorageService,
+  AttachmentValidationError,
+} from "../../shared/fileStorageService.js";
+import {
+  serveAttachmentFromFilePath,
+  decodeStoredFile,
+} from "../../shared/serveAttachmentHelper.js";
+import { resolveCrewFolderByEntity } from "../../shared/attachmentScope.js";
+import { crewPreJoiningMedicals, crewDoctorVisits } from "@shared/v2/crew-pool/schema";
+
+function normalizeForServe(att: {
+  fileName?: string | null;
+  fileType?: string | null;
+  filePath?: string | null;
+  fileData?: string | null;
+}) {
+  const filePathIsDataUrl = !!att.filePath && att.filePath.startsWith("data:");
+  return {
+    filePath: filePathIsDataUrl ? null : att.filePath ?? null,
+    fileData: att.fileData ?? (filePathIsDataUrl ? att.filePath ?? null : null),
+    fileName: att.fileName ?? null,
+    fileType: att.fileType ?? null,
+  };
+}
+
+async function persistIncoming(
+  moduleName: string,
+  fileName: string,
+  rawValue: string,
+  fileType?: string | null,
+): Promise<{ filePath: string; fileData: null }> {
+  const decoded = decodeStoredFile(rawValue, fileType);
+  if (decoded) {
+    const filePath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath, fileData: null };
+  }
+  return { filePath: rawValue, fileData: null };
+}
 
 export const crewMedicalController = {
   async getMedicals(req: Request, res: Response) {
@@ -39,9 +82,10 @@ export const crewMedicalController = {
       const validatedData = insertCrewPreJoiningMedicalSchema
         .omit({ medUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const medical = await crewMedicalService.createMedical(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.status(201).json(medical);
     } catch (error: any) {
@@ -60,9 +104,10 @@ export const crewMedicalController = {
       const validatedData = insertCrewPreJoiningMedicalSchema
         .partial()
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const medical = await crewMedicalService.updateMedical(
         medUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(medical);
     } catch (error: any) {
@@ -92,26 +137,42 @@ export const crewMedicalController = {
     try {
       const { medUuid } = req.params;
       const { fileName, filePath, fileUrl, fileType, mimeType, fileSize } = req.body;
-      const resolvedFilePath = filePath || fileUrl || '';
+      const rawValue = filePath || fileUrl || "";
       const resolvedFileType = fileType || mimeType || "application/octet-stream";
 
-      if (!fileName || !resolvedFilePath) {
+      if (!fileName || !rawValue) {
         return res
           .status(400)
           .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
+      const crewFolder = await resolveCrewFolderByEntity(
+        crewPreJoiningMedicals,
+        crewPreJoiningMedicals.medUuid,
+        medUuid,
+      );
+      const stored = await persistIncoming(
+        `crew-pool/medical/${crewFolder}`,
+        fileName,
+        rawValue,
+        resolvedFileType,
+      );
+
       const attachment = await crewMedicalService.addMedicalAttachment(
         medUuid,
         {
           fileName,
-          filePath: resolvedFilePath,
+          filePath: stored.filePath,
+          fileData: stored.fileData,
           fileType: resolvedFileType,
           fileSize: fileSize || "0",
         }
       );
       res.status(201).json(attachment);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: "Failed to add attachment" });
     }
   },
@@ -123,6 +184,20 @@ export const crewMedicalController = {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to remove attachment" });
+    }
+  },
+
+  async serveMedicalAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      const attachment =
+        await crewMedicalService.getMedicalAttachmentFile(attUuid);
+      await serveAttachmentFromFilePath(res, normalizeForServe(attachment));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      return res.status(500).json({ error: "Failed to load attachment" });
     }
   },
 
@@ -145,9 +220,10 @@ export const crewMedicalController = {
       const validatedData = insertCrewDoctorVisitSchema
         .omit({ visitUuid: true, crewUuid: true })
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const visit = await crewMedicalService.createVisit(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.status(201).json(visit);
     } catch (error: any) {
@@ -166,9 +242,10 @@ export const crewMedicalController = {
       const validatedData = insertCrewDoctorVisitSchema
         .partial()
         .parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const visit = await crewMedicalService.updateVisit(
         visitUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(visit);
     } catch (error: any) {
@@ -198,26 +275,42 @@ export const crewMedicalController = {
     try {
       const { visitUuid } = req.params;
       const { fileName, filePath, fileUrl, fileType, mimeType, fileSize } = req.body;
-      const resolvedFilePath = filePath || fileUrl || '';
+      const rawValue = filePath || fileUrl || "";
       const resolvedFileType = fileType || mimeType || "application/octet-stream";
 
-      if (!fileName || !resolvedFilePath) {
+      if (!fileName || !rawValue) {
         return res
           .status(400)
           .json({ error: "fileName and filePath/fileUrl are required" });
       }
 
+      const crewFolder = await resolveCrewFolderByEntity(
+        crewDoctorVisits,
+        crewDoctorVisits.visitUuid,
+        visitUuid,
+      );
+      const stored = await persistIncoming(
+        `crew-pool/medical/${crewFolder}`,
+        fileName,
+        rawValue,
+        resolvedFileType,
+      );
+
       const attachment = await crewMedicalService.addVisitAttachment(
         visitUuid,
         {
           fileName,
-          filePath: resolvedFilePath,
+          filePath: stored.filePath,
+          fileData: stored.fileData,
           fileType: resolvedFileType,
           fileSize: fileSize || "0",
         }
       );
       res.status(201).json(attachment);
     } catch (error) {
+      if (error instanceof AttachmentValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: "Failed to add attachment" });
     }
   },
@@ -229,6 +322,20 @@ export const crewMedicalController = {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to remove attachment" });
+    }
+  },
+
+  async serveDoctorVisitAttachment(req: Request, res: Response) {
+    try {
+      const { attUuid } = req.params;
+      const attachment =
+        await crewMedicalService.getVisitAttachmentFile(attUuid);
+      await serveAttachmentFromFilePath(res, normalizeForServe(attachment));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: "Attachment not found" });
+      }
+      return res.status(500).json({ error: "Failed to load attachment" });
     }
   },
 

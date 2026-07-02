@@ -553,7 +553,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     'A1.3': false,
   });
   
-  const mapApiAttachments = (attachments: any[] | undefined): FileAttachment[] => {
+  const mapApiAttachments = (attachments: any[] | undefined, basePath?: string): FileAttachment[] => {
     if (!attachments) return [];
     return attachments.map(att => ({
       id: att.attUuid || String(att.id),
@@ -565,6 +565,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       uploadedAt: att.createdAt || new Date().toISOString(),
       attUuid: att.attUuid,
       isDeleted: att.isDeleted || false,
+      viewUrl: basePath && att.attUuid ? `${basePath}/${att.attUuid}/raw` : undefined,
     }));
   };
   
@@ -1173,7 +1174,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issued: doc.issued || '',
         expiry: doc.expiry || '',
         issuingAuthority: doc.issuingAuthority || '',
-        attachments: mapApiAttachments(doc.attachments),
+        attachments: mapApiAttachments(doc.attachments, '/api/v2/recruitment/documents/attachments'),
       }));
       setFormData(prev => ({ ...prev, documents: mapped }));
     }
@@ -1190,7 +1191,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issued: visa.issued || '',
         expiry: visa.expiry || '',
         visaType: visa.visaType || '',
-        attachments: mapApiAttachments(visa.attachments),
+        attachments: mapApiAttachments(visa.attachments, '/api/v2/recruitment/visas/attachments'),
       }));
       setFormData(prev => ({ ...prev, visas: mapped }));
     }
@@ -1207,7 +1208,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           schoolCollegeUniversity: edu.institution || '',
           subjectsField: edu.subjectsField || '',
           qualifications: edu.qualifications || '',
-          attachments: mapApiAttachments(edu.attachments),
+          attachments: mapApiAttachments(edu.attachments, '/api/v2/recruitment/education/attachments'),
         })),
       }));
     }
@@ -1227,7 +1228,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issued: lic.issued || '',
         expiry: lic.expiry || '',
         fromDatabase: !!(lic.licenseId && LICENSE_DCE_TEMPLATES.some(t => t.id === lic.licenseId)) || !!(lic.abbr || lic.requirement),
-        attachments: mapApiAttachments(lic.attachments),
+        attachments: mapApiAttachments(lic.attachments, '/api/v2/recruitment/licenses/attachments'),
       }));
       setFormData(prev => ({ ...prev, licenses: mapped }));
     }
@@ -1248,7 +1249,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         expiry: course.expiry || '',
         fromDatabase: !!(course.courseId && adminCompanyTrainings.some(ct => ct.companyId === course.courseId)) || !!(course.abbr || course.requirement),
         sortOrder: undefined as number | undefined,
-        attachments: mapApiAttachments(course.attachments),
+        attachments: mapApiAttachments(course.attachments, '/api/v2/recruitment/training/attachments'),
       }));
       if (adminCompanyTrainings.length > 0) {
         const orderMap = new Map<string, number>();
@@ -1284,7 +1285,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           from: service.fromDate || '',
           to: service.toDate || '',
           periodMonths: service.periodMonths || '',
-          attachments: mapApiAttachments(service.attachments),
+          attachments: mapApiAttachments(service.attachments, '/api/v2/recruitment/sea-service/attachments'),
         })),
       }));
     }
@@ -1299,7 +1300,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           serverId: ai.id,
           information: ai.information || '',
           response: ai.response || '',
-          attachments: mapApiAttachments(ai.attachments),
+          attachments: mapApiAttachments(ai.attachments, '/api/v2/recruitment/additional-info/attachments'),
         })),
       }));
     }
@@ -1555,6 +1556,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b1/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1574,6 +1576,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b2/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1593,6 +1596,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b3/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1612,6 +1616,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b4/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1631,6 +1636,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b5/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1650,6 +1656,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b6/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1669,6 +1676,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b8/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,

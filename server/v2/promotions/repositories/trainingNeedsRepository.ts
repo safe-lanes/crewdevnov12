@@ -33,7 +33,7 @@ export class TrainingNeedsRepository {
     return results[0];
   }
 
-  async replaceForReview(reviewUuid: string, needs: Omit<InsertPromoTrainingNeedV2, "tnUuid" | "reviewUuid">[]): Promise<PromoTrainingNeedV2[]> {
+  async replaceForReview(reviewUuid: string, needs: Omit<InsertPromoTrainingNeedV2, "tnUuid" | "reviewUuid">[], auditUserUuid: string | null = null): Promise<PromoTrainingNeedV2[]> {
     const db = getDb();
     const existing = await db
       .select()
@@ -44,7 +44,7 @@ export class TrainingNeedsRepository {
       if (existing.length > 0) {
         await db
           .update(promoTrainingNeedsV2)
-          .set({ isDeleted: true, updatedAt: new Date() })
+          .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
           .where(and(eq(promoTrainingNeedsV2.reviewUuid, reviewUuid), eq(promoTrainingNeedsV2.isDeleted, false)));
       }
       return [];
@@ -71,6 +71,7 @@ export class TrainingNeedsRepository {
             completionDate: n.completionDate,
             sortOrder: i,
             updatedAt: new Date(),
+            updatedByUuid: auditUserUuid,
           })
           .where(eq(promoTrainingNeedsV2.id, match.id))
           .returning();
@@ -78,17 +79,17 @@ export class TrainingNeedsRepository {
       } else {
         const inserted = await db
           .insert(promoTrainingNeedsV2)
-          .values({ ...n, tnUuid: uuidv4(), reviewUuid, sortOrder: i })
+          .values({ ...n, tnUuid: uuidv4(), reviewUuid, sortOrder: i, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid })
           .returning();
         results.push(inserted[0]);
       }
     }
 
-    const unusedIds = existing.filter(e => !usedExistingIds.includes(e.id)).map(e => e.id);
+    const unusedIds = existing.filter((e: any) => !usedExistingIds.includes(e.id)).map((e: any) => e.id);
     if (unusedIds.length > 0) {
       await db
         .update(promoTrainingNeedsV2)
-        .set({ isDeleted: true, updatedAt: new Date() })
+        .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
         .where(inArray(promoTrainingNeedsV2.id, unusedIds));
     }
 

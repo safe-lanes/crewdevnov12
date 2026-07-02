@@ -10,12 +10,50 @@ import type {
   DaTestRecordV2,
   InsertDaTestRecordV2,
 } from "../../../../shared/v2/drugs-alcohol/schema";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+import { resolveVesselFolder } from "../../shared/attachmentScope.js";
 
 const testRecordsRepository = new TestRecordsRepository();
 const equipmentRepository = new EquipmentRepository();
 const personnelTestedRepository = new PersonnelTestedRepository();
 const signaturesRepository = new SignaturesRepository();
 const attachmentsRepository = new AttachmentsRepository();
+
+/**
+ * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
+ * a base64 data URL in file_path (no disk file) — those are skipped.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
+
+/**
+ * Persist a new attachment value to disk when it is base64; otherwise keep the
+ * provided relative path. Never returns base64 for storage so new uploads only
+ * ever land on disk while already-stored relative paths are preserved on round
+ * trips.
+ */
+async function persistAttachmentItem(
+  moduleName: string,
+  fileName: string,
+  data?: string | null,
+  filePath?: string | null,
+  fileType?: string | null,
+): Promise<{ filePath: string | null; fileData: null }> {
+  const raw = data || filePath || "";
+  const decoded = decodeStoredFile(raw, fileType ?? null);
+  if (decoded) {
+    const storedPath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath: storedPath, fileData: null };
+  }
+  return { filePath: filePath || null, fileData: null };
+}
 
 function applyAuditUser<T extends object>(
   data: T,
@@ -71,10 +109,13 @@ function transformToV1Response(record: TestRecordWithChildren): any {
 
   const attachmentsJson = record.attachments.map((a) => ({
     id: a.attUuid,
-    name: a.filename,
+    attUuid: a.attUuid,
+    name: a.fileName,
     type: a.fileType,
     size: a.fileSize,
     data: a.fileData,
+    filePath: a.filePath,
+    viewUrl: `/api/v2/drugs-alcohol/attachments/${a.attUuid}/raw`,
     uploadedAt: a.uploadDate,
   }));
 
@@ -233,7 +274,8 @@ export const testRecordsService = {
 
     const record = await testRecordsRepository.create(parentData);
 
-    await this._createChildren(record.daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid);
+    const vesselFolder = await resolveVesselFolder(data.vesselId);
+    await this._createChildren(record.daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid, vesselFolder);
 
     return this.getByUuid(record.daUuid);
   },
@@ -299,7 +341,8 @@ export const testRecordsService = {
 
     await testRecordsRepository.update(daUuid, parentData);
 
-    await this._upsertChildren(daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid);
+    const vesselFolder = await resolveVesselFolder(data.vesselId || existing.vesselId);
+    await this._upsertChildren(daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid, vesselFolder);
 
     return this.getByUuid(daUuid);
   },
@@ -489,6 +532,10 @@ export const testRecordsService = {
       throw new Error(`Test record not found: ${daUuid}`);
     }
 
+    // Capture attachment disk paths before soft-deleting so the backing files
+    // can be removed from disk afterwards.
+    const attachments = await attachmentsRepository.findByTestRecordUuid(daUuid);
+
     await Promise.all([
       testRecordsRepository.softDelete(daUuid),
       equipmentRepository.softDeleteByTestRecordUuid(daUuid),
@@ -496,6 +543,10 @@ export const testRecordsService = {
       signaturesRepository.softDeleteByTestRecordUuid(daUuid),
       attachmentsRepository.softDeleteByTestRecordUuid(daUuid),
     ]);
+
+    await Promise.all(
+      attachments.map((a) => deleteAttachmentFile(a.filePath))
+    );
   },
 
   async _createChildren(
@@ -504,7 +555,8 @@ export const testRecordsService = {
     personnelTested?: string,
     masterDeputySignature?: string,
     attachmentFile?: string,
-    auditUserUuid?: string
+    auditUserUuid?: string,
+    vesselFolder?: string
   ): Promise<void> {
     const promises: Promise<any>[] = [];
 
@@ -588,16 +640,23 @@ export const testRecordsService = {
         if (Array.isArray(items)) {
           for (let i = 0; i < items.length; i++) {
             const item = items[i];
+            const stored = await persistAttachmentItem(
+              `${vesselFolder || "unknown-vessel"}/drugs-alcohol`,
+              item.name || "attachment",
+              item.data,
+              item.filePath,
+              item.type,
+            );
             promises.push(
               attachmentsRepository.create({
                 testRecordUuid,
-                filename: item.name || null,
+                fileName: item.name || null,
                 fileType: item.type || null,
                 fileSize: item.size?.toString() || null,
-                fileData: item.data || null,
+                fileData: stored.fileData,
                 uploadDate: item.uploadedAt || null,
                 uploadedBy: auditUserUuid || null,
-                filePath: item.filePath || null,
+                filePath: stored.filePath,
                 sortOrder: i,
                 createdByUuid: auditUserUuid || null,
                 updatedByUuid: auditUserUuid || null,
@@ -619,7 +678,8 @@ export const testRecordsService = {
     personnelTested?: string,
     masterDeputySignature?: string,
     attachmentFile?: string,
-    auditUserUuid?: string
+    auditUserUuid?: string,
+    vesselFolder?: string
   ): Promise<void> {
     const promises: Promise<any>[] = [];
 
@@ -789,15 +849,22 @@ export const testRecordsService = {
               const existing = await attachmentsRepository.findByUuid(attUuid);
               if (existing) {
                 keepUuids.push(attUuid);
+                const stored = await persistAttachmentItem(
+                  `${vesselFolder || "unknown-vessel"}/drugs-alcohol`,
+                  item.name || "attachment",
+                  item.data,
+                  item.filePath ?? existing.filePath,
+                  item.type,
+                );
                 promises.push(
                   attachmentsRepository.updateByUuid(attUuid, {
-                    filename: item.name || null,
+                    fileName: item.name || null,
                     fileType: item.type || null,
                     fileSize: item.size?.toString() || null,
-                    fileData: item.data || null,
+                    fileData: stored.fileData,
                     uploadDate: item.uploadedAt || null,
                     uploadedBy: auditUserUuid || null,
-                    filePath: item.filePath || null,
+                    filePath: stored.filePath,
                     sortOrder: i,
                     updatedByUuid: auditUserUuid || null,
                   })
@@ -805,15 +872,22 @@ export const testRecordsService = {
                 continue;
               }
             }
+            const stored = await persistAttachmentItem(
+              `${vesselFolder || "unknown-vessel"}/drugs-alcohol`,
+              item.name || "attachment",
+              item.data,
+              item.filePath,
+              item.type,
+            );
             const created = await attachmentsRepository.create({
               testRecordUuid,
-              filename: item.name || null,
+              fileName: item.name || null,
               fileType: item.type || null,
               fileSize: item.size?.toString() || null,
-              fileData: item.data || null,
+              fileData: stored.fileData,
               uploadDate: item.uploadedAt || null,
               uploadedBy: auditUserUuid || null,
-              filePath: item.filePath || null,
+              filePath: stored.filePath,
               sortOrder: i,
               createdByUuid: auditUserUuid || null,
               updatedByUuid: auditUserUuid || null,

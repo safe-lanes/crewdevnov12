@@ -50,7 +50,8 @@ export const ncReportsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const report = await ncReportsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const report = await ncReportsService.create({ ...req.body, auditUserUuid });
       res.status(201).json(report);
     } catch (error: any) {
       if (error.message?.includes("required")) {
@@ -64,7 +65,8 @@ export const ncReportsController = {
   async update(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
-      const report = await ncReportsService.update(uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const report = await ncReportsService.update(uuid, { ...req.body, auditUserUuid });
       res.json(report);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

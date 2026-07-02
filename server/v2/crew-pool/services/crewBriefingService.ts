@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
   CrewBriefingRepository,
   type CrewBriefingWithAttachments,
@@ -24,18 +25,42 @@ import type {
   CrewDebriefingAttachment,
 } from "../../../../shared/v2/crew-pool/types";
 import { resolveVesselUuid } from "./masterDataResolver";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+
+/**
+ * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
+ * a base64 data URL in file_path (no disk file) — those are skipped.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
+
+/**
+ * Persist a new reconcile attachment value to disk when it is base64; otherwise
+ * keep the provided relative path. Never returns base64 for storage.
+ */
+async function persistReconcileAttachment(
+  moduleName: string,
+  fileName: string,
+  filePath?: string,
+  fileData?: string,
+): Promise<{ filePath: string | null; fileData: null }> {
+  const raw = fileData || filePath || "";
+  const decoded = decodeStoredFile(raw, null);
+  if (decoded) {
+    const storedPath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath: storedPath, fileData: null };
+  }
+  return { filePath: filePath || null, fileData: null };
+}
 
 const crewBriefingRepository = new CrewBriefingRepository();
-
-// Helper to extract and apply audit user fields
-function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
-  const auditUserUuid = (data as any).auditUserUuid || null;
-  const result = { ...data } as any;
-  delete result.auditUserUuid;
-  if (isCreate) result.createdByUuid = auditUserUuid;
-  result.updatedByUuid = auditUserUuid;
-  return result;
-}
 
 // Resolve vessel name/UUID to UUID; preserve vesselName text for display fallback
 async function resolveVesselField<T extends Record<string, any>>(
@@ -73,7 +98,7 @@ export const crewBriefingService = {
 
   async createBriefing(
     crewUuid: string,
-    data: Omit<InsertCrewBriefing, "briefingUuid" | "crewUuid"> & { vessel?: string }
+    data: Omit<InsertCrewBriefing, "briefingUuid" | "crewUuid"> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewBriefing> {
     await crewMembersService.getByUuid(crewUuid);
     const resolvedData = await resolveVesselField(data);
@@ -83,7 +108,7 @@ export const crewBriefingService = {
 
   async updateBriefing(
     briefingUuid: string,
-    data: Partial<InsertCrewBriefing> & { vessel?: string }
+    data: Partial<InsertCrewBriefing> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewBriefing> {
     await this.getBriefingByUuid(briefingUuid);
     const resolvedData = await resolveVesselField(data);
@@ -115,10 +140,13 @@ export const crewBriefingService = {
   },
 
   async removeBriefingAttachment(attUuid: string): Promise<void> {
+    const attachment =
+      await crewBriefingRepository.findBriefingAttachmentByUuid(attUuid);
     const success = await crewBriefingRepository.softDeleteBriefingAttachment(attUuid);
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+    await deleteAttachmentFile(attachment?.filePath);
   },
 
   async getBriefingAttachmentFile(
@@ -148,7 +176,7 @@ export const crewBriefingService = {
 
   async createDebriefing(
     crewUuid: string,
-    data: Omit<InsertCrewDebriefing, "debriefingUuid" | "crewUuid"> & { vessel?: string }
+    data: Omit<InsertCrewDebriefing, "debriefingUuid" | "crewUuid"> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewDebriefing> {
     await crewMembersService.getByUuid(crewUuid);
     const resolvedData = await resolveVesselField(data);
@@ -158,7 +186,7 @@ export const crewBriefingService = {
 
   async updateDebriefing(
     debriefingUuid: string,
-    data: Partial<InsertCrewDebriefing> & { vessel?: string }
+    data: Partial<InsertCrewDebriefing> & { vessel?: string; auditUserUuid?: string | null }
   ): Promise<CrewDebriefing> {
     await this.getDebriefingByUuid(debriefingUuid);
     const resolvedData = await resolveVesselField(data);
@@ -190,10 +218,13 @@ export const crewBriefingService = {
   },
 
   async removeDebriefingAttachment(attUuid: string): Promise<void> {
+    const attachment =
+      await crewBriefingRepository.findDebriefingAttachmentByUuid(attUuid);
     const success = await crewBriefingRepository.softDeleteDebriefingAttachment(attUuid);
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+    await deleteAttachmentFile(attachment?.filePath);
   },
 
   async getDebriefingAttachmentFile(
@@ -229,7 +260,8 @@ export const crewBriefingService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewBriefing[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -250,7 +282,7 @@ export const crewBriefingService = {
         if (item.isDeleted && item.briefingUuid) {
           await tx
             .update(crewBriefings)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewBriefings.briefingUuid, item.briefingUuid));
           continue;
         }
@@ -260,7 +292,7 @@ export const crewBriefingService = {
         if (item.briefingUuid) {
           const [updated] = await tx
             .update(crewBriefings)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewBriefings.briefingUuid, item.briefingUuid))
             .returning();
           briefingUuid = item.briefingUuid;
@@ -269,13 +301,13 @@ export const crewBriefingService = {
           briefingUuid = uuidv4();
           const [created] = await tx
             .insert(crewBriefings)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               briefingUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -283,15 +315,21 @@ export const crewBriefingService = {
         if (item.attachments) {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
-              await tx.insert(crewBriefingAttachments).values({
+              const stored = await persistReconcileAttachment(
+                "crew-pool/crew-briefing",
+                att.fileName,
+                att.filePath,
+                att.fileData,
+              );
+              await tx.insert(crewBriefingAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 briefingUuid,
                 fileName: att.fileName,
-                filePath: att.filePath || null,
-                fileData: att.fileData || null,
+                filePath: stored.filePath,
+                fileData: stored.fileData,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }
@@ -317,7 +355,8 @@ export const crewBriefingService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewDebriefing[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -338,7 +377,7 @@ export const crewBriefingService = {
         if (item.isDeleted && item.debriefingUuid) {
           await tx
             .update(crewDebriefings)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewDebriefings.debriefingUuid, item.debriefingUuid));
           continue;
         }
@@ -348,7 +387,7 @@ export const crewBriefingService = {
         if (item.debriefingUuid) {
           const [updated] = await tx
             .update(crewDebriefings)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewDebriefings.debriefingUuid, item.debriefingUuid))
             .returning();
           debriefingUuid = item.debriefingUuid;
@@ -357,13 +396,13 @@ export const crewBriefingService = {
           debriefingUuid = uuidv4();
           const [created] = await tx
             .insert(crewDebriefings)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               debriefingUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -371,15 +410,21 @@ export const crewBriefingService = {
         if (item.attachments) {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
-              await tx.insert(crewDebriefingAttachments).values({
+              const stored = await persistReconcileAttachment(
+                "crew-pool/crew-debriefing",
+                att.fileName,
+                att.filePath,
+                att.fileData,
+              );
+              await tx.insert(crewDebriefingAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 debriefingUuid,
                 fileName: att.fileName,
-                filePath: att.filePath || null,
-                fileData: att.fileData || null,
+                filePath: stored.filePath,
+                fileData: stored.fileData,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }

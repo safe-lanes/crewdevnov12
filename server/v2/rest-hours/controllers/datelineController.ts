@@ -32,7 +32,8 @@ export const datelineController = {
 
   async create(req: Request, res: Response) {
     try {
-      const adjustment = await datelineService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const adjustment = await datelineService.create({ ...req.body, auditUserUuid });
       res.status(201).json(adjustment);
     } catch (error: any) {
       if (error.message?.includes("required")) {
@@ -46,7 +47,8 @@ export const datelineController = {
   async update(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
-      const adjustment = await datelineService.update(uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const adjustment = await datelineService.update(uuid, { ...req.body, auditUserUuid });
       res.json(adjustment);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

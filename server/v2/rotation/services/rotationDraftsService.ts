@@ -147,6 +147,7 @@ export const rotationDraftsService = {
     }
     
     // Apply audit user fields
+    const auditUserUuid = (data as any).auditUserUuid ?? null;
     const auditedDraftData = applyAuditUser(draftData, true);
     
     // Create the draft first
@@ -161,7 +162,7 @@ export const rotationDraftsService = {
             draftUuid: draft.draftUuid,
             vesselUuid: vesselUuids[i],
             sortOrder: i,
-          });
+          }, auditUserUuid);
         }
       } catch (e) {
         console.error("Failed to parse vessels JSON:", e);
@@ -176,7 +177,7 @@ export const rotationDraftsService = {
           draftUuid: draft.draftUuid,
           rankName: rankNames[i],
           sortOrder: i,
-        });
+        }, auditUserUuid);
       }
     }
     
@@ -193,7 +194,7 @@ export const rotationDraftsService = {
             crewUuid: assignment.crewUuid,
             signOnDate: assignment.joiningDate,
             contractPeriod: assignment.contractPeriod || 3,
-          });
+          }, auditUserUuid);
         }
       } catch (e) {
         console.error("Failed to parse assignments JSON:", e);
@@ -221,6 +222,7 @@ export const rotationDraftsService = {
     }
     
     // Apply audit user fields
+    const auditUserUuid = (data as any).auditUserUuid ?? null;
     const draftData = applyAuditUser(rawDraftData, false);
     
     // UPSERT LOGIC: Update existing records, create new ones, soft-delete removed ones
@@ -244,24 +246,24 @@ export const rotationDraftsService = {
           
           if (activeVessel) {
             // Update existing active record
-            await rotationDraftVesselsRepository.update(activeVessel.rvUuid, { sortOrder: i });
+            await rotationDraftVesselsRepository.update(activeVessel.rvUuid, { sortOrder: i }, auditUserUuid);
           } else if (deletedVessel) {
             // Reactivate soft-deleted record
-            await rotationDraftVesselsRepository.reactivate(deletedVessel.rvUuid, { sortOrder: i });
+            await rotationDraftVesselsRepository.reactivate(deletedVessel.rvUuid, { sortOrder: i }, auditUserUuid);
           } else {
             // Create new record
             await rotationDraftVesselsRepository.create({
               draftUuid,
               vesselUuid,
               sortOrder: i,
-            });
+            }, auditUserUuid);
           }
         }
         
         // Soft-delete active vessels that are no longer in the list
         for (const activeVessel of activeVessels) {
           if (!incomingVesselSet.has(activeVessel.vesselUuid)) {
-            await rotationDraftVesselsRepository.softDelete(activeVessel.rvUuid);
+            await rotationDraftVesselsRepository.softDelete(activeVessel.rvUuid, auditUserUuid);
           }
         }
       } catch (e) {
@@ -287,24 +289,24 @@ export const rotationDraftsService = {
         
         if (activeRank) {
           // Update existing active record
-          await rotationDraftRanksRepository.update(activeRank.rrUuid, { sortOrder: i });
+          await rotationDraftRanksRepository.update(activeRank.rrUuid, { sortOrder: i }, auditUserUuid);
         } else if (deletedRank) {
           // Reactivate soft-deleted record
-          await rotationDraftRanksRepository.reactivate(deletedRank.rrUuid, { sortOrder: i });
+          await rotationDraftRanksRepository.reactivate(deletedRank.rrUuid, { sortOrder: i }, auditUserUuid);
         } else {
           // Create new record
           await rotationDraftRanksRepository.create({
             draftUuid,
             rankName,
             sortOrder: i,
-          });
+          }, auditUserUuid);
         }
       }
       
       // Soft-delete active ranks that are no longer in the list
       for (const activeRank of activeRanks) {
         if (!incomingRankSet.has(activeRank.rankName)) {
-          await rotationDraftRanksRepository.softDelete(activeRank.rrUuid);
+          await rotationDraftRanksRepository.softDelete(activeRank.rrUuid, auditUserUuid);
         }
       }
     }
@@ -372,17 +374,17 @@ export const rotationDraftsService = {
           if (existingEntry) {
             // Update existing active record
             processedEntryUuids.add(existingEntry.entryUuid);
-            await rotationEntriesRepository.update(existingEntry.entryUuid, entryData);
+            await rotationEntriesRepository.update(existingEntry.entryUuid, entryData, auditUserUuid);
           } else if (deletedEntry) {
             // Reactivate soft-deleted record
             processedEntryUuids.add(deletedEntry.entryUuid);
-            await rotationEntriesRepository.reactivate(deletedEntry.entryUuid, entryData);
+            await rotationEntriesRepository.reactivate(deletedEntry.entryUuid, entryData, auditUserUuid);
           } else {
             // Create new record
             const newEntry = await rotationEntriesRepository.create({
               draftUuid,
               ...entryData,
-            });
+            }, auditUserUuid);
             processedEntryUuids.add(newEntry.entryUuid);
           }
         }
@@ -390,7 +392,7 @@ export const rotationDraftsService = {
         // Soft-delete active entries that are no longer in the list
         for (const activeEntry of activeEntries) {
           if (!processedEntryUuids.has(activeEntry.entryUuid)) {
-            await rotationEntriesRepository.softDelete(activeEntry.entryUuid);
+            await rotationEntriesRepository.softDelete(activeEntry.entryUuid, auditUserUuid);
           }
         }
       } catch (e) {

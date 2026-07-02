@@ -31,7 +31,8 @@ export const vesselGroupsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const record = await vesselGroupsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await vesselGroupsService.create({ ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       console.error("Error creating vessel group:", error);
@@ -45,7 +46,8 @@ export const vesselGroupsController = {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid vessel group ID" });
       }
-      const record = await vesselGroupsService.updateById(id, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await vesselGroupsService.updateById(id, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

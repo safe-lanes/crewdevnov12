@@ -266,7 +266,12 @@ export function DrugAlcoholTestForm_v2({
           name: '',
           date: '',
         },
-        attachments: stripNulls(parseJsonField(existingRecord.attachmentFile || existingRecord.attachments)) || [],
+        attachments: (stripNulls(parseJsonField(existingRecord.attachmentFile || existingRecord.attachments)) || []).map((att: any) => {
+          const attUuid = att?.attUuid || att?.id;
+          return attUuid && typeof attUuid === 'string'
+            ? { ...att, viewUrl: att.viewUrl || `/api/v2/drugs-alcohol/attachments/${attUuid}/raw` }
+            : att;
+        }),
       };
 
       form.reset(formData as DrugAlcoholTestFormData);

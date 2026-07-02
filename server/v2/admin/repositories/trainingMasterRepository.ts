@@ -3,6 +3,7 @@ import { getDb } from "../../db";
 import { admTrainingMasterV2 } from "../../../../shared/v2/admin/schema";
 import type { AdmTrainingMasterV2, InsertAdmTrainingMasterV2 } from "../../../../shared/v2/admin/types";
 import { v4 as uuidv4 } from "uuid";
+import { applyAuditUser } from "../utils/auditUser";
 
 export class TrainingMasterRepository {
   async findAll(): Promise<AdmTrainingMasterV2[]> {
@@ -84,12 +85,12 @@ export class TrainingMasterRepository {
     return results;
   }
 
-  async reorder(orders: Array<{ id: number; sortOrder: number }>): Promise<void> {
+  async reorder(orders: Array<{ id: number; sortOrder: number }>, auditUserUuid: string | null = null): Promise<void> {
     const db = getDb();
     for (const order of orders) {
       await db
         .update(admTrainingMasterV2)
-        .set({ sortOrder: order.sortOrder, updatedAt: new Date() })
+        .set(applyAuditUser({ sortOrder: order.sortOrder, auditUserUuid }))
         .where(eq(admTrainingMasterV2.id, order.id));
     }
   }

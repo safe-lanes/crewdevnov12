@@ -31,7 +31,8 @@ export const trainingMasterController = {
 
   async create(req: Request, res: Response) {
     try {
-      const record = await trainingMasterService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await trainingMasterService.create({ ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       console.error("Error creating training master:", error);
@@ -45,7 +46,8 @@ export const trainingMasterController = {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid training master ID" });
       }
-      const record = await trainingMasterService.updateById(id, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await trainingMasterService.updateById(id, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -81,7 +83,11 @@ export const trainingMasterController = {
       if (!Array.isArray(req.body)) {
         return res.status(400).json({ error: "Request body must be an array" });
       }
-      const results = await trainingMasterService.batchUpdate(req.body);
+      const updates = req.body.map((u: any) => ({
+        ...u,
+        data: { ...u.data, auditUserUuid: u?.data?.auditUserUuid ?? u?.auditUserUuid ?? null },
+      }));
+      const results = await trainingMasterService.batchUpdate(updates);
       res.json(results);
     } catch (error: any) {
       console.error("Error batch updating training masters:", error);
@@ -94,7 +100,8 @@ export const trainingMasterController = {
       if (!Array.isArray(req.body)) {
         return res.status(400).json({ error: "Request body must be an array of {id, sortOrder}" });
       }
-      await trainingMasterService.reorder(req.body);
+      const auditUserUuid = req.body[0]?.auditUserUuid ?? null;
+      await trainingMasterService.reorder(req.body, auditUserUuid);
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error reordering training masters:", error);

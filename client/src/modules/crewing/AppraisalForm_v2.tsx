@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Save, Send, Plus, MessageSquare, Edit2, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getCrewUserId } from "@/lib/crewUser";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
@@ -1030,6 +1031,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         overallRating: overallScore,
         submittedBy: "Current User", // TODO: Replace with actual user
         status: payload.status,
+        auditUserUuid: getCrewUserId(),
       };
 
       // Use PUT for existing appraisals, POST for new ones
@@ -1094,6 +1096,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage1`, {
         data: stageData,
         submittedBy: 'Current User',
+        auditUserUuid: getCrewUserId(),
       });
       return response.json();
     },
@@ -1169,6 +1172,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         competenceRating: competenceScore,
         behavioralRating: behavioralScore,
         overallRating: overallScore,
+        auditUserUuid: getCrewUserId(),
       });
       return response.json();
     },
@@ -1202,6 +1206,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage3`, {
         data: stageData,
         submittedBy: 'Current User',
+        auditUserUuid: getCrewUserId(),
       });
       return response.json();
     },

@@ -17,7 +17,8 @@ export const companyTrainingRequirementsController = {
       if (!Array.isArray(req.body)) {
         return res.status(400).json({ error: "Request body must be an array" });
       }
-      await companyTrainingRequirementsService.upsertBatch(req.body);
+      const auditUserUuid = req.body[0]?.auditUserUuid ?? null;
+      await companyTrainingRequirementsService.upsertBatch(req.body.map((r: any) => ({ auditUserUuid, ...r })));
       res.json({ success: true });
     } catch (error: any) {
       if (error.message?.includes("Invalid")) {

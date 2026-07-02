@@ -39,7 +39,9 @@ export const promotionHierarchiesController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid promotion hierarchy data", details: result.error.issues });
       }
-      const hierarchy = await promotionHierarchiesService.create(result.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const payload = { ...result.data, auditUserUuid };
+      const hierarchy = await promotionHierarchiesService.create(payload);
       res.status(201).json(hierarchy);
     } catch (error) {
       console.error("Error creating promotion hierarchy:", error);
@@ -60,7 +62,9 @@ export const promotionHierarchiesController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid promotion hierarchy data", details: result.error.issues });
       }
-      const hierarchy = await promotionHierarchiesService.updateById(id, result.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const payload = { ...result.data, auditUserUuid };
+      const hierarchy = await promotionHierarchiesService.updateById(id, payload);
       res.json(hierarchy);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { X, Paperclip, MessageSquare, CheckCircle2, Loader2, Pencil } from 'lucide-react';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { getCrewUserId } from '@/lib/crewUser';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,12 +65,15 @@ interface ChecklistVerification {
 
 interface ChecklistAttachment {
   id: string;
+  attUuid?: string;
   fileName: string;
   fileSize: number;
   uploadDate: string;
   type?: string;
   data?: string;
   uploadedAt?: string;
+  filePath?: string;
+  viewUrl?: string;
 }
 
 interface AssessmentPoint {
@@ -297,7 +301,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
         }
       });
       
-      await apiRequest('PATCH', `/api/v2/promotions/reviews/${reviewIdentifier}`, { checklistProgressData });
+      await apiRequest('PATCH', `/api/v2/promotions/reviews/${reviewIdentifier}`, { checklistProgressData, auditUserUuid: getCrewUserId() });
       
       queryClient.invalidateQueries({ queryKey: ['/api/v2/promotions/reviews'] });
       queryClient.invalidateQueries({ 
@@ -356,7 +360,10 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     size: att.fileSize,
     data: att.data ?? '',
     uploadedAt: att.uploadedAt ?? att.uploadDate ?? '',
-  });
+    attUuid: att.attUuid,
+    viewUrl: att.viewUrl,
+    ...(att.filePath ? { filePath: att.filePath } : {}),
+  } as FileAttachment);
 
   type FileAttachmentLike = FileAttachment & { uploadDate?: string };
   const toChecklistAttachment = (att: FileAttachmentLike): ChecklistAttachment => {
@@ -364,6 +371,7 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
     const isValidIso = !!isoParsed && !Number.isNaN(isoParsed.getTime()) && /\d{4}-\d{2}-\d{2}T/.test(att.uploadedAt ?? '');
     return {
       id: att.id,
+      attUuid: (att as any).attUuid,
       fileName: att.name,
       fileSize: att.size,
       uploadDate: isValidIso
@@ -372,6 +380,8 @@ export const PromotionChecklistForm: React.FC<PromotionChecklistFormProps> = ({
       type: att.type,
       data: att.data,
       uploadedAt: att.uploadedAt,
+      filePath: (att as any).filePath,
+      viewUrl: (att as any).viewUrl,
     };
   };
 

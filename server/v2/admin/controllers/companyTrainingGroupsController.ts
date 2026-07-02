@@ -20,7 +20,8 @@ export const companyTrainingGroupsController = {
       if (!VALID_CODES.includes(code.toUpperCase())) {
         return res.status(400).json({ error: `Invalid code: ${code}. Must be A-J` });
       }
-      const record = await companyTrainingGroupsService.updateByCode(code.toUpperCase(), req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await companyTrainingGroupsService.updateByCode(code.toUpperCase(), { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

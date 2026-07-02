@@ -21,6 +21,7 @@ import { useVesselTypesV2, useUsersV2, useFleetGroupsV2 } from '@/hooks/v2/useMa
 import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
 import type { LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { getCrewUserId } from '@/lib/crewUser';
 import { useToast } from '@/hooks/use-toast';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { calculateChecklistProgressFromJson } from '@/modules/promotions/checklistProgressUtils';
@@ -231,7 +232,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         ? `/api/v2/promotions/reviews/${effectiveReviewUuid}`
         : '/api/v2/promotions/reviews';
       const method = effectiveReviewUuid ? 'PATCH' : 'POST';
-      const response = await apiRequest(method, endpoint, data);
+      const response = await apiRequest(method, endpoint, { ...data, auditUserUuid: getCrewUserId() });
       return response;
     },
     onSuccess: (data: any, variables: SaveMutationVariables) => {
@@ -1545,7 +1546,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       : '/api/v2/promotions/reviews';
     const method = submitReviewUuid ? 'PATCH' : 'POST';
     
-    apiRequest(method, endpoint, reviewData)
+    apiRequest(method, endpoint, { ...reviewData, auditUserUuid: getCrewUserId() })
       .then((data: any) => {
         if (data?.reviewUuid) {
           setSavedReviewUuid(data.reviewUuid);

@@ -78,7 +78,8 @@ export const testRecordsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const record = await testRecordsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await testRecordsService.create({ ...req.body, auditUserUuid });
       res.status(201).json(record);
     } catch (error: any) {
       if (error.statusCode === 409) {
@@ -112,7 +113,8 @@ export const testRecordsController = {
   async update(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
-      const record = await testRecordsService.update(uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await testRecordsService.update(uuid, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.statusCode === 409) {

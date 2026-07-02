@@ -131,6 +131,17 @@ export class CrewVisasRepository {
   }
 
   // ============ Attachments ============
+  async findAttachmentByUuid(
+    attUuid: string
+  ): Promise<CrewVisaAttachment | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(crewVisasAttachments)
+      .where(eq(crewVisasAttachments.attUuid, attUuid));
+    return results[0];
+  }
+
   async findAttachmentsByVisaUuid(
     visaUuid: string
   ): Promise<CrewVisaAttachment[]> {
