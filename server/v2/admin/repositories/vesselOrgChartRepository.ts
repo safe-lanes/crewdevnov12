@@ -15,9 +15,10 @@ export class VesselOrgChartRepository {
   }
 
   async findDescendantRanks(identifier: string): Promise<AdmVesselOrgChartV2[]> {
+    const normalizedIdentifier = identifier.trim().toLowerCase();
     const allNodes = await this.findAll();
     const root = allNodes.find(
-      (n) => n.rankId === identifier || n.rank.toLowerCase() === identifier.toLowerCase(),
+      (n) => n.rankId.toLowerCase() === normalizedIdentifier || n.rank.toLowerCase() === normalizedIdentifier,
     );
     if (!root) return [];
 
