@@ -2070,15 +2070,6 @@ export function DrugAlcoholTestForm_v2({
             </Button>
             <Button
               type="button"
-              variant="outline"
-              onClick={handleSaveDraft}
-              className="bg-[#5fa5fa] hover:bg-[#5fa5fa]/90 text-white border-0 px-6"
-              data-testid="button-save-form"
-            >
-              Save
-            </Button>
-            <Button
-              type="button"
               onClick={form.handleSubmit(handleFormSubmit, handleFormError)}
               className="bg-green-600 hover:bg-green-700 text-white px-6"
               data-testid="button-submit-form"

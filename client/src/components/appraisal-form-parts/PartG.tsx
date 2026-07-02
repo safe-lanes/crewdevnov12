@@ -282,15 +282,6 @@ const PartGComponent: React.FC<PartGProps> = ({
             <div className="flex justify-end gap-4 mt-6">
               <Button 
                 type="button"
-                className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8"
-                onClick={handleSaveDraft}
-                disabled={saveAppraisalMutation.isPending}
-                data-testid="button-save-draft-part-g"
-              >
-                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
-              </Button>
-              <Button 
-                type="button"
                 className="bg-green-600 hover:bg-green-700 text-white px-8" 
                 onClick={() => handleStageSubmission('stage3')} 
                 disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'reviewed'}
