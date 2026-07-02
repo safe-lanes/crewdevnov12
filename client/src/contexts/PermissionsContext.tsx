@@ -40,7 +40,7 @@ interface PermissionsContextType {
 
 const PermissionsContext = createContext<PermissionsContextType | null>(null);
 
-function getUserProfile(): ExtractedUserProfile | null {
+export function getUserProfile(): ExtractedUserProfile | null {
   try {
     const profile = getDecryptedLocalStorageItem('userProfile', true);
     if (profile != null) {
