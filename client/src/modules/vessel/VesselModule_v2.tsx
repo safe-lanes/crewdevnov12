@@ -660,7 +660,7 @@ export function VesselModule_v2(): JSX.Element {
     }, [permissions, canView]);
 
     const isShipUser = userType === 'Ship';
-    const showAppraisalColumn = permissions.length === 0 || canView('Appraisal');
+    const showAppraisalColumn = permissions.length === 0 || canView('Appraisal') || isShipUser;
     const showHandoverColumn = permissions.length === 0 || canView('Handover') || isShipUser;
     const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
     const [vesselValue, setVesselValue] = useState("");
