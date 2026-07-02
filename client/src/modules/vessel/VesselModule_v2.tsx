@@ -666,7 +666,8 @@ export function VesselModule_v2(): JSX.Element {
     const { allowedRanks, shouldRestrictForShipUser } = useRankScope();
     const canActOnRank = (rank: string | null | undefined) => {
         if (!shouldRestrictForShipUser) return true;
-        return !!rank && allowedRanks.includes(rank);
+        if (!rank) return false;
+        return allowedRanks.includes(rank) || allowedRanks.includes(getBaseRank(rank));
     };
     const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
     const [vesselValue, setVesselValue] = useState("");
