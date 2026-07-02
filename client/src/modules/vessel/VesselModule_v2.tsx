@@ -51,6 +51,7 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useRankOrdering } from '@/hooks/useRankOrdering';
+import { useRankScope } from '@/hooks/useRankScope';
 import { vesselApiV2, OfficerMatrixData } from './api/vesselApiV2';
 import { generateFALForm5Document } from '@/lib/generateFALForm5';
 import { generateUSCrewListDocument } from '@/lib/generateUSCrewList';
@@ -662,6 +663,11 @@ export function VesselModule_v2(): JSX.Element {
     const isShipUser = userType === 'Ship';
     const showAppraisalColumn = permissions.length === 0 || canView('Appraisal') || isShipUser;
     const showHandoverColumn = permissions.length === 0 || canView('Handover') || isShipUser;
+    const { allowedRanks, shouldRestrictForShipUser } = useRankScope();
+    const canActOnRank = (rank: string | null | undefined) => {
+        if (!shouldRestrictForShipUser) return true;
+        return !!rank && allowedRanks.includes(rank);
+    };
     const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
     const [vesselValue, setVesselValue] = useState("");
     const [fleetValue, setFleetValue] = useState("");
@@ -1740,14 +1746,16 @@ export function VesselModule_v2(): JSX.Element {
                                                                                     });
                                                                                 const hasAppraisal = crewAppraisals.length > 0;
                                                                                 const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                                const canAct = canActOnRank(planning.rank);
                                                                                 if (planning.isArchived === true) {
                                                                                     if (latestAppraisal) {
                                                                                         return (
                                                                                             <Button
                                                                                                 variant="ghost"
                                                                                                 size="sm"
+                                                                                                disabled={!canAct}
                                                                                                 className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                                onClick={() => handleAppraisalView(planning, latestAppraisal)}
+                                                                                                onClick={canAct ? () => handleAppraisalView(planning, latestAppraisal) : undefined}
                                                                                                 data-testid={`button-appraisal-view-${index + 1}`}
                                                                                             >
                                                                                                 View
@@ -1774,8 +1782,9 @@ export function VesselModule_v2(): JSX.Element {
                                                                                     <Button
                                                                                         variant="ghost"
                                                                                         size="sm"
+                                                                                        disabled={!canAct}
                                                                                         className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                        onClick={() => handleAppraisalClick(planning, buttonConfig)}
+                                                                                        onClick={canAct ? () => handleAppraisalClick(planning, buttonConfig) : undefined}
                                                                                         data-testid={`button-appraisal-${buttonText.toLowerCase()}-${index + 1}`}
                                                                                     >
                                                                                         {buttonText}
@@ -1792,15 +1801,16 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 const handoverDate = formatDateOnly(planning.handOverDate);
                                                                                 const isArchivedRow = planning.isArchived === true;
                                                                                 const archivedTitle = 'Crew is archived — handover is read-only';
+                                                                                const canAct = canActOnRank(planning.rank);
                                                                                 return (
                                                                                     <div className="flex flex-col gap-0.5">
                                                                                         {handoverDate && <span className="text-gray-600">{handoverDate}</span>}
                                                                                         <Button
                                                                                             variant="link"
                                                                                             size="sm"
-                                                                                            disabled={isArchivedRow && !hasAttachments}
+                                                                                            disabled={(isArchivedRow && !hasAttachments) || !canAct}
                                                                                             title={isArchivedRow && !hasAttachments ? archivedTitle : undefined}
-                                                                                            onClick={isArchivedRow && !hasAttachments ? undefined : () => {
+                                                                                            onClick={(isArchivedRow && !hasAttachments) || !canAct ? undefined : () => {
                                                                                                 setHandoverDialogData({
                                                                                                     planningId: planning.planUuid,
                                                                                                     vesselId: selectedVessel?.vesselId || '',
@@ -1949,14 +1959,16 @@ export function VesselModule_v2(): JSX.Element {
                                                                                     });
                                                                                 const hasAppraisal = crewAppraisals.length > 0;
                                                                                 const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                                const canAct = canActOnRank(planning.rank);
                                                                                 if (planning.isArchived === true) {
                                                                                     if (latestAppraisal) {
                                                                                         return (
                                                                                             <Button
                                                                                                 variant="ghost"
                                                                                                 size="sm"
+                                                                                                disabled={!canAct}
                                                                                                 className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                                onClick={() => handleAppraisalView(planning, latestAppraisal)}
+                                                                                                onClick={canAct ? () => handleAppraisalView(planning, latestAppraisal) : undefined}
                                                                                                 data-testid={`button-appraisal-view-${index + 1}`}
                                                                                             >
                                                                                                 View
@@ -1983,8 +1995,9 @@ export function VesselModule_v2(): JSX.Element {
                                                                                     <Button
                                                                                         variant="ghost"
                                                                                         size="sm"
+                                                                                        disabled={!canAct}
                                                                                         className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                        onClick={() => handleAppraisalClick(planning, buttonConfig)}
+                                                                                        onClick={canAct ? () => handleAppraisalClick(planning, buttonConfig) : undefined}
                                                                                         data-testid={`button-appraisal-${buttonText.toLowerCase()}-${index + 1}`}
                                                                                     >
                                                                                         {buttonText}
@@ -2000,13 +2013,14 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 const hasAttachments = attachmentCount > 0;
                                                                                 const isArchivedRow = planning.isArchived === true;
                                                                                 const archivedTitle = 'Crew is archived — handover is read-only';
+                                                                                const canAct = canActOnRank(planning.rank);
                                                                                 return (
                                                                                     <Button
                                                                                         variant="link"
                                                                                         size="sm"
-                                                                                        disabled={isArchivedRow && !hasAttachments}
+                                                                                        disabled={(isArchivedRow && !hasAttachments) || !canAct}
                                                                                         title={isArchivedRow && !hasAttachments ? archivedTitle : undefined}
-                                                                                        onClick={isArchivedRow && !hasAttachments ? undefined : () => {
+                                                                                        onClick={(isArchivedRow && !hasAttachments) || !canAct ? undefined : () => {
                                                                                             setHandoverDialogData({
                                                                                                 planningId: planning.planUuid,
                                                                                                 vesselId: selectedVessel?.vesselId || '',
