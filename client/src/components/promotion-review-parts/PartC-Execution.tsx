@@ -53,10 +53,11 @@ export const PartCExecution = memo(function PartCExecution({
         <div className="flex justify-between items-center pt-4">
           <p className="text-sm italic text-[#60a5fa]">Submitted by: {currentUserDisplay}</p>
           <div className="flex gap-3">
+            {/* Hidden from UI only (per request) — button remains fully functional/wired (onClick={onSave}); do not remove or disconnect its logic. */}
             <Button 
               type="button"
               variant="outline" 
-              className="px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
+              className="hidden px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
               onClick={onSave}
               data-testid="button-save-part-c"
             >

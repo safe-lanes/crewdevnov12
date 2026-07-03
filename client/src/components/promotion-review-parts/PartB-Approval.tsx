@@ -345,10 +345,11 @@ export const PartBApproval = memo(function PartBApproval({
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
+          {/* Hidden from UI only (per request) — button remains fully functional/wired (onClick={onSave}); do not remove or disconnect its logic. */}
           <Button 
             type="button"
             variant="outline" 
-            className="px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
+            className="hidden px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
             onClick={onSave}
             data-testid="button-save-part-b"
           >

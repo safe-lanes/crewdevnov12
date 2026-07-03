@@ -1881,10 +1881,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   </div>
 
                   <div className="flex justify-end gap-3">
+                    {/* Hidden from UI only (per request) — button remains fully functional/wired (onClick={handleSaveDraftA}); do not remove or disconnect its logic. */}
                     <Button 
                       type="button"
                       variant="outline" 
-                      className="px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
+                      className="hidden px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
                       onClick={handleSaveDraftA}
                       data-testid="button-save-part-a"
                     >
