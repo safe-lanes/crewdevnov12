@@ -742,6 +742,18 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
 }
 
 function wrapText(text: string, maxWidth: number, font: PDFFont, fontSize: number): string[] {
+  const lines: string[] = [];
+  for (const segment of text.split(/\r?\n/)) {
+    if (segment.trim() === '') {
+      lines.push('');
+    } else {
+      lines.push(...wrapSingleLine(segment, maxWidth, font, fontSize));
+    }
+  }
+  return lines;
+}
+
+function wrapSingleLine(text: string, maxWidth: number, font: PDFFont, fontSize: number): string[] {
   const words = text.split(' ');
   const lines: string[] = [];
   let currentLine = '';

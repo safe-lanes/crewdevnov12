@@ -2348,7 +2348,7 @@ export function DrugAlcoholTestForm_v2({
             <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleFormSubmit, handleFormError)} className="space-y-6">
-                  <fieldset disabled={isFormLocked} className="space-y-6">
+                  <fieldset disabled={isFormLocked} className="space-y-6 min-w-0">
                     {renderContinuousSections()}
                   </fieldset>
                 </form>
