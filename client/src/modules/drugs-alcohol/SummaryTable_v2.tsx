@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { PlannedDateCellEditor } from './PlannedDateCellEditor';
+import { usePermissions } from '@/contexts/PermissionsContext';
 
 const HistoryHeaderComponent = (props: any) => {
   const { showAllHistory, setShowAllHistory } = props.context;
@@ -184,6 +185,8 @@ const ActionsCellRenderer = (params: ICellRendererParams) => {
 
 export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableProps) {
   const gridRef = useRef<AgGridReact>(null);
+  const { userType } = usePermissions();
+  const isShipUser = userType === 'Ship';
   const [showAllHistory, setShowAllHistory] = useState(false);
   const apiBase = '/api/v2/drugs-alcohol/test-records';
   const queryKeyBase = ['v2', 'drugs-alcohol', 'test-records'];
@@ -397,30 +400,38 @@ export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableP
         field: 'frequencyMonths',
         width: 160,
         cellRenderer: FrequencyCellRenderer,
-      },
-      {
-        headerName: 'Port',
-        field: 'plannedPort',
-        width: 120,
-        cellClass: 'flex items-center text-[13px]',
-        editable: (params) => params.data?.hasPlanning || false,
-      },
-      {
-        headerName: 'Date',
-        field: 'plannedDate',
-        width: 120,
-        cellClass: 'flex items-center text-[13px]',
-        editable: (params) => params.data?.hasPlanning || false,
-        cellEditor: PlannedDateCellEditor,
-      },
-      {
-        headerName: 'Comments',
-        field: 'plannedComments',
-        flex: 1,
-        minWidth: 200,
-        cellClass: 'flex items-center text-[13px]',
-        editable: (params) => params.data?.hasPlanning || false,
-      },
+      }
+    );
+
+    if (!isShipUser) {
+      baseCols.push(
+        {
+          headerName: 'Port',
+          field: 'plannedPort',
+          width: 120,
+          cellClass: 'flex items-center text-[13px]',
+          editable: (params) => params.data?.hasPlanning || false,
+        },
+        {
+          headerName: 'Date',
+          field: 'plannedDate',
+          width: 120,
+          cellClass: 'flex items-center text-[13px]',
+          editable: (params) => params.data?.hasPlanning || false,
+          cellEditor: PlannedDateCellEditor,
+        },
+        {
+          headerName: 'Comments',
+          field: 'plannedComments',
+          flex: 1,
+          minWidth: 200,
+          cellClass: 'flex items-center text-[13px]',
+          editable: (params) => params.data?.hasPlanning || false,
+        }
+      );
+    }
+
+    baseCols.push(
       {
         headerName: '',
         width: 120,
@@ -431,7 +442,7 @@ export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableP
     );
 
     return baseCols;
-  }, [showAllHistory]);
+  }, [showAllHistory, isShipUser]);
 
   return (
     <div className="flex flex-col flex-1 gap-4">
