@@ -2602,7 +2602,9 @@ export function VesselModule_v2(): JSX.Element {
             />
             
             <MainLayout hasSidebar={true}>
-                {isShipUser ? (
+                {(permissions.length > 0 && !allowedPages.includes(selectedVesselPage)) ? (
+                    <NoAccessPage menuName="Vessel Database" />
+                ) : isShipUser ? (
                     selectedVessel ? renderVesselDetail() : (
                         <div className="flex items-center justify-center h-64">
                             {vesselsLoading ? (
@@ -2614,8 +2616,6 @@ export function VesselModule_v2(): JSX.Element {
                             )}
                         </div>
                     )
-                ) : (permissions.length > 0 && !allowedPages.includes(selectedVesselPage)) ? (
-                    <NoAccessPage menuName="Vessel Database" />
                 ) : (
                     selectedVessel ? renderVesselDetail() : renderVesselDatabase()
                 )}
