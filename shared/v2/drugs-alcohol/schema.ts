@@ -39,6 +39,8 @@ export const daTestRecordsV2 = pgTable("da_test_records_v2", {
   initiatedBy: text("initiated_by"),
   comments: text("comments"),
   status: text("status").notNull().default("draft"),
+  isLocked: boolean("is_locked").notNull().default(false),
+  lockedOnce: boolean("locked_once").notNull().default(false),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });

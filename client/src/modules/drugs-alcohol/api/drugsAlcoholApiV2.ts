@@ -60,6 +60,15 @@ export const drugsAlcoholApiV2 = {
       return response.json();
     },
 
+    async toggleLock(uuid: string, isLocked: boolean) {
+      const response = await apiRequest('PATCH', `${V2_BASE}/test-records/${uuid}/lock`, withAuditUser({ isLocked }));
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(error.message || 'Failed to update lock state');
+      }
+      return response.json();
+    },
+
     async update(uuid: string, data: any) {
       const response = await apiRequest('PATCH', `${V2_BASE}/test-records/${uuid}`, withAuditUser(data));
       if (!response.ok) {

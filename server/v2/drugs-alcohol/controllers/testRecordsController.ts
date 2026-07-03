@@ -131,6 +131,27 @@ export const testRecordsController = {
     }
   },
 
+  async toggleLock(req: Request, res: Response) {
+    try {
+      const { uuid } = req.params;
+      const { isLocked } = req.body ?? {};
+      if (typeof isLocked !== "boolean") {
+        return res.status(400).json({ error: "isLocked (boolean) is required" });
+      }
+      const record = await testRecordsService.toggleLock(uuid, isLocked);
+      res.json(record);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      if (error.message?.includes("Only submitted records")) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error toggling lock on test record:", error);
+      res.status(500).json({ error: "Failed to update lock state" });
+    }
+  },
+
   async getViolationCounts(req: Request, res: Response) {
     try {
       const parsed = violationCountsQuerySchema.safeParse({

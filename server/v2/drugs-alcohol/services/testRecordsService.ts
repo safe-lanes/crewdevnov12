@@ -147,6 +147,8 @@ function transformToV1Response(record: TestRecordWithChildren): any {
     initiatedBy: record.initiatedBy,
     comments: record.comments,
     status: record.status,
+    isLocked: record.isLocked,
+    lockedOnce: record.lockedOnce,
     sortOrder: record.sortOrder,
     testingEquipment: JSON.stringify(equipmentJson),
     personnelTested: JSON.stringify(personnelJson),
@@ -344,6 +346,18 @@ export const testRecordsService = {
     const vesselFolder = await resolveVesselFolder(data.vesselId || existing.vesselId);
     await this._upsertChildren(daUuid, testingEquipment, personnelTested, masterDeputySignature, attachmentFile, auditUserUuid, vesselFolder);
 
+    return this.getByUuid(daUuid);
+  },
+
+  async toggleLock(daUuid: string, isLocked: boolean): Promise<any> {
+    const existing = await testRecordsRepository.findByUuid(daUuid);
+    if (!existing) {
+      throw new Error(`Test record not found: ${daUuid}`);
+    }
+    if (existing.status !== 'submitted') {
+      throw new Error('Only submitted records can be locked or unlocked');
+    }
+    await testRecordsRepository.toggleLock(daUuid, isLocked);
     return this.getByUuid(daUuid);
   },
 

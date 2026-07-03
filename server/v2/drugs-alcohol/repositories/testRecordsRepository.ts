@@ -307,10 +307,18 @@ export class TestRecordsRepository {
 
   async create(data: Omit<InsertDaTestRecordV2, "daUuid">): Promise<DaTestRecordV2> {
     const db = getDb();
+    // Lock fields can never come from the regular save payload
+    const { isLocked, lockedOnce, ...safeData } = data as any;
+    // Auto-lock on first submit (new form submitted directly)
+    const lockFields =
+      safeData.status === "submitted"
+        ? { isLocked: true, lockedOnce: true }
+        : {};
     const results = await db
       .insert(daTestRecordsV2)
       .values({
-        ...data,
+        ...safeData,
+        ...lockFields,
         daUuid: uuidv4(),
       })
       .returning();
@@ -322,9 +330,39 @@ export class TestRecordsRepository {
     data: Partial<InsertDaTestRecordV2>
   ): Promise<DaTestRecordV2 | undefined> {
     const db = getDb();
+    // Lock fields can never come from the regular save payload
+    const { isLocked, lockedOnce, ...safeData } = data as any;
+    const updateData: any = { ...safeData, updatedAt: new Date() };
+
+    const existing = await this.findByUuid(daUuid);
+    if (existing) {
+      // Status downgrade guard: a submitted form can never revert to draft
+      if (existing.status === "submitted" && "status" in updateData) {
+        updateData.status = "submitted";
+      }
+      // Auto-lock on first submit ever for this record
+      if (updateData.status === "submitted" && !existing.lockedOnce) {
+        updateData.isLocked = true;
+        updateData.lockedOnce = true;
+      }
+    }
+
     const results = await db
       .update(daTestRecordsV2)
-      .set({ ...data, updatedAt: new Date() })
+      .set(updateData)
+      .where(eq(daTestRecordsV2.daUuid, daUuid))
+      .returning();
+    return results[0];
+  }
+
+  async toggleLock(
+    daUuid: string,
+    isLocked: boolean
+  ): Promise<DaTestRecordV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .update(daTestRecordsV2)
+      .set({ isLocked, updatedAt: new Date() })
       .where(eq(daTestRecordsV2.daUuid, daUuid))
       .returning();
     return results[0];

@@ -65,7 +65,7 @@ const PERMISSION_LABELS: Record<keyof Permission, string> = {
   candelete: "Delete",
 };
 
-const LOCK_ACTION_MENUS = new Set(["rh lock", "rh unlock"]);
+const LOCK_ACTION_MENUS = new Set(["rh lock", "rh unlock", "da lock / unlock"]);
 const LOCK_ACTION_DISABLED_KEYS = new Set<keyof Permission>(["canedit", "candelete"]);
 
 const CP_FORM_SECTION_MENUS = new Set([

@@ -2,8 +2,8 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Save, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText, AlertTriangle, Paperclip } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Save, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText, AlertTriangle, Paperclip, Lock, LockOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -12,6 +12,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankOrdering } from '@/hooks/useRankOrdering';
 import { usePermissions } from '@/contexts/PermissionsContext';
@@ -163,7 +173,7 @@ export function DrugAlcoholTestForm_v2({
   // Vessel lookup hook
   const { getVesselName, vessels } = useVesselLookup();
 
-  const { userType, myVessels } = usePermissions();
+  const { userType, myVessels, canCreate, permissions } = usePermissions();
   const isShipUser = userType === 'Ship';
   const shipUserVesselName = useMemo(() => {
     if (!isShipUser || myVessels.length === 0) return null;
@@ -180,6 +190,38 @@ export function DrugAlcoholTestForm_v2({
     enabled: !!recordUuid,
     retry: 1,
   });
+
+  // ---- Lock / Unlock (DA Lock / Unlock) ----
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const canLockUnlock = permissions.length === 0 || canCreate('DA Lock / Unlock');
+  const isSubmittedRecord = !!recordUuid && existingRecord?.status === 'submitted';
+  const isFormLocked = existingRecord?.isLocked === true;
+
+  // Submit confirmation dialog (shown only on the qualifying first submit)
+  const [lockDialogOpen, setLockDialogOpen] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<any>(null);
+
+  const lockMutation = useMutation({
+    mutationFn: ({ uuid, isLocked }: { uuid: string; isLocked: boolean }) =>
+      drugsAlcoholApiV2.testRecords.toggleLock(uuid, isLocked),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'drugs-alcohol'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/drugs-alcohol/test-records'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update lock state',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleLockToggle = () => {
+    if (!recordUuid) return;
+    lockMutation.mutate({ uuid: recordUuid, isLocked: !isFormLocked });
+  };
 
   const form = useForm<DrugAlcoholTestFormData>({
     resolver: zodResolver(drugAlcoholTestFormSchema),
@@ -545,8 +587,6 @@ export function DrugAlcoholTestForm_v2({
     }
   };
 
-  const { toast } = useToast();
-
   const sortPersonnelForSave = (personnel: any[]) => {
     const isOtherRow = (p: any) =>
       (typeof p?.id === 'string' && p.id.startsWith('other-')) ||
@@ -716,10 +756,34 @@ export function DrugAlcoholTestForm_v2({
 
     replacePersonnel(sortedPersonnel);
 
-    onSubmit({
+    const submitData = {
       ...cleanedData,
       personnelTested: sortedPersonnel,
-    });
+    };
+
+    // Qualifying first submit (new form, or existing record never locked before):
+    // show the lock confirmation dialog before submitting.
+    const isQualifyingFirstSubmit = !recordUuid || existingRecord?.lockedOnce !== true;
+    if (isQualifyingFirstSubmit) {
+      setPendingSubmitData(submitData);
+      setLockDialogOpen(true);
+      return;
+    }
+
+    onSubmit(submitData);
+  };
+
+  const handleConfirmLockSubmit = () => {
+    setLockDialogOpen(false);
+    if (pendingSubmitData) {
+      onSubmit(pendingSubmitData);
+      setPendingSubmitData(null);
+    }
+  };
+
+  const handleCancelLockSubmit = () => {
+    setLockDialogOpen(false);
+    setPendingSubmitData(null);
   };
 
   const handleFormError = (errors: any) => {
@@ -2120,6 +2184,22 @@ export function DrugAlcoholTestForm_v2({
             <h1 className="text-lg sm:text-xl font-bold">{recordUuid ? 'Edit' : 'New'} Drug & Alcohol Test</h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
+            {isSubmittedRecord && canLockUnlock && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 hover:bg-gray-100"
+                onClick={handleLockToggle}
+                disabled={lockMutation.isPending}
+                data-testid="button-lock-toggle"
+                title={isFormLocked ? 'Unlock form' : 'Lock form'}
+              >
+                {isFormLocked
+                  ? <Lock className="h-4 w-4 text-red-500" />
+                  : <LockOpen className="h-4 w-4 text-gray-400" />
+                }
+              </Button>
+            )}
             <Button 
               variant="outline" 
               size="sm"
@@ -2135,6 +2215,7 @@ export function DrugAlcoholTestForm_v2({
               variant="destructive"
               size="sm"
               onClick={handleDelete}
+              disabled={isFormLocked}
               className="bg-red-600 hover:bg-red-700 text-white px-3 hidden sm:flex items-center gap-2 h-8 rounded-md text-xs"
               data-testid="button-delete-form"
             >
@@ -2146,30 +2227,35 @@ export function DrugAlcoholTestForm_v2({
               variant="destructive"
               size="sm"
               onClick={handleDelete}
+              disabled={isFormLocked}
               className="sm:hidden bg-red-600 hover:bg-red-700 text-white"
               data-testid="button-delete-form-mobile"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleSaveDraft}
-              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
-              data-testid="button-save-draft"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Draft
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleSaveDraft}
-              className="sm:hidden"
-              data-testid="button-save-draft-mobile"
-            >
-              <Save className="h-4 w-4" />
-            </Button>
+            {!isSubmittedRecord && (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSaveDraft}
+                  className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+                  data-testid="button-save-draft"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Draft
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSaveDraft}
+                  className="sm:hidden"
+                  data-testid="button-save-draft-mobile"
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -2262,7 +2348,9 @@ export function DrugAlcoholTestForm_v2({
             <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleFormSubmit, handleFormError)} className="space-y-6">
-                  {renderContinuousSections()}
+                  <fieldset disabled={isFormLocked} className="space-y-6">
+                    {renderContinuousSections()}
+                  </fieldset>
                 </form>
               </Form>
             </div>
@@ -2282,6 +2370,26 @@ export function DrugAlcoholTestForm_v2({
         title="D&A Test Attachments"
         itemName={form.watch('vesselId') ? getVesselName(form.watch('vesselId') || '') : 'Drug & Alcohol Test'}
       />
+
+      {/* Lock confirmation dialog (shown only on the qualifying first submit) */}
+      <AlertDialog open={lockDialogOpen} onOpenChange={(open) => { if (!open) handleCancelLockSubmit(); }}>
+        <AlertDialogContent data-testid="dialog-lock-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Lock Form on Submission?</AlertDialogTitle>
+            <AlertDialogDescription>
+              After Submission this form will be locked and cannot be edited, are you sure you want to lock it?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelLockSubmit} data-testid="button-lock-cancel">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmLockSubmit} data-testid="button-lock-confirm">
+              Lock
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
