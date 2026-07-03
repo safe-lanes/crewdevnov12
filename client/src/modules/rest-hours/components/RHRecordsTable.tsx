@@ -14,6 +14,7 @@ import { VesselReviewDialog } from './VesselReviewDialog';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { useRankScope } from '@/hooks/useRankScope';
 import { useToast } from '@/hooks/use-toast';
 
 interface RHRecordsTableProps {
@@ -672,6 +673,9 @@ export function RHRecordsTable({ selectedVessels, selectedMonths, complianceMode
   const [officeReviewDialogOpen, setOfficeReviewDialogOpen] = useState(false);
   const [selectedOfficeReviewRecord, setSelectedOfficeReviewRecord] = useState<RestHoursVesselRecordWithName | null>(null);
 
+  const { userType } = useRankScope();
+  const isShipUser = userType.toLowerCase() === 'ship';
+
   const v2ApiParamsList = useMemo(() => {
     return selectedMonths
       .filter(m => m && m !== 'older')
@@ -980,13 +984,13 @@ export function RHRecordsTable({ selectedVessels, selectedMonths, complianceMode
       minWidth: 120,
       cellRenderer: VesselReviewRenderer,
     },
-    {
+    ...(isShipUser ? [] : [{
       headerName: 'Office Review',
       field: 'officeReviewStatus',
       flex: 1.5,
       minWidth: 120,
       cellRenderer: OfficeReviewRenderer,
-    },
+    }]),
     {
       headerName: '',
       width: 90,
@@ -995,7 +999,7 @@ export function RHRecordsTable({ selectedVessels, selectedMonths, complianceMode
       filter: false,
       resizable: false,
     }
-  ], []);
+  ], [isShipUser]);
 
   const defaultColDef = useMemo(() => ({
     sortable: true,

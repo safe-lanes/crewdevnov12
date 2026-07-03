@@ -19,6 +19,7 @@ import { filterViolations } from '../violationFilters';
 import { sortViolationCodes } from '../timelineCalculations';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { useUsersV2 } from '@/hooks/v2/useMasterDataV2';
+import { useRankScope } from '@/hooks/useRankScope';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
 
 interface NCReportDialogProps {
@@ -100,6 +101,9 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
     const vessel = masterData.find(v => v.entryId === crewRecord.vesselId);
     return vessel?.name || crewRecord.vesselId;
   }, [masterData, crewRecord.vesselId]);
+
+  const { userType } = useRankScope();
+  const isShipUser = userType.toLowerCase() === 'ship';
 
   // Fetch external users and filter to Office users only
   const { data: allExternalUsers, isLoading: usersLoading } = useUsersV2({ enabled: open });
@@ -645,7 +649,7 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
                       Submit (Vessel)
                     </Button>
                   )}
-                  {(submissionStatus === "vessel-submitted" || submissionStatus === "draft") && (
+                  {!isShipUser && (submissionStatus === "vessel-submitted" || submissionStatus === "draft") && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
