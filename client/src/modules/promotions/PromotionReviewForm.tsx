@@ -65,7 +65,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   onClose,
 }) => {
   const { toast } = useToast();
-  const { permissions, canView } = usePermissions();
+  const { permissions, canView, userType } = usePermissions();
+  const isShipUser = userType === 'Ship';
 
   const pmSectionMenuMap: Record<string, string> = {
     a: 'PM Criteria Review',
@@ -1876,7 +1877,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           )}
 
           {activeSection === 'b' && canViewSection('b') && (
-            <fieldset disabled={lockState.lockPartB} className="min-w-0 border-0 p-0 m-0">
+            <fieldset disabled={lockState.lockPartB || isShipUser} className="min-w-0 border-0 p-0 m-0">
+            {isShipUser && (
+              <div
+                className="mb-4 rounded-md border border-gray-300 bg-gray-100 px-4 py-3 text-center text-sm font-medium text-gray-600"
+                data-testid="text-office-use-only-b"
+              >
+                For Office use only
+              </div>
+            )}
+            <div className={isShipUser ? 'opacity-60 pointer-events-none' : undefined}>
             <PartBApproval
               approvers={approvers}
               onAddApprover={addApprover}
@@ -1901,11 +1911,21 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               approverNames={approverMasterData.map(a => a.displayName)}
               disabled={lockState.lockPartB}
             />
+            </div>
             </fieldset>
           )}
 
           {activeSection === 'c' && canViewSection('c') && (
-            <fieldset disabled={lockState.lockPartC} className="min-w-0 border-0 p-0 m-0">
+            <fieldset disabled={lockState.lockPartC || isShipUser} className="min-w-0 border-0 p-0 m-0">
+            {isShipUser && (
+              <div
+                className="mb-4 rounded-md border border-gray-300 bg-gray-100 px-4 py-3 text-center text-sm font-medium text-gray-600"
+                data-testid="text-office-use-only-c"
+              >
+                For Office use only
+              </div>
+            )}
+            <div className={isShipUser ? 'opacity-60 pointer-events-none' : undefined}>
             <PartCExecution
               promotionDate={promotionDate}
               onSetPromotionDate={setPromotionDate}
@@ -1914,6 +1934,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               onSubmit={confirmSubmitC}
               disabled={lockState.lockPartC}
             />
+            </div>
             </fieldset>
           )}
         </>
