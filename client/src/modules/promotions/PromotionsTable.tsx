@@ -10,6 +10,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useToast } from '@/hooks/use-toast';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
+import { useRankScope } from '@/hooks/useRankScope';
+import { getBaseRank } from '@shared/crew-mapping';
 import { findNextPromotionRank, findPreviousPromotionRank, shouldShowInPromotionsTable } from './promotionUtils';
 import { calculateChecklistProgressFromJson } from './checklistProgressUtils';
 import { PromotionHierarchy } from '@shared/schema';
@@ -111,13 +113,14 @@ const StatusIndicatorRenderer = (params: ICellRendererParams) => {
   );
 };
 
-const ProgressBarRenderer = (params: ICellRendererParams & { onEdit?: (data: any) => void }) => {
+const ProgressBarRenderer = (params: ICellRendererParams & { onEdit?: (data: any) => void; canActOnRank?: (rank: string | null | undefined) => boolean }) => {
   const progressData = params.data?.checklistProgressData;
   const meetsThreshold = progressData?.meetsThreshold ?? false;
   const percentage = progressData?.percentage ?? 0;
   
   const barColor = meetsThreshold ? 'bg-green-500' : 'bg-[#EAB308]';
-  const isLocked = !!params.data?.checklistLocked;
+  const canAct = params.canActOnRank ? params.canActOnRank(params.data?.currentRank) : true;
+  const isLocked = !!params.data?.checklistLocked || !canAct;
 
   const handleClick = () => {
     if (isLocked) return;
@@ -172,8 +175,11 @@ const StatusBadgeRenderer = (params: ICellRendererParams) => {
   );
 };
 
-const EditButtonRenderer = (params: ICellRendererParams & { onEdit?: (data: any) => void }) => {
+const EditButtonRenderer = (params: ICellRendererParams & { onEdit?: (data: any) => void; canActOnRank?: (rank: string | null | undefined) => boolean }) => {
+  const canAct = params.canActOnRank ? params.canActOnRank(params.data?.currentRank) : true;
+
   const handleEditClick = () => {
+    if (!canAct) return;
     if (params.onEdit) {
       params.onEdit(params.data);
     }
@@ -186,6 +192,7 @@ const EditButtonRenderer = (params: ICellRendererParams & { onEdit?: (data: any)
         size="sm"
         className="h-7 w-7 p-0 hover:bg-gray-100"
         onClick={handleEditClick}
+        disabled={!canAct}
         data-testid={`button-edit-${params.data?.crewId}`}
       >
         <Edit className="h-4 w-4 text-gray-600" />
@@ -225,6 +232,13 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   const { getVesselName, getVessel } = useVesselLookup();
   
   const { normalizeRank, isLoading: isLoadingRanks } = useRankNormalization();
+
+  const { allowedRanks, shouldRestrictForShipUser } = useRankScope();
+  const canActOnRank = useCallback((rank: string | null | undefined) => {
+    if (!shouldRestrictForShipUser) return true;
+    if (!rank) return false;
+    return allowedRanks.includes(rank) || allowedRanks.includes(getBaseRank(rank));
+  }, [allowedRanks, shouldRestrictForShipUser]);
 
   const { data: crewMembers = [], isLoading } = useQuery({
     queryKey: ['/api/v2/crew-pool/crew/enriched'],
@@ -831,7 +845,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       flex: 1.5,
       cellRenderer: ProgressBarRenderer,
       cellRendererParams: {
-        onEdit: handleEditPromotion
+        onEdit: handleEditPromotion,
+        canActOnRank
       },
       sortable: true,
       resizable: true
@@ -884,12 +899,13 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       width: 60,
       cellRenderer: EditButtonRenderer,
       cellRendererParams: {
-        onEdit: handleEditPromotion
+        onEdit: handleEditPromotion,
+        canActOnRank
       },
       sortable: false,
       resizable: false
     }] : [])
-  ], [handleEditPromotion, permissions, canEditPerm]);
+  ], [handleEditPromotion, permissions, canEditPerm, canActOnRank]);
 
   const handleGridReady = (event: GridReadyEvent) => {
     setGridApi(event.api);
