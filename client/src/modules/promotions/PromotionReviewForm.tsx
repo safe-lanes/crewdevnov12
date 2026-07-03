@@ -728,6 +728,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [comments]);
 
   const [approvers, setApprovers] = useState<Approver[]>([]);
+  const hasHydratedRef = useRef(false);
 
   const nextApproverIdRef = useRef(3);
   const nextCesTestIdRef = useRef(2);
@@ -751,7 +752,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   };
 
   useEffect(() => {
-    if (existingReviewData) {
+    if (existingReviewData && !hasHydratedRef.current) {
+      hasHydratedRef.current = true;
       setSavedReviewId(existingReviewData.id);
       
       if (existingReviewData.selectedVesselTypeForA2_3b) {
@@ -1173,7 +1175,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [collectFormData, saveMutation, promotionConfirmed, promotionDate, toast]);
 
   const handleSubmit = (data: PromotionReviewFormData) => {
-    const reviewData = collectFormData(data, 'a');
+    if (!validateTrainingNames()) {
+      return;
+    }
+    const reviewData = collectFormData(data, 'full');
+    const approversToPersist = approvers.filter(a => a.approver?.trim());
+    if (approversToPersist.length > 0 || selectedApproversForSubmission.length > 0) {
+      reviewData.approvalData = JSON.stringify(approversToPersist);
+      reviewData.selectedApproversForSubmission = JSON.stringify(selectedApproversForSubmission);
+    }
     saveMutation.mutate({ data: reviewData, action: 'draft' });
   };
 
