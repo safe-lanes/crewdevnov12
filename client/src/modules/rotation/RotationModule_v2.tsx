@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
 import { useQuery } from '@tanstack/react-query';
 import { API_BASE_URL } from '@/config/api';
 import { useViewport } from '@/hooks/useViewport';
@@ -452,7 +453,12 @@ export function RotationModule_v2() {
         );
     };
 
+    const rotationPageToMenu: Record<string, string> = { "due": "Due", "plan": "Plan", "approval": "Approval" };
+
     const renderContent = () => {
+        if (permissions.length > 0 && !allowedPages.includes(selectedRotationPage)) {
+            return <NoAccessPage menuName={rotationPageToMenu[selectedRotationPage] || "Rotation"} />;
+        }
         switch (selectedRotationPage) {
             case "due":
                 return renderDueContent();

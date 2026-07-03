@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { VesselSideBar_v2 } from './VesselSideBar_v2';
@@ -2613,6 +2614,8 @@ export function VesselModule_v2(): JSX.Element {
                             )}
                         </div>
                     )
+                ) : (permissions.length > 0 && !allowedPages.includes(selectedVesselPage)) ? (
+                    <NoAccessPage menuName="Vessel Database" />
                 ) : (
                     selectedVessel ? renderVesselDetail() : renderVesselDatabase()
                 )}

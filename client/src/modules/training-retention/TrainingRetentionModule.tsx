@@ -1,6 +1,7 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useMemo } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
 import MainLayout from '@/components/main/MainLayout';
 import TrainingRetentionSideBar from './TrainingRetentionSideBar';
 import { Training } from './components/Training';
@@ -48,7 +49,7 @@ export const TrainingRetentionModule = (): JSX.Element => {
 
   const renderContent = () => {
     if (permissions.length > 0 && !allowedPages.includes(selectedPage)) {
-      return null;
+      return <NoAccessPage menuName="Training & Retention" />;
     }
     switch (selectedPage) {
       case 'training':

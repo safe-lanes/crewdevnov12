@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
 import { getCrewUserId } from '@/lib/crewUser';
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -538,11 +539,11 @@ interface SeafarerData {
 const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
   const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
+  const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
   const adminAllowedPages = useMemo(() => {
     const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow"];
     if (permissions.length === 0) return all;
-    const pageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
-    return all.filter(p => canView(pageToMenu[p] || p));
+    return all.filter(p => canView(adminPageToMenu[p] || p));
   }, [permissions, canView]);
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
@@ -8486,12 +8487,18 @@ const AdminModuleInner = (): JSX.Element => {
             </button>
           </div>
         </div>
-        {selectedAdminPage === "forms" && renderFormsTable()}
-        {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
-        {selectedAdminPage === "masters" && renderDataMastersModule()}
-        {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
-        {selectedAdminPage === "access-control" && <AccessControlPage />}
-        {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
+        {(permissions.length > 0 && !adminAllowedPages.includes(selectedAdminPage)) ? (
+          <NoAccessPage menuName={adminPageToMenu[selectedAdminPage] || "Admin"} />
+        ) : (
+          <>
+            {selectedAdminPage === "forms" && renderFormsTable()}
+            {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
+            {selectedAdminPage === "masters" && renderDataMastersModule()}
+            {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
+            {selectedAdminPage === "access-control" && <AccessControlPage />}
+            {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
+          </>
+        )}
       </MainLayout>
 
       {/* Main content */}

@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { parseISO, format, isValid } from 'date-fns';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
 import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useQueryClient } from '@tanstack/react-query';
@@ -100,7 +101,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     return lookup;
   }, [externalNationalitiesData]);
 
-  const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent } = usePermissions();
+  const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent, isLoading: permissionsLoading } = usePermissions();
   const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
 
   const [filters, setFilters] = useState({
@@ -131,15 +132,21 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   useEffect(() => {
     if (!pendingCandidateUuid) return;
     if (isLoading) return;
+    if (permissionsLoading) return;
     const list = (allCandidates as V2CandidateListItem[]) || [];
     const found = list.find((c) => c.recCanUuid === pendingCandidateUuid);
     if (found) {
-      setSelectedCandidate({
-        ...found,
-        middleName: found.middleName || '',
-        _openedFromDeepLink: true,
-      } as V2CandidateListItem & { _openedFromDeepLink: boolean });
-      setShowApplicationForm(true);
+      const candidatePage = (Object.keys(STATUS_MAPPING) as (keyof typeof STATUS_MAPPING)[])
+        .find((page) => STATUS_MAPPING[page].includes(found.status));
+      const isAllowed = permissions.length === 0 || (!!candidatePage && allowedPages.includes(candidatePage));
+      if (isAllowed) {
+        setSelectedCandidate({
+          ...found,
+          middleName: found.middleName || '',
+          _openedFromDeepLink: true,
+        } as V2CandidateListItem & { _openedFromDeepLink: boolean });
+        setShowApplicationForm(true);
+      }
     }
     setPendingCandidateUuid(null);
     if (typeof window !== 'undefined') {
@@ -151,7 +158,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         window.history.replaceState({}, '', newUrl);
       }
     }
-  }, [pendingCandidateUuid, isLoading, allCandidates]);
+  }, [pendingCandidateUuid, isLoading, permissionsLoading, allCandidates]);
 
   const deleteMutation = useV2DeleteCandidate();
   const allowedPages = useMemo(() => {
@@ -831,6 +838,9 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   };
 
   const renderContent = () => {
+    if (permissions.length > 0 && !allowedPages.includes(selectedRecruitmentPage)) {
+      return <NoAccessPage menuName={currentMenuName} />;
+    }
     if (["in-progress", "recruited", "waitlist", "rejected"].includes(selectedRecruitmentPage)) {
       return renderFiltersAndTable();
     }

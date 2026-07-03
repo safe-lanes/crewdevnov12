@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
 import { useQueryClient } from '@tanstack/react-query';
 import { FilterIcon, PlusIcon, EditIcon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
@@ -111,7 +112,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         return [];
     }, [externalVesselsData]);
     
-    const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent } = usePermissions();
+    const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent, isLoading: permissionsLoading } = usePermissions();
     const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
     const allowedPages = useMemo(() => {
         const all = ["crew-database", "terminated"];
@@ -611,10 +612,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     useEffect(() => {
         if (!pendingCrewUuid) return;
         if (isCrewLoading) return;
+        if (permissionsLoading) return;
         const found = (rawCrewData as any[]).find(
             (c) => c && c.crewUuid === pendingCrewUuid,
         );
-        if (found) {
+        const isAllowed = permissions.length === 0 || allowedPages.includes("crew-database");
+        if (found && isAllowed) {
             openedFromDeepLinkRef.current = true;
             setSelectedCrewMember(found);
             setIsCrewInfoFormOpen(true);
@@ -629,7 +632,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 window.history.replaceState({}, "", newUrl);
             }
         }
-    }, [pendingCrewUuid, isCrewLoading, rawCrewData]);
+    }, [pendingCrewUuid, isCrewLoading, permissionsLoading, rawCrewData]);
 
     const getTitle = () => {
         switch (selectedCrewPoolPage) {
@@ -1387,6 +1390,10 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     };
 
     const renderContent = () => {
+        if (permissions.length > 0 && !allowedPages.includes(selectedCrewPoolPage)) {
+            const pageToMenu: Record<string, string> = { "crew-database": "Crew Database", "terminated": "Terminated" };
+            return <NoAccessPage menuName={pageToMenu[selectedCrewPoolPage] || "Crew Pool"} />;
+        }
         if (selectedCrewPoolPage === "crew-database") {
             return renderFiltersAndTable();
         }
