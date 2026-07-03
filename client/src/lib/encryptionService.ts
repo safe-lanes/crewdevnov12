@@ -92,6 +92,7 @@ export interface ExtractedUserProfile {
   roleId?: string;
   userId?: string;
   userType?: string;
+  designation?: string;
   manningAgent?: string;
   myVessels?: Array<{ vessel: string; vesselId: string; imoNumber: string }>;
 }
@@ -183,6 +184,7 @@ function extractFromObject(obj: any): ExtractedUserProfile | null {
   if (obj.roleId) result.roleId = String(obj.roleId);
   if (obj.userId) result.userId = String(obj.userId);
   if (obj.userType) result.userType = String(obj.userType);
+  if (obj.designation) result.designation = String(obj.designation);
   if (obj.manningAgent) result.manningAgent = String(obj.manningAgent);
   if (Array.isArray(obj.myVessels)) result.myVessels = obj.myVessels;
   if (result.role || result.roleId || result.userId || result.userType || result.manningAgent || (result.myVessels && result.myVessels.length > 0)) return result;
@@ -222,6 +224,7 @@ export function safeExtractFields(rawValue: any): ExtractedUserProfile | null {
   result.roleId = extractStringField(str, 'roleId');
   result.userId = extractStringField(str, 'userId');
   result.userType = extractStringField(str, 'userType');
+  result.designation = extractStringField(str, 'designation');
   result.manningAgent = extractStringField(str, 'manningAgent');
   result.myVessels = extractVesselsFromString(str);
 

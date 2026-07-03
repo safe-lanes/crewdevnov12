@@ -1,18 +1,17 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getDecryptedSessionStorageItem } from "@/lib/encryptionService";
 import { adminApiV2 } from "@/modules/admin/api/adminApiV2";
 import { getUserProfile } from "@/contexts/PermissionsContext";
 
 /**
  * Shared rank-hierarchy access-control utility.
  *
- * Reads the logged-in user's rank/designation (`crewDesignation`) from
- * session storage and user type from the decrypted user profile
- * (`localStorage.userProfile`, same source `usePermissions()` uses), and
- * resolves the set of ranks that user is allowed to see from the Vessel Org
- * Chart hierarchy (Admin -> Rank Admin -> Company -> Vessel Org Chart): the
- * user's own rank plus every rank reporting to it, transitively.
+ * Reads the logged-in user's rank/designation (`designation`) and user type
+ * from the decrypted user profile (`localStorage.userProfile`, the same
+ * source `usePermissions()` uses), and resolves the set of ranks that user
+ * is allowed to see from the Vessel Org Chart hierarchy (Admin -> Rank Admin
+ * -> Company -> Vessel Org Chart): the user's own rank plus every rank
+ * reporting to it, transitively.
  *
  * This hook ONLY resolves the scope — it does not filter or restrict any
  * data itself. Each consuming module (Vessel, Promotions, Appraisals, etc.)
@@ -27,28 +26,8 @@ import { getUserProfile } from "@/contexts/PermissionsContext";
  *     : rows;
  */
 
-function extractStringValue(val: any): string {
-  if (!val) return "";
-  if (typeof val === "string") return val;
-  if (typeof val === "object") {
-    return val.value || val.name || val.label || "";
-  }
-  return String(val);
-}
-
-function readSessionField(key: string): string {
-  try {
-    const decrypted = getDecryptedSessionStorageItem(key, true);
-    const fromDecrypted = extractStringValue(decrypted);
-    if (fromDecrypted) return fromDecrypted;
-  } catch {
-    // fall through to raw read below
-  }
-  return sessionStorage.getItem(key) || "";
-}
-
 export interface RankScope {
-  /** Raw crewDesignation value read from session storage (e.g. "Chief Officer"). */
+  /** Designation value read from the decrypted user profile (e.g. "MASTER"). */
   designation: string;
   /** User type from the decrypted user profile (e.g. "Ship", "Office"). */
   userType: string;
@@ -64,7 +43,7 @@ export interface RankScope {
 }
 
 export function useRankScope(): RankScope {
-  const designation = useMemo(() => readSessionField("crewDesignation"), []);
+  const designation = useMemo(() => getUserProfile()?.designation || "", []);
   const userType = useMemo(() => getUserProfile()?.userType || "", []);
 
   const { data, isLoading } = useQuery({
