@@ -14,6 +14,7 @@ import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import { PartGProps } from "./types";
 import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 const PartGComponent: React.FC<PartGProps> = ({
   form,
@@ -44,6 +45,8 @@ const PartGComponent: React.FC<PartGProps> = ({
   isPostStage3,
 }) => {
   const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
+  const { userType } = usePermissions();
+  const isShipUser = userType === 'Ship';
   // Task #500: post-Stage 3 fully locks G (legacy behavior).
   const isG1Locked = appraisalStatus === 'reviewed' || appraisalStatus === ('stage3_submitted' as typeof appraisalStatus);
 
@@ -61,9 +64,18 @@ const PartGComponent: React.FC<PartGProps> = ({
   // Task #500: G is fully locked once Stage 3 has been submitted. Using a
   // fieldset disables every native input, select, textarea and button inside,
   // including the Save Draft / Submit Stage 3 actions at the bottom.
-  const lockSection = !!isPostStage3;
+  const lockSection = !!isPostStage3 || isShipUser;
   return (
     <fieldset disabled={lockSection} className="min-w-0 border-0 p-0 m-0" data-testid="fieldset-part-g-lock">
+    {isShipUser && (
+      <div
+        className="mb-4 rounded-md border border-gray-300 bg-gray-100 px-4 py-3 text-center text-sm font-medium text-gray-600"
+        data-testid="text-office-use-only-g"
+      >
+        For Office use only
+      </div>
+    )}
+    <div className={isShipUser ? 'opacity-60 pointer-events-none' : undefined}>
     <div ref={partRef} data-section-id="G">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -293,6 +305,7 @@ const PartGComponent: React.FC<PartGProps> = ({
           </div>
         </CardContent>
       </Card>
+    </div>
     </div>
     </fieldset>
   );

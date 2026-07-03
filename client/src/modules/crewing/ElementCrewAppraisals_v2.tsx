@@ -44,6 +44,8 @@ import { usePermissions } from '@/contexts/PermissionsContext';
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { useVesselsV2, useVesselTypesV2, useNationalitiesV2, useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
 import { useCompanyRanksV2 } from "@/modules/admin/hooks/useAdminV2";
+import { useRankScope } from "@/hooks/useRankScope";
+import { getBaseRank } from "@shared/crew-mapping";
 
 
 // Interface for combined crew member and appraisal data
@@ -144,9 +146,10 @@ const RatingCellRenderer = (params: ICellRendererParams) => {
   return <RatingBadge value={params.value} color={params.data.competenceRating.color} />;
 };
 
-const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEditClick: (data: CrewAppraisalData) => void; handleViewClick: (data: CrewAppraisalData) => void; handleDeleteClick: (data: CrewAppraisalData) => void; canEditPerm: boolean; canDeletePerm: boolean } }) => {
+const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEditClick: (data: CrewAppraisalData) => void; handleViewClick: (data: CrewAppraisalData) => void; handleDeleteClick: (data: CrewAppraisalData) => void; canEditPerm: boolean; canDeletePerm: boolean; canActOnRank: (rank: string | null | undefined) => boolean } }) => {
   if (!params.colDef || !params.data) return null;
   const appraisalId = params.data.appraisalId;
+  const canAct = params.context.canActOnRank(params.data.rank);
 
   return (
     <div className="flex gap-2 justify-center">
@@ -154,7 +157,8 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
         variant="ghost"
         size="icon"
         className="h-6 w-6"
-        onClick={() => params.context.handleViewClick(params.data)}
+        onClick={() => { if (canAct) params.context.handleViewClick(params.data); }}
+        disabled={!canAct}
         data-testid={`button-view-appraisal-${appraisalId}`}
       >
         <EyeIcon className="h-[18px] w-[18px] text-gray-500" />
@@ -164,7 +168,8 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
         variant="ghost"
         size="icon"
         className="h-6 w-6"
-        onClick={() => params.context.handleEditClick(params.data)}
+        onClick={() => { if (canAct) params.context.handleEditClick(params.data); }}
+        disabled={!canAct}
         data-testid={`button-edit-appraisal-${appraisalId}`}
       >
         <EditIcon className="h-[18px] w-[18px] text-gray-500" />
@@ -175,7 +180,8 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
         variant="ghost"
         size="icon"
         className="h-6 w-6"
-        onClick={() => params.context.handleDeleteClick(params.data)}
+        onClick={() => { if (canAct) params.context.handleDeleteClick(params.data); }}
+        disabled={!canAct}
         data-testid={`button-delete-appraisal-${appraisalId}`}
       >
         <Trash2Icon className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
@@ -188,6 +194,13 @@ const ActionsCellRenderer = (params: ICellRendererParams & { context: { handleEd
 export const ElementCrewAppraisals_v2 = (): JSX.Element => {
   const { canEdit, canDelete, permissions, userType, myVessels } = usePermissions();
   const isShipUser = userType === 'Ship';
+
+  const { allowedRanks, shouldRestrictForShipUser } = useRankScope();
+  const canActOnRank = useCallback((rank: string | null | undefined) => {
+    if (!shouldRestrictForShipUser) return true;
+    if (!rank) return false;
+    return allowedRanks.includes(rank) || allowedRanks.includes(getBaseRank(rank));
+  }, [allowedRanks, shouldRestrictForShipUser]);
   const viewport = useViewport();
   const isPhone = viewport === 'phone';
   const isTablet = viewport === 'tablet';
@@ -1096,7 +1109,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
               rowData={crewData}
               columnDefs={columnDefs}
               onGridReady={onGridReady}
-              context={{ handleEditClick, handleViewClick, handleDeleteClick, canEditPerm: permissions.length === 0 || canEdit("Crewing"), canDeletePerm: permissions.length === 0 || canDelete("Crewing") }}
+              context={{ handleEditClick, handleViewClick, handleDeleteClick, canEditPerm: permissions.length === 0 || canEdit("Crewing"), canDeletePerm: permissions.length === 0 || canDelete("Crewing"), canActOnRank }}
               fillAvailableHeight={true}
               bottomPadding={80}
               width="100%"
