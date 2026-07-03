@@ -119,7 +119,7 @@ const ProgressBarRenderer = (params: ICellRendererParams & { onEdit?: (data: any
   const percentage = progressData?.percentage ?? 0;
   
   const barColor = meetsThreshold ? 'bg-green-500' : 'bg-[#EAB308]';
-  const canAct = params.canActOnRank ? params.canActOnRank(params.data?.currentRank) : true;
+  const canAct = params.canActOnRank ? params.canActOnRank(params.data?.presentRankForScope) : true;
   const isLocked = !!params.data?.checklistLocked || !canAct;
 
   const handleClick = () => {
@@ -176,7 +176,7 @@ const StatusBadgeRenderer = (params: ICellRendererParams) => {
 };
 
 const EditButtonRenderer = (params: ICellRendererParams & { onEdit?: (data: any) => void; canActOnRank?: (rank: string | null | undefined) => boolean }) => {
-  const canAct = params.canActOnRank ? params.canActOnRank(params.data?.currentRank) : true;
+  const canAct = params.canActOnRank ? params.canActOnRank(params.data?.presentRankForScope) : true;
 
   const handleEditClick = () => {
     if (!canAct) return;
@@ -559,6 +559,7 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
         age: ageStatus,
         nationality: crew.nationalityName || crew.nationality || 'Unknown',
         currentRank: fromRank,
+        presentRankForScope: crew.presentRank || crew.rank || null,
         promotionToRank: toRank || '-',
         vesselLeave: vesselLeave,
         presentVessel: crew.vesselUuid || null,
