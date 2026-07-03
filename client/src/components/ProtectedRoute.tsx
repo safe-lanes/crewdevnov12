@@ -29,7 +29,7 @@ export function ProtectedRoute({ menuName, children, fallbackRoute }: ProtectedR
   return <>{children}</>;
 }
 
-function NoAccessPage({ menuName }: { menuName: string }) {
+export function NoAccessPage({ menuName }: { menuName: string }) {
   return (
     <div className="flex flex-col items-center justify-center h-[calc(100vh-120px)] text-center px-4" data-testid="no-access-page">
       <ShieldX size={64} className="text-gray-300 mb-4" />

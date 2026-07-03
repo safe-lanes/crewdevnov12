@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
 import { useMutation } from '@tanstack/react-query';
 import MainLayout from '@/components/main/MainLayout';
 import DrugsAlcoholSideBar from './DrugsAlcoholSideBar_v2';
@@ -111,6 +112,13 @@ export function DrugsAlcoholModule_v2() {
                 // `page` hint is only used to switch the page early when it
                 // matches what we will end up opening.
                 const recordPage = testType;
+                // Submodule access gate: do not open a deep-linked record whose
+                // test type the user is not permitted to view. The form modal
+                // renders outside renderContent(), so without this check a denied
+                // user could still see restricted record details via deep link.
+                if (permissions.length > 0 && !allowedPages.includes(recordPage)) {
+                    return;
+                }
                 if (allowedPages.includes(recordPage)) {
                     setSelectedDrugsAlcoholPage(recordPage);
                 } else if (page && allowedPages.includes(page) && page === recordPage) {
@@ -716,6 +724,14 @@ export function DrugsAlcoholModule_v2() {
     };
 
     const renderContent = () => {
+        // Submodule-level access gate: when the parent module is permitted but
+        // the selected submodule is not (including the case where NO submodule
+        // is permitted, so allowedPages is empty), show the Access Restricted
+        // screen instead of falling through to the default "annual" page.
+        if (permissions.length > 0 && !allowedPages.includes(selectedDrugsAlcoholPage)) {
+            return <NoAccessPage menuName="Drugs & Alcohol" />;
+        }
+
         switch (selectedDrugsAlcoholPage) {
             case "annual":
                 return (
