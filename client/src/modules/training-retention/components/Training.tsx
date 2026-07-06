@@ -64,8 +64,8 @@ type GridRow = AggregatedRow & {
 };
 
 type CompanyTrainingLookup = {
-  ctUuid: string;
-  trainingLabel: string;
+  id: string;
+  name: string;
 };
 
 type RankLookup = {
@@ -176,12 +176,8 @@ export const Training = (): JSX.Element => {
   // Resolve the stored numeric company-training id (correspondingInDb) to its
   // display name. The raw id is preserved on the row; only the displayed value
   // is the resolved name so sort/filter/CSV-Excel export all operate on names.
-  const { getName: getDbTrainingName } = useCompanyTrainings();
+  const { options: companyTrainings, getName: getDbTrainingName } = useCompanyTrainings();
   const { statuses: statusOptions } = useTrainingStatusOptionsV2("Training & Retention");
-
-  const { data: companyTrainings = [] } = useQuery<CompanyTrainingLookup[]>({
-    queryKey: ["/api/v2/admin/company-trainings"],
-  });
 
   const { data: ranks = [] } = useQuery<RankLookup[]>({
     queryKey: ["/api/v2/admin/available-ranks"],
@@ -669,7 +665,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
     setForm((p) => ({ ...p, [k]: v }));
 
   const trainingDbOptions = useMemo(
-    () => companyTrainings.map((t) => ({ value: t.trainingLabel, label: t.trainingLabel })),
+    () => companyTrainings.map((t) => ({ value: t.id, label: t.name })),
     [companyTrainings]
   );
 
