@@ -701,9 +701,14 @@ the service-layer rules above:
    and every collection the engine iterates (elements, scale lines, overrides,
    allotments, advances, bonds, transactions) is explicitly sorted by
    uuid/code, so re-running the same inputs yields byte-identical lines.
-5. **FX snapshot.** When a line's currency equals the tenant's functional
-   currency, `fx_rate` is exactly `1.000000` and
-   `amount_functional = amount`.
+5. **FX snapshot.** Money columns on engine-written lines are never null.
+   When a line's currency equals the tenant's functional currency, `fx_rate`
+   is exactly `1.000000` and `amount_functional = amount`. For cross-currency
+   lines (no FX-rate source exists in the schema yet) the engine
+   deterministically applies a placeholder `fx_rate` of `1.000000`, mirrors
+   the amount into `amount_functional`, and records the fact in
+   `calc_snapshot.fxNote` (including the tenant's fx policy) so reviewers can
+   see conversion was not performed.
 
 ## Deviations from spec
 

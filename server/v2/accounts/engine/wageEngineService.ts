@@ -1249,31 +1249,35 @@ function categoryElement(
 // Line construction
 // ============================================================================
 
+// Money columns on engine-written lines are never null. No FX-rate source
+// exists in the schema yet, so cross-currency lines deterministically record
+// a placeholder rate of 1.000000 (amount mirrored into amount_functional)
+// and flag it in calc_snapshot.fxNote for reviewers.
 function fxColumns(
   currency: string,
   amount: string,
   config: EngineConfig,
   snapshot: Record<string, unknown>,
-): { fxRate: string | null; amountFunctional: string | null } {
+): { fxRate: string; amountFunctional: string } {
   if (currency === config.functionalCurrency) {
     return { fxRate: "1.000000", amountFunctional: amount };
   }
-  snapshot.fxNote = `cross-currency (${currency} -> ${config.functionalCurrency}) conversion not performed; fx policy ${config.fxRatePolicy}`;
-  return { fxRate: null, amountFunctional: null };
+  snapshot.fxNote = `cross-currency (${currency} -> ${config.functionalCurrency}) conversion not performed; placeholder fx_rate 1.000000 applied (no FX rate source); fx policy ${config.fxRatePolicy}`;
+  return { fxRate: "1.000000", amountFunctional: amount };
 }
 
 function fxFor(
   currency: string,
   amount: string,
   config: EngineConfig,
-): { fxRate: string | null; amountFunctional: string | null; note?: string } {
+): { fxRate: string; amountFunctional: string; note?: string } {
   if (currency === config.functionalCurrency) {
     return { fxRate: "1.000000", amountFunctional: amount };
   }
   return {
-    fxRate: null,
-    amountFunctional: null,
-    note: `cross-currency (${currency} -> ${config.functionalCurrency}) conversion not performed`,
+    fxRate: "1.000000",
+    amountFunctional: amount,
+    note: `cross-currency (${currency} -> ${config.functionalCurrency}) conversion not performed; placeholder fx_rate 1.000000 applied (no FX rate source); fx policy ${config.fxRatePolicy}`,
   };
 }
 

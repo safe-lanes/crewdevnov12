@@ -66,6 +66,7 @@ const promoLedgerUuid = u();
 const epeSubs = u();
 const epeCadj = u();
 const txnVot = u();
+const txnFx = u();
 const allotH4 = u();
 const advH4 = u();
 const bondH4 = u();
@@ -357,6 +358,20 @@ describe("Wage Calculation Engine (H1–H5)", () => {
       origin: "vessel",
       status: "accepted",
     });
+    // cross-currency transaction (EUR vs USD functional) for the FX test, July
+    await insert("acc_monthly_transactions_v2", {
+      txn_uuid: txnFx,
+      engagement_uuid: engH4,
+      crew_uuid: crewH4,
+      vessel_uuid: vslH4,
+      period: "2026-07",
+      pay_element_uuid: el.CADJ,
+      qty: null,
+      amount: "120.00",
+      currency: "EUR",
+      origin: "office",
+      status: "accepted",
+    });
     await insert("acc_allotments_v2", {
       allotment_uuid: allotH4,
       crew_uuid: crewH4,
@@ -428,7 +443,9 @@ describe("Wage Calculation Engine (H1–H5)", () => {
       "DELETE FROM acc_engagement_pay_elements_v2 WHERE epe_uuid = ANY($1)",
       [[epeSubs, epeCadj]],
     );
-    await tryQuery("DELETE FROM acc_monthly_transactions_v2 WHERE txn_uuid = $1", [txnVot]);
+    await tryQuery("DELETE FROM acc_monthly_transactions_v2 WHERE txn_uuid = ANY($1)", [
+      [txnVot, txnFx],
+    ]);
     await tryQuery("DELETE FROM acc_allotments_v2 WHERE allotment_uuid = $1", [allotH4]);
     await tryQuery("DELETE FROM acc_advances_v2 WHERE advance_uuid = $1", [advH4]);
     await tryQuery("DELETE FROM acc_bond_items_v2 WHERE bond_item_uuid = $1", [bondH4]);
@@ -634,6 +651,41 @@ describe("Wage Calculation Engine (H1–H5)", () => {
     expect(linesA.length).toBeGreaterThan(0);
     expect(linesB).toEqual(linesA);
     expect(second.body.crewTotals).toEqual(first.body.crewTotals);
+  });
+
+  // ---- cross-currency FX columns -----------------------------------------------
+  it("cross-currency lines carry non-null deterministic fxRate/amountFunctional", async () => {
+    const { status } = await runEngagement(engH4, "2026-07");
+    expect(status).toBe(200);
+    const lines = await ledgerLines(engH4, "2026-07");
+    expect(lines.length).toBeGreaterThan(0);
+
+    // no nulls in money columns on any engine-written line
+    for (const l of lines) {
+      expect(l.fxRate, `fxRate null on line ${l.ledgerUuid}`).not.toBeNull();
+      expect(
+        l.amountFunctional,
+        `amountFunctional null on line ${l.ledgerUuid}`,
+      ).not.toBeNull();
+    }
+
+    const eurLines = lines.filter((l) => l.currency === "EUR");
+    expect(eurLines.length).toBe(1);
+    const eur = eurLines[0];
+    expect(Number(eur.amount)).toBeCloseTo(120.0, 2);
+    expect(Number(eur.fxRate)).toBeCloseTo(1.0, 6);
+    expect(Number(eur.amountFunctional)).toBeCloseTo(Number(eur.amount), 2);
+    expect(String(eur.calcSnapshot?.fxNote ?? "")).toContain(
+      "conversion not performed",
+    );
+
+    // deterministic on re-run
+    const again = await runEngagement(engH4, "2026-07");
+    expect(again.status).toBe(200);
+    const linesAgain = await ledgerLines(engH4, "2026-07");
+    const eurAgain = linesAgain.filter((l) => l.currency === "EUR")[0];
+    expect(eurAgain.fxRate).toEqual(eur.fxRate);
+    expect(eurAgain.amountFunctional).toEqual(eur.amountFunctional);
   });
 
   // ---- locked portage refusal ------------------------------------------------------
