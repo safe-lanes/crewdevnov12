@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
+import { useTrainingStatusOptionsV2, withLegacyStatus } from "@/hooks/v2/useMasterDataV2";
 import { cn } from "@/lib/utils";
 
 type AggregatedRow = {
@@ -103,7 +104,6 @@ type DialogMode =
   | { kind: "new" }
   | { kind: "edit"; row: AggregatedRow };
 
-const STATUS_OPTIONS = ["Pending", "Scheduled", "In Progress", "Completed", "Cancelled"];
 const CATEGORY_OPTIONS = ["Mandatory", "Recommended", "Optional", "Other"];
 
 // ----- Cell renderers (defined outside component to avoid hooks issues) -----
@@ -179,6 +179,7 @@ export const Training = (): JSX.Element => {
   // display name. The raw id is preserved on the row; only the displayed value
   // is the resolved name so sort/filter/CSV-Excel export all operate on names.
   const { getName: getDbTrainingName } = useCompanyTrainings();
+  const { statuses: statusOptions } = useTrainingStatusOptionsV2("Training & Retention");
 
   const { data: companyTrainings = [] } = useQuery<CompanyTrainingLookup[]>({
     queryKey: ["/api/v2/admin/company-trainings"],
@@ -459,7 +460,7 @@ export const Training = (): JSX.Element => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  {STATUS_OPTIONS.map((s) => (
+                  {withLegacyStatus(statusOptions, draftFilters.status === "all" ? undefined : draftFilters.status).map((s) => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>
@@ -644,6 +645,7 @@ type FormState = {
 
 function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, users }: DialogProps) {
   const { toast } = useToast();
+  const { statuses: statusOptions } = useTrainingStatusOptionsV2("Training & Retention");
   const isNew = mode.kind === "new";
   const row = mode.kind === "edit" ? mode.row : null;
   const isLimited = !!row && row.editable === "limited";
@@ -859,7 +861,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
               <SelectTrigger data-testid="select-status"><SelectValue placeholder="Select" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— None —</SelectItem>
-                {STATUS_OPTIONS.map((s) => (
+                {withLegacyStatus(statusOptions, form.status).map((s) => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>

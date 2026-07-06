@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
-import { useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
+import { useAppraisalTypesV2, useTrainingStatusOptionsV2, withLegacyStatus } from "@/hooks/v2/useMasterDataV2";
 import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 
@@ -171,10 +171,7 @@ const trainingFollowupSchema = z.object({
   training: z.string(),
   correspondingInDB: z.string(),
   category: z.string(),
-  status: z.union([
-    z.enum(["Proposed", "Approved", "Planned", "Declined", "Completed"]),
-    z.literal(""),
-  ]),
+  status: z.string(),
   targetDate: z.string().optional(),
   comment: z.string().optional(),
   addedFromDB: z.boolean().optional(),
@@ -465,6 +462,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   
   // Company training catalogue used by the G2 "Corresponding in DB" combobox.
   const { options: dbTrainingOptions, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
+  const { statuses: appraisalStatusOptions } = useTrainingStatusOptionsV2("Appraisal");
 
   // Fetch appraisal types from V2 Masters (Master 023)
   const { data: appraisalTypesRaw = [] } = useAppraisalTypesV2();
@@ -4353,11 +4351,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           }`}
                                         >
                                           <option value="" disabled>Select Status</option>
-                                          <option value="Proposed">Proposed</option>
-                                          <option value="Approved">Approved</option>
-                                          <option value="Planned">Planned</option>
-                                          <option value="Declined">Declined</option>
-                                          <option value="Completed">Completed</option>
+                                          {withLegacyStatus(appraisalStatusOptions, followup.status).map((s) => (
+                                            <option key={s} value={s}>{s}</option>
+                                          ))}
                                         </select>
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">

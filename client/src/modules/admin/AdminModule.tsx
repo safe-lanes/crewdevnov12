@@ -109,6 +109,7 @@ import {
 import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionContext";
 import AccessControlPage from "./AccessControlPage";
 import ApprovalWorkflowPage from "./ApprovalWorkflowPage";
+import TrainingStatusPage from "./TrainingStatusPage";
 import { 
   getCategoryLabel,
   getGroupLabel,
@@ -539,9 +540,9 @@ interface SeafarerData {
 const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
   const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
-  const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
+  const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "training-status": "Masters", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
   const adminAllowedPages = useMemo(() => {
-    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow"];
+    const all = ["forms", "rank-admin", "masters", "training-matrix", "training-status", "access-control", "approval-workflow"];
     if (permissions.length === 0) return all;
     return all.filter(p => canView(adminPageToMenu[p] || p));
   }, [permissions, canView]);
@@ -1528,6 +1529,9 @@ const AdminModuleInner = (): JSX.Element => {
       } else if (pathParts[1] === 'rank-admin') {
         // /admin/rank-admin - show rank admin page
         setSelectedAdminPage('rank-admin');
+      } else if (pathParts[1] === 'training-status') {
+        // /admin/training-status - show training status master page
+        setSelectedAdminPage('training-status');
       } else {
         // Unknown admin path - default to forms
         setSelectedAdminPage('forms');
@@ -8495,6 +8499,7 @@ const AdminModuleInner = (): JSX.Element => {
             {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
             {selectedAdminPage === "masters" && renderDataMastersModule()}
             {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
+            {selectedAdminPage === "training-status" && <TrainingStatusPage />}
             {selectedAdminPage === "access-control" && <AccessControlPage />}
             {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
           </>

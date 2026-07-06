@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Trash2, MessageSquare } from 'lucide-react';
 import type { TrainingRow, Comment } from './types';
 import { DbTrainingCombobox, type DbTrainingOption } from './DbTrainingCombobox';
+import { useTrainingStatusOptionsV2, withLegacyStatus } from '@/hooks/v2/useMasterDataV2';
 
 interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   trainingNeeds: TrainingRow[];
@@ -54,6 +55,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
   ...restProps
 }: PartATrainingNeedsProps) {
   const currentUserDisplay = getCurrentUserDisplay();
+  const { statuses: statusOptions } = useTrainingStatusOptionsV2("Promotion");
   return (
     <div className="border border-[#EAEBEF] rounded-lg p-4" {...restProps}>
       <div className="flex justify-between items-center mb-4">
@@ -175,11 +177,9 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         <SelectValue placeholder="Select Status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Proposed">Proposed</SelectItem>
-                        <SelectItem value="Approved">Approved</SelectItem>
-                        <SelectItem value="Planned">Planned</SelectItem>
-                        <SelectItem value="Declined">Declined</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
+                        {withLegacyStatus(statusOptions, training.status).map((s) => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </TableCell>

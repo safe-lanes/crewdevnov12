@@ -15,6 +15,7 @@ import { PartGProps } from "./types";
 import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 import { usePermissions } from "@/contexts/PermissionsContext";
+import { useTrainingStatusOptionsV2, withLegacyStatus } from "@/hooks/v2/useMasterDataV2";
 
 const PartGComponent: React.FC<PartGProps> = ({
   form,
@@ -45,6 +46,7 @@ const PartGComponent: React.FC<PartGProps> = ({
   isPostStage3,
 }) => {
   const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
+  const { statuses: statusOptions } = useTrainingStatusOptionsV2("Appraisal");
   const { userType } = usePermissions();
   const isShipUser = userType === 'Ship';
   // Task #500: post-Stage 3 fully locks G (legacy behavior).
@@ -225,11 +227,9 @@ const PartGComponent: React.FC<PartGProps> = ({
                             <Select value={followup.status || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "status", value)} disabled={lockSection}>
                               <SelectTrigger className="h-8"><SelectValue placeholder="Select Status" /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Proposed">Proposed</SelectItem>
-                                <SelectItem value="Approved">Approved</SelectItem>
-                                <SelectItem value="Planned">Planned</SelectItem>
-                                <SelectItem value="Declined">Declined</SelectItem>
-                                <SelectItem value="Completed">Completed</SelectItem>
+                                {withLegacyStatus(statusOptions, followup.status).map((s) => (
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </td>
