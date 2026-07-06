@@ -12,6 +12,7 @@ const sourcePatchSchema = z.object({
   status: z.string().nullable().optional(),
   targetDate: z.string().nullable().optional(),
   comments: z.string().nullable().optional(),
+  correspondingInDb: z.string().nullable().optional(),
 });
 
 router.get("/", async (_req: Request, res: Response) => {

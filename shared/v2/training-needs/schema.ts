@@ -35,6 +35,7 @@ export const trainingNeedsSourceOverlayV2 = pgTable("training_needs_source_overl
   sourceRefUuid: text("source_ref_uuid").notNull(),
   status: text("status"),
   comments: text("comments"),
+  correspondingInDb: text("corresponding_in_db"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   createdByUuid: text("created_by_uuid"),

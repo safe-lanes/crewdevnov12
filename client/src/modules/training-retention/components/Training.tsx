@@ -712,12 +712,14 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
           row.source === "Promotion" ? "promotion" : null;
         if (!sourceKey) throw new Error("Unknown source");
 
-        // All three sourced types accept Status, Target/Compl. Date and Comments.
-        // Server persists fields the source table can hold and overlays the rest.
+        // All three sourced types accept Status, Target/Compl. Date, Comments and
+        // Training (in DB). Server persists fields the source table can hold and
+        // overlays the rest — this never touches the original "Training" name.
         await apiRequest("PATCH", `/api/v2/training-needs/source/${sourceKey}/${row.sourceRefUuid}`, {
           status: form.status || null,
           targetDate: form.targetDate || null,
           comments: form.comments || null,
+          correspondingInDb: form.correspondingInDb || null,
         });
       }
     },
@@ -846,7 +848,6 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
               onChange={(v) => set("correspondingInDb", v)}
               options={trainingDbOptions}
               placeholder="Search trainings..."
-              disabled={isLimited}
               testId="combobox-training-db"
             />
           </div>
@@ -943,9 +944,9 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
 
         {isLimited && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            This row is sourced from {row?.source}. Only Status, Target / Compl. Date
-            and Comments are editable here — they are written back to the source record.
-            Other fields must be edited at the source.
+            This row is sourced from {row?.source}. Only Status, Target / Compl. Date,
+            Comments and Training (in DB) are editable here — they are written back to
+            the source record. Other fields must be edited at the source.
           </p>
         )}
 

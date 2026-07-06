@@ -70,6 +70,7 @@ export type SourcePatchInput = {
   status?: string | null;
   targetDate?: string | null;
   comments?: string | null;
+  correspondingInDb?: string | null;
 };
 
 export class TrainingNeedsRepository {
@@ -89,7 +90,8 @@ export class TrainingNeedsRepository {
         TRIM(CONCAT_WS(' ', rc.first_name, rc.family_name)) AS name,
         rc.present_rank AS rank,
         ov.status AS overlay_status,
-        ov.comments AS overlay_comments
+        ov.comments AS overlay_comments,
+        ov.corresponding_in_db AS overlay_corresponding_in_db
       FROM screening_b7_training_items b7i
       JOIN screening_b7_training b7 ON b7i.b7_uuid = b7.b7_uuid AND b7.is_deleted = FALSE
       JOIN recruitment_candidates_v2 rc ON b7.rec_can_uuid = rc.rec_can_uuid AND rc.is_deleted = FALSE
@@ -101,7 +103,9 @@ export class TrainingNeedsRepository {
       WHERE b7i.is_deleted = FALSE
         AND rc.status = 'Recruited'
     `);
-    const recruitmentRows = recruitmentResult.rows as RawRecruitmentRow[];
+    const recruitmentRows = recruitmentResult.rows as (RawRecruitmentRow & {
+      overlay_corresponding_in_db: string | null;
+    })[];
 
     const appraisalResult = await db.execute(sql`
       SELECT
@@ -157,7 +161,7 @@ export class TrainingNeedsRepository {
         name: r.name || null,
         rank: r.rank || null,
         training: r.training,
-        correspondingInDb: null,
+        correspondingInDb: r.overlay_corresponding_in_db,
         identifiedBy: r.identified_by,
         category: r.category,
         // status from source; overlay is fallback if source is null
@@ -240,7 +244,7 @@ export class TrainingNeedsRepository {
   private async upsertOverlay(
     sourceType: SourceType,
     sourceRefUuid: string,
-    fields: { status?: string | null; comments?: string | null },
+    fields: { status?: string | null; comments?: string | null; correspondingInDb?: string | null },
     auditUserUuid?: string | null,
   ): Promise<void> {
     if (Object.keys(fields).length === 0) return;
@@ -267,6 +271,7 @@ export class TrainingNeedsRepository {
         sourceRefUuid,
         status: fields.status ?? null,
         comments: fields.comments ?? null,
+        correspondingInDb: fields.correspondingInDb ?? null,
         createdByUuid: auditUserUuid || null,
         updatedByUuid: auditUserUuid || null,
       });
@@ -293,7 +298,12 @@ export class TrainingNeedsRepository {
       .set(sets)
       .where(and(eq(screeningB7TrainingItems.trainItemUuid, trainItemUuid), eq(screeningB7TrainingItems.isDeleted, false)))
       .returning();
-    return r.length > 0;
+    if (r.length === 0) return false;
+    // The source table has no corresponding_in_db column — overlay it.
+    if (data.correspondingInDb !== undefined) {
+      await this.upsertOverlay("recruitment", trainItemUuid, { correspondingInDb: data.correspondingInDb }, auditUserUuid);
+    }
+    return true;
   }
 
   async patchAppraisal(
@@ -308,6 +318,7 @@ export class TrainingNeedsRepository {
     if (data.status !== undefined) sets.status = data.status;
     if (data.targetDate !== undefined) sets.targetDate = data.targetDate;
     if (data.comments !== undefined) sets.comment = data.comments;
+    if (data.correspondingInDb !== undefined) sets.correspondingInDb = data.correspondingInDb;
     const r = await db
       .update(apprTrainingFollowupsV2)
       .set(sets)
@@ -327,6 +338,7 @@ export class TrainingNeedsRepository {
     };
     if (data.status !== undefined) sets.status = data.status;
     if (data.targetDate !== undefined) sets.completionDate = data.targetDate;
+    if (data.correspondingInDb !== undefined) sets.correspondingInDb = data.correspondingInDb;
     const r = await db
       .update(promoTrainingNeedsV2)
       .set(sets)
