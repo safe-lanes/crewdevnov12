@@ -18,6 +18,7 @@ import { MonthlyTestTable_v2 } from './MonthlyTestTable_v2';
 import { PostIncidentTestTable_v2 } from './PostIncidentTestTable_v2';
 import { OtherTestsTable_v2 } from './OtherTestsTable_v2';
 import { SummaryTable_v2 } from './SummaryTable_v2';
+import { HistoryTable_v2 } from './HistoryTable_v2';
 import { DrugAlcoholTestForm_v2 } from './DrugAlcoholTestForm_v2';
 import { drugsAlcoholApiV2 } from './api/drugsAlcoholApiV2';
 import { useViewport } from '@/hooks/useViewport';
@@ -32,9 +33,9 @@ export function DrugsAlcoholModule_v2() {
     const { canView, canCreate, canEdit, canDelete, permissions, userType, myVessels } = usePermissions();
     const isShipUser = userType === 'Ship';
     const allowedPages = useMemo(() => {
-        const all = ["annual", "periodic", "monthly", "post-incident", "others", "summary"];
+        const all = ["annual", "periodic", "monthly", "post-incident", "others", "summary", "history"];
         if (permissions.length === 0) return all;
-        const pageToMenu: Record<string, string> = { "annual": "Annual", "periodic": "Periodic", "monthly": "Monthly", "post-incident": "Post Incident", "others": "Others", "summary": "Summary" };
+        const pageToMenu: Record<string, string> = { "annual": "Annual", "periodic": "Periodic", "monthly": "Monthly", "post-incident": "Post Incident", "others": "Others", "summary": "Summary", "history": "History" };
         return all.filter(p => canView(pageToMenu[p] || p));
     }, [permissions, canView]);
 
@@ -133,7 +134,7 @@ export function DrugsAlcoholModule_v2() {
         return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialDeepLink]);
-    const daPageToMenu: Record<string, string> = { "annual": "Annual", "periodic": "Periodic", "monthly": "Monthly", "post-incident": "Post Incident", "others": "Others", "summary": "Summary" };
+    const daPageToMenu: Record<string, string> = { "annual": "Annual", "periodic": "Periodic", "monthly": "Monthly", "post-incident": "Post Incident", "others": "Others", "summary": "Summary", "history": "History" };
     const currentDAMenu = daPageToMenu[selectedDrugsAlcoholPage] || "Annual";
     const { toast } = useToast();
 
@@ -897,6 +898,12 @@ export function DrugsAlcoholModule_v2() {
                                 onEdit={(permissions.length === 0 || canEdit("Summary")) ? (testType, recordId) => handleOpenForm(testType, summaryVessel, String(recordId)) : undefined}
                             />
                         )}
+                    </div>
+                );
+            case "history":
+                return (
+                    <div className="flex flex-col h-full">
+                        <HistoryTable_v2 onOpenRecord={handleOpenForm} />
                     </div>
                 );
             default:
