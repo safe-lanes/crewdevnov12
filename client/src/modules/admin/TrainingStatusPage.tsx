@@ -176,8 +176,9 @@ export default function TrainingStatusPage() {
     <div>
       <Card>
         <CardContent className="p-0">
+          <div className="h-[500px] overflow-y-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10">
               <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                 <TableHead className="text-xs text-white">Status</TableHead>
                 <TableHead className="text-xs text-white">Module</TableHead>
@@ -251,6 +252,7 @@ export default function TrainingStatusPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
