@@ -244,8 +244,13 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             // stale takeOverDate / takeOverConfirmation values.
             const isPostHandoverRow =
                 planningData?.crewStatus === "secondary" && !!planningData?.handOverDate;
+            // Safety guard: a crew already confirmed as Primary must never re-trigger
+            // a takeover swap on a later, unrelated save — Primary's dialog has no
+            // editable checkbox, so a true value here only ever means "already done before".
+            const isAlreadyConfirmedPrimary =
+                planningData?.crewStatus === "primary" && !!planningData?.takeOverConfirmation;
             const isTakeover =
-                !isPostHandoverRow && data.takeOverConfirmation && data.takeOverDate;
+                !isPostHandoverRow && !isAlreadyConfirmedPrimary && data.takeOverConfirmation && data.takeOverDate;
 
             if (data.reliefStatus === "Signed Off") {
                 const signedOffErrors: string[] = [];
