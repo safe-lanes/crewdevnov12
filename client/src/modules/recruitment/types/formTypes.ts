@@ -350,6 +350,7 @@ export interface TrainingItem {
   training: string;
   identifiedByUuid: string;
   category: string;
+  status?: string;
   dueDate: string;
   comments: string;
   sortOrder: number;

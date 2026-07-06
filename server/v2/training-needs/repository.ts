@@ -32,6 +32,7 @@ type RawRecruitmentRow = {
   training: string | null;
   identified_by: string | null;
   category: string | null;
+  status: string | null;
   target_date: string | null;
   comments: string | null;
   name: string | null;
@@ -82,6 +83,7 @@ export class TrainingNeedsRepository {
         b7i.training,
         COALESCE(mu.fullname, mu.display_name, b7i.identified_by_uuid) AS identified_by,
         b7i.category,
+        b7i.status,
         b7i.due_date AS target_date,
         b7i.comments,
         TRIM(CONCAT_WS(' ', rc.first_name, rc.family_name)) AS name,
@@ -157,8 +159,8 @@ export class TrainingNeedsRepository {
         correspondingInDb: null,
         identifiedBy: r.identified_by,
         category: r.category,
-        // status comes from overlay (source table has no status column)
-        status: r.overlay_status,
+        // status from source; overlay is fallback if source is null
+        status: r.status ?? r.overlay_status,
         targetDate: r.target_date,
         // comments come from source (b7i.comments) — overlay is fallback
         comments: r.comments ?? r.overlay_comments,

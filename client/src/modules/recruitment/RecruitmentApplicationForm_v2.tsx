@@ -23,7 +23,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { usePermissions } from '@/contexts/PermissionsContext';
-import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2, useTrainingCategoryOptionsV2, withLegacyCategory } from '@/hooks/v2/useMasterDataV2';
+import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2, useTrainingCategoryOptionsV2, withLegacyCategory, useTrainingStatusOptionsV2, withLegacyStatus } from '@/hooks/v2/useMasterDataV2';
 import { generateRecruitmentPDF } from '@/lib/generateRecruitmentPDF';
 import { formatDate } from '@/utils/format';
 import { applyDialingCode, getDialingCode, normalizeMobileInput, validateMobileNumber } from './countryDialingCodes';
@@ -971,6 +971,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   // Training Category master (Task #710): shared category dropdown values
   const { categories: trainingCategoryOptions } = useTrainingCategoryOptionsV2("Recruitment");
+  const { statuses: b7TrainingStatusOptions } = useTrainingStatusOptionsV2("Recruitment");
 
   // Fetch Manning Agents from V2 dedicated table
   const { data: manningAgentsData } = useManningAgentsV2();
@@ -1783,6 +1784,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           training: training.training || '',
           identifiedBy: training.identifiedByName || training.identifiedByUuid || '',
           category: training.category || '',
+          status: training.status || '',
           dueDate: training.dueDate || '',
           comments: training.comments || '',
         })),
@@ -2321,6 +2323,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         training: course.name,
         identifiedBy: '',
         category: trainingCategoryOptions.includes(course.requirement) ? course.requirement : '',
+        status: '',
         dueDate: '',
         comments: ''
       }));
@@ -3383,7 +3386,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setB6InterviewerErrors(newB6Errors);
     }
 
-    const isB7RowBlank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
+    const isB7RowBlank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.status || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
     const newB7Errors: Record<string, string> = {};
     formData.b7TrainingNeeds.forEach((training) => {
       if (!isB7RowBlank(training) && !(training.training || '').trim()) {
@@ -3634,7 +3637,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
       }
 
-      const isB7Blank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
+      const isB7Blank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.status || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
       const nonEmptyB7Training = formData.b7TrainingNeeds.filter(t => !isB7Blank(t));
       if (nonEmptyB7Training.length !== formData.b7TrainingNeeds.length) {
         setFormData(prev => ({ ...prev, b7TrainingNeeds: nonEmptyB7Training }));
@@ -3650,18 +3653,20 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             data: {
               training: training.training || null,
               category: training.category || null,
+              status: training.status || null,
               identifiedByUuid: training.identifiedBy || null,
               dueDate: training.dueDate || null,
               comments: training.comments || null,
               sortOrder: index,
             },
           }));
-        } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.identifiedBy || training.dueDate || training.comments)) {
+        } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.status || training.identifiedBy || training.dueDate || training.comments)) {
           bItemSavePromises.push(createB7TrainingItemMutation.mutateAsync({
             b7Uuid: currentB7Uuid,
             data: {
               training: training.training || null,
               category: training.category || null,
+              status: training.status || null,
               identifiedByUuid: training.identifiedBy || null,
               dueDate: training.dueDate || null,
               comments: training.comments || null,
@@ -8217,7 +8222,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           const newId = String(Date.now());
                           setFormData(prev => ({
                             ...prev,
-                            b7TrainingNeeds: [...prev.b7TrainingNeeds, { id: newId, training: '', identifiedBy: '', category: '', dueDate: '', comments: '' }]
+                            b7TrainingNeeds: [...prev.b7TrainingNeeds, { id: newId, training: '', identifiedBy: '', category: '', status: '', dueDate: '', comments: '' }]
                           }));
                         }}
                         className="text-gray-600 border-gray-300 hover:bg-gray-50"
@@ -8237,6 +8242,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/ Course <span className="text-red-500">*</span></TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Identified by</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Category</TableHead>
+                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Status</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Due Date</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Comments</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Actions</TableHead>
@@ -8319,6 +8325,28 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 <SelectContent>
                                   {withLegacyCategory(trainingCategoryOptions, training.category).map((c) => (
                                     <SelectItem key={c} value={c}>{c}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="p-3">
+                              <Select
+                                value={training.status || ''}
+                                onValueChange={(value) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b7TrainingNeeds: prev.b7TrainingNeeds.map(t => 
+                                      t.id === training.id ? { ...t, status: value } : t
+                                    )
+                                  }));
+                                }}
+                              >
+                                <SelectTrigger className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" data-testid={`select-b7-training-status-${idx}`}>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {withLegacyStatus(b7TrainingStatusOptions, training.status).map((s) => (
+                                    <SelectItem key={s} value={s}>{s}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>

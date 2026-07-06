@@ -886,6 +886,7 @@ export class ScreeningB7Repository {
       training: screeningB7TrainingItems.training,
       identifiedByUuid: screeningB7TrainingItems.identifiedByUuid,
       category: screeningB7TrainingItems.category,
+      status: screeningB7TrainingItems.status,
       dueDate: screeningB7TrainingItems.dueDate,
       comments: screeningB7TrainingItems.comments,
       sortOrder: screeningB7TrainingItems.sortOrder,
