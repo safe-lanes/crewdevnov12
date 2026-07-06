@@ -99,6 +99,7 @@ export class TrainingNeedsRepository {
        AND ov.source_ref_uuid = b7i.train_item_uuid
        AND ov.is_deleted = FALSE
       WHERE b7i.is_deleted = FALSE
+        AND rc.status = 'Recruited'
     `);
     const recruitmentRows = recruitmentResult.rows as RawRecruitmentRow[];
 
