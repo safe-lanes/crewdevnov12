@@ -7,18 +7,38 @@ const updateSchema = insertAccPayElementV2Schema.partial().omit({
   payElementUuid: true,
 });
 
+/** Map a service error to the correct HTTP response. */
+function handleError(error: any, res: Response, fallback: string) {
+  if (error?.code === "VALIDATION") {
+    return res.status(400).json({ error: error.message });
+  }
+  if (error?.code === "CONFLICT") {
+    return res.status(409).json({ error: error.message });
+  }
+  if (error?.code === "REFERENCED") {
+    return res
+      .status(409)
+      .json({ error: error.message, references: error.references });
+  }
+  if (error?.message?.includes("not found")) {
+    return res.status(404).json({ error: error.message });
+  }
+  console.error(fallback, error);
+  return res.status(500).json({ error: fallback });
+}
+
 export const payElementsController = {
   async getAll(req: Request, res: Response) {
     try {
-      const { status, type } = req.query;
+      const { status, type, category } = req.query;
       const records = await payElementsService.getAll({
         status: status as string | undefined,
         type: type as string | undefined,
+        category: category as string | undefined,
       });
       res.json(records);
     } catch (error) {
-      console.error("Error fetching pay elements:", error);
-      res.status(500).json({ error: "Failed to fetch pay elements" });
+      handleError(error, res, "Failed to fetch pay elements");
     }
   },
 
@@ -26,12 +46,8 @@ export const payElementsController = {
     try {
       const record = await payElementsService.getByUuid(req.params.uuid);
       res.json(record);
-    } catch (error: any) {
-      if (error.message?.includes("not found")) {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error fetching pay element:", error);
-      res.status(500).json({ error: "Failed to fetch pay element" });
+    } catch (error) {
+      handleError(error, res, "Failed to fetch pay element");
     }
   },
 
@@ -50,12 +66,8 @@ export const payElementsController = {
         auditUserUuid: getAuditUserUuid(req),
       });
       res.status(201).json(record);
-    } catch (error: any) {
-      if (error.message?.includes("required")) {
-        return res.status(400).json({ error: error.message });
-      }
-      console.error("Error creating pay element:", error);
-      res.status(500).json({ error: "Failed to create pay element" });
+    } catch (error) {
+      handleError(error, res, "Failed to create pay element");
     }
   },
 
@@ -72,12 +84,8 @@ export const payElementsController = {
         auditUserUuid: getAuditUserUuid(req),
       });
       res.json(record);
-    } catch (error: any) {
-      if (error.message?.includes("not found")) {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error updating pay element:", error);
-      res.status(500).json({ error: "Failed to update pay element" });
+    } catch (error) {
+      handleError(error, res, "Failed to update pay element");
     }
   },
 
@@ -85,12 +93,19 @@ export const payElementsController = {
     try {
       await payElementsService.delete(req.params.uuid);
       res.status(204).send();
-    } catch (error: any) {
-      if (error.message?.includes("not found")) {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error deleting pay element:", error);
-      res.status(500).json({ error: "Failed to delete pay element" });
+    } catch (error) {
+      handleError(error, res, "Failed to delete pay element");
+    }
+  },
+
+  async seedStandard(req: Request, res: Response) {
+    try {
+      const records = await payElementsService.seedStandard(
+        getAuditUserUuid(req),
+      );
+      res.status(201).json(records);
+    } catch (error) {
+      handleError(error, res, "Failed to seed standard pay elements");
     }
   },
 };

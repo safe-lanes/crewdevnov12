@@ -2,3 +2,6 @@ export { payElementsController } from "./payElementsController";
 export { allotmentsController } from "./allotmentsController";
 export { advancesController } from "./advancesController";
 export { bondItemsController } from "./bondItemsController";
+export { tenantConfigController } from "./tenantConfigController";
+export { wageScalesController } from "./wageScalesController";
+export { cbaReferenceController } from "./cbaReferenceController";

@@ -4,19 +4,54 @@ import {
   allotmentsController,
   advancesController,
   bondItemsController,
+  tenantConfigController,
+  wageScalesController,
+  cbaReferenceController,
 } from "./controllers";
 
 const router = Router();
 
 // ============================================
+// TENANT CONFIGURATION (single row per tenant)
+// ============================================
+router.get("/config", tenantConfigController.get);
+router.put("/config", tenantConfigController.update);
+router.patch("/config", tenantConfigController.update);
+
+// ============================================
 // PAY ELEMENTS (master pay element library)
 // ============================================
 router.get("/pay-elements", payElementsController.getAll);
+router.post("/pay-elements/seed-standard", payElementsController.seedStandard);
 router.get("/pay-elements/:uuid", payElementsController.getByUuid);
 router.post("/pay-elements", payElementsController.create);
 router.put("/pay-elements/:uuid", payElementsController.update);
 router.patch("/pay-elements/:uuid", payElementsController.update);
 router.delete("/pay-elements/:uuid", payElementsController.delete);
+
+// ============================================
+// WAGE SCALES (headers + lines + lifecycle)
+// ============================================
+router.get("/wage-scales", wageScalesController.getAll);
+router.get("/wage-scales/:uuid", wageScalesController.getByUuid);
+router.post("/wage-scales", wageScalesController.create);
+router.put("/wage-scales/:uuid", wageScalesController.update);
+router.patch("/wage-scales/:uuid", wageScalesController.update);
+router.delete("/wage-scales/:uuid", wageScalesController.delete);
+router.put("/wage-scales/:uuid/lines", wageScalesController.replaceLines);
+router.get("/wage-scales/:uuid/floor-check", wageScalesController.floorCheck);
+router.post("/wage-scales/:uuid/activate", wageScalesController.activate);
+router.post("/wage-scales/:uuid/supersede", wageScalesController.supersede);
+
+// ============================================
+// CBA REFERENCE (reference-only minimums)
+// ============================================
+router.get("/cba-reference", cbaReferenceController.getAll);
+router.get("/cba-reference/:uuid", cbaReferenceController.getByUuid);
+router.post("/cba-reference", cbaReferenceController.create);
+router.put("/cba-reference/:uuid", cbaReferenceController.update);
+router.patch("/cba-reference/:uuid", cbaReferenceController.update);
+router.delete("/cba-reference/:uuid", cbaReferenceController.delete);
 
 // ============================================
 // ALLOTMENTS

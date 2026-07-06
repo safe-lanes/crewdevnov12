@@ -2,7 +2,8 @@
 
 Schema module: `shared/v2/accounts/schema.ts`
 Types module: `shared/v2/accounts/types.ts` (drizzle-zod insert/select for every table)
-Migration: `migrations/0153_accounts_schema_rebuild.sql`
+Migrations: `migrations/0153_accounts_schema_rebuild.sql`,
+`migrations/0154_accounts_amendments.sql`
 
 The Accounts domain is built around an **append-only crew wage ledger**
 (`acc_wage_ledger_v2`) as the single system of record. Every payslip, portage
@@ -230,6 +231,8 @@ Single-row per-tenant behaviour configuration.
 | `functional_currency` | text | ISO 4217 (default `USD`) |
 | `fx_rate_policy` | text | CHECK `month_end` \| `transaction_date` \| `manual` (default `month_end`) |
 | `employment_models_enabled` | text[] | subset of `voyage_contract`, `annual_employment` |
+| `seniority_basis` | text | CHECK `rank_service_all_employers` \| `rank_service_company` \| `company_tenure` (default `rank_service_all_employers`); how a crew's seniority step is measured (added 0154) |
+| `allow_manual_seniority_anchor` | boolean | default true; whether an operator may manually override the derived seniority step on an engagement (added 0154) |
 | `auto_lock_on_approval` | boolean | default true |
 | `settings` | jsonb | free-form extra config |
 
@@ -257,7 +260,16 @@ Master library of pay elements.
 | `shows_on_payslip` | boolean | default true |
 | `shows_on_portage` | boolean | default true |
 | `status` | text | CHECK `active` \| `inactive` (default `active`) |
+| `payment_timing` | text | CHECK `paid_on_board` \| `payable_at_settlement` \| `remitted_to_fund` (default `paid_on_board`); when the element actually settles (added 0154) |
 | `effective_from` / `effective_to` | date | effectivity window |
+
+`payment_timing` distinguishes value that is paid in the monthly on-board
+payslip (`paid_on_board`) from value that is *earned monthly but only paid at
+final settlement* (`payable_at_settlement`, e.g. leave pay / end-of-contract
+bonuses) and from value remitted to a third-party fund
+(`remitted_to_fund`, e.g. provident-fund / pension contributions). It affects
+how the element flows through the payslip vs. the settlement, not how it is
+calculated.
 
 #### `acc_wage_scales_v2`
 Effective-dated wage scale headers.
@@ -273,6 +285,14 @@ Effective-dated wage scale headers.
 | `effective_from` / `effective_to` | date | |
 | `status` | text | CHECK `draft` \| `active` \| `superseded` (default `draft`) |
 | `superseded_by_scale_uuid` | text | points to the replacing scale |
+| `floor_ack_by_uuid` | text | who acknowledged CBA-floor violations on activation (added 0154) |
+| `floor_ack_at` | date | when the floor violations were acknowledged (added 0154) |
+| `floor_violations` | jsonb | snapshot of the acknowledged violations (added 0154) |
+
+When a scale is activated with one or more lines below an applicable CBA
+minimum, the operator must explicitly acknowledge the violations. That
+acknowledgment (who, when, and a snapshot of the violation set) is persisted on
+the scale header via the three `floor_*` columns above.
 
 Partial unique index `uq_acc_wage_scales_v2_active` on
 (`vessel_type_uuid`, `vessel_group_uuid`) `WHERE status='active'` — at most one
@@ -325,9 +345,19 @@ The engagement spine — one per voyage contract or annual employment.
 | `start_date` / `end_date` | date | |
 | `wage_scale_uuid` | text | → `acc_wage_scales_v2` |
 | `rank_id_at_start` | text | snapshot |
+| `scale_year_at_start` | integer | 1-based seniority step in force when the engagement started (added 0154) |
+| `next_step_date` | date | date the crew is due to advance to the next seniority step (added 0154) |
 | `currency` | text | ISO 4217 |
 | `status` | text | CHECK `draft` \| `active` \| `completed` \| `settled` \| `cancelled` |
 | `notes` | text | |
+
+The seniority "step" is the wage-scale year band. `scale_year_at_start` snapshots
+the step in force at sign-on; `next_step_date` is the anchor date from which the
+next step becomes due. A scale line's `experience_min_months` /
+`experience_max_months` band maps to a year step as
+`year = floor(experience_min_months / 12) + 1` (step 1 = 0–11 months, step 2 =
+12–23 months, …). Deriving step progression from service records is out of scope
+here; the anchor columns exist so a later engagement layer can carry the step.
 
 #### `acc_engagement_phases_v2`
 On/off-board phase timeline within an engagement.
@@ -393,7 +423,7 @@ money, `request_date` to date; new columns added.
 | `approver` | text | |
 | `status` | text | pending \| approved \| rejected \| disbursed \| recovered |
 | `cap_check` | boolean | default true |
-| `remaining_cap` | integer | kept as integer (see deviations) |
+| `remaining_cap` | money | widened `integer → numeric(14,2)` in 0154 |
 | `recovery_amount` | money | |
 | `ctm_reference` | text | |
 | `engagement_uuid` | text | **new** → `acc_engagements_v2` |
@@ -615,6 +645,23 @@ the service layer:
   migration runner executes the whole file in one transaction and tolerates
   duplicate-object errors, so re-runs are safe.
 
+## Migration notes (`0154_accounts_amendments.sql`)
+
+Amendments layered on top of 0153, all additive and idempotent:
+
+- `acc_pay_elements_v2`: added `payment_timing` (NOT NULL default `paid_on_board`)
+  with a guarded `CHECK`.
+- `acc_advances_v2`: widened `remaining_cap` `integer → numeric(14,2)` (drop
+  default → `ALTER TYPE ... USING` cast → re-set default `0`), closing the 0153
+  deviation.
+- `acc_engagements_v2`: added `scale_year_at_start` (int) and `next_step_date`
+  (date) as nullable seniority-anchor snapshot columns.
+- `acc_tenant_config_v2`: added `seniority_basis` (NOT NULL default
+  `rank_service_all_employers`, guarded `CHECK`) and
+  `allow_manual_seniority_anchor` (bool, default true).
+- `acc_wage_scales_v2`: added `floor_ack_by_uuid` (text), `floor_ack_at` (date)
+  and `floor_violations` (jsonb) for persisted CBA-floor acknowledgment.
+
 ## Deviations from spec
 
 1. **`rank_id` stored as `text` everywhere** (scale lines, CBA reference,
@@ -622,9 +669,14 @@ the service layer:
    accounts domain stores it as text for consistency with the uuid-as-text join
    convention. Joins cast as needed. This is intentional and low-risk given no
    DB FK constraints exist.
-2. **`acc_advances_v2.remaining_cap` kept as `integer`.** The spec listed only
-   `amount` and `recovery_amount` for numeric conversion, so `remaining_cap` was
-   left at its existing integer type rather than converted.
+2. **`acc_advances_v2.remaining_cap` widened to `numeric(14,2)` (0154).** 0153
+   left this at `integer`; 0154 converts it to money to match the other money
+   columns, closing the prior deviation.
 3. **`acc_portage_approvals_v2.date` uses the `date` type.** The referenced
    `promo_approvals_v2` pattern was followed for column set and status values;
    the date field uses the accounts-domain `date` convention.
+4. **Floor-acknowledgment columns on `acc_wage_scales_v2` (0154).** The activation
+   floor-check acceptance criterion requires persisting the acknowledgment (user,
+   date, violations snapshot), but the 0153 scale header had nowhere to store it.
+   `floor_ack_by_uuid` / `floor_ack_at` / `floor_violations` were added beyond the
+   spec's enumerated Part-1 amendment list to satisfy that requirement.

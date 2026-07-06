@@ -47,6 +47,8 @@ export const accTenantConfigV2 = pgTable("acc_tenant_config_v2", {
   functionalCurrency: text("functional_currency").notNull().default("USD"), // ISO 4217
   fxRatePolicy: text("fx_rate_policy").notNull().default("month_end"), // month_end | transaction_date | manual
   employmentModelsEnabled: text("employment_models_enabled").array(), // voyage_contract | annual_employment
+  seniorityBasis: text("seniority_basis").notNull().default("rank_service_all_employers"), // rank_service_all_employers | rank_service_company | company_tenure
+  allowManualSeniorityAnchor: boolean("allow_manual_seniority_anchor").notNull().default(true),
   autoLockOnApproval: boolean("auto_lock_on_approval").notNull().default(true),
   settings: jsonb("settings"),
   ...auditColumns,
@@ -83,6 +85,7 @@ export const accPayElementsV2 = pgTable(
     showsOnPayslip: boolean("shows_on_payslip").notNull().default(true),
     showsOnPortage: boolean("shows_on_portage").notNull().default(true),
     status: text("status").notNull().default("active"), // active | inactive
+    paymentTiming: text("payment_timing").notNull().default("paid_on_board"), // paid_on_board | payable_at_settlement | remitted_to_fund
     effectiveFrom: date("effective_from"),
     effectiveTo: date("effective_to"),
     ...auditColumns,
@@ -108,6 +111,9 @@ export const accWageScalesV2 = pgTable(
     effectiveTo: date("effective_to"),
     status: text("status").notNull().default("draft"), // draft | active | superseded
     supersededByScaleUuid: text("superseded_by_scale_uuid"),
+    floorAckByUuid: text("floor_ack_by_uuid"), // who acknowledged CBA-floor violations on activation
+    floorAckAt: date("floor_ack_at"),
+    floorViolations: jsonb("floor_violations"), // snapshot of acknowledged violations
     ...auditColumns,
   },
   (table) => ({
@@ -181,6 +187,8 @@ export const accEngagementsV2 = pgTable(
     endDate: date("end_date"),
     wageScaleUuid: text("wage_scale_uuid"),
     rankIdAtStart: text("rank_id_at_start"),
+    scaleYearAtStart: integer("scale_year_at_start"), // 1-based seniority step in force at start
+    nextStepDate: date("next_step_date"), // due date to advance to the next step
     currency: text("currency").notNull().default("USD"), // ISO 4217
     status: text("status").notNull().default("draft"), // draft | active | completed | settled | cancelled
     notes: text("notes"),
@@ -292,7 +300,10 @@ export const accAdvancesV2 = pgTable(
     approver: text("approver"),
     status: text("status").notNull().default("pending"), // pending | approved | rejected | disbursed | recovered
     capCheck: boolean("cap_check").notNull().default(true),
-    remainingCap: integer("remaining_cap").notNull().default(0),
+    // remaining_cap widened INTEGER -> numeric(14,2) in migration 0154
+    remainingCap: numeric("remaining_cap", { precision: 14, scale: 2 })
+      .notNull()
+      .default("0"),
     recoveryAmount: numeric("recovery_amount", { precision: 14, scale: 2 }),
     ctmReference: text("ctm_reference"),
     // new columns

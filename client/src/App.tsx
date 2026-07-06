@@ -149,7 +149,7 @@ function AuthenticatedApp() {
                   <Route path="/admin">
                     <ProtectedRoute menuName="Admin"><AdminRouter /></ProtectedRoute>
                   </Route>
-                  <Route path="/accounts/:path*" component={AccountsModule} />
+                  <Route path="/accounts/*" component={AccountsModule} />
                   <Route path="/accounts" component={AccountsModule} />
                   <Route path="/test-cases">
                     {/* No access-control gating — reachable only via direct URL. */}
