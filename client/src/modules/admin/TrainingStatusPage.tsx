@@ -155,13 +155,10 @@ export default function TrainingStatusPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h2 className="text-lg font-semibold text-[#16569e]" data-testid="text-training-status-title">
-          Training Status Master
-        </h2>
+      <div className="flex items-center justify-end mb-2 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Select value={moduleFilter} onValueChange={setModuleFilter}>
-            <SelectTrigger className="h-8 text-xs w-[200px]" data-testid="select-module-filter">
+            <SelectTrigger className="h-7 text-xs w-[160px]" data-testid="select-module-filter">
               <SelectValue placeholder="Filter by module" />
             </SelectTrigger>
             <SelectContent>
@@ -173,11 +170,11 @@ export default function TrainingStatusPage() {
           </Select>
           <Button
             size="sm"
-            className="bg-[#16569e] hover:bg-[#0f4078] text-white h-8"
+            className="bg-[#16569e] hover:bg-[#0f4078] text-white h-7 text-xs"
             onClick={openCreate}
             data-testid="button-add-training-status"
           >
-            <Plus className="h-4 w-4 mr-1" /> Add Status
+            <Plus className="h-3.5 w-3.5 mr-1" /> Add Status
           </Button>
         </div>
       </div>
@@ -186,11 +183,11 @@ export default function TrainingStatusPage() {
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Status</TableHead>
-                <TableHead className="text-xs">Module</TableHead>
-                <TableHead className="text-xs">Active</TableHead>
-                <TableHead className="text-xs w-[80px]">Actions</TableHead>
+              <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                <TableHead className="text-xs text-white">Status</TableHead>
+                <TableHead className="text-xs text-white">Module</TableHead>
+                <TableHead className="text-xs text-white">Active</TableHead>
+                <TableHead className="text-xs text-white w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
