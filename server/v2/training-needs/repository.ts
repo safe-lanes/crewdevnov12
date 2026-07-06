@@ -281,6 +281,10 @@ export class TrainingNeedsRepository {
     const sets: Partial<typeof screeningB7TrainingItems.$inferInsert> & { updatedAt: Date } = {
       updatedAt: new Date(),
     };
+    // Status now has its own column on the source table (added for Task #713);
+    // write it there directly so the Recruitment B7 form (which reads the
+    // source column) stays in sync with edits made from Training & Retention.
+    if (data.status !== undefined) sets.status = data.status;
     if (data.targetDate !== undefined) sets.dueDate = data.targetDate;
     if (data.comments !== undefined) sets.comments = data.comments;
     const r = await db
@@ -288,12 +292,7 @@ export class TrainingNeedsRepository {
       .set(sets)
       .where(and(eq(screeningB7TrainingItems.trainItemUuid, trainItemUuid), eq(screeningB7TrainingItems.isDeleted, false)))
       .returning();
-    if (r.length === 0) return false;
-    // Status has no column on the source — overlay it.
-    if (data.status !== undefined) {
-      await this.upsertOverlay("recruitment", trainItemUuid, { status: data.status }, auditUserUuid);
-    }
-    return true;
+    return r.length > 0;
   }
 
   async patchAppraisal(
