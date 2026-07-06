@@ -6,6 +6,7 @@ import type { TrainingNeedOther, InsertTrainingNeedOther } from "../../../shared
 import { screeningB7TrainingItems } from "../../../shared/v2/recruitment/schema";
 import { apprTrainingFollowupsV2 } from "../../../shared/v2/appraisals/schema";
 import { promoTrainingNeedsV2 } from "../../../shared/v2/promotions/schema";
+import { masterUsers } from "../../../shared/schema";
 
 type SourceType = "recruitment" | "appraisal" | "promotion";
 
@@ -45,6 +46,7 @@ type RawAppraisalRow = {
   source_ref_uuid: string;
   training: string | null;
   corresponding_in_db: string | null;
+  identified_by: string | null;
   category: string | null;
   status: string | null;
   target_date: string | null;
@@ -57,6 +59,7 @@ type RawPromotionRow = {
   source_ref_uuid: string;
   training: string | null;
   corresponding_in_db: string | null;
+  identified_by: string | null;
   category: string | null;
   status: string | null;
   target_date: string | null;
@@ -112,6 +115,7 @@ export class TrainingNeedsRepository {
         tf.training_followup_uuid AS source_ref_uuid,
         tf.training,
         tf.corresponding_in_db,
+        COALESCE(mu.fullname, mu.display_name, tf.identified_by_uuid) AS identified_by,
         tf.category,
         tf.status,
         tf.target_date,
@@ -120,6 +124,7 @@ export class TrainingNeedsRepository {
         ar.seafarers_rank AS rank
       FROM appr_training_followups_v2 tf
       JOIN appraisal_results_v2 ar ON tf.appraisal_uuid = ar.appraisal_uuid AND ar.is_deleted = FALSE
+      LEFT JOIN master_users mu ON mu.user_uuid = tf.identified_by_uuid
       WHERE tf.is_deleted = FALSE
     `);
     const appraisalRows = appraisalResult.rows as RawAppraisalRow[];
@@ -129,6 +134,7 @@ export class TrainingNeedsRepository {
         tn.tn_uuid AS source_ref_uuid,
         tn.training,
         tn.corresponding_in_db,
+        COALESCE(mu.fullname, mu.display_name, tn.identified_by_uuid) AS identified_by,
         tn.category,
         tn.status,
         tn.completion_date AS target_date,
@@ -139,6 +145,7 @@ export class TrainingNeedsRepository {
       FROM promo_training_needs_v2 tn
       JOIN promotion_reviews_v2 pr ON tn.review_uuid = pr.review_uuid AND pr.is_deleted = FALSE
       LEFT JOIN crew_members_v2 cm ON pr.crew_member_id = cm.emp_no AND cm.is_deleted = FALSE
+      LEFT JOIN master_users mu ON mu.user_uuid = tn.identified_by_uuid
       LEFT JOIN training_needs_source_overlay_v2 ov
         ON ov.source_type = 'promotion'
        AND ov.source_ref_uuid = tn.tn_uuid
@@ -147,10 +154,15 @@ export class TrainingNeedsRepository {
     `);
     const promotionRows = promotionResult.rows as RawPromotionRow[];
 
-    const otherRows = await db
-      .select()
+    const otherRowsRaw = await db
+      .select({
+        row: trainingNeedsOtherV2,
+        resolvedIdentifiedBy: sql<string | null>`COALESCE(${masterUsers.fullname}, ${masterUsers.displayName}, ${trainingNeedsOtherV2.identifiedBy})`,
+      })
       .from(trainingNeedsOtherV2)
+      .leftJoin(masterUsers, eq(masterUsers.userUuid, trainingNeedsOtherV2.identifiedByUuid))
       .where(eq(trainingNeedsOtherV2.isDeleted, false));
+    const otherRows = otherRowsRaw.map(r => ({ ...r.row, resolvedIdentifiedBy: r.resolvedIdentifiedBy }));
 
     const result: AggregatedTrainingNeed[] = [];
 
@@ -183,7 +195,7 @@ export class TrainingNeedsRepository {
         rank: r.rank || null,
         training: r.training,
         correspondingInDb: r.corresponding_in_db,
-        identifiedBy: null,
+        identifiedBy: r.identified_by,
         category: r.category,
         status: r.status,
         targetDate: r.target_date,
@@ -202,7 +214,7 @@ export class TrainingNeedsRepository {
         rank: r.rank || null,
         training: r.training,
         correspondingInDb: r.corresponding_in_db,
-        identifiedBy: null,
+        identifiedBy: r.identified_by,
         category: r.category,
         // status from source; overlay is fallback if source is null
         status: r.status ?? r.overlay_status,
@@ -223,7 +235,7 @@ export class TrainingNeedsRepository {
         rank: r.rank,
         training: r.training,
         correspondingInDb: r.correspondingInDb,
-        identifiedBy: r.identifiedBy,
+        identifiedBy: r.resolvedIdentifiedBy,
         category: r.category,
         status: r.status,
         targetDate: r.targetDate,

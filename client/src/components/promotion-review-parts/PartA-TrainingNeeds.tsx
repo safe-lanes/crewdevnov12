@@ -26,6 +26,7 @@ interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   isLoadingDbTrainings?: boolean;
   isErrorDbTrainings?: boolean;
   disabled?: boolean;
+  users?: { userUuid: string; displayName: string }[];
 }
 
 const getCurrentUserDisplay = (): string => {
@@ -52,6 +53,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
   isLoadingDbTrainings = false,
   isErrorDbTrainings = false,
   disabled = false,
+  users = [],
   ...restProps
 }: PartATrainingNeedsProps) {
   const currentUserDisplay = getCurrentUserDisplay();
@@ -93,11 +95,12 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              <TableHead className="text-xs font-normal text-gray-600 w-[8%]">S.No.</TableHead>
-              <TableHead className="text-xs font-normal text-gray-600 w-[20%]">Training</TableHead>
-              <TableHead className="text-xs font-normal text-gray-600 w-[25%]">Corresponding in DB</TableHead>
-              <TableHead className="text-xs font-normal text-gray-600 w-[17%]">Category</TableHead>
-              <TableHead className="text-xs font-normal text-gray-600 w-[20%]">Status</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[7%]">S.No.</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[16%]">Training</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[20%]">Corresponding in DB</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[16%]">Identified By</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[14%]">Category</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[17%]">Status</TableHead>
               <TableHead className="text-xs font-normal text-gray-600 w-[10%]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -152,6 +155,23 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         testId={`select-training-db-${training.id}`}
                       />
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={training.identifiedByUuid || '__none'}
+                      onValueChange={(value) => onUpdateTraining(training.id, 'identifiedByUuid', value === '__none' ? '' : value)}
+                      disabled={disabled}
+                    >
+                      <SelectTrigger className="h-8 text-xs" data-testid={`select-training-identified-by-${training.id}`}>
+                        <SelectValue placeholder="Select user" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[280px]">
+                        <SelectItem value="__none">— None —</SelectItem>
+                        {users.map((u) => (
+                          <SelectItem key={u.userUuid} value={u.userUuid}>{u.displayName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
                     <Select 

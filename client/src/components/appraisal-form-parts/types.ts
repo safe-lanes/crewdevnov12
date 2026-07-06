@@ -74,6 +74,7 @@ export const trainingFollowupSchema = z.object({
   id: z.string(),
   training: z.string(),
   correspondingInDB: z.string(),
+  identifiedByUuid: z.string().optional(),
   category: z.string(),
   status: z.union([
     z.enum(["Proposed", "Approved", "Planned", "Declined", "Completed"]),
@@ -275,6 +276,7 @@ export interface PartGProps extends AppraisalFormSectionBaseProps {
   handleSaveDraft: () => void;
   stage3Mutation: { isPending: boolean };
   saveAppraisalMutation: { isPending: boolean };
+  users?: { userUuid: string; displayName: string }[];
 }
 
 export const getScoreColors = (score: number) => {

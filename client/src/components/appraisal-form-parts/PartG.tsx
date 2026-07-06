@@ -44,6 +44,7 @@ const PartGComponent: React.FC<PartGProps> = ({
   isPostStage1,
   isPostStage2,
   isPostStage3,
+  users = [],
 }) => {
   const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
   const { statuses: statusOptions } = useTrainingStatusOptionsV2("Appraisal");
@@ -169,6 +170,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-12">S.No</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Corresponding in DB</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Identified By</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Category</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Status</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target or Compl. Date</th>
@@ -214,6 +216,23 @@ const PartGComponent: React.FC<PartGProps> = ({
                                 />
                               );
                             })()}
+                          </td>
+                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                            <Select
+                              value={followup.identifiedByUuid || '__none'}
+                              onValueChange={(value) => updateTrainingFollowup(followup.id, "identifiedByUuid", value === '__none' ? '' : value)}
+                              disabled={lockSection}
+                            >
+                              <SelectTrigger className="h-8" data-testid={`select-followup-identified-by-${followup.id}`}>
+                                <SelectValue placeholder="Select user" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[280px]">
+                                <SelectItem value="__none">— None —</SelectItem>
+                                {users.map((u) => (
+                                  <SelectItem key={u.userUuid} value={u.userUuid}>{u.displayName}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                             <Select value={followup.category || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)} disabled={lockSection}>

@@ -184,7 +184,23 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }
     return [];
   }, [usersV2Data]);
-  
+
+  const trainingIdentifiedByUsers = useMemo(() => {
+    const users = usersV2Data || [];
+    const seen = new Set<string>();
+    return users
+      .map((user: any) => ({
+        userUuid: user.userUuid || user.uuid,
+        displayName: user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`,
+      }))
+      .filter((item: { userUuid: string; displayName: string }) => {
+        if (!item.userUuid || !item.displayName?.trim()) return false;
+        if (seen.has(item.userUuid)) return false;
+        seen.add(item.userUuid);
+        return true;
+      });
+  }, [usersV2Data]);
+
   const [selectedApproversForSubmission, setSelectedApproversForSubmission] = useState<{ userUuid: string; displayName: string }[]>([]);
 
   const presentRank = crewMemberData?.presentRank ?? '';
@@ -1365,6 +1381,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       id: newId,
       training: '',
       correspondingInDB: '',
+      identifiedByUuid: '',
       category: '',
       status: '',
       completionDate: 'dd-mm-yy',
@@ -1400,6 +1417,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             id: newId,
             training: template.name,
             correspondingInDB: template.id,
+            identifiedByUuid: '',
             category: '',
             status: '',
             completionDate: 'dd-mm-yy',
@@ -1740,6 +1758,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   isLoadingDbTrainings={isLoadingDbTrainings}
                   isErrorDbTrainings={isErrorDbTrainings}
                   disabled={lockState.lockPartA}
+                  users={trainingIdentifiedByUsers}
                 />
 
                 <div className="border border-[#EAEBEF] rounded-lg p-4">

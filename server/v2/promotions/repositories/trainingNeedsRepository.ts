@@ -66,6 +66,7 @@ export class TrainingNeedsRepository {
           .set({
             training: n.training,
             correspondingInDb: n.correspondingInDb,
+            identifiedByUuid: n.identifiedByUuid,
             category: n.category,
             status: n.status,
             completionDate: n.completionDate,

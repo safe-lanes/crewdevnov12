@@ -13,6 +13,7 @@ export const trainingNeedsOtherV2 = pgTable("training_needs_other_v2", {
   training: text("training"),
   correspondingInDb: text("corresponding_in_db"),
   identifiedBy: text("identified_by"),
+  identifiedByUuid: text("identified_by_uuid"),
   category: text("category"),
   status: text("status"),
   targetDate: text("target_date"),

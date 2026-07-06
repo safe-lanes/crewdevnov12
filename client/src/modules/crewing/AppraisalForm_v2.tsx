@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
-import { useAppraisalTypesV2, useTrainingStatusOptionsV2, withLegacyStatus } from "@/hooks/v2/useMasterDataV2";
+import { useAppraisalTypesV2, useTrainingStatusOptionsV2, withLegacyStatus, useUsersV2 } from "@/hooks/v2/useMasterDataV2";
 import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 
@@ -170,6 +170,7 @@ const trainingFollowupSchema = z.object({
   id: z.string(),
   training: z.string(),
   correspondingInDB: z.string(),
+  identifiedByUuid: z.string().optional(),
   category: z.string(),
   status: z.string(),
   targetDate: z.string().optional(),
@@ -473,6 +474,24 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       value: entry.name.toLowerCase().replace(/\s+/g, '-')
     }));
   }, [appraisalTypesRaw]);
+
+  // Users list for the G2 "Identified By" column.
+  const { data: usersV2Data } = useUsersV2();
+  const trainingIdentifiedByUsers = useMemo(() => {
+    const users = usersV2Data || [];
+    const seen = new Set<string>();
+    return users
+      .map((user: any) => ({
+        userUuid: user.userUuid || user.uuid,
+        displayName: user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`,
+      }))
+      .filter((item: { userUuid: string; displayName: string }) => {
+        if (!item.userUuid || !item.displayName?.trim()) return false;
+        if (seen.has(item.userUuid)) return false;
+        seen.add(item.userUuid);
+        return true;
+      });
+  }, [usersV2Data]);
 
   // Fetch existing appraisal data when editing
   // Note: queryKey must include full URL since default fetcher uses queryKey[0] as the URL
@@ -2068,6 +2087,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString(),
       training: "",
       correspondingInDB: "",
+      identifiedByUuid: "",
       category: "",
       status: "" as const,
       targetDate: "",
@@ -2130,6 +2150,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString(),
       training: "",
       correspondingInDB: "",
+      identifiedByUuid: "",
       category: "",
       status: "" as const,
       targetDate: "",
@@ -2144,6 +2165,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       training: template.name,
       correspondingInDB: template.id,
+      identifiedByUuid: "",
       category: "",
       status: "" as const,
       targetDate: "",
@@ -2819,6 +2841,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                     addTrainingFollowup={addTrainingFollowupNoArgs}
                     updateTrainingFollowup={updateTrainingFollowup}
                     deleteTrainingFollowup={deleteTrainingFollowup}
+                    users={trainingIdentifiedByUsers}
                     handleStageSubmission={handleStageSubmission}
                     handleSaveDraft={handleSaveDraft}
                     stage3Mutation={stage3Mutation}

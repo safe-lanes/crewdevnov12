@@ -48,6 +48,7 @@ type AggregatedRow = {
   training: string | null;
   correspondingInDb: string | null;
   identifiedBy: string | null;
+  identifiedByUuid: string | null;
   category: string | null;
   status: string | null;
   targetDate: string | null;
@@ -630,7 +631,7 @@ type FormState = {
   rankId: string;
   training: string;
   correspondingInDb: string;
-  identifiedBy: string;
+  identifiedByUuid: string;
   category: string;
   status: string;
   targetDate: string;
@@ -654,7 +655,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
     rankId: row?.rankId || "",
     training: row?.training || "",
     correspondingInDb: row?.correspondingInDb || "",
-    identifiedBy: row?.identifiedBy || "",
+    identifiedByUuid: row?.identifiedByUuid || "",
     category: row?.category || "",
     status: row?.status || "",
     targetDate: row?.targetDate || "",
@@ -680,7 +681,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
           rankId: form.rankId || null,
           training: form.training || null,
           correspondingInDb: form.correspondingInDb || null,
-          identifiedBy: form.identifiedBy || null,
+          identifiedByUuid: form.identifiedByUuid || null,
           category: form.category || null,
           status: form.status || null,
           targetDate: form.targetDate || null,
@@ -695,7 +696,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
           rankId: form.rankId || null,
           training: form.training || null,
           correspondingInDb: form.correspondingInDb || null,
-          identifiedBy: form.identifiedBy || null,
+          identifiedByUuid: form.identifiedByUuid || null,
           category: form.category || null,
           status: form.status || null,
           targetDate: form.targetDate || null,
@@ -868,27 +869,27 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
           <div>
             <Label className="text-xs">Identified By</Label>
             {isLimited ? (
-              <Input value={form.identifiedBy} disabled data-testid="input-identified-by" />
+              <Input value={row?.identifiedBy || ""} disabled data-testid="input-identified-by" />
             ) : (
               <Select
-                value={form.identifiedBy || "__none"}
-                onValueChange={(v) => set("identifiedBy", v === "__none" ? "" : v)}
+                value={form.identifiedByUuid || "__none"}
+                onValueChange={(v) => set("identifiedByUuid", v === "__none" ? "" : v)}
               >
                 <SelectTrigger data-testid="select-identified-by">
                   <SelectValue placeholder="Select user" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="__none">— None —</SelectItem>
-                  {form.identifiedBy &&
-                    !users.some((u) => (u.fullname || u.displayName) === form.identifiedBy) && (
-                      <SelectItem value={form.identifiedBy}>{form.identifiedBy}</SelectItem>
+                  {form.identifiedByUuid &&
+                    !users.some((u) => u.userUuid === form.identifiedByUuid) && row?.identifiedBy && (
+                      <SelectItem value={form.identifiedByUuid}>{row.identifiedBy}</SelectItem>
                     )}
                   {users
-                    .filter((u) => u.fullname || u.displayName)
+                    .filter((u) => u.userUuid && (u.fullname || u.displayName))
                     .map((u) => {
                       const label = u.fullname || u.displayName || "";
                       return (
-                        <SelectItem key={u.userUuid || label} value={label}>
+                        <SelectItem key={u.userUuid!} value={u.userUuid!}>
                           {u.designation ? `${label}, ${u.designation}` : label}
                         </SelectItem>
                       );

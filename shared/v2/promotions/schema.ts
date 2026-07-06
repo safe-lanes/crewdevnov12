@@ -95,6 +95,7 @@ export const promoTrainingNeedsV2 = pgTable("promo_training_needs_v2", {
   trainingRowId: text("training_row_id"),
   training: text("training"),
   correspondingInDb: text("corresponding_in_db"),
+  identifiedByUuid: text("identified_by_uuid"),
   category: text("category"),
   status: text("status"),
   completionDate: text("completion_date"),
