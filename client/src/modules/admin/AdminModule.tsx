@@ -110,6 +110,7 @@ import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionConte
 import AccessControlPage from "./AccessControlPage";
 import ApprovalWorkflowPage from "./ApprovalWorkflowPage";
 import TrainingStatusPage from "./TrainingStatusPage";
+import TrainingCategoryPage from "./TrainingCategoryPage";
 import { 
   getCategoryLabel,
   getGroupLabel,
@@ -2482,9 +2483,10 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const handleNewEntry = () => {
-    // Training Status (025) manages its own entries via TrainingStatusPage;
-    // generic master_data_entries mutations must not run for it.
-    if (selectedMaster === "025") {
+    // Training Status (025) and Training Category (026) manage their own
+    // entries via TrainingStatusPage/TrainingCategoryPage; generic
+    // master_data_entries mutations must not run for them.
+    if (selectedMaster === "025" || selectedMaster === "026") {
       return;
     }
 
@@ -7001,7 +7003,7 @@ const AdminModuleInner = (): JSX.Element => {
               >
                 {syncAllMasterDataMutation.isPending ? "Syncing..." : "Sync All"}
               </Button>
-              {selectedMaster !== "025" && (permissions.length === 0 || canEdit("Masters")) && (
+              {selectedMaster !== "025" && selectedMaster !== "026" && (permissions.length === 0 || canEdit("Masters")) && (
               <Button
                 variant={isMasterInEditMode ? "default" : "outline"}
                 onClick={isMasterInEditMode ? handleSaveMaster : handleEditMaster}
@@ -7015,7 +7017,7 @@ const AdminModuleInner = (): JSX.Element => {
                 {isMasterInEditMode ? "Save" : "Edit Master"}
               </Button>
               )}
-              {selectedMaster !== "025" && (permissions.length === 0 || canCreate("Masters")) && (
+              {selectedMaster !== "025" && selectedMaster !== "026" && (permissions.length === 0 || canCreate("Masters")) && (
               <Button
                 onClick={handleNewEntry}
                 disabled={!isMasterInEditMode}
@@ -7106,6 +7108,10 @@ const AdminModuleInner = (): JSX.Element => {
                 {selectedMaster === "025" ? (
                   <div data-testid="training-status-master-pane">
                     <TrainingStatusPage />
+                  </div>
+                ) : selectedMaster === "026" ? (
+                  <div data-testid="training-category-master-pane">
+                    <TrainingCategoryPage />
                   </div>
                 ) : (
                 <>

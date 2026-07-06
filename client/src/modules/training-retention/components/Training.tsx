@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
-import { useTrainingStatusOptionsV2, withLegacyStatus } from "@/hooks/v2/useMasterDataV2";
+import { useTrainingStatusOptionsV2, withLegacyStatus, useTrainingCategoryOptionsV2, withLegacyCategory } from "@/hooks/v2/useMasterDataV2";
 import { cn } from "@/lib/utils";
 
 type AggregatedRow = {
@@ -103,8 +103,6 @@ type DialogMode =
   | { kind: "closed" }
   | { kind: "new" }
   | { kind: "edit"; row: AggregatedRow };
-
-const CATEGORY_OPTIONS = ["Mandatory", "Recommended", "Optional", "Other"];
 
 // ----- Cell renderers (defined outside component to avoid hooks issues) -----
 const sourceColor = (s: string): string => {
@@ -646,6 +644,7 @@ type FormState = {
 function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, users }: DialogProps) {
   const { toast } = useToast();
   const { statuses: statusOptions } = useTrainingStatusOptionsV2("Training & Retention");
+  const { categories: categoryOptions } = useTrainingCategoryOptionsV2("Training & Retention");
   const isNew = mode.kind === "new";
   const row = mode.kind === "edit" ? mode.row : null;
   const isLimited = !!row && row.editable === "limited";
@@ -912,7 +911,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
               <SelectTrigger data-testid="select-category"><SelectValue placeholder="Select" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— None —</SelectItem>
-                {CATEGORY_OPTIONS.map((c) => (
+                {withLegacyCategory(categoryOptions, form.category).map((c) => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
               </SelectContent>

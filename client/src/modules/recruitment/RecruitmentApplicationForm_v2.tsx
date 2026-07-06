@@ -23,7 +23,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { usePermissions } from '@/contexts/PermissionsContext';
-import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
+import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2, useTrainingCategoryOptionsV2, withLegacyCategory } from '@/hooks/v2/useMasterDataV2';
 import { generateRecruitmentPDF } from '@/lib/generateRecruitmentPDF';
 import { formatDate } from '@/utils/format';
 import { applyDialingCode, getDialingCode, normalizeMobileInput, validateMobileNumber } from './countryDialingCodes';
@@ -968,6 +968,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
     return [];
   }, [externalLanguagesData]);
+
+  // Training Category master (Task #710): shared category dropdown values
+  const { categories: trainingCategoryOptions } = useTrainingCategoryOptionsV2("Recruitment");
 
   // Fetch Manning Agents from V2 dedicated table
   const { data: manningAgentsData } = useManningAgentsV2();
@@ -2317,7 +2320,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
         training: course.name,
         identifiedBy: '',
-        category: ['Mandatory', 'Recommended', 'Optional'].includes(course.requirement) ? course.requirement : '',
+        category: trainingCategoryOptions.includes(course.requirement) ? course.requirement : '',
         dueDate: '',
         comments: ''
       }));
@@ -8314,9 +8317,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Mandatory">Mandatory</SelectItem>
-                                  <SelectItem value="Recommended">Recommended</SelectItem>
-                                  <SelectItem value="Optional">Optional</SelectItem>
+                                  {withLegacyCategory(trainingCategoryOptions, training.category).map((c) => (
+                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                             </TableCell>

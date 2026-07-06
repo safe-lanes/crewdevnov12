@@ -15,7 +15,7 @@ import { PartGProps } from "./types";
 import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import { useTrainingStatusOptionsV2, withLegacyStatus } from "@/hooks/v2/useMasterDataV2";
+import { useTrainingStatusOptionsV2, withLegacyStatus, useTrainingCategoryOptionsV2, withLegacyCategory } from "@/hooks/v2/useMasterDataV2";
 
 const PartGComponent: React.FC<PartGProps> = ({
   form,
@@ -47,6 +47,7 @@ const PartGComponent: React.FC<PartGProps> = ({
 }) => {
   const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
   const { statuses: statusOptions } = useTrainingStatusOptionsV2("Appraisal");
+  const { categories: categoryOptions } = useTrainingCategoryOptionsV2("Appraisal");
   const { userType } = usePermissions();
   const isShipUser = userType === 'Ship';
   // Task #500: post-Stage 3 fully locks G (legacy behavior).
@@ -218,8 +219,9 @@ const PartGComponent: React.FC<PartGProps> = ({
                             <Select value={followup.category || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)} disabled={lockSection}>
                               <SelectTrigger className="h-8"><SelectValue placeholder="Select Category" /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="1. Competence">1. Competence</SelectItem>
-                                <SelectItem value="2- Soft Skills">2- Soft Skills</SelectItem>
+                                {withLegacyCategory(categoryOptions, followup.category).map((c) => (
+                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </td>

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Trash2, MessageSquare } from 'lucide-react';
 import type { TrainingRow, Comment } from './types';
 import { DbTrainingCombobox, type DbTrainingOption } from './DbTrainingCombobox';
-import { useTrainingStatusOptionsV2, withLegacyStatus } from '@/hooks/v2/useMasterDataV2';
+import { useTrainingStatusOptionsV2, withLegacyStatus, useTrainingCategoryOptionsV2, withLegacyCategory } from '@/hooks/v2/useMasterDataV2';
 
 interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   trainingNeeds: TrainingRow[];
@@ -56,6 +56,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
 }: PartATrainingNeedsProps) {
   const currentUserDisplay = getCurrentUserDisplay();
   const { statuses: statusOptions } = useTrainingStatusOptionsV2("Promotion");
+  const { categories: categoryOptions } = useTrainingCategoryOptionsV2("Promotion");
   return (
     <div className="border border-[#EAEBEF] rounded-lg p-4" {...restProps}>
       <div className="flex justify-between items-center mb-4">
@@ -162,8 +163,9 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1. Competence">1. Competence</SelectItem>
-                        <SelectItem value="2. Soft Skills">2. Soft Skills</SelectItem>
+                        {withLegacyCategory(categoryOptions, training.category).map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </TableCell>

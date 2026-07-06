@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { mastersController, dataMasterController, trainingStatusController } from "./controllers";
+import { mastersController, dataMasterController, trainingStatusController, trainingCategoryController } from "./controllers";
 
 const router = Router();
 
@@ -47,6 +47,12 @@ router.post("/training-statuses", trainingStatusController.create);
 router.put("/training-statuses/group", trainingStatusController.groupUpdate);
 router.put("/training-statuses/:uuid", trainingStatusController.updateRow);
 router.delete("/training-statuses/:uuid", trainingStatusController.deleteRow);
+
+router.get("/training-categories", trainingCategoryController.list);
+router.post("/training-categories", trainingCategoryController.create);
+router.put("/training-categories/group", trainingCategoryController.groupUpdate);
+router.put("/training-categories/:uuid", trainingCategoryController.updateRow);
+router.delete("/training-categories/:uuid", trainingCategoryController.deleteRow);
 
 router.get("/data", dataMasterController.listMasters);
 router.get("/data/:id", dataMasterController.getMaster);

@@ -72,3 +72,64 @@ export const groupUpdateTrainingStatusSchema = z.object({
   auditUserUuid: z.string().nullish(),
 });
 export type GroupUpdateTrainingStatus = z.infer<typeof groupUpdateTrainingStatusSchema>;
+
+export const TRAINING_CATEGORY_MODULES = [
+  "Promotion",
+  "Appraisal",
+  "Training & Retention",
+  "Recruitment",
+] as const;
+
+export type TrainingCategoryModule = (typeof TRAINING_CATEGORY_MODULES)[number];
+
+export const masterTrainingCategory = pgTable(
+  "master_training_category",
+  {
+    id: serial("id").primaryKey(),
+    mtcUuid: text("mtc_uuid").notNull().unique(),
+    label: text("label").notNull(),
+    module: text("module").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    ...auditColumns,
+  },
+  (t) => ({
+    moduleLabelUnique: unique("uq_master_training_category_module_label").on(t.module, t.label),
+  }),
+);
+
+export const insertMasterTrainingCategorySchema = createInsertSchema(masterTrainingCategory).omit({
+  id: true,
+  mtcUuid: true,
+  createdAt: true,
+  updatedAt: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
+});
+
+export type InsertMasterTrainingCategory = z.infer<typeof insertMasterTrainingCategorySchema>;
+export type MasterTrainingCategory = typeof masterTrainingCategory.$inferSelect;
+
+// API payloads
+export const createTrainingCategoryPayloadSchema = z.object({
+  label: z.string().trim().min(1, "Category label is required"),
+  modules: z.array(z.enum(TRAINING_CATEGORY_MODULES)).min(1, "Select at least one module"),
+  auditUserUuid: z.string().nullish(),
+});
+export type CreateTrainingCategoryPayload = z.infer<typeof createTrainingCategoryPayloadSchema>;
+
+export const updateTrainingCategoryRowSchema = z.object({
+  label: z.string().trim().min(1).optional(),
+  isActive: z.boolean().optional(),
+  auditUserUuid: z.string().nullish(),
+});
+export type UpdateTrainingCategoryRow = z.infer<typeof updateTrainingCategoryRowSchema>;
+
+export const groupUpdateTrainingCategorySchema = z.object({
+  originalLabel: z.string().min(1),
+  label: z.string().trim().min(1, "Category label is required"),
+  modules: z.array(z.enum(TRAINING_CATEGORY_MODULES)),
+  auditUserUuid: z.string().nullish(),
+});
+export type GroupUpdateTrainingCategory = z.infer<typeof groupUpdateTrainingCategorySchema>;
