@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getCrewUserId } from "@/lib/crewUser";
@@ -45,6 +55,7 @@ export default function TrainingStatusPage() {
   const [dialog, setDialog] = useState<DialogState>(null);
   const [label, setLabel] = useState("");
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<TrainingStatusV2 | null>(null);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: [TRAINING_STATUSES_KEY] });
 
@@ -93,6 +104,23 @@ export default function TrainingStatusPage() {
     onSuccess: () => invalidate(),
     onError: (e: Error) =>
       toast({ title: "Failed to update status", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (mtsUuid: string) => {
+      const res = await apiRequest(
+        "DELETE",
+        `${TRAINING_STATUSES_KEY}/${mtsUuid}?auditUserUuid=${encodeURIComponent(getCrewUserId() || "")}`,
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      setDeleteTarget(null);
+      toast({ title: "Training status deleted" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Failed to delete status", description: e.message, variant: "destructive" }),
   });
 
   const filteredRows = useMemo(() => {
@@ -202,6 +230,15 @@ export default function TrainingStatusPage() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
+                          onClick={() => setDeleteTarget(row)}
+                          data-testid={`button-delete-status-${row.mtsUuid}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-gray-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
                           onClick={openCreate}
                           data-testid={`button-add-status-${row.mtsUuid}`}
                         >
@@ -275,6 +312,29 @@ export default function TrainingStatusPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Training Status</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteTarget?.label}" from {deleteTarget?.module}? This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete-status">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.mtsUuid)}
+              disabled={deleteMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              data-testid="button-confirm-delete-status"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

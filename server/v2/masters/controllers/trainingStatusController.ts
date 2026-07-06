@@ -80,4 +80,18 @@ export const trainingStatusController = {
       res.status(500).json({ error: "Failed to update training status" });
     }
   },
+
+  async deleteRow(req: Request, res: Response) {
+    try {
+      const auditUserUuid = typeof req.query.auditUserUuid === "string" ? req.query.auditUserUuid : undefined;
+      const row = await repo.deleteRow(req.params.uuid, auditUserUuid);
+      if (!row) {
+        return res.status(404).json({ error: "Training status not found" });
+      }
+      res.json(row);
+    } catch (error) {
+      console.error("Failed to delete training status:", error);
+      res.status(500).json({ error: "Failed to delete training status" });
+    }
+  },
 };

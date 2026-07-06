@@ -169,4 +169,26 @@ export class TrainingStatusRepository {
 
     return this.findAll();
   }
+
+  async deleteRow(mtsUuid: string, auditUserUuid?: string | null): Promise<MasterTrainingStatus | undefined> {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(masterTrainingStatus)
+      .where(and(eq(masterTrainingStatus.mtsUuid, mtsUuid), eq(masterTrainingStatus.isDeleted, false)));
+    const existing = rows[0];
+    if (!existing) return undefined;
+
+    const r = await db
+      .update(masterTrainingStatus)
+      .set({
+        isDeleted: true,
+        isActive: false,
+        updatedAt: new Date(),
+        updatedByUuid: auditUserUuid || null,
+      })
+      .where(eq(masterTrainingStatus.mtsUuid, mtsUuid))
+      .returning();
+    return r[0];
+  }
 }

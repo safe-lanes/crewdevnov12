@@ -46,6 +46,7 @@ router.get("/training-statuses", trainingStatusController.list);
 router.post("/training-statuses", trainingStatusController.create);
 router.put("/training-statuses/group", trainingStatusController.groupUpdate);
 router.put("/training-statuses/:uuid", trainingStatusController.updateRow);
+router.delete("/training-statuses/:uuid", trainingStatusController.deleteRow);
 
 router.get("/data", dataMasterController.listMasters);
 router.get("/data/:id", dataMasterController.getMaster);
