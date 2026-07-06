@@ -540,9 +540,9 @@ interface SeafarerData {
 const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
   const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
-  const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "training-status": "Masters", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
+  const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
   const adminAllowedPages = useMemo(() => {
-    const all = ["forms", "rank-admin", "masters", "training-matrix", "training-status", "access-control", "approval-workflow"];
+    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow"];
     if (permissions.length === 0) return all;
     return all.filter(p => canView(adminPageToMenu[p] || p));
   }, [permissions, canView]);
@@ -1530,8 +1530,10 @@ const AdminModuleInner = (): JSX.Element => {
         // /admin/rank-admin - show rank admin page
         setSelectedAdminPage('rank-admin');
       } else if (pathParts[1] === 'training-status') {
-        // /admin/training-status - show training status master page
-        setSelectedAdminPage('training-status');
+        // Legacy /admin/training-status URL - now lives in Masters (025)
+        setSelectedAdminPage('masters');
+        setSelectedMaster('025');
+        navigate('/admin/masters/025', { replace: true });
       } else {
         // Unknown admin path - default to forms
         setSelectedAdminPage('forms');
@@ -2480,6 +2482,12 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const handleNewEntry = () => {
+    // Training Status (025) manages its own entries via TrainingStatusPage;
+    // generic master_data_entries mutations must not run for it.
+    if (selectedMaster === "025") {
+      return;
+    }
+
     // Only allow new entries when in edit mode
     if (!isMasterInEditMode) {
       toast({
@@ -6993,7 +7001,7 @@ const AdminModuleInner = (): JSX.Element => {
               >
                 {syncAllMasterDataMutation.isPending ? "Syncing..." : "Sync All"}
               </Button>
-              {(permissions.length === 0 || canEdit("Masters")) && (
+              {selectedMaster !== "025" && (permissions.length === 0 || canEdit("Masters")) && (
               <Button
                 variant={isMasterInEditMode ? "default" : "outline"}
                 onClick={isMasterInEditMode ? handleSaveMaster : handleEditMaster}
@@ -7007,7 +7015,7 @@ const AdminModuleInner = (): JSX.Element => {
                 {isMasterInEditMode ? "Save" : "Edit Master"}
               </Button>
               )}
-              {(permissions.length === 0 || canCreate("Masters")) && (
+              {selectedMaster !== "025" && (permissions.length === 0 || canCreate("Masters")) && (
               <Button
                 onClick={handleNewEntry}
                 disabled={!isMasterInEditMode}
@@ -7095,6 +7103,12 @@ const AdminModuleInner = (): JSX.Element => {
 
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
+                {selectedMaster === "025" ? (
+                  <div data-testid="training-status-master-pane">
+                    <TrainingStatusPage />
+                  </div>
+                ) : (
+                <>
                 <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
                   <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "024" ? 'grid-cols-8' : selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" || selectedMaster === "021" ? 'grid-cols-5' : selectedMaster === "020" || selectedMaster === "022" || selectedMaster === "023" ? 'grid-cols-3' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
                     <div className="p-3 border-r border-blue-400">Entry ID</div>
@@ -8246,6 +8260,8 @@ const AdminModuleInner = (): JSX.Element => {
                 <div className="p-3 text-xs text-gray-500 bg-gray-50 border-t">
                   Page {(masterData as any[]).length ? '1' : '0'} of {(masterData as any[]).length ? '1' : '0'}
                 </div>
+                </>
+                )}
               </div>
             </div>
           </CardContent>
@@ -8499,7 +8515,6 @@ const AdminModuleInner = (): JSX.Element => {
             {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
             {selectedAdminPage === "masters" && renderDataMastersModule()}
             {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
-            {selectedAdminPage === "training-status" && <TrainingStatusPage />}
             {selectedAdminPage === "access-control" && <AccessControlPage />}
             {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
           </>
