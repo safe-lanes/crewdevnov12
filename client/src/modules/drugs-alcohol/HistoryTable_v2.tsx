@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, ICellRendererParams } from 'ag-grid-community';
-import { ChevronLeft, Pencil, Filter } from 'lucide-react';
+import { ArrowLeft, Pencil, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -259,6 +259,8 @@ export function HistoryTable_v2({ onOpenRecord }: HistoryTableProps) {
   const [openedVesselId, setOpenedVesselId] = useState<string>('');
   const [vesselFilter, setVesselFilter] = useState<string>('');
   const [draftVessel, setDraftVessel] = useState<string>(ALL_VESSELS);
+  const [recordsVesselFilter, setRecordsVesselFilter] = useState<string>('');
+  const [recordsDraftVessel, setRecordsDraftVessel] = useState<string>('');
   const [showFilters, setShowFilters] = useState(true);
 
   const { data: vessels = [], isLoading: vesselsLoading } = useQuery<Array<{ vesselUuid: string; vessel: string }>>({
@@ -291,6 +293,8 @@ export function HistoryTable_v2({ onOpenRecord }: HistoryTableProps) {
         setVesselFilter(matched.vesselUuid);
         setDraftVessel(matched.vesselUuid);
         setOpenedVesselId(matched.vesselUuid);
+        setRecordsVesselFilter(matched.vesselUuid);
+        setRecordsDraftVessel(matched.vesselUuid);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -299,19 +303,23 @@ export function HistoryTable_v2({ onOpenRecord }: HistoryTableProps) {
   const openRecords = (cat: DACategory, vesselId: string) => {
     setCategory(cat);
     setOpenedVesselId(vesselId);
-    setVesselFilter(vesselId);
-    setDraftVessel(vesselId);
+    setRecordsVesselFilter(vesselId);
+    setRecordsDraftVessel(vesselId);
     setView('records');
   };
 
   const handleApply = () => {
-    setVesselFilter(draftVessel === ALL_VESSELS ? '' : draftVessel);
+    if (view === 'records') {
+      setRecordsVesselFilter(recordsDraftVessel === ALL_VESSELS ? '' : recordsDraftVessel);
+    } else {
+      setVesselFilter(draftVessel === ALL_VESSELS ? '' : draftVessel);
+    }
   };
 
   const handleClear = () => {
     if (view === 'records') {
-      setDraftVessel(openedVesselId);
-      setVesselFilter(openedVesselId);
+      setRecordsDraftVessel(openedVesselId);
+      setRecordsVesselFilter(openedVesselId);
     } else {
       setDraftVessel(ALL_VESSELS);
       setVesselFilter('');
@@ -348,7 +356,7 @@ export function HistoryTable_v2({ onOpenRecord }: HistoryTableProps) {
         flex: 1,
         minWidth: 120,
         cellRenderer: CountCellRenderer,
-        cellClass: 'flex items-center justify-center text-[13px]',
+        cellClass: 'flex items-center text-[13px]',
       });
     }
     return cols;
@@ -363,7 +371,7 @@ export function HistoryTable_v2({ onOpenRecord }: HistoryTableProps) {
 
   const recordRows = useMemo(() => {
     const filtered = submitted.filter(
-      (r) => r.testType === category && (vesselFilter === '' ? true : r.vesselId === vesselFilter),
+      (r) => r.testType === category && (recordsVesselFilter === '' ? true : r.vesselId === recordsVesselFilter),
     );
 
     const sorted = [...filtered].sort((a, b) => {
@@ -398,7 +406,7 @@ export function HistoryTable_v2({ onOpenRecord }: HistoryTableProps) {
           : 'N/A',
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [submitted, category, vesselFilter]);
+  }, [submitted, category, recordsVesselFilter]);
 
   const actionColumn: ColDef = {
     headerName: '',
@@ -456,7 +464,7 @@ export function HistoryTable_v2({ onOpenRecord }: HistoryTableProps) {
   );
 
   const recordsTitle = `${TITLES[category]} - ${
-    vesselFilter === '' ? 'All Vessels' : vesselMap.get(vesselFilter) ?? ''
+    recordsVesselFilter === '' ? 'All Vessels' : vesselMap.get(recordsVesselFilter) ?? ''
   }`;
 
   const renderFilterBar = () => {
@@ -477,7 +485,11 @@ export function HistoryTable_v2({ onOpenRecord }: HistoryTableProps) {
               {shipUserVesselName || 'No vessel assigned'}
             </span>
           ) : (
-            <Select value={draftVessel} onValueChange={setDraftVessel} disabled={vesselsLoading}>
+            <Select
+              value={view === 'records' ? recordsDraftVessel : draftVessel}
+              onValueChange={view === 'records' ? setRecordsDraftVessel : setDraftVessel}
+              disabled={vesselsLoading}
+            >
               <SelectTrigger
                 className={`h-8 text-xs bg-white dark:bg-neutral-900 border-input ${isPhone ? 'w-full' : 'w-48'}`}
                 data-testid="select-vessel-history"
@@ -538,13 +550,13 @@ export function HistoryTable_v2({ onOpenRecord }: HistoryTableProps) {
               Filters
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setView('overview')}
-              className="h-8 gap-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+              className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
               data-testid="button-history-back"
             >
-              <ChevronLeft size={16} />
+              <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
           </div>
