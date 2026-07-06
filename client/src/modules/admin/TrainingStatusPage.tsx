@@ -23,13 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getCrewUserId } from "@/lib/crewUser";
@@ -49,7 +42,6 @@ type DialogState =
 export default function TrainingStatusPage() {
   const { toast } = useToast();
   const { data: statuses = [], isLoading } = useTrainingStatusesV2();
-  const [moduleFilter, setModuleFilter] = useState<string>("all");
   const [dialog, setDialog] = useState<DialogState>(null);
   const [label, setLabel] = useState("");
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
@@ -104,14 +96,13 @@ export default function TrainingStatusPage() {
   });
 
   const filteredRows = useMemo(() => {
-    const rows = moduleFilter === "all" ? statuses : statuses.filter((s) => s.module === moduleFilter);
-    return [...rows].sort(
+    return [...statuses].sort(
       (a, b) =>
         a.module.localeCompare(b.module) ||
         (a.sortOrder ?? 0) - (b.sortOrder ?? 0) ||
         a.label.localeCompare(b.label),
     );
-  }, [statuses, moduleFilter]);
+  }, [statuses]);
 
   const openCreate = () => {
     setLabel("");
@@ -155,30 +146,6 @@ export default function TrainingStatusPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-end mb-2 flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Select value={moduleFilter} onValueChange={setModuleFilter}>
-            <SelectTrigger className="h-7 text-xs w-[160px]" data-testid="select-module-filter">
-              <SelectValue placeholder="Filter by module" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Modules</SelectItem>
-              {MODULES.map((m) => (
-                <SelectItem key={m} value={m}>{m}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            className="bg-[#16569e] hover:bg-[#0f4078] text-white h-7 text-xs"
-            onClick={openCreate}
-            data-testid="button-add-training-status"
-          >
-            <Plus className="h-3.5 w-3.5 mr-1" /> Add Status
-          </Button>
-        </div>
-      </div>
-
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -221,15 +188,26 @@ export default function TrainingStatusPage() {
                       />
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => openEdit(row)}
-                        data-testid={`button-edit-status-${row.mtsUuid}`}
-                      >
-                        <Pencil className="h-4 w-4 text-gray-500" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => openEdit(row)}
+                          data-testid={`button-edit-status-${row.mtsUuid}`}
+                        >
+                          <Pencil className="h-4 w-4 text-gray-500" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={openCreate}
+                          data-testid={`button-add-status-${row.mtsUuid}`}
+                        >
+                          <Plus className="h-4 w-4 text-gray-500" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
