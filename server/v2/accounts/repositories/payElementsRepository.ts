@@ -1,4 +1,4 @@
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   accPayElementsV2,
@@ -70,6 +70,52 @@ export class PayElementsRepository {
     if (rows.length === 0) return [];
     const values = rows.map((r) => ({ ...r, payElementUuid: uuidv4() }));
     return db.insert(accPayElementsV2).values(values).returning();
+  }
+
+  /**
+   * Seed helper: for each standard row, revive-and-reset a matching row by
+   * `code` (including previously soft-deleted rows, which still occupy the
+   * unique `code` constraint) or insert it when the code is absent. Idempotent
+   * and collision-safe. Returns the resulting live rows.
+   */
+  async seedStandardElements(
+    rows: Omit<InsertAccPayElementV2, "payElementUuid">[],
+  ): Promise<AccPayElementV2[]> {
+    const db = getDb();
+    if (rows.length === 0) return [];
+    const codes = rows.map((r) => r.code);
+    const existing = await db
+      .select()
+      .from(accPayElementsV2)
+      .where(inArray(accPayElementsV2.code, codes));
+    const uuidByCode = new Map<string, string>();
+    for (const e of existing) {
+      uuidByCode.set(e.code, e.payElementUuid);
+    }
+
+    const result: AccPayElementV2[] = [];
+    for (const row of rows) {
+      const existingUuid = uuidByCode.get(row.code);
+      if (existingUuid) {
+        const [updated] = await db
+          .update(accPayElementsV2)
+          .set({
+            ...(row as Partial<InsertAccPayElementV2>),
+            isDeleted: false,
+            updatedAt: new Date(),
+          })
+          .where(eq(accPayElementsV2.payElementUuid, existingUuid))
+          .returning();
+        result.push(updated);
+      } else {
+        const [created] = await db
+          .insert(accPayElementsV2)
+          .values({ ...row, payElementUuid: uuidv4() })
+          .returning();
+        result.push(created);
+      }
+    }
+    return result;
   }
 
   async update(

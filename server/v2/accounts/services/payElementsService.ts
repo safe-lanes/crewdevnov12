@@ -170,7 +170,7 @@ export const payElementsService = {
     const rows = STANDARD_ELEMENTS.map((e, idx) =>
       applyAuditUser({ ...e, sortOrder: idx, auditUserUuid }, true),
     );
-    return payElementsRepository.createMany(rows);
+    return payElementsRepository.seedStandardElements(rows);
   },
 };
 
