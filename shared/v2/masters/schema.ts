@@ -16,6 +16,7 @@ export const TRAINING_STATUS_MODULES = [
   "Promotion",
   "Appraisal",
   "Training & Retention",
+  "Recruitment",
 ] as const;
 
 export type TrainingStatusModule = (typeof TRAINING_STATUS_MODULES)[number];

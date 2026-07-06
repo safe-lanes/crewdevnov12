@@ -42,7 +42,7 @@ import {
   type TrainingStatusV2,
 } from "@/hooks/v2/useMasterDataV2";
 
-const MODULES = ["Promotion", "Appraisal", "Training & Retention"] as const;
+const MODULES = ["Promotion", "Appraisal", "Training & Retention", "Recruitment"] as const;
 
 type DialogState =
   | { mode: "create" }

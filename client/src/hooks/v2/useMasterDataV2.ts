@@ -254,7 +254,7 @@ export const useTrainingStatusesV2 = (options?: UseMasterOptions) => {
 // Pass currentValue(s) so legacy/deactivated values on existing records
 // still render as a selectable option in their dropdown.
 export const useTrainingStatusOptionsV2 = (
-  module: "Promotion" | "Appraisal" | "Training & Retention",
+  module: "Promotion" | "Appraisal" | "Training & Retention" | "Recruitment",
   options?: UseMasterOptions,
 ) => {
   const query = useTrainingStatusesV2(options);
