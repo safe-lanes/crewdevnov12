@@ -1,0 +1,286 @@
+import { eq, and, inArray } from "drizzle-orm";
+import { getDb } from "../../db";
+import {
+  accTenantConfigV2,
+  accEngagementsV2,
+  accEngagementPhasesV2,
+  accEngagementPayElementsV2,
+  accPayElementsV2,
+  accWageScalesV2,
+  accWageScaleLinesV2,
+  accMonthlyTransactionsV2,
+  accAllotmentsV2,
+  accAdvancesV2,
+  accBondItemsV2,
+} from "../../../../shared/v2/accounts/schema";
+import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { promoExecutionLedgerV2 } from "../../../../shared/v2/promotions/schema";
+import type {
+  AccTenantConfigV2,
+  AccEngagementV2,
+  AccEngagementPhaseV2,
+  AccEngagementPayElementV2,
+  AccPayElementV2,
+  AccWageScaleV2,
+  AccWageScaleLineV2,
+  AccMonthlyTransactionV2,
+  AccAllotmentV2,
+  AccAdvanceV2,
+  AccBondItemV2,
+} from "../../../../shared/v2/accounts/types";
+
+export interface PromotionEvent {
+  crewUuid: string;
+  toRank: string;
+  effectiveDate: string; // text in source table; validated by the engine
+}
+
+/**
+ * Read-only data access for the wage calculation engine. All queries go
+ * through getDb() (tenant context via AsyncLocalStorage).
+ */
+export class EngineReads {
+  async getConfig(): Promise<AccTenantConfigV2 | undefined> {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(accTenantConfigV2)
+      .where(eq(accTenantConfigV2.isDeleted, false));
+    return rows[0];
+  }
+
+  /** Engagements on a vessel whose date range overlaps the month. */
+  async findEngagementsForVesselPeriod(
+    vesselUuid: string,
+    monthStart: string,
+    monthEnd: string,
+  ): Promise<AccEngagementV2[]> {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(accEngagementsV2)
+      .where(
+        and(
+          eq(accEngagementsV2.vesselUuid, vesselUuid),
+          eq(accEngagementsV2.isDeleted, false),
+          inArray(accEngagementsV2.status, ["active", "completed"]),
+        ),
+      );
+    return rows.filter(
+      (e: AccEngagementV2) =>
+        e.startDate != null &&
+        e.startDate <= monthEnd &&
+        (e.endDate == null || e.endDate >= monthStart),
+    );
+  }
+
+  async findEngagementByUuid(
+    engagementUuid: string,
+  ): Promise<AccEngagementV2 | undefined> {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(accEngagementsV2)
+      .where(
+        and(
+          eq(accEngagementsV2.engagementUuid, engagementUuid),
+          eq(accEngagementsV2.isDeleted, false),
+        ),
+      );
+    return rows[0];
+  }
+
+  async findPhases(
+    engagementUuids: string[],
+  ): Promise<AccEngagementPhaseV2[]> {
+    if (engagementUuids.length === 0) return [];
+    const db = getDb();
+    return db
+      .select()
+      .from(accEngagementPhasesV2)
+      .where(
+        and(
+          inArray(accEngagementPhasesV2.engagementUuid, engagementUuids),
+          eq(accEngagementPhasesV2.isDeleted, false),
+        ),
+      );
+  }
+
+  async findOverrides(
+    engagementUuids: string[],
+  ): Promise<AccEngagementPayElementV2[]> {
+    if (engagementUuids.length === 0) return [];
+    const db = getDb();
+    return db
+      .select()
+      .from(accEngagementPayElementsV2)
+      .where(
+        and(
+          inArray(accEngagementPayElementsV2.engagementUuid, engagementUuids),
+          eq(accEngagementPayElementsV2.isDeleted, false),
+        ),
+      );
+  }
+
+  async findActiveElements(): Promise<AccPayElementV2[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(accPayElementsV2)
+      .where(
+        and(
+          eq(accPayElementsV2.isDeleted, false),
+          eq(accPayElementsV2.status, "active"),
+        ),
+      );
+  }
+
+  async findScaleByUuid(
+    scaleUuid: string,
+  ): Promise<AccWageScaleV2 | undefined> {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(accWageScalesV2)
+      .where(
+        and(
+          eq(accWageScalesV2.scaleUuid, scaleUuid),
+          eq(accWageScalesV2.isDeleted, false),
+        ),
+      );
+    return rows[0];
+  }
+
+  async findScaleLines(scaleUuids: string[]): Promise<AccWageScaleLineV2[]> {
+    if (scaleUuids.length === 0) return [];
+    const db = getDb();
+    return db
+      .select()
+      .from(accWageScaleLinesV2)
+      .where(
+        and(
+          inArray(accWageScaleLinesV2.scaleUuid, scaleUuids),
+          eq(accWageScaleLinesV2.isDeleted, false),
+        ),
+      );
+  }
+
+  async findAcceptedTxns(
+    engagementUuids: string[],
+    period: string,
+  ): Promise<AccMonthlyTransactionV2[]> {
+    if (engagementUuids.length === 0) return [];
+    const db = getDb();
+    return db
+      .select()
+      .from(accMonthlyTransactionsV2)
+      .where(
+        and(
+          inArray(accMonthlyTransactionsV2.engagementUuid, engagementUuids),
+          eq(accMonthlyTransactionsV2.period, period),
+          eq(accMonthlyTransactionsV2.status, "accepted"),
+          eq(accMonthlyTransactionsV2.isDeleted, false),
+        ),
+      );
+  }
+
+  async findActiveAllotments(crewUuids: string[]): Promise<AccAllotmentV2[]> {
+    if (crewUuids.length === 0) return [];
+    const db = getDb();
+    return db
+      .select()
+      .from(accAllotmentsV2)
+      .where(
+        and(
+          inArray(accAllotmentsV2.crewUuid, crewUuids),
+          eq(accAllotmentsV2.status, "active"),
+          eq(accAllotmentsV2.isDeleted, false),
+        ),
+      );
+  }
+
+  /** Advances with a recovery due in the given period. */
+  async findAdvanceRecoveries(
+    crewUuids: string[],
+    period: string,
+  ): Promise<AccAdvanceV2[]> {
+    if (crewUuids.length === 0) return [];
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(accAdvancesV2)
+      .where(
+        and(
+          inArray(accAdvancesV2.crewUuid, crewUuids),
+          eq(accAdvancesV2.period, period),
+          inArray(accAdvancesV2.status, ["approved", "disbursed"]),
+          eq(accAdvancesV2.isDeleted, false),
+        ),
+      );
+    return rows.filter(
+      (a: AccAdvanceV2) =>
+        a.recoveryAmount != null && Number(a.recoveryAmount) > 0,
+    );
+  }
+
+  async findBondDeductions(
+    crewUuids: string[],
+    period: string,
+  ): Promise<AccBondItemV2[]> {
+    if (crewUuids.length === 0) return [];
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(accBondItemsV2)
+      .where(
+        and(
+          inArray(accBondItemsV2.crewUuid, crewUuids),
+          eq(accBondItemsV2.period, period),
+          eq(accBondItemsV2.autoDeduct, true),
+          eq(accBondItemsV2.isDeleted, false),
+        ),
+      );
+    return rows.filter((b: AccBondItemV2) => b.status !== "cancelled");
+  }
+
+  /** crew_uuid -> nationality_uuid (null when unknown). */
+  async findCrewNationalities(
+    crewUuids: string[],
+  ): Promise<Map<string, string | null>> {
+    const map = new Map<string, string | null>();
+    if (crewUuids.length === 0) return map;
+    const db = getDb();
+    const rows = await db
+      .select({
+        crewUuid: crewMembersV2.crewUuid,
+        nationalityUuid: crewMembersV2.nationalityUuid,
+      })
+      .from(crewMembersV2)
+      .where(inArray(crewMembersV2.crewUuid, crewUuids));
+    for (const r of rows) map.set(r.crewUuid, r.nationalityUuid ?? null);
+    return map;
+  }
+
+  /** Promotion events per crew, from the promotions execution ledger. */
+  async findPromotions(crewUuids: string[]): Promise<PromotionEvent[]> {
+    if (crewUuids.length === 0) return [];
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(promoExecutionLedgerV2)
+      .where(
+        and(
+          inArray(promoExecutionLedgerV2.crewUuid, crewUuids),
+          eq(promoExecutionLedgerV2.isDeleted, false),
+        ),
+      );
+    type PromoRow = typeof promoExecutionLedgerV2.$inferSelect;
+    return rows
+      .filter((r: PromoRow) => r.crewUuid != null && r.effectiveDate != null)
+      .map((r: PromoRow) => ({
+        crewUuid: r.crewUuid as string,
+        toRank: r.toRank,
+        effectiveDate: String(r.effectiveDate).slice(0, 10),
+      }));
+  }
+}

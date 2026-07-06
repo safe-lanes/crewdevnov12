@@ -662,6 +662,49 @@ Amendments layered on top of 0153, all additive and idempotent:
 - `acc_wage_scales_v2`: added `floor_ack_by_uuid` (text), `floor_ack_at` (date)
   and `floor_violations` (jsonb) for persisted CBA-floor acknowledgment.
 
+## Migration notes (`0156_accounts_engine_prep.sql`)
+
+Engine-prep amendments, all additive and idempotent:
+
+- `acc_tenant_config_v2`: added `day_inclusion_rule` (NOT NULL default
+  `both_inclusive`, guarded `CHECK` allowing `both_inclusive` /
+  `exclude_sign_off_day`).
+- `acc_wage_ledger_v2`: added `payment_timing` (text, nullable) — a snapshot of
+  the element's timing at calculation time so ledger totals never depend on
+  later master-data edits.
+
+## Wage calculation engine rules
+
+The engine (`server/v2/accounts/engine/`) enforces these invariants on top of
+the service-layer rules above:
+
+1. **Only-writer rule.** `LedgerRepository` (in `engine/ledgerRepository.ts`)
+   is the only code path that inserts or deletes `acc_wage_ledger_v2` rows. It
+   is intentionally not exported from `repositories/index.ts`; all writes go
+   through `wageEngineService`, which replaces *preview* lines
+   (`portage_uuid IS NULL`) for an engagement/period atomically in a single
+   transaction. Lines attached to a portage bill are never touched by preview
+   re-runs.
+2. **30/360 day capping.** Under `thirty_day_month` proration a full service
+   month always counts 30 days regardless of calendar length (28, 29 or 31),
+   a segment ending on the 31st is capped via the day-index rule (31st → 30),
+   and multi-segment full months are allocated so segment days always sum to
+   exactly 30 (the last segment absorbs the remainder). Sign-on/sign-off days
+   are inclusive by default (`day_inclusion_rule = 'both_inclusive'`).
+3. **Replacement vs adjustment.** Re-running an *unlocked* engagement/period
+   **replaces** its preview ledger lines (all-or-nothing). Once a period's
+   portage bill is locked the engine refuses to run (`409 CONFLICT`); the only
+   way to correct a locked period is an **adjustment**: a new line in a *later*
+   open period with `is_adjustment = true` and `adjusts_ledger_uuid` pointing
+   at the original line. Adjustments never mutate the source line.
+4. **Determinism.** All money math uses scaled-integer arithmetic (no floats),
+   and every collection the engine iterates (elements, scale lines, overrides,
+   allotments, advances, bonds, transactions) is explicitly sorted by
+   uuid/code, so re-running the same inputs yields byte-identical lines.
+5. **FX snapshot.** When a line's currency equals the tenant's functional
+   currency, `fx_rate` is exactly `1.000000` and
+   `amount_functional = amount`.
+
 ## Deviations from spec
 
 1. **`rank_id` stored as `text` everywhere** (scale lines, CBA reference,
@@ -680,3 +723,7 @@ Amendments layered on top of 0153, all additive and idempotent:
    date, violations snapshot), but the 0153 scale header had nowhere to store it.
    `floor_ack_by_uuid` / `floor_ack_at` / `floor_violations` were added beyond the
    spec's enumerated Part-1 amendment list to satisfy that requirement.
+5. **Engine-prep migration numbered `0156`, not `0155`.** The engine spec names
+   the migration `0155_accounts_engine_prep.sql`, but `0155` was already taken
+   in this repository (sequential numbering), so the same content ships as
+   `0156_accounts_engine_prep.sql`.

@@ -44,6 +44,7 @@ export const accTenantConfigV2 = pgTable("acc_tenant_config_v2", {
   configUuid: text("config_uuid").notNull().unique(),
   preparationMode: text("preparation_mode").notNull().default("office_prepares"), // vessel_prepares | office_prepares
   prorationBasis: text("proration_basis").notNull().default("thirty_day_month"), // thirty_day_month | calendar_days
+  dayInclusionRule: text("day_inclusion_rule").notNull().default("both_inclusive"), // both_inclusive | exclude_sign_off_day
   functionalCurrency: text("functional_currency").notNull().default("USD"), // ISO 4217
   fxRatePolicy: text("fx_rate_policy").notNull().default("month_end"), // month_end | transaction_date | manual
   employmentModelsEnabled: text("employment_models_enabled").array(), // voyage_contract | annual_employment
@@ -516,6 +517,7 @@ export const accWageLedgerV2 = pgTable(
     payElementUuid: text("pay_element_uuid").notNull(),
     elementType: text("element_type"), // earning | deduction | employer_contribution (denormalised)
     elementCode: text("element_code"), // snapshot
+    paymentTiming: text("payment_timing"), // paid_on_board | payable_at_settlement | remitted_to_fund (snapshot)
     qty: numeric("qty", { precision: 10, scale: 2 }),
     rate: numeric("rate", { precision: 10, scale: 4 }),
     amount: numeric("amount", { precision: 14, scale: 2 }).notNull(), // always positive; element_type carries the sign

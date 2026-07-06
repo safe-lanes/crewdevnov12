@@ -8,3 +8,4 @@ export {
   WageScalesRepository,
   type WageScaleLineInput,
 } from "./wageScalesRepository";
+export { EngagementsRepository } from "./engagementsRepository";

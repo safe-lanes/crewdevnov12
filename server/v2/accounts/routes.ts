@@ -7,6 +7,8 @@ import {
   tenantConfigController,
   wageScalesController,
   cbaReferenceController,
+  engagementsController,
+  calcController,
 } from "./controllers";
 
 const router = Router();
@@ -74,6 +76,20 @@ router.post("/advances", advancesController.create);
 router.put("/advances/:uuid", advancesController.update);
 router.patch("/advances/:uuid", advancesController.update);
 router.delete("/advances/:uuid", advancesController.delete);
+
+// ============================================
+// ENGAGEMENTS (sync + manual seniority anchor)
+// ============================================
+router.post("/engagements/sync", engagementsController.sync);
+router.patch("/engagements/:uuid", engagementsController.update);
+
+// ============================================
+// WAGE CALCULATION ENGINE + LEDGER (read-only)
+// ============================================
+router.post("/calc/run", calcController.run);
+router.post("/calc/run-engagement", calcController.runEngagement);
+router.post("/calc/adjustments", calcController.createAdjustments);
+router.get("/ledger", calcController.getLedger);
 
 // ============================================
 // BOND PURCHASES
