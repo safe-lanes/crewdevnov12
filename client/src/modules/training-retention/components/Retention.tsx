@@ -428,7 +428,7 @@ export const Retention = (): JSX.Element => {
         />
         <button
           type="button"
-          disabled={!hasActiveFilters}
+          disabled={false}
           onClick={clearFilters}
           className="min-h-8 rounded-md border border-input bg-background px-3 py-1 text-xs text-[#16569e] hover:bg-accent/30 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:text-[#8899ae] disabled:opacity-60"
           data-testid="button-clear-retention-filters"
