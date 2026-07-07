@@ -745,6 +745,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
                 onValueChange={(v) => {
                   if (v === "__manual") {
                     set("crewMemberId", "");
+                    set("name", "");
                     return;
                   }
                   const c = crew.find((x) => x.empNo === v);
