@@ -164,6 +164,7 @@ export function DrugAlcoholTestForm_v2({
   const b1GhostScrollRef = useRef<HTMLDivElement>(null);
   const b1GhostInnerRef = useRef<HTMLDivElement>(null);
   const b1SyncingScroll = useRef(false);
+  const b1NameThRef = useRef<HTMLTableCellElement>(null);
   
 
   // Test type labels
@@ -581,14 +582,16 @@ export function DrugAlcoholTestForm_v2({
   // Keep ghost scrollbar width in sync with actual table content width
   useEffect(() => {
     const syncWidth = () => {
-      if (b1TableWrapperRef.current && b1GhostInnerRef.current) {
-        b1GhostInnerRef.current.style.width = `${b1TableWrapperRef.current.scrollWidth}px`;
+      if (b1TableWrapperRef.current && b1GhostInnerRef.current && b1GhostScrollRef.current && b1NameThRef.current) {
+        const stickyOffset = b1NameThRef.current.offsetLeft + b1NameThRef.current.offsetWidth;
+        b1GhostScrollRef.current.style.marginLeft = `${stickyOffset}px`;
+        b1GhostInnerRef.current.style.width = `${b1TableWrapperRef.current.scrollWidth - stickyOffset}px`;
       }
     };
     syncWidth();
     window.addEventListener('resize', syncWidth);
     return () => window.removeEventListener('resize', syncWidth);
-  }, [personnelFields.length]);
+  }, [personnelFields.length, showAlcoholFields, showDrugFields]);
 
   const handleB1TableScroll = () => {
     if (b1SyncingScroll.current) return;
@@ -1631,14 +1634,14 @@ export function DrugAlcoholTestForm_v2({
                   </div>
 
                   {/* Personnel Table - Horizontal Scroll */}
-                  <div className="overflow-x-auto border rounded-lg" ref={b1TableWrapperRef} onScroll={handleB1TableScroll}>
+                  <div className="overflow-x-auto border rounded-lg [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }} ref={b1TableWrapperRef} onScroll={handleB1TableScroll}>
                     <table className="w-full min-w-max bg-white">
                       <thead>
                         <tr className="border-b bg-gray-50">
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide border-r" style={{ position: 'sticky', left: 0, backgroundColor: '#f9fafb', zIndex: 20 }}>
                             Rank
                           </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide border-r" style={{ position: 'sticky', left: '80px', backgroundColor: '#f9fafb', zIndex: 20 }}>
+                          <th ref={b1NameThRef} className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide border-r" style={{ position: 'sticky', left: '80px', backgroundColor: '#f9fafb', zIndex: 20 }}>
                             Name
                           </th>
                           {showAlcoholFields && (
