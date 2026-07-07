@@ -1487,6 +1487,17 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     } else if (stage === 'stage2') {
       if (!isPostStage1 && !isSectionVisible('partB2')) {
         try {
+          omitForStage(stage1Schema).parse(dataForValidation);
+        } catch (validationError: unknown) {
+          const err = validationError as { errors?: Array<{ message?: string }> };
+          toast({
+            title: 'Validation Error',
+            description: err.errors?.[0]?.message || 'Please complete all required fields for this stage.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        try {
           await apiRequest('POST', `/api/v2/appraisals/${idToUse}/submit-stage1`, {
             data: {
               seafarersName: formData.seafarersName,
