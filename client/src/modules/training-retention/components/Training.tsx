@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
+import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import { useTrainingStatusOptionsV2, withLegacyStatus, useTrainingCategoryOptionsV2, withLegacyCategory } from "@/hooks/v2/useMasterDataV2";
 import { cn } from "@/lib/utils";
 
@@ -69,12 +70,6 @@ type CompanyTrainingLookup = {
   name: string;
 };
 
-type RankLookup = {
-  id: number;
-  arUuid: string;
-  rankId: string | null;
-  name: string;
-};
 
 type CrewLookup = {
   crewUuid: string;
@@ -180,9 +175,7 @@ export const Training = (): JSX.Element => {
   const { options: companyTrainings, getName: getDbTrainingName } = useCompanyTrainings();
   const { statuses: statusOptions } = useTrainingStatusOptionsV2("Training & Retention");
 
-  const { data: ranks = [] } = useQuery<RankLookup[]>({
-    queryKey: ["/api/v2/admin/available-ranks"],
-  });
+  const { rankOptions: ranks } = useCompanyRanks();
 
   const { data: crew = [] } = useQuery<CrewLookup[]>({
     queryKey: ["/api/v2/crew-pool/crew"],
@@ -618,7 +611,7 @@ type DialogProps = {
   mode: { kind: "new" } | { kind: "edit"; row: AggregatedRow };
   onClose: () => void;
   companyTrainings: CompanyTrainingLookup[];
-  ranks: RankLookup[];
+  ranks: { value: string; label: string }[];
   crew: CrewLookup[];
   users: UserLookup[];
 };
@@ -781,23 +774,22 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
               <Input value={form.rank} disabled data-testid="input-rank" />
             ) : (
               <Select
-                value={form.rankId || form.rank || "__none"}
+                value={form.rank || "__none"}
                 onValueChange={(v) => {
                   if (v === "__none") {
                     set("rankId", "");
                     set("rank", "");
                     return;
                   }
-                  const r = ranks.find((x) => (x.rankId || x.name) === v);
-                  set("rankId", r?.rankId || "");
-                  set("rank", r?.name || v);
+                  set("rankId", "");
+                  set("rank", v);
                 }}
               >
                 <SelectTrigger data-testid="select-rank"><SelectValue placeholder="Select rank" /></SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="__none">— None —</SelectItem>
                   {ranks.map((r) => (
-                    <SelectItem key={r.arUuid} value={r.rankId || r.name}>{r.name}</SelectItem>
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
