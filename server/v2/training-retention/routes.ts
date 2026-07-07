@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { and, eq, gte, lte, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, lte, inArray, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   crewMembersV2,
@@ -94,41 +94,51 @@ router.get("/retention", async (req: Request, res: Response) => {
     }
 
     // ---- Average Employees (AE) -------------------------------------------
-    // Approximation: count of currently isActive=true crew matching the
-    // cohort filters. AE is computed as `(startCount + endCount) / 2`; until
-    // a historical employment-snapshot table exists we use the current count
-    // for both ends. Swap the two queries below for daily/period-boundary
-    // snapshots once available.
-    const activeConditions = [
-      eq(crewMembersV2.isDeleted, false),
-      isNull(crewMembersV2.archivedAt),
-      eq(crewMembersV2.isActive, true),
-    ];
-    if (rankIds.length > 0) activeConditions.push(inArray(crewMembersV2.presentRank, rankIds));
-    if (nationalityIds.length > 0) activeConditions.push(inArray(crewMembersV2.nationalityUuid, nationalityIds));
+    // Period-based headcount: a crew member is "active on date D" when
+    //   recruitment_date <= D
+    //   AND (no termination
+    //        OR last_termination_date >= D
+    //        OR last_termination_date < recruitment_date  -- re-hired after an
+    //           old termination; the mirror column holds the latest termination
+    //           which predates the current engagement)
+    // Crew with NULL recruitment_date are excluded entirely (per user
+    // decision) — otherwise the boundary comparison cannot be evaluated.
+    // Dates are stored as YYYY-MM-DD text, so lexicographic comparison is
+    // chronologically correct. AE = (activeAtStart + activeAtEnd) / 2.
+    const countActiveOn = async (boundaryDate: string): Promise<number> => {
+      const conds = [
+        eq(crewMembersV2.isDeleted, false),
+        // NULLIF treats empty-string dates the same as NULL (legacy rows
+        // store '' instead of NULL).
+        sql`NULLIF(${crewMembersV2.recruitmentDate}, '') IS NOT NULL AND ${crewMembersV2.recruitmentDate} <= ${boundaryDate}`,
+        sql`(NULLIF(${crewMembersV2.lastTerminationDate}, '') IS NULL OR ${crewMembersV2.lastTerminationDate} >= ${boundaryDate} OR ${crewMembersV2.lastTerminationDate} < ${crewMembersV2.recruitmentDate})`,
+      ];
+      if (rankIds.length > 0) conds.push(inArray(crewMembersV2.presentRank, rankIds));
+      if (nationalityIds.length > 0) conds.push(inArray(crewMembersV2.nationalityUuid, nationalityIds));
 
-    const needsPersonalJoin = poolIds.length > 0 || agentIds.length > 0;
-    let activeCount = 0;
-    if (needsPersonalJoin) {
-      const personalConds = [];
-      if (poolIds.length > 0) personalConds.push(inArray(crewPersonalDetails.crewPool, poolIds));
-      if (agentIds.length > 0) personalConds.push(inArray(crewPersonalDetails.manningAgent, agentIds));
-      const rows = await db
-        .select({ count: sql<number>`count(distinct ${crewMembersV2.crewUuid})::int` })
-        .from(crewMembersV2)
-        .innerJoin(crewPersonalDetails, eq(crewPersonalDetails.crewUuid, crewMembersV2.crewUuid))
-        .where(and(...activeConditions, ...personalConds));
-      activeCount = Number(rows[0]?.count ?? 0);
-    } else {
+      const needsPersonalJoin = poolIds.length > 0 || agentIds.length > 0;
+      if (needsPersonalJoin) {
+        const personalConds = [];
+        if (poolIds.length > 0) personalConds.push(inArray(crewPersonalDetails.crewPool, poolIds));
+        if (agentIds.length > 0) personalConds.push(inArray(crewPersonalDetails.manningAgent, agentIds));
+        const rows = await db
+          .select({ count: sql<number>`count(distinct ${crewMembersV2.crewUuid})::int` })
+          .from(crewMembersV2)
+          .innerJoin(crewPersonalDetails, eq(crewPersonalDetails.crewUuid, crewMembersV2.crewUuid))
+          .where(and(...conds, ...personalConds));
+        return Number(rows[0]?.count ?? 0);
+      }
       const rows = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(crewMembersV2)
-        .where(and(...activeConditions));
-      activeCount = Number(rows[0]?.count ?? 0);
-    }
+        .where(and(...conds));
+      return Number(rows[0]?.count ?? 0);
+    };
 
-    const startCount = activeCount;
-    const endCount = activeCount;
+    const [startCount, endCount] = await Promise.all([
+      countActiveOn(periodFrom),
+      countActiveOn(periodTo),
+    ]);
     const AE = (startCount + endCount) / 2;
 
     // ---- Retention rate ---------------------------------------------------
