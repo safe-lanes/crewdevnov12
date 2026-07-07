@@ -8387,12 +8387,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  if (formData.b7TrainingNeeds.length > 1) {
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      b7TrainingNeeds: prev.b7TrainingNeeds.filter(t => t.id !== training.id)
-                                    }));
-                                  }
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b7TrainingNeeds: prev.b7TrainingNeeds.filter(t => t.id !== training.id)
+                                  }));
                                 }}
                                 className="h-8 w-8 p-0"
                                 data-testid={`button-remove-b7-training-${idx}`}
