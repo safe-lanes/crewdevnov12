@@ -72,6 +72,11 @@ const ACTIVE_SECTIONS: SideSection[] = [
         icon: <Repeat size={20} className={iconClass} />,
         page: "monthly-transactions",
       },
+      {
+        name: "Settlements",
+        icon: <Receipt size={20} className={iconClass} />,
+        page: "settlements",
+      },
     ],
   },
   {
@@ -89,7 +94,6 @@ const ACTIVE_SECTIONS: SideSection[] = [
 const COMING_SOON: SideItem[] = [
   { name: "Allotments", icon: <Send size={20} />, page: "allotments" },
   { name: "Cash & Bond", icon: <Wallet size={20} />, page: "cash-bond" },
-  { name: "Settlements", icon: <Receipt size={20} />, page: "settlements" },
   { name: "Reports", icon: <BarChart3 size={20} />, page: "reports" },
 ];
 

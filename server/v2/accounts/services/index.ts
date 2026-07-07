@@ -8,3 +8,4 @@ export { cbaReferenceService } from "./cbaReferenceService";
 export { engagementsService } from "./engagementsService";
 export { monthlyTransactionsService } from "./monthlyTransactionsService";
 export { portageService } from "./portageService";
+export { settlementsService } from "./settlementsService";

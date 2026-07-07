@@ -496,6 +496,7 @@ export const accCalculationRunsV2 = pgTable("acc_calculation_runs_v2", {
   inputSnapshot: jsonb("input_snapshot"),
   status: text("status").notNull(), // running | completed | failed
   errorDetail: text("error_detail"),
+  warnings: jsonb("warnings"), // array of {crewUuid, code, message} (0159)
   ...auditColumns,
 });
 
@@ -561,9 +562,81 @@ export const accSettlementsV2 = pgTable(
     netPayable: numeric("net_payable", { precision: 14, scale: 2 }),
     currency: text("currency").notNull().default("USD"),
     remarks: text("remarks"),
+    // 0159 settlement components. Rationale: the balance service subtracts
+    // ONLY balance_paid from the running on-board balance; accruals_paid is
+    // consumed against the leave/accrual mini-ledger. Subtracting the whole
+    // net_payable would double-count accruals (they never entered the
+    // on-board balance) and drive balances negative.
+    // net_payable (cached) = balance_paid + accruals_paid
+    //                      + adjustments_earnings - adjustments_deductions.
+    balancePaid: numeric("balance_paid", { precision: 14, scale: 2 })
+      .notNull()
+      .default("0"),
+    accrualsPaid: numeric("accruals_paid", { precision: 14, scale: 2 })
+      .notNull()
+      .default("0"),
+    adjustmentsEarnings: numeric("adjustments_earnings", {
+      precision: 14,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    adjustmentsDeductions: numeric("adjustments_deductions", {
+      precision: 14,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
+    paidDate: date("paid_date"),
+    paymentReference: text("payment_reference"),
+    statementSnapshot: jsonb("statement_snapshot"),
     ...auditColumns,
   },
   (table) => ({
     crewIdx: index("idx_acc_settlements_v2_crew").on(table.crewUuid),
+  }),
+);
+
+// 20. acc_settlement_approvals_v2 — settlement approval rows (0159),
+// mirrors acc_portage_approvals_v2.
+export const accSettlementApprovalsV2 = pgTable(
+  "acc_settlement_approvals_v2",
+  {
+    id: serial("id").primaryKey(),
+    stApprovalUuid: text("st_approval_uuid").notNull().unique(),
+    settlementUuid: text("settlement_uuid").notNull(),
+    approverId: text("approver_id"),
+    approver: text("approver"), // name snapshot
+    status: text("status").notNull().default("Pending"), // Pending | Approved | Rejected
+    comments: text("comments"),
+    date: date("date"),
+    ...auditColumns,
+  },
+  (table) => ({
+    settlementIdx: index("idx_acc_settlement_approvals_v2_settlement").on(
+      table.settlementUuid,
+    ),
+  }),
+);
+
+// 21. acc_settlement_adjustments_v2 — settlement-specific one-offs (0159):
+// travel wages, final claims, recovery of outstanding advances. Editable
+// only while the settlement is draft (service-enforced).
+export const accSettlementAdjustmentsV2 = pgTable(
+  "acc_settlement_adjustments_v2",
+  {
+    id: serial("id").primaryKey(),
+    adjustmentUuid: text("adjustment_uuid").notNull().unique(),
+    settlementUuid: text("settlement_uuid").notNull(),
+    payElementUuid: text("pay_element_uuid").notNull(),
+    type: text("type").notNull(), // earning | deduction (CHECK in migration)
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    remarks: text("remarks"),
+    ...auditColumns,
+  },
+  (table) => ({
+    settlementIdx: index("idx_acc_settlement_adjustments_v2_settlement").on(
+      table.settlementUuid,
+    ),
   }),
 );

@@ -301,6 +301,55 @@ export class EngineReads {
   }
 
   /**
+   * Settlements in a re-run-freezing status (submitted/approved/paid/locked)
+   * for any of the given engagements. Used by the engine's freeze guard.
+   */
+  async findFrozenSettlements(
+    engagementUuids: string[],
+  ): Promise<AccSettlementV2[]> {
+    if (engagementUuids.length === 0) return [];
+    const db = getDb();
+    return db
+      .select()
+      .from(accSettlementsV2)
+      .where(
+        and(
+          inArray(accSettlementsV2.engagementUuid, engagementUuids),
+          inArray(accSettlementsV2.status, [
+            "submitted",
+            "approved",
+            "paid",
+            "locked",
+          ]),
+          eq(accSettlementsV2.isDeleted, false),
+        ),
+      );
+  }
+
+  /** crew_uuid -> display name (for engine error messages). */
+  async findCrewNames(crewUuids: string[]): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    if (crewUuids.length === 0) return map;
+    const db = getDb();
+    const rows = await db
+      .select({
+        crewUuid: crewMembersV2.crewUuid,
+        firstName: crewMembersV2.firstName,
+        middleName: crewMembersV2.middleName,
+        familyName: crewMembersV2.familyName,
+      })
+      .from(crewMembersV2)
+      .where(inArray(crewMembersV2.crewUuid, crewUuids));
+    for (const r of rows) {
+      const name = [r.firstName, r.middleName, r.familyName]
+        .filter(Boolean)
+        .join(" ");
+      map.set(r.crewUuid, name || r.crewUuid);
+    }
+    return map;
+  }
+
+  /**
    * pay_element_uuid -> category, without a status filter — prior ledger
    * lines may reference elements that were deactivated since.
    */

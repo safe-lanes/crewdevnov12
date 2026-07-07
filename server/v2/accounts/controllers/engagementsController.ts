@@ -107,9 +107,23 @@ export const engagementsController = {
         return res.status(404).json({ error: "Engagement not found" });
       }
       res.json(record);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === "CONFLICT") {
+        return res
+          .status(409)
+          .json({ error: error.message, details: error.details });
+      }
       console.error("Error updating engagement:", error);
       res.status(500).json({ error: "Failed to update engagement" });
+    }
+  },
+
+  async overlapAudit(_req: Request, res: Response) {
+    try {
+      res.json(await engagementsService.overlapAudit());
+    } catch (error) {
+      console.error("Error running engagement overlap audit:", error);
+      res.status(500).json({ error: "Failed to run engagement overlap audit" });
     }
   },
 };

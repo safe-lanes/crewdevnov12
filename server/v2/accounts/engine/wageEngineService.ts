@@ -75,11 +75,17 @@ type EngineLine = Omit<
   "ledgerUuid" | "calcRunUuid" | "portageUuid"
 >;
 
+/** Structured engine warning (persisted on the run row for later display). */
+export interface EngagementWarning {
+  code: string;
+  message: string;
+}
+
 interface EngagementResult {
   engagement: AccEngagementV2;
   lines: EngineLine[];
   errors: string[];
-  warnings: string[];
+  warnings: EngagementWarning[];
 }
 
 export interface CrewTotals {
@@ -158,6 +164,49 @@ const reads = new EngineReads();
 const ledgerRepo = new LedgerRepository();
 const balanceService = new BalanceService();
 
+/**
+ * Settlement freeze guard (amendment to Prompt 05): once a final settlement
+ * is submitted (or beyond), the engine refuses to re-run any period of that
+ * engagement — a re-run would silently diverge the ledger from the payout.
+ */
+async function assertNoFrozenSettlements(
+  engagements: AccEngagementV2[],
+): Promise<void> {
+  const frozen = await reads.findFrozenSettlements(
+    engagements.map((e) => e.engagementUuid),
+  );
+  if (frozen.length === 0) return;
+  const names = await reads.findCrewNames(frozen.map((s) => s.crewUuid));
+  const parts = frozen.map(
+    (s) =>
+      `${names.get(s.crewUuid) ?? s.crewUuid} (settlement ${s.settlementUuid}, ${s.status})`,
+  );
+  throw new EngineError(
+    "CONFLICT",
+    `Period is frozen by final settlement(s): ${parts.join("; ")}. Lock the portage bill around the settled engagement, or revert the settlement to draft (only possible while submitted) before re-running.`,
+    {
+      settlements: frozen.map((s) => ({
+        settlementUuid: s.settlementUuid,
+        engagementUuid: s.engagementUuid,
+        crewUuid: s.crewUuid,
+        status: s.status,
+      })),
+    },
+  );
+}
+
+/** Run-row warnings payload: structured, crew-attributed (0159). */
+function persistableWarnings(results: EngagementResult[]) {
+  return results.flatMap((r) =>
+    r.warnings.map((w) => ({
+      crewUuid: r.engagement.crewUuid,
+      engagementUuid: r.engagement.engagementUuid,
+      code: w.code,
+      message: w.message,
+    })),
+  );
+}
+
 function toEngineConfig(row: AccTenantConfigV2 | undefined): EngineConfig {
   return {
     prorationBasis: (row?.prorationBasis ??
@@ -197,6 +246,7 @@ export const wageEngineService = {
       month.monthStart,
       month.monthEnd,
     );
+    await assertNoFrozenSettlements(engagements);
     const ctx = await buildContext(config, month, engagements);
 
     const results = engagements
@@ -207,8 +257,9 @@ export const wageEngineService = {
       r.errors.map((m) => `${r.engagement.engagementUuid}: ${m}`),
     );
     const warnings = results.flatMap((r) =>
-      r.warnings.map((m) => `${r.engagement.engagementUuid}: ${m}`),
+      r.warnings.map((w) => `${r.engagement.engagementUuid}: ${w.message}`),
     );
+    const runWarnings = persistableWarnings(results);
 
     const inputSnapshot = buildInputSnapshot(config, period, {
       vesselUuid,
@@ -226,6 +277,7 @@ export const wageEngineService = {
         inputSnapshot,
         status: "failed",
         errorDetail: errors.join("; "),
+        warnings: runWarnings,
         createdByUuid: auditUserUuid ?? null,
       });
       throw new EngineError(
@@ -295,6 +347,7 @@ export const wageEngineService = {
     const completedRun =
       (await ledgerRepo.updateRun(run.calcRunUuid, {
         status: "completed",
+        warnings: runWarnings,
         updatedByUuid: auditUserUuid ?? null,
       })) ?? run;
 
@@ -337,10 +390,12 @@ export const wageEngineService = {
       }
     }
 
+    await assertNoFrozenSettlements([engagement]);
     const configRow = await reads.getConfig();
     const config = toEngineConfig(configRow);
     const ctx = await buildContext(config, month, [engagement]);
     const result = calcEngagement(ctx, engagement);
+    const runWarnings = persistableWarnings([result]);
 
     const inputSnapshot = buildInputSnapshot(config, period, {
       engagementUuid,
@@ -357,6 +412,7 @@ export const wageEngineService = {
         inputSnapshot,
         status: "failed",
         errorDetail: result.errors.join("; "),
+        warnings: runWarnings,
         createdByUuid: auditUserUuid ?? null,
       });
       throw new EngineError(
@@ -404,6 +460,7 @@ export const wageEngineService = {
     const completedRun =
       (await ledgerRepo.updateRun(run.calcRunUuid, {
         status: "completed",
+        warnings: runWarnings,
         updatedByUuid: auditUserUuid ?? null,
       })) ?? run;
 
@@ -412,7 +469,7 @@ export const wageEngineService = {
       lineCount: allLines.length,
       crewTotals:
         result.lines.length > 0 ? await withBalances(ctx, [result], period) : [],
-      warnings: result.warnings.map((m) => `${engagementUuid}: ${m}`),
+      warnings: result.warnings.map((w) => `${engagementUuid}: ${w.message}`),
     };
   },
 
@@ -610,7 +667,9 @@ export const wageEngineService = {
         balanceCf: centsToString(balanceCfCents),
         leaveBf: centsToString(prior.leaveBfCents),
         leaveThisMonth: centsToString(leaveThisCents),
-        leaveCf: centsToString(prior.leaveBfCents + leaveThisCents),
+        leaveCf: centsToString(
+          prior.leaveBfCents + leaveThisCents - prior.leaveSettledAtPeriodCents,
+        ),
       });
     }
     return out;
@@ -728,7 +787,7 @@ function calcEngagement(
   engagement: AccEngagementV2,
 ): EngagementResult {
   const errors: string[] = [];
-  const warnings: string[] = [];
+  const warnings: EngagementWarning[] = [];
   const { month, config } = ctx;
 
   if (!engagement.startDate || !parseIsoDate(engagement.startDate)) {
@@ -1175,11 +1234,13 @@ function calcEngagement(
     const scaleLines = (
       ctx.scaleLinesByScale.get(engagement.wageScaleUuid!) ?? []
     ).filter((l) => l.rankId === engagement.rankIdAtStart);
-    warnings.push(
-      scaleLines.length === 0
-        ? `skipped: no scale lines for rank ${engagement.rankIdAtStart} on the assigned wage scale`
-        : `skipped: no ledger lines produced for rank ${engagement.rankIdAtStart} (scale lines exist but none were applicable)`,
-    );
+    warnings.push({
+      code: "engagement_skipped",
+      message:
+        scaleLines.length === 0
+          ? `skipped: no scale lines for rank ${engagement.rankIdAtStart} on the assigned wage scale`
+          : `skipped: no ledger lines produced for rank ${engagement.rankIdAtStart} (scale lines exist but none were applicable)`,
+    });
   }
 
   return { engagement, lines, errors, warnings };
@@ -1336,7 +1397,7 @@ function resolveEntries(
   crewNat: string | null,
   overrides: AccEngagementPayElementV2[],
   errors: string[],
-  warnings: string[],
+  warnings: EngagementWarning[],
 ): Map<string, ResolvedEntry> {
   const entries = new Map<string, ResolvedEntry>();
   const scaleLines = (ctx.scaleLinesByScale.get(state.scaleUuid) ?? []).filter(
@@ -1409,9 +1470,10 @@ function resolveEntries(
         // Fix (c): replace_scale_value with no base scale line for this
         // rank — apply the override value directly instead of silently
         // dropping the element.
-        warnings.push(
-          `element ${element.code}: replace_scale_value override has no base scale line for rank ${state.rankId}; override value applied directly (segment ${state.from})`,
-        );
+        warnings.push({
+          code: "replace_without_base",
+          message: `element ${element.code}: replace_scale_value override has no base scale line for rank ${state.rankId}; override value applied directly (segment ${state.from})`,
+        });
         entries.set(o.payElementUuid, {
           element,
           amountE2: o.amount != null ? toCents(o.amount) : null,
@@ -1734,7 +1796,9 @@ async function withBalances(
       balanceCf: centsToString(balanceCfCents),
       leaveBf: centsToString(prior.leaveBfCents),
       leaveThisMonth: centsToString(leaveThisCents),
-      leaveCf: centsToString(prior.leaveBfCents + leaveThisCents),
+      leaveCf: centsToString(
+        prior.leaveBfCents + leaveThisCents - prior.leaveSettledAtPeriodCents,
+      ),
     });
   }
   return out;

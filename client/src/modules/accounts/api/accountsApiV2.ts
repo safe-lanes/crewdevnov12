@@ -109,6 +109,45 @@ export const accountsApiV2 = {
         comments,
       }),
   },
+  settlements: {
+    compute: (engagementUuid: string) =>
+      req("POST", `${ACCOUNTS_BASE}/settlements/compute`, { engagementUuid }),
+    recompute: (uuid: string) =>
+      req("POST", `${ACCOUNTS_BASE}/settlements/${uuid}/recompute`),
+    addAdjustment: (uuid: string, data: Record<string, unknown>) =>
+      req("POST", `${ACCOUNTS_BASE}/settlements/${uuid}/adjustments`, data),
+    updateAdjustment: (adjustmentUuid: string, data: Record<string, unknown>) =>
+      req(
+        "PATCH",
+        `${ACCOUNTS_BASE}/settlements/adjustments/${adjustmentUuid}`,
+        data,
+      ),
+    deleteAdjustment: (adjustmentUuid: string) =>
+      req("DELETE", `${ACCOUNTS_BASE}/settlements/adjustments/${adjustmentUuid}`),
+    submit: (
+      uuid: string,
+      approvers: { approverId?: string | null; approver: string }[],
+    ) => req("POST", `${ACCOUNTS_BASE}/settlements/${uuid}/submit`, { approvers }),
+    decide: (
+      approvalUuid: string,
+      decision: "Approved" | "Rejected",
+      comments?: string | null,
+    ) =>
+      req(
+        "POST",
+        `${ACCOUNTS_BASE}/settlements/approvals/${approvalUuid}/decision`,
+        { decision, comments },
+      ),
+    markPaid: (uuid: string, paidDate: string, paymentReference?: string | null) =>
+      req("POST", `${ACCOUNTS_BASE}/settlements/${uuid}/mark-paid`, {
+        paidDate,
+        paymentReference,
+      }),
+    lock: (uuid: string) =>
+      req("POST", `${ACCOUNTS_BASE}/settlements/${uuid}/lock`),
+    revertToDraft: (uuid: string) =>
+      req("POST", `${ACCOUNTS_BASE}/settlements/${uuid}/revert-to-draft`),
+  },
   monthlyTransactions: {
     create: (data: Record<string, unknown>) =>
       req("POST", `${ACCOUNTS_BASE}/monthly-transactions`, data),

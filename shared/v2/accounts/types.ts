@@ -20,6 +20,8 @@ import {
   accCalculationRunsV2,
   accWageLedgerV2,
   accSettlementsV2,
+  accSettlementAdjustmentsV2,
+  accSettlementApprovalsV2,
 } from "./schema";
 
 const auditOmit = {
@@ -176,3 +178,21 @@ export const insertAccSettlementV2Schema = createInsertSchema(
 ).omit(auditOmit);
 export type InsertAccSettlementV2 = z.infer<typeof insertAccSettlementV2Schema>;
 export type AccSettlementV2 = typeof accSettlementsV2.$inferSelect;
+
+export const insertAccSettlementAdjustmentV2Schema = createInsertSchema(
+  accSettlementAdjustmentsV2,
+).omit(auditOmit);
+export type InsertAccSettlementAdjustmentV2 = z.infer<
+  typeof insertAccSettlementAdjustmentV2Schema
+>;
+export type AccSettlementAdjustmentV2 =
+  typeof accSettlementAdjustmentsV2.$inferSelect;
+
+export const insertAccSettlementApprovalV2Schema = createInsertSchema(
+  accSettlementApprovalsV2,
+).omit(auditOmit);
+export type InsertAccSettlementApprovalV2 = z.infer<
+  typeof insertAccSettlementApprovalV2Schema
+>;
+export type AccSettlementApprovalV2 =
+  typeof accSettlementApprovalsV2.$inferSelect;

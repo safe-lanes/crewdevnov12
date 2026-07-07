@@ -192,6 +192,10 @@ export default function PayrollRunPage() {
   const { data: wageScales = [] } = useQuery<any[]>({
     queryKey: [`${ACCOUNTS_BASE}/wage-scales`],
   });
+  const { data: auditGroups = [] } = useQuery<any[]>({
+    queryKey: [`${ACCOUNTS_BASE}/engagements/audit`],
+    enabled: hasFilter,
+  });
 
   const portage = workspace?.portage ?? null;
   const approvals: any[] = workspace?.approvals ?? [];
@@ -216,16 +220,32 @@ export default function PayrollRunPage() {
     return m;
   }, [reviewRows]);
 
+  // ---- overlapping-engagement guard (Step 1 banner) ----
+  const [overlapOpen, setOverlapOpen] = useState(false);
+  const overlapGroups = useMemo(
+    () =>
+      (auditGroups ?? []).filter((g: any) => crewByUuid.has(g.crewUuid)),
+    [auditGroups, crewByUuid],
+  );
+
   const elementByUuid = useMemo(() => {
     const m = new Map<string, any>();
     for (const e of payElements) m.set(e.payElementUuid, e);
     return m;
   }, [payElements]);
 
-  // ---- last run warnings (kept from the most recent run in this session) ----
+  // ---- last run warnings (session result, else persisted on the run row) ----
+  // Session warnings are strings ("<engagementUuid>: <message>"); persisted
+  // run-row warnings (0159) are objects {crewUuid, engagementUuid, code,
+  // message}. Normalize both to the string shape the renderer expects.
   const [runWarnings, setRunWarnings] = useState<string[] | null>(null);
-  const warnings: string[] =
-    runWarnings ?? (latestRun?.warnings as string[] | null) ?? [];
+  const warnings: string[] = (
+    (runWarnings ?? (latestRun?.warnings as any[] | null) ?? []) as any[]
+  ).map((w) =>
+    typeof w === "string"
+      ? w
+      : `${w?.engagementUuid ?? ""}: ${w?.message ?? w?.code ?? ""}`,
+  );
 
   // ---- sync ----
   const [syncing, setSyncing] = useState(false);
@@ -720,6 +740,32 @@ export default function PayrollRunPage() {
                 ))}
               </div>
             )}
+            {overlapGroups.length > 0 && (
+              <div
+                className="flex flex-wrap items-center gap-2 px-4 py-2 border-b bg-amber-50 text-xs text-amber-800"
+                data-testid="banner-overlap-warning"
+              >
+                <AlertTriangle size={14} className="shrink-0" />
+                <span className="font-medium">
+                  {overlapGroups.length} crew member
+                  {overlapGroups.length === 1 ? " has" : "s have"} overlapping
+                  open engagements.
+                </span>
+                <span>
+                  Payroll runs are blocked for these crew until the overlap is
+                  resolved.
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-xs border-amber-300 text-amber-900 hover:bg-amber-100"
+                  onClick={() => setOverlapOpen(true)}
+                  data-testid="button-view-overlaps"
+                >
+                  View details
+                </Button>
+              </div>
+            )}
             <div className="p-2">
               <AgGridTable
                 rowData={reviewRows}
@@ -1174,6 +1220,66 @@ export default function PayrollRunPage() {
               data-testid="button-save-timing"
             >
               {savingTiming ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Overlapping engagements dialog ---- */}
+      <Dialog open={overlapOpen} onOpenChange={setOverlapOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Overlapping Open Engagements</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-2">
+            These crew members have more than one open engagement covering the
+            same dates. Payroll calculation is blocked for them until the
+            conflicting engagement is ended or corrected.
+          </p>
+          <div className="max-h-80 overflow-y-auto space-y-3">
+            {overlapGroups.map((g: any) => (
+              <div
+                key={g.crewUuid}
+                className="border rounded-md p-3 text-sm"
+                data-testid={`overlap-group-${g.crewUuid}`}
+              >
+                <div className="font-medium mb-1">
+                  {g.crewName ??
+                    crewByUuid.get(g.crewUuid)?.crewName ??
+                    g.crewUuid}
+                </div>
+                <div className="space-y-1">
+                  {(g.engagements ?? []).map((e: any) => (
+                    <div
+                      key={e.engagementUuid}
+                      className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+                      data-testid={`overlap-engagement-${e.engagementUuid}`}
+                    >
+                      <span className="font-medium text-foreground">
+                        {e.vesselName ?? e.vesselUuid}
+                      </span>
+                      <span>
+                        {formatDate(e.startDate)} →{" "}
+                        {e.endDate ? formatDate(e.endDate) : "open"}
+                      </span>
+                      {e.status && (
+                        <Badge variant="outline" className="text-[10px]">
+                          {e.status}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOverlapOpen(false)}
+              data-testid="button-close-overlaps"
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

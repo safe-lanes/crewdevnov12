@@ -11,6 +11,7 @@ import CbaReferencePage from "./pages/CbaReferencePage";
 import PayrollRunPage from "./pages/PayrollRunPage";
 import PortageBillPage from "./pages/PortageBillPage";
 import MonthlyTransactionsPage from "./pages/MonthlyTransactionsPage";
+import SettlementsPage from "./pages/SettlementsPage";
 
 interface PageMeta {
   page: string;
@@ -48,6 +49,11 @@ const PAGE_META: PageMeta[] = [
     page: "monthly-transactions",
     menu: "Account Monthly Transactions",
     path: "/accounts/payroll/monthly-transactions",
+  },
+  {
+    page: "settlements",
+    menu: "Account Settlements",
+    path: "/accounts/payroll/settlements",
   },
   {
     page: "tenant-config",
@@ -120,6 +126,8 @@ export function AccountsModule() {
         return <PortageBillPage />;
       case "monthly-transactions":
         return <MonthlyTransactionsPage />;
+      case "settlements":
+        return <SettlementsPage />;
       default:
         return null;
     }

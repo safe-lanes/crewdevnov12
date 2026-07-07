@@ -78,6 +78,67 @@ export class EngagementsRepository {
     return rows[0];
   }
 
+  async findByUuids(engagementUuids: string[]): Promise<AccEngagementV2[]> {
+    if (engagementUuids.length === 0) return [];
+    const db = getDb();
+    return db
+      .select()
+      .from(accEngagementsV2)
+      .where(
+        and(
+          inArray(accEngagementsV2.engagementUuid, engagementUuids),
+          eq(accEngagementsV2.isDeleted, false),
+        ),
+      );
+  }
+
+  /** All live engagements of the given crew (any vessel, any status). */
+  async findByCrewUuids(crewUuids: string[]): Promise<AccEngagementV2[]> {
+    if (crewUuids.length === 0) return [];
+    const db = getDb();
+    return db
+      .select()
+      .from(accEngagementsV2)
+      .where(
+        and(
+          inArray(accEngagementsV2.crewUuid, crewUuids),
+          eq(accEngagementsV2.isDeleted, false),
+        ),
+      );
+  }
+
+  /** All live engagements in an overlap-relevant status (audit universe). */
+  async findOverlapCandidates(): Promise<AccEngagementV2[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(accEngagementsV2)
+      .where(
+        and(
+          inArray(accEngagementsV2.status, ["draft", "active", "completed"]),
+          eq(accEngagementsV2.isDeleted, false),
+        ),
+      );
+  }
+
+  /** vessel_uuid -> vessel name (for audit display). */
+  async findVesselNames(vesselUuids: string[]): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    if (vesselUuids.length === 0) return map;
+    const db = getDb();
+    const rows = await db
+      .select({
+        vesselUuid: masterVessels.vesselUuid,
+        vessel: masterVessels.vessel,
+      })
+      .from(masterVessels)
+      .where(inArray(masterVessels.vesselUuid, vesselUuids));
+    for (const r of rows) {
+      if (r.vesselUuid) map.set(r.vesselUuid, r.vessel ?? r.vesselUuid);
+    }
+    return map;
+  }
+
   // ---- Sync inputs -------------------------------------------------------
 
   async findAssignmentsForVessel(

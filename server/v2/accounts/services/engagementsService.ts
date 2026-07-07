@@ -74,6 +74,63 @@ function buildRankResolver(
   };
 }
 
+/** Statuses whose date ranges may not overlap for the same crew. */
+const OVERLAP_STATUSES = new Set(["draft", "active", "completed"]);
+
+/** Inclusive date-range overlap; a null end date means open-ended. */
+function rangesOverlap(
+  aStart: string,
+  aEnd: string | null,
+  bStart: string,
+  bEnd: string | null,
+): boolean {
+  return (bEnd == null || aStart <= bEnd) && (aEnd == null || bStart <= aEnd);
+}
+
+/**
+ * First existing engagement of the same crew whose service dates overlap
+ * the candidate range (overlap-relevant statuses only).
+ */
+function findOverlapConflict(
+  candidate: {
+    crewUuid: string;
+    startDate: string;
+    endDate: string | null;
+    engagementUuid?: string;
+  },
+  existing: AccEngagementV2[],
+): AccEngagementV2 | undefined {
+  return existing.find(
+    (e) =>
+      e.engagementUuid !== candidate.engagementUuid &&
+      e.crewUuid === candidate.crewUuid &&
+      OVERLAP_STATUSES.has(e.status) &&
+      e.startDate != null &&
+      rangesOverlap(
+        candidate.startDate,
+        candidate.endDate,
+        e.startDate,
+        e.endDate ?? null,
+      ),
+  );
+}
+
+function overlapConflictError(conflict: AccEngagementV2): Error {
+  const err = new Error(
+    `Overlapping engagement ${conflict.engagementUuid} (${conflict.startDate} – ${conflict.endDate ?? "open"}, ${conflict.status}) already exists for this crew member; resolve it via the engagement overlap audit first`,
+  ) as Error & { code: string; details: unknown };
+  err.code = "CONFLICT";
+  err.details = {
+    engagementUuid: conflict.engagementUuid,
+    crewUuid: conflict.crewUuid,
+    vesselUuid: conflict.vesselUuid,
+    startDate: conflict.startDate,
+    endDate: conflict.endDate,
+    status: conflict.status,
+  };
+  return err;
+}
+
 function resolveScaleForStart(
   scales: AccWageScaleV2[],
   vesselType: string | null,
@@ -118,9 +175,10 @@ export const engagementsService = {
     const existingByAssignment = new Set(
       existing.map((e) => e.assignmentUuid).filter(Boolean),
     );
-    const crewRanks = await engagementsRepository.findCrewRanks(
-      Array.from(new Set(assignments.map((a) => a.crewUuid))),
-    );
+    const crewUuids = Array.from(new Set(assignments.map((a) => a.crewUuid)));
+    const crewRanks = await engagementsRepository.findCrewRanks(crewUuids);
+    const crewEngagements =
+      await engagementsRepository.findByCrewUuids(crewUuids);
     const vesselType = await engagementsRepository.findVesselType(vesselUuid);
     const scales = await engagementsRepository.findActiveScales();
     const resolveRankCode = buildRankResolver(
@@ -172,6 +230,18 @@ export const engagementsService = {
         result.skippedExisting++;
         continue;
       }
+      const conflict = findOverlapConflict(
+        { crewUuid: assignment.crewUuid, startDate, endDate },
+        crewEngagements,
+      );
+      if (conflict) {
+        result.errors.push({
+          assignUuid: assignment.assignUuid,
+          crewUuid: assignment.crewUuid,
+          reason: `overlapping engagement ${conflict.engagementUuid} (${conflict.startDate} – ${conflict.endDate ?? "open"}, ${conflict.status}) already exists for this crew member — resolve via the engagement overlap audit`,
+        });
+        continue;
+      }
       const rawRank = crewRanks.get(assignment.crewUuid) ?? null;
       if (!rawRank) {
         result.errors.push({
@@ -219,6 +289,7 @@ export const engagementsService = {
       );
       const created = await engagementsRepository.create(dataWithAudit);
       result.created.push(created);
+      crewEngagements.push(created);
     }
 
     return result;
@@ -340,7 +411,98 @@ export const engagementsService = {
       >
     > & { auditUserUuid?: string },
   ): Promise<AccEngagementV2 | undefined> {
+    if (data.status && OVERLAP_STATUSES.has(data.status)) {
+      const engagement =
+        await engagementsRepository.findByUuid(engagementUuid);
+      if (engagement?.startDate) {
+        const others = (
+          await engagementsRepository.findByCrewUuids([engagement.crewUuid])
+        ).filter((e) => e.engagementUuid !== engagementUuid);
+        const conflict = findOverlapConflict(
+          {
+            crewUuid: engagement.crewUuid,
+            startDate: engagement.startDate,
+            endDate: engagement.endDate ?? null,
+            engagementUuid,
+          },
+          others,
+        );
+        if (conflict) throw overlapConflictError(conflict);
+      }
+    }
     const dataWithAudit = applyAuditUser(data, false);
     return engagementsRepository.update(engagementUuid, dataWithAudit);
+  },
+
+  /**
+   * Overlap audit: existing groups of same-crew engagements whose service
+   * dates overlap (draft/active/completed only). Read-only — existing data
+   * is never auto-fixed.
+   */
+  async overlapAudit() {
+    const engagements = await engagementsRepository.findOverlapCandidates();
+    const byCrew = new Map<string, AccEngagementV2[]>();
+    for (const e of engagements) {
+      if (!e.startDate) continue;
+      const list = byCrew.get(e.crewUuid);
+      if (list) list.push(e);
+      else byCrew.set(e.crewUuid, [e]);
+    }
+    const groups: Array<{ crewUuid: string; engagements: AccEngagementV2[] }> =
+      [];
+    for (const [crewUuid, list] of byCrew) {
+      if (list.length < 2) continue;
+      list.sort((a, b) => a.startDate!.localeCompare(b.startDate!));
+      let cluster: AccEngagementV2[] = [list[0]];
+      let clusterEnd: string | null = list[0].endDate ?? null;
+      for (let i = 1; i < list.length; i++) {
+        const e = list[i];
+        if (clusterEnd == null || e.startDate! <= clusterEnd) {
+          cluster.push(e);
+          if (clusterEnd != null) {
+            clusterEnd =
+              e.endDate == null
+                ? null
+                : e.endDate > clusterEnd
+                  ? e.endDate
+                  : clusterEnd;
+          }
+        } else {
+          if (cluster.length > 1) groups.push({ crewUuid, engagements: cluster });
+          cluster = [e];
+          clusterEnd = e.endDate ?? null;
+        }
+      }
+      if (cluster.length > 1) groups.push({ crewUuid, engagements: cluster });
+    }
+    const crewInfo = await engagementsRepository.findCrewInfo(
+      groups.map((g) => g.crewUuid),
+    );
+    const vesselNames = await engagementsRepository.findVesselNames(
+      Array.from(
+        new Set(
+          groups.flatMap((g) =>
+            g.engagements
+              .map((e) => e.vesselUuid)
+              .filter((v): v is string => !!v),
+          ),
+        ),
+      ),
+    );
+    return groups.map((g) => ({
+      crewUuid: g.crewUuid,
+      crewName: crewInfo.get(g.crewUuid)?.name ?? g.crewUuid,
+      engagements: g.engagements.map((e) => ({
+        engagementUuid: e.engagementUuid,
+        vesselUuid: e.vesselUuid,
+        vesselName: e.vesselUuid
+          ? (vesselNames.get(e.vesselUuid) ?? e.vesselUuid)
+          : null,
+        startDate: e.startDate,
+        endDate: e.endDate,
+        status: e.status,
+        assignmentUuid: e.assignmentUuid,
+      })),
+    }));
   },
 };

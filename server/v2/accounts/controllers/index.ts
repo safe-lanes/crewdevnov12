@@ -9,3 +9,4 @@ export { engagementsController } from "./engagementsController";
 export { calcController } from "./calcController";
 export { monthlyTransactionsController } from "./monthlyTransactionsController";
 export { portageController } from "./portageController";
+export { settlementsController } from "./settlementsController";

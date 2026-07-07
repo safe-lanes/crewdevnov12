@@ -1,10 +1,11 @@
-import { eq, and, asc, isNull } from "drizzle-orm";
+import { eq, and, asc, isNull, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import {
   accPortageBillsV2,
   accCalculationRunsV2,
   accWageLedgerV2,
+  accSettlementsV2,
 } from "../../../../shared/v2/accounts/schema";
 import type {
   AccPortageBillV2,
@@ -20,6 +21,40 @@ function lockConflict(message: string): Error {
   const err = new Error(message) as Error & { code: string };
   err.code = "CONFLICT";
   return err;
+}
+
+/**
+ * In-transaction settlement freeze re-check (FOR UPDATE): a settlement
+ * submitted/approved/paid/locked between the caller's pre-check and this
+ * write must refuse the line replacement (check-then-write race).
+ */
+async function assertNoFrozenSettlementsTx(
+  tx: ReturnType<typeof getDb>,
+  engagementUuids: string[],
+): Promise<void> {
+  if (engagementUuids.length === 0) return;
+  const frozen = await tx
+    .select()
+    .from(accSettlementsV2)
+    .where(
+      and(
+        inArray(accSettlementsV2.engagementUuid, engagementUuids),
+        inArray(accSettlementsV2.status, [
+          "submitted",
+          "approved",
+          "paid",
+          "locked",
+        ]),
+        eq(accSettlementsV2.isDeleted, false),
+      ),
+    )
+    .for("update");
+  if (frozen.length > 0) {
+    const s = frozen[0];
+    throw lockConflict(
+      `Settlement ${s.settlementUuid} (${s.status}) froze engagement ${s.engagementUuid} while the calculation was running; no lines were replaced`,
+    );
+  }
 }
 
 /**
@@ -127,6 +162,10 @@ export class LedgerRepository {
           `Portage bill ${portageUuid} was locked while the calculation was running; no lines were replaced`,
         );
       }
+      await assertNoFrozenSettlementsTx(
+        tx,
+        Array.from(new Set(lines.map((l) => l.engagementUuid))),
+      );
       await tx
         .delete(accWageLedgerV2)
         .where(
@@ -180,6 +219,7 @@ export class LedgerRepository {
           );
         }
       }
+      await assertNoFrozenSettlementsTx(tx, [engagementUuid]);
       await tx
         .delete(accWageLedgerV2)
         .where(

@@ -11,6 +11,7 @@ import {
   calcController,
   monthlyTransactionsController,
   portageController,
+  settlementsController,
 } from "./controllers";
 
 const router = Router();
@@ -84,6 +85,7 @@ router.delete("/advances/:uuid", advancesController.delete);
 // ============================================
 router.post("/engagements/sync", engagementsController.sync);
 router.get("/engagements/review", engagementsController.review);
+router.get("/engagements/audit", engagementsController.overlapAudit);
 router.post(
   "/engagements/:uuid/timing-override",
   engagementsController.setTimingOverride,
@@ -98,6 +100,34 @@ router.post("/portage/:uuid/submit", portageController.submit);
 router.post(
   "/portage/approvals/:approvalUuid/decision",
   portageController.decide,
+);
+
+// ============================================
+// FINAL SETTLEMENTS (compute + status lifecycle)
+// ============================================
+router.get("/settlements", settlementsController.list);
+router.post("/settlements/compute", settlementsController.compute);
+router.post(
+  "/settlements/approvals/:approvalUuid/decision",
+  settlementsController.decide,
+);
+router.patch(
+  "/settlements/adjustments/:adjustmentUuid",
+  settlementsController.updateAdjustment,
+);
+router.delete(
+  "/settlements/adjustments/:adjustmentUuid",
+  settlementsController.deleteAdjustment,
+);
+router.get("/settlements/:uuid", settlementsController.get);
+router.post("/settlements/:uuid/recompute", settlementsController.recompute);
+router.post("/settlements/:uuid/adjustments", settlementsController.addAdjustment);
+router.post("/settlements/:uuid/submit", settlementsController.submit);
+router.post("/settlements/:uuid/mark-paid", settlementsController.markPaid);
+router.post("/settlements/:uuid/lock", settlementsController.lock);
+router.post(
+  "/settlements/:uuid/revert-to-draft",
+  settlementsController.revertToDraft,
 );
 
 // ============================================

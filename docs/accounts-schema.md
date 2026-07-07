@@ -598,11 +598,49 @@ Final settlement per engagement — a projection. One per engagement.
 | `settlement_uuid` | text uniq | business key |
 | `engagement_uuid` | text uniq | one settlement per engagement |
 | `crew_uuid` | text | |
-| `settlement_date` | date | |
-| `period` | text | `YYYY-MM` |
+| `settlement_date` | date | defaults to the engagement end date at compute |
+| `period` | text | `YYYY-MM` — final month of the engagement |
 | `status` | text | CHECK `draft` \| `submitted` \| `approved` \| `paid` \| `locked` |
 | `gross_earnings` / `total_deductions` / `net_payable` | money | cached from ledger |
 | `currency` | text | ISO 4217 |
+| `remarks` | text | |
+| `balance_paid` | money | unpaid on-board wage balance settled now (0159) |
+| `accruals_paid` | money | accrued `payable_at_settlement` entitlements paid now (0159) |
+| `adjustments_earnings` / `adjustments_deductions` | money | totals of settlement adjustments (0159) |
+| `paid_date` / `payment_reference` | date / text | set by mark-paid (0159) |
+| `statement_snapshot` | jsonb | full statement at compute time: balance by period, accrual items, adjustments, fund remittance, net payable, source calc runs (0159) |
+
+Component identity (0159): `net_payable = balance_paid + accruals_paid +
+adjustments_earnings − adjustments_deductions`. The balance service subtracts
+**only** `balance_paid` from the running on-board balance; `accruals_paid`
+never entered the on-board balance (accruals are settled from the accrual
+mini-ledger), so subtracting the whole `net_payable` would double-count and
+drive balances negative.
+
+#### `acc_settlement_approvals_v2` (0159)
+Approval rows per settlement — mirrors `acc_portage_approvals_v2`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `st_approval_uuid` | text uniq | business key |
+| `settlement_uuid` | text | parent settlement |
+| `approver_id` / `approver` | text | id + name snapshot |
+| `status` | text | `Pending` \| `Approved` \| `Rejected` |
+| `comments` | text | |
+| `date` | date | decision date |
+
+#### `acc_settlement_adjustments_v2` (0159)
+Settlement-specific one-off lines (travel wages, final claims, recovery of
+outstanding advances). Editable only while the settlement is `draft`
+(service-enforced).
+
+| Column | Type | Notes |
+|---|---|---|
+| `adjustment_uuid` | text uniq | business key |
+| `settlement_uuid` | text | parent settlement |
+| `pay_element_uuid` | text | element (manual-entry elements in the UI picker) |
+| `type` | text | `earning` \| `deduction` |
+| `amount` | money | stored positive; `type` carries the sign |
 | `remarks` | text | |
 
 ---
@@ -634,6 +672,21 @@ the service layer:
    lines; they are never edited directly as an authoritative source.
 7. **Signed amounts.** Ledger `amount` is stored positive; net calculations use
    `element_type` for the sign (see convention above).
+8. **Settlement lifecycle (0159).** `draft → submitted → approved → paid →
+   locked`; a rejection or an explicit revert-to-draft returns a `submitted`
+   settlement to `draft`. Compute requires an ended engagement with an
+   approved calc run covering every service month (missing period → 409).
+   Recompute is allowed only in `draft`; adjustments are editable only in
+   `draft`. Marking paid sets `paid_date`/`payment_reference` and flips the
+   engagement to `settled`; post-paid the crew's balances read zero.
+9. **Settlement freeze guard (0159).** Once an engagement has a settlement
+   past `draft`, all ledger-mutating operations for that engagement (payroll
+   runs, monthly transactions, adjustments) are rejected with a 409 naming the
+   settlement; the settlement must be reverted to draft first.
+10. **Engagement overlap guard (0159).** A crew member may not have two open
+    engagements covering the same dates: creates/updates and the crewing sync
+    reject overlapping windows, and `GET /engagements/audit` reports existing
+    overlapping clusters (surfaced as a banner on the Payroll Run page).
 
 ---
 
@@ -713,6 +766,23 @@ payroll operation menus (`Account Payroll Run`, `Account Portage Bill`,
 role's grant on the top-level `Account` menu — the same pattern as 0155.
 Roles without an `Account` grant receive no rows (default no access).
 Idempotent via `ON CONFLICT (name) DO NOTHING` / `NOT EXISTS`.
+
+## Migration notes (`0159_accounts_settlements.sql`)
+
+Final-settlement prep: adds the settlement component columns to
+`acc_settlements_v2` (`balance_paid`, `accruals_paid`, `adjustments_earnings`,
+`adjustments_deductions`, `paid_date`, `payment_reference`,
+`statement_snapshot`), creates `acc_settlement_approvals_v2` and
+`acc_settlement_adjustments_v2`, and adds `warnings jsonb` to
+`acc_calc_runs_v2` so run warnings persist across sessions instead of living
+only in client state. Idempotent (`IF NOT EXISTS`).
+
+## Migration notes (`0160_accounts_settlements_rbac.sql`)
+
+RBAC-only migration: registers `Account Settlements`
+(`/accounts/payroll/settlements`, sort order 8) under the top-level `Account`
+menu and seeds `adm_roleaccess_ac` per role by copying each role's grant on
+the top-level `Account` menu — same pattern as 0155/0158. Idempotent.
 
 ## Wage calculation engine rules
 

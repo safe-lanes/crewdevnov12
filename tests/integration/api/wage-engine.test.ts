@@ -69,8 +69,34 @@ const engTim = u();
 const engBal = u();
 const engFbk = u();
 
+// ---- Task 95 fixtures: settlements + overlap guard -------------------------
+const crewS1 = u();
+const crewMiss = u();
+const crewFrz = u();
+const crewOvlA = u();
+const crewOvlB = u();
+const crewOvlC = u();
+const vslS1 = `VSL_S1_${S}`;
+const vslMiss = `VSL_MISS_${S}`;
+const vslFrz = `VSL_FRZ_${S}`;
+const vslOvlSync = `VSL_OVLS_${S}`;
+const vslOvlOther = `VSL_OVLO_${S}`;
+const engS1 = u();
+const engMiss = u();
+const engFrz = u();
+const engOvlA1 = u();
+const engOvlA2 = u();
+const engOvlB1 = u();
+const engOvlB2 = u();
+const engOvlC1 = u();
+const assignOvlC = u();
+const txnFrz = u();
+let s1SettlementUuid: string | null = null;
+let frzSettlementUuid: string | null = null;
+
 const allEngagements = [
   engH1, engH2, engH3, engH4, engFeb, engLock, engTim, engBal, engFbk,
+  engS1, engMiss, engFrz, engOvlA1, engOvlA2, engOvlB1, engOvlB2, engOvlC1,
 ];
 
 const promoLedgerUuid = u();
@@ -150,6 +176,7 @@ function engagement(
   rankId: string,
   startDate: string,
   nextStepDate: string,
+  extra: Record<string, unknown> = {},
 ) {
   return insert("acc_engagements_v2", {
     engagement_uuid: uuid,
@@ -164,6 +191,7 @@ function engagement(
     status: "active",
     scale_year_at_start: 1,
     next_step_date: nextStepDate,
+    ...extra,
   });
 }
 
@@ -332,6 +360,33 @@ describe("Wage Calculation Engine (H1–H5)", () => {
     await engagement(engBal, crewBal, vslBal, scaleH1, RANK_MST, "2025-12-01", "2026-12-01");
     await engagement(engFbk, crewFbk, vslFbk, scaleH1, RANK_MST, "2026-03-01", "2027-03-01");
 
+    // -- Task 95: settlement + overlap fixtures ----------------------------------
+    await engagement(engS1, crewS1, vslS1, scaleH1, RANK_MST, "2026-03-15", "2027-03-15", {
+      end_date: "2026-05-20",
+    });
+    await engagement(engMiss, crewMiss, vslMiss, scaleH1, RANK_MST, "2026-03-15", "2027-03-15", {
+      end_date: "2026-05-20",
+    });
+    await engagement(engFrz, crewFrz, vslFrz, scaleH1, RANK_MST, "2026-03-01", "2027-03-01", {
+      end_date: "2026-03-31",
+    });
+    // overlap PATCH case: active + cancelled ranges overlap for the same crew
+    await engagement(engOvlA1, crewOvlA, vslOvlOther, scaleH1, RANK_MST, "2026-01-01", "2027-01-01");
+    await engagement(engOvlA2, crewOvlA, vslOvlOther, scaleH1, RANK_MST, "2026-02-01", "2027-02-01", {
+      status: "cancelled",
+    });
+    // overlap audit case: two live overlapping engagements (seeded directly)
+    await engagement(engOvlB1, crewOvlB, vslOvlOther, scaleH1, RANK_MST, "2026-01-01", "2027-01-01");
+    await engagement(engOvlB2, crewOvlB, vslOvlOther, scaleH1, RANK_MST, "2026-02-15", "2027-02-15");
+    // overlap sync case: existing open engagement + a new assignment elsewhere
+    await engagement(engOvlC1, crewOvlC, vslOvlOther, scaleH1, RANK_MST, "2026-01-01", "2027-01-01");
+    await insert("crew_assignments", {
+      assign_uuid: assignOvlC,
+      crew_uuid: crewOvlC,
+      vessel_uuid: vslOvlSync,
+      sign_on_date: "2026-03-05",
+    });
+
     // -- H1-override: value-neutral timing overrides (0157) ----------------------
     await insert("acc_engagement_pay_elements_v2", {
       epe_uuid: epeTimLv,
@@ -468,6 +523,30 @@ describe("Wage Calculation Engine (H1–H5)", () => {
     };
 
     await tryQuery(
+      `DELETE FROM acc_settlement_approvals_v2
+       WHERE settlement_uuid IN (
+         SELECT settlement_uuid FROM acc_settlements_v2
+         WHERE engagement_uuid = ANY($1))`,
+      [allEngagements],
+    );
+    await tryQuery(
+      `DELETE FROM acc_settlement_adjustments_v2
+       WHERE settlement_uuid IN (
+         SELECT settlement_uuid FROM acc_settlements_v2
+         WHERE engagement_uuid = ANY($1))`,
+      [allEngagements],
+    );
+    await tryQuery(
+      "DELETE FROM acc_settlements_v2 WHERE engagement_uuid = ANY($1)",
+      [allEngagements],
+    );
+    await tryQuery("DELETE FROM crew_assignments WHERE assign_uuid = $1", [
+      assignOvlC,
+    ]);
+    await tryQuery("DELETE FROM acc_engagements_v2 WHERE vessel_uuid = $1", [
+      vslOvlSync,
+    ]);
+    await tryQuery(
       "DELETE FROM acc_wage_ledger_v2 WHERE engagement_uuid = ANY($1)",
       [allEngagements],
     );
@@ -489,7 +568,7 @@ describe("Wage Calculation Engine (H1–H5)", () => {
       [[epeSubs, epeCadj, epeTimLv, epeTimPf, epeFbkGot]],
     );
     await tryQuery("DELETE FROM acc_monthly_transactions_v2 WHERE txn_uuid = ANY($1)", [
-      [txnVot, txnFx],
+      [txnVot, txnFx, txnFrz],
     ]);
     await tryQuery("DELETE FROM acc_allotments_v2 WHERE allotment_uuid = $1", [allotH4]);
     await tryQuery("DELETE FROM acc_advances_v2 WHERE advance_uuid = $1", [advH4]);
@@ -882,5 +961,256 @@ describe("Wage Calculation Engine (H1–H5)", () => {
       body: JSON.stringify({ engagementUuid: u(), period: "2026-03" }),
     });
     expect(res.status).toBe(404);
+  });
+
+  // ---- Task 95: S1 settlement worked example (exact figures) -------------------
+  it("S1: settlement compute — balance 22768.84, accruals 3191.44, net 26210.28", async () => {
+    for (const [period, expectedNet] of [
+      ["2026-03", "5777.17"],
+      ["2026-04", "10195.00"],
+      ["2026-05", "6796.67"],
+    ] as const) {
+      const { status, body } = await runEngagement(engS1, period);
+      expect(status).toBe(200);
+      expect(totalsFor(body, crewS1).netOnBoard).toBe(expectedNet);
+    }
+
+    const res = await fetch(`${V2_BASE}/settlements/compute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ engagementUuid: engS1 }),
+    });
+    expect(res.status).toBe(201);
+    const detail = await res.json();
+    s1SettlementUuid = detail.settlement.settlementUuid;
+    expect(detail.settlement.status).toBe("draft");
+    expect(detail.settlement.balancePaid).toBe("22768.84");
+    expect(detail.settlement.accrualsPaid).toBe("3191.44");
+    expect(detail.settlement.netPayable).toBe("25960.28"); // before adjustment
+
+    const snap = detail.settlement.statementSnapshot;
+    expect(snap.balance.total).toBe("22768.84");
+    expect(
+      snap.balance.byPeriod.map((p: any) => [p.period, p.netOnBoard]),
+    ).toEqual([
+      ["2026-03", "5777.17"],
+      ["2026-04", "10195.00"],
+      ["2026-05", "6796.67"],
+    ]);
+    expect(snap.accruals.total).toBe("3191.44");
+    expect(snap.accruals.leaveTotal).toBe("3191.44");
+    expect(snap.fundRemittance).toBe("1063.06");
+    expect(snap.periods).toEqual(["2026-03", "2026-04", "2026-05"]);
+    const coveredPeriods = (snap.sourceCalcRuns as any[])
+      .flatMap((r) => r.periods)
+      .sort();
+    expect(coveredPeriods).toEqual(["2026-03", "2026-04", "2026-05"]);
+    expect(
+      (snap.sourceCalcRuns as any[]).every((r) => !!r.calcRunUuid),
+    ).toBe(true);
+
+    // Adjustment: earning "Travel Wages" 250.00 → net_payable 26,210.28
+    const adjRes = await fetch(
+      `${V2_BASE}/settlements/${s1SettlementUuid}/adjustments`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payElementUuid: el.CADJ,
+          type: "earning",
+          amount: "250.00",
+          remarks: "Travel Wages",
+        }),
+      },
+    );
+    expect(adjRes.status).toBe(201);
+    const adjusted = await adjRes.json();
+    expect(adjusted.settlement.adjustmentsEarnings).toBe("250.00");
+    expect(adjusted.settlement.netPayable).toBe("26210.28");
+  });
+
+  it("S1: submit → approve → mark paid — engagement settled, post-paid balances 0.00", async () => {
+    expect(s1SettlementUuid).toBeTruthy();
+    const submitRes = await fetch(
+      `${V2_BASE}/settlements/${s1SettlementUuid}/submit`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approvers: [{ approver: "Chief Accountant" }] }),
+      },
+    );
+    expect(submitRes.status).toBe(200);
+    const submitted = await submitRes.json();
+    expect(submitted.settlement.status).toBe("submitted");
+    const approvalUuid = submitted.approvals[0].stApprovalUuid;
+
+    const decideRes = await fetch(
+      `${V2_BASE}/settlements/approvals/${approvalUuid}/decision`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision: "Approved", comments: "ok" }),
+      },
+    );
+    expect(decideRes.status).toBe(200);
+    expect((await decideRes.json()).settlement.status).toBe("approved");
+
+    const paidRes = await fetch(
+      `${V2_BASE}/settlements/${s1SettlementUuid}/mark-paid`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paidDate: "2026-05-20",
+          paymentReference: `PAY_${S}`,
+        }),
+      },
+    );
+    expect(paidRes.status).toBe(200);
+    const paid = await paidRes.json();
+    expect(paid.settlement.status).toBe("paid");
+    expect(paid.settlement.paidDate).toBe("2026-05-20");
+
+    const eng = await db.query(
+      "SELECT status FROM acc_engagements_v2 WHERE engagement_uuid = $1",
+      [engS1],
+    );
+    expect(eng.rows[0].status).toBe("settled");
+
+    // Post-paid balances: balance_cf and leave_cf both 0.00.
+    const { BalanceService } = await import(
+      "@server/v2/accounts/engine/balanceService"
+    );
+    const post = await new BalanceService().priorBalances(engS1, "2026-06");
+    expect(post.balanceBfCents).toBe(0);
+    expect(post.leaveBfCents).toBe(0);
+  });
+
+  it("settlement compute with uncalculated months ⇒ 409 naming the missing periods", async () => {
+    const run = await runEngagement(engMiss, "2026-03");
+    expect(run.status).toBe(200);
+
+    const res = await fetch(`${V2_BASE}/settlements/compute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ engagementUuid: engMiss }),
+    });
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toContain("2026-04");
+    expect(body.error).toContain("2026-05");
+  });
+
+  it("recompute after paid ⇒ 409", async () => {
+    const res = await fetch(
+      `${V2_BASE}/settlements/${s1SettlementUuid}/recompute`,
+      { method: "POST", headers: { "Content-Type": "application/json" } },
+    );
+    expect(res.status).toBe(409);
+  });
+
+  // ---- Task 95: settlement freeze guard regression ------------------------------
+  it("freeze guard: submit freezes re-runs; revert re-enables; recompute picks up new figures", async () => {
+    const first = await runEngagement(engFrz, "2026-03");
+    expect(first.status).toBe(200);
+    expect(totalsFor(first.body, crewFrz).netOnBoard).toBe("10195.00");
+
+    const computeRes = await fetch(`${V2_BASE}/settlements/compute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ engagementUuid: engFrz }),
+    });
+    expect(computeRes.status).toBe(201);
+    const detail = await computeRes.json();
+    frzSettlementUuid = detail.settlement.settlementUuid;
+    expect(detail.settlement.balancePaid).toBe("10195.00");
+
+    const submitRes = await fetch(
+      `${V2_BASE}/settlements/${frzSettlementUuid}/submit`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approvers: [{ approver: "Chief Accountant" }] }),
+      },
+    );
+    expect(submitRes.status).toBe(200);
+
+    // Covered-period re-run is now frozen, naming the settlement.
+    const frozen = await runEngagement(engFrz, "2026-03");
+    expect(frozen.status).toBe(409);
+    expect(frozen.body.error).toContain(frzSettlementUuid!);
+    expect(frozen.body.error).toContain("revert");
+
+    // Revert to draft re-enables the re-run.
+    const revertRes = await fetch(
+      `${V2_BASE}/settlements/${frzSettlementUuid}/revert-to-draft`,
+      { method: "POST", headers: { "Content-Type": "application/json" } },
+    );
+    expect(revertRes.status).toBe(200);
+    expect((await revertRes.json()).settlement.status).toBe("draft");
+
+    // New input lands after the revert; the re-run succeeds with new figures.
+    await insert("acc_monthly_transactions_v2", {
+      txn_uuid: txnFrz,
+      engagement_uuid: engFrz,
+      crew_uuid: crewFrz,
+      vessel_uuid: vslFrz,
+      period: "2026-03",
+      pay_element_uuid: el.CADJ,
+      qty: null,
+      amount: "100.00",
+      currency: "USD",
+      origin: "office",
+      status: "accepted",
+    });
+    const rerun = await runEngagement(engFrz, "2026-03");
+    expect(rerun.status).toBe(200);
+    expect(totalsFor(rerun.body, crewFrz).netOnBoard).toBe("10295.00");
+
+    // Recompute picks up the new figures.
+    const recomputeRes = await fetch(
+      `${V2_BASE}/settlements/${frzSettlementUuid}/recompute`,
+      { method: "POST", headers: { "Content-Type": "application/json" } },
+    );
+    expect(recomputeRes.status).toBe(200);
+    const recomputed = await recomputeRes.json();
+    expect(recomputed.settlement.balancePaid).toBe("10295.00");
+  });
+
+  // ---- Task 95: engagement overlap guard -----------------------------------------
+  it("overlap: PATCH reactivating an overlapping engagement ⇒ 409", async () => {
+    const res = await fetch(`${V2_BASE}/engagements/${engOvlA2}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "active" }),
+    });
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toContain(engOvlA1);
+  });
+
+  it("overlap: engagement sync reports the overlap in the errors list", async () => {
+    const res = await fetch(`${V2_BASE}/engagements/sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vesselUuid: vslOvlSync, period: "2026-03" }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const err = (body.errors as any[]).find((e) => e.crewUuid === crewOvlC);
+    expect(err, `sync errors: ${JSON.stringify(body.errors)}`).toBeTruthy();
+    expect(err.reason).toContain("overlapping engagement");
+    expect(err.reason).toContain(engOvlC1);
+    expect(body.created).toEqual([]);
+  });
+
+  it("overlap: audit endpoint lists the seeded overlap group", async () => {
+    const res = await fetch(`${V2_BASE}/engagements/audit`);
+    expect(res.status).toBe(200);
+    const groups = (await res.json()) as any[];
+    const group = groups.find((g) => g.crewUuid === crewOvlB);
+    expect(group, "seeded overlap group present").toBeTruthy();
+    const uuids = group.engagements.map((e: any) => e.engagementUuid).sort();
+    expect(uuids).toEqual([engOvlB1, engOvlB2].sort());
   });
 });

@@ -20,6 +20,23 @@ export interface PriorBalances {
   settlementsAtPeriodCents: number;
   /** Settlement-timed leave earnings accrued before P, less prior leave payouts (cents). */
   leaveBfCents: number;
+  /** Leave accrual payout recorded in period P itself (cents; subtract from leave_cf). */
+  leaveSettledAtPeriodCents: number;
+}
+
+/**
+ * Leave portion of a settlement's accrual payout, read from the settlement
+ * statement snapshot (leave itemization stored at compute time).
+ */
+function leavePaidCents(settlement: {
+  statementSnapshot?: unknown;
+}): number {
+  const snap = settlement.statementSnapshot as {
+    accruals?: { leaveTotal?: string | number };
+  } | null;
+  const leaveTotal = snap?.accruals?.leaveTotal;
+  if (leaveTotal == null) return 0;
+  return toCents(String(leaveTotal));
 }
 
 const SETTLED_STATUSES = new Set(["paid", "locked"]);
@@ -83,23 +100,37 @@ export class BalanceService {
       }
     }
 
+    // Settlement payouts consume the balances componentwise:
+    // - balance_paid consumes the on-board balance (balance_bf / balance_cf);
+    // - the leave portion of accruals_paid (from the statement snapshot)
+    //   consumes the leave mini-ledger.
+    // Never subtract net_payable: accruals never entered the on-board
+    // balance, so subtracting the whole net would double-count them.
     let settledBeforeCents = 0;
     let settledAtPeriodCents = 0;
+    let leaveSettledAtPeriodCents = 0;
     if (
       settlement &&
       SETTLED_STATUSES.has(settlement.status) &&
-      settlement.netPayable != null &&
       settlement.period != null
     ) {
-      const cents = toCents(settlement.netPayable);
-      if (settlement.period < period) settledBeforeCents += cents;
-      else if (settlement.period === period) settledAtPeriodCents += cents;
+      const balancePaidCents =
+        settlement.balancePaid != null ? toCents(settlement.balancePaid) : 0;
+      const leaveCents = leavePaidCents(settlement);
+      if (settlement.period < period) {
+        settledBeforeCents += balancePaidCents;
+        leaveBfCents -= leaveCents;
+      } else if (settlement.period === period) {
+        settledAtPeriodCents += balancePaidCents;
+        leaveSettledAtPeriodCents += leaveCents;
+      }
     }
 
     return {
       balanceBfCents: priorNetCents - settledBeforeCents,
       settlementsAtPeriodCents: settledAtPeriodCents,
       leaveBfCents,
+      leaveSettledAtPeriodCents,
     };
   }
 }
