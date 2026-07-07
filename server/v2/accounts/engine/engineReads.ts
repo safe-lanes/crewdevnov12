@@ -1,4 +1,4 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, lt } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   accTenantConfigV2,
@@ -12,6 +12,8 @@ import {
   accAllotmentsV2,
   accAdvancesV2,
   accBondItemsV2,
+  accWageLedgerV2,
+  accSettlementsV2,
 } from "../../../../shared/v2/accounts/schema";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { promoExecutionLedgerV2 } from "../../../../shared/v2/promotions/schema";
@@ -27,6 +29,8 @@ import type {
   AccAllotmentV2,
   AccAdvanceV2,
   AccBondItemV2,
+  AccWageLedgerV2,
+  AccSettlementV2,
 } from "../../../../shared/v2/accounts/types";
 
 export interface PromotionEvent {
@@ -258,6 +262,62 @@ export class EngineReads {
       .from(crewMembersV2)
       .where(inArray(crewMembersV2.crewUuid, crewUuids));
     for (const r of rows) map.set(r.crewUuid, r.nationalityUuid ?? null);
+    return map;
+  }
+
+  /** Ledger lines of an engagement in periods strictly before `period`. */
+  async findLedgerLinesBefore(
+    engagementUuid: string,
+    period: string,
+  ): Promise<AccWageLedgerV2[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(accWageLedgerV2)
+      .where(
+        and(
+          eq(accWageLedgerV2.engagementUuid, engagementUuid),
+          lt(accWageLedgerV2.period, period),
+          eq(accWageLedgerV2.isDeleted, false),
+        ),
+      );
+  }
+
+  /** The (unique) settlement row for an engagement, if any. */
+  async findSettlementForEngagement(
+    engagementUuid: string,
+  ): Promise<AccSettlementV2 | undefined> {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(accSettlementsV2)
+      .where(
+        and(
+          eq(accSettlementsV2.engagementUuid, engagementUuid),
+          eq(accSettlementsV2.isDeleted, false),
+        ),
+      );
+    return rows[0];
+  }
+
+  /**
+   * pay_element_uuid -> category, without a status filter — prior ledger
+   * lines may reference elements that were deactivated since.
+   */
+  async findElementCategories(
+    payElementUuids: string[],
+  ): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    if (payElementUuids.length === 0) return map;
+    const db = getDb();
+    const rows = await db
+      .select({
+        payElementUuid: accPayElementsV2.payElementUuid,
+        category: accPayElementsV2.category,
+      })
+      .from(accPayElementsV2)
+      .where(inArray(accPayElementsV2.payElementUuid, payElementUuids));
+    for (const r of rows) map.set(r.payElementUuid, r.category);
     return map;
   }
 

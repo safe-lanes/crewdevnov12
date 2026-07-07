@@ -6,3 +6,5 @@ export { tenantConfigService } from "./tenantConfigService";
 export { wageScalesService } from "./wageScalesService";
 export { cbaReferenceService } from "./cbaReferenceService";
 export { engagementsService } from "./engagementsService";
+export { monthlyTransactionsService } from "./monthlyTransactionsService";
+export { portageService } from "./portageService";

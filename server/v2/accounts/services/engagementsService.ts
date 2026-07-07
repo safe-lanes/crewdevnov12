@@ -40,6 +40,40 @@ function parseTextDate(value: string | null): string | null | undefined {
   return undefined;
 }
 
+/**
+ * Rank normalization: engagements must store rank CODES (never names).
+ * Resolution order against the live company ranks master:
+ *   1. value already a valid rank code → keep as-is
+ *   2. exact rank-name match (unique)
+ *   3. case-insensitive rank-name match (unique)
+ * Ambiguous (non-unique) or unmatched values resolve to null.
+ */
+function buildRankResolver(
+  companyRanks: Array<{ rank: string; rankId: string }>,
+): (raw: string) => string | null {
+  const validCodes = new Set(companyRanks.map((r) => r.rankId));
+  const AMBIGUOUS = Symbol("ambiguous");
+  const exact = new Map<string, string | typeof AMBIGUOUS>();
+  const ci = new Map<string, string | typeof AMBIGUOUS>();
+  for (const r of companyRanks) {
+    const prevExact = exact.get(r.rank);
+    if (prevExact === undefined) exact.set(r.rank, r.rankId);
+    else if (prevExact !== r.rankId) exact.set(r.rank, AMBIGUOUS);
+    const lower = r.rank.toLowerCase();
+    const prevCi = ci.get(lower);
+    if (prevCi === undefined) ci.set(lower, r.rankId);
+    else if (prevCi !== r.rankId) ci.set(lower, AMBIGUOUS);
+  }
+  return (raw: string) => {
+    if (validCodes.has(raw)) return raw;
+    const e = exact.get(raw);
+    if (typeof e === "string") return e;
+    const c = ci.get(raw.toLowerCase());
+    if (typeof c === "string") return c;
+    return null;
+  };
+}
+
 function resolveScaleForStart(
   scales: AccWageScaleV2[],
   vesselType: string | null,
@@ -89,6 +123,9 @@ export const engagementsService = {
     );
     const vesselType = await engagementsRepository.findVesselType(vesselUuid);
     const scales = await engagementsRepository.findActiveScales();
+    const resolveRankCode = buildRankResolver(
+      await engagementsRepository.findCompanyRanks(),
+    );
 
     const result: SyncResult = {
       created: [],
@@ -135,12 +172,21 @@ export const engagementsService = {
         result.skippedExisting++;
         continue;
       }
-      const rankId = crewRanks.get(assignment.crewUuid) ?? null;
-      if (!rankId) {
+      const rawRank = crewRanks.get(assignment.crewUuid) ?? null;
+      if (!rawRank) {
         result.errors.push({
           assignUuid: assignment.assignUuid,
           crewUuid: assignment.crewUuid,
           reason: "crew member has no present_rank",
+        });
+        continue;
+      }
+      const rankId = resolveRankCode(rawRank);
+      if (!rankId) {
+        result.errors.push({
+          assignUuid: assignment.assignUuid,
+          crewUuid: assignment.crewUuid,
+          reason: `unmapped rank: ${rawRank}`,
         });
         continue;
       }
@@ -176,6 +222,112 @@ export const engagementsService = {
     }
 
     return result;
+  },
+
+  /**
+   * Step-1 review rows: every assignment overlapping the month vs its
+   * engagement (if any), with crew name/rank, resolved scale and flags.
+   */
+  async review(vesselUuid: string, period: string) {
+    const month = monthInfo(period);
+    const assignments =
+      await engagementsRepository.findAssignmentsForVessel(vesselUuid);
+    const overlapping = assignments.filter((a) => {
+      const startDate = parseTextDate(a.signOnDate);
+      const endDate = parseTextDate(a.signOffDate);
+      if (startDate == null) return true; // surfaced as an error row
+      if (endDate === undefined) return true;
+      return (
+        startDate <= month.monthEnd &&
+        (endDate == null || endDate >= month.monthStart)
+      );
+    });
+    const engagements = await engagementsRepository.findByAssignmentUuids(
+      overlapping.map((a) => a.assignUuid),
+    );
+    const engagementByAssignment = new Map(
+      engagements.map((e) => [e.assignmentUuid, e]),
+    );
+    const crewInfo = await engagementsRepository.findCrewInfo(
+      Array.from(new Set(overlapping.map((a) => a.crewUuid))),
+    );
+    const scaleNames = await engagementsRepository.findScaleNames(
+      Array.from(
+        new Set(
+          engagements.map((e) => e.wageScaleUuid).filter((u): u is string => !!u),
+        ),
+      ),
+    );
+    const overrides = await engagementsRepository.findTimingOverrides(
+      engagements.map((e) => e.engagementUuid),
+    );
+    const overridesByEngagement = new Map<string, typeof overrides>();
+    for (const o of overrides) {
+      const list = overridesByEngagement.get(o.engagementUuid);
+      if (list) list.push(o);
+      else overridesByEngagement.set(o.engagementUuid, [o]);
+    }
+    return overlapping.map((a) => {
+      const engagement = engagementByAssignment.get(a.assignUuid) ?? null;
+      const info = crewInfo.get(a.crewUuid);
+      return {
+        assignUuid: a.assignUuid,
+        crewUuid: a.crewUuid,
+        crewName: info?.name || a.crewUuid,
+        presentRank: info?.presentRank ?? null,
+        signOnDate: a.signOnDate,
+        signOffDate: a.signOffDate,
+        engagement,
+        scaleName: engagement?.wageScaleUuid
+          ? (scaleNames.get(engagement.wageScaleUuid) ?? null)
+          : null,
+        timingOverrides: engagement
+          ? (overridesByEngagement.get(engagement.engagementUuid) ?? [])
+          : [],
+      };
+    });
+  },
+
+  /**
+   * Engagement flag toggle: write (or remove) a timing-only override row
+   * for one pay element. `paymentTimingOverride: null` removes the flag so
+   * the element's default timing applies again.
+   */
+  async setTimingOverride(
+    engagementUuid: string,
+    payElementUuid: string,
+    paymentTimingOverride: string | null,
+    auditUserUuid?: string,
+  ) {
+    const engagement = await engagementsRepository.findByUuid(engagementUuid);
+    if (!engagement) {
+      throw new Error(`Engagement not found: ${engagementUuid}`);
+    }
+    const existing = await engagementsRepository.findTimingOnlyRow(
+      engagementUuid,
+      payElementUuid,
+    );
+    if (paymentTimingOverride == null) {
+      if (existing) {
+        await engagementsRepository.updateTimingOverride(existing.epeUuid, {
+          isDeleted: true,
+          updatedByUuid: auditUserUuid ?? null,
+        });
+      }
+      return null;
+    }
+    if (existing) {
+      return engagementsRepository.updateTimingOverride(existing.epeUuid, {
+        paymentTimingOverride,
+        updatedByUuid: auditUserUuid ?? null,
+      });
+    }
+    return engagementsRepository.createTimingOverride({
+      engagementUuid,
+      payElementUuid,
+      paymentTimingOverride,
+      createdByUuid: auditUserUuid ?? null,
+    });
   },
 
   /** Manual seniority anchor / status patch (spec Prompt 03 section C). */

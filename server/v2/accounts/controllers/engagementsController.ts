@@ -17,6 +17,13 @@ const updateSchema = z
   })
   .partial();
 
+const timingOverrideSchema = z.object({
+  payElementUuid: z.string().min(1),
+  paymentTimingOverride: z
+    .enum(["paid_on_board", "payable_at_settlement", "remitted_to_fund"])
+    .nullable(),
+});
+
 export const engagementsController = {
   async sync(req: Request, res: Response) {
     try {
@@ -35,6 +42,51 @@ export const engagementsController = {
     } catch (error) {
       console.error("Error syncing engagements:", error);
       res.status(500).json({ error: "Failed to sync engagements" });
+    }
+  },
+
+  async review(req: Request, res: Response) {
+    try {
+      const { vesselUuid, period } = req.query;
+      if (
+        typeof vesselUuid !== "string" ||
+        typeof period !== "string" ||
+        !/^\d{4}-(0[1-9]|1[0-2])$/.test(period)
+      ) {
+        return res
+          .status(400)
+          .json({ error: "vesselUuid and period (YYYY-MM) are required" });
+      }
+      const rows = await engagementsService.review(vesselUuid, period);
+      res.json(rows);
+    } catch (error) {
+      console.error("Error building engagement review:", error);
+      res.status(500).json({ error: "Failed to load engagement review" });
+    }
+  },
+
+  async setTimingOverride(req: Request, res: Response) {
+    try {
+      const parsed = timingOverrideSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid timing override",
+          details: parsed.error.issues,
+        });
+      }
+      const row = await engagementsService.setTimingOverride(
+        req.params.uuid,
+        parsed.data.payElementUuid,
+        parsed.data.paymentTimingOverride,
+        getAuditUserUuid(req),
+      );
+      res.json({ override: row ?? null });
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error setting timing override:", error);
+      res.status(500).json({ error: "Failed to set timing override" });
     }
   },
 

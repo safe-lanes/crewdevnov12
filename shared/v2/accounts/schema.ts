@@ -87,6 +87,7 @@ export const accPayElementsV2 = pgTable(
     showsOnPortage: boolean("shows_on_portage").notNull().default(true),
     status: text("status").notNull().default("active"), // active | inactive
     paymentTiming: text("payment_timing").notNull().default("paid_on_board"), // paid_on_board | payable_at_settlement | remitted_to_fund
+    glCode: text("gl_code"), // client GL account code (reporting)
     effectiveFrom: date("effective_from"),
     effectiveTo: date("effective_to"),
     ...auditColumns,
@@ -233,6 +234,7 @@ export const accEngagementPayElementsV2 = pgTable(
     overrideMode: text("override_mode").notNull(), // replace_scale_value | add_element | suppress_element
     amount: numeric("amount", { precision: 14, scale: 2 }),
     rate: numeric("rate", { precision: 10, scale: 4 }),
+    paymentTimingOverride: text("payment_timing_override"), // paid_on_board | payable_at_settlement | remitted_to_fund (per-engagement timing override, e.g. "Pay Leave On Board Y/N")
     effectiveFrom: date("effective_from"),
     effectiveTo: date("effective_to"),
     remarks: text("remarks"),
@@ -492,7 +494,7 @@ export const accCalculationRunsV2 = pgTable("acc_calculation_runs_v2", {
   runDate: timestamp("run_date"),
   runByUuid: text("run_by_uuid"),
   inputSnapshot: jsonb("input_snapshot"),
-  status: text("status").notNull(), // completed | failed
+  status: text("status").notNull(), // running | completed | failed
   errorDetail: text("error_detail"),
   ...auditColumns,
 });

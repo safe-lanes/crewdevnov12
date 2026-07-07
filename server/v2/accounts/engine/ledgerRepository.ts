@@ -15,6 +15,13 @@ import type {
   InsertAccWageLedgerV2,
 } from "../../../../shared/v2/accounts/types";
 
+/** 409-mapped error for lock races caught inside the write transaction. */
+function lockConflict(message: string): Error {
+  const err = new Error(message) as Error & { code: string };
+  err.code = "CONFLICT";
+  return err;
+}
+
 /**
  * ONLY-WRITER RULE (docs/accounts-schema.md): this repository is the single
  * code path that writes acc_wage_ledger_v2 rows, and it is consumed
@@ -72,6 +79,20 @@ export class LedgerRepository {
     return rows[0];
   }
 
+  /** Patch a run row (status lifecycle: running -> completed | failed). */
+  async updateRun(
+    calcRunUuid: string,
+    patch: Partial<InsertAccCalculationRunV2>,
+  ): Promise<AccCalculationRunV2 | undefined> {
+    const db = getDb();
+    const rows = await db
+      .update(accCalculationRunsV2)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(eq(accCalculationRunsV2.calcRunUuid, calcRunUuid))
+      .returning();
+    return rows[0];
+  }
+
   // --------------------------------------------------------------------
   // Ledger line replacement (engine-only writes)
   // --------------------------------------------------------------------
@@ -80,6 +101,10 @@ export class LedgerRepository {
    * Replace all non-adjustment lines of an UNLOCKED portage in one
    * transaction, and refresh the portage cached totals. Adjustment lines
    * (is_adjustment = true) are never touched by recalculation.
+   *
+   * The lock state is re-verified INSIDE the transaction (row locked with
+   * FOR UPDATE) so a lock committed between the caller's check and this
+   * write cannot be overwritten (check-then-write race).
    */
   async replacePortageLines(
     portageUuid: string,
@@ -88,6 +113,20 @@ export class LedgerRepository {
   ): Promise<void> {
     const db = getDb();
     await db.transaction(async (tx: ReturnType<typeof getDb>) => {
+      const portageRows = await tx
+        .select()
+        .from(accPortageBillsV2)
+        .where(eq(accPortageBillsV2.portageUuid, portageUuid))
+        .for("update");
+      const portage = portageRows[0];
+      if (!portage) {
+        throw lockConflict(`Portage bill ${portageUuid} no longer exists`);
+      }
+      if (portage.isLocked || portage.status === "locked") {
+        throw lockConflict(
+          `Portage bill ${portageUuid} was locked while the calculation was running; no lines were replaced`,
+        );
+      }
       await tx
         .delete(accWageLedgerV2)
         .where(
@@ -109,14 +148,38 @@ export class LedgerRepository {
   /**
    * Replace the preview (no-portage) lines of one engagement + period in one
    * transaction. Scope: portage_uuid IS NULL, is_adjustment = false.
+   *
+   * When `lockGuard.vesselUuid` is given, the vessel's portage bill for the
+   * period is re-checked (FOR UPDATE) inside the transaction — a period
+   * locked after the caller's check refuses the preview write too.
    */
   async replacePreviewLines(
     engagementUuid: string,
     period: string,
     lines: InsertAccWageLedgerV2[],
+    lockGuard?: { vesselUuid: string },
   ): Promise<void> {
     const db = getDb();
     await db.transaction(async (tx: ReturnType<typeof getDb>) => {
+      if (lockGuard) {
+        const portageRows = await tx
+          .select()
+          .from(accPortageBillsV2)
+          .where(
+            and(
+              eq(accPortageBillsV2.vesselUuid, lockGuard.vesselUuid),
+              eq(accPortageBillsV2.period, period),
+              eq(accPortageBillsV2.isDeleted, false),
+            ),
+          )
+          .for("update");
+        const portage = portageRows[0];
+        if (portage && (portage.isLocked || portage.status === "locked")) {
+          throw lockConflict(
+            `Portage bill for vessel ${lockGuard.vesselUuid} period ${period} was locked while the calculation was running; no lines were replaced`,
+          );
+        }
+      }
       await tx
         .delete(accWageLedgerV2)
         .where(

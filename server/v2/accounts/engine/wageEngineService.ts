@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { EngineReads, type PromotionEvent } from "./engineReads";
 import { LedgerRepository } from "./ledgerRepository";
+import { BalanceService } from "./balanceService";
 import {
   monthInfo,
   type MonthInfo,
@@ -78,6 +79,7 @@ interface EngagementResult {
   engagement: AccEngagementV2;
   lines: EngineLine[];
   errors: string[];
+  warnings: string[];
 }
 
 export interface CrewTotals {
@@ -89,13 +91,26 @@ export interface CrewTotals {
   netOnBoard: string;
   settlementAccrual: string;
   fundRemittance: string;
+  /** Derived from the ledger (never stored): prior net carried forward. */
+  balanceBf: string;
+  balanceCf: string;
+  leaveBf: string;
+  leaveThisMonth: string;
+  leaveCf: string;
 }
+
+/** CrewTotals before the async balance enrichment. */
+type CrewBaseTotals = Omit<
+  CrewTotals,
+  "balanceBf" | "balanceCf" | "leaveBf" | "leaveThisMonth" | "leaveCf"
+>;
 
 export interface RunSummary {
   run: AccCalculationRunV2;
   portage?: AccPortageBillV2;
   lineCount: number;
   crewTotals: CrewTotals[];
+  warnings: string[];
 }
 
 interface ResolvedEntry {
@@ -107,6 +122,11 @@ interface ResolvedEntry {
   scaleUuid: string;
   scaleLineUuid: string | null;
   epeUuid: string | null;
+  /** Effective timing: element default unless payment_timing_override applies. */
+  paymentTiming: string;
+  timingEpeUuid: string | null;
+  /** Fix (c): replace_scale_value applied without a base scale line. */
+  replaceFallbackWarning?: boolean;
 }
 
 interface SegmentState {
@@ -136,6 +156,7 @@ class EngineError extends Error {
 
 const reads = new EngineReads();
 const ledgerRepo = new LedgerRepository();
+const balanceService = new BalanceService();
 
 function toEngineConfig(row: AccTenantConfigV2 | undefined): EngineConfig {
   return {
@@ -185,6 +206,9 @@ export const wageEngineService = {
     const errors = results.flatMap((r) =>
       r.errors.map((m) => `${r.engagement.engagementUuid}: ${m}`),
     );
+    const warnings = results.flatMap((r) =>
+      r.warnings.map((m) => `${r.engagement.engagementUuid}: ${m}`),
+    );
 
     const inputSnapshot = buildInputSnapshot(config, period, {
       vesselUuid,
@@ -224,6 +248,9 @@ export const wageEngineService = {
 
     const priorLines = await ledgerRepo.findLinesByPortage(portage.portageUuid);
     const runType = priorLines.length > 0 ? "recalculation" : "monthly";
+    // Run-status lifecycle: create as "running", flip to "completed" only
+    // after the line replacement commits; a failed replacement marks the run
+    // "failed" and leaves the prior lines intact.
     const run = await ledgerRepo.createRun({
       portageUuid: portage.portageUuid,
       engagementUuid: null,
@@ -231,7 +258,7 @@ export const wageEngineService = {
       runDate: new Date(),
       runByUuid: auditUserUuid ?? null,
       inputSnapshot,
-      status: "completed",
+      status: "running",
       createdByUuid: auditUserUuid ?? null,
     });
 
@@ -248,19 +275,42 @@ export const wageEngineService = {
       }
     }
 
-    const crewTotals = results
-      .filter((r) => r.lines.length > 0)
-      .map((r) => summarizeCrew(r));
     const totals = portageTotals(allLines);
-    await ledgerRepo.replacePortageLines(portage.portageUuid, allLines, {
-      crewCount: new Set(allLines.map((l) => l.crewUuid)).size,
-      totalEarnings: totals.totalEarnings,
-      totalDeductions: totals.totalDeductions,
-      netTotal: totals.netTotal,
-      updatedByUuid: auditUserUuid ?? null,
-    });
+    try {
+      await ledgerRepo.replacePortageLines(portage.portageUuid, allLines, {
+        crewCount: new Set(allLines.map((l) => l.crewUuid)).size,
+        totalEarnings: totals.totalEarnings,
+        totalDeductions: totals.totalDeductions,
+        netTotal: totals.netTotal,
+        updatedByUuid: auditUserUuid ?? null,
+      });
+    } catch (error) {
+      await ledgerRepo.updateRun(run.calcRunUuid, {
+        status: "failed",
+        errorDetail: error instanceof Error ? error.message : String(error),
+        updatedByUuid: auditUserUuid ?? null,
+      });
+      throw error;
+    }
+    const completedRun =
+      (await ledgerRepo.updateRun(run.calcRunUuid, {
+        status: "completed",
+        updatedByUuid: auditUserUuid ?? null,
+      })) ?? run;
 
-    return { run, portage, lineCount: allLines.length, crewTotals };
+    const crewTotals = await withBalances(
+      ctx,
+      results.filter((r) => r.lines.length > 0),
+      period,
+    );
+
+    return {
+      run: completedRun,
+      portage,
+      lineCount: allLines.length,
+      crewTotals,
+      warnings,
+    };
   },
 
   /** Single-engagement preview run — no portage linkage. */
@@ -323,7 +373,7 @@ export const wageEngineService = {
       runDate: new Date(),
       runByUuid: auditUserUuid ?? null,
       inputSnapshot,
-      status: "completed",
+      status: "running",
       createdByUuid: auditUserUuid ?? null,
     });
 
@@ -334,12 +384,35 @@ export const wageEngineService = {
       portageUuid: null,
       createdByUuid: auditUserUuid ?? null,
     }));
-    await ledgerRepo.replacePreviewLines(engagementUuid, period, allLines);
+    try {
+      await ledgerRepo.replacePreviewLines(
+        engagementUuid,
+        period,
+        allLines,
+        engagement.vesselUuid
+          ? { vesselUuid: engagement.vesselUuid }
+          : undefined,
+      );
+    } catch (error) {
+      await ledgerRepo.updateRun(run.calcRunUuid, {
+        status: "failed",
+        errorDetail: error instanceof Error ? error.message : String(error),
+        updatedByUuid: auditUserUuid ?? null,
+      });
+      throw error;
+    }
+    const completedRun =
+      (await ledgerRepo.updateRun(run.calcRunUuid, {
+        status: "completed",
+        updatedByUuid: auditUserUuid ?? null,
+      })) ?? run;
 
     return {
-      run,
+      run: completedRun,
       lineCount: allLines.length,
-      crewTotals: result.lines.length > 0 ? [summarizeCrew(result)] : [],
+      crewTotals:
+        result.lines.length > 0 ? await withBalances(ctx, [result], period) : [],
+      warnings: result.warnings.map((m) => `${engagementUuid}: ${m}`),
     };
   },
 
@@ -466,6 +539,82 @@ export const wageEngineService = {
     await ledgerRepo.insertAdjustmentLines(lines);
     return { run, lines };
   },
+
+  /**
+   * Rebuild per-crew totals (incl. derived balances) from the stored ledger
+   * lines of an existing portage — used to reload the run workspace without
+   * re-running the engine. Bucketing mirrors summarizeCrew/withBalances.
+   */
+  async summaryForPortage(
+    portageUuid: string,
+    period: string,
+  ): Promise<CrewTotals[]> {
+    const lines = await ledgerRepo.findLinesByPortage(portageUuid);
+    const categories = await reads.findElementCategories(
+      Array.from(new Set(lines.map((l) => l.payElementUuid))),
+    );
+    const byEngagement = new Map<string, typeof lines>();
+    for (const l of lines) {
+      const list = byEngagement.get(l.engagementUuid);
+      if (list) list.push(l);
+      else byEngagement.set(l.engagementUuid, [l]);
+    }
+    const out: CrewTotals[] = [];
+    for (const [engagementUuid, engLines] of byEngagement) {
+      let gross = 0;
+      let deductions = 0;
+      let settlement = 0;
+      let fund = 0;
+      let leaveThisCents = 0;
+      let rankId: string | null = null;
+      for (const l of engLines) {
+        const cents = toCents(l.amount);
+        if (l.paymentTiming === "remitted_to_fund") {
+          fund += cents;
+          continue;
+        }
+        if (l.elementType === "deduction") {
+          deductions += cents;
+        } else if (
+          l.elementType === "earning" ||
+          l.elementType === "employer_contribution"
+        ) {
+          if (l.paymentTiming === "payable_at_settlement") {
+            settlement += cents;
+            if (
+              l.elementType === "earning" &&
+              categories.get(l.payElementUuid) === "leave"
+            ) {
+              leaveThisCents += cents;
+            }
+          } else {
+            gross += cents;
+          }
+        }
+        rankId = l.rankId ?? rankId;
+      }
+      const prior = await balanceService.priorBalances(engagementUuid, period);
+      const netCents = gross - deductions;
+      const balanceCfCents =
+        prior.balanceBfCents + netCents - prior.settlementsAtPeriodCents;
+      out.push({
+        crewUuid: engLines[0].crewUuid,
+        engagementUuid,
+        rankId,
+        earnedGross: centsToString(gross),
+        deductions: centsToString(deductions),
+        netOnBoard: centsToString(netCents),
+        settlementAccrual: centsToString(settlement),
+        fundRemittance: centsToString(fund),
+        balanceBf: centsToString(prior.balanceBfCents),
+        balanceCf: centsToString(balanceCfCents),
+        leaveBf: centsToString(prior.leaveBfCents),
+        leaveThisMonth: centsToString(leaveThisCents),
+        leaveCf: centsToString(prior.leaveBfCents + leaveThisCents),
+      });
+    }
+    return out;
+  },
 };
 
 // ============================================================================
@@ -579,6 +728,7 @@ function calcEngagement(
   engagement: AccEngagementV2,
 ): EngagementResult {
   const errors: string[] = [];
+  const warnings: string[] = [];
   const { month, config } = ctx;
 
   if (!engagement.startDate || !parseIsoDate(engagement.startDate)) {
@@ -586,6 +736,7 @@ function calcEngagement(
       engagement,
       lines: [],
       errors: [`invalid or missing start_date (${engagement.startDate})`],
+      warnings,
     };
   }
   if (engagement.endDate && !parseIsoDate(engagement.endDate)) {
@@ -593,16 +744,23 @@ function calcEngagement(
       engagement,
       lines: [],
       errors: [`invalid end_date (${engagement.endDate})`],
+      warnings,
     };
   }
   if (!engagement.wageScaleUuid) {
-    return { engagement, lines: [], errors: ["engagement has no wage scale"] };
+    return {
+      engagement,
+      lines: [],
+      errors: ["engagement has no wage scale"],
+      warnings,
+    };
   }
   if (!engagement.rankIdAtStart) {
     return {
       engagement,
       lines: [],
       errors: ["engagement has no rank_id_at_start"],
+      warnings,
     };
   }
 
@@ -615,7 +773,7 @@ function calcEngagement(
     engagement.endDate && engagement.endDate < month.monthEnd
       ? engagement.endDate
       : month.monthEnd;
-  if (svcFrom > svcTo) return { engagement, lines: [], errors: [] };
+  if (svcFrom > svcTo) return { engagement, lines: [], errors: [], warnings };
   if (
     config.dayInclusionRule === "exclude_sign_off_day" &&
     engagement.endDate &&
@@ -623,7 +781,7 @@ function calcEngagement(
     engagement.endDate >= month.monthStart
   ) {
     svcTo = addDays(engagement.endDate, -1);
-    if (svcTo < svcFrom) return { engagement, lines: [], errors: [] };
+    if (svcTo < svcFrom) return { engagement, lines: [], errors: [], warnings };
   }
 
   // ---- Split events ----------------------------------------------------
@@ -707,7 +865,7 @@ function calcEngagement(
 
   for (const state of states) {
     if (state.days <= 0) continue; // zero-day segment: no lines
-    const entries = resolveEntries(ctx, engagement, state, crewNat, overrides, errors);
+    const entries = resolveEntries(ctx, engagement, state, crewNat, overrides, errors, warnings);
     const segLineAmounts = new Map<string, number>(); // elementUuid -> rounded cents
 
     // Pass 1: amount-bearing elements (scale_lookup / fixed_amount).
@@ -876,6 +1034,11 @@ function calcEngagement(
       amountCents = toCents(txn.amount);
       snapshot = { txnUuid: txn.txnUuid, txnAmount: txn.amount };
     }
+    const txnTiming = effectiveTiming(el, overrides, svcFrom, svcTo);
+    snapshot.paymentTiming = txnTiming.timing;
+    if (txnTiming.epeUuid) {
+      snapshot.paymentTimingOverriddenBy = txnTiming.epeUuid;
+    }
     lines.push({
       ...base,
       periodFrom: svcFrom,
@@ -886,7 +1049,7 @@ function calcEngagement(
       payElementUuid: el.payElementUuid,
       elementType: el.type,
       elementCode: el.code,
-      paymentTiming: el.paymentTiming,
+      paymentTiming: txnTiming.timing,
       qty,
       rate: rateStr,
       amount: centsToString(amountCents),
@@ -1005,12 +1168,56 @@ function calcEngagement(
     );
   }
 
-  return { engagement, lines, errors };
+  // Safety net (spec Prompt 04): an engagement in service that resolves to
+  // zero ledger lines must be surfaced as a skip reason, never a silent
+  // green run (e.g. rank has no lines on the assigned scale).
+  if (lines.length === 0 && errors.length === 0) {
+    const scaleLines = (
+      ctx.scaleLinesByScale.get(engagement.wageScaleUuid!) ?? []
+    ).filter((l) => l.rankId === engagement.rankIdAtStart);
+    warnings.push(
+      scaleLines.length === 0
+        ? `skipped: no scale lines for rank ${engagement.rankIdAtStart} on the assigned wage scale`
+        : `skipped: no ledger lines produced for rank ${engagement.rankIdAtStart} (scale lines exist but none were applicable)`,
+    );
+  }
+
+  return { engagement, lines, errors, warnings };
 }
 
 // ============================================================================
 // Resolution helpers
 // ============================================================================
+
+/**
+ * Effective payment timing for an element on an engagement: the element
+ * default, unless an effective-dated override row carries
+ * payment_timing_override (0157). Deterministic: override rows are applied
+ * in epe_uuid order, last one wins.
+ */
+function effectiveTiming(
+  el: AccPayElementV2,
+  overrides: AccEngagementPayElementV2[],
+  from: string,
+  to: string,
+): { timing: string; epeUuid: string | null } {
+  let timing = el.paymentTiming;
+  let epeUuid: string | null = null;
+  const applicable = overrides
+    .filter(
+      (o) =>
+        o.payElementUuid === el.payElementUuid &&
+        o.paymentTimingOverride != null &&
+        (o.effectiveFrom == null || o.effectiveFrom <= to) &&
+        (o.effectiveTo == null || o.effectiveTo >= from),
+    )
+    .sort((a, b) => a.epeUuid.localeCompare(b.epeUuid));
+  for (const o of applicable) {
+    timing = o.paymentTimingOverride as string;
+    epeUuid = o.epeUuid;
+  }
+  return { timing, epeUuid };
+}
 
 function anniversaryDates(engagement: AccEngagementV2, upTo: string): string[] {
   if (!engagement.nextStepDate) return [];
@@ -1129,6 +1336,7 @@ function resolveEntries(
   crewNat: string | null,
   overrides: AccEngagementPayElementV2[],
   errors: string[],
+  warnings: string[],
 ): Map<string, ResolvedEntry> {
   const entries = new Map<string, ResolvedEntry>();
   const scaleLines = (ctx.scaleLinesByScale.get(state.scaleUuid) ?? []).filter(
@@ -1168,6 +1376,8 @@ function resolveEntries(
       scaleUuid: state.scaleUuid,
       scaleLineUuid: line.scaleLineUuid,
       epeUuid: null,
+      paymentTiming: element.paymentTiming,
+      timingEpeUuid: null,
     });
   }
 
@@ -1188,11 +1398,33 @@ function resolveEntries(
     } else if (o.overrideMode === "replace_scale_value") {
       const existing = entries.get(o.payElementUuid);
       if (existing) {
-        existing.amountE2 = o.amount != null ? toCents(o.amount) : existing.amountE2;
-        existing.rateE4 = o.rate != null ? parseScaled(o.rate, 4) : existing.rateE4;
-        existing.sourceType = "engagement_override";
-        existing.sourceUuid = o.epeUuid;
-        existing.epeUuid = o.epeUuid;
+        if (o.amount != null || o.rate != null) {
+          existing.amountE2 = o.amount != null ? toCents(o.amount) : existing.amountE2;
+          existing.rateE4 = o.rate != null ? parseScaled(o.rate, 4) : existing.rateE4;
+          existing.sourceType = "engagement_override";
+          existing.sourceUuid = o.epeUuid;
+          existing.epeUuid = o.epeUuid;
+        }
+      } else if (o.amount != null || o.rate != null) {
+        // Fix (c): replace_scale_value with no base scale line for this
+        // rank — apply the override value directly instead of silently
+        // dropping the element.
+        warnings.push(
+          `element ${element.code}: replace_scale_value override has no base scale line for rank ${state.rankId}; override value applied directly (segment ${state.from})`,
+        );
+        entries.set(o.payElementUuid, {
+          element,
+          amountE2: o.amount != null ? toCents(o.amount) : null,
+          rateE4: o.rate != null ? parseScaled(o.rate, 4) : null,
+          sourceType: "engagement_override",
+          sourceUuid: o.epeUuid,
+          scaleUuid: state.scaleUuid,
+          scaleLineUuid: null,
+          epeUuid: o.epeUuid,
+          paymentTiming: element.paymentTiming,
+          timingEpeUuid: null,
+          replaceFallbackWarning: true,
+        });
       }
     } else if (o.overrideMode === "add_element") {
       entries.set(o.payElementUuid, {
@@ -1204,7 +1436,24 @@ function resolveEntries(
         scaleUuid: state.scaleUuid,
         scaleLineUuid: null,
         epeUuid: o.epeUuid,
+        paymentTiming: element.paymentTiming,
+        timingEpeUuid: null,
       });
+    }
+  }
+
+  // Payment-timing overlay (0157): any active override row carrying
+  // payment_timing_override retimes the element, independent of the
+  // override_mode value handling above. Deterministic: epe_uuid order,
+  // last one wins.
+  const timingRows = active
+    .filter((o) => o.paymentTimingOverride != null)
+    .sort((a, b) => a.epeUuid.localeCompare(b.epeUuid));
+  for (const o of timingRows) {
+    const entry = entries.get(o.payElementUuid);
+    if (entry) {
+      entry.paymentTiming = o.paymentTimingOverride as string;
+      entry.timingEpeUuid = o.epeUuid;
     }
   }
 
@@ -1234,7 +1483,7 @@ function resolveRateForElement(
   overrides: AccEngagementPayElementV2[],
   elementUuid: string,
 ): number | null {
-  const entries = resolveEntries(ctx, engagement, state, crewNat, overrides, []);
+  const entries = resolveEntries(ctx, engagement, state, crewNat, overrides, [], []);
   return entries.get(elementUuid)?.rateE4 ?? null;
 }
 
@@ -1319,6 +1568,16 @@ function mkLine(
     scaleUuid: entry.scaleUuid,
     scaleLineUuid: entry.scaleLineUuid,
     epeUuid: entry.epeUuid,
+    paymentTiming: entry.paymentTiming,
+    ...(entry.timingEpeUuid
+      ? { paymentTimingOverriddenBy: entry.timingEpeUuid }
+      : {}),
+    ...(entry.replaceFallbackWarning
+      ? {
+          warning:
+            "replace_scale_value override had no base scale line; override value applied directly",
+        }
+      : {}),
     roundingRule: el.roundingRule,
     roundingPrecision: el.roundingPrecision,
   };
@@ -1336,7 +1595,7 @@ function mkLine(
     payElementUuid: el.payElementUuid,
     elementType: el.type,
     elementCode: el.code,
-    paymentTiming: el.paymentTiming,
+    paymentTiming: entry.paymentTiming,
     qty: null,
     rate: null,
     amount,
@@ -1401,7 +1660,7 @@ function deductionLine(
 // Totals
 // ============================================================================
 
-function summarizeCrew(result: EngagementResult): CrewTotals {
+function summarizeCrew(result: EngagementResult): CrewBaseTotals {
   let gross = 0;
   let deductions = 0;
   let settlement = 0;
@@ -1415,7 +1674,12 @@ function summarizeCrew(result: EngagementResult): CrewTotals {
     }
     if (l.elementType === "deduction") {
       deductions += cents;
-    } else if (l.elementType === "earning") {
+    } else if (
+      l.elementType === "earning" ||
+      l.elementType === "employer_contribution"
+    ) {
+      // employer_contribution lines only reach here when retimed away from
+      // remitted_to_fund (0157 timing override) — they then pay like earnings.
       if (l.paymentTiming === "payable_at_settlement") settlement += cents;
       else gross += cents;
     }
@@ -1433,6 +1697,49 @@ function summarizeCrew(result: EngagementResult): CrewTotals {
   };
 }
 
+/**
+ * Enrich crew totals with ledger-derived balances (never stored):
+ * balance_bf/cf carry the on-board net across calculated periods less
+ * settlement payouts; the leave mini-ledger tracks settlement-timed
+ * leave-category earnings.
+ */
+async function withBalances(
+  ctx: CalcContext,
+  results: EngagementResult[],
+  period: string,
+): Promise<CrewTotals[]> {
+  const out: CrewTotals[] = [];
+  for (const r of results) {
+    const base = summarizeCrew(r);
+    let leaveThisCents = 0;
+    for (const l of r.lines) {
+      if (
+        l.elementType === "earning" &&
+        l.paymentTiming === "payable_at_settlement" &&
+        ctx.elements.get(l.payElementUuid)?.category === "leave"
+      ) {
+        leaveThisCents += toCents(l.amount);
+      }
+    }
+    const prior = await balanceService.priorBalances(
+      r.engagement.engagementUuid,
+      period,
+    );
+    const balanceBfCents = prior.balanceBfCents;
+    const balanceCfCents =
+      balanceBfCents + toCents(base.netOnBoard) - prior.settlementsAtPeriodCents;
+    out.push({
+      ...base,
+      balanceBf: centsToString(balanceBfCents),
+      balanceCf: centsToString(balanceCfCents),
+      leaveBf: centsToString(prior.leaveBfCents),
+      leaveThisMonth: centsToString(leaveThisCents),
+      leaveCf: centsToString(prior.leaveBfCents + leaveThisCents),
+    });
+  }
+  return out;
+}
+
 function portageTotals(lines: InsertAccWageLedgerV2[]): {
   totalEarnings: string;
   totalDeductions: string;
@@ -1444,7 +1751,11 @@ function portageTotals(lines: InsertAccWageLedgerV2[]): {
     if (l.isAdjustment) continue;
     const cents = toCents(l.amount);
     if (l.paymentTiming === "remitted_to_fund") continue;
-    if (l.elementType === "earning" && l.paymentTiming === "paid_on_board") {
+    if (
+      (l.elementType === "earning" ||
+        l.elementType === "employer_contribution") &&
+      l.paymentTiming === "paid_on_board"
+    ) {
       earnings += cents;
     } else if (l.elementType === "deduction") {
       deductions += cents;

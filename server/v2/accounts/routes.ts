@@ -9,6 +9,8 @@ import {
   cbaReferenceController,
   engagementsController,
   calcController,
+  monthlyTransactionsController,
+  portageController,
 } from "./controllers";
 
 const router = Router();
@@ -81,7 +83,22 @@ router.delete("/advances/:uuid", advancesController.delete);
 // ENGAGEMENTS (sync + manual seniority anchor)
 // ============================================
 router.post("/engagements/sync", engagementsController.sync);
+router.get("/engagements/review", engagementsController.review);
+router.post(
+  "/engagements/:uuid/timing-override",
+  engagementsController.setTimingOverride,
+);
 router.patch("/engagements/:uuid", engagementsController.update);
+
+// ============================================
+// PORTAGE BILL LIFECYCLE (workspace + approvals)
+// ============================================
+router.get("/portage", portageController.getWorkspace);
+router.post("/portage/:uuid/submit", portageController.submit);
+router.post(
+  "/portage/approvals/:approvalUuid/decision",
+  portageController.decide,
+);
 
 // ============================================
 // WAGE CALCULATION ENGINE + LEDGER (read-only)
@@ -90,6 +107,16 @@ router.post("/calc/run", calcController.run);
 router.post("/calc/run-engagement", calcController.runEngagement);
 router.post("/calc/adjustments", calcController.createAdjustments);
 router.get("/ledger", calcController.getLedger);
+
+// ============================================
+// MONTHLY TRANSACTIONS (office entry, lock-guarded)
+// ============================================
+router.get("/monthly-transactions", monthlyTransactionsController.getAll);
+router.get("/monthly-transactions/:uuid", monthlyTransactionsController.getByUuid);
+router.post("/monthly-transactions", monthlyTransactionsController.create);
+router.put("/monthly-transactions/:uuid", monthlyTransactionsController.update);
+router.patch("/monthly-transactions/:uuid", monthlyTransactionsController.update);
+router.delete("/monthly-transactions/:uuid", monthlyTransactionsController.delete);
 
 // ============================================
 // BOND PURCHASES

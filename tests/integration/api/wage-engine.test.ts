@@ -45,6 +45,9 @@ const crewH3 = u();
 const crewH4 = u();
 const crewFeb = u();
 const crewLock = u();
+const crewTim = u();
+const crewBal = u();
+const crewFbk = u();
 
 const vslH1 = `VSL_H1_${S}`;
 const vslH2 = `VSL_H2_${S}`;
@@ -52,6 +55,9 @@ const vslH3 = `VSL_H3_${S}`;
 const vslH4 = `VSL_H4_${S}`;
 const vslFeb = `VSL_FEB_${S}`;
 const vslLock = `VSL_LOCK_${S}`;
+const vslTim = `VSL_TIM_${S}`;
+const vslBal = `VSL_BAL_${S}`;
+const vslFbk = `VSL_FBK_${S}`;
 
 const engH1 = u();
 const engH2 = u();
@@ -59,12 +65,20 @@ const engH3 = u();
 const engH4 = u();
 const engFeb = u();
 const engLock = u();
+const engTim = u();
+const engBal = u();
+const engFbk = u();
 
-const allEngagements = [engH1, engH2, engH3, engH4, engFeb, engLock];
+const allEngagements = [
+  engH1, engH2, engH3, engH4, engFeb, engLock, engTim, engBal, engFbk,
+];
 
 const promoLedgerUuid = u();
 const epeSubs = u();
 const epeCadj = u();
+const epeTimLv = u();
+const epeTimPf = u();
+const epeFbkGot = u();
 const txnVot = u();
 const txnFx = u();
 const allotH4 = u();
@@ -314,6 +328,37 @@ describe("Wage Calculation Engine (H1–H5)", () => {
     await engagement(engH4, crewH4, vslH4, scaleH4, RANK_AB, "2026-01-05", "2027-01-05");
     await engagement(engFeb, crewFeb, vslFeb, scaleH1, RANK_MST, "2025-12-01", "2026-12-01");
     await engagement(engLock, crewLock, vslLock, scaleH1, RANK_MST, "2026-03-01", "2027-03-01");
+    await engagement(engTim, crewTim, vslTim, scaleH1, RANK_MST, "2026-03-15", "2027-03-15");
+    await engagement(engBal, crewBal, vslBal, scaleH1, RANK_MST, "2025-12-01", "2026-12-01");
+    await engagement(engFbk, crewFbk, vslFbk, scaleH1, RANK_MST, "2026-03-01", "2027-03-01");
+
+    // -- H1-override: value-neutral timing overrides (0157) ----------------------
+    await insert("acc_engagement_pay_elements_v2", {
+      epe_uuid: epeTimLv,
+      engagement_uuid: engTim,
+      pay_element_uuid: el.LV,
+      override_mode: "replace_scale_value",
+      payment_timing_override: "paid_on_board",
+      effective_from: "2026-03-01",
+    });
+    await insert("acc_engagement_pay_elements_v2", {
+      epe_uuid: epeTimPf,
+      engagement_uuid: engTim,
+      pay_element_uuid: el.PF,
+      override_mode: "replace_scale_value",
+      payment_timing_override: "paid_on_board",
+      effective_from: "2026-03-01",
+    });
+
+    // -- fix (c): replace_scale_value with no base scale line (GOT not on H1 scale)
+    await insert("acc_engagement_pay_elements_v2", {
+      epe_uuid: epeFbkGot,
+      engagement_uuid: engFbk,
+      pay_element_uuid: el.GOT,
+      override_mode: "replace_scale_value",
+      amount: "150",
+      effective_from: "2026-04-01",
+    });
 
     // -- H2 promotion event (2/O -> C/O effective 16-May-2026) -------------------
     await insert("promo_execution_ledger_v2", {
@@ -441,7 +486,7 @@ describe("Wage Calculation Engine (H1–H5)", () => {
     ]);
     await tryQuery(
       "DELETE FROM acc_engagement_pay_elements_v2 WHERE epe_uuid = ANY($1)",
-      [[epeSubs, epeCadj]],
+      [[epeSubs, epeCadj, epeTimLv, epeTimPf, epeFbkGot]],
     );
     await tryQuery("DELETE FROM acc_monthly_transactions_v2 WHERE txn_uuid = ANY($1)", [
       [txnVot, txnFx],
@@ -698,6 +743,126 @@ describe("Wage Calculation Engine (H1–H5)", () => {
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(String(body.error).toLowerCase()).toContain("lock");
+  });
+
+  // ---- H1-override: payment-timing override (0157) -------------------------------
+  it("H1-override: LV+PF retimed on board — net 6856.67, accrual 0.00, fund 0.00", async () => {
+    const { status, body } = await runEngagement(engTim, "2026-03");
+    expect(status).toBe(200);
+
+    const totals = totalsFor(body, crewTim);
+    expect(totals.netOnBoard).toBe("6856.67");
+    expect(totals.settlementAccrual).toBe("0.00");
+    expect(totals.fundRemittance).toBe("0.00");
+
+    // line amounts identical to H1 — only the timing changed
+    const lines = await ledgerLines(engTim, "2026-03");
+    const amounts = Object.fromEntries(
+      lines.map((l) => [l.payElementUuid, l.amount]),
+    );
+    expect(amounts[el.BAS]).toBe("2698.47");
+    expect(amounts[el.LV]).toBe("809.77");
+    expect(amounts[el.PF]).toBe("269.73");
+
+    const lv = lineByCode(lines, el.LV)[0];
+    const pf = lineByCode(lines, el.PF)[0];
+    expect(lv.paymentTiming).toBe("paid_on_board");
+    expect(pf.paymentTiming).toBe("paid_on_board");
+    expect(lv.calcSnapshot?.paymentTimingOverriddenBy).toBe(epeTimLv);
+    expect(pf.calcSnapshot?.paymentTimingOverriddenBy).toBe(epeTimPf);
+  });
+
+  it("H4 keeps element-default timings — net on board still 239.52", async () => {
+    const { status, body } = await runEngagement(engH4, "2026-06");
+    expect(status).toBe(200);
+    const totals = totalsFor(body, crewH4);
+    expect(totals.netOnBoard).toBe("239.52");
+    expect(totals.settlementAccrual).toBe("225.00");
+    expect(totals.fundRemittance).toBe("61.00");
+  });
+
+  // ---- balance carry (derived balances) --------------------------------------------
+  it("balance-carry: period-2 balance_bf = period-1 net on board; leave accumulates", async () => {
+    const p1 = await runEngagement(engBal, "2026-01");
+    expect(p1.status).toBe(200);
+    const t1 = totalsFor(p1.body, crewBal);
+    expect(t1.netOnBoard).toBe("10195.00");
+    expect(t1.balanceBf).toBe("0.00");
+    expect(t1.balanceCf).toBe("10195.00");
+    expect(t1.leaveBf).toBe("0.00");
+    expect(t1.leaveThisMonth).toBe("1429.00");
+    expect(t1.leaveCf).toBe("1429.00");
+
+    const p2 = await runEngagement(engBal, "2026-02");
+    expect(p2.status).toBe(200);
+    const t2 = totalsFor(p2.body, crewBal);
+    expect(t2.netOnBoard).toBe("10195.00");
+    expect(t2.balanceBf).toBe("10195.00"); // = period-1 net on board
+    expect(t2.balanceCf).toBe("20390.00");
+    expect(t2.leaveBf).toBe("1429.00");
+    expect(t2.leaveThisMonth).toBe("1429.00");
+    expect(t2.leaveCf).toBe("2858.00");
+  });
+
+  // ---- fix (a): lock guard on the single-engagement path ---------------------------
+  it("fix (a): run-engagement against a locked vessel-period refuses with 409, writes nothing", async () => {
+    const res = await fetch(`${V2_BASE}/calc/run-engagement`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ engagementUuid: engLock, period: "2026-03" }),
+    });
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(String(body.error).toLowerCase()).toContain("lock");
+
+    const lines = await db.query(
+      "SELECT 1 FROM acc_wage_ledger_v2 WHERE engagement_uuid = $1",
+      [engLock],
+    );
+    expect(lines.rowCount).toBe(0);
+  });
+
+  // ---- fix (b): run-status lifecycle ------------------------------------------------
+  it("fix (b): successful runs end 'completed'; no run is left 'running'", async () => {
+    const { status, body } = await runEngagement(engTim, "2026-03");
+    expect(status).toBe(200);
+    expect(body.run.status).toBe("completed");
+
+    const dbRun = await db.query(
+      "SELECT status FROM acc_calculation_runs_v2 WHERE calc_run_uuid = $1",
+      [body.run.calcRunUuid],
+    );
+    expect(dbRun.rows[0]?.status).toBe("completed");
+
+    const stuck = await db.query(
+      "SELECT calc_run_uuid FROM acc_calculation_runs_v2 WHERE engagement_uuid = ANY($1) AND status = 'running'",
+      [allEngagements],
+    );
+    expect(stuck.rowCount).toBe(0);
+  });
+
+  // ---- fix (c): replace_scale_value fallback ----------------------------------------
+  it("fix (c): replace_scale_value with no base scale line applies the value and warns", async () => {
+    const { status, body } = await runEngagement(engFbk, "2026-04");
+    expect(status).toBe(200);
+
+    const warnings = (body.warnings ?? []) as string[];
+    expect(
+      warnings.some((w) => w.includes("no base scale line")),
+      `run summary warnings: ${JSON.stringify(warnings)}`,
+    ).toBe(true);
+
+    const lines = await ledgerLines(engFbk, "2026-04");
+    const got = lineByCode(lines, el.GOT);
+    expect(got.length).toBe(1);
+    expect(got[0].amount).toBe("150.00");
+    expect(got[0].sourceType).toBe("engagement_override");
+    expect(String(got[0].calcSnapshot?.warning ?? "")).toContain(
+      "no base scale line",
+    );
+
+    // 4762 + 3333 + 200 + 1900 + 150 (GOT fallback) = 10345.00
+    expect(totalsFor(body, crewFbk).netOnBoard).toBe("10345.00");
   });
 
   // ---- validation ---------------------------------------------------------------

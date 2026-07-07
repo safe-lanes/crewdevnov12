@@ -261,6 +261,7 @@ Master library of pay elements.
 | `shows_on_portage` | boolean | default true |
 | `status` | text | CHECK `active` \| `inactive` (default `active`) |
 | `payment_timing` | text | CHECK `paid_on_board` \| `payable_at_settlement` \| `remitted_to_fund` (default `paid_on_board`); when the element actually settles (added 0154) |
+| `gl_code` | text | client GL account code, nullable (reporting later; added 0157) |
 | `effective_from` / `effective_to` | date | effectivity window |
 
 `payment_timing` distinguishes value that is paid in the monthly on-board
@@ -381,8 +382,17 @@ Contract-level overrides of scale values (tier 2 of precedence).
 | `override_mode` | text | CHECK `replace_scale_value` \| `add_element` \| `suppress_element` |
 | `amount` | money | |
 | `rate` | rate | |
+| `payment_timing_override` | text | nullable CHECK `paid_on_board` \| `payable_at_settlement` \| `remitted_to_fund` (added 0157) |
 | `effective_from` / `effective_to` | date | |
 | `remarks` | text | |
+
+`payment_timing_override` exists because real portage bills carry per-crew
+"Pay Leave On Board Y/N" and "Pay PF On Board Y/N" flags — the same element is
+paid monthly to one seafarer and withheld to settlement for another. When an
+override row for an element is effective in a sub-period, its
+`payment_timing_override` replaces the element's `payment_timing` for that
+crew member; the engine snapshots the *effective* timing in `calc_snapshot`
+and the ledger line's `payment_timing` column.
 
 ### D. Transaction tier
 
@@ -672,6 +682,37 @@ Engine-prep amendments, all additive and idempotent:
 - `acc_wage_ledger_v2`: added `payment_timing` (text, nullable) — a snapshot of
   the element's timing at calculation time so ledger totals never depend on
   later master-data edits.
+
+## Migration notes (`0157_accounts_payroll_run_prep.sql`)
+
+Payroll-run prep amendments, additive + one data-fix, idempotent:
+
+- `acc_engagement_pay_elements_v2`: added `payment_timing_override` (text,
+  nullable, guarded `CHECK` allowing `paid_on_board` /
+  `payable_at_settlement` / `remitted_to_fund`) — per-engagement payment
+  timing override (see the table notes above for the rationale).
+- `acc_pay_elements_v2`: added `gl_code` (text, nullable) — client GL account
+  code for later reporting.
+- `acc_calculation_runs_v2`: `status` CHECK relaxed to allow `running` — the
+  engine now creates the run row as `running` and only marks it `completed`
+  after the ledger line replacement commits; a failed replacement leaves the
+  run `failed` with `error_detail` and the prior lines intact.
+- **Data-fix**: `acc_engagements_v2.rank_id_at_start` values holding rank
+  *names* (dev-tenant residue from the engine dogfood) are converted to rank
+  *codes* by resolving against `adm_company_ranks_v2` — exact match first,
+  then case-insensitive — only where exactly one distinct `rank_id` matches.
+  Values already equal to a live rank code, ambiguous names and unmatched
+  values are left untouched (the sync endpoint reports those as errors).
+
+## Migration notes (`0158_accounts_payroll_rbac.sql`)
+
+RBAC-only migration (no accounts-domain schema changes): registers the three
+payroll operation menus (`Account Payroll Run`, `Account Portage Bill`,
+`Account Monthly Transactions`) under the top-level `Account` menu in
+`adm_menumaster_ac` and seeds `adm_roleaccess_ac` per role by copying each
+role's grant on the top-level `Account` menu — the same pattern as 0155.
+Roles without an `Account` grant receive no rows (default no access).
+Idempotent via `ON CONFLICT (name) DO NOTHING` / `NOT EXISTS`.
 
 ## Wage calculation engine rules
 

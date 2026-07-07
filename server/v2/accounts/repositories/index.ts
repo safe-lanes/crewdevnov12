@@ -9,3 +9,5 @@ export {
   type WageScaleLineInput,
 } from "./wageScalesRepository";
 export { EngagementsRepository } from "./engagementsRepository";
+export { MonthlyTransactionsRepository } from "./monthlyTransactionsRepository";
+export { PortageRepository } from "./portageRepository";

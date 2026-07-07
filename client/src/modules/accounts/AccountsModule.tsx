@@ -8,6 +8,9 @@ import TenantConfigPage from "./pages/TenantConfigPage";
 import PayElementsPage from "./pages/PayElementsPage";
 import WageScalesPage from "./pages/WageScalesPage";
 import CbaReferencePage from "./pages/CbaReferencePage";
+import PayrollRunPage from "./pages/PayrollRunPage";
+import PortageBillPage from "./pages/PortageBillPage";
+import MonthlyTransactionsPage from "./pages/MonthlyTransactionsPage";
 
 interface PageMeta {
   page: string;
@@ -30,6 +33,21 @@ const PAGE_META: PageMeta[] = [
     page: "cba-reference",
     menu: "Account CBA Reference",
     path: "/accounts/master-tables/cba-reference",
+  },
+  {
+    page: "payroll-run",
+    menu: "Account Payroll Run",
+    path: "/accounts/payroll/payroll-run",
+  },
+  {
+    page: "portage-bill",
+    menu: "Account Portage Bill",
+    path: "/accounts/payroll/portage-bill",
+  },
+  {
+    page: "monthly-transactions",
+    menu: "Account Monthly Transactions",
+    path: "/accounts/payroll/monthly-transactions",
   },
   {
     page: "tenant-config",
@@ -96,6 +114,12 @@ export function AccountsModule() {
         return <WageScalesPage />;
       case "cba-reference":
         return <CbaReferencePage />;
+      case "payroll-run":
+        return <PayrollRunPage />;
+      case "portage-bill":
+        return <PortageBillPage />;
+      case "monthly-transactions":
+        return <MonthlyTransactionsPage />;
       default:
         return null;
     }

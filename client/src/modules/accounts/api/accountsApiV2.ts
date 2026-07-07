@@ -75,4 +75,46 @@ export const accountsApiV2 = {
     remove: (uuid: string) =>
       req("DELETE", `${ACCOUNTS_BASE}/cba-reference/${uuid}`),
   },
+  engagements: {
+    sync: (vesselUuid: string, period: string) =>
+      req("POST", `${ACCOUNTS_BASE}/engagements/sync`, { vesselUuid, period }),
+    update: (uuid: string, data: Record<string, unknown>) =>
+      req("PATCH", `${ACCOUNTS_BASE}/engagements/${uuid}`, data),
+    setTimingOverride: (
+      uuid: string,
+      payElementUuid: string,
+      paymentTimingOverride: string | null,
+    ) =>
+      req("POST", `${ACCOUNTS_BASE}/engagements/${uuid}/timing-override`, {
+        payElementUuid,
+        paymentTimingOverride,
+      }),
+  },
+  calc: {
+    run: (vesselUuid: string, period: string) =>
+      req("POST", `${ACCOUNTS_BASE}/calc/run`, { vesselUuid, period }),
+  },
+  portage: {
+    submit: (
+      uuid: string,
+      approvers: { approverId?: string | null; approver: string }[],
+    ) => req("POST", `${ACCOUNTS_BASE}/portage/${uuid}/submit`, { approvers }),
+    decide: (
+      approvalUuid: string,
+      decision: "Approved" | "Rejected",
+      comments?: string | null,
+    ) =>
+      req("POST", `${ACCOUNTS_BASE}/portage/approvals/${approvalUuid}/decision`, {
+        decision,
+        comments,
+      }),
+  },
+  monthlyTransactions: {
+    create: (data: Record<string, unknown>) =>
+      req("POST", `${ACCOUNTS_BASE}/monthly-transactions`, data),
+    update: (uuid: string, data: Record<string, unknown>) =>
+      req("PATCH", `${ACCOUNTS_BASE}/monthly-transactions/${uuid}`, data),
+    remove: (uuid: string) =>
+      req("DELETE", `${ACCOUNTS_BASE}/monthly-transactions/${uuid}`),
+  },
 };

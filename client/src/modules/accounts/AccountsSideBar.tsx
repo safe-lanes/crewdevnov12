@@ -55,6 +55,26 @@ const ACTIVE_SECTIONS: SideSection[] = [
     ],
   },
   {
+    label: "Payroll",
+    items: [
+      {
+        name: "Payroll Run",
+        icon: <Calculator size={20} className={iconClass} />,
+        page: "payroll-run",
+      },
+      {
+        name: "Portage Bill",
+        icon: <FileSpreadsheet size={20} className={iconClass} />,
+        page: "portage-bill",
+      },
+      {
+        name: "Monthly Txns",
+        icon: <Repeat size={20} className={iconClass} />,
+        page: "monthly-transactions",
+      },
+    ],
+  },
+  {
     label: "Admin",
     items: [
       {
@@ -67,19 +87,8 @@ const ACTIVE_SECTIONS: SideSection[] = [
 ];
 
 const COMING_SOON: SideItem[] = [
-  { name: "Payroll Run", icon: <Calculator size={20} />, page: "payroll-run" },
-  {
-    name: "Portage Bill",
-    icon: <FileSpreadsheet size={20} />,
-    page: "portage-bill",
-  },
   { name: "Allotments", icon: <Send size={20} />, page: "allotments" },
   { name: "Cash & Bond", icon: <Wallet size={20} />, page: "cash-bond" },
-  {
-    name: "Monthly Txns",
-    icon: <Repeat size={20} />,
-    page: "monthly-transactions",
-  },
   { name: "Settlements", icon: <Receipt size={20} />, page: "settlements" },
   { name: "Reports", icon: <BarChart3 size={20} />, page: "reports" },
 ];
