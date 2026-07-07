@@ -644,17 +644,6 @@ function ReportsContent(): JSX.Element {
   const [resultsByReport, setResultsByReport] = useState<
     Record<string, ReportRunResponse>
   >({});
-  // Per-report sort + pagination, persisted across runs of the same report.
-  const [tableStateByReport, setTableStateByReport] = useState<
-    Record<
-      string,
-      {
-        page: number;
-        pageSize: number;
-        sort: { key: string; direction: "asc" | "desc" } | null;
-      }
-    >
-  >({});
 
   const filter = useMemo(() => computeFilter(searchQuery), [searchQuery]);
 
@@ -753,14 +742,6 @@ function ReportsContent(): JSX.Element {
     ? REPORT_FILTERS[selected.leaf.id] ?? DEFAULT_FILTERS
     : [];
 
-  const currentTableState = selectedReportId
-    ? tableStateByReport[selectedReportId] ?? {
-        page: 1,
-        pageSize: 50,
-        sort: null,
-      }
-    : { page: 1, pageSize: 50, sort: null as null | { key: string; direction: "asc" | "desc" } };
-
   const currentFilterValues = selectedReportId
     ? filterValuesByReport[selectedReportId] ?? {}
     : {};
@@ -776,20 +757,6 @@ function ReportsContent(): JSX.Element {
     }));
   };
 
-  const setTableState = (
-    reportId: string,
-    next: Partial<{
-      page: number;
-      pageSize: number;
-      sort: { key: string; direction: "asc" | "desc" } | null;
-    }>,
-  ) => {
-    setTableStateByReport((prev) => {
-      const base = prev[reportId] ?? { page: 1, pageSize: 50, sort: null };
-      return { ...prev, [reportId]: { ...base, ...next } };
-    });
-  };
-
   const runReportMutation = useMutation<
     ReportRunResponse,
     Error,
@@ -803,7 +770,21 @@ function ReportsContent(): JSX.Element {
   >({
     mutationFn: async (payload) => {
       const res = await apiRequest("POST", "/api/v2/reports/run", payload);
-      return (await res.json()) as ReportRunResponse;
+      const first = (await res.json()) as ReportRunResponse;
+      // Server caps pageSize at 500; fetch remaining pages so AG Grid has the
+      // full dataset for client-side sorting/filtering/pagination and exports.
+      const totalPages = Math.ceil(first.total / payload.pageSize);
+      if (totalPages <= 1) return first;
+      const rows = [...first.rows];
+      for (let p = 2; p <= totalPages; p++) {
+        const pageRes = await apiRequest("POST", "/api/v2/reports/run", {
+          ...payload,
+          page: p,
+        });
+        const pageData = (await pageRes.json()) as ReportRunResponse;
+        rows.push(...pageData.rows);
+      }
+      return { ...first, rows };
     },
     onSuccess: (data) => {
       setResultsByReport((prev) => ({ ...prev, [data.reportId]: data }));
@@ -817,31 +798,23 @@ function ReportsContent(): JSX.Element {
     },
   });
 
-  const runReport = (
-    overrides?: Partial<{
-      page: number;
-      pageSize: number;
-      sort: { key: string; direction: "asc" | "desc" } | null;
-    }>,
-  ) => {
+  const runReport = () => {
     if (!selected) return;
     const reportId = selected.leaf.id;
     const filters = buildFiltersPayload(selectedFilters, currentFilterValues);
-    const ts = { ...currentTableState, ...overrides };
-    if (overrides) setTableState(reportId, overrides);
+    // Fetch the maximum allowed page in one request; AG Grid handles
+    // sorting, filtering, and pagination client-side.
     runReportMutation.mutate({
       reportId,
       filters,
-      page: ts.page,
-      pageSize: ts.pageSize,
-      sort: ts.sort,
+      page: 1,
+      pageSize: 500,
+      sort: null,
     });
   };
 
   const handleGenerate = () => {
-    if (!selected) return;
-    // New Generate click resets pagination to page 1 but keeps current sort.
-    runReport({ page: 1 });
+    runReport();
   };
 
   const currentResult = selectedReportId
@@ -1065,12 +1038,6 @@ function ReportsContent(): JSX.Element {
                   columns={currentResult.columns}
                   rows={currentResult.rows}
                   total={currentResult.total}
-                  page={currentResult.page}
-                  pageSize={currentResult.pageSize}
-                  sort={currentTableState.sort}
-                  onSortChange={(s) => runReport({ sort: s, page: 1 })}
-                  onPageChange={(p) => runReport({ page: p })}
-                  onPageSizeChange={(ps) => runReport({ pageSize: ps, page: 1 })}
                   isLoading={isRunningCurrent && !currentResult}
                   isFetching={isRunningCurrent}
                   exportFilename={currentResult.title}
@@ -1081,11 +1048,6 @@ function ReportsContent(): JSX.Element {
                   columns={[]}
                   rows={[]}
                   total={0}
-                  page={1}
-                  pageSize={currentTableState.pageSize}
-                  sort={null}
-                  onSortChange={() => undefined}
-                  onPageChange={() => undefined}
                   isLoading
                 />
               ) : (
