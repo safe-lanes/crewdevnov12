@@ -176,6 +176,21 @@ export class VesselPlanningRepository {
     return results[0];
   }
 
+  // Find all active planning rows for a vessel by rank NAME (rankId encoding
+  // can vary across the manning matrix, so the rank text is the stable key).
+  async findByVesselAndRankName(vesselUuid: string, rank: string): Promise<VesselPlanningV2[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(vesselPlanningV2)
+      .where(and(
+        eq(vesselPlanningV2.vesselUuid, vesselUuid),
+        eq(vesselPlanningV2.rank, rank),
+        eq(vesselPlanningV2.isDeleted, false),
+        eq(vesselPlanningV2.isArchived, false),
+      ));
+  }
+
   async findPrimaryByVesselAndRank(vesselUuid: string, rankId: string, rank?: string): Promise<VesselPlanningV2 | undefined> {
     const db = getDb();
     const conditions = [
@@ -279,6 +294,15 @@ export class VesselPlanningAttachmentsRepository {
         )
       )
       .orderBy(vesselPlanningAttachmentsV2.sortOrder);
+  }
+
+  async findByUuid(attUuid: string): Promise<VesselPlanningAttachmentsV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(vesselPlanningAttachmentsV2)
+      .where(eq(vesselPlanningAttachmentsV2.attUuid, attUuid));
+    return results[0];
   }
 
   async create(data: Omit<InsertVesselPlanningAttachmentsV2, "attUuid">): Promise<VesselPlanningAttachmentsV2> {

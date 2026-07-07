@@ -2,8 +2,8 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Save, Send, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText, AlertTriangle, Paperclip } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Save, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText, AlertTriangle, Paperclip, Lock, LockOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -12,6 +12,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankOrdering } from '@/hooks/useRankOrdering';
 import { usePermissions } from '@/contexts/PermissionsContext';
@@ -19,6 +29,13 @@ import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAtta
 import { generateDrugAlcoholTestPDF } from '@/lib/generateDrugAlcoholTestPDF';
 import { useToast } from '@/hooks/use-toast';
 import { drugsAlcoholApiV2 } from './api/drugsAlcoholApiV2';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+
+function getCurrentLocalDateTime() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 // Equipment entry schema
 const equipmentEntrySchema = z.object({
@@ -56,6 +73,7 @@ const drugAlcoholTestFormSchema = z.object({
   // Part B - Personnel Details
   personnelTested: z.array(z.object({
     id: z.string(),
+    crewId: z.string().nullable().optional(),
     rank: z.string(),
     name: z.string(),
     alcoholTest: z.object({
@@ -141,9 +159,13 @@ export function DrugAlcoholTestForm_v2({
   const partARef = useRef<HTMLDivElement>(null);
   const partBRef = useRef<HTMLDivElement>(null);
   const continuousScrollContainerRef = useRef<HTMLDivElement>(null);
+  // Refs for B1 table sticky ghost scrollbar
+  const b1TableWrapperRef = useRef<HTMLDivElement>(null);
+  const b1GhostScrollRef = useRef<HTMLDivElement>(null);
+  const b1GhostInnerRef = useRef<HTMLDivElement>(null);
+  const b1SyncingScroll = useRef(false);
+  const b1NameThRef = useRef<HTMLTableCellElement>(null);
   
-  // Track if witness has been auto-copied (first witness selection copies to all empty rows)
-  const witnessAutoCopied = useRef(false);
 
   // Test type labels
   const testTypeLabels = {
@@ -157,7 +179,7 @@ export function DrugAlcoholTestForm_v2({
   // Vessel lookup hook
   const { getVesselName, vessels } = useVesselLookup();
 
-  const { userType, myVessels } = usePermissions();
+  const { userType, myVessels, canCreate, permissions } = usePermissions();
   const isShipUser = userType === 'Ship';
   const shipUserVesselName = useMemo(() => {
     if (!isShipUser || myVessels.length === 0) return null;
@@ -174,6 +196,38 @@ export function DrugAlcoholTestForm_v2({
     enabled: !!recordUuid,
     retry: 1,
   });
+
+  // ---- Lock / Unlock (DA Lock / Unlock) ----
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const canLockUnlock = permissions.length === 0 || canCreate('DA Lock / Unlock');
+  const isSubmittedRecord = !!recordUuid && existingRecord?.status === 'submitted';
+  const isFormLocked = existingRecord?.isLocked === true;
+
+  // Submit confirmation dialog (shown only on the qualifying first submit)
+  const [lockDialogOpen, setLockDialogOpen] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<any>(null);
+
+  const lockMutation = useMutation({
+    mutationFn: ({ uuid, isLocked }: { uuid: string; isLocked: boolean }) =>
+      drugsAlcoholApiV2.testRecords.toggleLock(uuid, isLocked),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['v2', 'drugs-alcohol'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/drugs-alcohol/test-records'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update lock state',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleLockToggle = () => {
+    if (!recordUuid) return;
+    lockMutation.mutate({ uuid: recordUuid, isLocked: !isFormLocked });
+  };
 
   const form = useForm<DrugAlcoholTestFormData>({
     resolver: zodResolver(drugAlcoholTestFormSchema),
@@ -211,6 +265,7 @@ export function DrugAlcoholTestForm_v2({
   const { fields: personnelFields, replace: replacePersonnel, append: appendPersonnel } = useFieldArray({
     control: form.control,
     name: 'personnelTested',
+    keyName: '_fieldId',
   });
 
   // Populate form with existing record data when editing
@@ -248,21 +303,27 @@ export function DrugAlcoholTestForm_v2({
         testingEquipment: stripNulls(parseJsonField(existingRecord.testingEquipment)) || [
           { id: `eq-${Date.now()}`, equipmentId: '', makeModel: '', serialNo: '', lastCalibrated: '' }
         ],
-        personnelTested: stripNulls(parseJsonField(existingRecord.personnelTested)) || [],
+        personnelTested: (stripNulls(parseJsonField(existingRecord.personnelTested)) || []).map((p: any) => ({
+          ...p,
+          rank: p.rank ?? '',
+          name: p.name ?? '',
+        })),
         comments: existingRecord.comments || '',
         masterDeputySignature: stripNulls(parseJsonField(existingRecord.masterDeputySignature)) || {
           confirmed: false,
           name: '',
           date: '',
         },
-        attachments: stripNulls(parseJsonField(existingRecord.attachmentFile || existingRecord.attachments)) || [],
+        attachments: (stripNulls(parseJsonField(existingRecord.attachmentFile || existingRecord.attachments)) || []).map((att: any) => {
+          const attUuid = att?.attUuid || att?.id;
+          return attUuid && typeof attUuid === 'string'
+            ? { ...att, viewUrl: att.viewUrl || `/api/v2/drugs-alcohol/attachments/${attUuid}/raw` }
+            : att;
+        }),
       };
 
       form.reset(formData as DrugAlcoholTestFormData);
       
-      // Reset witness auto-copy flag when loading existing record
-      // (witnesses are already populated from saved data)
-      witnessAutoCopied.current = true;
     }
   }, [existingRecord, recordUuid, testType, form]);
 
@@ -283,7 +344,7 @@ export function DrugAlcoholTestForm_v2({
   const activeVesselId = formVesselId || vesselId || '';
   
   // Fetch on-board crew for the active vessel using V2 crew_assignments JOIN
-  const { data: allCrewMembers = [] } = useQuery<any[]>({
+  const { data: allCrewMembers = [], isFetching: isCrewFetching } = useQuery<any[]>({
     queryKey: ['v2', 'drugs-alcohol', 'crew', activeVesselId],
     queryFn: () => drugsAlcoholApiV2.crew.getOnboardByVessel(activeVesselId),
     enabled: !!activeVesselId,
@@ -313,6 +374,7 @@ export function DrugAlcoholTestForm_v2({
       })
       .map((crew: any) => ({
         id: crew.crewUuid || crew.id || `crew-${Date.now()}-${Math.random()}`,
+        crewId: crew.crewUuid || null,
         rank: crew.presentRank || '',
         name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim(),
         alcoholTest: { checked: false, date: '', time: '' },
@@ -324,6 +386,27 @@ export function DrugAlcoholTestForm_v2({
         witness: '',
       }));
   }, [allCrewMembers, activeVesselId, getSortOrder]);
+
+  const sortedVesselCrew = useMemo(() => {
+    return [...allCrewMembers].sort((a: any, b: any) => {
+      const orderA = getSortOrder(a.presentRank);
+      const orderB = getSortOrder(b.presentRank);
+
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+
+      const aSuffix = a.presentRank?.includes('_')
+        ? parseInt(a.presentRank.split('_')[1]) || 0
+        : 0;
+
+      const bSuffix = b.presentRank?.includes('_')
+        ? parseInt(b.presentRank.split('_')[1]) || 0
+        : 0;
+
+      return aSuffix - bSuffix;
+    });
+  }, [allCrewMembers, getSortOrder]);
 
   // Get logged-in user's designation from sessionStorage for digital confirmation
   const loggedInUserDesignation = useMemo(() => {
@@ -416,19 +499,29 @@ export function DrugAlcoholTestForm_v2({
   // Populate personnelTested when crew members are loaded or vessel changes
   // Skip if editing (recordUuid provided) as personnel will be loaded from the existing record
   // IMPORTANT: Wait for ranks to load before populating to ensure correct sort order
+  const lastSyncedVesselRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!draftData && !recordUuid && formVesselId && !isLoadingRanks) {
-      // Only populate when creating new records, not when editing
-      // Wait until rank ordering is loaded to ensure correct sort order
-      // Use personnelFields.length from useFieldArray for accurate count
-      const shouldUpdate = personnelFields.length === 0 && vesselCrewPersonnel.length > 0;
-      
-      if (shouldUpdate) {
-        // Use replacePersonnel from useFieldArray for proper state management
-        replacePersonnel(vesselCrewPersonnel);
-      }
-    }
-  }, [vesselCrewPersonnel, formVesselId, draftData, recordUuid, personnelFields.length, replacePersonnel, isLoadingRanks]);
+    // New mode only: keep Part B crew in sync with the selected vessel.
+    if (draftData || recordUuid) return;
+    if (!formVesselId) return;
+
+    // Wait until the selected vessel's crew + ranks have finished loading.
+    if (isCrewFetching || isLoadingRanks) return;
+
+    // Only re-sync when the vessel actually changed.
+    if (lastSyncedVesselRef.current === formVesselId) return;
+
+    replacePersonnel(vesselCrewPersonnel);
+    lastSyncedVesselRef.current = formVesselId;
+  }, [
+    formVesselId,
+    vesselCrewPersonnel,
+    isCrewFetching,
+    isLoadingRanks,
+    draftData,
+    recordUuid,
+    replacePersonnel
+  ]);
 
   // Watch dateTimeTestCompleted to auto-populate date fields in Part B1
   const dateTimeTestCompleted = form.watch('dateTimeTestCompleted');
@@ -454,7 +547,7 @@ export function DrugAlcoholTestForm_v2({
         form.setValue(`personnelTested.${index}.drugTest.date`, datePortion);
       }
     });
-  }, [dateTimeTestCompleted, personnelFields.length, form]);
+  }, [dateTimeTestCompleted, personnelFields, form]);
 
   // Watch digital confirmation state
   const isConfirmed = form.watch('masterDeputySignature.confirmed');
@@ -486,6 +579,40 @@ export function DrugAlcoholTestForm_v2({
     }
   }, [isConfirmed, signatoryLookupResult, currentSignatoryName, showSignatoryManualEntry, form]);
 
+  // Keep ghost scrollbar width in sync with actual table content width
+  useEffect(() => {
+    const syncWidth = () => {
+      if (b1TableWrapperRef.current && b1GhostInnerRef.current && b1GhostScrollRef.current && b1NameThRef.current) {
+        const nameRect = b1NameThRef.current.getBoundingClientRect();
+        const wrapperRect = b1TableWrapperRef.current.getBoundingClientRect();
+        const stickyOffset = nameRect.right - wrapperRect.left;
+        b1GhostScrollRef.current.style.marginLeft = `${stickyOffset}px`;
+        b1GhostInnerRef.current.style.width = `${b1TableWrapperRef.current.scrollWidth - stickyOffset}px`;
+      }
+    };
+    syncWidth();
+    window.addEventListener('resize', syncWidth);
+    return () => window.removeEventListener('resize', syncWidth);
+  }, [personnelFields.length, showAlcoholFields, showDrugFields]);
+
+  const handleB1TableScroll = () => {
+    if (b1SyncingScroll.current) return;
+    if (b1TableWrapperRef.current && b1GhostScrollRef.current) {
+      b1SyncingScroll.current = true;
+      b1GhostScrollRef.current.scrollLeft = b1TableWrapperRef.current.scrollLeft;
+      b1SyncingScroll.current = false;
+    }
+  };
+
+  const handleB1GhostScroll = () => {
+    if (b1SyncingScroll.current) return;
+    if (b1TableWrapperRef.current && b1GhostScrollRef.current) {
+      b1SyncingScroll.current = true;
+      b1TableWrapperRef.current.scrollLeft = b1GhostScrollRef.current.scrollLeft;
+      b1SyncingScroll.current = false;
+    }
+  };
+
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
       ref.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -500,20 +627,116 @@ export function DrugAlcoholTestForm_v2({
     }
   };
 
-  const { toast } = useToast();
+  const sortPersonnelForSave = (personnel: any[]) => {
+    const isOtherRow = (p: any) =>
+      (typeof p?.id === 'string' && p.id.startsWith('other-')) ||
+      (typeof p?.crewId === 'string' && p.crewId.startsWith('other-'));
+
+    const getOtherCreationTime = (p: any): number => {
+        const marker =
+        (typeof p?.crewId === 'string' && p.crewId.startsWith('other-'))
+          ? p.crewId
+          : (typeof p?.id === 'string' && p.id.startsWith('other-'))
+            ? p.id
+            : '';
+
+      const ts = parseInt(marker.split('-')[1] ?? '', 10);
+      return Number.isFinite(ts) ? ts : 0;
+    };
+
+    return [...personnel].sort((a, b) => {
+      const aOther = isOtherRow(a);
+      const bOther = isOtherRow(b);
+
+      // Added Other rows always below real crew
+      if (aOther !== bOther) return aOther ? 1 : -1;
+
+      // Other rows keep creation order
+      if (aOther && bOther) {
+        return getOtherCreationTime(a) - getOtherCreationTime(b);
+      }
+
+      // Real crew hierarchy sort
+      const orderA = getSortOrder(a.rank);
+      const orderB = getSortOrder(b.rank);
+
+      if (orderA !== orderB) return orderA - orderB;
+      const aSuffix = a.rank?.includes('_')
+        ? parseInt(a.rank.split('_')[1]) || 0
+        : 0;
+
+      const bSuffix = b.rank?.includes('_')
+        ? parseInt(b.rank.split('_')[1]) || 0
+        : 0;
+
+      return aSuffix - bSuffix;
+    });
+  };
 
   const handleSaveDraft = () => {
+    const rawPersonnel = (form.getValues('personnelTested') as any[]) || [];
+
+    const hasEmptyOther = rawPersonnel.some((p) => {
+      const isOther =
+        p?.id?.startsWith('other-') ||
+        p?.crewId?.startsWith?.('other-');
+
+      return (
+        isOther &&
+        (
+          !String(p?.rank ?? '').trim() ||
+          !String(p?.name ?? '').trim()
+        )
+      );
+    });
+
+    if (hasEmptyOther) {
+      toast({
+        title: 'Missing Rank or Name',
+        description: 'Please enter both Rank and Name for all manually added personnel before saving.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const data = form.getValues();
-    onSave(data);
+
+    const sortedPersonnel = sortPersonnelForSave(
+      (data.personnelTested as any[]) || []
+    );
+    replacePersonnel(sortedPersonnel);
+
+    onSave({
+      ...data,
+      personnelTested: sortedPersonnel,
+    });
   };
 
   const handleExport = async () => {
     try {
       const data = form.getValues();
       const vesselName = getVesselName(data.vesselId || '');
+      const resolveWitnessName = (witnessId: string) => {
+        if (!witnessId) return '';
+
+        const crew = allCrewMembers.find(
+          (c: any) => c.crewUuid === witnessId || c.id === witnessId
+        );
+
+        if (!crew) return witnessId;
+
+        const name = `${crew.firstName || ''} ${crew.familyName || ''}`.trim();
+        const rank = crew.presentRank || '';
+
+        return rank ? `${name}, ${rank}` : name;
+      };
       await generateDrugAlcoholTestPDF({
         ...data,
         vesselName: vesselName || '',
+        personnelTested: (data.personnelTested || []).map((person: any) => ({
+          ...person,
+          witness: resolveWitnessName(person.witness || ''),
+        })),
       });
       toast({
         title: "Export Successful",
@@ -530,6 +753,31 @@ export function DrugAlcoholTestForm_v2({
   };
 
   const handleFormSubmit = (data: DrugAlcoholTestFormData) => {
+    const rawPersonnel = (form.getValues('personnelTested') as any[]) || [];
+
+    const hasEmptyOther = rawPersonnel.some((p) => {
+      const isOther =
+        p?.id?.startsWith('other-') ||
+        p?.crewId?.startsWith?.('other-');
+
+      return (
+        isOther &&
+        (
+          !String(p?.rank ?? '').trim() ||
+          !String(p?.name ?? '').trim()
+        )
+      );
+    });
+
+    if (hasEmptyOther) {
+      toast({
+        title: 'Missing Rank or Name',
+        description: 'Please enter both Rank and Name for all manually added personnel before saving.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const cleanedData = {
       ...data,
       personnelTested: (data.personnelTested || []).map(person => {
@@ -541,7 +789,41 @@ export function DrugAlcoholTestForm_v2({
         return person;
       })
     };
-    onSubmit(cleanedData);
+
+    const sortedPersonnel = sortPersonnelForSave(
+      (cleanedData.personnelTested as any[]) || []
+    );
+
+    replacePersonnel(sortedPersonnel);
+
+    const submitData = {
+      ...cleanedData,
+      personnelTested: sortedPersonnel,
+    };
+
+    // Qualifying first submit (new form, or existing record never locked before):
+    // show the lock confirmation dialog before submitting.
+    const isQualifyingFirstSubmit = !recordUuid || existingRecord?.lockedOnce !== true;
+    if (isQualifyingFirstSubmit) {
+      setPendingSubmitData(submitData);
+      setLockDialogOpen(true);
+      return;
+    }
+
+    onSubmit(submitData);
+  };
+
+  const handleConfirmLockSubmit = () => {
+    setLockDialogOpen(false);
+    if (pendingSubmitData) {
+      onSubmit(pendingSubmitData);
+      setPendingSubmitData(null);
+    }
+  };
+
+  const handleCancelLockSubmit = () => {
+    setLockDialogOpen(false);
+    setPendingSubmitData(null);
   };
 
   const handleFormError = (errors: any) => {
@@ -598,6 +880,142 @@ export function DrugAlcoholTestForm_v2({
   const showOtherTestsFields = selectedTestType === 'others';
   const showExternalResultsDate = ['annual', 'post-incident', 'others'].includes(selectedTestType);
 
+  const alcoholTestDateTime = form.watch('alcoholTestDateTime');
+  const drugTestDateTime = form.watch('drugTestDateTime');
+
+  const externalResultsMinDate = useMemo(() => {
+    if (selectedTestType === 'post-incident') {
+      const dateParts = [alcoholTestDateTime, drugTestDateTime]
+        .filter((v): v is string => !!v)
+        .map((v) => v.split('T')[0]);
+
+      return dateParts.length ? dateParts.sort()[0] : undefined;
+    }
+
+    return dateTimeTestCompleted
+      ? dateTimeTestCompleted.split('T')[0]
+      : undefined;
+  }, [
+    selectedTestType,
+    dateTimeTestCompleted,
+    alcoholTestDateTime,
+    drugTestDateTime,
+  ]);
+
+  // Post Incident: auto-copy each test date into Part B
+  // (date only, fill empty cells only — mirrors Annual behavior)
+  useEffect(() => {
+    if (selectedTestType !== 'post-incident' || personnelFields.length === 0) return;
+
+    const alcoholDatePortion =
+      showAlcoholFields && alcoholTestDateTime
+        ? alcoholTestDateTime.split('T')[0]
+        : '';
+
+    const drugDatePortion =
+      showDrugFields && drugTestDateTime
+        ? drugTestDateTime.split('T')[0]
+        : '';
+
+    if (!alcoholDatePortion && !drugDatePortion) return;
+
+    personnelFields.forEach((_, index) => {
+      if (alcoholDatePortion) {
+        const cur = form.getValues(`personnelTested.${index}.alcoholTest.date`);
+        if (!cur) {
+          form.setValue(
+            `personnelTested.${index}.alcoholTest.date`,
+            alcoholDatePortion
+          );
+        }
+      }
+
+      if (drugDatePortion) {
+        const cur = form.getValues(`personnelTested.${index}.drugTest.date`);
+        if (!cur) {
+          form.setValue(
+            `personnelTested.${index}.drugTest.date`,
+            drugDatePortion
+          );
+        }
+      }
+    });
+  }, [
+    selectedTestType,
+    showAlcoholFields,
+    showDrugFields,
+    alcoholTestDateTime,
+    drugTestDateTime,
+    personnelFields,
+    form,
+  ]);
+
+  // Auto-fill test-completion date/time + handle Type-of-Test switches.
+  // NEW forms only. Never overwrites existing/saved values (fills only when empty).
+  // Crossing the Post-Incident boundary (either direction) clears the now-stale
+  // Part A date(s) and the Part B date cells, then re-fills for the active type.
+  const prevTestTypeRef = useRef(selectedTestType);
+
+  useEffect(() => {
+    // New forms only — existing records and drafts are never touched.
+    if (recordUuid || draftData) {
+      prevTestTypeRef.current = selectedTestType;
+      return;
+    }
+
+    const prev = prevTestTypeRef.current;
+    const next = selectedTestType;
+
+    const crossingIntoPost =
+      prev !== next && next === 'post-incident';
+
+    const crossingOutOfPost =
+      prev !== next &&
+      prev === 'post-incident' &&
+      next !== 'post-incident';
+
+    prevTestTypeRef.current = next;
+
+    // 1) On a Post-Incident boundary crossing, clear stale Part A + Part B dates.
+    if (crossingIntoPost || crossingOutOfPost) {
+      if (crossingIntoPost) {
+        form.setValue('dateTimeTestCompleted', '');
+      } else {
+        form.setValue('alcoholTestDateTime', '');
+        form.setValue('drugTestDateTime', '');
+      }
+
+      personnelFields.forEach((_, i) => {
+        form.setValue(`personnelTested.${i}.alcoholTest.date`, '');
+        form.setValue(`personnelTested.${i}.drugTest.date`, '');
+      });
+    }
+
+    // 2) Auto-fill the field(s) relevant to the current type, only when empty.
+    if (next === 'post-incident') {
+      if (showAlcoholFields && !form.getValues('alcoholTestDateTime')) {
+        form.setValue('alcoholTestDateTime', getCurrentLocalDateTime());
+      }
+
+      if (showDrugFields && !form.getValues('drugTestDateTime')) {
+        form.setValue('drugTestDateTime', getCurrentLocalDateTime());
+      }
+    } else {
+      if (!form.getValues('dateTimeTestCompleted')) {
+        form.setValue('dateTimeTestCompleted', getCurrentLocalDateTime());
+      }
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    recordUuid,
+    draftData,
+    selectedTestType,
+    showAlcoholFields,
+    showDrugFields,
+    personnelFields,
+  ]);
+
   // Render continuous sections (Part A & Part B)
   const renderContinuousSections = () => {
     return (
@@ -631,10 +1049,12 @@ export function DrugAlcoholTestForm_v2({
                         name="vesselId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel*</FormLabel>
-                            {isShipUser ? (
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">Vessel<span className="text-red-500">*</span></FormLabel>
+                            {(isShipUser || recordUuid) ? (
                               <div className="h-10 flex items-center text-sm font-medium text-[#0f172a] px-3 bg-gray-50 border border-input rounded-md" data-testid="text-vesselId-locked">
-                                {shipUserVesselName || "No vessel assigned"}
+                                {isShipUser
+                                  ? (shipUserVesselName || "No vessel assigned")
+                                  : (getVesselName(field.value || '') || field.value || "No vessel selected")}
                               </div>
                             ) : (
                               <Select onValueChange={field.onChange} value={field.value}>
@@ -676,21 +1096,27 @@ export function DrugAlcoholTestForm_v2({
                         name="testType"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs text-gray-500 tracking-wide">Type of Test*</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="bg-[#ffffff]" data-testid="select-testType">
-                                  <SelectValue placeholder="Type of Test" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="annual">Annual D&A Test</SelectItem>
-                                <SelectItem value="periodic">Periodic Alcohol Test</SelectItem>
-                                <SelectItem value="monthly">Monthly Alcohol Test</SelectItem>
-                                <SelectItem value="post-incident">Post Incident Test</SelectItem>
-                                <SelectItem value="others">Other Tests</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">Type of Test<span className="text-red-500">*</span></FormLabel>
+                            {recordUuid ? (
+                              <div className="h-10 flex items-center text-sm font-medium text-[#0f172a] px-3 bg-gray-50 border border-input rounded-md" data-testid="text-testType-locked">
+                                {testTypeLabels[field.value as keyof typeof testTypeLabels] || field.value || "No test type selected"}
+                              </div>
+                            ) : (
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="bg-[#ffffff]" data-testid="select-testType">
+                                    <SelectValue placeholder="Type of Test" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="annual">Annual D&A Test</SelectItem>
+                                  <SelectItem value="periodic">Periodic Alcohol Test</SelectItem>
+                                  <SelectItem value="monthly">Monthly Alcohol Test</SelectItem>
+                                  <SelectItem value="post-incident">Post Incident Test</SelectItem>
+                                  <SelectItem value="others">Other Tests</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
                             <FormMessage />
                           </FormItem>
                         )}
@@ -704,7 +1130,7 @@ export function DrugAlcoholTestForm_v2({
                         name="alcoholDrugType"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs text-gray-500 tracking-wide">Alcohol/ Drug*</FormLabel>
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">Alcohol/ Drug<span className="text-red-500">*</span></FormLabel>
                             <div className="flex flex-row gap-4 bg-[#ffffff] border rounded-md p-3">
                               <div className="flex items-center space-x-2">
                                 <Checkbox
@@ -781,9 +1207,70 @@ export function DrugAlcoholTestForm_v2({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Date & Time Test completed</FormLabel>
-                              <FormControl>
-                                <Input {...field} type="datetime-local" className="bg-[#ffffff]" data-testid="input-dateTimeTestCompleted" />
-                              </FormControl>
+                              <div className="relative">
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    type="datetime-local"
+                                    className="bg-[#ffffff] pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
+                                    data-testid="input-dateTimeTestCompleted"
+                                    onKeyDown={(e) => {
+                                      if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                                        e.preventDefault();
+                                      }
+                                    }}
+                                  />
+                                </FormControl>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                      data-testid="button-open-dateTimeTestCompleted-calendar"
+                                    >
+                                      <Calendar className="h-4 w-4 text-gray-500" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="end">
+                                    <CalendarPicker
+                                      mode="single"
+                                      selected={field.value ? new Date(`${field.value.split('T')[0]}T00:00:00`) : undefined}
+                                      onSelect={(date) => {
+                                        if (!date) return;
+                                        const yyyy = date.getFullYear();
+                                        const mm = String(date.getMonth() + 1).padStart(2, '0');
+                                        const dd = String(date.getDate()).padStart(2, '0');
+                                        const datePart = `${yyyy}-${mm}-${dd}`;
+                                        const now = new Date();
+                                        const timePart =
+                                          field.value && field.value.includes('T') && field.value.split('T')[1]
+                                            ? field.value.split('T')[1]
+                                            : `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                                        field.onChange(`${datePart}T${timePart}`);
+                                      }}
+                                      initialFocus
+                                    />
+                                    <div className="border-t p-3">
+                                      <Input
+                                        type="time"
+                                        value={field.value && field.value.includes('T') ? field.value.split('T')[1] : ''}
+                                        onChange={(e) => {
+                                          if (!field.value) return;
+                                          const now = new Date();
+                                          const datePart = field.value.includes('T') ? field.value.split('T')[0] : field.value;
+                                          const timePart = e.target.value
+                                            ? e.target.value
+                                            : `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                                          field.onChange(`${datePart}T${timePart}`);
+                                        }}
+                                        data-testid="input-time-dateTimeTestCompleted"
+                                      />
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              </div>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -858,7 +1345,7 @@ export function DrugAlcoholTestForm_v2({
                               <FormItem>
                                 <FormLabel className="text-xs text-gray-500 tracking-wide">Alcohol Test - Date & Time Completed</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="datetime-local" className="bg-[#ffffff]" data-testid="input-alcoholTestDateTime" />
+                                  <Input {...field} type="datetime-local" disabled={!showAlcoholFields} className="bg-[#ffffff]" data-testid="input-alcoholTestDateTime" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -872,7 +1359,7 @@ export function DrugAlcoholTestForm_v2({
                               <FormItem>
                                 <FormLabel className="text-xs text-gray-500 tracking-wide">Drug Test - Date & Time Completed</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="datetime-local" className="bg-[#ffffff]" data-testid="input-drugTestDateTime" />
+                                  <Input {...field} type="datetime-local" disabled={!showDrugFields} className="bg-[#ffffff]" data-testid="input-drugTestDateTime" />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -943,7 +1430,24 @@ export function DrugAlcoholTestForm_v2({
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Date External Test Results received</FormLabel>
                               <FormControl>
-                                <Input {...field} type="date" className="bg-[#ffffff]" data-testid="input-externalTestResultsDate" />
+                                <Input
+                                  {...field}
+                                  type="date"
+                                  min={externalResultsMinDate}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+
+                                    // Reject dates earlier than the allowed minimum.
+                                    // Allow clearing and allow unrestricted entry when no floor exists.
+                                    if (externalResultsMinDate && v && v < externalResultsMinDate) {
+                                      return;
+                                    }
+
+                                    field.onChange(e);
+                                  }}
+                                  className="bg-[#ffffff]"
+                                  data-testid="input-externalTestResultsDate"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1106,8 +1610,12 @@ export function DrugAlcoholTestForm_v2({
                       variant="outline"
                       size="sm"
                       onClick={() => {
+                        const otherKey =
+                          `other-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
                         appendPersonnel({
-                          id: `other-${Date.now()}`,
+                          id: otherKey,
+                          crewId: otherKey,
                           rank: '',
                           name: '',
                           alcoholTest: { checked: false, date: '', time: '' },
@@ -1128,14 +1636,14 @@ export function DrugAlcoholTestForm_v2({
                   </div>
 
                   {/* Personnel Table - Horizontal Scroll */}
-                  <div className="overflow-x-auto border rounded-lg">
+                  <div className="overflow-x-auto border rounded-lg [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }} ref={b1TableWrapperRef} onScroll={handleB1TableScroll}>
                     <table className="w-full min-w-max bg-white">
                       <thead>
                         <tr className="border-b bg-gray-50">
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide border-r" style={{ position: 'sticky', left: 0, backgroundColor: '#f9fafb', zIndex: 20 }}>
                             Rank
                           </th>
-                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide border-r" style={{ position: 'sticky', left: '80px', backgroundColor: '#f9fafb', zIndex: 20 }}>
+                          <th ref={b1NameThRef} className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide border-r" style={{ position: 'sticky', left: '80px', backgroundColor: '#f9fafb', zIndex: 20 }}>
                             Name
                           </th>
                           {showAlcoholFields && (
@@ -1183,9 +1691,11 @@ export function DrugAlcoholTestForm_v2({
                       </thead>
                       <tbody>
                         {personnelFields.map((person, index) => {
-                          const isOtherRow = person.id.startsWith('other-');
+                          const isOtherRow =
+                            person.id.startsWith('other-') ||
+                            ((person as any).crewId?.startsWith?.('other-') ?? false);
                           return (
-                          <tr key={person.id} className="border-b hover:bg-gray-50">
+                          <tr key={person._fieldId} className="border-b hover:bg-gray-50">
                             <td className="px-3 py-2 text-sm border-r" style={{ position: 'sticky', left: 0, backgroundColor: 'white', zIndex: 20 }}>
                               {isOtherRow ? (
                                 <FormField
@@ -1445,7 +1955,7 @@ export function DrugAlcoholTestForm_v2({
                                 name={`personnelTested.${index}.witness`}
                                 render={({ field }) => {
                                   // V2: allCrewMembers is already filtered by vessel via the API endpoint
-                                  const vesselCrew = allCrewMembers;
+                                  const vesselCrew = sortedVesselCrew;
                                   const getCrewDisplayName = (crewId: string) => {
                                     const crew = vesselCrew.find((c: any) => c.crewUuid === crewId || c.id === crewId);
                                     if (!crew) return crewId;
@@ -1454,18 +1964,8 @@ export function DrugAlcoholTestForm_v2({
                                     return rank ? `${name}, ${rank}` : name;
                                   };
                                   const handleWitnessChange = (value: string) => {
-                                    field.onChange(value);
-                                    
-                                    // Auto-copy: first witness selection copies to all rows with empty witness
-                                    if (!witnessAutoCopied.current && value) {
-                                      witnessAutoCopied.current = true;
-                                      const personnelTested = form.getValues('personnelTested') || [];
-                                      personnelTested.forEach((person, i) => {
-                                        if (i !== index && !person.witness) {
-                                          form.setValue(`personnelTested.${i}.witness`, value);
-                                        }
-                                      });
-                                    }
+                                    // '__none__' is the "Clear" option; store it as empty
+                                    field.onChange(value === '__none__' ? '' : value);
                                   };
                                   
                                   return (
@@ -1479,6 +1979,7 @@ export function DrugAlcoholTestForm_v2({
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
+                                          <SelectItem value="__none__">— None —</SelectItem>
                                           {vesselCrew.map((crew, crewIndex) => {
                                             const uniqueKey = crew.id || `crew-${crewIndex}-${crew.firstName}-${crew.familyName}`;
                                             const uniqueValue = crew.id || `crew-${crewIndex}`;
@@ -1506,6 +2007,17 @@ export function DrugAlcoholTestForm_v2({
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Ghost scrollbar — sticky at bottom of viewport, always reachable */}
+                  <div
+                    ref={b1GhostScrollRef}
+                    onScroll={handleB1GhostScroll}
+                    className="overflow-x-auto sticky bottom-0 z-10"
+                    style={{ height: '12px' }}
+                  >
+                    <div ref={b1GhostInnerRef} style={{ height: '1px' }} />
+                  </div>
+
                 </div>
 
                 {/* Comments Section */}
@@ -1669,24 +2181,6 @@ export function DrugAlcoholTestForm_v2({
           <div className="flex justify-end gap-3 mt-6">
             <Button
               type="button"
-              variant="destructive"
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 text-white px-6"
-              data-testid="button-delete-form"
-            >
-              Delete
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleSaveDraft}
-              className="bg-[#5fa5fa] hover:bg-[#5fa5fa]/90 text-white border-0 px-6"
-              data-testid="button-save-form"
-            >
-              Save
-            </Button>
-            <Button
-              type="button"
               onClick={form.handleSubmit(handleFormSubmit, handleFormError)}
               className="bg-green-600 hover:bg-green-700 text-white px-6"
               data-testid="button-submit-form"
@@ -1741,6 +2235,22 @@ export function DrugAlcoholTestForm_v2({
             <h1 className="text-lg sm:text-xl font-bold">{recordUuid ? 'Edit' : 'New'} Drug & Alcohol Test</h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
+            {isSubmittedRecord && canLockUnlock && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 hover:bg-gray-100"
+                onClick={handleLockToggle}
+                disabled={lockMutation.isPending}
+                data-testid="button-lock-toggle"
+                title={isFormLocked ? 'Unlock form' : 'Lock form'}
+              >
+                {isFormLocked
+                  ? <Lock className="h-4 w-4 text-red-500" />
+                  : <LockOpen className="h-4 w-4 text-gray-400" />
+                }
+              </Button>
+            )}
             <Button 
               variant="outline" 
               size="sm"
@@ -1751,42 +2261,52 @@ export function DrugAlcoholTestForm_v2({
               <FileText className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="destructive"
               size="sm"
-              onClick={handleSaveDraft}
-              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
-              data-testid="button-save-draft"
+              onClick={handleDelete}
+              disabled={isFormLocked}
+              className="bg-red-600 hover:bg-red-700 text-white px-3 hidden sm:flex items-center gap-2 h-8 rounded-md text-xs"
+              data-testid="button-delete-form"
             >
-              <Save className="h-4 w-4 mr-2" />
-              Save Draft
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="destructive"
               size="sm"
-              onClick={handleSaveDraft}
-              className="sm:hidden"
-              data-testid="button-save-draft-mobile"
+              onClick={handleDelete}
+              disabled={isFormLocked}
+              className="sm:hidden bg-red-600 hover:bg-red-700 text-white"
+              data-testid="button-delete-form-mobile"
             >
-              <Save className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
             </Button>
-            <Button 
-              size="sm"
-              onClick={form.handleSubmit(handleFormSubmit, handleFormError)}
-              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#16569e] hover:bg-[#16569e]/90"
-              data-testid="button-submit"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Submit
-            </Button>
-            <Button 
-              size="sm"
-              onClick={form.handleSubmit(handleFormSubmit, handleFormError)}
-              className="sm:hidden bg-[#16569e] hover:bg-[#16569e]/90"
-              data-testid="button-submit-mobile"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+            {!isSubmittedRecord && (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSaveDraft}
+                  className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
+                  data-testid="button-save-draft"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Draft
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleSaveDraft}
+                  className="sm:hidden"
+                  data-testid="button-save-draft-mobile"
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -1879,7 +2399,9 @@ export function DrugAlcoholTestForm_v2({
             <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleFormSubmit, handleFormError)} className="space-y-6">
-                  {renderContinuousSections()}
+                  <fieldset disabled={isFormLocked} className="space-y-6 min-w-0">
+                    {renderContinuousSections()}
+                  </fieldset>
                 </form>
               </Form>
             </div>
@@ -1899,6 +2421,26 @@ export function DrugAlcoholTestForm_v2({
         title="D&A Test Attachments"
         itemName={form.watch('vesselId') ? getVesselName(form.watch('vesselId') || '') : 'Drug & Alcohol Test'}
       />
+
+      {/* Lock confirmation dialog (shown only on the qualifying first submit) */}
+      <AlertDialog open={lockDialogOpen} onOpenChange={(open) => { if (!open) handleCancelLockSubmit(); }}>
+        <AlertDialogContent data-testid="dialog-lock-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Lock Form on Submission?</AlertDialogTitle>
+            <AlertDialogDescription>
+              After Submission this form will be locked and cannot be edited, are you sure you want to lock it?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelLockSubmit} data-testid="button-lock-cancel">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmLockSubmit} data-testid="button-lock-confirm">
+              Lock
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import {
   crewTrainingController,
   crewSeaServiceController,
   crewMedicalController,
+  crewBriefingController,
   crewTransferController,
   dashboardController,
 } from "./controllers";
@@ -36,6 +37,11 @@ router.patch("/crew/:crewUuid/protected", crewMembersController.updateWithProtec
 router.delete("/crew/:crewUuid", crewMembersController.delete);
 router.post("/crew/:crewUuid/unarchive", crewMembersController.unarchive);
 router.post("/crew/:crewUuid/terminations", crewMembersController.terminateEmployment);
+
+// ============================================
+// DASHBOARD (crew-pool charts)
+// ============================================
+router.post("/dashboard/ranks-as-of", dashboardController.getRanksAsOf);
 
 // ============================================
 // ASSIGNMENTS
@@ -168,6 +174,41 @@ router.patch("/crew/:crewUuid/doctor-visits/:visitUuid", crewMedicalController.u
 router.delete("/crew/:crewUuid/doctor-visits/:visitUuid", crewMedicalController.deleteDoctorVisit);
 router.post("/crew/:crewUuid/doctor-visits/:visitUuid/attachments", crewMedicalController.addDoctorVisitAttachment);
 router.delete("/crew/:crewUuid/doctor-visits/:visitUuid/attachments/:attUuid", crewMedicalController.removeDoctorVisitAttachment);
+
+// ============================================
+// BRIEFINGS (G1)
+// ============================================
+router.get("/crew/:crewUuid/briefings", crewBriefingController.getBriefings);
+router.get("/crew/:crewUuid/briefings/all", crewBriefingController.getAllBriefingData);
+router.post("/crew/:crewUuid/briefings", crewBriefingController.createBriefing);
+router.patch("/crew/:crewUuid/briefings/:briefingUuid", crewBriefingController.updateBriefing);
+router.delete("/crew/:crewUuid/briefings/:briefingUuid", crewBriefingController.deleteBriefing);
+router.post("/crew/:crewUuid/briefings/:briefingUuid/attachments", crewBriefingController.addBriefingAttachment);
+router.delete("/crew/:crewUuid/briefings/:briefingUuid/attachments/:attUuid", crewBriefingController.removeBriefingAttachment);
+router.get("/briefing-attachments/:attUuid/raw", crewBriefingController.serveBriefingAttachment);
+
+// ============================================
+// DE-BRIEFINGS (G2)
+// ============================================
+router.get("/crew/:crewUuid/debriefings", crewBriefingController.getDebriefings);
+router.post("/crew/:crewUuid/debriefings", crewBriefingController.createDebriefing);
+router.patch("/crew/:crewUuid/debriefings/:debriefingUuid", crewBriefingController.updateDebriefing);
+router.delete("/crew/:crewUuid/debriefings/:debriefingUuid", crewBriefingController.deleteDebriefing);
+router.post("/crew/:crewUuid/debriefings/:debriefingUuid/attachments", crewBriefingController.addDebriefingAttachment);
+router.delete("/crew/:crewUuid/debriefings/:debriefingUuid/attachments/:attUuid", crewBriefingController.removeDebriefingAttachment);
+router.get("/debriefing-attachments/:attUuid/raw", crewBriefingController.serveDebriefingAttachment);
+
+// ============================================
+// ATTACHMENT RAW STREAMING ROUTES (filesystem)
+// ============================================
+router.get("/documents/attachments/:attUuid/raw", crewDocumentsController.serveAttachment);
+router.get("/visas/attachments/:attUuid/raw", crewVisasController.serveAttachment);
+router.get("/education/attachments/:attUuid/raw", crewEducationController.serveAttachment);
+router.get("/licenses/attachments/:attUuid/raw", crewLicensesController.serveAttachment);
+router.get("/training/attachments/:attUuid/raw", crewTrainingController.serveAttachment);
+router.get("/sea-service/attachments/:attUuid/raw", crewSeaServiceController.serveAttachment);
+router.get("/medical/attachments/:attUuid/raw", crewMedicalController.serveMedicalAttachment);
+router.get("/doctor-visits/attachments/:attUuid/raw", crewMedicalController.serveDoctorVisitAttachment);
 
 // ============================================
 // TRANSFER FROM RECRUITMENT

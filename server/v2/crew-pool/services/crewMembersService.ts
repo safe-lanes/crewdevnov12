@@ -27,6 +27,10 @@ import {
   crewMedicalAttachments,
   crewDoctorVisits,
   crewDoctorVisitsAttachments,
+  crewBriefings,
+  crewBriefingAttachments,
+  crewDebriefings,
+  crewDebriefingAttachments,
   crewVesselTypesApplied,
 } from "../../../../shared/v2/crew-pool/schema";
 import {
@@ -77,6 +81,8 @@ interface CrewFullProfile {
   seaService: any[];
   medicals: any[];
   doctorVisits: any[];
+  briefings: any[];
+  debriefings: any[];
 }
 
 import {
@@ -188,6 +194,61 @@ export const crewMembersService = {
       );
     }
 
+    // Attach the distinct vessel type names from each crew member's complete
+    // sea service history (Section A2). A sea service record's vessel type
+    // reference may hold either a master vessel type UUID or a plain name, so
+    // resolve the name via both joins (mirroring dashboardService.getSeaService).
+    const crewUuids = enriched
+      .map((crew: any) => crew.crewUuid)
+      .filter((uuid: unknown): uuid is string => typeof uuid === "string" && uuid.length > 0);
+
+    if (crewUuids.length > 0) {
+      const mvtByUuid = masterVesselTypes;
+      const mvtByName = aliasedTable(masterVesselTypes, "sea_mvt_by_name");
+
+      const seaTypeRows = await db
+        .select({
+          crewUuid: crewSeaService.crewUuid,
+          vesselTypeName: sql<string>`COALESCE(${mvtByUuid.vesselType}, ${mvtByName.vesselType})`,
+        })
+        .from(crewSeaService)
+        .leftJoin(mvtByUuid, eq(crewSeaService.vesselTypeUuid, mvtByUuid.vtUuid))
+        .leftJoin(
+          mvtByName,
+          and(
+            isNull(mvtByUuid.vtUuid),
+            eq(crewSeaService.vesselTypeUuid, mvtByName.vesselType)
+          )
+        )
+        .where(
+          and(
+            inArray(crewSeaService.crewUuid, crewUuids),
+            eq(crewSeaService.isDeleted, false)
+          )
+        );
+
+      const typesByCrew = new Map<string, Set<string>>();
+      for (const row of seaTypeRows) {
+        const name = typeof row.vesselTypeName === "string" ? row.vesselTypeName.trim() : "";
+        if (!row.crewUuid || !name) continue;
+        let set = typesByCrew.get(row.crewUuid);
+        if (!set) {
+          set = new Set<string>();
+          typesByCrew.set(row.crewUuid, set);
+        }
+        set.add(name);
+      }
+
+      for (const crew of enriched) {
+        const set = crew.crewUuid ? typesByCrew.get(crew.crewUuid) : undefined;
+        crew.seaServiceVesselTypes = set ? Array.from(set) : [];
+      }
+    } else {
+      for (const crew of enriched) {
+        crew.seaServiceVesselTypes = [];
+      }
+    }
+
     return enriched;
   },
 
@@ -216,7 +277,7 @@ export const crewMembersService = {
   },
 
   async create(
-    data: Omit<InsertCrewMemberV2, "crewUuid"> & { nationality?: string; vesselType?: string }
+    data: Omit<InsertCrewMemberV2, "crewUuid"> & { nationality?: string; vesselType?: string; auditUserUuid?: string | null }
   ): Promise<CrewMemberV2> {
     if (!data.firstName) {
       throw new Error("First name is required");
@@ -303,7 +364,7 @@ export const crewMembersService = {
 
   async update(
     crewUuid: string,
-    data: Partial<InsertCrewMemberV2> & { nationality?: string; vesselType?: string }
+    data: Partial<InsertCrewMemberV2> & { nationality?: string; vesselType?: string; auditUserUuid?: string | null }
   ): Promise<CrewMemberV2> {
     await this.getByUuid(crewUuid);
 
@@ -1426,6 +1487,79 @@ export const crewMembersService = {
       attachments: doctorVisitAttachments.filter((att: any) => att.visitUuid === visit.visitUuid)
     }));
 
+    // Batch 6: Briefing & De-briefing queries (2 queries, vessel name resolved)
+    const [briefingsWithVessel, debriefingsWithVessel] = await Promise.all([
+      db
+        .select({
+          briefing: crewBriefings,
+          resolvedVesselName: masterVessels.vessel,
+        })
+        .from(crewBriefings)
+        .leftJoin(masterVessels, eq(crewBriefings.vesselUuid, masterVessels.vesselUuid))
+        .where(
+          and(
+            eq(crewBriefings.crewUuid, crewUuid),
+            eq(crewBriefings.isDeleted, false)
+          )
+        )
+        .orderBy(asc(crewBriefings.sortOrder), asc(crewBriefings.createdAt)),
+      db
+        .select({
+          debriefing: crewDebriefings,
+          resolvedVesselName: masterVessels.vessel,
+        })
+        .from(crewDebriefings)
+        .leftJoin(masterVessels, eq(crewDebriefings.vesselUuid, masterVessels.vesselUuid))
+        .where(
+          and(
+            eq(crewDebriefings.crewUuid, crewUuid),
+            eq(crewDebriefings.isDeleted, false)
+          )
+        )
+        .orderBy(asc(crewDebriefings.sortOrder), asc(crewDebriefings.createdAt)),
+    ]);
+
+    const briefings = briefingsWithVessel.map((row: { briefing: any; resolvedVesselName: string | null }) => ({
+      ...row.briefing,
+      vesselName: row.resolvedVesselName || row.briefing.vesselName,
+    }));
+    const debriefings = debriefingsWithVessel.map((row: { debriefing: any; resolvedVesselName: string | null }) => ({
+      ...row.debriefing,
+      vesselName: row.resolvedVesselName || row.debriefing.vesselName,
+    }));
+
+    const briefingUuids = briefings.map((b: any) => b.briefingUuid);
+    const debriefingUuids = debriefings.map((d: any) => d.debriefingUuid);
+
+    // Batch 7: Briefing & De-briefing attachment queries (2 queries)
+    const [briefingAttachments, debriefingAttachments] = await Promise.all([
+      briefingUuids.length > 0
+        ? db.select().from(crewBriefingAttachments).where(
+            and(
+              sql`${crewBriefingAttachments.briefingUuid} = ANY(ARRAY[${sql.raw(briefingUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewBriefingAttachments.isDeleted, false)
+            )
+          )
+        : Promise.resolve([]),
+      debriefingUuids.length > 0
+        ? db.select().from(crewDebriefingAttachments).where(
+            and(
+              sql`${crewDebriefingAttachments.debriefingUuid} = ANY(ARRAY[${sql.raw(debriefingUuids.map((u: string) => `'${u}'`).join(','))}]::text[])`,
+              eq(crewDebriefingAttachments.isDeleted, false)
+            )
+          )
+        : Promise.resolve([]),
+    ]);
+
+    const briefingsWithAttachments = briefings.map((briefing: any) => ({
+      ...briefing,
+      attachments: briefingAttachments.filter((att: any) => att.briefingUuid === briefing.briefingUuid)
+    }));
+    const debriefingsWithAttachments = debriefings.map((debriefing: any) => ({
+      ...debriefing,
+      attachments: debriefingAttachments.filter((att: any) => att.debriefingUuid === debriefing.debriefingUuid)
+    }));
+
     // Process vessel types with resolved names
     const vesselTypes = vesselTypesRaw.map((row: { cvta: any; resolvedVesselTypeName: string | null }) => ({
       ...row.cvta,
@@ -1447,6 +1581,8 @@ export const crewMembersService = {
       seaService: seaServiceWithAttachments,
       medicals: medicalsWithAttachments,
       doctorVisits: doctorVisitsWithAttachments,
+      briefings: briefingsWithAttachments,
+      debriefings: debriefingsWithAttachments,
       vesselTypes,
     };
   },

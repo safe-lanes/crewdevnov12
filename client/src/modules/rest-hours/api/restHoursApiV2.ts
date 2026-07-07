@@ -1,14 +1,7 @@
 import { apiRequest } from '@/lib/queryClient';
+import { getCrewUserId } from '@/lib/crewUser';
 
 const V2_BASE = '/api/v2/rest-hours';
-
-function getCrewUserId(): string | null {
-  try {
-    return localStorage.getItem("crewUserId") || null;
-  } catch {
-    return null;
-  }
-}
 
 function withAuditUser<T>(data: T): T {
   const auditUserUuid = getCrewUserId();
@@ -225,8 +218,11 @@ export const restHoursApiV2 = {
     },
 
     // V1 pattern: /api/rest-hours-daily-records/by-key/:crewMemberId/:vesselId/:monthYear
-    async getByKey(crewMemberId: string, vesselId: string, monthYear: string) {
-      const url = `${V2_BASE}/daily-records/by-key/${encodeURIComponent(crewMemberId)}/${encodeURIComponent(vesselId)}/${encodeURIComponent(monthYear)}`;
+    // When `rank` is supplied, a promotion-split month returns the record for that
+    // specific rank period so each rank row edits its own applicability window.
+    async getByKey(crewMemberId: string, vesselId: string, monthYear: string, rank?: string) {
+      const query = rank ? `?rank=${encodeURIComponent(rank)}` : '';
+      const url = `${V2_BASE}/daily-records/by-key/${encodeURIComponent(crewMemberId)}/${encodeURIComponent(vesselId)}/${encodeURIComponent(monthYear)}${query}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch daily record by key');
       return response.json();
@@ -492,6 +488,19 @@ export const restHoursApiV2 = {
       return response.json();
     },
 
+    // Resolve the rank each crew member held on a given date (from promotion
+    // history). Returns a map of crewMemberId (empNo) -> rank.
+    async getRanksAsOfDate(date: string, crewMemberIds: string[]): Promise<Record<string, string>> {
+      const ids = Array.from(new Set(crewMemberIds.filter(Boolean)));
+      if (!date || ids.length === 0) return {};
+      const searchParams = new URLSearchParams();
+      searchParams.set('date', date);
+      searchParams.set('crewMemberIds', ids.join(','));
+      const response = await fetch(`${V2_BASE}/variable-tasks/ranks-as-of-date?${searchParams}`);
+      if (!response.ok) throw new Error('Failed to resolve ranks as of date');
+      return response.json();
+    },
+
     async create(data: any) {
       const response = await apiRequest('POST', `${V2_BASE}/variable-tasks`, withAuditUser(data));
       if (!response.ok) {
@@ -595,12 +604,25 @@ export const restHoursApiV2 = {
     },
 
     async getCrewCountByVessel(months?: string[]): Promise<Record<string, Record<string, number>>> {
-      const url = new URL(`${V2_BASE}/masters/crew-count-by-vessel`, window.location.origin);
+      const searchParams = new URLSearchParams();
       if (months && months.length > 0) {
-        url.searchParams.set('months', months.join(','));
+        searchParams.set('months', months.join(','));
       }
-      const response = await fetch(url.toString());
+      const url = `${V2_BASE}/masters/crew-count-by-vessel${searchParams.toString() ? '?' + searchParams : ''}`;
+      const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch crew count by vessel');
+      return response.json();
+    },
+
+    async getFleetGroups() {
+      const response = await fetch(`/api/v2/masters/fleet-groups`);
+      if (!response.ok) throw new Error('Failed to fetch fleet groups');
+      return response.json();
+    },
+
+    async getAdditionalGroups() {
+      const response = await fetch(`/api/v2/masters/additional-groups`);
+      if (!response.ok) throw new Error('Failed to fetch additional groups');
       return response.json();
     },
   },

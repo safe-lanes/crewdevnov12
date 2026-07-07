@@ -6,6 +6,7 @@ import { candidateApi } from "@/modules/recruitment/api/candidateApi";
 import { RECRUITED_STATUSES } from "@/modules/recruitment/statusBuckets";
 import { CrewRecruitmentDrilldownDialog } from "./CrewRecruitmentDrilldownDialog";
 import { useDrilldownParam } from "./useDrilldownParam";
+import { useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface CandidateRow {
@@ -14,6 +15,9 @@ interface CandidateRow {
   nationalityUuid?: string | null;
   status?: string | null;
   createdAt?: string | Date | null;
+  manningAgent?: string | null;
+  recruitmentDate?: string | null;   // ← ADD THIS
+  crewPool?: string | null;
 }
 
 function escapeHtml(value: string): string {
@@ -81,7 +85,7 @@ function parseDate(value: unknown): Date | null {
 export const CrewRecruitmentRankChart = ({
   period,
   ranks = [],
-  crewPools: _crewPools = [],
+  crewPools = [],
   manningAgents = [],
   nationalities = [],
   chartRef,
@@ -118,6 +122,23 @@ export const CrewRecruitmentRankChart = ({
     staleTime: 60 * 1000,
   });
 
+  const { data: nationalityList = [] } = useNationalitiesV2();
+
+  const nationalityNameByUuid = useMemo(() => {
+    const map = new Map<string, string>();
+
+    (nationalityList as any[]).forEach((n) => {
+      const uuid = n.nationalityUuid || n.uuid || n.id;
+      const name = n?.nationality || n?.name;
+
+      if (uuid && name) {
+        map.set(String(uuid), String(name));
+      }
+    });
+
+    return map;
+  }, [nationalityList]);
+
   const chartData = useMemo<RankCount[]>(() => {
     if (!range) return [];
     const counts = new Map<string, number>();
@@ -127,7 +148,7 @@ export const CrewRecruitmentRankChart = ({
       // also be counted as recruits on the chart.
       if (!c.status || !RECRUITED_STATUSES.has(String(c.status))) continue;
 
-      const recruited = parseDate(c.createdAt);
+      const recruited = parseDate(c.recruitmentDate);
       if (!recruited) continue;
       if (recruited < range.from || recruited > range.to) continue;
 
@@ -135,23 +156,23 @@ export const CrewRecruitmentRankChart = ({
       if (!rank) continue;
 
       if (ranks.length > 0 && !ranks.includes(rank)) continue;
-      if (
-        nationalities.length > 0 &&
-        !nationalities.includes((c.nationalityUuid || "") as string)
-      ) {
-        continue;
+      if (nationalities.length > 0) {
+        const nationalityName =
+          nationalityNameByUuid.get(String(c.nationalityUuid || "")) || "";
+
+        if (!nationalities.includes(nationalityName)) {
+          continue;
+        }
       }
-      // manningAgent / crewPool live in related tables; with empty arrays the
-      // filter is a no-op. When Task #33 supplies values, candidates lacking
-      // those fields on the row should not match.
-      if (manningAgents.length > 0) continue;
+      if (manningAgents.length > 0 && !manningAgents.includes((c.manningAgent || "").trim())) continue;
+      if (crewPools.length > 0 && !crewPools.includes((c.crewPool || "").trim())) continue;
 
       counts.set(rank, (counts.get(rank) || 0) + 1);
     }
     return Array.from(counts.entries())
       .map(([rank, count]) => ({ rank, count }))
       .sort((a, b) => b.count - a.count);
-  }, [candidates, range, ranks, nationalities, manningAgents]);
+  }, [candidates, range, ranks, nationalities, manningAgents, crewPools, nationalityNameByUuid]);
 
   const chartOptions = useMemo<AgChartOptions>(
     () => ({
@@ -279,7 +300,7 @@ export const CrewRecruitmentRankChart = ({
         rank={selectedRank}
         period={period}
         ranks={ranks}
-        crewPools={_crewPools}
+        crewPools={crewPools}
         manningAgents={manningAgents}
         nationalities={nationalities}
       />

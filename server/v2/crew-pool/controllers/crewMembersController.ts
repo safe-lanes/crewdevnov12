@@ -105,7 +105,11 @@ export const crewMembersController = {
       const validatedData = insertCrewMemberV2Schema
         .omit({ crewUuid: true })
         .parse(req.body);
-      const crew = await crewMembersService.create(validatedData);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const crew = await crewMembersService.create({
+        ...validatedData,
+        auditUserUuid,
+      });
       res.status(201).json(crew);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -138,7 +142,11 @@ export const crewMembersController = {
     try {
       const { crewUuid } = req.params;
       const validatedData = insertCrewMemberV2Schema.partial().parse(req.body);
-      const crew = await crewMembersService.update(crewUuid, validatedData);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const crew = await crewMembersService.update(crewUuid, {
+        ...validatedData,
+        auditUserUuid,
+      });
       res.json(crew);
     } catch (error: any) {
       if (error instanceof z.ZodError) {

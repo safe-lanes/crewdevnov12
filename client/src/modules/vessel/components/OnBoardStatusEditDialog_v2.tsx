@@ -20,6 +20,7 @@ import { vesselApiV2 } from '../api/vesselApiV2';
 import { apiRequest } from '@/lib/queryClient';
 import { API_BASE_URL } from '@/config/api';
 import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const SIGN_OFF_REASONS = [
     "Contract Completed",
@@ -243,8 +244,13 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             // stale takeOverDate / takeOverConfirmation values.
             const isPostHandoverRow =
                 planningData?.crewStatus === "secondary" && !!planningData?.handOverDate;
+            // Safety guard: a crew already confirmed as Primary must never re-trigger
+            // a takeover swap on a later, unrelated save — Primary's dialog has no
+            // editable checkbox, so a true value here only ever means "already done before".
+            const isAlreadyConfirmedPrimary =
+                planningData?.crewStatus === "primary" && !!planningData?.takeOverConfirmation;
             const isTakeover =
-                !isPostHandoverRow && data.takeOverConfirmation && data.takeOverDate;
+                !isPostHandoverRow && !isAlreadyConfirmedPrimary && data.takeOverConfirmation && data.takeOverDate;
 
             if (data.reliefStatus === "Signed Off") {
                 const signedOffErrors: string[] = [];
@@ -561,6 +567,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                     name="takeOverDate"
                                     render={({ field }) => (
                                         <FormItem>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
                                             <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                                 <FormLabel className="text-sm text-gray-700">Take Over Date</FormLabel>
                                                 <Popover open={takeOverDateOpen} onOpenChange={setTakeOverDateOpen}>
@@ -598,6 +606,14 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                     </PopoverContent>
                                                 </Popover>
                                             </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="right" align="start" className="max-w-xs">
+                                                    <ol className="list-decimal space-y-1 pl-4 text-xs">
+                                                        <li>Selecting 'Takeover Confirmation' and adding 'Takeover Date' changes the status of the taking over Crew member from Primary (P) to Secondary (S) and vice versa.</li>
+                                                        <li>This step is to record the official handover / Takeover in the system.</li>
+                                                    </ol>
+                                                </TooltipContent>
+                                            </Tooltip>
                                         </FormItem>
                                     )}
                                 />
@@ -607,6 +623,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                     name="takeOverConfirmation"
                                     render={({ field }) => (
                                         <FormItem>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
                                             <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                                 <FormLabel className="text-sm text-gray-700">Take Over Confirmation</FormLabel>
                                                 <FormControl>
@@ -619,6 +637,14 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                     </div>
                                                 </FormControl>
                                             </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="right" align="start" className="max-w-xs">
+                                                    <ol className="list-decimal space-y-1 pl-4 text-xs">
+                                                        <li>Selecting 'Takeover Confirmation' and adding 'Takeover Date' changes the status of the taking over Crew member from Primary (P) to Secondary (S) and vice versa.</li>
+                                                        <li>This step is to record the official handover / Takeover in the system.</li>
+                                                    </ol>
+                                                </TooltipContent>
+                                            </Tooltip>
                                         </FormItem>
                                     )}
                                 />
@@ -716,6 +742,8 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             name="reliefStatus"
                             render={({ field }) => (
                                 <FormItem>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
                                     <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                                         <FormLabel className="text-sm text-gray-700">Relief Status</FormLabel>
                                         <FormControl>
@@ -737,6 +765,14 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                             </Select>
                                         </FormControl>
                                     </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" align="start" className="max-w-xs">
+                                            <ol className="list-decimal space-y-1 pl-4 text-xs">
+                                                <li>Selecting 'Signed Off' status will sign off the crew member and remove from the 'On Board Status' section. Archived record will be visible in Vessel &gt; Crew List &gt; Show Archived.</li>
+                                                <li>Before 'Signing Off' ensure the Takeover date is entered in the Taking Over Crew member's Popup (Not Mandatory). This populates the 'Handover date' here.</li>
+                                            </ol>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 </FormItem>
                             )}
                         />
@@ -860,7 +896,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                         <div className="flex justify-end gap-2 pt-4">
                             <Button 
                                 type="submit"
-                                className="bg-[#14b8a6] hover:bg-[#14b8a6]/90"
+                                className="bg-green-600 hover:bg-green-700"
                                 disabled={!isOnboardCrewAssigned || updatePlanningV2.isPending || createPlanningV2.isPending}
                                 data-testid="button-submit-onboard"
                             >

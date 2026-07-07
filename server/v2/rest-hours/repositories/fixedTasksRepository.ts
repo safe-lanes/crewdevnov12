@@ -61,11 +61,11 @@ export class FixedTasksRepository {
     return results[0] ? this.parseFixedTask(results[0]) : undefined;
   }
 
-  async findByKey(
+  async findAllByKey(
     crewMemberId: string,
     vesselId: string,
     monthYear: string
-  ): Promise<RhFixedTaskV2 | undefined> {
+  ): Promise<RhFixedTaskV2[]> {
     const db = getDb();
     const results = await db
       .select()
@@ -78,7 +78,26 @@ export class FixedTasksRepository {
           eq(rhFixedTasksV2.isDeleted, false)
         )
       );
-    return results[0] ? this.parseFixedTask(results[0]) : undefined;
+    return results
+      .sort((a: RhFixedTaskV2, b: RhFixedTaskV2) =>
+        (a.applicableFrom ?? '').localeCompare(b.applicableFrom ?? ''))
+      .map((task: RhFixedTaskV2) => this.parseFixedTask(task));
+  }
+
+  // Single "active" fixed-task row. Non-split case = byte-identical to before;
+  // after a promotion split the latest unlocked rank period is preferred.
+  async findByKey(
+    crewMemberId: string,
+    vesselId: string,
+    monthYear: string
+  ): Promise<RhFixedTaskV2 | undefined> {
+    const all = await this.findAllByKey(crewMemberId, vesselId, monthYear);
+    if (all.length <= 1) return all[0];
+    const activeUnlocked = all.filter(t => !t.isLocked);
+    const pool = activeUnlocked.length > 0 ? activeUnlocked : all;
+    const fullMonth = pool.find(t => !t.applicableFrom && !t.applicableTo);
+    if (fullMonth) return fullMonth;
+    return pool[pool.length - 1];
   }
 
   async create(

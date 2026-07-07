@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { appraisalsApiV2 } from "@/modules/crewing/api/appraisalsApiV2";
-import { extractRank } from "./appraisalRank";
+import { extractRank, isStage2Submitted, extractAppraisalPeriodTo } from "./appraisalRank";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface AppraisalRow {
@@ -23,6 +23,16 @@ interface AppraisalRow {
   appraisalDate?: string | null;
   overallRating?: string | number | null;
   appraisalData?: string | null;
+  stageStatuses?: string | null;
+  crewMemberId?: string | null;
+}
+
+interface CrewPoolLookupRow {
+  crewUuid?: string | null;
+  empNo?: string | null;
+  crewPool?: string | null;
+  manningAgentName?: string | null;
+  nationality?: string | null;
 }
 
 interface CrewAppraisalsDrilldownDialogProps {
@@ -131,6 +141,9 @@ export const CrewAppraisalsDrilldownDialog = ({
   onOpenChange,
   rank,
   period,
+  crewPools = [],
+  manningAgents = [],
+  nationalities = [],
 }: CrewAppraisalsDrilldownDialogProps) => {
   const [, setLocation] = useLocation();
 
@@ -141,12 +154,98 @@ export const CrewAppraisalsDrilldownDialog = ({
     enabled: open,
   });
 
+  const { data: vessels = [] } = useQuery<any[]>({
+    queryKey: ["/api/v2/masters/vessels"],
+    staleTime: 60 * 1000,
+    enabled: open,
+  });
+
+  const { data: crew } = useQuery<CrewPoolLookupRow[]>({
+    queryKey: ["/api/v2/crew-pool/crew/details", { view: "all", all: true }],
+    queryFn: async ({ signal }) => {
+      const PAGE_SIZE = 1000;
+      const all: CrewPoolLookupRow[] = [];
+      let offset = 0;
+      for (let i = 0; i < 100; i++) {
+        const response = await fetch(
+          `/api/v2/crew-pool/crew/details?view=all&limit=${PAGE_SIZE}&offset=${offset}`,
+          { signal },
+        );
+        if (!response.ok) throw new Error("Failed to fetch crew list");
+        const json = await response.json();
+        const page = json.data ?? [];
+        all.push(...page);
+        const total = json.pagination?.total ?? all.length;
+        offset += PAGE_SIZE;
+        if (page.length < PAGE_SIZE || all.length >= total) break;
+      }
+      return all;
+    },
+    staleTime: 60 * 1000,
+    enabled: open && (crewPools.length > 0 || manningAgents.length > 0 || nationalities.length > 0),
+  });
+
+  const poolByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const pool = (c.crewPool || "").trim();
+      if (!pool) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), pool);
+      if (c.empNo) map.set(String(c.empNo), pool);
+    }
+    return map;
+  }, [crew]);
+
+  const agentByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const agent = (c.manningAgentName || "").trim();
+      if (!agent) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), agent);
+      if (c.empNo) map.set(String(c.empNo), agent);
+    }
+    return map;
+  }, [crew]);
+
+  const nationalityByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const nat = (c.nationality || "").trim();
+      if (!nat) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), nat);
+      if (c.empNo) map.set(String(c.empNo), nat);
+    }
+    return map;
+  }, [crew]);
+
+  // Resolve the stored vessel reference to the vessel's CURRENT name. Appraisals
+  // store the vessel UUID; we key the map by UUID and also by numeric id / name
+  // so legacy rows still resolve. The name is read from master data, so a later
+  // vessel rename is reflected here.
+  const vesselNameByKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const v of vessels) {
+      const name = v.vessel || v.name || v.vesselName;
+      if (!name) continue;
+      for (const k of [v.vesselUuid, v.uuid, v.entryId, v.id, v.vesselId]) {
+        if (k != null && String(k).trim() !== "") map.set(String(k), name);
+      }
+    }
+    return map;
+  }, [vessels]);
+
+  const resolveVesselName = (value: string | null | undefined): string => {
+    const raw = (value || "").trim();
+    if (!raw) return "";
+    return vesselNameByKey.get(raw) || raw;
+  };
+
   const range = useMemo(() => periodToRange(period), [period]);
 
   const matching = useMemo<AppraisalRow[]>(() => {
     if (!rank || !range) return [];
     return appraisals.filter((a) => {
-      const date = parseDate(a.appraisalDate);
+      const date = parseDate(extractAppraisalPeriodTo(a));
       if (!date) return false;
       if (date < range.from || date > range.to) return false;
 
@@ -157,15 +256,32 @@ export const CrewAppraisalsDrilldownDialog = ({
       // from the bar's average and so should not appear here either.
       if (parseRating(a.overallRating) === null) return false;
 
+      if (!isStage2Submitted(a)) return false;
+
+      if (crewPools.length > 0) {
+        const pool = poolByCrewKey.get((a.crewMemberId || "").trim());
+        if (!pool || !crewPools.includes(pool)) return false;
+      }
+
+      if (manningAgents.length > 0) {
+        const agent = agentByCrewKey.get((a.crewMemberId || "").trim());
+        if (!agent || !manningAgents.includes(agent)) return false;
+      }
+
+      if (nationalities.length > 0) {
+        const nat = nationalityByCrewKey.get((a.crewMemberId || "").trim());
+        if (!nat || !nationalities.includes(nat)) return false;
+      }
+
       return true;
     });
-  }, [appraisals, range, rank]);
+  }, [appraisals, range, rank, crewPools, poolByCrewKey, manningAgents, agentByCrewKey, nationalities, nationalityByCrewKey]);
 
   const sorted = useMemo(
     () =>
       [...matching].sort((a, b) => {
-        const da = parseDate(a.appraisalDate)?.getTime() ?? 0;
-        const db = parseDate(b.appraisalDate)?.getTime() ?? 0;
+        const da = parseDate(extractAppraisalPeriodTo(a))?.getTime() ?? 0;
+        const db = parseDate(extractAppraisalPeriodTo(b))?.getTime() ?? 0;
         return db - da;
       }),
     [matching],
@@ -228,7 +344,7 @@ export const CrewAppraisalsDrilldownDialog = ({
                       Appraisal Type
                     </th>
                     <th className="w-[12%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">
-                      Appraisal Date
+                      Appraisal Period To
                     </th>
                     <th className="w-[10%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">
                       Overall Rating
@@ -246,10 +362,11 @@ export const CrewAppraisalsDrilldownDialog = ({
                       (a.seafarersName && a.seafarersName.trim()) ||
                       (parsed.seafarersName || "").trim() ||
                       "Unnamed Seafarer";
-                    const vesselName =
+                    const vesselName = resolveVesselName(
                       (a.vessel && a.vessel.trim()) ||
-                      (parsed.vessel || "").trim() ||
-                      "";
+                        (parsed.vessel || "").trim() ||
+                        "",
+                    );
                     const appraisalType =
                       (a.appraisalType && String(a.appraisalType).trim()) ||
                       (parsed.appraisalType || "").trim() ||
@@ -270,7 +387,7 @@ export const CrewAppraisalsDrilldownDialog = ({
                         <td className="px-4 py-2 text-sm">{vesselName}</td>
                         <td className="px-4 py-2 text-sm">{appraisalType}</td>
                         <td className="px-4 py-2 text-sm">
-                          {formatDate(a.appraisalDate)}
+                          {formatDate(extractAppraisalPeriodTo(a))}
                         </td>
                         <td className="px-4 py-2 text-sm">{ratingLabel}</td>
                         <td className="px-4 py-2 text-center">

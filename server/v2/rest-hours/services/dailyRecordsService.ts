@@ -1,4 +1,4 @@
-import { DailyRecordsRepository, CrewRecordsRepository, VesselRecordsRepository, VariableTasksRepository } from "../repositories";
+import { DailyRecordsRepository, CrewRecordsRepository, VesselRecordsRepository, VariableTasksRepository, DatelineRepository } from "../repositories";
 import type {
   RhDailyRecordV2,
   InsertRhDailyRecordV2,
@@ -12,11 +12,13 @@ import { detectActivityConflict } from "../utils/activityConflictHelpers";
 import { getDb } from "../../db";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { eq, and, or, isNull, lte, gte } from "drizzle-orm";
+import { rankResolutionService } from "./rankResolutionService";
 
 const dailyRecordsRepository = new DailyRecordsRepository();
 const crewRecordsRepository = new CrewRecordsRepository();
 const variableTasksRepository = new VariableTasksRepository();
 const vesselRecordsRepository = new VesselRecordsRepository();
+const datelineRepository = new DatelineRepository();
 
 async function getOnboardCrewCount(vesselId: string, monthValue: string): Promise<number> {
   const db = getDb();
@@ -34,7 +36,9 @@ async function getOnboardCrewCount(vesselId: string, monthValue: string): Promis
     .where(
       and(
         eq(crewAssignments.vesselUuid, vesselId),
-        or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
+        or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
+        // Only Signed On crew counted, consistent with the RH Records list.
+        eq(crewAssignments.assignmentType, "OnBoard")
       )
     );
 
@@ -99,6 +103,15 @@ function dateInMonth(date: string | null | undefined, firstDay: string, lastDay:
   return date >= firstDay && date <= lastDay;
 }
 
+// The ISO day immediately before `date` (UTC-safe). Used to end an assignment's
+// stats window the day before the next assignment's sign-on at a handover so the
+// handover day belongs solely to the later rank period.
+function previousDay(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
 function formatDateDisplay(date: string): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const parts = date.split('-');
@@ -157,6 +170,34 @@ function getApplicableDayRange(
   return changed ? { from, to } : undefined;
 }
 
+// Convert a record's rank-period window (date strings) into the {from,to} day
+// range the violation helpers use. NULL window ⇒ undefined ⇒ whole month, so a
+// non-promotion record behaves exactly as before.
+function windowToDayRange(
+  record: { applicableFrom?: string | null; applicableTo?: string | null },
+  monthValue: string
+): { from: number; to: number } | undefined {
+  if (!record.applicableFrom && !record.applicableTo) return undefined;
+  const [year, month] = monthValue.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let from = 1;
+  let to = daysInMonth;
+  if (record.applicableFrom) from = parseInt(record.applicableFrom.split('-')[2], 10);
+  if (record.applicableTo) to = parseInt(record.applicableTo.split('-')[2], 10);
+  return { from, to };
+}
+
+// Intersect two optional day ranges. undefined means "whole month", so the
+// intersection of undefined with X is X. A non-overlapping result has from > to.
+function intersectRanges(
+  a: { from: number; to: number } | undefined,
+  b: { from: number; to: number } | undefined
+): { from: number; to: number } | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return { from: Math.max(a.from, b.from), to: Math.min(a.to, b.to) };
+}
+
 async function getCrewAssignmentsForMonth(
   crewMemberId: string,
   vesselId: string,
@@ -207,21 +248,22 @@ async function getCrewAssignmentsForMonth(
   }
 }
 
-async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: string) {
+async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: string, auditUserUuid: string | null = null) {
   try {
-    const dailyRecord = await dailyRecordsRepository.findByKey(crewMemberId, vesselId, monthYear);
-    if (!dailyRecord) {
+    // All rank-period records for the month. Non-promotion months have exactly
+    // one record with a NULL window, so the loop below collapses to the original
+    // single-record behaviour.
+    const dailyRecords = await dailyRecordsRepository.findAllByKey(crewMemberId, vesselId, monthYear);
+    if (dailyRecords.length === 0) {
       return;
     }
-
-    const dailyRecordsJson = dailyRecord.dailyRecords || '[]';
 
     const assignments = await getCrewAssignmentsForMonth(crewMemberId, vesselId, monthYear);
     const { firstDay, lastDay } = getMonthBounds(monthYear);
 
     let variableTasks: Awaited<ReturnType<typeof variableTasksRepository.findAll>> = [];
     try {
-      variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthYear });
+      variableTasks = await variableTasksRepository.findAll({ vesselId, periodValue: monthYear, isDraft: false });
     } catch (e) {
       console.error('Failed to fetch variable tasks during postSaveSync:', e);
     }
@@ -232,7 +274,7 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
       monthValue: monthYear,
     });
 
-    let crewName = dailyRecord.name || '';
+    let crewName = dailyRecords.find(r => r.name && r.name !== 'undefined undefined')?.name || '';
     if (!crewName || crewName === 'undefined undefined') {
       const db = getDb();
       const crewRows = await db
@@ -243,6 +285,15 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
         crewName = [crewRows[0].firstName, crewRows[0].familyName].filter(Boolean).join(' ');
       }
     }
+
+    // A mid-month promotion splits the month into per-rank daily records (more
+    // than one distinct rank). When that has happened, a previous assignment
+    // that signs OFF on the exact day the next one signs ON is a genuine rank
+    // handover (e.g. a prior-joining promotion redeployed on the same vessel)
+    // and BOTH periods must survive so each rank gets its own crew row. Without
+    // a rank split (e.g. a same-rank re-sign on the same day) the boundary-
+    // touching pair collapses exactly as before — behaviour is byte-identical.
+    const hasRankSplit = new Set(dailyRecords.map(r => r.rank).filter(Boolean)).size > 1;
 
     let resolvedAssignments = assignments;
     if (assignments.length > 1) {
@@ -257,7 +308,14 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
         }
         const prev = kept[kept.length - 1];
         const prevOff = prev.signOffDate;
-        if (prevOff && curr.signOnDate && curr.signOnDate > prevOff) {
+        // Separate period when the next sign-on is strictly after the previous
+        // sign-off (a gap), or exactly on it when a rank split confirms the
+        // handover (the sign-off date is the last day of the old rank period).
+        const isSeparatePeriod = !!prevOff && !!curr.signOnDate && (
+          curr.signOnDate > prevOff ||
+          (curr.signOnDate === prevOff && hasRankSplit)
+        );
+        if (isSeparatePeriod) {
           kept.push(curr);
         } else {
           const prevDate = prev.signOnDate || '';
@@ -278,74 +336,131 @@ async function postSaveSync(crewMemberId: string, vesselId: string, monthYear: s
 
     const matchedRecordUuids = new Set<string>();
 
-    for (const assignment of effectiveAssignments) {
-      const effectiveSignOff = assignment.isCurrent ? null : assignment.signOffDate;
-      const dayRange = (assignment.signOnDate || effectiveSignOff)
-        ? getApplicableDayRange(assignment.signOnDate, effectiveSignOff, firstDay, lastDay, monthYear)
-        : undefined;
+    let datelineAdjustments: { day: number; type: 'advanced' | 'retarded' }[] = [];
 
-      const recordingPercent = calculateRecordingPercentage(dailyRecordsJson, monthYear, dayRange);
-      const totalViolations = countViolationDays(dailyRecordsJson, 'Rest', false, false, dayRange);
-      const predictedViolations = countViolationDays(dailyRecordsJson, 'Rest', false, true, dayRange);
-      const { totalNCs, predictedNCs } = calculateNCs(dailyRecordsJson, 'Rest', false, dayRange);
+    try {
+      const adjRows = await datelineRepository.findAll({
+        vesselId,
+        monthValue: monthYear,
+      });
 
-      const signOnOffInfo = (assignment.signOnDate || effectiveSignOff)
-        ? buildSignOnOffInfo(assignment.signOnDate, effectiveSignOff, firstDay, lastDay)
-        : null;
-
-      let activityConflicting = false;
-      if (variableTasks.length > 0) {
-        try {
-          activityConflicting = detectActivityConflict(crewMemberId, variableTasks, dailyRecordsJson, monthYear);
-        } catch (e) {
-          console.error('Failed to detect activity conflict during postSaveSync:', e);
-        }
+      if (adjRows.length > 0) {
+        datelineAdjustments = JSON.parse(adjRows[0].adjustments) || [];
       }
-
-      let matchedRecord = existingCrewRecords.find(
-        r => !matchedRecordUuids.has(r.rhCrewRecordUuid) && r.signOnOffInfo === signOnOffInfo
+    } catch (e) {
+      console.error(
+        'Failed to load date line adjustments during postSaveSync:',
+        e
       );
-      if (!matchedRecord && existingCrewRecords.length > 0) {
-        matchedRecord = existingCrewRecords.find(r => !matchedRecordUuids.has(r.rhCrewRecordUuid));
-      }
+    }
 
-      if (matchedRecord) {
-        matchedRecordUuids.add(matchedRecord.rhCrewRecordUuid);
-        await crewRecordsRepository.update(matchedRecord.rhCrewRecordUuid, {
-          recordingStatusPercent: recordingPercent,
-          totalViolations,
-          predictedViolations,
-          totalNCs,
-          predictedNCs,
-          activityConflicting,
-          signOnOffInfo,
-        });
-      } else {
-        await crewRecordsRepository.create({
-          crewMemberId,
-          vesselId,
-          rank: dailyRecord.rank || '',
-          name: crewName,
-          monthValue: monthYear,
-          month: formatMonthDisplay(monthYear),
-          signOnOffInfo: signOnOffInfo ?? null,
-          recordingStatusPercent: recordingPercent,
-          activityConflicting,
-          totalViolations,
-          totalNCs,
-          predictedViolations,
-          predictedNCs,
-        });
+    // Outer loop: each rank period (daily record). Inner loop: each assignment.
+    // The summary day range is the intersection of the rank window and the
+    // assignment window so that each rank period produces its own crew row.
+    for (const dailyRecord of dailyRecords) {
+      const dailyRecordsJson = dailyRecord.dailyRecords || '[]';
+      const recordWindow = windowToDayRange(dailyRecord, monthYear);
+
+      for (let ai = 0; ai < effectiveAssignments.length; ai++) {
+        const assignment = effectiveAssignments[ai];
+        const effectiveSignOff = assignment.isCurrent ? null : assignment.signOffDate;
+        // For the stats/day-range ONLY, end this assignment's window the day
+        // before the next assignment's sign-on when they meet at a handover
+        // boundary, so the handover day belongs solely to the later rank period
+        // (otherwise the boundary day would also fall inside this assignment and
+        // produce a spurious one-day row for the other rank). The displayed
+        // sign-on/off below still uses the real sign-off date.
+        const nextSignOn = effectiveAssignments[ai + 1]?.signOnDate ?? null;
+        let rangeSignOff = effectiveSignOff;
+        if (nextSignOn && (rangeSignOff === null || nextSignOn <= rangeSignOff)) {
+          rangeSignOff = previousDay(nextSignOn);
+        }
+        const assignmentRange = (assignment.signOnDate || rangeSignOff)
+          ? getApplicableDayRange(assignment.signOnDate, rangeSignOff, firstDay, lastDay, monthYear)
+          : undefined;
+
+        const dayRange = intersectRanges(recordWindow, assignmentRange);
+        // Skip rank-period / assignment combinations that do not overlap.
+        if (dayRange && dayRange.from > dayRange.to) {
+          continue;
+        }
+
+        const recordingPercent = calculateRecordingPercentage(dailyRecordsJson, monthYear, dayRange, datelineAdjustments);
+        const totalViolations = countViolationDays(dailyRecordsJson, 'Rest', false, false, dayRange);
+        const predictedViolations = countViolationDays(dailyRecordsJson, 'Rest', false, true, dayRange);
+        const { totalNCs, predictedNCs } = calculateNCs(dailyRecordsJson, 'Rest', false, dayRange);
+
+        const signOnOffInfo = (assignment.signOnDate || effectiveSignOff)
+          ? buildSignOnOffInfo(assignment.signOnDate, effectiveSignOff, firstDay, lastDay)
+          : null;
+
+        let activityConflicting = false;
+        if (variableTasks.length > 0) {
+          try {
+            activityConflicting = detectActivityConflict(crewMemberId, variableTasks, dailyRecordsJson, monthYear);
+          } catch (e) {
+            console.error('Failed to detect activity conflict during postSaveSync:', e);
+          }
+        }
+
+        // Match the crew summary row preferring same rank + sign-on/off, then
+        // sign-on/off alone (legacy behaviour), then any unused row.
+        let matchedRecord = existingCrewRecords.find(
+          r => !matchedRecordUuids.has(r.rhCrewRecordUuid)
+            && r.rank === dailyRecord.rank
+            && r.signOnOffInfo === signOnOffInfo
+        );
+        if (!matchedRecord) {
+          matchedRecord = existingCrewRecords.find(
+            r => !matchedRecordUuids.has(r.rhCrewRecordUuid) && r.signOnOffInfo === signOnOffInfo
+          );
+        }
+        if (!matchedRecord && existingCrewRecords.length > 0) {
+          matchedRecord = existingCrewRecords.find(r => !matchedRecordUuids.has(r.rhCrewRecordUuid));
+        }
+
+        if (matchedRecord) {
+          matchedRecordUuids.add(matchedRecord.rhCrewRecordUuid);
+          await crewRecordsRepository.update(matchedRecord.rhCrewRecordUuid, {
+            rank: dailyRecord.rank || matchedRecord.rank,
+            recordingStatusPercent: recordingPercent,
+            totalViolations,
+            predictedViolations,
+            totalNCs,
+            predictedNCs,
+            activityConflicting,
+            signOnOffInfo,
+            updatedByUuid: auditUserUuid,
+          });
+        } else {
+          await crewRecordsRepository.create({
+            crewMemberId,
+            vesselId,
+            rank: dailyRecord.rank || '',
+            name: crewName,
+            monthValue: monthYear,
+            month: formatMonthDisplay(monthYear),
+            signOnOffInfo: signOnOffInfo ?? null,
+            recordingStatusPercent: recordingPercent,
+            activityConflicting,
+            totalViolations,
+            totalNCs,
+            predictedViolations,
+            predictedNCs,
+            createdByUuid: auditUserUuid,
+            updatedByUuid: auditUserUuid,
+          });
+        }
       }
     }
 
-    await updateVesselRecordSync(vesselId, monthYear);
+    await updateVesselRecordSync(vesselId, monthYear, auditUserUuid);
   } catch (error) {
     console.error('Failed to sync crew/vessel records after daily record save:', error);
   }
 }
 
-async function updateVesselRecordSync(vesselId: string, monthValue: string) {
+async function updateVesselRecordSync(vesselId: string, monthValue: string, auditUserUuid: string | null = null) {
   try {
     const crewRecords = await crewRecordsRepository.findAll({
       vesselId,
@@ -422,6 +537,7 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
         crewWithPredictedViolations,
         predictedNCs,
         crewWithPredictedNCs,
+        updatedByUuid: auditUserUuid,
       });
     } else {
       await vesselRecordsRepository.create({
@@ -442,6 +558,8 @@ async function updateVesselRecordSync(vesselId: string, monthValue: string) {
         predictedNCs,
         crewWithPredictedNCs,
         officeReviewStatus: '',
+        createdByUuid: auditUserUuid,
+        updatedByUuid: auditUserUuid,
       });
     }
   } catch (error) {
@@ -469,12 +587,25 @@ export const dailyRecordsService = {
   async getByKey(
     crewMemberId: string,
     vesselId: string,
-    monthYear: string
+    monthYear: string,
+    rank?: string
   ): Promise<RhDailyRecordV2 | undefined> {
     if (!crewMemberId || !vesselId || !monthYear) {
       throw new Error("Crew member ID, vessel ID, and month year are required");
     }
-    return dailyRecordsRepository.findByKey(crewMemberId, vesselId, monthYear);
+    return dailyRecordsRepository.findByKey(crewMemberId, vesselId, monthYear, rank);
+  },
+
+  // Recompute the crew/vessel summary rows for a crew/vessel/month from the
+  // current daily records (used by the promotion split to surface both rank
+  // periods without going through a save).
+  async resyncSummaries(
+    crewMemberId: string,
+    vesselId: string,
+    monthYear: string,
+    auditUserUuid: string | null = null
+  ): Promise<void> {
+    await postSaveSync(crewMemberId, vesselId, monthYear, auditUserUuid);
   },
 
   async create(
@@ -491,9 +622,40 @@ export const dailyRecordsService = {
     }
 
     const dataWithAudit = applyAuditUser(data, true);
+
+    // Stamp the rank actually held during the saved month rather than trusting
+    // the client payload (which sends the crew's CURRENT present_rank). Editing a
+    // month BEFORE a promotion would otherwise create the record at the new rank.
+    // Resolve the as-of-month-end rank from the promotion ledger, matching the
+    // read-side placeholder rule, and only when this is the FIRST record for the
+    // month: a mid-month promotion's per-rank windows are generated via the
+    // repository (bypassing this path) and edited via update (which strips rank),
+    // so once split records exist the client-supplied window rank is trusted and
+    // never collapsed. Falls back to the client rank when resolution yields none.
+    try {
+      const existing = await dailyRecordsRepository.findAllByKey(
+        data.crewMemberId,
+        data.vesselId,
+        data.monthYear
+      );
+      if (existing.length === 0) {
+        const { lastDay } = getMonthBounds(data.monthYear);
+        const rankMap = await rankResolutionService.resolveRanksAsOfDate(
+          [data.crewMemberId],
+          lastDay
+        );
+        const asOfRank = rankMap[data.crewMemberId];
+        if (asOfRank) {
+          dataWithAudit.rank = asOfRank;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to resolve as-of rank during daily record create:', e);
+    }
+
     const record = await dailyRecordsRepository.create(dataWithAudit);
 
-    await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear);
+    await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear, data.auditUserUuid ?? null);
 
     return record;
   },
@@ -504,25 +666,33 @@ export const dailyRecordsService = {
   ): Promise<RhDailyRecordV2> {
     await this.getByUuid(rhDailyUuid);
 
-    const dataWithAudit = applyAuditUser(data, false);
+    // The identity/unique-key columns (crewMemberId, vesselId, monthYear, rank)
+    // must never change on an update — they define the row's identity and the
+    // unique index (crew_member_id, vessel_id, month_year, rank). After a
+    // mid-month promotion a crew has two per-rank records; the recording form
+    // sends the crew's CURRENT present_rank, so saving the old-rank row would
+    // otherwise try to set rank to the new rank and collide with the new-rank
+    // record. Strip these columns so an update only ever modifies the data.
+    const { crewMemberId, vesselId, monthYear, rank, ...mutableData } = data;
+    const dataWithAudit = applyAuditUser(mutableData, false);
     const updated = await dailyRecordsRepository.update(rhDailyUuid, dataWithAudit);
     if (!updated) {
       throw new Error(`Failed to update daily record: ${rhDailyUuid}`);
     }
 
-    await postSaveSync(updated.crewMemberId, updated.vesselId, updated.monthYear);
+    await postSaveSync(updated.crewMemberId, updated.vesselId, updated.monthYear, data.auditUserUuid ?? null);
 
     return updated;
   },
 
-  async delete(rhDailyUuid: string): Promise<void> {
+  async delete(rhDailyUuid: string, auditUserUuid: string | null = null): Promise<void> {
     const record = await this.getByUuid(rhDailyUuid);
     const success = await dailyRecordsRepository.softDelete(rhDailyUuid);
     if (!success) {
       throw new Error(`Failed to delete daily record: ${rhDailyUuid}`);
     }
 
-    await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear);
+    await postSaveSync(record.crewMemberId, record.vesselId, record.monthYear, auditUserUuid);
   },
 
   async backfillViolations(params: {

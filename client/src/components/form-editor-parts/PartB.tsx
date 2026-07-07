@@ -32,6 +32,7 @@ const PartBComponent: React.FC<PartBProps> = ({
   updateTarget,
   deleteTarget,
   setShowEffectivenessDialog,
+  disableAddButtons = false,
 }) => {
 
   return (
@@ -80,6 +81,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                   <Button
                     type="button"
                     onClick={addTraining}
+                    disabled={disableAddButtons}
                     variant="outline"
                     size="sm"
                     className="text-gray-600 border-gray-300 text-xs sm:text-sm px-2 sm:px-3 py-1 h-6 sm:h-7"
@@ -249,6 +251,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                   <Button
                     type="button"
                     onClick={addTarget}
+                    disabled={disableAddButtons}
                     variant="outline"
                     size="sm"
                     className="text-gray-600 border-gray-300"

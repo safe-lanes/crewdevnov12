@@ -48,7 +48,7 @@ const PartCComponent: React.FC<PartCProps> = ({
   // Task #513: lock-form flag gates all post-stage locking.
   const lockSection = !!isLockForm && (!!isPostStage2 || !!isPostStage3);
   return (
-    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-c-lock">
+    <fieldset disabled={lockSection} className="min-w-0 border-0 p-0 m-0" data-testid="fieldset-part-c-lock">
     <div ref={partRef} data-section-id="C">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -76,7 +76,7 @@ const PartCComponent: React.FC<PartCProps> = ({
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.assessmentCriteria}</td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{assessment.weight}%</td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                        <Select value={assessment.effectiveness} onValueChange={(value) => updateCompetenceAssessment(assessment.id, "effectiveness", value)}>
+                        <Select value={assessment.effectiveness} onValueChange={(value) => updateCompetenceAssessment(assessment.id, "effectiveness", value)} disabled={lockSection}>
                           <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
                             <SelectValue placeholder="Select Rating" />
                           </SelectTrigger>

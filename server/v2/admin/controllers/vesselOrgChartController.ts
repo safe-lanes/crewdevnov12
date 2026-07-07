@@ -38,6 +38,20 @@ export const vesselOrgChartController = {
     }
   },
 
+  async getRankScope(req: Request, res: Response) {
+    try {
+      const identifier = (req.query.rank as string) || (req.query.rankId as string) || "";
+      if (!identifier.trim()) {
+        return res.status(400).json({ error: "Query parameter 'rank' or 'rankId' is required" });
+      }
+      const scope = await vesselOrgChartService.getRankScope(identifier.trim());
+      res.json(scope);
+    } catch (error: any) {
+      console.error("Error resolving rank scope:", error);
+      res.status(500).json({ error: "Failed to resolve rank scope" });
+    }
+  },
+
   async saveAll(req: Request, res: Response) {
     try {
       if (!Array.isArray(req.body)) {
@@ -50,7 +64,9 @@ export const vesselOrgChartController = {
       if (hasCycle(parsed.data)) {
         return res.status(400).json({ error: "Circular hierarchy detected" });
       }
-      const records = await vesselOrgChartService.saveAll(parsed.data);
+      const auditUserUuid = req.body?.[0]?.auditUserUuid ?? null;
+      const entries = parsed.data.map((entry) => ({ auditUserUuid, ...entry }));
+      const records = await vesselOrgChartService.saveAll(entries);
       res.json(records);
     } catch (error: any) {
       console.error("Error saving vessel org chart:", error);

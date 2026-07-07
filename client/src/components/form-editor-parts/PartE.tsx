@@ -15,6 +15,7 @@ const PartEComponent: React.FC<PartEProps> = ({
   addTrainingNeed,
   updateTrainingNeed,
   deleteTrainingNeed,
+  disableAddButtons = false,
 }) => {
 
   return (
@@ -31,6 +32,7 @@ const PartEComponent: React.FC<PartEProps> = ({
             type="button"
             variant="outline"
             size="sm"
+            disabled={disableAddButtons}
             className="text-gray-600 border-gray-300"
             onClick={() => addTrainingNeed('database')}
             data-testid="button-add-training-from-db"
@@ -41,6 +43,7 @@ const PartEComponent: React.FC<PartEProps> = ({
             type="button"
             variant="outline"
             size="sm"
+            disabled={disableAddButtons}
             className="text-gray-600 border-gray-300"
             onClick={() => addTrainingNeed('new')}
             data-testid="button-add-new-training"

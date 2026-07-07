@@ -26,6 +26,7 @@ const TrainingRetentionModuleComponent = lazy(() => import("./modules/training-r
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const AccountsModule = lazy(() => import("./modules/accounts/AccountsModule").then(m => ({ default: m.AccountsModule })));
+const TestCasesModuleComponent = lazy(() => import("./modules/test-cases").then(m => ({ default: m.TestCasesModule })));
 const NotFound = lazy(() => import("./modules/not-found"));
 
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
@@ -101,8 +102,8 @@ function AuthenticatedApp() {
                 <ProtectedRoute menuName="Crewing"><AppraisalsRouter /></ProtectedRoute>
               </Route>
               <Route path="/dashboard">
-                    <ProtectedRoute menuName="Dashboard" fallbackRoute="/recruitment"><DashboardPage /></ProtectedRoute>
-                  </Route>
+                <ProtectedRoute menuName="Dashboard" fallbackRoute="/recruitment"><DashboardPage /></ProtectedRoute>
+              </Route>
               <Route path="/recruitment">
                 <ProtectedRoute menuName="Recruitment"><RecruitmentWrapper /></ProtectedRoute>
               </Route>
@@ -130,18 +131,18 @@ function AuthenticatedApp() {
               <Route path="/rest-hours">
                 <ProtectedRoute menuName="Rest Hours"><RestHoursModuleComponent /></ProtectedRoute>
               </Route>
-                  <Route path="/training-retention/training">
-                    <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
-                  </Route>
-                  <Route path="/training-retention/retention">
-                    <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
-                  </Route>
-                  <Route path="/training-retention/:rest*">
-                    <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
-                  </Route>
-                  <Route path="/training-retention">
-                    <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
-                  </Route>
+              <Route path="/training-retention/training">
+                <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
+              </Route>
+              <Route path="/training-retention/retention">
+                <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
+              </Route>
+              <Route path="/training-retention/:rest*">
+                <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
+              </Route>
+              <Route path="/training-retention">
+                <ProtectedRoute menuName="Training & Ret."><TrainingRetentionModuleComponent /></ProtectedRoute>
+              </Route>
               <Route path="/reports">
                 <ProtectedRoute menuName="Reports"><ReportsPage /></ProtectedRoute>
               </Route>
@@ -154,6 +155,10 @@ function AuthenticatedApp() {
               <Route path="/change-password" component={ChangePasswordPage} />
               <Route path="/accounts/:path*" component={AccountsModule} />
               <Route path="/accounts" component={AccountsModule} />
+              <Route path="/test-cases">
+                {/* No access-control gating — reachable only via direct URL. */}
+                <TestCasesModuleComponent />
+              </Route>
               <Route component={NotFound} />
             </Switch>
           </Suspense>

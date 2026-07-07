@@ -400,6 +400,68 @@ export const crewPoolApiV2 = {
     return response.json().catch(() => ({}));
   },
 
+  async getBriefings(crewUuid: string) {
+    const response = await fetch(`${V2_BASE}/crew/${crewUuid}/briefings`);
+    if (!response.ok) throw new Error('Failed to fetch briefings');
+    return response.json();
+  },
+
+  async createBriefing(crewUuid: string, data: any) {
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/briefings`, data);
+    return response.json();
+  },
+
+  async updateBriefing(crewUuid: string, briefingUuid: string, data: any) {
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/briefings/${briefingUuid}`, data);
+    return response.json();
+  },
+
+  async deleteBriefing(crewUuid: string, briefingUuid: string) {
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/briefings/${briefingUuid}`);
+    return response.json().catch(() => ({}));
+  },
+
+  async addBriefingAttachment(crewUuid: string, briefingUuid: string, data: any) {
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/briefings/${briefingUuid}/attachments`, data);
+    return response.json();
+  },
+
+  async removeBriefingAttachment(crewUuid: string, briefingUuid: string, attUuid: string) {
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/briefings/${briefingUuid}/attachments/${attUuid}`);
+    return response.json().catch(() => ({}));
+  },
+
+  async getDebriefings(crewUuid: string) {
+    const response = await fetch(`${V2_BASE}/crew/${crewUuid}/debriefings`);
+    if (!response.ok) throw new Error('Failed to fetch debriefings');
+    return response.json();
+  },
+
+  async createDebriefing(crewUuid: string, data: any) {
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/debriefings`, data);
+    return response.json();
+  },
+
+  async updateDebriefing(crewUuid: string, debriefingUuid: string, data: any) {
+    const response = await apiRequest('PATCH', `${V2_BASE}/crew/${crewUuid}/debriefings/${debriefingUuid}`, data);
+    return response.json();
+  },
+
+  async deleteDebriefing(crewUuid: string, debriefingUuid: string) {
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/debriefings/${debriefingUuid}`);
+    return response.json().catch(() => ({}));
+  },
+
+  async addDebriefingAttachment(crewUuid: string, debriefingUuid: string, data: any) {
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/debriefings/${debriefingUuid}/attachments`, data);
+    return response.json();
+  },
+
+  async removeDebriefingAttachment(crewUuid: string, debriefingUuid: string, attUuid: string) {
+    const response = await apiRequest('DELETE', `${V2_BASE}/crew/${crewUuid}/debriefings/${debriefingUuid}/attachments/${attUuid}`);
+    return response.json().catch(() => ({}));
+  },
+
   async getVesselTypesApplied(crewUuid: string) {
     const response = await fetch(`${V2_BASE}/crew/${crewUuid}/vessel-types`);
     if (!response.ok) throw new Error('Failed to fetch vessel types applied');

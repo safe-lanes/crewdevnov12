@@ -141,6 +141,17 @@ export class CrewTrainingRepository {
   }
 
   // ============ Attachments ============
+  async findAttachmentByUuid(
+    attUuid: string
+  ): Promise<CrewTrainingAttachment | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(crewTrainingAttachments)
+      .where(eq(crewTrainingAttachments.attUuid, attUuid));
+    return results[0];
+  }
+
   async findAttachmentsByTrainUuid(
     trainUuid: string
   ): Promise<CrewTrainingAttachment[]> {

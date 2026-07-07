@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 import { Ship, Calendar, Download, Upload, Plus, Edit, Copy, FileText, CheckCircle, AlertTriangle, DollarSign } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,6 +61,7 @@ const mockCBATables: CBATable[] = [
 ];
 
 export function CBATablesWorkspace() {
+  const { data: vessels = [] } = useVesselsV2();
   const [isCBATableModalOpen, setIsCBATableModalOpen] = useState(false);
   const [editingCBATable, setEditingCBATable] = useState<CBATable | null>(null);
   const [cbaModalMode, setCbaModalMode] = useState<'create' | 'edit'>('create');
@@ -148,8 +150,11 @@ export function CBATablesWorkspace() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Vessels</SelectItem>
-                  <SelectItem value="atlantic">MV Atlantic Star</SelectItem>
-                  <SelectItem value="pacific">MV Pacific Dawn</SelectItem>
+                  {vessels.map((v: any) => (
+                    <SelectItem key={v.vesselUuid} value={v.vessel} data-testid={`option-vessel-${v.vesselUuid}`}>
+                      {v.vessel}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

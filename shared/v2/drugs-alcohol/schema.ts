@@ -4,7 +4,7 @@ import { z } from "zod";
 
 export const auditColumns = {
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
   createdByUuid: text("created_by_uuid"),
   updatedByUuid: text("updated_by_uuid"),
   isDeleted: boolean("is_deleted").default(false),
@@ -39,6 +39,8 @@ export const daTestRecordsV2 = pgTable("da_test_records_v2", {
   initiatedBy: text("initiated_by"),
   comments: text("comments"),
   status: text("status").notNull().default("draft"),
+  isLocked: boolean("is_locked").notNull().default(false),
+  lockedOnce: boolean("locked_once").notNull().default(false),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });
@@ -91,7 +93,7 @@ export const daAttachmentsV2 = pgTable("da_attachments_v2", {
   id: serial("id").primaryKey(),
   attUuid: text("att_uuid").notNull().unique(),
   testRecordUuid: text("test_record_uuid").notNull(),
-  filename: text("filename"),
+  fileName: text("file_name"),
   fileType: text("file_type"),
   uploadDate: text("upload_date"),
   uploadedBy: text("uploaded_by"),

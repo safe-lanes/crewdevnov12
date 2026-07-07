@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { VesselSideBar_v2 } from './VesselSideBar_v2';
@@ -51,6 +52,7 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useRankOrdering } from '@/hooks/useRankOrdering';
+import { useRankScope } from '@/hooks/useRankScope';
 import { vesselApiV2, OfficerMatrixData } from './api/vesselApiV2';
 import { generateFALForm5Document } from '@/lib/generateFALForm5';
 import { generateUSCrewListDocument } from '@/lib/generateUSCrewList';
@@ -256,6 +258,7 @@ const useVessels = () => {
                 vesselId: vessel.vesselUuid,
                 name: vessel.vessel || 'Unknown Vessel',
                 vesselType: vessel.vesselType || 'Unknown Type',
+                imoNumber: vessel.imoNumber || '',
             }));
         }
     });
@@ -481,6 +484,8 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         relieverCrewId: planning.relieverCrewUuid,
         relieverCrewUuid: planning.relieverCrewUuid,
         relieverCrewName: planning.relieverCrewName,
+        relieverHasPriorJoiningPromotion: planningAny.relieverHasPriorJoiningPromotion,
+        relieverPromotionToRank: planningAny.relieverPromotionToRank,
         relieverSignOnDate: planning.relieverSignOnDate,
         joiningPort: planning.joiningPortUuid,
         joiningPortName: planning.joiningPortName,
@@ -493,6 +498,7 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         relieverContractEndRangeEndMonths: planning.relieverContractEndRangeEndMonths,
         deploymentChecklistCompleted: planning.deploymentChecklistCompleted,
         applicableDocsChecked: planning.applicableDocsChecked,
+        adminAccept: planning.adminAccept,
         isArchived: planning.isArchived,
         isRelieverArchived: planning.isRelieverArchived,
         archivedDate: planning.archivedDate,
@@ -516,9 +522,10 @@ interface OfficerMatrixRowV2Props {
     rankDepartment: 'deck' | 'engine' | null;
     handleViewCrewClick: (planning: any) => void;
     vesselUuid?: string | null;
+    isShipUser?: boolean;
 }
 
-function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, handleViewCrewClick, vesselUuid }: OfficerMatrixRowV2Props) {
+function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, handleViewCrewClick, vesselUuid, isShipUser }: OfficerMatrixRowV2Props) {
     const crewUuid = rankPlanningData?.crewUuid;
     const fullRankName = rank.displayRole || rank.role || rank.rank;
     const baseRankName = (fullRankName || '').split('_')[0].trim().toLowerCase();
@@ -548,7 +555,25 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
         enabled: !!crewUuid && !!effectiveDepartment,
         staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     });
-    
+
+    const { toast } = useToast();
+    const adminAcceptMutation = useUpdatePlanningV2();
+    const planUuid = rankPlanningData?.planUuid;
+    const adminAcceptValue = rankPlanningData?.adminAccept === false ? 'no' : 'yes';
+
+    const handleAdminAcceptChange = async (value: string) => {
+        if (!planUuid) return;
+        try {
+            await adminAcceptMutation.mutateAsync({ planUuid, data: { adminAccept: value === 'yes' } });
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error?.message || "Failed to update Admin Accept",
+                variant: "destructive",
+            });
+        }
+    };
+
     return (
         <TableRow key={rank.id || index} className="hover:bg-gray-50 border-b border-gray-100">
             <TableCell className="text-xs text-gray-700 border-r border-gray-100" data-testid={`cell-officer-rank-${index + 1}`}>
@@ -567,7 +592,17 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
                 {officerData?.issuingCountry || ''}
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-admin-accept-${index + 1}`}>
-                Yes
+                {planUuid ? (
+                    <Select value={adminAcceptValue} onValueChange={handleAdminAcceptChange} disabled={adminAcceptMutation.isPending}>
+                        <SelectTrigger className="h-7 w-[70px] text-xs" data-testid={`select-officer-admin-accept-${index + 1}`}>
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="yes" data-testid={`option-admin-accept-yes-${index + 1}`}>Yes</SelectItem>
+                            <SelectItem value="no" data-testid={`option-admin-accept-no-${index + 1}`}>No</SelectItem>
+                        </SelectContent>
+                    </Select>
+                ) : ''}
             </TableCell>
             <TableCell className="text-xs text-gray-700" data-testid={`cell-officer-tanker-${index + 1}`}>
                 {officerData?.tankerCert || ''}
@@ -600,7 +635,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
                 {officerData?.englishProficiency || ''}
             </TableCell>
             <TableCell className="text-xs" data-testid={`cell-officer-actions-${index + 1}`}>
-                {crewUuid ? (
+                {crewUuid && !isShipUser ? (
                     <Button 
                         variant="ghost" 
                         size="icon"
@@ -626,8 +661,15 @@ export function VesselModule_v2(): JSX.Element {
         return all.filter(p => canView(pageToMenu[p] || p));
     }, [permissions, canView]);
 
-    const showAppraisalColumn = permissions.length === 0 || canView('Appraisal');
-    const showHandoverColumn = permissions.length === 0 || canView('Handover');
+    const isShipUser = userType === 'Ship';
+    const showAppraisalColumn = permissions.length === 0 || canView('Appraisal') || isShipUser;
+    const showHandoverColumn = permissions.length === 0 || canView('Handover') || isShipUser;
+    const { allowedRanks, shouldRestrictForShipUser } = useRankScope();
+    const canActOnRank = (rank: string | null | undefined) => {
+        if (!shouldRestrictForShipUser) return true;
+        if (!rank) return false;
+        return allowedRanks.includes(rank) || allowedRanks.includes(getBaseRank(rank));
+    };
     const [filterType, setFilterType] = useState<"vessel" | "fleet" | "addGroup">("vessel");
     const [vesselValue, setVesselValue] = useState("");
     const [fleetValue, setFleetValue] = useState("");
@@ -660,7 +702,7 @@ export function VesselModule_v2(): JSX.Element {
     const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
     const [reliefDialogData, setReliefDialogData] = useState<{ rank: string; rankId: string; planningData: any } | null>(null);
 
-    const isShipUser = userType === 'Ship';
+    const showAppraisalColumnArchived = showAppraisalColumn && !isShipUser;
 
     const { toast } = useToast();
     const [, setLocation] = useLocation();
@@ -670,8 +712,22 @@ export function VesselModule_v2(): JSX.Element {
 
     useEffect(() => {
         if (isShipUser && myVessels.length > 0 && vessels.length > 0 && !selectedVessel) {
-            const myVesselIds = new Set(myVessels.map(v => v.vesselId));
-            const matchedVessel = vessels.find((v: any) => myVesselIds.has(v.vesselId));
+            const norm = (val: any) => (val ?? '').toString().trim().toLowerCase();
+            const myVesselIds = new Set(myVessels.map(v => v.vesselId).filter(Boolean));
+            const myVesselNames = new Set(myVessels.map(v => norm(v.vessel)).filter(Boolean));
+            const myVesselImos = new Set(myVessels.map(v => norm(v.imoNumber)).filter(Boolean));
+
+            // Primary match: assigned vesselId (UUID).
+            let matchedVessel = vessels.find((v: any) => myVesselIds.has(v.vesselId));
+            // Fallback: assigned UUID differs, so match by vessel name.
+            if (!matchedVessel) {
+                matchedVessel = vessels.find((v: any) => myVesselNames.has(norm(v.name)));
+            }
+            // Fallback: match by IMO number.
+            if (!matchedVessel) {
+                matchedVessel = vessels.find((v: any) => myVesselImos.has(norm(v.imoNumber)));
+            }
+
             if (matchedVessel) {
                 setSelectedVessel(matchedVessel);
             }
@@ -806,58 +862,23 @@ export function VesselModule_v2(): JSX.Element {
     
     const applicableTrainingIds = useMemo(() => {
         const ids = new Set<number>();
-        [...trainingMatrixRevisions, ...trainingMatrixDrafts].forEach((entry: any) => {
-            let trainingIds: number[] = [];
-            if (entry.trainingIds && Array.isArray(entry.trainingIds)) {
-                trainingIds = entry.trainingIds;
-            }
-            const dataField = entry.revisionData || entry.revision_data || entry.draftData || entry.draft_data;
+        const latestRevision = [...trainingMatrixRevisions].sort(
+            (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0];
+        if (latestRevision) {
+            const dataField = latestRevision.revisionData || latestRevision.revision_data;
             if (dataField) {
                 try {
                     const parsed = typeof dataField === 'string' ? JSON.parse(dataField) : dataField;
                     if (parsed?.applicableTrainingIds && Array.isArray(parsed.applicableTrainingIds)) {
-                        trainingIds = [...trainingIds, ...parsed.applicableTrainingIds];
+                        parsed.applicableTrainingIds.forEach((id: number) => ids.add(id));
                     }
                 } catch (e) {
                 }
             }
-            trainingIds.forEach((id: number) => ids.add(id));
-        });
-        
-        // V2: Also include trainings from crew training data (for V2 independence)
-        // Map courseId/companyId (e.g., 'SC005', 'SA001') and abbr to company training id
-        const courseIdToTrainingId = new Map<string, number>();
-        const abbrToTrainingId = new Map<string, number>();
-        companyTrainings.forEach((training: any) => {
-            if (training.companyId) {
-                courseIdToTrainingId.set(training.companyId, training.id);
-            }
-            if (training.abbr) {
-                abbrToTrainingId.set(training.abbr, training.id);
-            }
-        });
-        
-        crewTrainingsV2.forEach((crewTraining) => {
-            crewTraining.trainings.forEach((training) => {
-                // Match by courseId first
-                if (training.courseId) {
-                    const trainingId = courseIdToTrainingId.get(training.courseId);
-                    if (trainingId) {
-                        ids.add(trainingId);
-                    }
-                }
-                // Also match by abbr as fallback
-                if (training.abbr) {
-                    const trainingId = abbrToTrainingId.get(training.abbr);
-                    if (trainingId) {
-                        ids.add(trainingId);
-                    }
-                }
-            });
-        });
-        
+        }
         return ids;
-    }, [trainingMatrixRevisions, trainingMatrixDrafts, crewTrainingsV2, companyTrainings]);
+    }, [trainingMatrixRevisions]);
     
     const groupedTrainingsForMatrix = useMemo(() => {
         const applicableTrainings = companyTrainings.filter((training: any) => 
@@ -1031,6 +1052,9 @@ export function VesselModule_v2(): JSX.Element {
                 planUuid: crew.planUuid || crew.id,
                 relieverCrewId: crew.relieverCrewId || crew.crewUuid,
                 relieverCrewName: crew.relieverCrewName || crew.crewName,
+                relieverHasPriorJoiningPromotion: crew.relieverHasPriorJoiningPromotion,
+                relieverPromotionToRank: crew.relieverPromotionToRank,
+                rankName: rankName,
                 relieverNationality: crew.relieverNationality || crew.nationality,
                 joiningStatus: crew.signOnStatus || crew.joiningStatus,
                 relieverContractPeriodMonths: crew.relieverContractPeriodMonths,
@@ -1602,7 +1626,7 @@ export function VesselModule_v2(): JSX.Element {
                                                     {showArchived ? (
                                                         <>
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Actual Sign Off Date</TableHead>
-                                                            {showAppraisalColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
+                                                            {showAppraisalColumnArchived && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
                                                             {showHandoverColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>}
                                                         </>
                                                     ) : (
@@ -1675,7 +1699,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-signoff-date-${index + 1}`}>
                                                                         {formatDateOnly(planning.signOffDate || planning.archivedDate)}
                                                                     </TableCell>
-                                                                    {showAppraisalColumn && (
+                                                                    {showAppraisalColumnArchived && (
                                                                         <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>
                                                                             {(() => {
                                                                                 const crewAppraisals = allAppraisals
@@ -1689,14 +1713,16 @@ export function VesselModule_v2(): JSX.Element {
                                                                                     });
                                                                                 const hasAppraisal = crewAppraisals.length > 0;
                                                                                 const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                                const canAct = canActOnRank(planning.rank);
                                                                                 if (planning.isArchived === true) {
                                                                                     if (latestAppraisal) {
                                                                                         return (
                                                                                             <Button
                                                                                                 variant="ghost"
                                                                                                 size="sm"
+                                                                                                disabled={!canAct}
                                                                                                 className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                                onClick={() => handleAppraisalView(planning, latestAppraisal)}
+                                                                                                onClick={canAct ? () => handleAppraisalView(planning, latestAppraisal) : undefined}
                                                                                                 data-testid={`button-appraisal-view-${index + 1}`}
                                                                                             >
                                                                                                 View
@@ -1723,8 +1749,9 @@ export function VesselModule_v2(): JSX.Element {
                                                                                     <Button
                                                                                         variant="ghost"
                                                                                         size="sm"
+                                                                                        disabled={!canAct}
                                                                                         className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                        onClick={() => handleAppraisalClick(planning, buttonConfig)}
+                                                                                        onClick={canAct ? () => handleAppraisalClick(planning, buttonConfig) : undefined}
                                                                                         data-testid={`button-appraisal-${buttonText.toLowerCase()}-${index + 1}`}
                                                                                     >
                                                                                         {buttonText}
@@ -1741,15 +1768,16 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 const handoverDate = formatDateOnly(planning.handOverDate);
                                                                                 const isArchivedRow = planning.isArchived === true;
                                                                                 const archivedTitle = 'Crew is archived — handover is read-only';
+                                                                                const canAct = canActOnRank(planning.rank);
                                                                                 return (
                                                                                     <div className="flex flex-col gap-0.5">
                                                                                         {handoverDate && <span className="text-gray-600">{handoverDate}</span>}
                                                                                         <Button
                                                                                             variant="link"
                                                                                             size="sm"
-                                                                                            disabled={isArchivedRow && !hasAttachments}
+                                                                                            disabled={(isArchivedRow && !hasAttachments) || !canAct}
                                                                                             title={isArchivedRow && !hasAttachments ? archivedTitle : undefined}
-                                                                                            onClick={isArchivedRow && !hasAttachments ? undefined : () => {
+                                                                                            onClick={(isArchivedRow && !hasAttachments) || !canAct ? undefined : () => {
                                                                                                 setHandoverDialogData({
                                                                                                     planningId: planning.planUuid,
                                                                                                     vesselId: selectedVessel?.vesselId || '',
@@ -1898,14 +1926,16 @@ export function VesselModule_v2(): JSX.Element {
                                                                                     });
                                                                                 const hasAppraisal = crewAppraisals.length > 0;
                                                                                 const latestAppraisal = hasAppraisal ? crewAppraisals[0] : null;
+                                                                                const canAct = canActOnRank(planning.rank);
                                                                                 if (planning.isArchived === true) {
                                                                                     if (latestAppraisal) {
                                                                                         return (
                                                                                             <Button
                                                                                                 variant="ghost"
                                                                                                 size="sm"
+                                                                                                disabled={!canAct}
                                                                                                 className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                                onClick={() => handleAppraisalView(planning, latestAppraisal)}
+                                                                                                onClick={canAct ? () => handleAppraisalView(planning, latestAppraisal) : undefined}
                                                                                                 data-testid={`button-appraisal-view-${index + 1}`}
                                                                                             >
                                                                                                 View
@@ -1932,8 +1962,9 @@ export function VesselModule_v2(): JSX.Element {
                                                                                     <Button
                                                                                         variant="ghost"
                                                                                         size="sm"
+                                                                                        disabled={!canAct}
                                                                                         className="h-7 text-xs px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                                                                        onClick={() => handleAppraisalClick(planning, buttonConfig)}
+                                                                                        onClick={canAct ? () => handleAppraisalClick(planning, buttonConfig) : undefined}
                                                                                         data-testid={`button-appraisal-${buttonText.toLowerCase()}-${index + 1}`}
                                                                                     >
                                                                                         {buttonText}
@@ -1949,13 +1980,14 @@ export function VesselModule_v2(): JSX.Element {
                                                                                 const hasAttachments = attachmentCount > 0;
                                                                                 const isArchivedRow = planning.isArchived === true;
                                                                                 const archivedTitle = 'Crew is archived — handover is read-only';
+                                                                                const canAct = canActOnRank(planning.rank);
                                                                                 return (
                                                                                     <Button
                                                                                         variant="link"
                                                                                         size="sm"
-                                                                                        disabled={isArchivedRow && !hasAttachments}
+                                                                                        disabled={(isArchivedRow && !hasAttachments) || !canAct}
                                                                                         title={isArchivedRow && !hasAttachments ? archivedTitle : undefined}
-                                                                                        onClick={isArchivedRow && !hasAttachments ? undefined : () => {
+                                                                                        onClick={(isArchivedRow && !hasAttachments) || !canAct ? undefined : () => {
                                                                                             setHandoverDialogData({
                                                                                                 planningId: planning.planUuid,
                                                                                                 vesselId: selectedVessel?.vesselId || '',
@@ -1975,14 +2007,16 @@ export function VesselModule_v2(): JSX.Element {
                                                                         </TableCell>
                                                                     )}
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-view-${index + 1}`}>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="icon"
-                                                                            onClick={() => handleViewCrewClick(planning)}
-                                                                            data-testid={`button-view-crew-${index + 1}`}
-                                                                        >
-                                                                            <Eye className="h-4 w-4 text-gray-500" />
-                                                                        </Button>
+                                                                        {!isShipUser && (
+                                                                            <Button 
+                                                                                variant="ghost" 
+                                                                                size="icon"
+                                                                                onClick={() => handleViewCrewClick(planning)}
+                                                                                data-testid={`button-view-crew-${index + 1}`}
+                                                                            >
+                                                                                <Eye className="h-4 w-4 text-gray-500" />
+                                                                            </Button>
+                                                                        )}
                                                                     </TableCell>
                                                                 </>
                                                             )}
@@ -2249,6 +2283,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                 rankDepartment={rankDepartment}
                                                                 handleViewCrewClick={handleViewCrewClick}
                                                                 vesselUuid={selectedVessel?.vesselId || null}
+                                                                isShipUser={isShipUser}
                                                             />
                                                         );
                                                     })
@@ -2360,6 +2395,8 @@ export function VesselModule_v2(): JSX.Element {
                                                                 crewUuid: primaryCrew.relieverCrewId,
                                                                 crewName: primaryCrew.relieverCrewName,
                                                                 crewStatus: 'secondary',
+                                                                relieverHasPriorJoiningPromotion: primaryCrew.relieverHasPriorJoiningPromotion,
+                                                                relieverPromotionToRank: primaryCrew.relieverPromotionToRank,
                                                                 relieverNationality: primaryCrew.relieverNationality,
                                                                 relieverSignOnDate: primaryCrew.relieverSignOnDate,
                                                                 signOnPort: primaryCrew.joiningPortUuid || primaryCrew.joiningPort,
@@ -2478,7 +2515,18 @@ export function VesselModule_v2(): JSX.Element {
                                                             </TableCell>
                                                             
                                                             {/* Reliever Status */}
-                                                            <TableCell className="text-xs text-gray-700">{row.relieverData?.crewName || ''}</TableCell>
+                                                            <TableCell className="text-xs text-gray-700">
+                                                                {row.relieverData?.crewName || ''}
+                                                                {row.relieverData?.relieverHasPriorJoiningPromotion && (
+                                                                    <span
+                                                                        className="ml-1 font-medium text-[#52baf3]"
+                                                                        title={`Target Rank (Prior Joining promotion): ${row.relieverData?.relieverPromotionToRank || row.rankName}`}
+                                                                        data-testid={`text-reliever-target-rank-pr-${index}`}
+                                                                    >
+                                                                        {(row.relieverData?.relieverPromotionToRank || row.rankName)} (PR)
+                                                                    </span>
+                                                                )}
+                                                            </TableCell>
                                                             <TableCell className="text-xs text-gray-700">{formatDateOnly(row.relieverData?.relieverSignOnDate)}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{row.relieverData?.signOnPortName || ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">{row.relieverData?.signOnStatus || ''}</TableCell>
@@ -2519,7 +2567,9 @@ export function VesselModule_v2(): JSX.Element {
             />
             
             <MainLayout hasSidebar={true}>
-                {isShipUser ? (
+                {(permissions.length > 0 && !allowedPages.includes(selectedVesselPage)) ? (
+                    <NoAccessPage menuName="Vessel Database" />
+                ) : isShipUser ? (
                     selectedVessel ? renderVesselDetail() : (
                         <div className="flex items-center justify-center h-64">
                             {vesselsLoading ? (

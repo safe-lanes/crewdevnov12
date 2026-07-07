@@ -22,9 +22,14 @@ interface PartBApprovalProps extends React.HTMLAttributes<HTMLDivElement> {
   vesselClassOptions?: string[];
   isLoadingVesselTypeOptions?: boolean;
   isLoadingVesselClassOptions?: boolean;
+  promotionConfirmed: string;
+  onSetPromotionConfirmed: (value: string) => void;
+  promotionTiming: string;
+  onSetPromotionTiming: (value: string) => void;
   onSave?: () => void;
   onSubmit?: () => void;
   approverNames?: string[];
+  disabled?: boolean;
 }
 
 const slugify = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
@@ -44,9 +49,14 @@ export const PartBApproval = memo(function PartBApproval({
   vesselClassOptions = [],
   isLoadingVesselTypeOptions = false,
   isLoadingVesselClassOptions = false,
+  promotionConfirmed,
+  onSetPromotionConfirmed,
+  promotionTiming,
+  onSetPromotionTiming,
   onSave,
   onSubmit,
   approverNames = [],
+  disabled = false,
   ...restProps
 }: PartBApprovalProps) {
 
@@ -107,6 +117,7 @@ export const PartBApproval = memo(function PartBApproval({
                   <Select 
                     value={approver.approver}
                     onValueChange={(value) => onUpdateApprover(approver.id, 'approver', value)}
+                    disabled={disabled}
                   >
                     <SelectTrigger className="h-9 text-xs flex-1" data-testid={`select-approver-${approver.id}`}>
                       <SelectValue placeholder="Select Approver" />
@@ -127,6 +138,7 @@ export const PartBApproval = memo(function PartBApproval({
                 <Select 
                   value={approver.status}
                   onValueChange={(value) => onUpdateApprover(approver.id, 'status', value)}
+                  disabled={disabled}
                 >
                   <SelectTrigger className="h-9 text-xs w-32" data-testid={`select-status-${approver.id}`}>
                     <SelectValue placeholder="Status" />
@@ -141,6 +153,7 @@ export const PartBApproval = memo(function PartBApproval({
                   value={approver.approval} 
                   onValueChange={(value) => onUpdateApprover(approver.id, 'approval', value)}
                   className="flex gap-4"
+                  disabled={disabled}
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="yes" id={`${approver.id}-yes`} data-testid={`radio-approval-yes-${approver.id}`} />
@@ -207,7 +220,7 @@ export const PartBApproval = memo(function PartBApproval({
               <Select
                 value=""
                 onValueChange={(value) => onAddVesselType?.(value)}
-                disabled={!onAddVesselType}
+                disabled={!onAddVesselType || disabled}
               >
                 <SelectTrigger className="w-full max-w-md h-9 text-sm" data-testid="select-add-vessel-type">
                   <SelectValue
@@ -258,7 +271,7 @@ export const PartBApproval = memo(function PartBApproval({
               <Select
                 value=""
                 onValueChange={(value) => onAddVesselClass?.(value)}
-                disabled={!onAddVesselClass}
+                disabled={!onAddVesselClass || disabled}
               >
                 <SelectTrigger className="w-full max-w-md h-9 text-sm" data-testid="select-add-vessel-class">
                   <SelectValue
@@ -283,11 +296,60 @@ export const PartBApproval = memo(function PartBApproval({
           </div>
         </div>
 
+        <div className="space-y-4 pt-2">
+          <h3 className="text-base font-medium text-[#16569e]">B3 Promotion Decision</h3>
+
+          <div className="flex items-start gap-4">
+            <Label className="text-sm w-48 mt-2">B3.1 Decision:</Label>
+            <RadioGroup
+              value={promotionConfirmed}
+              onValueChange={onSetPromotionConfirmed}
+              className="flex flex-wrap gap-6"
+              data-testid="radiogroup-promotion-decision"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="yes" id="promotion-decision-yes" data-testid="radio-promotion-decision-yes" />
+                <Label htmlFor="promotion-decision-yes" className="text-sm cursor-pointer">Yes</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="waitlist" id="promotion-decision-waitlist" data-testid="radio-promotion-decision-waitlist" />
+                <Label htmlFor="promotion-decision-waitlist" className="text-sm cursor-pointer">Waitlist</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="rejected" id="promotion-decision-rejected" data-testid="radio-promotion-decision-rejected" />
+                <Label htmlFor="promotion-decision-rejected" className="text-sm cursor-pointer">Rejected</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {promotionConfirmed === 'yes' && (
+            <div className="flex items-start gap-4">
+              <Label className="text-sm w-48 mt-2">B3.2 Promotion type:</Label>
+              <RadioGroup
+                value={promotionTiming}
+                onValueChange={onSetPromotionTiming}
+                className="flex flex-wrap gap-6"
+                data-testid="radiogroup-promotion-type"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="on-board" id="promotion-type-on-board" data-testid="radio-promotion-type-on-board" />
+                  <Label htmlFor="promotion-type-on-board" className="text-sm cursor-pointer">Promoted Onboard</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="prior-joining" id="promotion-type-prior-joining" data-testid="radio-promotion-type-prior-joining" />
+                  <Label htmlFor="promotion-type-prior-joining" className="text-sm cursor-pointer">Promoted Prior Joining</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
+        </div>
+
         <div className="flex justify-end gap-3 pt-4">
+          {/* Hidden from UI only (per request) — button remains fully functional/wired (onClick={onSave}); do not remove or disconnect its logic. */}
           <Button 
             type="button"
             variant="outline" 
-            className="px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
+            className="hidden px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
             onClick={onSave}
             data-testid="button-save-part-b"
           >

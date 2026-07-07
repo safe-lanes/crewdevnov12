@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const auditColumns = {
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
   createdByUuid: text("created_by_uuid"),
   updatedByUuid: text("updated_by_uuid"),
   isDeleted: boolean("is_deleted").default(false),
@@ -41,6 +41,7 @@ export const vesselPlanningV2 = pgTable("vessel_planning_v2", {
   relieverContractEndRangeEndMonths: integer("reliever_contract_end_range_end_months"),
   deploymentChecklistCompleted: boolean("deployment_checklist_completed"),
   applicableDocsChecked: boolean("applicable_docs_checked"),
+  adminAccept: boolean("admin_accept").default(true),
   isArchived: boolean("is_archived").default(false),
   isRelieverArchived: boolean("is_reliever_archived").default(false),
   archivedDate: text("archived_date"),

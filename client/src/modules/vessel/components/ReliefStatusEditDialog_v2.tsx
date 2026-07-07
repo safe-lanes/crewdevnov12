@@ -29,6 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUpdatePlanningV2, useCreatePlanningV2 } from '../hooks/useVesselV2';
 import { vesselApiV2 } from '../api/vesselApiV2';
 import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -435,6 +436,19 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             )}
                         />
 
+                        {planningData?.relieverHasPriorJoiningPromotion && (
+                            <div className="grid grid-cols-3 items-center gap-4">
+                                <span className="text-sm text-gray-700">Target Rank:</span>
+                                <span
+                                    className="col-span-2 text-sm font-medium text-[#52baf3]"
+                                    title="This crew member has an approved prior-joining promotion that takes effect on sign-on."
+                                    data-testid="text-reliever-target-rank-pr"
+                                >
+                                    {(planningData?.relieverPromotionToRank || planningData?.rankName || planningData?.rank)} (PR)
+                                </span>
+                            </div>
+                        )}
+
                         <FormField
                             control={form.control}
                             name="relieverNationality"
@@ -455,27 +469,37 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             name="signOnStatus"
                             render={({ field }) => (
                                 <FormItem>
-                                    <div className="grid grid-cols-3 items-center gap-4">
-                                        <FormLabel className="text-sm text-gray-700">Sign On Status:</FormLabel>
-                                        <FormControl>
-                                            <Select 
-                                                onValueChange={field.onChange} 
-                                                value={field.value} 
-                                                data-testid="select-joining-status"
-                                                disabled={!isRelieverAssigned}
-                                            >
-                                                <SelectTrigger className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
-                                                    <SelectValue placeholder="Select Status" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Planned">Planned</SelectItem>
-                                                    <SelectItem value="Confirmed">Confirmed</SelectItem>
-                                                    <SelectItem value="In Transit">In Transit</SelectItem>
-                                                    <SelectItem value="Signed On">Signed On</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </FormControl>
-                                    </div>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="grid grid-cols-3 items-center gap-4">
+                                                <FormLabel className="text-sm text-gray-700">Sign On Status:</FormLabel>
+                                                <FormControl>
+                                                    <Select 
+                                                        onValueChange={field.onChange} 
+                                                        value={field.value} 
+                                                        data-testid="select-joining-status"
+                                                        disabled={!isRelieverAssigned}
+                                                    >
+                                                        <SelectTrigger className={`col-span-2 ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
+                                                            <SelectValue placeholder="Select Status" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="Planned">Planned</SelectItem>
+                                                            <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                                            <SelectItem value="In Transit">In Transit</SelectItem>
+                                                            <SelectItem value="Signed On">Signed On</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormControl>
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" align="start" className="max-w-xs">
+                                            <ol className="list-decimal space-y-1 pl-4 text-xs">
+                                                <li>Selecting 'Signed On' status will move the crew member from 'Reliever Status' section to 'On Board Status' section of the table.</li>
+                                                <li>The reliever is added as a Secondary (S) and the one currently on board becomes Primary (P) e.g. You will see Chief Officer (P) and Chief Officer (S).</li>
+                                            </ol>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 </FormItem>
                             )}
                         />
@@ -704,7 +728,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                         <div className="flex justify-end gap-2 pt-4">
                             <Button 
                                 type="submit"
-                                className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-[#14b8a6] hover:bg-[#14b8a6]/90"}
+                                className={unassignChecked ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}
                                 disabled={!isRelieverAssigned || updatePlanningV2.isPending || createPlanningV2.isPending || isCheckingConflict}
                                 data-testid="button-submit-relief"
                             >

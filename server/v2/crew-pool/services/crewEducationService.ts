@@ -9,6 +9,16 @@ import type {
   InsertCrewEducationAttachment,
   CrewEducationAttachment,
 } from "../../../../shared/v2/crew-pool/types";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+
+/**
+ * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
+ * a base64 data URL in file_path (no disk file) — those are skipped.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
 
 const crewEducationRepository = new CrewEducationRepository();
 
@@ -38,7 +48,7 @@ export const crewEducationService = {
 
   async create(
     crewUuid: string,
-    data: Omit<InsertCrewEducation, "eduUuid" | "crewUuid">
+    data: Omit<InsertCrewEducation, "eduUuid" | "crewUuid"> & { auditUserUuid?: string | null }
   ): Promise<CrewEducation> {
     await crewMembersService.getByUuid(crewUuid);
     const dataWithAudit = applyAuditUser(data, true);
@@ -47,7 +57,7 @@ export const crewEducationService = {
 
   async update(
     eduUuid: string,
-    data: Partial<InsertCrewEducation>
+    data: Partial<InsertCrewEducation> & { auditUserUuid?: string | null }
   ): Promise<CrewEducation> {
     await this.getByUuid(eduUuid);
     const dataWithAudit = applyAuditUser(data, false);
@@ -86,10 +96,22 @@ export const crewEducationService = {
   },
 
   async removeAttachment(attUuid: string): Promise<void> {
+    const attachment =
+      await crewEducationRepository.findAttachmentByUuid(attUuid);
     const success =
       await crewEducationRepository.softDeleteAttachment(attUuid);
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+    await deleteAttachmentFile(attachment?.filePath);
+  },
+
+  async getAttachmentFile(attUuid: string): Promise<CrewEducationAttachment> {
+    const attachment =
+      await crewEducationRepository.findAttachmentByUuid(attUuid);
+    if (!attachment) {
+      throw new Error(`Attachment not found: ${attUuid}`);
+    }
+    return attachment;
   },
 };

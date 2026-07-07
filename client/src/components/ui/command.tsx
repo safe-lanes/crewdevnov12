@@ -55,13 +55,35 @@ CommandInput.displayName = CommandPrimitive.Input.displayName
 const CommandList = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, ...props }, ref) => (
-  <CommandPrimitive.List
-    ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  const localRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useImperativeHandle(ref, () => localRef.current as HTMLDivElement)
+
+  // Popovers/comboboxes portaled outside a modal Dialog's DOM subtree have
+  // their native wheel scroll silently blocked by the Dialog's scroll lock
+  // (react-remove-scroll), even though dragging the scrollbar still works.
+  // Take manual control of wheel scrolling so it works consistently
+  // everywhere this list is rendered.
+  React.useEffect(() => {
+    const el = localRef.current
+    if (!el) return
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      el.scrollTop += e.deltaY
+    }
+    el.addEventListener("wheel", handleWheel, { passive: false })
+    return () => el.removeEventListener("wheel", handleWheel)
+  }, [])
+
+  return (
+    <CommandPrimitive.List
+      ref={localRef}
+      className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+      {...props}
+    />
+  )
+})
 
 CommandList.displayName = CommandPrimitive.List.displayName
 

@@ -8,12 +8,15 @@ import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface CrewRow {
   crewUuid?: string | null;
+  empNo?: string | null;
+  recruitmentDate?: string | null;
   presentRank?: string | null;
   status?: string | null;
   notForHire?: boolean | null;
   lastTerminationDate?: string | null;
   createdAt?: string | Date | null;
   nationalityUuid?: string | null;
+  nationality?: string | null;
   manningAgentName?: string | null;
   crewPool?: string | null;
   presentVessel?: string | null;
@@ -69,6 +72,22 @@ function periodToSnapshotDate(period: PeriodFilterValue): Date | null {
   }
   if (period.mode === "date-range" && period.dateTo) {
     return endOfDay(period.dateTo);
+  }
+  return null;
+}
+
+function periodToFromDate(period: PeriodFilterValue): Date | null {
+  if (period.mode === "year" && period.year) {
+    return new Date(period.year, 0, 1);
+  }
+  if (period.mode === "year-quarter" && period.year && period.quarter) {
+    return new Date(period.year, (period.quarter - 1) * 3, 1);
+  }
+  if (period.mode === "year-month" && period.year && period.month) {
+    return new Date(period.year, period.month - 1, 1);
+  }
+  if (period.mode === "date-range" && period.dateFrom) {
+    return period.dateFrom;
   }
   return null;
 }
@@ -145,33 +164,68 @@ export const CrewPoolRankChart = ({
     staleTime: 60 * 1000,
   });
 
+  const empNos = useMemo(
+    () =>
+      Array.from(
+        new Set(crew.map((c) => c.empNo).filter((x): x is string => !!x)),
+      ),
+    [crew],
+  );
+
+  const snapshotIso = useMemo(() => {
+    if (!snapshotDate) return null;
+    const y = snapshotDate.getFullYear();
+    const m = String(snapshotDate.getMonth() + 1).padStart(2, "0");
+    const d = String(snapshotDate.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, [snapshotDate]);
+
+  const { data: rankAsOf = {} } = useQuery<Record<string, string>>({
+    queryKey: ["/api/v2/crew-pool/dashboard/ranks-as-of", snapshotIso, empNos],
+    queryFn: async ({ signal }) => {
+      if (!snapshotIso || empNos.length === 0) return {};
+      const response = await fetch("/api/v2/crew-pool/dashboard/ranks-as-of", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: snapshotIso, empNos }),
+        signal,
+      });
+      if (!response.ok) throw new Error("Failed to resolve ranks as of date");
+      const json = await response.json();
+      return (json?.data ?? {}) as Record<string, string>;
+    },
+    enabled: !!snapshotIso && empNos.length > 0,
+    staleTime: 60 * 1000,
+  });
+
   const chartData = useMemo<RankCount[]>(() => {
     if (!snapshotDate) return [];
+
+    // If the selected period STARTS in the future, there is no pool data yet.
+    const fromDate = periodToFromDate(period);
+    if (fromDate && fromDate.getTime() > Date.now()) return [];
+
     const counts = new Map<string, number>();
     for (const c of crew) {
-      // Existed on snapshot date
-      const created = parseDate(c.createdAt);
-      if (!created) continue;
-      if (created.getTime() > snapshotDate.getTime()) continue;
+      // Strict: must have a recruitment date on/before the snapshot.
+      const recruited = parseDate(c.recruitmentDate);
+      if (!recruited) continue;
+      if (recruited.getTime() > snapshotDate.getTime()) continue;
 
-      // Not terminated / not‑for‑rehire as of snapshot date.
-      // First pass: apply current status retroactively (per task #38 scope).
-      if (c.notForHire === true) continue;
-      const statusLower = (c.status || "").toLowerCase();
-      if (statusLower === "terminated") {
-        // If we have a termination date and it's after the snapshot, the
-        // crew was still in the pool on that date.
-        const termDate = parseDate(c.lastTerminationDate);
-        if (!termDate || termDate.getTime() <= snapshotDate.getTime()) continue;
-      }
+      // Excluded only if terminated on/before the snapshot.
+      const terminated = parseDate(c.lastTerminationDate);
+      if (terminated && terminated.getTime() <= snapshotDate.getTime()) continue;
 
-      const rank = (c.presentRank || "").trim();
+      // Rank held as of the snapshot (promotion-ledger aware), else present rank.
+      const rank = (
+        (c.empNo ? rankAsOf[c.empNo] : undefined) ?? c.presentRank ?? ""
+      ).trim();
       if (!rank) continue;
 
       if (ranks.length > 0 && !ranks.includes(rank)) continue;
       if (
         nationalities.length > 0 &&
-        !nationalities.includes((c.nationalityUuid || "") as string)
+        !nationalities.includes((c.nationality || "") as string)
       ) {
         continue;
       }
@@ -193,7 +247,7 @@ export const CrewPoolRankChart = ({
     return Array.from(counts.entries())
       .map(([rank, count]) => ({ rank, count }))
       .sort((a, b) => b.count - a.count);
-  }, [crew, snapshotDate, ranks, nationalities, manningAgents, crewPools, vessels]);
+  }, [crew, snapshotDate, period, rankAsOf, ranks, nationalities, manningAgents, crewPools, vessels]);
 
   const chartOptions = useMemo<AgChartOptions>(
     () => ({

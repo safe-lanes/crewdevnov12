@@ -78,7 +78,8 @@ export const testRecordsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const record = await testRecordsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await testRecordsService.create({ ...req.body, auditUserUuid });
       res.status(201).json(record);
     } catch (error: any) {
       if (error.statusCode === 409) {
@@ -112,7 +113,8 @@ export const testRecordsController = {
   async update(req: Request, res: Response) {
     try {
       const { uuid } = req.params;
-      const record = await testRecordsService.update(uuid, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await testRecordsService.update(uuid, { ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       if (error.statusCode === 409) {
@@ -126,6 +128,27 @@ export const testRecordsController = {
       }
       console.error("Error updating test record:", error);
       res.status(500).json({ error: "Failed to update test record" });
+    }
+  },
+
+  async toggleLock(req: Request, res: Response) {
+    try {
+      const { uuid } = req.params;
+      const { isLocked } = req.body ?? {};
+      if (typeof isLocked !== "boolean") {
+        return res.status(400).json({ error: "isLocked (boolean) is required" });
+      }
+      const record = await testRecordsService.toggleLock(uuid, isLocked);
+      res.json(record);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      if (error.message?.includes("Only submitted records")) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error("Error toggling lock on test record:", error);
+      res.status(500).json({ error: "Failed to update lock state" });
     }
   },
 
@@ -149,6 +172,9 @@ export const testRecordsController = {
         rankNames: toArrayParam(req.query.rankIds ?? req.query["rankIds[]"]),
         poolNames: toArrayParam(req.query.poolIds ?? req.query["poolIds[]"]),
         agentNames: toArrayParam(req.query.agentIds ?? req.query["agentIds[]"]),
+        nationalityIds: toArrayParam(
+          req.query.nationalityIds ?? req.query["nationalityIds[]"]
+        ),
       });
       res.json(result);
     } catch (error: any) {
@@ -182,6 +208,9 @@ export const testRecordsController = {
         rankNames: toArrayParam(req.query.rankIds ?? req.query["rankIds[]"]),
         poolNames: toArrayParam(req.query.poolIds ?? req.query["poolIds[]"]),
         agentNames: toArrayParam(req.query.agentIds ?? req.query["agentIds[]"]),
+        nationalityIds: toArrayParam(
+          req.query.nationalityIds ?? req.query["nationalityIds[]"]
+        ),
       });
       res.json(result);
     } catch (error: any) {

@@ -32,6 +32,7 @@ interface PartACriteriaTableProps extends React.HTMLAttributes<HTMLDivElement> {
   checklistProgressData?: string | null;
   minChecklistVerifications?: number;
   minChecklistCompletionPercent?: number;
+  disabled?: boolean;
 }
 
 const getCurrentUserDisplay = (): string => {
@@ -63,6 +64,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
   checklistProgressData,
   minChecklistVerifications = 0,
   minChecklistCompletionPercent = 100,
+  disabled = false,
   ...restProps
 }: PartACriteriaTableProps) {
   const currentUserDisplay = getCurrentUserDisplay();
@@ -90,6 +92,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               <Select 
                 value={selectedVesselTypeForA2_3b} 
                 onValueChange={onVesselTypeChange}
+                disabled={disabled || row.verified === 'na'}
               >
                 <SelectTrigger className="h-8 text-xs" data-testid="select-vessel-type-a23b">
                   <SelectValue placeholder="Select Vessel Type" />
@@ -105,7 +108,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               )}
             </div>
           ) : (
-            row.resultFromDb
+            (row.id === 'a2.3d' && row.verified === 'na') ? null : row.resultFromDb
           )}
         </TableCell>
         <TableCell>
@@ -137,6 +140,8 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
             ) : row.verified === 'na' ? (
               <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded" data-testid={`badge-meets-na-${row.id}`}>NA</span>
             ) : null
+          ) : (row.id === 'a2.3b' || row.id === 'a2.3d') && row.verified === 'na' ? (
+            null
           ) : (
             getMeetsCriterionBadge(row.required, row.resultFromDb, row)
           )}
@@ -149,6 +154,7 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
               value={row.verified} 
               onValueChange={(value) => onUpdateVerified(row.id, value)}
               className="flex gap-4"
+              disabled={disabled}
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem 
@@ -163,19 +169,21 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
                 />
                 <Label htmlFor={`${row.id}-yes`} className="text-sm cursor-pointer">Yes</Label>
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem 
-                  value="na" 
-                  id={`${row.id}-na`} 
-                  data-testid={`radio-verified-na-${row.id}`}
-                  onClick={() => {
-                    if (row.verified === 'na') {
-                      onUpdateVerified(row.id, '');
-                    }
-                  }}
-                />
-                <Label htmlFor={`${row.id}-na`} className="text-sm cursor-pointer">NA</Label>
-              </div>
+              {(row.id === 'a2.3b' || row.id === 'a2.3d' || isOtherCriteriaSubItem(row.id)) && (
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem 
+                    value="na" 
+                    id={`${row.id}-na`} 
+                    data-testid={`radio-verified-na-${row.id}`}
+                    onClick={() => {
+                      if (row.verified === 'na') {
+                        onUpdateVerified(row.id, '');
+                      }
+                    }}
+                  />
+                  <Label htmlFor={`${row.id}-na`} className="text-sm cursor-pointer">NA</Label>
+                </div>
+              )}
             </RadioGroup>
           )}
         </TableCell>
@@ -334,8 +342,8 @@ export const PartACriteriaTable = memo(function PartACriteriaTable({
                   <React.Fragment key={row.id}>
                     <TableRow 
                       key="a2.5-progress" 
-                      className="cursor-pointer hover:bg-gray-50"
-                      onClick={onShowChecklistForm}
+                      className={disabled ? 'opacity-60' : 'cursor-pointer hover:bg-gray-50'}
+                      onClick={disabled ? undefined : onShowChecklistForm}
                       data-testid="row-promotion-checklist-progress"
                     >
                       <TableCell colSpan={2} className="text-sm">A2.5 Promotion Checklist Progress</TableCell>

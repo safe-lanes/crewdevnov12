@@ -32,6 +32,7 @@ import {
   candidateRepository,
   vesselTypesAppliedRepository,
 } from "../../recruitment/repositories/candidateRepository";
+import { recruitmentDecisionRepository } from "../../recruitment/repositories/approvalsRepository";
 import {
   personalDetailsRepository,
   addressRepository,
@@ -196,6 +197,10 @@ export const crewTransferService = {
     const auditUserUuid = options.auditUserUuid || null;
     const now = new Date();
 
+    // Carry over the Date of Recruitment (C3.3) from the recruitment decision
+    const recruitmentDecision = await recruitmentDecisionRepository.findByCandidateUuid(recCanUuid);
+    const recruitmentDate = recruitmentDecision?.recruitmentDate || null;
+
     const existingEmpNo = await crewMembersRepository.findByEmpNo(empNo);
     if (existingEmpNo) {
       throw new Error(`Employee number ${empNo} already exists`);
@@ -253,6 +258,7 @@ export const crewTransferService = {
         presentRank: candidate.presentRank,
         rankAppliedFor: candidate.rankAppliedFor,
         status: options.status || "Active",
+        recruitmentDate,
         availability: options.availability || null,
         nextAvailability: null,
         isActive: true,

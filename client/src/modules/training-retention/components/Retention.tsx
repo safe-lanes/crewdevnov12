@@ -235,14 +235,15 @@ export const Retention = (): JSX.Element => {
   // and a manual refresh shows the user the normal page.
   const initialDeepLink = useMemo(() => readDeepLinkParams(), []);
 
-  const [periodValue, setPeriodValue] = useState<PeriodFilterValue | undefined>(() => {
-    if (!initialDeepLink) return undefined;
+  const [periodValue, setPeriodValue] = useState<PeriodFilterValue>(() => {
+    const yearOnly: PeriodFilterValue = { mode: "year", year: new Date().getFullYear() };
+    if (!initialDeepLink) return yearOnly;
     const from = parseIsoDate(initialDeepLink.periodFrom);
     const to = parseIsoDate(initialDeepLink.periodTo);
     if (from && to) {
       return { mode: "date-range", dateFrom: from, dateTo: to };
     }
-    return undefined;
+    return yearOnly;
   });
   const [selectedRanks, setSelectedRanks] = useState<string[]>(
     () => initialDeepLink?.rankIds ?? [],
@@ -282,7 +283,7 @@ export const Retention = (): JSX.Element => {
     selectedAgents.length > 0;
 
   const clearFilters = () => {
-    setPeriodValue(undefined);
+    setPeriodValue({ mode: "year", year: new Date().getFullYear() });
     setSelectedRanks([]);
     setSelectedPools([]);
     setSelectedAgents([]);
@@ -428,7 +429,7 @@ export const Retention = (): JSX.Element => {
         />
         <button
           type="button"
-          disabled={!hasActiveFilters}
+          disabled={false}
           onClick={clearFilters}
           className="min-h-8 rounded-md border border-input bg-background px-3 py-1 text-xs text-[#16569e] hover:bg-accent/30 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:text-[#8899ae] disabled:opacity-60"
           data-testid="button-clear-retention-filters"

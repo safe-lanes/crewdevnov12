@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { useContractDataStore } from "@/stores/contractDataStore";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ContractPayElement } from '@shared/schema';
+import type { AccContractPayElementV2 } from '@shared/v2/accounts/types';
 import { AddPayElementModal } from "@/components/contract-data/AddPayElementModal";
 
 export const ContractDataWorkspace: React.FC = () => {
@@ -53,21 +53,23 @@ export const ContractDataWorkspace: React.FC = () => {
     updateContractEffectiveDate
   } = useContractDataStore();
 
-  // Fetch crew members
+  // Fetch crew members (native V2 crew pool)
   const { data: crewMembers = [], isLoading: crewLoading } = useQuery({
-    queryKey: ['/api/crew-members'],
+    queryKey: ['/api/v2/crew-pool/crew'],
     queryFn: async () => {
-      const response = await fetch('/api/crew-members');
+      const response = await fetch('/api/v2/crew-pool/crew');
       if (!response.ok) throw new Error('Failed to fetch crew members');
       return response.json();
     },
   });
 
   // Filter crew members based on search
-  const filteredCrewMembers = crewMembers.filter((crew: any) => 
-    crew.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    crew.rank.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCrewMembers = crewMembers.filter((crew: any) => {
+    const term = searchQuery.toLowerCase();
+    const name = `${crew.firstName || ''} ${crew.familyName || ''}`.toLowerCase();
+    const rank = (crew.presentRank || '').toLowerCase();
+    return name.includes(term) || rank.includes(term);
+  });
 
   // Automatically fetch contract data when crew member is selected
   useEffect(() => {
@@ -86,13 +88,13 @@ export const ContractDataWorkspace: React.FC = () => {
   // Initialize editable effective date when contract data loads
   useEffect(() => {
     if (contractData?.applicableFrom) {
-      const dateValue = new Date(contractData.applicableFrom).toISOString().split('T')[0];
+      const dateValue = new Date(contractData.applicableFrom || Date.now()).toISOString().split('T')[0];
       setEditableEffectiveDate(dateValue);
     }
   }, [contractData]);
 
   // Event handlers for pay element management
-  const handleApplicableToggle = async (elementId: number, checked: boolean) => {
+  const handleApplicableToggle = async (elementId: string, checked: boolean) => {
     try {
       await updatePayElementApplicability(elementId, checked);
       toast({
@@ -108,7 +110,7 @@ export const ContractDataWorkspace: React.FC = () => {
     }
   };
 
-  const handleValueChange = async (elementId: number, value: string) => {
+  const handleValueChange = async (elementId: string, value: string) => {
     try {
       const processedValue = value.trim() === '' ? null : value;
       await updatePayElementValue(elementId, processedValue);
@@ -150,7 +152,7 @@ export const ContractDataWorkspace: React.FC = () => {
     }
   };
 
-  const handleRemoveCustomPayElement = async (elementId: number) => {
+  const handleRemoveCustomPayElement = async (elementId: string) => {
     try {
       await removeCustomPayElement(elementId);
       toast({
@@ -167,15 +169,15 @@ export const ContractDataWorkspace: React.FC = () => {
   };
 
   const handleActivateContract = async () => {
-    if (!contractData?.id) return;
+    if (!contractData?.contractUuid) return;
     
     try {
       // Update effective date if changed and then activate
-      if (editableEffectiveDate && editableEffectiveDate !== new Date(contractData.applicableFrom).toISOString().split('T')[0]) {
-        await updateContractEffectiveDate(contractData.id, editableEffectiveDate);
+      if (editableEffectiveDate && editableEffectiveDate !== new Date(contractData.applicableFrom || Date.now()).toISOString().split('T')[0]) {
+        await updateContractEffectiveDate(contractData.contractUuid, editableEffectiveDate);
       }
       
-      await updateContractStatus(contractData.id, 'active');
+      await updateContractStatus(contractData.contractUuid, 'active');
       
       // Invalidate payroll data cache to ensure updates reflect
       queryClient.invalidateQueries({ queryKey: ['payroll-data'] });
@@ -194,10 +196,10 @@ export const ContractDataWorkspace: React.FC = () => {
   };
 
   const handleSaveEffectiveDate = async () => {
-    if (!contractData?.id || !editableEffectiveDate) return;
+    if (!contractData?.contractUuid || !editableEffectiveDate) return;
     
     try {
-      await updateContractEffectiveDate(contractData.id, editableEffectiveDate);
+      await updateContractEffectiveDate(contractData.contractUuid, editableEffectiveDate);
       setIsEditingDate(false);
       
       toast({
@@ -215,17 +217,17 @@ export const ContractDataWorkspace: React.FC = () => {
 
   const handleCancelDateEdit = () => {
     if (contractData?.applicableFrom) {
-      const dateValue = new Date(contractData.applicableFrom).toISOString().split('T')[0];
+      const dateValue = new Date(contractData.applicableFrom || Date.now()).toISOString().split('T')[0];
       setEditableEffectiveDate(dateValue);
     }
     setIsEditingDate(false);
   };
 
   const handleMakeDraft = async () => {
-    if (!contractData?.id) return;
+    if (!contractData?.contractUuid) return;
     
     try {
-      await updateContractStatus(contractData.id, 'draft');
+      await updateContractStatus(contractData.contractUuid, 'draft');
       
       // Invalidate payroll data cache to ensure updates reflect
       queryClient.invalidateQueries({ queryKey: ['payroll-data'] });
@@ -245,16 +247,16 @@ export const ContractDataWorkspace: React.FC = () => {
 
   // Pay Element Component
   const PayElementRow: React.FC<{
-    element: ContractPayElement;
-    onToggle: (id: number, checked: boolean) => void;
-    onValueChange: (id: number, value: string) => void;
-    onRemove?: (id: number) => void;
+    element: AccContractPayElementV2;
+    onToggle: (id: string, checked: boolean) => void;
+    onValueChange: (id: string, value: string) => void;
+    onRemove?: (id: string) => void;
   }> = ({ element, onToggle, onValueChange, onRemove }) => {
     const [localValue, setLocalValue] = useState(element.value?.toString() || '');
 
     const handleValueSubmit = () => {
       if (localValue !== (element.value?.toString() || '')) {
-        onValueChange(element.id!, localValue);
+        onValueChange(element.contractPayElementUuid, localValue);
       }
     };
 
@@ -263,7 +265,7 @@ export const ContractDataWorkspace: React.FC = () => {
         <div className="flex items-center gap-3 flex-1">
           <Switch
             checked={element.applicable}
-            onCheckedChange={(checked) => onToggle(element.id!, checked)}
+            onCheckedChange={(checked) => onToggle(element.contractPayElementUuid, checked)}
           />
           <div className="flex-1">
             <div className="flex items-center gap-2">
@@ -294,7 +296,7 @@ export const ContractDataWorkspace: React.FC = () => {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => onRemove(element.id!)}
+              onClick={() => onRemove(element.contractPayElementUuid)}
               className="h-8 w-8 p-0"
             >
               <Trash2 className="h-4 w-4" />
@@ -350,19 +352,20 @@ export const ContractDataWorkspace: React.FC = () => {
           ) : (
             filteredCrewMembers.map((crew: any) => (
               <div
-                key={crew.id}
+                key={crew.crewUuid}
+                data-testid={`row-crew-${crew.crewUuid}`}
                 className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-blue-50 transition-colors ${
-                  selectedCrewId === crew.id ? 'bg-blue-100 border-l-4 border-l-blue-500' : ''
+                  selectedCrewId === crew.crewUuid ? 'bg-blue-100 border-l-4 border-l-blue-500' : ''
                 }`}
-                onClick={() => setSelectedCrewId(crew.id)}
+                onClick={() => setSelectedCrewId(crew.crewUuid)}
               >
                 <div className="font-medium text-sm text-gray-900">
-                  {crew.firstName} {crew.lastName || ''}
+                  {crew.firstName} {crew.familyName || ''}
                 </div>
                 <div className="text-xs text-gray-500 flex items-center gap-2">
-                  <span>{crew.rank}</span>
+                  <span>{crew.presentRank}</span>
                   <span>•</span>
-                  <span>{crew.vessel}</span>
+                  <span>{crew.empNo}</span>
                 </div>
               </div>
             ))
@@ -437,7 +440,7 @@ export const ContractDataWorkspace: React.FC = () => {
                           onClick={() => setIsEditingDate(true)}
                           className="h-auto p-1 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100"
                         >
-                          {new Date(contractData.applicableFrom).toLocaleDateString()}
+                          {new Date(contractData.applicableFrom || Date.now()).toLocaleDateString()}
                           <Calendar className="w-3 h-3 ml-1" />
                         </Button>
                       )}
@@ -492,7 +495,7 @@ export const ContractDataWorkspace: React.FC = () => {
                   ) : (
                     earnings.map((element) => (
                       <PayElementRow
-                        key={element.id}
+                        key={element.contractPayElementUuid}
                         element={element}
                         onToggle={handleApplicableToggle}
                         onValueChange={handleValueChange}
@@ -530,7 +533,7 @@ export const ContractDataWorkspace: React.FC = () => {
                   ) : (
                     deductions.map((element) => (
                       <PayElementRow
-                        key={element.id}
+                        key={element.contractPayElementUuid}
                         element={element}
                         onToggle={handleApplicableToggle}
                         onValueChange={handleValueChange}

@@ -37,6 +37,7 @@ import {
   DialogTitle, 
   DialogFooter 
 } from "@/components/ui/dialog";
+import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import { format } from "date-fns";
 import { Form, FormVersion, RankGroup } from "@shared/schema";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -245,7 +246,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   const [configurableSections, setConfigurableSections] = useState<Set<string>>(new Set());
   
   // Weight validation dialog state
-  const [showWeightWarning, setShowWeightWarning] = useState(false);
+  const [weightWarningSection, setWeightWarningSection] = useState<'C' | 'D' | null>(null);
   
   // Field visibility state
   const [fieldVisibility, setFieldVisibility] = useState({
@@ -275,48 +276,53 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
   // Continuous scroll state - tracks which section is most visible during scroll
   const [activeContinuousSection, setActiveContinuousSection] = useState<string>("A");
 
-  // Intersection Observer for continuous scroll tracking
+  // Scroll-spy for continuous scroll tracking
   useEffect(() => {
-    if (!continuousScrollContainerRef.current) return;
+    const container = continuousScrollContainerRef.current;
+    if (!container) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let mostVisible = entries[0];
-        
-        entries.forEach((entry) => {
-          if (entry.intersectionRatio > mostVisible.intersectionRatio) {
-            mostVisible = entry;
-          }
-        });
+    const observed = [
+      { id: 'A', ref: partARef },
+      { id: 'B', ref: partBRef },
+      { id: 'C', ref: partCRef },
+      { id: 'D', ref: partDRef },
+      { id: 'E', ref: partERef },
+      { id: 'F', ref: partFRef },
+      { id: 'G', ref: partGRef },
+    ];
 
-        // Update the active continuous section if there's a significant intersection (lowered threshold for better detection)
-        if (mostVisible && mostVisible.intersectionRatio > 0.3) {
-          const sectionId = mostVisible.target.getAttribute('data-section-id');
-          if (sectionId) {
-            setActiveContinuousSection(sectionId);
-            setActiveSection(sectionId); // Also update the main active section for stepper highlighting
-          }
+    // Active section = last one whose top crossed a trigger line near the top
+    // of the container (height-independent), with a bottom override so the
+    // final visible section highlights once scrolled to the end. This lets
+    // late sections such as Part F highlight even when tall or near the bottom.
+    const computeActive = () => {
+      const present = observed.filter(s => s.ref.current);
+      if (present.length === 0) return;
+      const containerRect = container.getBoundingClientRect();
+      const atBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight <= 2;
+      let activeId = present[0].id;
+      if (atBottom) {
+        activeId = present[present.length - 1].id;
+      } else {
+        const triggerY = containerRect.top + containerRect.height * 0.25;
+        for (const s of present) {
+          if (s.ref.current!.getBoundingClientRect().top <= triggerY) activeId = s.id;
         }
-      },
-      {
-        root: continuousScrollContainerRef.current,
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-        rootMargin: '-100px 0px -100px 0px' // Increased for better detection on tall sections
       }
-    );
+      setActiveContinuousSection(activeId);
+      setActiveSection(activeId); // keep stepper highlight in sync
+    };
 
-    // Observe all section refs
-    const refs = [partARef, partBRef, partCRef, partDRef, partERef, partFRef, partGRef];
-    refs.forEach(ref => {
-      if (ref.current) {
-        observer.observe(ref.current);
-      }
-    });
+    computeActive();
+    container.addEventListener('scroll', computeActive, { passive: true });
+    window.addEventListener('resize', computeActive);
 
     return () => {
-      observer.disconnect();
+      container.removeEventListener('scroll', computeActive);
+      window.removeEventListener('resize', computeActive);
     };
-  }, []); // Removed activeContinuousSection dependency to avoid unnecessary observer recreation
+  }, []); // refs are read at call time, so no deps needed
 
   // Function to scroll to a specific section in continuous mode
   const scrollToSection = (sectionId: string) => {
@@ -384,6 +390,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     return String.fromCharCode(65 + visibleIndex); // Convert to letter (A=65)
   };
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
+  // Unsaved-changes tracking for the editor. `baselineConfigRef` holds the
+  // serialized configuration of the last loaded/saved state; the editor is
+  // "dirty" when the current state no longer matches it. The dialog warns the
+  // user before the Back button discards in-progress edits.
+  const baselineConfigRef = useRef<string | null>(null);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   // Initialize version state from form props to ensure consistency with list display
   const [selectedVersionNo, setSelectedVersionNo] = useState<string>(form.versionNo || "");
   const [selectedVersionDate, setSelectedVersionDate] = useState<Date | undefined>(
@@ -555,15 +567,16 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     },
   });
   const createDraftMutation = useMutation({
-    mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string }) => {
+    mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration?: string; sharedConfig?: string; silent?: boolean }) => {
+      const { silent, ...payload } = versionData;
       const response = await apiRequest('POST', versionsPostUrl, {
-        ...versionData,
+        ...payload,
         status: 'draft',
         rankGroupId: currentRankGroup?.id,
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [versionsQueryKey] });
       if (useV2) {
         queryClient.invalidateQueries({ predicate: (q) => {
@@ -572,7 +585,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         }});
       }
       setHasSavedDraft(true);
-      toast({ title: "Draft saved", description: "Your changes have been saved as a draft." });
+      // Only surface the "Draft saved" toast for an explicit Save Draft action.
+      // The seed-on-entry call passes `silent: true` so entering edit mode does
+      // not falsely claim the user's (not-yet-made) changes were saved.
+      if (!variables?.silent) {
+        toast({ title: "Draft saved", description: "Your changes have been saved as a draft." });
+      }
     },
     onError: (error: Error) => {
       setHasSavedDraft(false);
@@ -660,18 +678,27 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     return result;
   }, [versionsData, hasSavedDraft, hasDraftVersion, selectedVersionNo, selectedVersionDate]);
   
-  // Build the Save Draft payload from the current in-memory form state.
-  // Single source of truth shared by the "Save Draft" button and the
-  // save-then-release flow so the two paths can never drift.
-  const buildDraftPayload = () => {
+  // Serialize the current editor state (form values + hidden fields/sections)
+  // into the exact `configuration` string shape persisted in a draft. Shared by
+  // buildDraftPayload and the unsaved-changes baseline so the dirty comparison
+  // is apples-to-apples. Visibility can be passed explicitly (used when the
+  // load effect hasn't yet committed its setState calls).
+  const computeConfigurationString = (
+    visField: typeof fieldVisibility = fieldVisibility,
+    visSection: typeof sectionVisibility = sectionVisibility,
+  ) => {
     const formData = formMethods.getValues();
-    const sharedConfig = { appraisalTypeOptions };
-    const hiddenFields = Object.entries(fieldVisibility)
+    const hiddenFields = Object.entries(visField)
       .filter(([, visible]) => !visible)
       .map(([field]) => field);
-    const hiddenSections = Object.entries(sectionVisibility)
+    const hiddenSections = Object.entries(visSection)
       .filter(([, visible]) => !visible)
       .map(([section]) => section);
+    return JSON.stringify({ ...formData, hiddenFields, hiddenSections });
+  };
+
+  const buildDraftPayload = () => {
+    const sharedConfig = { appraisalTypeOptions };
     const versionNo = selectedVersionNo || "01";
     const versionDate = selectedVersionDate
       ? format(selectedVersionDate, "dd-MMM-yyyy")
@@ -679,7 +706,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     return {
       versionNo,
       versionDate,
-      configuration: JSON.stringify({ ...formData, hiddenFields, hiddenSections }),
+      configuration: computeConfigurationString(),
       sharedConfig: JSON.stringify(sharedConfig),
     };
   };
@@ -696,11 +723,11 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
     const competenceAssessments = formMethods.getValues("competenceAssessments");
     const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
     if (competenceAssessments.length > 0 && calculateTotalWeight() !== 100) {
-      setShowWeightWarning(true);
+      setWeightWarningSection('C');
       return false;
     }
     if (behaviouralAssessments.length > 0 && calculateBehaviouralTotalWeight() !== 100) {
-      setShowWeightWarning(true);
+      setWeightWarningSection('D');
       return false;
     }
     return true;
@@ -936,7 +963,12 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         });
       }
       setSectionVisibility(defaultSectionVis);
-      
+
+      // Capture the freshly-loaded state as the unsaved-changes baseline. Use
+      // the locally-computed visibility (the setState calls above are not yet
+      // committed) so the baseline exactly mirrors what the form now holds.
+      baselineConfigRef.current = computeConfigurationString(defaultFieldVis, defaultSectionVis);
+
       console.log('[FormEditor] Loaded version', activeVersion, 'configuration with hiddenFields:', config.hiddenFields, 'hiddenSections:', config.hiddenSections);
     } catch (e) {
       console.warn('[FormEditor] Failed to parse version configuration:', e);
@@ -950,7 +982,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         const totalWeight = calculateTotalWeight();
         console.log("Weight validation - Competence total weight:", totalWeight, "Config mode:", isConfigMode);
         if (totalWeight !== 100) {
-          setShowWeightWarning(true);
+          setWeightWarningSection('C');
           return; // Stop submission until weights are validated
         }
       }
@@ -959,7 +991,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
         const totalWeight = calculateBehaviouralTotalWeight();
         console.log("Weight validation - Behavioural total weight:", totalWeight, "Config mode:", isConfigMode);
         if (totalWeight !== 100) {
-          setShowWeightWarning(true);
+          setWeightWarningSection('D');
           return; // Stop submission until weights are validated
         }
       }
@@ -989,6 +1021,50 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       hiddenSections,
     });
     onClose();
+  };
+
+  // Persist the current state as a draft (shared by the Save Draft button and
+  // the unsaved-changes dialog). Returns true if the draft was saved, false if
+  // a validation gate stopped the save (a dialog was raised instead).
+  const saveDraft = async (): Promise<boolean> => {
+    if (isConfigMode && !runConfigModeValidation()) return false;
+    if (!isConfigMode) {
+      const validationResult = validateAssessmentCriteria();
+      if (!validationResult.isValid) {
+        setValidationErrors(validationResult.errors);
+        setShowValidationDialog(true);
+        return false;
+      }
+    }
+    const payload = buildDraftPayload();
+    try {
+      await createDraftMutation.mutateAsync(payload);
+    } catch {
+      // createDraftMutation.onError already surfaced a toast.
+      return false;
+    }
+    setHasSavedDraft(true);
+    setActiveVersion(payload.versionNo);
+    // The saved state is now the clean baseline.
+    baselineConfigRef.current = payload.configuration;
+    formMethods.handleSubmit(onSubmit)();
+    return true;
+  };
+
+  // Whether the editor has in-progress edits not yet saved to the draft.
+  // Only meaningful while editing (config mode); viewing never warns.
+  const hasUnsavedChanges = (): boolean =>
+    isConfigMode &&
+    baselineConfigRef.current !== null &&
+    computeConfigurationString() !== baselineConfigRef.current;
+
+  // Back button: warn before discarding unsaved edits; otherwise close.
+  const handleBackClick = () => {
+    if (hasUnsavedChanges()) {
+      setShowUnsavedDialog(true);
+    } else {
+      onClose();
+    }
   };
 
   // Training management functions
@@ -1811,6 +1887,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       updateTarget={updateTarget}
       deleteTarget={deleteTarget}
       setShowEffectivenessDialog={setShowEffectivenessDialog}
+      disableAddButtons={true}
     />
   );
 
@@ -1867,6 +1944,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       addTrainingNeed={addTrainingNeed}
       updateTrainingNeed={updateTrainingNeed}
       deleteTrainingNeed={deleteTrainingNeed}
+      disableAddButtons={true}
     />
   );
 
@@ -1904,6 +1982,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       addTrainingFollowup={addTrainingFollowup}
       updateTrainingFollowup={updateTrainingFollowup}
       deleteTrainingFollowup={deleteTrainingFollowup}
+      disableAddButtons={true}
     />
   );
 
@@ -2004,8 +2083,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
             <Button
               variant="ghost"
               size="icon"
-              onClick={onClose}
+              onClick={handleBackClick}
               className="h-8 w-8 shrink-0"
+              data-testid="button-back"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -2135,6 +2215,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                         versionDate: format(new Date(), "dd-MMM-yyyy"),
                         configuration: releasedSrc?.configuration ?? '{}',
                         sharedConfig: releasedSrc?.sharedConfig ?? JSON.stringify({ appraisalTypeOptions }),
+                        silent: true,
                       });
                       setHasSavedDraft(true);
                     }
@@ -2155,24 +2236,8 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               if (isViewingReleased) return null;
               return (
             <Button 
-              onClick={() => {
-                // Same validation gates as the save-then-release flow.
-                if (isConfigMode && !runConfigModeValidation()) return;
-                if (!isConfigMode) {
-                  const validationResult = validateAssessmentCriteria();
-                  if (!validationResult.isValid) {
-                    setValidationErrors(validationResult.errors);
-                    setShowValidationDialog(true);
-                    return;
-                  }
-                }
-                const payload = buildDraftPayload();
-                createDraftMutation.mutate(payload);
-                setHasSavedDraft(true);
-                setActiveVersion(payload.versionNo);
-                formMethods.handleSubmit(onSubmit)();
-              }}
-              className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+              onClick={() => { void saveDraft(); }}
+              className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm bg-[#60a5fa] hover:bg-[#3b82f6] text-white"
               size="sm"
               disabled={createDraftMutation.isPending || !currentRankGroup}
               title={!currentRankGroup ? "Please select a rank group first" : undefined}
@@ -2325,7 +2390,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                 <div key={section.id} className="flex items-center">
                   <button
                     type="button"
-                    onClick={() => setActiveSection(section.id)}
+                    onClick={() => scrollToSection(section.id)}
                     className="flex items-center justify-center"
                     data-testid={`button-step-mobile-${section.id}`}
                   >
@@ -2361,7 +2426,7 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                     <div key={section.id} className="relative">
                       <button
                         type="button"
-                        onClick={() => setActiveSection(section.id)}
+                        onClick={() => scrollToSection(section.id)}
                         className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
                           isActive 
                             ? "bg-blue-50 border-blue-600 text-blue-700" 
@@ -2431,30 +2496,21 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
       </div>
       
       {/* Weight Warning Dialog */}
-      {showWeightWarning && (
+      {weightWarningSection && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
           <div className="bg-white p-4 sm:p-6 rounded-lg max-w-md w-full mx-4">
             <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Weight Validation</h3>
             <p className="text-sm sm:text-base text-gray-600 mb-4">
               Total weight must be 100%. 
-              {(() => {
-                const competenceAssessments = formMethods.getValues("competenceAssessments");
-                const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
-                
-                if (competenceAssessments.length > 0 && calculateTotalWeight() !== 100) {
-                  return `Part C current total is ${calculateTotalWeight()}%.`;
-                }
-                if (behaviouralAssessments.length > 0 && calculateBehaviouralTotalWeight() !== 100) {
-                  return `Part D current total is ${calculateBehaviouralTotalWeight()}%.`;
-                }
-                return "";
-              })()}
+              {weightWarningSection === 'C'
+                ? `Part C current total is ${calculateTotalWeight()}%.`
+                : `Part D current total is ${calculateBehaviouralTotalWeight()}%.`}
               Do you want to equally distribute the weights?
             </p>
             <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-2">
               <Button
                 variant="outline"
-                onClick={() => setShowWeightWarning(false)}
+                onClick={() => setWeightWarningSection(null)}
                 className="text-sm sm:text-base"
                 size="sm"
               >
@@ -2462,16 +2518,21 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
               </Button>
               <Button
                 onClick={() => {
-                  const competenceAssessments = formMethods.getValues("competenceAssessments");
-                  const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
-                  
-                  if (competenceAssessments.length > 0 && calculateTotalWeight() !== 100) {
+                  if (weightWarningSection === 'C') {
                     distributeWeightsEqually();
-                  }
-                  if (behaviouralAssessments.length > 0 && calculateBehaviouralTotalWeight() !== 100) {
+
+                    // Part C now fixed — if Part D is also off, show ITS popup next, separately.
+                    const behaviouralAssessments = formMethods.getValues("behaviouralAssessments");
+
+                    if (behaviouralAssessments.length > 0 && calculateBehaviouralTotalWeight() !== 100) {
+                      setWeightWarningSection('D');
+                    } else {
+                      setWeightWarningSection(null);
+                    }
+                  } else {
                     distributeBehaviouralWeightsEqually();
+                    setWeightWarningSection(null);
                   }
-                  setShowWeightWarning(false);
                 }}
                 className="text-sm sm:text-base"
                 size="sm"
@@ -2919,6 +2980,23 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Unsaved changes warning when leaving the editor via Back */}
+      <UnsavedChangesDialog
+        isOpen={showUnsavedDialog}
+        title="Unsaved Changes"
+        description="You have unsaved changes. Please save your changes before exiting."
+        onSave={async () => {
+          const saved = await saveDraft();
+          setShowUnsavedDialog(false);
+          if (saved) onClose();
+        }}
+        onDiscard={() => {
+          setShowUnsavedDialog(false);
+          onClose();
+        }}
+        onCancel={() => setShowUnsavedDialog(false)}
+      />
     </div>
   );
 };

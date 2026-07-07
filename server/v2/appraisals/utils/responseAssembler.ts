@@ -66,6 +66,8 @@ export function assembleV1Response(
     trainingNeeds: trainingNeeds.map((tn, i) => ({
       id: String(i + 1),
       training: s(tn.training),
+      correspondingInDB: s(tn.correspondingInDb),
+      identifiedByUuid: s((tn as any).identifiedByUuid),
       comment: s(tn.comment),
       addedFromDB: (tn as { source?: string }).source === "db",
     })),
@@ -97,6 +99,7 @@ export function assembleV1Response(
       id: String(i + 1),
       training: s(tf.training),
       correspondingInDB: s(tf.correspondingInDb),
+      identifiedByUuid: s((tf as any).identifiedByUuid),
       category: s(tf.category),
       status: s(tf.status),
       targetDate: s(tf.targetDate),

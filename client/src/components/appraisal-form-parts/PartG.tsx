@@ -14,6 +14,8 @@ import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import { PartGProps } from "./types";
 import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
+import { usePermissions } from "@/contexts/PermissionsContext";
+import { useTrainingStatusOptionsV2, withLegacyStatus, useTrainingCategoryOptionsV2, withLegacyCategory } from "@/hooks/v2/useMasterDataV2";
 
 const PartGComponent: React.FC<PartGProps> = ({
   form,
@@ -42,8 +44,13 @@ const PartGComponent: React.FC<PartGProps> = ({
   isPostStage1,
   isPostStage2,
   isPostStage3,
+  users = [],
 }) => {
   const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
+  const { statuses: statusOptions } = useTrainingStatusOptionsV2("Appraisal");
+  const { categories: categoryOptions } = useTrainingCategoryOptionsV2("Appraisal");
+  const { userType } = usePermissions();
+  const isShipUser = userType === 'Ship';
   // Task #500: post-Stage 3 fully locks G (legacy behavior).
   const isG1Locked = appraisalStatus === 'reviewed' || appraisalStatus === ('stage3_submitted' as typeof appraisalStatus);
 
@@ -61,9 +68,18 @@ const PartGComponent: React.FC<PartGProps> = ({
   // Task #500: G is fully locked once Stage 3 has been submitted. Using a
   // fieldset disables every native input, select, textarea and button inside,
   // including the Save Draft / Submit Stage 3 actions at the bottom.
-  const lockSection = !!isPostStage3;
+  const lockSection = !!isPostStage3 || isShipUser;
   return (
-    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-g-lock">
+    <fieldset disabled={lockSection} className="min-w-0 border-0 p-0 m-0" data-testid="fieldset-part-g-lock">
+    {isShipUser && (
+      <div
+        className="mb-4 rounded-md border border-gray-300 bg-gray-100 px-4 py-3 text-center text-sm font-medium text-gray-600"
+        data-testid="text-office-use-only-g"
+      >
+        For Office use only
+      </div>
+    )}
+    <div className={isShipUser ? 'opacity-60 pointer-events-none' : undefined}>
     <div ref={partRef} data-section-id="G">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -154,6 +170,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-12">S.No</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Corresponding in DB</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Identified By</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Category</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Status</th>
                       <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target or Compl. Date</th>
@@ -193,29 +210,47 @@ const PartGComponent: React.FC<PartGProps> = ({
                                   onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
                                   isLoading={isLoadingDbTrainings}
                                   isError={isErrorDbTrainings}
+                                  disabled={lockSection}
+                                  fallbackLabel={followup.training}
                                   testId={`select-followup-db-${followup.id}`}
                                 />
                               );
                             })()}
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Select value={followup.category || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)}>
-                              <SelectTrigger className="h-8"><SelectValue placeholder="Select Category" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="1. Competence">1. Competence</SelectItem>
-                                <SelectItem value="2- Soft Skills">2- Soft Skills</SelectItem>
+                            <Select
+                              value={followup.identifiedByUuid || '__none'}
+                              onValueChange={(value) => updateTrainingFollowup(followup.id, "identifiedByUuid", value === '__none' ? '' : value)}
+                              disabled={lockSection}
+                            >
+                              <SelectTrigger className="h-8" data-testid={`select-followup-identified-by-${followup.id}`}>
+                                <SelectValue placeholder="Select user" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-[280px]">
+                                <SelectItem value="__none">— None —</SelectItem>
+                                {users.map((u) => (
+                                  <SelectItem key={u.userUuid} value={u.userUuid}>{u.displayName}</SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
-                            <Select value={followup.status || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "status", value)}>
+                            <Select value={followup.category || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "category", value)} disabled={lockSection}>
+                              <SelectTrigger className="h-8"><SelectValue placeholder="Select Category" /></SelectTrigger>
+                              <SelectContent>
+                                {withLegacyCategory(categoryOptions, followup.category).map((c) => (
+                                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
+                            <Select value={followup.status || undefined} onValueChange={(value) => updateTrainingFollowup(followup.id, "status", value)} disabled={lockSection}>
                               <SelectTrigger className="h-8"><SelectValue placeholder="Select Status" /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Proposed">Proposed</SelectItem>
-                                <SelectItem value="Approved">Approved</SelectItem>
-                                <SelectItem value="Planned">Planned</SelectItem>
-                                <SelectItem value="Declined">Declined</SelectItem>
-                                <SelectItem value="Completed">Completed</SelectItem>
+                                {withLegacyStatus(statusOptions, followup.status).map((s) => (
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </td>
@@ -280,16 +315,7 @@ const PartGComponent: React.FC<PartGProps> = ({
             <div className="flex justify-end gap-4 mt-6">
               <Button 
                 type="button"
-                className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8"
-                onClick={handleSaveDraft}
-                disabled={saveAppraisalMutation.isPending}
-                data-testid="button-save-draft-part-g"
-              >
-                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
-              </Button>
-              <Button 
-                type="button"
-                className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                className="bg-green-600 hover:bg-green-700 text-white px-8" 
                 onClick={() => handleStageSubmission('stage3')} 
                 disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'reviewed'}
                 data-testid="button-submit-stage-3"
@@ -300,6 +326,7 @@ const PartGComponent: React.FC<PartGProps> = ({
           </div>
         </CardContent>
       </Card>
+    </div>
     </div>
     </fieldset>
   );

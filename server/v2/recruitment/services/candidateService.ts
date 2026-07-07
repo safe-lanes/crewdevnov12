@@ -15,6 +15,7 @@ import {
   candVesselTypesApplied,
   candPersonalDetails,
   candAddresses,
+  candRecruitmentDecision,
 } from "../../../../shared/v2/recruitment/schema";
 import {
   masterNationalities,
@@ -25,6 +26,10 @@ import {
   masterFleetGroups,
   masterVessels,
 } from "../../../../shared/schema";
+import {
+  crewMembersV2,
+  crewPersonalDetails,
+} from "../../../../shared/v2/crew-pool/schema";
 
 import type {
   RecruitmentCandidate,
@@ -57,6 +62,8 @@ export interface CandidateListItem extends RecruitmentCandidate {
   nationality: string;
   vesselType: string;
   manningAgent: string;
+  recruitmentDate: string | null;
+  crewPool: string | null;
 }
 
 export class CandidateService {
@@ -296,6 +303,10 @@ export class CandidateService {
         // Resolved master data (ACTUAL NAMES, NOT UUIDs)
         nationalityName: masterNationalities.nationality,
         manningAgentName: candPersonalDetails.manningAgent,
+        crewPoolName: crewPersonalDetails.crewPool,
+
+        // Date of Recruitment (C3.3) from the recruitment decision
+        recruitmentDate: candRecruitmentDecision.recruitmentDate,
 
         // Vessel type UUID (will be resolved in next step)
         vesselTypeUuid: candVesselTypesApplied.vesselTypeUuid,
@@ -306,8 +317,29 @@ export class CandidateService {
         eq(recruitmentCandidatesV2.recCanUuid, candPersonalDetails.recCanUuid)
       )
       .leftJoin(
+        crewMembersV2,
+        and(
+          eq(recruitmentCandidatesV2.recCanUuid, crewMembersV2.sourceRecCanUuid),
+          eq(crewMembersV2.isDeleted, false)
+        )
+      )
+      .leftJoin(
+        crewPersonalDetails,
+        and(
+          eq(crewMembersV2.crewUuid, crewPersonalDetails.crewUuid),
+          eq(crewPersonalDetails.isDeleted, false)
+        )
+      )
+      .leftJoin(
         masterNationalities,
         eq(recruitmentCandidatesV2.nationalityUuid, masterNationalities.natUuid)
+      )
+      .leftJoin(
+        candRecruitmentDecision,
+        and(
+          eq(recruitmentCandidatesV2.recCanUuid, candRecruitmentDecision.recCanUuid),
+          eq(candRecruitmentDecision.isDeleted, false)
+        )
       )
       .leftJoin(
         candVesselTypesApplied,
@@ -323,7 +355,7 @@ export class CandidateService {
     const candidateMap = new Map<string, CandidateListItem>();
 
     for (const row of candidatesWithMasterData) {
-      const { nationalityName, manningAgentName, vesselTypeUuid, ...candidateData } = row;
+      const { nationalityName, manningAgentName, recruitmentDate, vesselTypeUuid, crewPoolName, ...candidateData } = row;
 
       if (!candidateMap.has(row.recCanUuid)) {
         // First time seeing this candidate
@@ -331,7 +363,9 @@ export class CandidateService {
           ...candidateData,
           nationality: nationalityName || row.nationalityUuid || '',
           manningAgent: manningAgentName || '',
+          recruitmentDate: recruitmentDate || null,
           vesselType: '',
+          crewPool: crewPoolName || null,
         });
       }
 
@@ -393,6 +427,7 @@ export class CandidateService {
         fileNo: recruitmentCandidatesV2.fileNo,
         status: recruitmentCandidatesV2.status,
         uploadedPhoto: recruitmentCandidatesV2.uploadedPhoto,
+        screeningDate: recruitmentCandidatesV2.screeningDate,
         createdAt: recruitmentCandidatesV2.createdAt,
         updatedAt: recruitmentCandidatesV2.updatedAt,
         createdByUuid: recruitmentCandidatesV2.createdByUuid,
@@ -507,6 +542,16 @@ export class CandidateService {
 
       data.nationalityUuid = nationalityUuid;
       delete (data as any).nationality;
+    }
+
+    // Screening date is set once (on first submission for screening) and is
+    // immutable thereafter, so it reliably reflects when recruitment was
+    // initiated. Drop any incoming value if the candidate already has one.
+    if ((data as any).screeningDate) {
+      const existing = await candidateRepository.findByUuid(recCanUuid);
+      if (existing?.screeningDate) {
+        delete (data as any).screeningDate;
+      }
     }
 
     return candidateRepository.updateByUuid(recCanUuid, {

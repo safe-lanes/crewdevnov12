@@ -186,6 +186,17 @@ export class CrewSeaServiceRepository {
   }
 
   // ============ Attachments ============
+  async findAttachmentByUuid(
+    attUuid: string
+  ): Promise<CrewSeaServiceAttachment | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(crewSeaServiceAttachments)
+      .where(eq(crewSeaServiceAttachments.attUuid, attUuid));
+    return results[0];
+  }
+
   async findAttachmentsBySeaUuid(
     seaUuid: string
   ): Promise<CrewSeaServiceAttachment[]> {

@@ -1,6 +1,7 @@
 import { useLocation } from 'wouter';
 import { useState, useEffect, useMemo } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
 import MainLayout from '@/components/main/MainLayout';
 import RestHoursSideBar from './RestHoursSideBar';
 import { RestHoursDashboard } from './components/RestHoursDashboard';
@@ -54,7 +55,7 @@ export const RestHoursModule = (): JSX.Element => {
 
   const renderContent = () => {
     if (permissions.length > 0 && !allowedPages.includes(selectedRestHoursPage)) {
-      return null;
+      return <NoAccessPage menuName="Rest Hours" />;
     }
     switch (selectedRestHoursPage) {
       case 'dashboard':

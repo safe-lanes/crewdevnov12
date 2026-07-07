@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { parseISO, format, isValid } from 'date-fns';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
 import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useQueryClient } from '@tanstack/react-query';
@@ -100,7 +101,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     return lookup;
   }, [externalNationalitiesData]);
 
-  const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent } = usePermissions();
+  const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent, isLoading: permissionsLoading } = usePermissions();
   const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
 
   const [filters, setFilters] = useState({
@@ -131,15 +132,21 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   useEffect(() => {
     if (!pendingCandidateUuid) return;
     if (isLoading) return;
+    if (permissionsLoading) return;
     const list = (allCandidates as V2CandidateListItem[]) || [];
     const found = list.find((c) => c.recCanUuid === pendingCandidateUuid);
     if (found) {
-      setSelectedCandidate({
-        ...found,
-        middleName: found.middleName || '',
-        _openedFromDeepLink: true,
-      } as V2CandidateListItem & { _openedFromDeepLink: boolean });
-      setShowApplicationForm(true);
+      const candidatePage = (Object.keys(STATUS_MAPPING) as (keyof typeof STATUS_MAPPING)[])
+        .find((page) => STATUS_MAPPING[page].includes(found.status));
+      const isAllowed = permissions.length === 0 || (!!candidatePage && allowedPages.includes(candidatePage));
+      if (isAllowed) {
+        setSelectedCandidate({
+          ...found,
+          middleName: found.middleName || '',
+          _openedFromDeepLink: true,
+        } as V2CandidateListItem & { _openedFromDeepLink: boolean });
+        setShowApplicationForm(true);
+      }
     }
     setPendingCandidateUuid(null);
     if (typeof window !== 'undefined') {
@@ -151,7 +158,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         window.history.replaceState({}, '', newUrl);
       }
     }
-  }, [pendingCandidateUuid, isLoading, allCandidates]);
+  }, [pendingCandidateUuid, isLoading, permissionsLoading, allCandidates]);
 
   const deleteMutation = useV2DeleteCandidate();
   const allowedPages = useMemo(() => {
@@ -305,22 +312,43 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         resizable: true,
         enableRowGroup: false
       },
-      {
-        headerName: 'Status',
-        field: 'status',
-        flex: 0.8,
-        minWidth: 80,
-        cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
-        filter: 'agSetColumnFilter',
-        sortable: true,
-        resizable: true,
-        enableRowGroup: false,
-        valueFormatter: (params: any) => {
-          // Return value as-is since status is now stored with proper capitalization
-          // matching legacy: Draft, Applied, Screening, For Approval, Recruited, Waitlisted, Rejected
-          return params.value || '';
-        }
-      },
+      ...(["recruited", "waitlist", "rejected"].includes(selectedRecruitmentPage)
+        ? [{
+            headerName: selectedRecruitmentPage === 'waitlist'
+              ? 'Date of Waitlisting'
+              : selectedRecruitmentPage === 'rejected'
+              ? 'Date of Rejection'
+              : 'Date of Recruitment',
+            field: 'recruitmentDate',
+            flex: 1,
+            minWidth: 130,
+            cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
+            filter: 'agTextColumnFilter',
+            sortable: true,
+            resizable: true,
+            enableRowGroup: false,
+            valueFormatter: (params: any) => {
+              if (!params.value) return '';
+              const parsed = parseISO(params.value);
+              return isValid(parsed) ? format(parsed, 'dd-MMM-yyyy') : params.value;
+            }
+          } as ColDef]
+        : [{
+            headerName: 'Status',
+            field: 'status',
+            flex: 0.8,
+            minWidth: 80,
+            cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
+            filter: 'agSetColumnFilter',
+            sortable: true,
+            resizable: true,
+            enableRowGroup: false,
+            valueFormatter: (params: any) => {
+              // Return value as-is since status is now stored with proper capitalization
+              // matching legacy: Draft, Applied, Screening, For Approval, Recruited, Waitlisted, Rejected
+              return params.value || '';
+            }
+          } as ColDef]),
       {
         headerName: 'Actions',
         field: 'actions',
@@ -409,7 +437,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     }
 
     return baseColumns;
-  }, [ActionsCellRenderer, normalizeRank, isPhone, isTablet, isSmallScreen]);
+  }, [ActionsCellRenderer, normalizeRank, isPhone, isTablet, isSmallScreen, selectedRecruitmentPage]);
 
   const onGridReady = useCallback((params: GridReadyEvent) => {
     setGridApi(params.api);
@@ -810,6 +838,9 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   };
 
   const renderContent = () => {
+    if (permissions.length > 0 && !allowedPages.includes(selectedRecruitmentPage)) {
+      return <NoAccessPage menuName={currentMenuName} />;
+    }
     if (["in-progress", "recruited", "waitlist", "rejected"].includes(selectedRecruitmentPage)) {
       return renderFiltersAndTable();
     }

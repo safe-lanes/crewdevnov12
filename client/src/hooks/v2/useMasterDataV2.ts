@@ -227,3 +227,89 @@ export const useAppraisalTypeByIdV2 = (id: string | undefined) => {
     staleTime: STALE_TIME,
   });
 };
+
+// ---- Training Status master (per-module training-item statuses) ----
+
+export interface TrainingStatusV2 {
+  id: number;
+  mtsUuid: string;
+  label: string;
+  module: string;
+  isActive: boolean;
+  sortOrder: number | null;
+}
+
+export const TRAINING_STATUSES_KEY = `${V2_MASTERS_BASE}/training-statuses`;
+
+export const useTrainingStatusesV2 = (options?: UseMasterOptions) => {
+  return useQuery<TrainingStatusV2[]>({
+    queryKey: [TRAINING_STATUSES_KEY],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
+  });
+};
+
+// Returns active status labels for a module, sorted by sortOrder.
+// Pass currentValue(s) so legacy/deactivated values on existing records
+// still render as a selectable option in their dropdown.
+export const useTrainingStatusOptionsV2 = (
+  module: "Promotion" | "Appraisal" | "Training & Retention" | "Recruitment",
+  options?: UseMasterOptions,
+) => {
+  const query = useTrainingStatusesV2(options);
+  const statuses = (query.data ?? [])
+    .filter((s) => s.module === module && s.isActive)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.label.localeCompare(b.label))
+    .map((s) => s.label);
+  return { ...query, statuses };
+};
+
+// Merges legacy value(s) into the active options so existing records render.
+export const withLegacyStatus = (statuses: string[], current?: string | null): string[] => {
+  if (!current || statuses.includes(current)) return statuses;
+  return [...statuses, current];
+};
+
+// ---- Training Category master (per-module training-item categories) ----
+
+export interface TrainingCategoryV2 {
+  id: number;
+  mtcUuid: string;
+  label: string;
+  module: string;
+  isActive: boolean;
+  sortOrder: number | null;
+}
+
+export const TRAINING_CATEGORIES_KEY = `${V2_MASTERS_BASE}/training-categories`;
+
+export const useTrainingCategoriesV2 = (options?: UseMasterOptions) => {
+  return useQuery<TrainingCategoryV2[]>({
+    queryKey: [TRAINING_CATEGORIES_KEY],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
+  });
+};
+
+// Returns active category labels for a module, sorted by sortOrder.
+// Pass currentValue(s) so legacy/deactivated values on existing records
+// still render as a selectable option in their dropdown.
+export const useTrainingCategoryOptionsV2 = (
+  module: "Promotion" | "Appraisal" | "Training & Retention" | "Recruitment",
+  options?: UseMasterOptions,
+) => {
+  const query = useTrainingCategoriesV2(options);
+  const categories = (query.data ?? [])
+    .filter((c) => c.module === module && c.isActive)
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.label.localeCompare(b.label))
+    .map((c) => c.label);
+  return { ...query, categories };
+};
+
+// Merges legacy value(s) into the active options so existing records render.
+export const withLegacyCategory = (categories: string[], current?: string | null): string[] => {
+  if (!current || categories.includes(current)) return categories;
+  return [...categories, current];
+};

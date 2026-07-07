@@ -14,6 +14,40 @@ export class VesselOrgChartRepository {
       .orderBy(asc(admVesselOrgChartV2.sortOrder));
   }
 
+  async findDescendantRanks(identifier: string): Promise<AdmVesselOrgChartV2[]> {
+    const normalizedIdentifier = identifier.trim().toLowerCase();
+    const allNodes = await this.findAll();
+    const root = allNodes.find(
+      (n) => n.rankId.toLowerCase() === normalizedIdentifier || n.rank.toLowerCase() === normalizedIdentifier,
+    );
+    if (!root) return [];
+
+    const childrenByParentId = new Map<string, AdmVesselOrgChartV2[]>();
+    for (const node of allNodes) {
+      if (!node.parentRankId) continue;
+      const list = childrenByParentId.get(node.parentRankId) || [];
+      list.push(node);
+      childrenByParentId.set(node.parentRankId, list);
+    }
+
+    const result: AdmVesselOrgChartV2[] = [root];
+    const visited = new Set<string>([root.rankId]);
+    const queue: string[] = [root.rankId];
+
+    while (queue.length > 0) {
+      const currentRankId = queue.shift()!;
+      const children = childrenByParentId.get(currentRankId) || [];
+      for (const child of children) {
+        if (visited.has(child.rankId)) continue;
+        visited.add(child.rankId);
+        result.push(child);
+        queue.push(child.rankId);
+      }
+    }
+
+    return result;
+  }
+
   async saveAll(entries: InsertAdmVesselOrgChartV2[]): Promise<AdmVesselOrgChartV2[]> {
     const db = getDb();
     return db.transaction(async (tx: any) => {

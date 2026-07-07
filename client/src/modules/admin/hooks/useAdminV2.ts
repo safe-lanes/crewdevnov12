@@ -1,16 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApiV2 } from '../api/adminApiV2';
+import { getCrewUserId } from '@/lib/crewUser';
 
 const V2_KEY = '/api/v2/admin';
 const STALE_TIME = 60 * 1000;
-
-function getCrewUserId(): string | null {
-  try {
-    return localStorage.getItem("crewUserId") || null;
-  } catch {
-    return null;
-  }
-}
 
 function withAuditUser<T>(data: T): T {
   const auditUserUuid = getCrewUserId();

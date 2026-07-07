@@ -1,4 +1,4 @@
-import { Calendar, CalendarClock, CalendarDays, AlertTriangle, MoreHorizontal, BarChart3 } from 'lucide-react';
+import { Calendar, CalendarClock, CalendarDays, AlertTriangle, MoreHorizontal, BarChart3, History } from 'lucide-react';
 import React from 'react';
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -39,6 +39,11 @@ const drugsAlcoholSideBarList: { name: string; icon: React.ReactNode; page: stri
         name: "Summary",
         icon: <BarChart3 size={20} className='text-white' />,
         page: "summary"
+    },
+    {
+        name: "History",
+        icon: <History size={20} className='text-white' />,
+        page: "history"
     }
 ];
 

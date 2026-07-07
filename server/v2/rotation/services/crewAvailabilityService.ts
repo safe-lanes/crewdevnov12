@@ -95,8 +95,21 @@ function calculateExperienceFromSeaService(seaServiceRecords: any[], presentRank
 export const crewAvailabilityService = {
   async getCrewByRank(rank: string): Promise<any[]> {
     const db = getDb();
-    
-    const results = await db
+
+    // Crew with an APPROVED prior-joining promotion INTO this rank are surfaced
+    // in this (target-rank) pool tagged "(PR)" even though their present_rank is
+    // still lower until they sign on. Conversely, present-rank crew who are
+    // themselves pending a prior-joining promotion to a DIFFERENT rank are
+    // surfaced at their target rank instead, so they are excluded below.
+    const { PromotionReviewsService } = await import("../../promotions/services");
+    const reviewsService = new PromotionReviewsService();
+    const promotees = await reviewsService.getApprovedPriorJoiningPromoteesToRank(rank);
+    const promoteeRankByUuid = new Map<string, string>(
+      promotees.map((p) => [p.crewUuid, p.promotionToRank]),
+    );
+    const promoteeUuids = Array.from(promoteeRankByUuid.keys());
+
+    const rawResults = await db
       .selectDistinctOn([crewMembersV2.crewUuid], {
         crew: crewMembersV2,
         currentVesselUuid: crewAssignments.vesselUuid,
@@ -113,13 +126,34 @@ export const crewAvailabilityService = {
       )
       .where(
         and(
-          eq(crewMembersV2.presentRank, rank),
           eq(crewMembersV2.isDeleted, false),
           isNull(crewMembersV2.archivedAt),
           ilike(crewMembersV2.status, "active"),
-          eq(crewMembersV2.isActive, true)
+          eq(crewMembersV2.isActive, true),
+          or(
+            eq(crewMembersV2.presentRank, rank),
+            promoteeUuids.length > 0
+              ? inArray(crewMembersV2.crewUuid, promoteeUuids)
+              : sql`false`
+          )
         )
       );
+
+    // Exclude present-rank crew who have a pending prior-joining promotion to a
+    // different rank — they belong in their target-rank pool, not this one.
+    const baseUuids = rawResults
+      .filter(
+        (row: any) =>
+          row.crew.presentRank === rank && !promoteeRankByUuid.has(row.crew.crewUuid)
+      )
+      .map((row: any) => row.crew.crewUuid);
+    const pendingAwayMap =
+      baseUuids.length > 0
+        ? await reviewsService.getPendingPriorJoiningByCrewUuids(baseUuids)
+        : new Map<string, { promotionToRank: string }>();
+    const results = rawResults.filter(
+      (row: any) => !pendingAwayMap.has(row.crew.crewUuid)
+    );
 
     const crewUuids = results.map((row: any) => row.crew.crewUuid);
     
@@ -303,6 +337,8 @@ export const crewAvailabilityService = {
         isOnboard: !!row.currentVesselUuid,
         pool: personalDetails?.crewPool || null,
         manningAgent: personalDetails?.manningAgent || null,
+        hasPriorJoiningPromotion: promoteeRankByUuid.has(crewUuid),
+        promotionToRank: promoteeRankByUuid.get(crewUuid) ?? null,
         experience,
       };
     });

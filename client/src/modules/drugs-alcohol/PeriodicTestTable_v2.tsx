@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format, addMonths, differenceInMonths, differenceInDays, parse } from 'date-fns';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useVesselsV2 } from '@/hooks/v2/useMasterDataV2';
+import { PlannedDateCellEditor } from './PlannedDateCellEditor';
 
 interface TestRecord {
   date: string;
@@ -28,10 +29,7 @@ interface PeriodicTestData {
 }
 
 interface PeriodicTestTableProps {
-  filterType: "vessel" | "fleet" | "addGroup";
-  selectedVessels: string[];
-  fleetValue: string;
-  addGroupValue: string;
+  filterVesselNames: string[];
   onAdd?: (vesselId?: string) => void;
   onEdit?: (recordId: number | string) => void;
 }
@@ -271,10 +269,7 @@ const ActionsCellRenderer = (params: ICellRendererParams) => {
 };
 
 export const PeriodicTestTable_v2: React.FC<PeriodicTestTableProps> = ({
-  filterType,
-  selectedVessels,
-  fleetValue,
-  addGroupValue,
+  filterVesselNames,
   onAdd,
   onEdit,
 }) => {
@@ -345,12 +340,11 @@ export const PeriodicTestTable_v2: React.FC<PeriodicTestTableProps> = ({
     }
   }, []);
 
-  const { data: testRecords = [], isLoading: testsLoading } = useDrugAlcoholTests({
-    filterType,
-    selectedVessels,
-    fleetValue,
-    addGroupValue,
-  }, apiBase, queryKeyBase);
+  const { data: testRecords = [], isLoading: testsLoading } = useDrugAlcoholTests(
+    {},
+    apiBase,
+    queryKeyBase
+  );
 
   const { data: externalVesselsData = [], isLoading: vesselsLoading } = useVesselsV2();
   
@@ -431,9 +425,9 @@ export const PeriodicTestTable_v2: React.FC<PeriodicTestTableProps> = ({
       }
     });
 
-    if (filterType === 'vessel' && selectedVessels.length > 0) {
-      allVessels = allVessels.filter((vessel: any) => 
-        selectedVessels.includes(vessel.vesselName)
+    if (filterVesselNames.length > 0) {
+      allVessels = allVessels.filter((vessel: any) =>
+        filterVesselNames.includes(vessel.vesselName)
       );
     }
 
@@ -472,7 +466,7 @@ export const PeriodicTestTable_v2: React.FC<PeriodicTestTableProps> = ({
         plannedComments: latestRecord?.plannedComments || '',
       };
     });
-  }, [testRecords, vesselsList, vesselLookup, filterType, selectedVessels, fleetValue, addGroupValue, globalFrequency, vesselFrequencies]);
+  }, [testRecords, vesselsList, vesselLookup, filterVesselNames, globalFrequency, vesselFrequencies]);
 
   const columnDefs: (ColDef | ColGroupDef)[] = useMemo(() => {
     const columns: (ColDef | ColGroupDef)[] = [
@@ -540,6 +534,7 @@ export const PeriodicTestTable_v2: React.FC<PeriodicTestTableProps> = ({
           field: 'plannedDate',
           cellStyle: { fontSize: '12px', color: '#4f5863' },
           editable: true,
+          cellEditor: PlannedDateCellEditor,
         },
         {
           headerName: 'Comments',

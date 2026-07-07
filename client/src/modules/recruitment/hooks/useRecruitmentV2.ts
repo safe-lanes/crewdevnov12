@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getCrewUserId } from "@/lib/crewUser";
 import type {
   CandidateCore,
   CandidateVesselType,
@@ -38,14 +39,6 @@ const API_BASE = "/api/v2/recruitment";
 const QUERY_STALE_TIME = 20 * 1000; // 20 seconds
 const QUERY_GC_TIME = 1 * 60 * 1000; // 1 minutes
 
-// Helper to get crewUserId from localStorage with null fallback
-function getCrewUserId(): string | null {
-  try {
-    return localStorage.getItem("crewUserId") || null;
-  } catch {
-    return null;
-  }
-}
 
 // Inject audit user UUID into request data
 function withAuditUser<T>(data: T): T {
@@ -2443,6 +2436,7 @@ export interface ScreeningB7TrainingItem {
   training?: string;
   identifiedByUuid?: string;
   category?: string;
+  status?: string;
   dueDate?: string;
   comments?: string;
   sortOrder?: number;

@@ -46,7 +46,7 @@ export const DashboardPage = () => {
           <SectionTitleComponents title="Dashboard">
             <span aria-hidden="true" />
           </SectionTitleComponents>
-          <div className="absolute inset-x-0 top-0 flex justify-center pointer-events-none">
+          <div className="hidden absolute inset-x-0 top-0 flex justify-center pointer-events-none">
             <TabsList
               className="h-auto bg-[#f1f1f1] p-1 rounded-md pointer-events-auto"
               data-testid="tabs-dashboard"
@@ -139,6 +139,10 @@ export const DashboardPage = () => {
                 selected === "rank" ? (
                   <CrewAppraisalsRankChart
                     period={period}
+                    ranks={filters.ranks}
+                    crewPools={filters.crewPools}
+                    manningAgents={filters.manningAgents}
+                    nationalities={filters.nationalities}
                     chartRef={chartRef}
                   />
                 ) : null
@@ -154,6 +158,7 @@ export const DashboardPage = () => {
                   ranks={filters.ranks}
                   crewPools={filters.crewPools}
                   manningAgents={filters.manningAgents}
+                  nationalities={filters.nationalities}
                 />
               )}
             />
@@ -189,6 +194,7 @@ export const DashboardPage = () => {
                   vessels={filters.vessels}
                   crewPools={filters.crewPools}
                   manningAgents={filters.manningAgents}
+                  nationalities={filters.nationalities}
                 />
               )}
             />

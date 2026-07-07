@@ -1,6 +1,7 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
+import { applyAuditUser } from "../../admin/utils/auditUser";
 import {
   CrewDocumentsRepository,
   type CrewDocumentWithAttachments,
@@ -17,18 +18,42 @@ import type {
   InsertCrewDocumentAttachment,
   CrewDocumentAttachment,
 } from "../../../../shared/v2/crew-pool/types";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+
+/**
+ * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
+ * a base64 data URL in file_path (no disk file) — those are skipped.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
+
+/**
+ * Persist a new reconcile attachment value to disk when it is base64; otherwise
+ * keep the provided relative path. Never returns base64 for storage.
+ */
+async function persistReconcileAttachment(
+  moduleName: string,
+  fileName: string,
+  filePath?: string,
+  fileData?: string,
+): Promise<{ filePath: string | null; fileData: null }> {
+  const raw = fileData || filePath || "";
+  const decoded = decodeStoredFile(raw, null);
+  if (decoded) {
+    const storedPath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath: storedPath, fileData: null };
+  }
+  return { filePath: filePath || null, fileData: null };
+}
 
 const crewDocumentsRepository = new CrewDocumentsRepository();
-
-// Helper to extract and apply audit user fields
-function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
-  const auditUserUuid = (data as any).auditUserUuid || null;
-  const result = { ...data } as any;
-  delete result.auditUserUuid;
-  if (isCreate) result.createdByUuid = auditUserUuid;
-  result.updatedByUuid = auditUserUuid;
-  return result;
-}
 
 export const crewDocumentsService = {
   async getAll(crewUuid: string): Promise<CrewDocumentWithAttachments[]> {
@@ -46,7 +71,7 @@ export const crewDocumentsService = {
 
   async create(
     crewUuid: string,
-    data: Omit<InsertCrewDocument, "docUuid" | "crewUuid"> & { issuingCountry?: string }
+    data: Omit<InsertCrewDocument, "docUuid" | "crewUuid"> & { issuingCountry?: string; auditUserUuid?: string | null }
   ): Promise<CrewDocument> {
     await crewMembersService.getByUuid(crewUuid);
 
@@ -73,7 +98,7 @@ export const crewDocumentsService = {
 
   async update(
     docUuid: string,
-    data: Partial<InsertCrewDocument> & { issuingCountry?: string }
+    data: Partial<InsertCrewDocument> & { issuingCountry?: string; auditUserUuid?: string | null }
   ): Promise<CrewDocument> {
     await this.getByUuid(docUuid);
 
@@ -125,10 +150,22 @@ export const crewDocumentsService = {
   },
 
   async removeAttachment(attUuid: string): Promise<void> {
+    const attachment =
+      await crewDocumentsRepository.findAttachmentByUuid(attUuid);
     const success = await crewDocumentsRepository.softDeleteAttachment(attUuid);
     if (!success) {
       throw new Error(`Failed to remove attachment: ${attUuid}`);
     }
+    await deleteAttachmentFile(attachment?.filePath);
+  },
+
+  async getAttachmentFile(attUuid: string): Promise<CrewDocumentAttachment> {
+    const attachment =
+      await crewDocumentsRepository.findAttachmentByUuid(attUuid);
+    if (!attachment) {
+      throw new Error(`Attachment not found: ${attUuid}`);
+    }
+    return attachment;
   },
 
   /**
@@ -152,7 +189,8 @@ export const crewDocumentsService = {
         filePath?: string;
         fileData?: string;
       }>;
-    }>
+    }>,
+    auditUserUuid: string | null = null
   ): Promise<CrewDocument[]> {
     const db = getDb();
     await crewMembersService.getByUuid(crewUuid);
@@ -183,7 +221,7 @@ export const crewDocumentsService = {
         if (item.isDeleted && item.docUuid) {
           await tx
             .update(crewDocuments)
-            .set({ isDeleted: true, updatedAt: now })
+            .set(applyAuditUser({ isDeleted: true, auditUserUuid }))
             .where(eq(crewDocuments.docUuid, item.docUuid));
           continue;
         }
@@ -193,7 +231,7 @@ export const crewDocumentsService = {
         if (item.docUuid) {
           const [updated] = await tx
             .update(crewDocuments)
-            .set({ ...item.data, updatedAt: now })
+            .set(applyAuditUser({ ...item.data, auditUserUuid }))
             .where(eq(crewDocuments.docUuid, item.docUuid))
             .returning();
           docUuid = item.docUuid;
@@ -202,13 +240,13 @@ export const crewDocumentsService = {
           docUuid = uuidv4();
           const [created] = await tx
             .insert(crewDocuments)
-            .values({
+            .values(applyAuditUser({
               ...item.data,
               docUuid,
               crewUuid,
               createdAt: now,
-              updatedAt: now,
-            })
+              auditUserUuid,
+            }, true))
             .returning();
           results.push(created);
         }
@@ -216,15 +254,21 @@ export const crewDocumentsService = {
         if (item.attachments) {
           for (const att of item.attachments) {
             if (att.isNew && (att.filePath || att.fileData)) {
-              await tx.insert(crewDocumentsAttachments).values({
+              const stored = await persistReconcileAttachment(
+                "crew-pool/crew-documents",
+                att.fileName,
+                att.filePath,
+                att.fileData,
+              );
+              await tx.insert(crewDocumentsAttachments).values(applyAuditUser({
                 attUuid: uuidv4(),
                 docUuid,
                 fileName: att.fileName,
-                filePath: att.filePath || null,
-                fileData: att.fileData || null,
+                filePath: stored.filePath,
+                fileData: stored.fileData,
                 createdAt: now,
-                updatedAt: now,
-              });
+                auditUserUuid,
+              }, true));
             }
           }
         }

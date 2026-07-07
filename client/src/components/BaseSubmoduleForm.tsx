@@ -25,6 +25,7 @@ interface BaseSubmoduleFormProps {
   defaultValues: any;
   onClose: () => void;
   onSubmit: (data: any) => void;
+  disableSaveDraft?: boolean;
   children: (props: {
     activeSection: string;
     form: any;
@@ -39,6 +40,7 @@ export const BaseSubmoduleForm: React.FC<BaseSubmoduleFormProps> = ({
   defaultValues,
   onClose,
   onSubmit,
+  disableSaveDraft = false,
   children
 }) => {
   const [activeSection, setActiveSection] = useState(sections[0]?.id || "");
@@ -95,6 +97,8 @@ export const BaseSubmoduleForm: React.FC<BaseSubmoduleFormProps> = ({
             <Button 
               variant="outline" 
               size="sm"
+              disabled={disableSaveDraft}
+              data-testid="button-save-draft"
               onClick={() => form.handleSubmit(onSubmit)()}
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex"
               style={{ backgroundColor: sailDesignSystem.colors.primary }}
@@ -105,6 +109,8 @@ export const BaseSubmoduleForm: React.FC<BaseSubmoduleFormProps> = ({
             <Button 
               variant="outline" 
               size="sm"
+              disabled={disableSaveDraft}
+              data-testid="button-save-draft-mobile"
               onClick={() => form.handleSubmit(onSubmit)()}
               className="sm:hidden"
             >

@@ -11,9 +11,11 @@ router.get("/test-records/vessel/:vesselId", testRecordsController.getByVessel);
 router.get("/test-records/:uuid", testRecordsController.getByUuid);
 router.post("/test-records", testRecordsController.create);
 router.patch("/test-records/:uuid/planned", testRecordsController.updatePlannedFields);
+router.patch("/test-records/:uuid/lock", testRecordsController.toggleLock);
 router.patch("/test-records/:uuid", testRecordsController.update);
 router.delete("/test-records/:uuid", testRecordsController.delete);
 
+router.get("/attachments/:attUuid/raw", attachmentsController.serveAttachment);
 router.get("/attachments/:testRecordUuid", attachmentsController.getByTestRecord);
 router.post("/attachments/:testRecordUuid", attachmentsController.create);
 router.delete("/attachments/:attUuid", attachmentsController.delete);

@@ -1,5 +1,72 @@
 import { Request, Response } from "express";
 import { documentsService } from "../services";
+import {
+  fileStorageService,
+  AttachmentValidationError,
+} from "../../shared/fileStorageService.js";
+import {
+  serveAttachmentFromFilePath,
+  decodeStoredFile,
+} from "../../shared/serveAttachmentHelper.js";
+
+/**
+ * Normalize a stored attachment record for serving. Legacy rows written by the
+ * pre-migration code path may carry a base64 data URL wrongly persisted in the
+ * file_path column; treat any data: value as fileData so the shared helper's
+ * dual-read path serves it instead of attempting a (failing) disk read.
+ */
+function normalizeForServe(att: {
+  fileName?: string | null;
+  fileType?: string | null;
+  filePath?: string | null;
+  fileData?: string | null;
+}) {
+  const filePathIsDataUrl = !!att.filePath && att.filePath.startsWith("data:");
+  return {
+    filePath: filePathIsDataUrl ? null : att.filePath ?? null,
+    fileData: att.fileData ?? (filePathIsDataUrl ? att.filePath ?? null : null),
+    fileName: att.fileName ?? null,
+    fileType: att.fileType ?? null,
+  };
+}
+
+/**
+ * Convert an incoming attachment value (base64 data URL or an already-stored
+ * relative disk path) into the persisted {filePath, fileData} pair. New base64
+ * uploads are written to disk via the shared service so only the relative path
+ * is stored; base64 is never persisted to the database.
+ */
+async function persistIncoming(
+  moduleName: string,
+  fileName: string,
+  rawValue: string,
+  fileType?: string | null,
+): Promise<{ filePath: string; fileData: null }> {
+  const decoded = decodeStoredFile(rawValue, fileType);
+  if (decoded) {
+    const filePath = await fileStorageService.writeAttachment(
+      moduleName,
+      fileName,
+      decoded.buffer,
+    );
+    return { filePath, fileData: null };
+  }
+  // Not base64 — assume the client supplied an already-stored relative path.
+  return { filePath: rawValue, fileData: null };
+}
+
+/**
+ * Build the attachment insert payload from the request body, writing any new
+ * base64 upload to disk. Falls back to passing the body unchanged when no file
+ * value is present.
+ */
+async function buildAttachmentData(moduleName: string, body: any) {
+  const rawValue = body?.fileData ?? body?.fileUrl ?? body?.filePath ?? body?.data ?? "";
+  if (!rawValue) return body;
+  const fileName = body?.fileName || body?.name || "attachment";
+  const persisted = await persistIncoming(moduleName, fileName, String(rawValue), body?.fileType);
+  return { ...body, filePath: persisted.filePath, fileData: persisted.fileData };
+}
 
 export async function getDocuments(req: Request, res: Response) {
   try {
@@ -27,7 +94,8 @@ export async function updateDocument(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const doc = await documentsService.updateDocument(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const doc = await documentsService.updateDocument(id, data, auditUserUuid ?? undefined);
     if (!doc) return res.status(404).json({ error: "Not found" });
     res.json(doc);
   } catch (error) {
@@ -62,11 +130,29 @@ export async function getDocumentAttachments(req: Request, res: Response) {
 export async function createDocumentAttachment(req: Request, res: Response) {
   try {
     const { docUuid } = req.params;
-    const attachment = await documentsService.createDocumentAttachment(docUuid, req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-documents", req.body);
+    const attachment = await documentsService.createDocumentAttachment(docUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
+    if (error instanceof AttachmentValidationError) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error("Error creating attachment:", error);
     res.status(500).json({ error: "Failed to create attachment" });
+  }
+}
+
+export async function serveDocumentAttachment(req: Request, res: Response) {
+  try {
+    const { attUuid } = req.params;
+    const record = await documentsService.getDocumentAttachmentFile(attUuid);
+    await serveAttachmentFromFilePath(res, normalizeForServe(record));
+  } catch (error: any) {
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: "Attachment not found" });
+    }
+    console.error("Error serving document attachment:", error);
+    res.status(500).json({ error: "Failed to serve attachment" });
   }
 }
 
@@ -84,11 +170,29 @@ export async function getVisaAttachments(req: Request, res: Response) {
 export async function createVisaAttachment(req: Request, res: Response) {
   try {
     const { visaUuid } = req.params;
-    const attachment = await documentsService.createVisaAttachment(visaUuid, req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-visas", req.body);
+    const attachment = await documentsService.createVisaAttachment(visaUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
+    if (error instanceof AttachmentValidationError) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error("Error creating visa attachment:", error);
     res.status(500).json({ error: "Failed to create visa attachment" });
+  }
+}
+
+export async function serveVisaAttachment(req: Request, res: Response) {
+  try {
+    const { attUuid } = req.params;
+    const record = await documentsService.getVisaAttachmentFile(attUuid);
+    await serveAttachmentFromFilePath(res, normalizeForServe(record));
+  } catch (error: any) {
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: "Attachment not found" });
+    }
+    console.error("Error serving visa attachment:", error);
+    res.status(500).json({ error: "Failed to serve attachment" });
   }
 }
 
@@ -106,11 +210,29 @@ export async function getEducationAttachments(req: Request, res: Response) {
 export async function createEducationAttachment(req: Request, res: Response) {
   try {
     const { eduUuid } = req.params;
-    const attachment = await documentsService.createEducationAttachment(eduUuid, req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-education", req.body);
+    const attachment = await documentsService.createEducationAttachment(eduUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
+    if (error instanceof AttachmentValidationError) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error("Error creating education attachment:", error);
     res.status(500).json({ error: "Failed to create education attachment" });
+  }
+}
+
+export async function serveEducationAttachment(req: Request, res: Response) {
+  try {
+    const { attUuid } = req.params;
+    const record = await documentsService.getEducationAttachmentFile(attUuid);
+    await serveAttachmentFromFilePath(res, normalizeForServe(record));
+  } catch (error: any) {
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: "Attachment not found" });
+    }
+    console.error("Error serving education attachment:", error);
+    res.status(500).json({ error: "Failed to serve attachment" });
   }
 }
 
@@ -128,11 +250,29 @@ export async function getLicenseAttachments(req: Request, res: Response) {
 export async function createLicenseAttachment(req: Request, res: Response) {
   try {
     const { licUuid } = req.params;
-    const attachment = await documentsService.createLicenseAttachment(licUuid, req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-licenses", req.body);
+    const attachment = await documentsService.createLicenseAttachment(licUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
+    if (error instanceof AttachmentValidationError) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error("Error creating license attachment:", error);
     res.status(500).json({ error: "Failed to create license attachment" });
+  }
+}
+
+export async function serveLicenseAttachment(req: Request, res: Response) {
+  try {
+    const { attUuid } = req.params;
+    const record = await documentsService.getLicenseAttachmentFile(attUuid);
+    await serveAttachmentFromFilePath(res, normalizeForServe(record));
+  } catch (error: any) {
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: "Attachment not found" });
+    }
+    console.error("Error serving license attachment:", error);
+    res.status(500).json({ error: "Failed to serve attachment" });
   }
 }
 
@@ -150,11 +290,29 @@ export async function getTrainingAttachments(req: Request, res: Response) {
 export async function createTrainingAttachment(req: Request, res: Response) {
   try {
     const { trainUuid } = req.params;
-    const attachment = await documentsService.createTrainingAttachment(trainUuid, req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-training", req.body);
+    const attachment = await documentsService.createTrainingAttachment(trainUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
+    if (error instanceof AttachmentValidationError) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error("Error creating training attachment:", error);
     res.status(500).json({ error: "Failed to create training attachment" });
+  }
+}
+
+export async function serveTrainingAttachment(req: Request, res: Response) {
+  try {
+    const { attUuid } = req.params;
+    const record = await documentsService.getTrainingAttachmentFile(attUuid);
+    await serveAttachmentFromFilePath(res, normalizeForServe(record));
+  } catch (error: any) {
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: "Attachment not found" });
+    }
+    console.error("Error serving training attachment:", error);
+    res.status(500).json({ error: "Failed to serve attachment" });
   }
 }
 
@@ -172,11 +330,29 @@ export async function getSeaServiceAttachments(req: Request, res: Response) {
 export async function createSeaServiceAttachment(req: Request, res: Response) {
   try {
     const { seaUuid } = req.params;
-    const attachment = await documentsService.createSeaServiceAttachment(seaUuid, req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-sea-service", req.body);
+    const attachment = await documentsService.createSeaServiceAttachment(seaUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
+    if (error instanceof AttachmentValidationError) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error("Error creating sea service attachment:", error);
     res.status(500).json({ error: "Failed to create sea service attachment" });
+  }
+}
+
+export async function serveSeaServiceAttachment(req: Request, res: Response) {
+  try {
+    const { attUuid } = req.params;
+    const record = await documentsService.getSeaServiceAttachmentFile(attUuid);
+    await serveAttachmentFromFilePath(res, normalizeForServe(record));
+  } catch (error: any) {
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: "Attachment not found" });
+    }
+    console.error("Error serving sea service attachment:", error);
+    res.status(500).json({ error: "Failed to serve attachment" });
   }
 }
 
@@ -194,11 +370,29 @@ export async function getAdditionalInfoAttachments(req: Request, res: Response) 
 export async function createAdditionalInfoAttachment(req: Request, res: Response) {
   try {
     const { infoUuid } = req.params;
-    const attachment = await documentsService.createAdditionalInfoAttachment(infoUuid, req.body);
+    const data = await buildAttachmentData("recruitment/recruitment-additional-info", req.body);
+    const attachment = await documentsService.createAdditionalInfoAttachment(infoUuid, data);
     res.status(201).json(attachment);
   } catch (error) {
+    if (error instanceof AttachmentValidationError) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error("Error creating additional info attachment:", error);
     res.status(500).json({ error: "Failed to create additional info attachment" });
+  }
+}
+
+export async function serveAdditionalInfoAttachment(req: Request, res: Response) {
+  try {
+    const { attUuid } = req.params;
+    const record = await documentsService.getAdditionalInfoAttachmentFile(attUuid);
+    await serveAttachmentFromFilePath(res, normalizeForServe(record));
+  } catch (error: any) {
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: "Attachment not found" });
+    }
+    console.error("Error serving additional info attachment:", error);
+    res.status(500).json({ error: "Failed to serve attachment" });
   }
 }
 
@@ -228,7 +422,8 @@ export async function updateVisa(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const visa = await documentsService.updateVisa(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const visa = await documentsService.updateVisa(id, data, auditUserUuid ?? undefined);
     if (!visa) return res.status(404).json({ error: "Not found" });
     res.json(visa);
   } catch (error) {
@@ -275,7 +470,8 @@ export async function updateEducation(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const edu = await documentsService.updateEducation(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const edu = await documentsService.updateEducation(id, data, auditUserUuid ?? undefined);
     if (!edu) return res.status(404).json({ error: "Not found" });
     res.json(edu);
   } catch (error) {
@@ -322,7 +518,8 @@ export async function updateLicense(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const license = await documentsService.updateLicense(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const license = await documentsService.updateLicense(id, data, auditUserUuid ?? undefined);
     if (!license) return res.status(404).json({ error: "Not found" });
     res.json(license);
   } catch (error) {
@@ -369,7 +566,8 @@ export async function updateTrainingCourse(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const course = await documentsService.updateTrainingCourse(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const course = await documentsService.updateTrainingCourse(id, data, auditUserUuid ?? undefined);
     if (!course) return res.status(404).json({ error: "Not found" });
     res.json(course);
   } catch (error) {
@@ -416,7 +614,8 @@ export async function updateSeaService(req: Request, res: Response) {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
-    const ss = await documentsService.updateSeaService(id, req.body);
+    const { auditUserUuid, ...data } = req.body ?? {};
+    const ss = await documentsService.updateSeaService(id, data, auditUserUuid ?? undefined);
     if (!ss) return res.status(404).json({ error: "Not found" });
     res.json(ss);
   } catch (error) {

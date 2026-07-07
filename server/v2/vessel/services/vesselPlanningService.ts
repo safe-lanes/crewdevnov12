@@ -7,6 +7,17 @@ import { masterPorts, masterVessels, masterVesselTypes, masterNationalities, mas
 import { admCompanyTrainingsV2, admAvailableRanksV2 } from "../../../../shared/v2/admin/schema";
 import { eq, and, sql, desc, or, isNull, aliasedTable, inArray } from "drizzle-orm";
 import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
+import { fileStorageService } from "../../shared/fileStorageService.js";
+import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
+
+/**
+ * Delete the on-disk file backing an attachment, if any. Legacy rows may carry
+ * a base64 data URL in file_path (no disk file) — those are skipped.
+ */
+async function deleteAttachmentFile(filePath?: string | null): Promise<void> {
+  if (!filePath || filePath.startsWith("data:")) return;
+  await fileStorageService.deleteAttachment(filePath);
+}
 
 function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
   const auditUserUuid = (data as any).auditUserUuid || null;
@@ -848,16 +859,28 @@ async function getEnglishProficiencyV2(crewUuid: string | null): Promise<string>
 export const vesselPlanningService = {
   async getByVesselUuid(vesselUuid: string) {
     const planningRecords = await vesselPlanningRepository.findByVesselUuid(vesselUuid);
-    
+
+    // Relievers with an approved-but-not-yet-executed prior-joining promotion
+    // are shown with their Target Rank "(PR)". This is display-only enrichment —
+    // the reliever is still excluded from live manning/compliance until sign-on.
+    const { PromotionReviewsService } = await import("../../promotions/services");
+    const reviewsService = new PromotionReviewsService();
+    const priorJoiningMap = await reviewsService.getPendingPriorJoiningByCrewUuids(
+      planningRecords.map((r: any) => r.relieverCrewUuid)
+    );
+
     // Enrich each planning record with document/medical expiry counts
     const enrichedRecords = await Promise.all(
       planningRecords.map(async (record: any) => {
         const { docExpiringCount, medicalExpiring, docExpiryDetails } = await calculateExpiryCountsForCrew(record.crewUuid);
+        const priorJoining = record.relieverCrewUuid ? priorJoiningMap.get(record.relieverCrewUuid) : undefined;
         return {
           ...record,
           docExpiringCount,
           medicalExpiring,
-          docExpiryDetails
+          docExpiryDetails,
+          relieverHasPriorJoiningPromotion: !!priorJoining,
+          relieverPromotionToRank: priorJoining?.promotionToRank ?? null,
         };
       })
     );
@@ -889,30 +912,61 @@ export const vesselPlanningService = {
     return vesselPlanningRepository.create(resolvedData);
   },
 
-  async update(planUuid: string, data: Partial<InsertVesselPlanningV2> & { auditUserUuid?: string }) {
-    const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
-    if (!existing) {
-      throw new Error(`Planning record not found: ${planUuid}`);
-    }
-    
-    // Apply audit user fields
-    const auditedData = applyAuditUser(data, false);
-    
-    // Resolve port values to UUIDs (handles both UUID and port name inputs)
-    const resolvedData = { ...auditedData };
-    if (auditedData.joiningPortUuid) {
-      resolvedData.joiningPortUuid = await resolvePortToUuid(auditedData.joiningPortUuid) || undefined;
-    }
-    if (auditedData.signOffPortUuid) {
-      resolvedData.signOffPortUuid = await resolvePortToUuid(auditedData.signOffPortUuid) || undefined;
-    }
+ async update(planUuid: string, data: Partial<InsertVesselPlanningV2> & { auditUserUuid?: string }) {
+  const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
+  if (!existing) {
+    throw new Error(`Planning record not found: ${planUuid}`);
+  }
 
-    if (resolvedData.relieverCrewUuid === null && existing.isArchived && existing.relieverCrewUuid) {
-      (resolvedData as any).isRelieverArchived = true;
-    }
-    
-    return vesselPlanningRepository.update(planUuid, resolvedData);
-  },
+  const auditedData = applyAuditUser(data, false);
+
+  const resolvedData = { ...auditedData };
+  if (auditedData.joiningPortUuid) {
+    resolvedData.joiningPortUuid = await resolvePortToUuid(auditedData.joiningPortUuid) || undefined;
+  }
+  if (auditedData.signOffPortUuid) {
+    resolvedData.signOffPortUuid = await resolvePortToUuid(auditedData.signOffPortUuid) || undefined;
+  }
+
+  if (resolvedData.relieverCrewUuid === null && existing.isArchived && existing.relieverCrewUuid) {
+    (resolvedData as any).isRelieverArchived = true;
+  }
+
+  const updated = await vesselPlanningRepository.update(planUuid, resolvedData);
+
+  // --- NEW: keep crew_assignments in sync so the Crew Pool dashboard shows correct Relief Due ---
+  const db = getDb();
+
+  // resolve effective values (use incoming change, else fall back to existing planning row)
+  const effectiveCrewUuid = (resolvedData as any).crewUuid ?? existing.crewUuid;
+  const reliefDueChanged = "reliefDue" in resolvedData;
+  const contractChanged = "contractPeriodMonths" in resolvedData;
+
+  if (effectiveCrewUuid && (reliefDueChanged || contractChanged)) {
+    const effectiveReliefDue = reliefDueChanged ? (resolvedData as any).reliefDue : existing.reliefDue;
+    const effectiveContract = contractChanged
+      ? (resolvedData as any).contractPeriodMonths
+      : existing.contractPeriodMonths;
+
+    await db
+      .update(crewAssignments)
+      .set({
+        reliefDue: effectiveReliefDue ?? null,
+        contractPeriod: effectiveContract != null ? String(effectiveContract) : null,
+        updatedByUuid: data.auditUserUuid || null,
+        updatedAt: sql`NOW()`,
+      })
+      .where(
+        and(
+          eq(crewAssignments.crewUuid, effectiveCrewUuid),
+          eq(crewAssignments.vesselUuid, existing.vesselUuid),
+          eq(crewAssignments.isCurrent, true),
+          eq(crewAssignments.assignmentType, "OnBoard"),
+        ),
+      );
+  }
+  return updated;
+},
 
   async archive(planUuid: string, archivedByUuid?: string, auditUserUuid?: string) {
     const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
@@ -1038,6 +1092,79 @@ export const vesselPlanningService = {
     return vesselPlanningRepository.findByPlanUuid(planUuid);
   },
 
+  /**
+   * Planning-only sign-off used by the promotion execution flow.
+   *
+   * When a crew member is promoted on-board, the planning row at their OLD rank
+   * must be vacated (signed off) and any secondary reliever at that rank
+   * promoted to primary. Unlike `signOffCrew`, the crew member is NOT leaving
+   * the vessel — they stay physically onboard at their NEW rank — so this does
+   * NOT touch `crew_assignments` (they remain "current"/onboard) and does NOT
+   * update sea-service `toDate` (the rank change and its sea-service split are
+   * owned by the promotion engine). Idempotent: a no-op once the row is archived.
+   */
+  async signOffForRankChange(planUuid: string, data: {
+    signOffDate: string;
+    auditUserUuid?: string;
+  }) {
+    const db = getDb();
+
+    const planning = await vesselPlanningRepository.findByPlanUuid(planUuid);
+    if (!planning) {
+      throw new Error(`Planning record not found: ${planUuid}`);
+    }
+    if (planning.isArchived) return planning; // already signed off — idempotent
+
+    const vesselUuid = planning.vesselUuid;
+    const rankId = planning.rankId;
+
+    let secondaryCrew = (vesselUuid && rankId)
+      ? await vesselPlanningRepository.findSecondaryByVesselAndRank(vesselUuid, rankId, planUuid, planning.rank ?? undefined)
+      : null;
+
+    // Fallback: rankId can be blank/inconsistent on historical rows. If no
+    // secondary matched by rankId, resolve the reliever by rank NAME on the same
+    // vessel (active rows only), excluding the row being signed off. This avoids
+    // stranding a vacant position when a valid secondary exists by rank name.
+    if (!secondaryCrew && vesselUuid && planning.rank) {
+      const byName = await vesselPlanningRepository.findByVesselAndRankName(vesselUuid, planning.rank);
+      secondaryCrew = byName.find(
+        (s) => (s.crewStatus ?? "").toLowerCase() === "secondary" && s.planUuid !== planUuid,
+      ) ?? null;
+    }
+
+    await db.transaction(async (tx) => {
+      console.log(`📋 [VESSEL-PLANNING-V2] Rank-change sign-off + archive (tx): planUuid=${planUuid}, signOffDate=${data.signOffDate}`);
+      await tx
+        .update(vesselPlanningV2)
+        .set({
+          signOffDate: data.signOffDate,
+          reliefStatus: "Signed Off",
+          takeOverDate: null,
+          takeOverConfirmation: false,
+          isArchived: true,
+          archivedDate: new Date().toISOString().split("T")[0],
+          updatedByUuid: data.auditUserUuid || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(vesselPlanningV2.planUuid, planUuid));
+
+      if (secondaryCrew) {
+        console.log(`📋 [VESSEL-PLANNING-V2] Promoting secondary to primary on rank change (tx): planUuid=${secondaryCrew.planUuid}`);
+        await tx
+          .update(vesselPlanningV2)
+          .set({
+            crewStatus: 'primary',
+            updatedByUuid: data.auditUserUuid || null,
+            updatedAt: new Date(),
+          })
+          .where(eq(vesselPlanningV2.planUuid, secondaryCrew.planUuid));
+      }
+    });
+
+    return vesselPlanningRepository.findByPlanUuid(planUuid);
+  },
+
   async getAttachments(planUuid: string) {
     return vesselPlanningAttachmentsRepository.findByPlanUuid(planUuid);
   },
@@ -1050,8 +1177,18 @@ export const vesselPlanningService = {
     return vesselPlanningAttachmentsRepository.create({ ...data, planUuid });
   },
 
+  async getAttachmentFile(attUuid: string): Promise<VesselPlanningAttachmentsV2> {
+    const attachment = await vesselPlanningAttachmentsRepository.findByUuid(attUuid);
+    if (!attachment) {
+      throw new Error(`Attachment not found: ${attUuid}`);
+    }
+    return attachment;
+  },
+
   async deleteAttachment(attUuid: string) {
-    return vesselPlanningAttachmentsRepository.softDelete(attUuid);
+    const attachment = await vesselPlanningAttachmentsRepository.findByUuid(attUuid);
+    await vesselPlanningAttachmentsRepository.softDelete(attUuid);
+    await deleteAttachmentFile(attachment?.filePath);
   },
 
   async updateReliever(planUuid: string, relieverData: {
@@ -1380,6 +1517,46 @@ export const vesselPlanningService = {
       }
     } catch (e1Err) {
       console.warn(`⚠️ [VESSEL-PLANNING-V2] E1 sign-on auto-create skipped:`, e1Err);
+    }
+
+    // Prior-joining promotion: a prior-joining promotion only takes effect when
+    // the promotee signs on. If this crew has an approved prior-joining review
+    // pending, complete it now so the rank-propagation engine flips the rank as
+    // of the sign-on date. Best-effort — a promotion hiccup must not block the
+    // sign-on, but failures are logged at error level so they stay visible.
+    try {
+      const finalSignOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
+      const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
+      const crew = await crewMembersService.getByUuid(relieverCrewUuid);
+      const empNo = crew?.empNo;
+
+      if (empNo) {
+        const { PromotionReviewsRepository, ExecutionLedgerRepository } = await import("../../promotions/repositories");
+        const reviewsRepo = new PromotionReviewsRepository();
+        const ledgerRepo = new ExecutionLedgerRepository();
+
+        const reviews = await reviewsRepo.findByCrewMemberId(empNo);
+        const pendingPriorJoining = reviews.find((r) =>
+          (r.status ?? "").trim().toLowerCase() === "approved" &&
+          (r.promotionTiming ?? "").trim().toLowerCase() === "prior-joining"
+        );
+
+        if (pendingPriorJoining) {
+          const alreadyApplied = await ledgerRepo.findByReviewUuid(pendingPriorJoining.reviewUuid);
+          if (!alreadyApplied) {
+            console.log(`🎖️ [VESSEL-PLANNING-V2] Completing prior-joining promotion ${pendingPriorJoining.reviewUuid} for crew ${empNo} on sign-on`);
+            const { PromotionReviewsService } = await import("../../promotions/services");
+            const reviewsService = new PromotionReviewsService();
+            await reviewsService.updateReview(pendingPriorJoining.reviewUuid, {
+              status: "completed",
+              promotionDate: finalSignOnDate,
+              auditUserUuid: data.auditUserUuid,
+            });
+          }
+        }
+      }
+    } catch (promoErr) {
+      console.error(`❌ [VESSEL-PLANNING-V2] Prior-joining promotion completion failed (non-fatal):`, promoErr);
     }
 
     return result;

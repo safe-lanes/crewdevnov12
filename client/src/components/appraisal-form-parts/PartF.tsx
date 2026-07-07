@@ -76,7 +76,7 @@ const PartFComponent: React.FC<PartFProps> = ({
   const primaryAppraiserRank = primaryAppraiserToRank[primaryAppraiserValue || ""] || "";
 
   return (
-    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-f-lock">
+    <fieldset disabled={lockSection} className="min-w-0 border-0 p-0 m-0" data-testid="fieldset-part-f-lock">
     <div ref={partRef} data-section-id="F">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -459,16 +459,7 @@ const PartFComponent: React.FC<PartFProps> = ({
             <div className="flex justify-end gap-4 mt-6">
               <Button
                 type="button"
-                className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8"
-                onClick={handleSaveDraft}
-                disabled={saveAppraisalMutation.isPending}
-                data-testid="button-save-draft-part-f"
-              >
-                {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
-              </Button>
-              <Button
-                type="button"
-                className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8"
+                className="bg-green-600 hover:bg-green-700 text-white px-8"
                 onClick={() => handleStageSubmission('stage2')}
                 disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || isPostStage2}
                 data-testid="button-submit-stage-2"

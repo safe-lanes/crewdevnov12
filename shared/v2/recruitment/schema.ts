@@ -3,7 +3,7 @@ import { pgTable, serial, text, timestamp, boolean, integer } from "drizzle-orm/
 // Common audit columns for all tables
 export const auditColumns = {
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
   createdByUuid: text("created_by_uuid"),
   updatedByUuid: text("updated_by_uuid"),
   isDeleted: boolean("is_deleted").default(false),
@@ -28,6 +28,7 @@ export const recruitmentCandidatesV2 = pgTable("recruitment_candidates_v2", {
   rankAppliedFor: text("rank_applied_for"),
   status: text("status").default("Draft"),
   uploadedPhoto: text("uploaded_photo"),
+  screeningDate: text("screening_date"),
   ...auditColumns,
 });
 
@@ -633,6 +634,7 @@ export const screeningB7TrainingItems = pgTable("screening_b7_training_items", {
   training: text("training"),
   identifiedByUuid: text("identified_by_uuid"),
   category: text("category"),
+  status: text("status"),
   dueDate: text("due_date"),
   comments: text("comments"),
   sortOrder: integer("sort_order").default(0),
@@ -735,6 +737,7 @@ export const candRecruitmentDecision = pgTable("cand_recruitment_decision", {
   decisionUuid: text("decision_uuid").unique().notNull(),
   recCanUuid: text("rec_can_uuid").notNull(),
   recruitmentStatus: text("recruitment_status"),
+  recruitmentDate: text("recruitment_date"),
   submittedByUuid: text("submitted_by_uuid"),
   submittedDate: text("submitted_date"),
   ...auditColumns,

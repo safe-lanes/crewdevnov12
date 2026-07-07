@@ -108,7 +108,7 @@ export class SuitabilityRepository {
       )
       .orderBy(asc(candSuitabilityVesselTypes.sortOrder), asc(candSuitabilityVesselTypes.createdAt));
     
-    return results.map(r => ({
+    return results.map((r: any) => ({
       ...r.svt,
       vesselTypeName: r.vesselTypeName,
     }));
@@ -163,7 +163,7 @@ export class SuitabilityRepository {
       )
       .orderBy(asc(candSuitabilityFleetGroups.sortOrder), asc(candSuitabilityFleetGroups.createdAt));
     
-    return results.map(r => ({
+    return results.map((r: any) => ({
       ...r.sfg,
       fleetGroupName: r.fleetGroupName,
     }));

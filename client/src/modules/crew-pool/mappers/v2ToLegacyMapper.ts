@@ -14,6 +14,7 @@ export interface LegacyCrewMember {
   presentRank: string;
   rankAppliedFor: string;
   status: string;
+  recruitmentDate: string;
   availability: string;
   nextAvailability: string;
   isActive: boolean;
@@ -68,6 +69,7 @@ export function mapV2CrewToLegacy(v2Crew: any): LegacyCrewMember {
     presentRank: v2Crew.presentRank || '',
     rankAppliedFor: v2Crew.rankAppliedFor || '',
     status: v2Crew.status || 'active',
+    recruitmentDate: v2Crew.recruitmentDate || '',
     availability: v2Crew.availability || '',
     nextAvailability: v2Crew.nextAvailability || '',
     isActive: v2Crew.isActive ?? true,
@@ -112,6 +114,7 @@ export function mapLegacyCrewToV2(legacy: Partial<LegacyCrewMember> & { dateOfBi
     presentRank: legacy.presentRank ?? undefined,
     rankAppliedFor: legacy.rankAppliedFor ?? undefined,
     status: legacy.status || 'active',
+    recruitmentDate: legacy.recruitmentDate ?? undefined,
     availability: legacy.availability ?? undefined,
     nextAvailability: legacy.nextAvailability ?? undefined,
     isActive: legacy.isActive ?? true,
@@ -819,6 +822,98 @@ export function mapLegacyDoctorVisitToV2(legacy: LegacyDoctorVisit): any {
   };
 }
 
+export interface LegacyBriefing {
+  briefingUuid?: string;
+  vesselCode: string;
+  vesselName: string;
+  vessel: string;
+  joiningRank: string;
+  dateSignOn: string;
+  attachments?: LegacyAttachment[];
+  sortOrder?: number;
+}
+
+export function mapV2BriefingToLegacy(v2: any): LegacyBriefing {
+  return {
+    briefingUuid: v2?.briefingUuid,
+    vesselCode: v2?.vesselUuid || '',
+    vesselName: v2?.vesselName || '',
+    vessel: v2?.vesselName || '',
+    joiningRank: v2?.joiningRank || '',
+    dateSignOn: v2?.dateSignOn || '',
+    sortOrder: v2?.sortOrder,
+    attachments: (v2?.attachments || []).map((att: any) => ({
+      id: att.attUuid || att.id || '',
+      attUuid: att.attUuid,
+      name: att.fileName || '',
+      type: att.fileType || '',
+      size: parseInt(att.fileSize) || 0,
+      data: att.filePath || att.fileData || '',
+      uploadedAt: att.createdAt || '',
+    })),
+  };
+}
+
+export function mapLegacyBriefingToV2(legacy: LegacyBriefing): any {
+  return {
+    briefingUuid: legacy.briefingUuid,
+    vesselUuid: legacy.vesselCode || undefined,
+    vesselName: legacy.vessel || legacy.vesselName || undefined,
+    joiningRank: legacy.joiningRank ?? undefined,
+    dateSignOn: legacy.dateSignOn ?? undefined,
+    sortOrder: legacy.sortOrder,
+  };
+}
+
+export interface LegacyDebriefing {
+  debriefingUuid?: string;
+  vesselCode: string;
+  vesselName: string;
+  vessel: string;
+  rankServed: string;
+  dateSignOn: string;
+  dateSignedOff: string;
+  reasonForSignOff: string;
+  attachments?: LegacyAttachment[];
+  sortOrder?: number;
+}
+
+export function mapV2DebriefingToLegacy(v2: any): LegacyDebriefing {
+  return {
+    debriefingUuid: v2?.debriefingUuid,
+    vesselCode: v2?.vesselUuid || '',
+    vesselName: v2?.vesselName || '',
+    vessel: v2?.vesselName || '',
+    rankServed: v2?.rankServed || '',
+    dateSignOn: v2?.dateSignOn || '',
+    dateSignedOff: v2?.dateSignedOff || '',
+    reasonForSignOff: v2?.reasonForSignOff || '',
+    sortOrder: v2?.sortOrder,
+    attachments: (v2?.attachments || []).map((att: any) => ({
+      id: att.attUuid || att.id || '',
+      attUuid: att.attUuid,
+      name: att.fileName || '',
+      type: att.fileType || '',
+      size: parseInt(att.fileSize) || 0,
+      data: att.filePath || att.fileData || '',
+      uploadedAt: att.createdAt || '',
+    })),
+  };
+}
+
+export function mapLegacyDebriefingToV2(legacy: LegacyDebriefing): any {
+  return {
+    debriefingUuid: legacy.debriefingUuid,
+    vesselUuid: legacy.vesselCode || undefined,
+    vesselName: legacy.vessel || legacy.vesselName || undefined,
+    rankServed: legacy.rankServed ?? undefined,
+    dateSignOn: legacy.dateSignOn ?? undefined,
+    dateSignedOff: legacy.dateSignedOff ?? undefined,
+    reasonForSignOff: legacy.reasonForSignOff ?? undefined,
+    sortOrder: legacy.sortOrder,
+  };
+}
+
 export function mapV2FullProfileToLegacy(v2Profile: any): any {
   const crew = v2Profile.crew || v2Profile;
   const nok = v2Profile.nextOfKin ? mapV2NextOfKinToLegacy(v2Profile.nextOfKin) : null;
@@ -849,6 +944,8 @@ export function mapV2FullProfileToLegacy(v2Profile: any): any {
       .map(mapV2SeaServiceToLegacy),
     preJoiningMedicals: (v2Profile.medicals || []).map(mapV2PreJoiningMedicalToLegacy),
     doctorVisits: (v2Profile.doctorVisits || []).map(mapV2DoctorVisitToLegacy),
+    briefings: (v2Profile.briefings || []).map(mapV2BriefingToLegacy),
+    debriefings: (v2Profile.debriefings || []).map(mapV2DebriefingToLegacy),
     // Use resolved vessel type name if available, otherwise fall back to UUID
     vesselTypesApplied: (v2Profile.vesselTypes || []).map((vt: any) => vt.resolvedVesselTypeName || vt.vesselTypeUuid),
     // Also include as vesselTypes for form binding compatibility

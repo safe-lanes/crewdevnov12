@@ -42,7 +42,8 @@ export const vesselRevisionsController = {
 
   async create(req: Request, res: Response) {
     try {
-      const record = await vesselRevisionsService.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const record = await vesselRevisionsService.create({ ...req.body, auditUserUuid });
       res.json(record);
     } catch (error: any) {
       console.error("Error creating vessel revision:", error);
@@ -63,7 +64,8 @@ export const vesselRevisionsController = {
 
   async submit(req: Request, res: Response) {
     try {
-      const result = await vesselRevisionsService.submit(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const result = await vesselRevisionsService.submit({ ...req.body, auditUserUuid });
       res.json(result);
     } catch (error: any) {
       console.error("Error submitting vessel revision:", error);

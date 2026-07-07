@@ -78,6 +78,13 @@ import {
   deleteTrainingAttachment,
   deleteSeaServiceAttachment,
   deleteAdditionalInfoAttachment,
+  serveDocumentAttachment,
+  serveVisaAttachment,
+  serveEducationAttachment,
+  serveLicenseAttachment,
+  serveTrainingAttachment,
+  serveSeaServiceAttachment,
+  serveAdditionalInfoAttachment,
 } from "../../v2/recruitment/controllers/documentsController";
 
 import {
@@ -301,6 +308,24 @@ router.get("/candidates/:recCanUuid/decision", recruitmentDecisionController.get
 router.put("/candidates/:recCanUuid/decision", recruitmentDecisionController.upsert);
 router.get("/decisions/:decisionUuid/assigned-groups", recruitmentDecisionController.getAssignedGroups);
 router.post("/decisions/:decisionUuid/assigned-groups", recruitmentDecisionController.addAssignedGroup);
+
+// ============================================
+// ATTACHMENT RAW STREAMING ROUTES (filesystem)
+// ============================================
+router.get("/documents/attachments/:attUuid/raw", serveDocumentAttachment);
+router.get("/visas/attachments/:attUuid/raw", serveVisaAttachment);
+router.get("/education/attachments/:attUuid/raw", serveEducationAttachment);
+router.get("/licenses/attachments/:attUuid/raw", serveLicenseAttachment);
+router.get("/training/attachments/:attUuid/raw", serveTrainingAttachment);
+router.get("/sea-service/attachments/:attUuid/raw", serveSeaServiceAttachment);
+router.get("/additional-info/attachments/:attUuid/raw", serveAdditionalInfoAttachment);
+router.get("/screening/b1/attachments/:attUuid/raw", screeningB1Controller.serveAttachment);
+router.get("/screening/b2/attachments/:attUuid/raw", screeningB2Controller.serveAttachment);
+router.get("/screening/b3/attachments/:attUuid/raw", screeningB3Controller.serveAttachment);
+router.get("/screening/b4/attachments/:attUuid/raw", screeningB4Controller.serveAttachment);
+router.get("/screening/b5/attachments/:attUuid/raw", screeningB5Controller.serveAttachment);
+router.get("/screening/b6/attachments/:attUuid/raw", screeningB6Controller.serveAttachment);
+router.get("/screening/b8/attachments/:attUuid/raw", screeningB8Controller.serveAttachment);
 
 // Master data endpoints for dropdowns
 router.get("/fleet-groups", async (_req, res) => {

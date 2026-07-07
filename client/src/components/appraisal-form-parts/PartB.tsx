@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, MessageSquare, Trash2 } from "lucide-react";
 import { PartBProps } from "./types";
+import { RequiredMark } from "./RequiredMark";
 
 const PartBComponent: React.FC<PartBProps> = ({
   form,
@@ -99,13 +100,13 @@ const PartBComponent: React.FC<PartBProps> = ({
               
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[600px]">
+                  <table className="w-full min-w-[600px] table-fixed">
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training</th>
-                        {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-[60px]">S.No</th>
+                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Training<RequiredMark /></th>
+                        {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-[260px]">Evaluation</th>}
+                        <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center w-[110px]">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white">
@@ -199,7 +200,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                       })}
                       {form.watch("trainings").length === 0 && (
                         <tr>
-                          <td colSpan={4} className="p-8 text-center text-gray-500">
+                          <td colSpan={showEvaluation ? 4 : 3} className="p-8 text-center text-gray-500">
                             No trainings added yet. Click "Add Training" to get started.
                           </td>
                         </tr>
@@ -222,13 +223,14 @@ const PartBComponent: React.FC<PartBProps> = ({
               </div>
               
               <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <table className="w-full">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[600px] table-fixed">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">S.No</th>
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting</th>
-                      {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Evaluation</th>}
-                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center">Actions</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-[60px]">S.No</th>
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left">Target Setting<RequiredMark /></th>
+                      {showEvaluation && <th className="text-gray-600 text-xs font-normal py-2 px-4 text-left w-[260px]">Evaluation</th>}
+                      <th className="text-gray-600 text-xs font-normal py-2 px-4 text-center w-[110px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white">
@@ -249,7 +251,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                           {showEvaluation && (
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                               <Select value={target.evaluation} onValueChange={(value) => updateTarget(target.id, "evaluation", value)} disabled={lockB2Evaluation}>
-                                <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
+                                <SelectTrigger className="border-0 bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-target-eval-${target.id}`}>
                                   <SelectValue placeholder="Select Rating" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -313,13 +315,14 @@ const PartBComponent: React.FC<PartBProps> = ({
                     ))}
                     {form.watch("targets").length === 0 && (
                       <tr>
-                        <td colSpan={4} className="p-8 text-center text-gray-500">
+                        <td colSpan={showEvaluation ? 4 : 3} className="p-8 text-center text-gray-500">
                           No targets added yet. Click "Add Target" to get started.
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
             )}

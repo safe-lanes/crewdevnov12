@@ -3,6 +3,7 @@ import { getDb } from "../../db";
 import { admMenuMasterAc, admRoleMasterAc, admRoleAccessAc } from "../../../../shared/v2/admin/schema";
 import type { AdmMenuMasterAc, InsertAdmMenuMasterAc, AdmRoleMasterAc, InsertAdmRoleMasterAc, AdmRoleAccessAc, InsertAdmRoleAccessAc } from "../../../../shared/v2/admin/types";
 import { v4 as uuidv4 } from "uuid";
+import { applyAuditUser } from "../utils/auditUser";
 
 export class AccessControlRepository {
   async findAllMenus(): Promise<AdmMenuMasterAc[]> {
@@ -156,7 +157,7 @@ export class AccessControlRepository {
     });
   }
 
-  async upsertPermissions(roleUuid: string, permissions: Array<{ menuId: string; canview: boolean; cancreate: boolean; canedit: boolean; candelete: boolean }>): Promise<AdmRoleAccessAc[]> {
+  async upsertPermissions(roleUuid: string, permissions: Array<{ menuId: string; canview: boolean; cancreate: boolean; canedit: boolean; candelete: boolean }>, auditUserUuid: string | null = null): Promise<AdmRoleAccessAc[]> {
     const db = getDb();
     const results: AdmRoleAccessAc[] = [];
 
@@ -173,20 +174,20 @@ export class AccessControlRepository {
       if (existing.length > 0) {
         const updated = await db
           .update(admRoleAccessAc)
-          .set({
+          .set(applyAuditUser({
             canview: perm.canview,
             cancreate: perm.cancreate,
             canedit: perm.canedit,
             candelete: perm.candelete,
-            updatedAt: new Date(),
-          })
+            auditUserUuid,
+          }))
           .where(eq(admRoleAccessAc.id, existing[0].id))
           .returning();
         results.push(updated[0]);
       } else {
         const inserted = await db
           .insert(admRoleAccessAc)
-          .values({
+          .values(applyAuditUser({
             rauid: uuidv4(),
             roleId: roleUuid,
             menuId: perm.menuId,
@@ -194,7 +195,8 @@ export class AccessControlRepository {
             cancreate: perm.cancreate,
             canedit: perm.canedit,
             candelete: perm.candelete,
-          })
+            auditUserUuid,
+          }, true))
           .returning();
         results.push(inserted[0]);
       }

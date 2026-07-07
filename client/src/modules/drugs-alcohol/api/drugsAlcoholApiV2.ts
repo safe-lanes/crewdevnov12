@@ -1,14 +1,7 @@
 import { apiRequest } from '@/lib/queryClient';
+import { getCrewUserId } from '@/lib/crewUser';
 
 const V2_BASE = '/api/v2/drugs-alcohol';
-
-function getCrewUserId(): string | null {
-  try {
-    return localStorage.getItem("crewUserId") || null;
-  } catch {
-    return null;
-  }
-}
 
 function withAuditUser<T>(data: T): T {
   const auditUserUuid = getCrewUserId();
@@ -63,6 +56,15 @@ export const drugsAlcoholApiV2 = {
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(error.message || 'Failed to create test record');
+      }
+      return response.json();
+    },
+
+    async toggleLock(uuid: string, isLocked: boolean) {
+      const response = await apiRequest('PATCH', `${V2_BASE}/test-records/${uuid}/lock`, withAuditUser({ isLocked }));
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(error.message || 'Failed to update lock state');
       }
       return response.json();
     },

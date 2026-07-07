@@ -46,6 +46,8 @@ export class ApprTrainingNeedsRepository {
           db.update(apprTrainingNeedsV2)
             .set({
               training: row.training || null,
+              correspondingInDb: row.correspondingInDB || row.correspondingInDb || null,
+              identifiedByUuid: row.identifiedByUuid || null,
               comment: row.comment || null,
               source: row.addedFromDB === true ? "db" : "manual",
               sortOrder: i,
@@ -60,6 +62,8 @@ export class ApprTrainingNeedsRepository {
             trainingNeedUuid: uuidv4(),
             appraisalUuid,
             training: row.training || null,
+            correspondingInDb: row.correspondingInDB || row.correspondingInDb || null,
+            identifiedByUuid: row.identifiedByUuid || null,
             comment: row.comment || null,
             source: row.addedFromDB === true ? "db" : "manual",
             sortOrder: i,

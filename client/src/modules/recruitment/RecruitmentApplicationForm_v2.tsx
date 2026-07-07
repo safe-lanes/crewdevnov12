@@ -23,7 +23,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { usePermissions } from '@/contexts/PermissionsContext';
-import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
+import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2, useTrainingCategoryOptionsV2, withLegacyCategory, useTrainingStatusOptionsV2, withLegacyStatus } from '@/hooks/v2/useMasterDataV2';
 import { generateRecruitmentPDF } from '@/lib/generateRecruitmentPDF';
 import { formatDate } from '@/utils/format';
 import { applyDialingCode, getDialingCode, normalizeMobileInput, validateMobileNumber } from './countryDialingCodes';
@@ -210,6 +210,7 @@ interface LocalFormData {
   rankAppliedFor: string;
   manningAgent: string;
   fileNo: string;
+  screeningDate: string;
   countryOfResidence: string;
   nearestAirport: string;
   residentialAddressLine1: string;
@@ -397,6 +398,7 @@ interface LocalFormData {
   c2FleetGroups: string[];
   c3RecruitmentStatus: string;
   c3AssignedGroups: string[];
+  c3RecruitmentDate: string;
   c3SubmittedBy: string;
   c3SubmittedDate: string;
 }
@@ -422,6 +424,7 @@ const getInitialFormData = (): LocalFormData => ({
   rankAppliedFor: '',
   manningAgent: '',
   fileNo: '',
+  screeningDate: '',
   countryOfResidence: '',
   nearestAirport: '',
   residentialAddressLine1: '',
@@ -473,7 +476,7 @@ const getInitialFormData = (): LocalFormData => ({
   b6Interviews: [{ id: '1', date: '', interviewer: '', status: '', result: '', comments: '' }],
   b6InterviewItems: [],
   b6InterviewComments: {},
-  b7TrainingNeeds: [{ id: '1', training: '', identifiedBy: '', category: '', dueDate: '', comments: '' }],
+  b7TrainingNeeds: [],
   b8Shortlisted: '',
   b8SelectedApprovers: [],
   b2ReferenceItems: [],
@@ -519,6 +522,7 @@ const getInitialFormData = (): LocalFormData => ({
   c2FleetGroups: [],
   c3RecruitmentStatus: '',
   c3AssignedGroups: [],
+  c3RecruitmentDate: '',
   c3SubmittedBy: '',
   c3SubmittedDate: '',
 });
@@ -549,7 +553,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     'A1.3': false,
   });
   
-  const mapApiAttachments = (attachments: any[] | undefined): FileAttachment[] => {
+  const mapApiAttachments = (attachments: any[] | undefined, basePath?: string): FileAttachment[] => {
     if (!attachments) return [];
     return attachments.map(att => ({
       id: att.attUuid || String(att.id),
@@ -561,6 +565,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       uploadedAt: att.createdAt || new Date().toISOString(),
       attUuid: att.attUuid,
       isDeleted: att.isDeleted || false,
+      viewUrl: basePath && att.attUuid ? `${basePath}/${att.attUuid}/raw` : undefined,
     }));
   };
   
@@ -964,6 +969,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return [];
   }, [externalLanguagesData]);
 
+  // Training Category master (Task #710): shared category dropdown values
+  const { categories: trainingCategoryOptions } = useTrainingCategoryOptionsV2("Recruitment");
+  const { statuses: b7TrainingStatusOptions } = useTrainingStatusOptionsV2("Recruitment");
+
   // Fetch Manning Agents from V2 dedicated table
   const { data: manningAgentsData } = useManningAgentsV2();
   
@@ -1064,6 +1073,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         presentRank: candidateData.presentRank || '',
         rankAppliedFor: candidateData.rankAppliedFor || '',
         fileNo: candidateData.fileNo || '',
+        screeningDate: (candidateData as any).screeningDate || '',
         uploadedPhoto: candidateData.uploadedPhoto || '',
       }));
     }
@@ -1168,7 +1178,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issued: doc.issued || '',
         expiry: doc.expiry || '',
         issuingAuthority: doc.issuingAuthority || '',
-        attachments: mapApiAttachments(doc.attachments),
+        attachments: mapApiAttachments(doc.attachments, '/api/v2/recruitment/documents/attachments'),
       }));
       setFormData(prev => ({ ...prev, documents: mapped }));
     }
@@ -1185,7 +1195,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issued: visa.issued || '',
         expiry: visa.expiry || '',
         visaType: visa.visaType || '',
-        attachments: mapApiAttachments(visa.attachments),
+        attachments: mapApiAttachments(visa.attachments, '/api/v2/recruitment/visas/attachments'),
       }));
       setFormData(prev => ({ ...prev, visas: mapped }));
     }
@@ -1202,7 +1212,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           schoolCollegeUniversity: edu.institution || '',
           subjectsField: edu.subjectsField || '',
           qualifications: edu.qualifications || '',
-          attachments: mapApiAttachments(edu.attachments),
+          attachments: mapApiAttachments(edu.attachments, '/api/v2/recruitment/education/attachments'),
         })),
       }));
     }
@@ -1222,7 +1232,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         issued: lic.issued || '',
         expiry: lic.expiry || '',
         fromDatabase: !!(lic.licenseId && LICENSE_DCE_TEMPLATES.some(t => t.id === lic.licenseId)) || !!(lic.abbr || lic.requirement),
-        attachments: mapApiAttachments(lic.attachments),
+        attachments: mapApiAttachments(lic.attachments, '/api/v2/recruitment/licenses/attachments'),
       }));
       setFormData(prev => ({ ...prev, licenses: mapped }));
     }
@@ -1243,7 +1253,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         expiry: course.expiry || '',
         fromDatabase: !!(course.courseId && adminCompanyTrainings.some(ct => ct.companyId === course.courseId)) || !!(course.abbr || course.requirement),
         sortOrder: undefined as number | undefined,
-        attachments: mapApiAttachments(course.attachments),
+        attachments: mapApiAttachments(course.attachments, '/api/v2/recruitment/training/attachments'),
       }));
       if (adminCompanyTrainings.length > 0) {
         const orderMap = new Map<string, number>();
@@ -1279,7 +1289,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           from: service.fromDate || '',
           to: service.toDate || '',
           periodMonths: service.periodMonths || '',
-          attachments: mapApiAttachments(service.attachments),
+          attachments: mapApiAttachments(service.attachments, '/api/v2/recruitment/sea-service/attachments'),
         })),
       }));
     }
@@ -1294,7 +1304,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           serverId: ai.id,
           information: ai.information || '',
           response: ai.response || '',
-          attachments: mapApiAttachments(ai.attachments),
+          attachments: mapApiAttachments(ai.attachments, '/api/v2/recruitment/additional-info/attachments'),
         })),
       }));
     }
@@ -1550,6 +1560,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b1/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1569,6 +1580,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b2/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1588,6 +1600,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b3/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1607,6 +1620,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b4/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1626,6 +1640,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b5/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1645,6 +1660,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b6/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1664,6 +1680,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           id: att.attachUuid || att.attUuid || att.id?.toString(),
           numericId: att.id,
           attUuid: att.attachUuid || att.attUuid,
+          viewUrl: (att.attachUuid || att.attUuid) ? `/api/v2/recruitment/screening/b8/attachments/${att.attachUuid || att.attUuid}/raw` : undefined,
           name: att.fileName || '',
           type: att.fileType || '',
           size: Number(att.fileSize) || 0,
@@ -1767,6 +1784,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           training: training.training || '',
           identifiedBy: training.identifiedByName || training.identifiedByUuid || '',
           category: training.category || '',
+          status: training.status || '',
           dueDate: training.dueDate || '',
           comments: training.comments || '',
         })),
@@ -1814,6 +1832,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         ...prev,
         c3RecruitmentStatus: decisionData.recruitmentStatus || '',
         c3AssignedGroups: decisionData.assignedGroups?.map(ag => ag.groupUuid) || [],
+        c3RecruitmentDate: decisionData.recruitmentDate || '',
         c3SubmittedBy: decisionData.submittedByUuid || '',
         c3SubmittedDate: decisionData.submittedDate || '',
       }));
@@ -2303,7 +2322,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         id: Date.now().toString() + '-' + Math.random().toString(36).substr(2, 9),
         training: course.name,
         identifiedBy: '',
-        category: ['Mandatory', 'Recommended', 'Optional'].includes(course.requirement) ? course.requirement : '',
+        category: trainingCategoryOptions.includes(course.requirement) ? course.requirement : '',
+        status: '',
         dueDate: '',
         comments: ''
       }));
@@ -3175,7 +3195,29 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     }
   };
 
+  // C3.3 Date of Recruitment becomes mandatory once a C3.1 recruitment status is chosen.
+  // Returns false (and shows a dynamic toast) only when a status is selected but the date is empty.
+  const validateC3RecruitmentDate = (): boolean => {
+    if (formData.c3RecruitmentStatus && !(formData.c3RecruitmentDate || '').trim()) {
+      const c3DateMessages: Record<string, string> = {
+        Yes: 'Please enter the Date of Recruitment',
+        Waitlist: 'Please enter the Date of Waitlisting',
+        Rejected: 'Please enter the Date of Rejection',
+      };
+      toast({
+        title: "Validation Error",
+        description: c3DateMessages[formData.c3RecruitmentStatus] || 'Please enter the Date of Recruitment',
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
   const handleSaveOnly = async () => {
+    // C3.3 Date is mandatory when a C3.1 status is selected (Approval screen only)
+    if (activeSection === 'C' && !validateC3RecruitmentDate()) return;
+
     await handleSaveAndContinue();
     
     // If on Section B or C, also save screening/approval data
@@ -3253,18 +3295,27 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
         
         const newStatus = getStatusForSection('A5', true);
+
+        // Capture the screening date on first submission and preserve it thereafter
+        // so it reflects when the recruitment process was initiated.
+        const existingScreeningDate = (candidate as any)?.screeningDate || formData.screeningDate;
+        const screeningDate = existingScreeningDate || formatDate(new Date());
+
         await updateCandidateMutation.mutateAsync({
           recCanUuid: currentUuid,
           data: {
             status: newStatus,
             fileNo: fileNo,
+            screeningDate: screeningDate,
           },
         });
         
-        // Update local formData with the generated file number
-        if (needsNewFileNo && fileNo) {
-          setFormData(prev => ({ ...prev, fileNo }));
-        }
+        // Update local formData with the generated file number and screening date
+        setFormData(prev => ({
+          ...prev,
+          ...(needsNewFileNo && fileNo ? { fileNo } : {}),
+          screeningDate,
+        }));
         
         toast({
           title: "Submitted",
@@ -3335,7 +3386,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       setB6InterviewerErrors(newB6Errors);
     }
 
-    const isB7RowBlank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
+    const isB7RowBlank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.status || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
     const newB7Errors: Record<string, string> = {};
     formData.b7TrainingNeeds.forEach((training) => {
       if (!isB7RowBlank(training) && !(training.training || '').trim()) {
@@ -3586,7 +3637,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         }
       }
 
-      const isB7Blank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
+      const isB7Blank = (t: typeof formData.b7TrainingNeeds[0]) => !(t.training || '').trim() && !(t.category || '').trim() && !(t.identifiedBy || '').trim() && !(t.status || '').trim() && !(t.dueDate || '').trim() && !(t.comments || '').trim();
       const nonEmptyB7Training = formData.b7TrainingNeeds.filter(t => !isB7Blank(t));
       if (nonEmptyB7Training.length !== formData.b7TrainingNeeds.length) {
         setFormData(prev => ({ ...prev, b7TrainingNeeds: nonEmptyB7Training }));
@@ -3602,18 +3653,20 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             data: {
               training: training.training || null,
               category: training.category || null,
+              status: training.status || null,
               identifiedByUuid: training.identifiedBy || null,
               dueDate: training.dueDate || null,
               comments: training.comments || null,
               sortOrder: index,
             },
           }));
-        } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.identifiedBy || training.dueDate || training.comments)) {
+        } else if (!serverB7TrainingMap.has(training.id) && currentB7Uuid && (training.training || training.category || training.status || training.identifiedBy || training.dueDate || training.comments)) {
           bItemSavePromises.push(createB7TrainingItemMutation.mutateAsync({
             b7Uuid: currentB7Uuid,
             data: {
               training: training.training || null,
               category: training.category || null,
+              status: training.status || null,
               identifiedByUuid: training.identifiedBy || null,
               dueDate: training.dueDate || null,
               comments: training.comments || null,
@@ -3976,6 +4029,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           recCanUuid,
           data: {
             recruitmentStatus: formData.c3RecruitmentStatus || null,
+            recruitmentDate: formData.c3RecruitmentDate || null,
             submittedByUuid: overrides?.c3SubmittedBy || formData.c3SubmittedBy || null,
             submittedDate: overrides?.c3SubmittedDate || formData.c3SubmittedDate || null,
             assignedGroups: formData.c3AssignedGroups.map(g => ({ groupUuid: g })),
@@ -5682,7 +5736,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
               </div>
               <div className="space-y-6">{renderA5AdditionalInfo()}</div>
-              <div className="flex justify-end gap-2 mt-6 pt-4">
+              <div className="flex justify-between items-center gap-2 mt-6 pt-4">
+                <div className="text-xs text-gray-500" data-testid="text-a5-screening-date">
+                  {formData.screeningDate && (
+                    <>
+                      <span className="font-medium">Submitted for screening on</span> {formatDate(formData.screeningDate) || formData.screeningDate}
+                    </>
+                  )}
+                </div>
                 <Button className="bg-green-600 hover:bg-green-700 text-white px-8" onClick={handleA5SubmitForScreening} disabled={savingInProgress} data-testid="button-submit-for-screening">
                   {savingInProgress ? 'Saving...' : 'Submit for Screening'}
                 </Button>
@@ -8161,7 +8222,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           const newId = String(Date.now());
                           setFormData(prev => ({
                             ...prev,
-                            b7TrainingNeeds: [...prev.b7TrainingNeeds, { id: newId, training: '', identifiedBy: '', category: '', dueDate: '', comments: '' }]
+                            b7TrainingNeeds: [...prev.b7TrainingNeeds, { id: newId, training: '', identifiedBy: '', category: '', status: '', dueDate: '', comments: '' }]
                           }));
                         }}
                         className="text-gray-600 border-gray-300 hover:bg-gray-50"
@@ -8181,6 +8242,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/ Course <span className="text-red-500">*</span></TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Identified by</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Category</TableHead>
+                          <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Status</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Due Date</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Comments</TableHead>
                           <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Actions</TableHead>
@@ -8261,9 +8323,31 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Mandatory">Mandatory</SelectItem>
-                                  <SelectItem value="Recommended">Recommended</SelectItem>
-                                  <SelectItem value="Optional">Optional</SelectItem>
+                                  {withLegacyCategory(trainingCategoryOptions, training.category).map((c) => (
+                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="p-3">
+                              <Select
+                                value={training.status || ''}
+                                onValueChange={(value) => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b7TrainingNeeds: prev.b7TrainingNeeds.map(t => 
+                                      t.id === training.id ? { ...t, status: value } : t
+                                    )
+                                  }));
+                                }}
+                              >
+                                <SelectTrigger className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" data-testid={`select-b7-training-status-${idx}`}>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {withLegacyStatus(b7TrainingStatusOptions, training.status).map((s) => (
+                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                             </TableCell>
@@ -8303,12 +8387,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  if (formData.b7TrainingNeeds.length > 1) {
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      b7TrainingNeeds: prev.b7TrainingNeeds.filter(t => t.id !== training.id)
-                                    }));
-                                  }
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    b7TrainingNeeds: prev.b7TrainingNeeds.filter(t => t.id !== training.id)
+                                  }));
                                 }}
                                 className="h-8 w-8 p-0"
                                 data-testid={`button-remove-b7-training-${idx}`}
@@ -8958,6 +9040,20 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     </div>
                   </div>
 
+                  <div>
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">C3.3 Date{({ Yes: ' of Recruitment', Waitlist: ' of Waitlisting', Rejected: ' of Rejection' } as Record<string, string>)[formData.c3RecruitmentStatus] || ''}: <span className="text-red-500">*</span></label>
+                      <div className="min-w-[300px]">
+                        <FormattedDateInput
+                          value={formData.c3RecruitmentDate}
+                          onChange={(e) => updateFormData('c3RecruitmentDate', e.target.value)}
+                          className="max-w-[200px]"
+                          data-testid="input-c3-recruitment-date"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="mt-6 pt-4 border-t border-gray-200">
                     <div className="text-xs text-gray-500">
                       {formData.c3SubmittedBy ? (
@@ -8977,6 +9073,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <Button 
                   className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
                   onClick={() => {
+                    if (!validateC3RecruitmentDate()) return;
                     const currentDate = formatDate(new Date());
                     setFormData(prev => ({ ...prev, c3SubmittedBy: currentUserDisplay, c3SubmittedDate: currentDate }));
                     handleSaveScreening(false, false, { c3SubmittedBy: currentUserDisplay, c3SubmittedDate: currentDate });

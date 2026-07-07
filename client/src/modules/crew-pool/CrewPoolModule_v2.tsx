@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
 import { useQueryClient } from '@tanstack/react-query';
 import { FilterIcon, PlusIcon, EditIcon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
@@ -111,7 +112,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         return [];
     }, [externalVesselsData]);
     
-    const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent } = usePermissions();
+    const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent, isLoading: permissionsLoading } = usePermissions();
     const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
     const allowedPages = useMemo(() => {
         const all = ["crew-database", "terminated"];
@@ -611,10 +612,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     useEffect(() => {
         if (!pendingCrewUuid) return;
         if (isCrewLoading) return;
+        if (permissionsLoading) return;
         const found = (rawCrewData as any[]).find(
             (c) => c && c.crewUuid === pendingCrewUuid,
         );
-        if (found) {
+        const isAllowed = permissions.length === 0 || allowedPages.includes("crew-database");
+        if (found && isAllowed) {
             openedFromDeepLinkRef.current = true;
             setSelectedCrewMember(found);
             setIsCrewInfoFormOpen(true);
@@ -629,7 +632,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 window.history.replaceState({}, "", newUrl);
             }
         }
-    }, [pendingCrewUuid, isCrewLoading, rawCrewData]);
+    }, [pendingCrewUuid, isCrewLoading, permissionsLoading, rawCrewData]);
 
     const getTitle = () => {
         switch (selectedCrewPoolPage) {
@@ -1100,7 +1103,21 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     // ============================================================
     const { data: terminatedCrewData = [] } = useTerminatedCrewListV2();
     const realTerminatedRows = useMemo(() => {
-        return (terminatedCrewData || []).map((c: any) => ({
+        // Map raw termination category ("UT" | "BT" | "general") to the short
+        // display token used in the Status badge; empty when no category.
+        const catToken = (raw: any): string => {
+            if (typeof raw !== 'string') return '';
+            const v = raw.trim().toLowerCase();
+            if (v === 'ut') return 'UT';
+            if (v === 'bt') return 'BT';
+            if (v === 'general') return 'Gen';
+            return '';
+        };
+        return (terminatedCrewData || []).map((c: any) => {
+            const token = catToken(c.lastTerminationCategory);
+            const base = token ? `Terminated(${token})` : 'Terminated';
+            const statusLabel = c.notForHire ? `${base}-NFR` : base;
+            return {
             id: c.crewUuid || c.id,
             employeeId: c.employeeId || c.empNo || '',
             firstName: c.firstName || '',
@@ -1117,9 +1134,10 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             notForHire: !!c.notForHire,
             crewPool: c.crewPool || '',
             manningAgent: c.manningAgent || '',
-            status: c.notForHire ? 'Terminated Employment - NFR' : 'Terminated Employment',
+            status: statusLabel,
             crewUuid: c.crewUuid,
-        }));
+            };
+        });
     }, [terminatedCrewData]);
 
     const [terminatedFilters, setTerminatedFilters] = useState({
@@ -1181,8 +1199,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     width: viewportConfig.isDesktopOrLaptop ? undefined : 130, minWidth: 130,
                     wrapText: true, autoHeight: true,
                     cellRenderer: (params: any) => {
-                        const isNfr = !!params.data?.notForHire;
-                        const label = isNfr ? 'Terminated - NFR' : 'Terminated';
+                        const label = params.data?.status || 'Terminated';
                         return (
                             <span style={{
                                 display: 'inline-block', padding: '4px 10px', borderRadius: '4px',
@@ -1387,6 +1404,10 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     };
 
     const renderContent = () => {
+        if (permissions.length > 0 && !allowedPages.includes(selectedCrewPoolPage)) {
+            const pageToMenu: Record<string, string> = { "crew-database": "Crew Database", "terminated": "Terminated" };
+            return <NoAccessPage menuName={pageToMenu[selectedCrewPoolPage] || "Crew Pool"} />;
+        }
         if (selectedCrewPoolPage === "crew-database") {
             return renderFiltersAndTable();
         }

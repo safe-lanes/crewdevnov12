@@ -10,7 +10,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useToast } from '@/hooks/use-toast';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { findNextPromotionRank, shouldShowInPromotionsTable } from './promotionUtils';
+import { useRankScope } from '@/hooks/useRankScope';
+import { getBaseRank } from '@shared/crew-mapping';
+import { findNextPromotionRank, findPreviousPromotionRank, shouldShowInPromotionsTable } from './promotionUtils';
 import { calculateChecklistProgressFromJson } from './checklistProgressUtils';
 import { PromotionHierarchy } from '@shared/schema';
 import { PromotionReviewForm } from './PromotionReviewForm';
@@ -29,6 +31,28 @@ const PROMOTION_STATUS_BY_KEY: Record<string, 'Draft' | 'In Progress' | 'Submitt
 
 const normalizePromotionStatus = (raw?: string | null): 'Draft' | 'In Progress' | 'Submitted' | 'Approved' | 'Completed' =>
   PROMOTION_STATUS_BY_KEY[(raw ?? '').trim().toLowerCase()] ?? 'In Progress';
+
+const parseJsonField = <T,>(value: any, fallback: T): T => {
+  if (value == null) return fallback;
+  if (typeof value === 'string') {
+    if (!value.trim()) return fallback;
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return fallback;
+    }
+  }
+  return value as T;
+};
+
+// Attach parsed criteria/CES fields to a raw review so the table's status
+// helpers can read them without re-parsing JSON on every cell render.
+const parseReviewExtras = (review: any) => ({
+  ...review,
+  _parsedMeetsStatus: parseJsonField<Record<string, string>>(review?.criteriaMeetsStatus, {}),
+  _parsedVerifiedStatus: parseJsonField<Record<string, string>>(review?.criteriaVerifiedStatus, {}),
+  _parsedCesTests: parseJsonField<any[]>(review?.cesTestsData, []),
+});
 
 const calculateAge = (dob: string): number | null => {
   if (!dob || dob === '-') return null;
@@ -89,14 +113,17 @@ const StatusIndicatorRenderer = (params: ICellRendererParams) => {
   );
 };
 
-const ProgressBarRenderer = (params: ICellRendererParams & { onEdit?: (data: any) => void }) => {
+const ProgressBarRenderer = (params: ICellRendererParams & { onEdit?: (data: any) => void; canActOnRank?: (rank: string | null | undefined) => boolean }) => {
   const progressData = params.data?.checklistProgressData;
   const meetsThreshold = progressData?.meetsThreshold ?? false;
   const percentage = progressData?.percentage ?? 0;
   
   const barColor = meetsThreshold ? 'bg-green-500' : 'bg-[#EAB308]';
+  const canAct = params.canActOnRank ? params.canActOnRank(params.data?.presentRankForScope) : true;
+  const isLocked = !!params.data?.checklistLocked || !canAct;
 
   const handleClick = () => {
+    if (isLocked) return;
     if (params.onEdit) {
       params.onEdit({ ...params.data, initialSection: 'checklist' });
     }
@@ -106,9 +133,9 @@ const ProgressBarRenderer = (params: ICellRendererParams & { onEdit?: (data: any
     <Tooltip>
       <TooltipTrigger asChild>
         <div 
-          className="flex items-center justify-center h-full px-2 cursor-pointer"
+          className={`flex items-center justify-center h-full px-2 ${isLocked ? 'cursor-default opacity-60' : 'cursor-pointer'}`}
           data-testid={`progress-bar-tooltip-${params.data?.crewId}`}
-          onClick={handleClick}
+          onClick={isLocked ? undefined : handleClick}
         >
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
@@ -148,8 +175,11 @@ const StatusBadgeRenderer = (params: ICellRendererParams) => {
   );
 };
 
-const EditButtonRenderer = (params: ICellRendererParams & { onEdit?: (data: any) => void }) => {
+const EditButtonRenderer = (params: ICellRendererParams & { onEdit?: (data: any) => void; canActOnRank?: (rank: string | null | undefined) => boolean }) => {
+  const canAct = params.canActOnRank ? params.canActOnRank(params.data?.presentRankForScope) : true;
+
   const handleEditClick = () => {
+    if (!canAct) return;
     if (params.onEdit) {
       params.onEdit(params.data);
     }
@@ -162,6 +192,7 @@ const EditButtonRenderer = (params: ICellRendererParams & { onEdit?: (data: any)
         size="sm"
         className="h-7 w-7 p-0 hover:bg-gray-100"
         onClick={handleEditClick}
+        disabled={!canAct}
         data-testid={`button-edit-${params.data?.crewId}`}
       >
         <Edit className="h-4 w-4 text-gray-600" />
@@ -201,6 +232,13 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
   const { getVesselName, getVessel } = useVesselLookup();
   
   const { normalizeRank, isLoading: isLoadingRanks } = useRankNormalization();
+
+  const { allowedRanks, shouldRestrictForShipUser } = useRankScope();
+  const canActOnRank = useCallback((rank: string | null | undefined) => {
+    if (!shouldRestrictForShipUser) return true;
+    if (!rank) return false;
+    return allowedRanks.includes(rank) || allowedRanks.includes(getBaseRank(rank));
+  }, [allowedRanks, shouldRestrictForShipUser]);
 
   const { data: crewMembers = [], isLoading } = useQuery({
     queryKey: ['/api/v2/crew-pool/crew/enriched'],
@@ -349,46 +387,19 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     const map = new Map<string, any>();
     for (const review of promotionReviews) {
       const key = `${review.crewMemberId}__${review.promotionToRank}`;
-      
-      let parsedMeetsStatus: Record<string, string> = {};
-      try {
-        parsedMeetsStatus = review.criteriaMeetsStatus 
-          ? (typeof review.criteriaMeetsStatus === 'string' 
-              ? JSON.parse(review.criteriaMeetsStatus) 
-              : review.criteriaMeetsStatus)
-          : {};
-      } catch (e) {
-        parsedMeetsStatus = {};
+      map.set(key, parseReviewExtras(review));
+    }
+    return map;
+  }, [promotionReviews]);
+
+  // Reviews keyed by their stable UUID so historical/executed promotion rows
+  // can resolve the exact review even when several share a crew+rank key.
+  const reviewsByUuid = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const review of promotionReviews) {
+      if (review?.reviewUuid) {
+        map.set(review.reviewUuid, parseReviewExtras(review));
       }
-      
-      let parsedVerifiedStatus: Record<string, string> = {};
-      try {
-        parsedVerifiedStatus = review.criteriaVerifiedStatus 
-          ? (typeof review.criteriaVerifiedStatus === 'string' 
-              ? JSON.parse(review.criteriaVerifiedStatus) 
-              : review.criteriaVerifiedStatus)
-          : {};
-      } catch (e) {
-        parsedVerifiedStatus = {};
-      }
-      
-      let parsedCesTests: any[] = [];
-      try {
-        parsedCesTests = review.cesTestsData 
-          ? (typeof review.cesTestsData === 'string' 
-              ? JSON.parse(review.cesTestsData) 
-              : review.cesTestsData)
-          : [];
-      } catch (e) {
-        parsedCesTests = [];
-      }
-      
-      map.set(key, {
-        ...review,
-        _parsedMeetsStatus: parsedMeetsStatus,
-        _parsedVerifiedStatus: parsedVerifiedStatus,
-        _parsedCesTests: parsedCesTests,
-      });
     }
     return map;
   }, [promotionReviews]);
@@ -483,89 +494,129 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     const members = Array.isArray(crewMembers) ? crewMembers : [];
     if (!members || members.length === 0) return [];
 
-    return members
-      .map((crew: any, index: number) => {
-        const currentRank = crew.presentRank || crew.rank || '-';
-        
-        const normalizedRank = normalizeRank(currentRank);
-        
-        if (!shouldShowInPromotionsTable(normalizedRank, hierarchies)) {
-          return null;
-        }
+    const allReviews = Array.isArray(promotionReviews) ? promotionReviews : [];
 
-        const { nextRank } = findNextPromotionRank(normalizedRank, hierarchies);
-        
-        const vesselLeave = crew.vesselName ? crew.vesselName : 'On Leave';
-        
-        const dobString = crew.dob || crew.dateOfBirth || '-';
-        const calculatedAge = calculateAge(dobString);
-        
-        let ageStatus: 'met' | 'pending' | 'not-met' = 'met';
-        if (calculatedAge !== null && nextRank) {
-          const normalizedNextRank = normalizeRank(nextRank);
-          const ageReq = ageRequirementsByRank.get(normalizedNextRank);
-          if (ageReq && (ageReq.ageMin || ageReq.ageMax)) {
-            const meetsMin = !ageReq.ageMin || calculatedAge >= ageReq.ageMin;
-            const meetsMax = !ageReq.ageMax || calculatedAge <= ageReq.ageMax;
-            ageStatus = (meetsMin && meetsMax) ? 'met' : 'not-met';
-          }
+    // Pre-group completed reviews by crew once so the per-crew loop below is a
+    // map lookup instead of a full scan of every review for each crew member.
+    const completedByCrewId = new Map<string | number, any[]>();
+    for (const r of allReviews) {
+      if (normalizePromotionStatus(r?.status) === 'Completed' && r?.crewMemberId != null) {
+        const existing = completedByCrewId.get(r.crewMemberId);
+        if (existing) {
+          existing.push(r);
+        } else {
+          completedByCrewId.set(r.crewMemberId, [r]);
         }
-        
-        const crewId = crew.empNo || crew.id;
-        const reviewKey = `${crewId}__${nextRank}`;
-        const review = reviewLookup.get(reviewKey);
-        
-        const licenseStatus = computeCriteriaStatus(review, 'a2.1');
-        
-        const seaStatus = computeParentCriteriaStatus(review, 'a2.3');
-        
-        const recoStatus = computeCriteriaStatus(review, 'a2.4');
-        
-        const checklistCfg = nextRank
-          ? checklistConfigByRank.get(normalizeRank(nextRank))
-          : undefined;
-        const checklistProgressResult = calculateChecklistProgressFromJson(
-          review?.checklistProgressData,
-          checklistCfg?.minChecklistVerifications ?? 1,
-          checklistCfg?.minChecklistCompletionPercent ?? 100
-        );
-        
-        const otherCriteriaStatus = computeParentCriteriaStatus(review, 'a2.6');
-        
-        const cesIndexStatus = computeParentCriteriaStatus(review, 'a2.7');
-        
-        const trainDocsStatus = computeCriteriaStatus(review, 'a2.8');
-        
-        const reviewStatus = normalizePromotionStatus(review?.status);
-        
-        return {
-          crewId: crew.employeeId || crew.empNo || '-',
-          crewMemberId: crewId,
-          promotionReviewId: review?.id || null,
-          reviewUuid: review?.reviewUuid || null,
-          name: `${crew.firstName || 'Unknown'} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
-          dob: dobString,
-          ageValue: calculatedAge !== null ? calculatedAge : '-',
-          age: ageStatus,
-          nationality: crew.nationalityName || crew.nationality || 'Unknown',
-          currentRank: currentRank,
-          promotionToRank: nextRank || '-',
-          vesselLeave: vesselLeave,
-          presentVessel: crew.vesselUuid || null,
-          vesselType: (crew.vesselUuid ? getVessel(crew.vesselUuid)?.vesselType : null) || null,
-          license: licenseStatus,
-          sea: seaStatus,
-          reco: recoStatus,
-          promotionChecklist: checklistProgressResult.percentage,
-          checklistProgressData: checklistProgressResult,
-          otherCriteria: otherCriteriaStatus,
-          cesIndex: cesIndexStatus,
-          trainDocs: trainDocsStatus,
-          status: reviewStatus,
-        };
-      })
-      .filter(item => item !== null);
-  }, [crewMembers, hierarchies, normalizeRank, ageRequirementsByRank, checklistConfigByRank, reviewLookup, computeCriteriaStatus, computeParentCriteriaStatus, getVessel]);
+      }
+    }
+
+    // Builds a single promotion-table row for a crew member promoting from
+    // `fromRank` into `toRank`, using the supplied (already parsed) review.
+    // Used for both the active next-rank row and historical executed rows.
+    const buildRow = (
+      crew: any,
+      fromRank: string,
+      toRank: string | null,
+      review: any,
+      opts?: { historical?: boolean },
+    ) => {
+      const crewId = crew.empNo || crew.id;
+      const vesselLeave = crew.vesselName ? crew.vesselName : 'On Leave';
+      const dobString = crew.dob || crew.dateOfBirth || '-';
+      const calculatedAge = calculateAge(dobString);
+
+      let ageStatus: 'met' | 'pending' | 'not-met' = 'met';
+      if (calculatedAge !== null && toRank) {
+        const ageReq = ageRequirementsByRank.get(normalizeRank(toRank));
+        if (ageReq && (ageReq.ageMin || ageReq.ageMax)) {
+          const meetsMin = !ageReq.ageMin || calculatedAge >= ageReq.ageMin;
+          const meetsMax = !ageReq.ageMax || calculatedAge <= ageReq.ageMax;
+          ageStatus = (meetsMin && meetsMax) ? 'met' : 'not-met';
+        }
+      }
+
+      const checklistCfg = toRank
+        ? checklistConfigByRank.get(normalizeRank(toRank))
+        : undefined;
+      const checklistProgressResult = calculateChecklistProgressFromJson(
+        review?.checklistProgressData,
+        checklistCfg?.minChecklistVerifications ?? 1,
+        checklistCfg?.minChecklistCompletionPercent ?? 100
+      );
+
+      const reviewStatus = normalizePromotionStatus(review?.status);
+      const checklistLocked = !!(review as any)?.isLockForm
+        && ['Submitted', 'Approved', 'Completed'].includes(reviewStatus);
+
+      return {
+        crewId: crew.employeeId || crew.empNo || '-',
+        crewMemberId: crewId,
+        promotionReviewId: review?.id || null,
+        reviewUuid: review?.reviewUuid || null,
+        name: `${crew.firstName || 'Unknown'} ${crew.middleName || ''} ${crew.familyName || ''}`.trim(),
+        dob: dobString,
+        ageValue: calculatedAge !== null ? calculatedAge : '-',
+        age: ageStatus,
+        nationality: crew.nationalityName || crew.nationality || 'Unknown',
+        currentRank: fromRank,
+        presentRankForScope: crew.presentRank || crew.rank || null,
+        promotionToRank: toRank || '-',
+        vesselLeave: vesselLeave,
+        presentVessel: crew.vesselUuid || null,
+        vesselType: (crew.vesselUuid ? getVessel(crew.vesselUuid)?.vesselType : null) || null,
+        seaServiceVesselTypes: Array.isArray(crew.seaServiceVesselTypes) ? crew.seaServiceVesselTypes : [],
+        license: computeCriteriaStatus(review, 'a2.1'),
+        sea: computeParentCriteriaStatus(review, 'a2.3'),
+        reco: computeCriteriaStatus(review, 'a2.4'),
+        promotionChecklist: checklistProgressResult.percentage,
+        checklistProgressData: checklistProgressResult,
+        checklistLocked,
+        otherCriteria: computeParentCriteriaStatus(review, 'a2.6'),
+        cesIndex: computeParentCriteriaStatus(review, 'a2.7'),
+        trainDocs: computeCriteriaStatus(review, 'a2.8'),
+        status: reviewStatus,
+        promotionTiming: review?.promotionTiming || null,
+        isHistorical: !!opts?.historical,
+      };
+    };
+
+    return members.flatMap((crew: any) => {
+      const rows: any[] = [];
+      const currentRank = crew.presentRank || crew.rank || '-';
+      const normalizedRank = normalizeRank(currentRank);
+      const crewId = crew.empNo || crew.id;
+
+      const { nextRank } = findNextPromotionRank(normalizedRank, hierarchies);
+
+      // 1. Active promotion row: the crew's current rank → next rank. Only
+      //    emitted when a promotion path exists (skips top-of-ladder ranks).
+      let activeReviewUuid: string | null = null;
+      if (shouldShowInPromotionsTable(normalizedRank, hierarchies)) {
+        const activeReview = reviewLookup.get(`${crewId}__${nextRank}`);
+        activeReviewUuid = activeReview?.reviewUuid ?? null;
+        rows.push(buildRow(crew, currentRank, nextRank, activeReview));
+      }
+
+      // 2. Historical rows: completed/executed promotions that are no longer
+      //    the crew's active next-rank promotion. These stay visible so the
+      //    promotion history is preserved (e.g. an executed Chief Officer →
+      //    Master form remains after the crew becomes Master). The active
+      //    review (if itself completed) is excluded to avoid duplication.
+      const completedReviews = (completedByCrewId.get(crewId) ?? []).filter(
+        (r: any) => r?.reviewUuid !== activeReviewUuid
+      );
+
+      for (const hist of completedReviews) {
+        const toRank = hist.promotionToRank;
+        const parsedReview = (hist.reviewUuid && reviewsByUuid.get(hist.reviewUuid))
+          || parseReviewExtras(hist);
+        const fromRank = findPreviousPromotionRank(normalizeRank(toRank), hierarchies) ?? '-';
+        rows.push(buildRow(crew, fromRank, toRank, parsedReview, { historical: true }));
+      }
+
+      return rows;
+    });
+  }, [crewMembers, hierarchies, normalizeRank, ageRequirementsByRank, checklistConfigByRank, reviewLookup, reviewsByUuid, promotionReviews, computeCriteriaStatus, computeParentCriteriaStatus, getVessel]);
 
   const filteredData = useMemo(() => {
     return promotionData.filter(item => {
@@ -578,7 +629,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       const matchesNationality = !nationality || item.nationality === nationality;
       const matchesStatus = !status || item.status === status;
       
-      const matchesVesselType = !vesselType || item.vesselType === vesselType;
+      const matchesVesselType = !vesselType ||
+        item.vesselType === vesselType ||
+        (Array.isArray(item.seaServiceVesselTypes) && item.seaServiceVesselTypes.includes(vesselType));
       
       const criteriaFields = [
         item.license,
@@ -624,11 +677,18 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
     const review = reviews.find((r: any) => r?.reviewUuid === initialReviewUuid);
     if (!review) return;
 
-    const projected = (promotionData || []).find(
-      (row: any) =>
-        row.crewMemberId === review.crewMemberId &&
-        row.promotionToRank === review.promotionToRank,
-    );
+    // Prefer an exact review match: now that a crew can have multiple rows
+    // (active + historical), bind the deep link to the precise review's row,
+    // falling back to crew+rank only when the row carries no reviewUuid.
+    const projected =
+      (promotionData || []).find(
+        (row: any) => row.reviewUuid && row.reviewUuid === review.reviewUuid,
+      ) ??
+      (promotionData || []).find(
+        (row: any) =>
+          row.crewMemberId === review.crewMemberId &&
+          row.promotionToRank === review.promotionToRank,
+      );
 
     const basePayload = projected ?? {
       crewId: review.crewMemberId,
@@ -711,7 +771,17 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       flex: 2,
       cellStyle: { fontSize: '13px', color: '#4f5863' },
       sortable: true,
-      resizable: true
+      resizable: true,
+      cellRenderer: (params: any) => {
+        const value = params.value ?? '-';
+        const showPriorJoining = params.data?.status === 'Approved'
+          && params.data?.promotionTiming === 'prior-joining';
+        return (
+          <span data-testid={`text-next-rank-${params.data?.crewId}`}>
+            {value}{showPriorJoining ? ' (PR)' : ''}
+          </span>
+        );
+      }
     },
     {
       headerName: 'Vessel/ Leave',
@@ -776,7 +846,8 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       flex: 1.5,
       cellRenderer: ProgressBarRenderer,
       cellRendererParams: {
-        onEdit: handleEditPromotion
+        onEdit: handleEditPromotion,
+        canActOnRank
       },
       sortable: true,
       resizable: true
@@ -829,12 +900,13 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       width: 60,
       cellRenderer: EditButtonRenderer,
       cellRendererParams: {
-        onEdit: handleEditPromotion
+        onEdit: handleEditPromotion,
+        canActOnRank
       },
       sortable: false,
       resizable: false
     }] : [])
-  ], [handleEditPromotion, permissions, canEditPerm]);
+  ], [handleEditPromotion, permissions, canEditPerm, canActOnRank]);
 
   const handleGridReady = (event: GridReadyEvent) => {
     setGridApi(event.api);

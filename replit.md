@@ -28,6 +28,105 @@ Pattern: **Repository + Service + Controller**. V2 routes under `server/v2/`, sh
 All under `client/src/modules/`:
 - `admin/`, `crewing/`, `crew-pool/`, `drugs-alcohol/`, `promotions/`, `recruitment/`, `rest-hours/`, `rotation/`, `vessel/`, `accounts/`
 
+## Folder Structure
+```
+.
+├── client/                 # React + Vite frontend
+│   └── src/
+│       ├── App.tsx, main.tsx
+│       ├── components/      # Shared UI (incl. shadcn/ui)
+│       ├── config/         # Frontend config
+│       ├── contexts/       # React contexts (e.g. PermissionsContext)
+│       ├── hooks/          # Reusable hooks (incl. v2/ data hooks)
+│       ├── lib/            # queryClient, tenantFetch, authToken, utilities
+│       ├── modules/        # Feature modules (admin, crewing, crew-pool,
+│       │                   #   drugs-alcohol, promotions, recruitment,
+│       │                   #   rest-hours, rotation, vessel, accounts)
+│       ├── micro-frontend/ # Micro-frontend integration
+│       ├── pages/          # Top-level routed pages
+│       ├── stores/         # Zustand stores
+│       ├── styles/         # Global styles
+│       ├── types/          # Shared frontend types
+│       └── utils/          # Frontend helpers
+├── server/                 # Express + TypeScript backend
+│   ├── index.ts            # App entry
+│   ├── db.ts               # DB bootstrap
+│   ├── routes.ts, routes/  # Shared / legacy routes
+│   ├── middleware/         # tenant + auth middleware
+│   ├── migrations/         # SQL migrations (auto-run per tenant)
+│   ├── swagger-docs/       # API docs
+│   ├── utils/              # Backend helpers
+│   └── v2/                 # V2 domain modules (admin, appraisals, crew-pool,
+│                           #   drugs-alcohol, masters, ports, promotions,
+│                           #   recruitment, reports, rest-hours, rotation,
+│                           #   training-needs, training-retention, vessel)
+│                           #   + db.ts (getDb tenant accessor)
+├── shared/                 # Code shared between client and server
+│   ├── schema.ts           # Core Drizzle schema
+│   └── v2/<domain>/schema.ts  # Per-domain Drizzle schemas
+├── docs/                   # Architecture, API, auth, migration docs
+├── migrations/             # Root migration assets
+├── scripts/                # Maintenance / setup scripts
+├── tests/                  # Test suites (Playwright / Vitest)
+├── deploy/                 # Deployment assets
+├── backups/                # Database backups
+└── drizzle.config.ts, vite.config.ts, tailwind.config.ts, tsconfig.json, package.json
+```
+
+## Database Conventions
+Apply these to **every new table**:
+- **UUID column on every table**: every table has a `serial("id")` primary key AND a business `*_uuid` text column declared `.notNull().unique()` (e.g. `rh_vessel_uuid`, `rh_crew_record_uuid`). The uuid is the stable, externally-referenced identifier.
+- **UUID as the foreign-key column**: relationships reference the `*_uuid` text column (e.g. `crew_uuid`, `vessel_uuid`), NOT the serial `id`. All joins are done on uuid columns.
+- **Audit columns on every table**: reuse the shared `auditColumns` spread (see `shared/v2/rest-hours/schema.ts`): `sort_order`, `created_at` (defaultNow), `updated_at` (defaultNow), `created_by_uuid`, `updated_by_uuid`, `is_deleted` (default false, for soft deletes), `is_sync` (default false).
+- For each model also write the `createInsertSchema` (drizzle-zod) with `.omit` for auto-generated/audit fields, the insert type (`z.infer`), and the select type (`$inferSelect`).
+
+## Standard Development Rules
+- **Every new API must follow multi-tenancy**: all new endpoints route through `tenantMiddleware` + `authMiddleware`, resolve the tenant from the `x-tenant-id` header (JWT domain fallback), and access the database via `getDb()` from `server/v2/db.ts` (tenant context from AsyncLocalStorage) — never a hardcoded or global connection. Frontend calls must use `tenantFetch.ts` (or the shared query client), which auto-injects the `x-tenant-id` and `Authorization: Bearer` headers; do not use raw `fetch` for tenant-scoped APIs.
+- Follow the **Repository + Service + Controller** pattern; keep routes thin and validate request bodies with Zod before passing to the service/storage layer.
+- Never edit `package.json` directly; use the package manager for dependencies.
+- Do not modify the Vite setup (`vite.config.ts`, `server/vite.ts`) or `drizzle.config.ts` unless absolutely necessary.
+- Secrets / environment variables are managed through the platform — never hardcode them.
+- Restart the "Start application" workflow after backend changes (the backend has no hot-reload).
+- Add stable, descriptive `data-testid` attributes to interactive and data-bearing UI elements.
+
+## AI Coding Principles (Karpathy-Inspired)
+
+### 1. Think Before Coding
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+- State assumptions explicitly — if uncertain, ask rather than guess
+- Present multiple interpretations — don't pick silently when ambiguity exists
+- Push back when warranted — if a simpler approach exists, say so
+- Stop when confused — name what's unclear and ask for clarification
+
+### 2. Simplicity First
+**Minimum code that solves the problem. Nothing speculative.**
+- No features beyond what was asked
+- No abstractions for single-use code
+- No "flexibility" or "configurability" that wasn't requested
+- No error handling for impossible scenarios
+- If 200 lines could be 50, rewrite it
+- **The test:** Would a senior engineer say this is overcomplicated? If yes, simplify.
+
+### 3. Surgical Changes
+**Touch only what you must. Clean up only your own mess.**
+- Don't "improve" adjacent code, comments, or formatting
+- Don't refactor things that aren't broken
+- Match existing style, even if you'd do it differently
+- If you notice unrelated dead code, mention it — don't delete it
+
+### 4. Goal-Driven Execution
+**Leverage through tests-first, verifiable success criteria.**
+- Define what "done" looks like before writing code
+- Write or reference tests that prove the change works
+- Prefer verifiable outcomes over vague improvements
+
+| Principle | Addresses |
+|-----------|-----------|
+| **Think Before Coding** | Wrong assumptions, hidden confusion, missing tradeoffs |
+| **Simplicity First** | Overcomplication, bloated abstractions |
+| **Surgical Changes** | Orthogonal edits, touching code you shouldn't |
+| **Goal-Driven Execution** | Leverage through tests-first, verifiable success criteria |
+
 ## User Preferences
 - Functional components with hooks, TypeScript strict mode
 - async/await, consistent error handling
@@ -41,5 +140,11 @@ All under `client/src/modules/`:
 - Migrations auto-run per tenant on first connection
 
 ## Key Documentation
+- `docs/ARCHITECTURE.md` — System architecture overview
+- `docs/DATABASE_SCHEMA.md` — Database schema reference
+- `docs/API_DOCUMENTATION.md` — API reference
 - `docs/multitenant-token-sequence-diagram.md` — Full multi-tenant flow diagrams (init, API requests, new module guide)
 - `docs/jwt-authentication-flow.md` — JWT auth flowcharts and middleware chain
+- `docs/MIGRATION-GUIDE.md` — Migration guidelines
+- `docs/DEVELOPER-ONBOARDING.md` — Developer onboarding guide
+ 

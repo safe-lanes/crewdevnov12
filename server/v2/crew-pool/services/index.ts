@@ -7,6 +7,7 @@ export { crewEducationService } from "./crewEducationService";
 export { crewCertificatesService } from "./crewCertificatesService";
 export { crewSeaServiceService } from "./crewSeaServiceService";
 export { crewMedicalService } from "./crewMedicalService";
+export { crewBriefingService } from "./crewBriefingService";
 export { crewTransferService } from "./crewTransferService";
 export { dashboardService } from "./dashboardService";
 export * from "./masterDataResolver";

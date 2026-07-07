@@ -16,8 +16,15 @@ interface DbTrainingComboboxProps {
   onChange: (value: string) => void;
   isLoading?: boolean;
   isError?: boolean;
+  disabled?: boolean;
   testId?: string;
   triggerClassName?: string;
+  /**
+   * Display text to show when `value` is set but does not match any option
+   * (e.g. a legacy/deleted company-training id). Prevents a bare numeric id
+   * from ever surfacing in the trigger. Typically the typed training name.
+   */
+  fallbackLabel?: string;
 }
 
 export function DbTrainingCombobox({
@@ -26,8 +33,10 @@ export function DbTrainingCombobox({
   onChange,
   isLoading = false,
   isError = false,
+  disabled = false,
   testId,
   triggerClassName,
+  fallbackLabel,
 }: DbTrainingComboboxProps) {
   const [open, setOpen] = useState(false);
 
@@ -49,7 +58,7 @@ export function DbTrainingCombobox({
     : matched
     ? matched.name
     : isUnknown
-    ? value
+    ? fallbackLabel?.trim() || 'Unknown training'
     : 'Select DB training...';
 
   return (
@@ -60,7 +69,7 @@ export function DbTrainingCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          disabled={isLoading}
+          disabled={isLoading || disabled}
           className={cn(
             'h-8 w-full justify-between text-xs font-normal px-2',
             !matched && !isUnknown && 'text-muted-foreground',

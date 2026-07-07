@@ -21,6 +21,7 @@ interface FormData {
   rankAppliedFor: string;
   manningAgent: string;
   fileNo: string;
+  c3RecruitmentDate?: string;
   countryOfResidence: string;
   nearestAirport: string;
   residentialAddressLine1: string;
@@ -151,7 +152,7 @@ interface FormData {
   b6InterviewComments: {[key: string]: string};
   b6SubmittedBy: string;
   b6SubmittedDate: string;
-  b7TrainingNeeds: Array<{id: string, training: string, identifiedBy: string, category: string, dueDate: string, comments: string}>;
+  b7TrainingNeeds: Array<{id: string, training: string, identifiedBy: string, category: string, status?: string, dueDate: string, comments: string}>;
   b7SubmittedBy: string;
   b7SubmittedDate: string;
   b8Shortlisted: string;
@@ -161,6 +162,7 @@ interface FormData {
   selectedApproversForSubmission: string[];
   approvalSubmittedBy: string;
   approvalSubmittedDate: string;
+  screeningDate: string;
   c1Approvers: Array<{id: string, date: string, approver: string, status: string, approval: string, comments?: string}>;
   c2VesselTypes: string[];
   c2FleetGroups: string[];
@@ -1045,6 +1047,19 @@ async function drawPartA(builder: PDFBuilder, formData: FormData): Promise<void>
     builder.drawText('No additional information', MARGIN + 10, 8, 'italic', LABEL_COLOR);
     builder.moveDown(LINE_HEIGHT);
   }
+
+  if (formData.screeningDate) {
+    builder.moveDown(8);
+    builder.checkPageBreak();
+    builder.drawText(
+      `Submitted for screening on: ${formatDate(formData.screeningDate)}`,
+      MARGIN,
+      8,
+      'italic',
+      LABEL_COLOR
+    );
+    builder.moveDown(LINE_HEIGHT);
+  }
 }
 
 function drawPartB(builder: PDFBuilder, formData: FormData): void {
@@ -1204,13 +1219,14 @@ function drawPartB(builder: PDFBuilder, formData: FormData): void {
 
   builder.drawSubsectionHeader('B7. Training Needs Identified');
   if (formData.b7TrainingNeeds && formData.b7TrainingNeeds.length > 0) {
-    const trainColWidths = [CONTENT_WIDTH * 0.25, CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.15, CONTENT_WIDTH * 0.27];
-    builder.drawTableHeader(['Training', 'Identified By', 'Category', 'Due Date', 'Comments'], trainColWidths);
+    const trainColWidths = [CONTENT_WIDTH * 0.21, CONTENT_WIDTH * 0.16, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.13, CONTENT_WIDTH * 0.24];
+    builder.drawTableHeader(['Training', 'Identified By', 'Category', 'Status', 'Due Date', 'Comments'], trainColWidths);
     for (const need of formData.b7TrainingNeeds) {
       builder.drawTableRow([
         need.training || '',
         need.identifiedBy || '',
         need.category || '',
+        need.status || '',
         formatDate(need.dueDate),
         need.comments || '',
       ], trainColWidths);
@@ -1299,6 +1315,10 @@ function drawPartC(builder: PDFBuilder, formData: FormData): void {
     builder.drawText('-', MARGIN + 10, 9, 'normal');
     builder.moveDown(LINE_HEIGHT);
   }
+
+  builder.drawText(`C3.3 Date${({ Yes: ' of Recruitment', Waitlist: ' of Waitlisting', Rejected: ' of Rejection' } as Record<string, string>)[formData.c3RecruitmentStatus] || ''}:`, MARGIN, 9, 'normal');
+  builder.drawTextAt(displayValue(formData.c3RecruitmentDate ? formatDate(formData.c3RecruitmentDate) : ''), MARGIN + 150, builder.getY(), 9, 'normal');
+  builder.moveDown(LINE_HEIGHT);
   
   builder.drawSubmissionInfo(formData.c3SubmittedBy, formData.c3SubmittedDate);
 }

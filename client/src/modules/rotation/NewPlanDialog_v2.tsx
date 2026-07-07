@@ -18,6 +18,7 @@ import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useManningAgentsV2, useCrewPoolsV2, useVesselTypesV2, useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
 import { ComplianceMatrixDialog_v2 as ComplianceMatrixDialog } from '@/modules/vessel/ComplianceMatrixDialog_v2';
+import { getCrewUserId } from '@/lib/crewUser';
 
 // Format date as DD-MMM-YY (e.g., "15 Dec 25")
 function formatAvailabilityDate(dateString: string | null | undefined): string {
@@ -70,6 +71,8 @@ interface CrewMember {
   higherCert?: string;
   performance?: string;
   nextAvailability?: string | null;
+  hasPriorJoiningPromotion?: boolean;
+  promotionToRank?: string | null;
   experience: {
     company: number;
     rank: number;
@@ -930,6 +933,7 @@ function CrewColumn({
   // Returns the vessel names to display in tooltip on hover
   const getCrewVesselInfo = (crewUuid: string): string | null => {
     const vesselNames: string[] = [];
+    const labels: string[] = [];
 
     // Check for Red: crew is Signed On or In Transit on another vessel
     const activeVessels: string[] = [];
@@ -946,7 +950,7 @@ function CrewColumn({
       }
     });
     if (activeVessels.length > 0) {
-      return `Deployed: ${activeVessels.join(', ')}`;
+      labels.push(`Deployed: ${activeVessels.join(', ')}`);
     }
 
     // Check for Purple: crew is a deployed reliever with Planned or Confirmed status.
@@ -963,7 +967,7 @@ function CrewColumn({
       }
     });
     if (purpleVessels.length > 0) {
-      return `Deployed (Awaiting Sign On): ${purpleVessels.join(', ')}`;
+      labels.push(`Deployed (Awaiting Sign On): ${purpleVessels.join(', ')}`);
     }
 
     // Check for Blue (Proposed): crew has a pending proposal awaiting Deploy approval
@@ -972,7 +976,11 @@ function CrewColumn({
       .map(p => p.vessel)
       .filter((v, i, arr) => arr.indexOf(v) === i); // unique vessel names
     if (proposedVessels.length > 0) {
-      return `Proposed (Awaiting Approval): ${proposedVessels.join(', ')}`;
+      labels.push(`Proposed (Awaiting Approval): ${proposedVessels.join(', ')}`);
+    }
+
+    if (labels.length > 0) {
+      return labels.join('\n');
     }
 
     // Check for overlapping deployments on other vessels (red color reason)
@@ -1147,7 +1155,7 @@ function CrewColumn({
                 // Show tooltip for purple (deployed awaiting sign on), red (deployed), blue (1 vessel planned), and brown (2+ vessels planned)
                 const hasColoredStatus = nameColor === 'text-purple-600' || nameColor === 'text-red-600' || nameColor === 'text-blue-600' || nameColor === 'text-[#814C02]';
                 const showVesselTooltip = !!vesselInfo && hasColoredStatus;
-                const selectCrew = () => onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.presentRank });
+                const selectCrew = () => onCrewSelect({ crewUuid: crew.crewUuid, name: crew.fullName, rank: crew.hasPriorJoiningPromotion ? (crew.promotionToRank || crew.presentRank) : crew.presentRank });
                 return (
                   <div
                     key={crew.crewUuid}
@@ -1175,10 +1183,18 @@ function CrewColumn({
                               className={`block w-full text-left font-medium text-sm cursor-help bg-transparent p-0 m-0 border-0 ${nameColor}`}
                             >
                               {crew.fullName}
+                              {crew.hasPriorJoiningPromotion && (
+                                <span
+                                  className="ml-1 text-blue-600 dark:text-blue-400"
+                                  data-testid={`text-pr-suffix-${crew.crewUuid}`}
+                                >
+                                  (PR)
+                                </span>
+                              )}
                             </button>
                           </TooltipTrigger>
                           <TooltipContent side="right" className="max-w-xs">
-                            <div className="text-xs">
+                            <div className="text-xs whitespace-pre-line">
                               <span className="font-medium">Vessel: </span>{vesselInfo}
                             </div>
                           </TooltipContent>
@@ -1186,6 +1202,14 @@ function CrewColumn({
                       ) : (
                         <div className={`font-medium text-sm ${nameColor}`}>
                           {crew.fullName}
+                          {crew.hasPriorJoiningPromotion && (
+                            <span
+                              className="ml-1 text-blue-600 dark:text-blue-400"
+                              data-testid={`text-pr-suffix-${crew.crewUuid}`}
+                            >
+                              (PR)
+                            </span>
+                          )}
                         </div>
                       )}
                       <Tooltip>
@@ -2110,6 +2134,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   const [selectedCrew, setSelectedCrew] = useState<{ crewUuid: string; name: string; rank: string } | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [positionSelectOpen, setPositionSelectOpen] = useState(false);
+  const [proposeSuccessOpen, setProposeSuccessOpen] = useState(false);
   const [complianceDialogOpen, setComplianceDialogOpen] = useState(false);
   const [complianceVesselId, setComplianceVesselId] = useState<string | undefined>(undefined);
   const [complianceSimulatedCrew, setComplianceSimulatedCrew] = useState<Array<{ rank: string; crewMemberId: string; crewName: string; joiningDate?: string }>>([]);
@@ -2117,6 +2142,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
   const [pendingOccupiedPositions, setPendingOccupiedPositions] = useState<Map<string, string>>(new Map());
   const prevSelectedVesselsRef = useRef<string[]>([]);
   const isInitialLoadRef = useRef(false);
+  const isProposingRef = useRef(false);
   
   // Track saved plan ID for new plans - allows subsequent saves to use PATCH instead of POST
   const [savedPlanId, setSavedPlanId] = useState<number | null>(null);
@@ -2460,10 +2486,14 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
         setSavedPlanId(savedPlan.draftUuid);
       }
       
-      toast({
-        title: "Success",
-        description: existingDraftUuid ? "Rotation plan updated successfully" : "Rotation plan saved as draft successfully",
-      });
+      // Suppress the save toast when this save is part of the propose flow
+      // (the propose flow shows its own confirmation popup instead)
+      if (!isProposingRef.current) {
+        toast({
+          title: "Success",
+          description: existingDraftUuid ? "Rotation plan updated successfully" : "Rotation plan saved as draft successfully",
+        });
+      }
       // Dialog stays open - do NOT close or reset form here
     },
     onError: (error: any) => {
@@ -2484,10 +2514,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/v2/rotation', 'drafts'] });
-      toast({
-        title: "Success",
-        description: "Rotation plan proposed for approval successfully",
-      });
+      setProposeSuccessOpen(true);
       onOpenChange(false);
       setSelectedVessels([]);
       setSelectedRanks([]);
@@ -2972,7 +2999,7 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     // Only include these fields when creating a new plan (no editPlan AND no savedPlanId)
     if (!existingDraftUuid) {
       planData.lastEdited = new Date().toISOString();
-      planData.createdByUuid = localStorage.getItem('crewUserId') || 'unknown';
+      planData.createdByUuid = getCrewUserId() || 'unknown';
       planData.planStatus = 'In Draft';
     }
 
@@ -3050,11 +3077,13 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     // Only include these fields when creating a new plan (no editPlan AND no savedPlanId)
     if (!existingDraftUuid) {
       planData.lastEdited = new Date().toISOString();
-      planData.createdByUuid = localStorage.getItem('crewUserId') || 'unknown';
+      planData.createdByUuid = getCrewUserId() || 'unknown';
       planData.planStatus = 'In Draft';
     }
 
     try {
+      // Flag this save as part of the propose flow so its success toast is suppressed
+      isProposingRef.current = true;
       // First save the plan - mutateAsync returns the parsed JSON (not Response)
       const savedPlan = await saveRotationPlanMutation.mutateAsync(planData);
       
@@ -3076,6 +3105,8 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     } catch (error: any) {
       // Save failed - error toast is already shown by the mutation's onError
       console.error('Save failed before propose:', error);
+    } finally {
+      isProposingRef.current = false;
     }
   };
 
@@ -3412,6 +3443,26 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
         vesselId={complianceVesselId}
         simulatedCrew={complianceSimulatedCrew}
       />
+
+      <Dialog open={proposeSuccessOpen} onOpenChange={setProposeSuccessOpen}>
+        <DialogContent className="max-w-sm" data-testid="dialog-propose-success">
+          <DialogHeader>
+            <DialogTitle>Success</DialogTitle>
+            <DialogDescription className="space-y-2 pt-2">
+              <span className="block">Rotation plan proposed for approval</span>
+              <span className="block">For next step go to: Rotation &gt; Approval Screen</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setProposeSuccessOpen(false)}
+              data-testid="button-propose-success-got-it"
+            >
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

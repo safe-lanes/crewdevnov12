@@ -5,7 +5,8 @@ import type { AgChartOptions, AgChartInstance } from "@/lib/agCharts";
 import { appraisalsApiV2 } from "@/modules/crewing/api/appraisalsApiV2";
 import { CrewAppraisalsDrilldownDialog } from "./CrewAppraisalsDrilldownDialog";
 import { useDrilldownParam } from "./useDrilldownParam";
-import { extractRank } from "./appraisalRank";
+import { extractRank, isStage2Submitted, extractAppraisalPeriodTo } from "./appraisalRank";
+import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface AppraisalRow {
@@ -18,6 +19,16 @@ interface AppraisalRow {
   overallRating?: string | number | null;
   appraisalDate?: string | null;
   appraisalData?: string | null;
+  stageStatuses?: string | null;
+  crewMemberId?: string | null;
+}
+
+interface CrewPoolLookupRow {
+  crewUuid?: string | null;
+  empNo?: string | null;
+  crewPool?: string | null;
+  manningAgentName?: string | null;
+  nationality?: string | null;
 }
 
 function escapeHtml(value: string): string {
@@ -91,10 +102,10 @@ function parseRating(value: unknown): number | null {
 
 export const CrewAppraisalsRankChart = ({
   period,
-  ranks: _ranks = [],
-  crewPools: _crewPools = [],
-  manningAgents: _manningAgents = [],
-  nationalities: _nationalities = [],
+  ranks = [],
+  crewPools = [],
+  manningAgents = [],
+  nationalities = [],
   chartRef,
 }: CrewAppraisalsRankChartProps) => {
   const [isMounted, setIsMounted] = useState(false);
@@ -129,11 +140,90 @@ export const CrewAppraisalsRankChart = ({
     staleTime: 60 * 1000,
   });
 
+  const { data: crew } = useQuery<CrewPoolLookupRow[]>({
+    queryKey: ["/api/v2/crew-pool/crew/details", { view: "all", all: true }],
+    queryFn: async ({ signal }) => {
+      const PAGE_SIZE = 1000;
+      const all: CrewPoolLookupRow[] = [];
+      let offset = 0;
+      for (let i = 0; i < 100; i++) {
+        const response = await fetch(
+          `/api/v2/crew-pool/crew/details?view=all&limit=${PAGE_SIZE}&offset=${offset}`,
+          { signal },
+        );
+        if (!response.ok) throw new Error("Failed to fetch crew list");
+        const json = await response.json();
+        const page = json.data ?? [];
+        all.push(...page);
+        const total = json.pagination?.total ?? all.length;
+        offset += PAGE_SIZE;
+        if (page.length < PAGE_SIZE || all.length >= total) break;
+      }
+      return all;
+    },
+    staleTime: 60 * 1000,
+    enabled: crewPools.length > 0 || manningAgents.length > 0 || nationalities.length > 0,
+  });
+
+  const poolByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const pool = (c.crewPool || "").trim();
+      if (!pool) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), pool);
+      if (c.empNo) map.set(String(c.empNo), pool);
+    }
+    return map;
+  }, [crew]);
+
+  const agentByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const agent = (c.manningAgentName || "").trim();
+      if (!agent) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), agent);
+      if (c.empNo) map.set(String(c.empNo), agent);
+    }
+    return map;
+  }, [crew]);
+
+  const nationalityByCrewKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of crew ?? []) {
+      const nat = (c.nationality || "").trim();
+      if (!nat) continue;
+      if (c.crewUuid) map.set(String(c.crewUuid), nat);
+      if (c.empNo) map.set(String(c.empNo), nat);
+    }
+    return map;
+  }, [crew]);
+
+  const { data: companyRanks = [] } = useCompanyRanks();
+
+  const labelByRankName = useMemo(() => {
+    const m = new Map<string, string>();
+
+    for (const r of companyRanks) {
+      const label = (r.label || "").trim();
+      if (!label) continue;
+
+      const name = (r.rank || "").trim();
+
+      if (name) {
+        m.set(name.toLowerCase(), label);
+      }
+
+      m.set(label.toLowerCase(), label);
+    }
+
+    return m;
+  }, [companyRanks]);
+
   const chartData = useMemo<RankAvg[]>(() => {
     if (!range) return [];
     const buckets = new Map<string, { sum: number; count: number }>();
     for (const a of appraisals) {
-      const date = parseDate(a.appraisalDate);
+      const date = parseDate(extractAppraisalPeriodTo(a));
       if (!date) continue;
       if (date < range.from || date > range.to) continue;
 
@@ -142,6 +232,31 @@ export const CrewAppraisalsRankChart = ({
 
       const rating = parseRating(a.overallRating);
       if (rating === null) continue;
+
+      if (!isStage2Submitted(a)) continue;
+
+      if (crewPools.length > 0) {
+        const pool = poolByCrewKey.get((a.crewMemberId || "").trim());
+        if (!pool || !crewPools.includes(pool)) continue;
+      }
+
+      if (manningAgents.length > 0) {
+        const agent = agentByCrewKey.get((a.crewMemberId || "").trim());
+        if (!agent || !manningAgents.includes(agent)) continue;
+      }
+
+      if (nationalities.length > 0) {
+        const nat = nationalityByCrewKey.get((a.crewMemberId || "").trim());
+        if (!nat || !nationalities.includes(nat)) continue;
+      }
+
+      if (ranks.length > 0) {
+        const lbl =
+          labelByRankName.get(rank.trim().toLowerCase()) ??
+          rank.trim();
+
+        if (!ranks.includes(lbl)) continue;
+      }
 
       const cur = buckets.get(rank) || { sum: 0, count: 0 };
       cur.sum += rating;
@@ -155,7 +270,7 @@ export const CrewAppraisalsRankChart = ({
         count,
       }))
       .sort((a, b) => b.avgRating - a.avgRating);
-  }, [appraisals, range]);
+  }, [appraisals, range, crewPools, poolByCrewKey, manningAgents, agentByCrewKey, nationalities, nationalityByCrewKey, ranks, labelByRankName]);
 
   const chartOptions = useMemo<AgChartOptions>(
     () => ({
@@ -281,10 +396,10 @@ export const CrewAppraisalsRankChart = ({
         onOpenChange={handleDrillDownChange}
         rank={selectedRank}
         period={period}
-        ranks={_ranks}
-        crewPools={_crewPools}
-        manningAgents={_manningAgents}
-        nationalities={_nationalities}
+        ranks={ranks}
+        crewPools={crewPools}
+        manningAgents={manningAgents}
+        nationalities={nationalities}
       />
     </>
   );

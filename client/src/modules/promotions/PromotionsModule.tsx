@@ -43,6 +43,26 @@ export function PromotionsModule() {
     const [nationality, setNationality] = useState('');
     const [criteria, setCriteria] = useState('');
     const [status, setStatus] = useState('');
+
+    type PromotionFilters = {
+        searchName: string;
+        promotionToRank: string;
+        vessel: string;
+        vesselType: string;
+        nationality: string;
+        criteria: string;
+        status: string;
+    };
+
+    const [appliedFilters, setAppliedFilters] = useState<PromotionFilters>({
+        searchName: '',
+        promotionToRank: '',
+        vessel: '',
+        vesselType: '',
+        nationality: '',
+        criteria: '',
+        status: '',
+    });
     
     const { userType, myVessels } = usePermissions();
     const isShipUser = userType === 'Ship';
@@ -97,6 +117,7 @@ export function PromotionsModule() {
             const matchedVessel = vesselOptions.find((v) => v.name === myVesselName);
             if (matchedVessel) {
                 setVessel(matchedVessel.entryId);
+                setAppliedFilters(prev => ({ ...prev, vessel: matchedVessel.entryId }));
             }
         }
     }, [isShipUser, myVessels, vesselOptions, vessel]);
@@ -106,7 +127,20 @@ export function PromotionsModule() {
         return myVessels[0].vessel;
     }, [isShipUser, myVessels]);
 
+    const handleApplyFilters = () => {
+        setAppliedFilters({
+            searchName,
+            promotionToRank,
+            vessel,
+            vesselType,
+            nationality,
+            criteria,
+            status,
+        });
+    };
+
     const handleClearFilters = () => {
+        const clearedVessel = isShipUser ? vessel : '';
         setSearchName('');
         setPromotionToRank('');
         if (!isShipUser) {
@@ -116,6 +150,15 @@ export function PromotionsModule() {
         setNationality('');
         setCriteria('');
         setStatus('');
+        setAppliedFilters({
+            searchName: '',
+            promotionToRank: '',
+            vessel: clearedVessel,
+            vesselType: '',
+            nationality: '',
+            criteria: '',
+            status: '',
+        });
     };
 
     return (
@@ -238,6 +281,14 @@ export function PromotionsModule() {
                         </Select>
 
                         <Button
+                            className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-white text-xs px-4"
+                            onClick={handleApplyFilters}
+                            data-testid="button-apply"
+                        >
+                            Apply
+                        </Button>
+
+                        <Button
                             variant="outline"
                             className="h-8 text-[#8798ad] text-xs border-[#e1e8ed]"
                             onClick={handleClearFilters}
@@ -250,13 +301,13 @@ export function PromotionsModule() {
 
                 <div className="flex-1 px-4">
                     <PromotionsTable
-                        searchName={searchName}
-                        promotionToRank={promotionToRank}
-                        vessel={vessel}
-                        vesselType={vesselType}
-                        nationality={nationality}
-                        criteria={criteria}
-                        status={status}
+                        searchName={appliedFilters.searchName}
+                        promotionToRank={appliedFilters.promotionToRank}
+                        vessel={appliedFilters.vessel}
+                        vesselType={appliedFilters.vesselType}
+                        nationality={appliedFilters.nationality}
+                        criteria={appliedFilters.criteria}
+                        status={appliedFilters.status}
                         initialReviewUuid={initialReviewUuid}
                         onInitialReviewConsumed={handleInitialReviewConsumed}
                     />

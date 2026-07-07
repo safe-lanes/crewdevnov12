@@ -16,6 +16,14 @@ export function ModuleNavigator({ currentModule, onModuleChange }: ModuleNavigat
   let portNumber = window.location.port;
   portNumber = portNumber ? `:${portNumber}` : ''
   const fullUrl = `${protocol}//${hostname}${portNumber}`;
+
+  // Check conditions from localStorage and sessionStorage
+  const isIncident = localStorage.getItem("isIncident") === "true";
+  const isSafety = localStorage.getItem("isSafety") === "true";
+  const technicalAccess = localStorage.getItem("isTechnical") === "true";
+  const crewingAccess = localStorage.getItem("isCrewing") === "true";
+  const userType = sessionStorage.getItem("userType");
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -42,7 +50,8 @@ export function ModuleNavigator({ currentModule, onModuleChange }: ModuleNavigat
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" className="w-40">
-      <DropdownMenuItem
+      {currentModule !== "Audit" && (
+        <DropdownMenuItem
           onClick={() => {
             localStorage.setItem("selected_module", "U2FsdGVkX19gp34OrOluh/gJ6eeByT19nc8eMBUBsVE=");
             window.location.assign(`${fullUrl}/audit/dashboard/summary`);
@@ -51,6 +60,58 @@ export function ModuleNavigator({ currentModule, onModuleChange }: ModuleNavigat
         >
           Audit
         </DropdownMenuItem>
+      )}
+
+        {isIncident && currentModule !== "Incident Investigation" && (
+          <DropdownMenuItem
+            onClick={() => {
+              localStorage.setItem("selected_module", "U2FsdGVkX1+1tMb2pUA4bx7U+6hcIsaruuPbgkzlDJA=");
+              window.location.assign(`${fullUrl}/incident/investigation-stats`);
+            }}
+            className="cursor-pointer"
+          >
+            Incident Investigation
+          </DropdownMenuItem>
+        )}
+
+        {isSafety && currentModule !== "Safety" && (
+          <DropdownMenuItem
+            onClick={() => {
+              localStorage.setItem("selected_module", "U2FsdGVkX19opQjksvN74IqPHYbQz9RqoKNoqmLQVF8=");
+              window.location.assign(`${fullUrl}/safety/risk_assessment`);
+            }}
+            className="cursor-pointer"
+          >
+            Safety
+          </DropdownMenuItem>
+        )}
+
+        {technicalAccess && currentModule !== "Technical" && (
+          <DropdownMenuItem
+            onClick={() => {
+              localStorage.setItem("selected_module", "U2FsdGVkX18M7QeL1YQCM8/7o+KDvgIlzZI2KEkB9Ws=");
+              window.location.assign(`${fullUrl}/technical/pms/dashboard`);
+            }}
+            className="cursor-pointer"
+          >
+            Technical
+          </DropdownMenuItem>
+        )}
+
+        {crewingAccess && currentModule !== "Crewing" && (
+          <DropdownMenuItem
+            onClick={() => {
+              localStorage.setItem("selected_module", "U2FsdGVkX1/zTYInEs7rof+o3R//IOa4hSuxsb3kfbc=");
+              const route = userType === "U2FsdGVkX18APK1Va6FMA+zoU8Rhw9B9QB8PAZhGYyM="
+                ? `${fullUrl}/crewing/dashboard/`
+                : `${fullUrl}/crewing/vessel/`;
+              window.location.assign(route);
+            }}
+            className="cursor-pointer"
+          >
+            Crewing
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

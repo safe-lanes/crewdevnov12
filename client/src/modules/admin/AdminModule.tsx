@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { usePermissions } from '@/contexts/PermissionsContext';
+import { NoAccessPage } from '@/components/ProtectedRoute';
+import { getCrewUserId } from '@/lib/crewUser';
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -62,15 +64,15 @@ import { Form, RankGroup, AvailableRank, InsertMasterDataEntry } from "@shared/s
 import { FormEditorFactory } from "@/components/FormEditorFactory";
 import { formTemplates, createFormEditor } from "@/utils/formEditorGenerator";
 import { apiRequest } from "@/lib/queryClient";
-import { 
-  useDataMasters, 
+import {
+  useDataMasters,
   useMasterDataEntries,
   useCreateDataMaster,
   useUpdateDataMaster,
   useDeleteDataMaster,
   useCreateMasterDataEntry,
   useUpdateMasterDataEntry,
-  useDeleteMasterDataEntry 
+  useDeleteMasterDataEntry
 } from "@/hooks/useDataMasters";
 import { type RankMasterData } from "@/hooks/useCompanyRanks";
 import { queryClient } from "@/lib/queryClient";
@@ -80,9 +82,9 @@ import { z } from "zod";
 import SideBarComponent from '../../components/Navbar/SideBarComponent';
 import MainLayout from "@/components/main/MainLayout";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
-import { 
-  mapVesselDataToSafeFields, 
-  mapSafeFieldsToVesselData, 
+import {
+  mapVesselDataToSafeFields,
+  mapSafeFieldsToVesselData,
   isVesselMaster,
   getVesselMasterErrorMessage,
   filterToSafeFields,
@@ -108,7 +110,9 @@ import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionConte
 import AccessControlPage from "./AccessControlPage";
 import ApprovalWorkflowPage from "./ApprovalWorkflowPage";
 import UsersAdminPage from "./UsersAdminPage";
-import { 
+import TrainingStatusPage from "./TrainingStatusPage";
+import TrainingCategoryPage from "./TrainingCategoryPage";
+import {
   getCategoryLabel,
   getGroupLabel,
   generateTrainingId,
@@ -239,10 +243,10 @@ function NewTrainingDialog({ open, onOpenChange, onSubmit, existingIds, isLoadin
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-medium">Training ID</label>
-                <Input 
-                  value={generatedId} 
-                  disabled 
-                  className="h-8 text-xs font-mono bg-gray-100" 
+                <Input
+                  value={generatedId}
+                  disabled
+                  className="h-8 text-xs font-mono bg-gray-100"
                   data-testid="input-new-training-id"
                 />
               </div>
@@ -386,8 +390,8 @@ function NewTrainingDialog({ open, onOpenChange, onSubmit, existingIds, isLoadin
 interface ConfigureGroupLabelsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  companyTrainingGroups: {code: string; label: string | null; displayOrder: number}[];
-  onSave: (updates: {code: string; label: string | null}[]) => Promise<void>;
+  companyTrainingGroups: { code: string; label: string | null; displayOrder: number }[];
+  onSave: (updates: { code: string; label: string | null }[]) => Promise<void>;
 }
 
 function ConfigureGroupLabelsDialog({ open, onOpenChange, companyTrainingGroups, onSave }: ConfigureGroupLabelsDialogProps) {
@@ -538,11 +542,11 @@ interface SeafarerData {
 const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
   const { canView, canCreate, canEdit, canDelete, permissions } = usePermissions();
+  const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
   const adminAllowedPages = useMemo(() => {
     const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow", "users"];
     if (permissions.length === 0) return all;
-    const pageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow", "users": "Users" };
-    return all.filter(p => canView(pageToMenu[p] || p));
+    return all.filter(p => canView(adminPageToMenu[p] || p));
   }, [permissions, canView]);
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
@@ -557,7 +561,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [selectedFormForRankGroup, setSelectedFormForRankGroup] = useState<string | null>(null);
   const [editingRankGroupData, setEditingRankGroupData] = useState<RankGroup | null>(null);
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
-  const [pendingArchiveRankGroup, setPendingArchiveRankGroup] = useState<{id: number; name: string} | null>(null);
+  const [pendingArchiveRankGroup, setPendingArchiveRankGroup] = useState<{ id: number; name: string } | null>(null);
   const [showCreateFormDialog, setShowCreateFormDialog] = useState(false);
   const [newFormName, setNewFormName] = useState("");
   const [newFormCategory, setNewFormCategory] = useState<"appraisal" | "promotion">("appraisal");
@@ -720,7 +724,7 @@ const AdminModuleInner = (): JSX.Element => {
     setRankMasterData(prev => {
       // Preserve any new ranks that haven't been saved yet
       const currentNewRanks = Array.from(newRanks);
-      const newUnsavedRanks = prev.filter(rank => 
+      const newUnsavedRanks = prev.filter(rank =>
         rank.id.startsWith('new_') && currentNewRanks.includes(rank.id)
       );
 
@@ -936,7 +940,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Training Matrix Vessel Draft mutations
   const tmSaveDraftMutation = useMutation({
     mutationFn: async ({ vesselId, draftData }: { vesselId: string; draftData: any }) => {
-      const auditUserUuid = localStorage.getItem("crewUserId") || undefined;
+      const auditUserUuid = getCrewUserId() || undefined;
       return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-drafts/upsert', { vesselId, draftData, auditUserUuid });
     },
     onSuccess: (_data, variables) => {
@@ -961,7 +965,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const tmSubmitRevisionMutation = useMutation({
     mutationFn: async ({ vesselId, revisionDate, revisionData }: { vesselId: string; revisionDate: string; revisionData: any }) => {
-      const auditUserUuid = localStorage.getItem("crewUserId") || undefined;
+      const auditUserUuid = getCrewUserId() || undefined;
       return apiRequest('POST', '/api/v2/admin/training-matrix-vessel-revisions/submit', { vesselId, revisionDate, revisionData, auditUserUuid });
     },
     onSuccess: (_data, variables) => {
@@ -1010,7 +1014,7 @@ const AdminModuleInner = (): JSX.Element => {
   // PERFORMANCE OPTIMIZATION: Only build lookup for the CURRENT vessel being displayed
   // This avoids rebuilding Maps for all vessels on every checkbox click
   const currentVesselRankLookup = useMemo(() => {
-    const currentVesselData = selectedVessels.length > 0 
+    const currentVesselData = selectedVessels.length > 0
       ? vesselRankDataMap.get(selectedVessels[0]) || []
       : [];
 
@@ -1221,8 +1225,8 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Data Masters API hooks
   // PERFORMANCE: Only fetch when on masters tab
-  const { data: mastersList = [], isLoading: mastersLoading, error: mastersError } = useDataMasters({ 
-    enabled: selectedAdminPage === "masters" 
+  const { data: mastersList = [], isLoading: mastersLoading, error: mastersError } = useDataMasters({
+    enabled: selectedAdminPage === "masters"
   });
 
   // PERFORMANCE: Removed debug logging to avoid re-renders on every masters change
@@ -1332,21 +1336,21 @@ const AdminModuleInner = (): JSX.Element => {
 
   // NEW: External vessel type data from API
   // PERFORMANCE: Only load when on masters tab
-  const { 
-    data: externalVesselTypeData, 
+  const {
+    data: externalVesselTypeData,
     isLoading: vesselTypeLoading,
-    error: vesselTypeError 
+    error: vesselTypeError
   } = useMasterDataV2('vesselTypes', { enabled: selectedAdminPage === "masters" });
 
-  const vesselTypeData = Array.isArray(externalVesselTypeData) 
-    ? externalVesselTypeData 
+  const vesselTypeData = Array.isArray(externalVesselTypeData)
+    ? externalVesselTypeData
     : (externalVesselTypeData as any)?.vesseltypes || [];
 
 
   // Designation Master Data (for users master dropdown)
   // PERFORMANCE: Only fetch when on masters tab
-  const { data: designationData = [], isLoading: designationLoading } = useMasterDataEntries('012', { 
-    enabled: selectedAdminPage === "masters" 
+  const { data: designationData = [], isLoading: designationLoading } = useMasterDataEntries('012', {
+    enabled: selectedAdminPage === "masters"
   });
 
   // Vessels Master Data (for vessel selection dropdown - ID 014)
@@ -1357,40 +1361,40 @@ const AdminModuleInner = (): JSX.Element => {
 
   // NEW: External vessel master data from API
   // PERFORMANCE: Only load when on masters or rank-admin tab
-  const { 
-    data: externalVesselMasterData, 
+  const {
+    data: externalVesselMasterData,
     isLoading: vesselMasterLoading,
-    error: vesselMasterError 
+    error: vesselMasterError
   } = useMasterDataV2('vessels', { enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin" || selectedAdminPage === "training-matrix" });
 
-  const vesselMasterData = Array.isArray(externalVesselMasterData) 
-    ? externalVesselMasterData 
+  const vesselMasterData = Array.isArray(externalVesselMasterData)
+    ? externalVesselMasterData
     : (externalVesselMasterData as any)?.vessels || [];
 
 
   // NEW: External nationality data from API
   // PERFORMANCE: Only load when on masters tab
-  const { 
-    data: externalNationalityData, 
+  const {
+    data: externalNationalityData,
     isLoading: nationalityLoading,
-    error: nationalityError 
+    error: nationalityError
   } = useMasterDataV2('nationalities', { enabled: selectedAdminPage === "masters" });
 
-  const nationalityData = Array.isArray(externalNationalityData) 
-    ? externalNationalityData 
+  const nationalityData = Array.isArray(externalNationalityData)
+    ? externalNationalityData
     : (externalNationalityData as any)?.nationalities || [];
 
 
   // NEW: External fleet groups data from API
   // PERFORMANCE: Only load when on masters tab
-  const { 
-    data: externalFleetGroupsData, 
-    isLoading: fleetGroupsLoading, 
-    error: fleetGroupsError 
+  const {
+    data: externalFleetGroupsData,
+    isLoading: fleetGroupsLoading,
+    error: fleetGroupsError
   } = useMasterDataV2('fleetGroups', { enabled: selectedAdminPage === "masters" });
 
-  const fleetGroupsData = Array.isArray(externalFleetGroupsData) 
-    ? externalFleetGroupsData 
+  const fleetGroupsData = Array.isArray(externalFleetGroupsData)
+    ? externalFleetGroupsData
     : (externalFleetGroupsData as any)?.fleetGroups || [];
 
 
@@ -1424,8 +1428,8 @@ const AdminModuleInner = (): JSX.Element => {
     error: languagesError,
   } = useMasterDataV2('languages', { enabled: selectedAdminPage === "masters" });
 
-  const languagesData = Array.isArray(externalLanguagesData) 
-    ? externalLanguagesData 
+  const languagesData = Array.isArray(externalLanguagesData)
+    ? externalLanguagesData
     : (externalLanguagesData as any)?.languages || [];
 
 
@@ -1437,8 +1441,8 @@ const AdminModuleInner = (): JSX.Element => {
     error: countriesError,
   } = useMasterDataV2('countries', { enabled: selectedAdminPage === "masters" });
 
-  const countriesData = Array.isArray(externalCountriesData) 
-    ? externalCountriesData 
+  const countriesData = Array.isArray(externalCountriesData)
+    ? externalCountriesData
     : (externalCountriesData as any)?.countries || [];
 
 
@@ -1450,8 +1454,8 @@ const AdminModuleInner = (): JSX.Element => {
     error: externalUsersError,
   } = useMasterDataV2('users', { enabled: selectedAdminPage === "masters" });
 
-  const externalUsersApiData = Array.isArray(externalUsersData) 
-    ? externalUsersData 
+  const externalUsersApiData = Array.isArray(externalUsersData)
+    ? externalUsersData
     : (externalUsersData as any)?.users || [];
 
 
@@ -1485,7 +1489,7 @@ const AdminModuleInner = (): JSX.Element => {
   // Current breakpoint detection
   const currentBreakpoint = useMemo(() => {
     if (windowWidth >= breakpoints.laptop) return 'desktop';
-    if (windowWidth >= breakpoints.tablet) return 'laptop';  
+    if (windowWidth >= breakpoints.tablet) return 'laptop';
     if (windowWidth >= breakpoints.mobile) return 'tablet';
     return 'mobile';
   }, [windowWidth]);
@@ -1527,6 +1531,11 @@ const AdminModuleInner = (): JSX.Element => {
       } else if (pathParts[1] === 'rank-admin') {
         // /admin/rank-admin - show rank admin page
         setSelectedAdminPage('rank-admin');
+      } else if (pathParts[1] === 'training-status') {
+        // Legacy /admin/training-status URL - now lives in Masters (025)
+        setSelectedAdminPage('masters');
+        setSelectedMaster('025');
+        navigate('/admin/masters/025', { replace: true });
       } else {
         // Unknown admin path - default to forms
         setSelectedAdminPage('forms');
@@ -1547,7 +1556,7 @@ const AdminModuleInner = (): JSX.Element => {
       maxVisibleColumns: 3
     },
     tablet: {
-      gridHeight: '400px', 
+      gridHeight: '400px',
       maxGridHeight: '400px',
       showSidebar: false,
       showExport: false,
@@ -1568,7 +1577,7 @@ const AdminModuleInner = (): JSX.Element => {
     },
     desktop: {
       gridHeight: '600px',
-      maxGridHeight: '600px', 
+      maxGridHeight: '600px',
       showSidebar: true,
       showExport: true,
       compactMode: false,
@@ -1582,7 +1591,7 @@ const AdminModuleInner = (): JSX.Element => {
   const responsive = responsiveConfig[currentBreakpoint];
 
   // Current vessel rank data (derived from selected vessels)
-  const vesselRankData = selectedVessels.length > 0 
+  const vesselRankData = selectedVessels.length > 0
     ? vesselRankDataMap.get(selectedVessels[0]) || []
     : [];
 
@@ -1850,10 +1859,10 @@ const AdminModuleInner = (): JSX.Element => {
         }
 
         // Also preserve vessels with client-side edits (any checkbox is true)
-        const hasLoadedData = existingVesselData.some(rank => 
-          rank.actualManningFlag || 
-          rank.safeManning || 
-          rank.optimumManning || 
+        const hasLoadedData = existingVesselData.some(rank =>
+          rank.actualManningFlag ||
+          rank.safeManning ||
+          rank.optimumManning ||
           rank.highWorkloadManning ||
           rank.actualManning.length > 0
         );
@@ -1962,7 +1971,7 @@ const AdminModuleInner = (): JSX.Element => {
       });
 
       // Sync form data with display rows, ensuring boolean values
-      resetCompany({ 
+      resetCompany({
         ranks: displayRows.map(rank => ({
           ...rank,
           // Ensure all boolean fields are properly typed to prevent form issues
@@ -2013,7 +2022,7 @@ const AdminModuleInner = (): JSX.Element => {
                   // Create a lookup map for loaded vessel data by ID and role
                   const loadedDataMap = new Map<string, VesselRankData>();
                   loadedData.forEach(vesselRank => {
-                    const key = vesselRank.isRoleRow && vesselRank.role 
+                    const key = vesselRank.isRoleRow && vesselRank.role
                       ? `${vesselRank.id}_${vesselRank.role}`
                       : vesselRank.id;
                     loadedDataMap.set(key, vesselRank);
@@ -2021,7 +2030,7 @@ const AdminModuleInner = (): JSX.Element => {
 
                   // Merge: Start with company ranks and overlay vessel-specific data from loaded draft
                   const mergedData = companyRankData.map(companyRank => {
-                    const key = companyRank.isRoleRow && companyRank.role 
+                    const key = companyRank.isRoleRow && companyRank.role
                       ? `${companyRank.id}_${companyRank.role}`
                       : companyRank.id;
                     const vesselRank = loadedDataMap.get(key);
@@ -2103,7 +2112,7 @@ const AdminModuleInner = (): JSX.Element => {
                   // Create a lookup map for loaded vessel data by ID and role
                   const loadedDataMap = new Map<string, VesselRankData>();
                   loadedData.forEach(vesselRank => {
-                    const key = vesselRank.isRoleRow && vesselRank.role 
+                    const key = vesselRank.isRoleRow && vesselRank.role
                       ? `${vesselRank.id}_${vesselRank.role}`
                       : vesselRank.id;
                     loadedDataMap.set(key, vesselRank);
@@ -2111,7 +2120,7 @@ const AdminModuleInner = (): JSX.Element => {
 
                   // Merge: Start with company ranks and overlay vessel-specific data from loaded revision
                   const mergedData = companyRankData.map(companyRank => {
-                    const key = companyRank.isRoleRow && companyRank.role 
+                    const key = companyRank.isRoleRow && companyRank.role
                       ? `${companyRank.id}_${companyRank.role}`
                       : companyRank.id;
                     const vesselRank = loadedDataMap.get(key);
@@ -2432,11 +2441,11 @@ const AdminModuleInner = (): JSX.Element => {
       // After successful save, show toast
       const isVesselMasterSave = isVesselMaster(selectedMaster);
       const isPortMasterSave = isPortMaster(selectedMaster);
-      const successMessage = isVesselMasterSave 
+      const successMessage = isVesselMasterSave
         ? `Vessel data saved successfully (safe mode)`
         : isPortMasterSave
-        ? `Port data saved successfully (safe mode)`
-        : `Changes saved successfully`;
+          ? `Port data saved successfully (safe mode)`
+          : `Changes saved successfully`;
 
       toast({
         title: "Success",
@@ -2475,6 +2484,13 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const handleNewEntry = () => {
+    // Training Status (025) and Training Category (026) manage their own
+    // entries via TrainingStatusPage/TrainingCategoryPage; generic
+    // master_data_entries mutations must not run for them.
+    if (selectedMaster === "025" || selectedMaster === "026") {
+      return;
+    }
+
     // Only allow new entries when in edit mode
     if (!isMasterInEditMode) {
       toast({
@@ -2602,7 +2618,7 @@ const AdminModuleInner = (): JSX.Element => {
           try {
             // Refetch the query and get fresh data
             // Use correct queryKey format matching useMasterDataEntries hook
-            await rq.refetchQueries({ 
+            await rq.refetchQueries({
               queryKey: ['/api/v2/masters/data', selectedMaster, 'entries'],
               exact: true
             });
@@ -2860,7 +2876,7 @@ const AdminModuleInner = (): JSX.Element => {
           };
 
           // Add the new role after the last existing role for this rank
-          const lastRoleIndex = Math.max(...existingRoles.map(role => 
+          const lastRoleIndex = Math.max(...existingRoles.map(role =>
             currentData.findIndex(row => row.id === role.id)
           ));
           currentData.splice(lastRoleIndex + 1, 0, newRole);
@@ -3110,7 +3126,7 @@ const AdminModuleInner = (): JSX.Element => {
 
       if (savedVessels.length > 0) {
         toast({
-          title: "Draft saved successfully", 
+          title: "Draft saved successfully",
           description: `Saved draft for ${savedVessels.length} vessel(s)`,
         });
       }
@@ -3263,22 +3279,22 @@ const AdminModuleInner = (): JSX.Element => {
     labelByBp: { mobile: string; tablet: string; desktop: string };
     tier: "essential" | "standard" | "optional";
   }> = [
-    { field: "officer", labelByBp: { mobile: "Off", tablet: "Officer", desktop: "Officer" }, tier: "essential" },
-    { field: "rating", labelByBp: { mobile: "Rating", tablet: "Rating", desktop: "Rating" }, tier: "essential" },
-    { field: "seniorOfficer", labelByBp: { mobile: "Sr Off", tablet: "Senior Officer", desktop: "Senior Officer" }, tier: "essential" },
-    { field: "deckOfficer", labelByBp: { mobile: "Deck", tablet: "Deck Officer", desktop: "Deck Officer" }, tier: "standard" },
-    { field: "engOfficer", labelByBp: { mobile: "Eng", tablet: "Eng Officer", desktop: "Eng Officer" }, tier: "standard" },
-    { field: "pettyOfficer", labelByBp: { mobile: "Petty", tablet: "Petty Officer", desktop: "Petty Officer" }, tier: "optional" },
-    { field: "deckRating", labelByBp: { mobile: "D.Rtg", tablet: "Deck Rating", desktop: "Deck Rating" }, tier: "optional" },
-    { field: "engineRating", labelByBp: { mobile: "E.Rtg", tablet: "Engine Rating", desktop: "Engine Rating" }, tier: "optional" },
-    { field: "generalRating", labelByBp: { mobile: "G.Rtg", tablet: "Gen Rating", desktop: "Gen Rating" }, tier: "optional" },
-    { field: "cateringRating", labelByBp: { mobile: "C.Rtg", tablet: "Catering Rating", desktop: "Catering Rating" }, tier: "optional" },
-    { field: "safetyOfficer", labelByBp: { mobile: "Safety", tablet: "Safety Officer", desktop: "Safety Officer" }, tier: "optional" },
-    { field: "sso", labelByBp: { mobile: "SSO", tablet: "SSO", desktop: "SSO" }, tier: "optional" },
-    { field: "medicalOfficer", labelByBp: { mobile: "Med", tablet: "Medical Officer", desktop: "Medical Officer" }, tier: "optional" },
-    { field: "navigatingOfficer", labelByBp: { mobile: "Nav", tablet: "Nav. Officer", desktop: "Nav. Officer" }, tier: "optional" },
-    { field: "emtOfficer", labelByBp: { mobile: "Envt", tablet: "Envt. Officer", desktop: "Envt. Officer" }, tier: "optional" }
-  ];
+      { field: "officer", labelByBp: { mobile: "Off", tablet: "Officer", desktop: "Officer" }, tier: "essential" },
+      { field: "rating", labelByBp: { mobile: "Rating", tablet: "Rating", desktop: "Rating" }, tier: "essential" },
+      { field: "seniorOfficer", labelByBp: { mobile: "Sr Off", tablet: "Senior Officer", desktop: "Senior Officer" }, tier: "essential" },
+      { field: "deckOfficer", labelByBp: { mobile: "Deck", tablet: "Deck Officer", desktop: "Deck Officer" }, tier: "standard" },
+      { field: "engOfficer", labelByBp: { mobile: "Eng", tablet: "Eng Officer", desktop: "Eng Officer" }, tier: "standard" },
+      { field: "pettyOfficer", labelByBp: { mobile: "Petty", tablet: "Petty Officer", desktop: "Petty Officer" }, tier: "optional" },
+      { field: "deckRating", labelByBp: { mobile: "D.Rtg", tablet: "Deck Rating", desktop: "Deck Rating" }, tier: "optional" },
+      { field: "engineRating", labelByBp: { mobile: "E.Rtg", tablet: "Engine Rating", desktop: "Engine Rating" }, tier: "optional" },
+      { field: "generalRating", labelByBp: { mobile: "G.Rtg", tablet: "Gen Rating", desktop: "Gen Rating" }, tier: "optional" },
+      { field: "cateringRating", labelByBp: { mobile: "C.Rtg", tablet: "Catering Rating", desktop: "Catering Rating" }, tier: "optional" },
+      { field: "safetyOfficer", labelByBp: { mobile: "Safety", tablet: "Safety Officer", desktop: "Safety Officer" }, tier: "optional" },
+      { field: "sso", labelByBp: { mobile: "SSO", tablet: "SSO", desktop: "SSO" }, tier: "optional" },
+      { field: "medicalOfficer", labelByBp: { mobile: "Med", tablet: "Medical Officer", desktop: "Medical Officer" }, tier: "optional" },
+      { field: "navigatingOfficer", labelByBp: { mobile: "Nav", tablet: "Nav. Officer", desktop: "Nav. Officer" }, tier: "optional" },
+      { field: "emtOfficer", labelByBp: { mobile: "Envt", tablet: "Envt. Officer", desktop: "Envt. Officer" }, tier: "optional" }
+    ];
 
   // Removed AG Grid buildCompanyCols - using HTML table instead
   const buildCompanyCols = (breakpoint: string, hasRoles: boolean, isEditing: boolean) => {
@@ -3404,10 +3420,10 @@ const AdminModuleInner = (): JSX.Element => {
       return acc;
     }, {} as Record<string, Form[]>);
 
-    const expanded: Array<Form & { 
-      expandedRankGroup: string; 
-      originalFormId: number; 
-      isFirstInGroup: boolean; 
+    const expanded: Array<Form & {
+      expandedRankGroup: string;
+      originalFormId: number;
+      isFirstInGroup: boolean;
       groupSize: number;
       category: string;
       isCategoryHeader?: boolean;
@@ -3459,8 +3475,8 @@ const AdminModuleInner = (): JSX.Element => {
                 versionNo: rgVersion?.versionNo || '00',
                 versionDate: rgVersion?.versionDate || (() => {
                   const d = new Date();
-                  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                  return `${String(d.getDate()).padStart(2,'0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
+                  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                  return `${String(d.getDate()).padStart(2, '0')}-${months[d.getMonth()]}-${d.getFullYear()}`;
                 })(),
                 hasDraft,
                 isFirstInGroup: index === 0,
@@ -3525,7 +3541,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const createRankGroupMutation = useMutation({
     mutationFn: async (data: { formId: number; name: string; ranks: string[] }) => {
-      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      const auditUserUuid = getCrewUserId();
       return await apiRequest("POST", "/api/v2/admin/rank-groups", { ...data, auditUserUuid });
     },
     onSuccess: () => {
@@ -3539,7 +3555,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const updateRankGroupMutation = useMutation({
     mutationFn: async (data: { id: number; name: string; ranks: string[] }) => {
-      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      const auditUserUuid = getCrewUserId();
       return await apiRequest("PUT", `/api/v2/admin/rank-groups/${data.id}`, { name: data.name, ranks: data.ranks, auditUserUuid });
     },
     onSuccess: () => {
@@ -3569,7 +3585,7 @@ const AdminModuleInner = (): JSX.Element => {
     onSuccess: () => {
       rq.invalidateQueries({ queryKey: ["/api/v2/admin/forms"] });
       // Invalidate all rank-groups queries (including those with includeArchived param)
-      rq.invalidateQueries({ 
+      rq.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey;
           return Array.isArray(key) && key[0] === "/api/v2/admin/rank-groups";
@@ -3612,7 +3628,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const createFormMutation = useMutation({
     mutationFn: async (data: { name: string; category: string; rankGroup: string; versionNo: string; versionDate: string }) => {
-      const auditUserUuid = (() => { try { return localStorage.getItem("crewUserId") || null; } catch { return null; } })();
+      const auditUserUuid = getCrewUserId();
       return await apiRequest("POST", "/api/v2/admin/forms", { ...data, auditUserUuid });
     },
     onSuccess: () => {
@@ -3709,14 +3725,14 @@ const AdminModuleInner = (): JSX.Element => {
 
   const getRankGroupRanks = (rankGroupName: string, formId?: number) => {
     // Try to find in fetched rank groups first
-    const rankGroup = allRankGroups.find(rg => 
+    const rankGroup = allRankGroups.find(rg =>
       rg.name === rankGroupName && (!formId || rg.formId === formId)
     );
 
     if (rankGroup) {
       try {
-        const ranks = typeof rankGroup.ranks === 'string' 
-          ? JSON.parse(rankGroup.ranks) 
+        const ranks = typeof rankGroup.ranks === 'string'
+          ? JSON.parse(rankGroup.ranks)
           : rankGroup.ranks;
         if (Array.isArray(ranks) && ranks.length > 0) {
           return ranks.join(", ");
@@ -3772,7 +3788,7 @@ const AdminModuleInner = (): JSX.Element => {
   };
 
   const updateFormMutation = useMutation({
-    mutationFn: async ({formId, configuration, sharedConfig}: {formId: number; configuration?: string; sharedConfig?: Record<string, unknown>}) => {
+    mutationFn: async ({ formId, configuration, sharedConfig }: { formId: number; configuration?: string; sharedConfig?: Record<string, unknown> }) => {
       const updateData: Record<string, unknown> = {};
       if (configuration) updateData.configuration = configuration;
       if (sharedConfig) updateData.sharedConfig = JSON.stringify(sharedConfig);
@@ -3825,30 +3841,34 @@ const AdminModuleInner = (): JSX.Element => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
-      queryClient.invalidateQueries({ predicate: (query) => {
-        const key = query.queryKey[0];
-        return typeof key === 'string' && (
-          key.startsWith('/api/v2/admin/form-versions') ||
-          key.startsWith('/api/v2/admin/forms/for-rank')
-        );
-      }});
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && (
+            key.startsWith('/api/v2/admin/form-versions') ||
+            key.startsWith('/api/v2/admin/forms/for-rank')
+          );
+        }
+      });
     },
   });
 
   const updateRankGroupConfigMutation = useMutation({
-    mutationFn: async ({rankGroupId, configuration}: {rankGroupId: number; configuration: string}) => {
+    mutationFn: async ({ rankGroupId, configuration }: { rankGroupId: number; configuration: string }) => {
       return apiRequest('PUT', `/api/v2/admin/rank-groups/${rankGroupId}/configuration`, { configuration });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/rank-groups'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
-      queryClient.invalidateQueries({ predicate: (query) => {
-        const key = query.queryKey[0];
-        return typeof key === 'string' && (
-          key.startsWith('/api/v2/admin/forms/for-rank') ||
-          key === '/api/v2/admin/form-versions-all'
-        );
-      }});
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && (
+            key.startsWith('/api/v2/admin/forms/for-rank') ||
+            key === '/api/v2/admin/form-versions-all'
+          );
+        }
+      });
       toast({
         title: "Success",
         description: "Rank group configuration saved successfully",
@@ -3869,20 +3889,22 @@ const AdminModuleInner = (): JSX.Element => {
   // creates a new released form-version directly and mirrors the config back
   // onto the rank group so existing runtime readers keep working.
   const releaseRankGroupConfigMutation = useMutation({
-    mutationFn: async ({rankGroupId, configuration}: {rankGroupId: number; configuration: string}) => {
+    mutationFn: async ({ rankGroupId, configuration }: { rankGroupId: number; configuration: string }) => {
       return apiRequest('POST', `/api/v2/admin/rank-groups/${rankGroupId}/release-configuration`, { configuration });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/rank-groups'] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
-      queryClient.invalidateQueries({ predicate: (query) => {
-        const key = query.queryKey[0];
-        return typeof key === 'string' && (
-          key.startsWith('/api/v2/admin/forms/for-rank') ||
-          key === '/api/v2/admin/form-versions-all' ||
-          /^\/api\/v2\/admin\/forms\/\d+\/versions$/.test(key)
-        );
-      }});
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return typeof key === 'string' && (
+            key.startsWith('/api/v2/admin/forms/for-rank') ||
+            key === '/api/v2/admin/form-versions-all' ||
+            /^\/api\/v2\/admin\/forms\/\d+\/versions$/.test(key)
+          );
+        }
+      });
       toast({
         title: "Success",
         description: "Form configuration released successfully",
@@ -3975,18 +3997,17 @@ const AdminModuleInner = (): JSX.Element => {
         </div>
         <div className="flex gap-2">
           {(permissions.length === 0 || canEdit("Rank Admin")) && (
-          <Button
-            variant={isCompanyEditing ? "default" : "outline"}
-            onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
-            className={`h-8 text-xs ${
-              isCompanyEditing 
-                ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                : "border-[#e1e8ed] text-[#16569e]"
-            }`}
-            data-testid={isCompanyEditing ? "button-save-company" : "button-edit-company"}
-          >
-            {isCompanyEditing ? "Save" : "Edit Table"}
-          </Button>
+            <Button
+              variant={isCompanyEditing ? "default" : "outline"}
+              onClick={isCompanyEditing ? handleSaveCompany : handleEditCompany}
+              className={`h-8 text-xs ${isCompanyEditing
+                  ? "bg-[#16569e] hover:bg-[#0f4078] text-white"
+                  : "border-[#e1e8ed] text-[#16569e]"
+                }`}
+              data-testid={isCompanyEditing ? "button-save-company" : "button-edit-company"}
+            >
+              {isCompanyEditing ? "Save" : "Edit Table"}
+            </Button>
           )}
         </div>
       </div>
@@ -4045,7 +4066,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.officer || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, officer: e.target.checked } : r)
                         );
                       }}
@@ -4059,7 +4080,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.rating || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, rating: e.target.checked } : r)
                         );
                       }}
@@ -4073,7 +4094,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.seniorOfficer || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, seniorOfficer: e.target.checked } : r)
                         );
                       }}
@@ -4087,7 +4108,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.deckOfficer || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, deckOfficer: e.target.checked } : r)
                         );
                       }}
@@ -4101,7 +4122,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.engOfficer || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, engOfficer: e.target.checked } : r)
                         );
                       }}
@@ -4115,7 +4136,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.pettyOfficer || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, pettyOfficer: e.target.checked } : r)
                         );
                       }}
@@ -4129,7 +4150,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.deckRating || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, deckRating: e.target.checked } : r)
                         );
                       }}
@@ -4143,7 +4164,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.engineRating || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, engineRating: e.target.checked } : r)
                         );
                       }}
@@ -4157,7 +4178,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.cateringRating || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, cateringRating: e.target.checked } : r)
                         );
                       }}
@@ -4171,7 +4192,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.safetyOfficer || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, safetyOfficer: e.target.checked } : r)
                         );
                       }}
@@ -4185,7 +4206,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.sso || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, sso: e.target.checked } : r)
                         );
                       }}
@@ -4199,7 +4220,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.medicalOfficer || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, medicalOfficer: e.target.checked } : r)
                         );
                       }}
@@ -4213,7 +4234,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.navigatingOfficer || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, navigatingOfficer: e.target.checked } : r)
                         );
                       }}
@@ -4227,7 +4248,7 @@ const AdminModuleInner = (): JSX.Element => {
                       type="checkbox"
                       checked={rank.emtOfficer || false}
                       onChange={(e) => {
-                        setCompanyRankData(prev => 
+                        setCompanyRankData(prev =>
                           prev.map(r => r.id === rank.id ? { ...r, emtOfficer: e.target.checked } : r)
                         );
                       }}
@@ -4240,7 +4261,7 @@ const AdminModuleInner = (): JSX.Element => {
                     {rank.isRoleRow ? (
                       // Check if this is the first role variant (should show Multiple button)
                       (() => {
-                        const roleVariants = companyRankData.filter(r => 
+                        const roleVariants = companyRankData.filter(r =>
                           r.isRoleRow && r.originalRankId === rank.originalRankId
                         );
                         const sortedVariants = roleVariants.sort((a, b) => {
@@ -4362,11 +4383,10 @@ const AdminModuleInner = (): JSX.Element => {
                     }
                     setSelectedRankAdminTab(tab.id);
                   }}
-                  className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
-                    selectedRankAdminTab === tab.id
+                  className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${selectedRankAdminTab === tab.id
                       ? "text-[#16569e] font-bold underline"
                       : "text-gray-600 hover:text-gray-800 font-medium"
-                  }`}
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -4398,11 +4418,10 @@ const AdminModuleInner = (): JSX.Element => {
                       }
                       setSelectedRankAdminTab(tab.id);
                     }}
-                    className={`${currentBreakpoint === 'mobile' ? 'px-2' : 'px-3'} text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
-                      selectedRankAdminTab === tab.id
+                    className={`${currentBreakpoint === 'mobile' ? 'px-2' : 'px-3'} text-xs rounded-full transition-all duration-200 h-6 flex items-center ${selectedRankAdminTab === tab.id
                         ? "text-[#16569e] font-bold underline"
                         : "text-gray-600 hover:text-gray-800 font-medium"
-                    }`}
+                      }`}
                   >
                     {tab.label}
                   </button>
@@ -4415,17 +4434,16 @@ const AdminModuleInner = (): JSX.Element => {
               {selectedRankAdminTab === "rank-master" && (
                 <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
                   {(permissions.length === 0 || canEdit("Rank Admin")) && (
-                  <Button
-                    variant={isRankMasterEditing ? "default" : "outline"}
-                    onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
-                    className={`h-8 text-xs ${
-                      isRankMasterEditing 
-                        ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                        : "border-[#e1e8ed] text-[#16569e]"
-                    }`}
-                  >
-                    {isRankMasterEditing ? "Save" : "Edit Rank"}
-                  </Button>
+                    <Button
+                      variant={isRankMasterEditing ? "default" : "outline"}
+                      onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
+                      className={`h-8 text-xs ${isRankMasterEditing
+                          ? "bg-[#16569e] hover:bg-[#0f4078] text-white"
+                          : "border-[#e1e8ed] text-[#16569e]"
+                        }`}
+                    >
+                      {isRankMasterEditing ? "Save" : "Edit Rank"}
+                    </Button>
                   )}
                   <Button
                     onClick={() => {
@@ -4487,11 +4505,10 @@ const AdminModuleInner = (): JSX.Element => {
                     <Button
                       onClick={handleRevision}
                       disabled={selectedVessels.length === 0}
-                      className={`h-8 text-xs ${
-                        selectedVessels.length === 0 
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                      className={`h-8 text-xs ${selectedVessels.length === 0
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
-                      }`}
+                        }`}
                       data-testid="revision-button"
                     >
                       + Revision
@@ -4530,17 +4547,16 @@ const AdminModuleInner = (): JSX.Element => {
             {selectedRankAdminTab === "rank-master" && (
               <div className="flex gap-2">
                 {(permissions.length === 0 || canEdit("Rank Admin")) && (
-                <Button
-                  variant={isRankMasterEditing ? "default" : "outline"}
-                  onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
-                  className={`h-8 text-xs ${
-                    isRankMasterEditing 
-                      ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                      : "border-[#e1e8ed] text-[#16569e]"
-                  }`}
-                >
-                  {isRankMasterEditing ? "Save" : "Edit Rank"}
-                </Button>
+                  <Button
+                    variant={isRankMasterEditing ? "default" : "outline"}
+                    onClick={isRankMasterEditing ? handleSaveRank : handleEditRank}
+                    className={`h-8 text-xs ${isRankMasterEditing
+                        ? "bg-[#16569e] hover:bg-[#0f4078] text-white"
+                        : "border-[#e1e8ed] text-[#16569e]"
+                      }`}
+                  >
+                    {isRankMasterEditing ? "Save" : "Edit Rank"}
+                  </Button>
                 )}
                 <Button
                   onClick={() => {
@@ -4602,11 +4618,10 @@ const AdminModuleInner = (): JSX.Element => {
                   <Button
                     onClick={handleRevision}
                     disabled={selectedVessels.length === 0}
-                    className={`h-8 text-xs ${
-                      selectedVessels.length === 0 
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    className={`h-8 text-xs ${selectedVessels.length === 0
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
-                    }`}
+                      }`}
                     data-testid="revision-button"
                   >
                     + Revision
@@ -4647,115 +4662,115 @@ const AdminModuleInner = (): JSX.Element => {
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-auto relative">
                   <Table className="relative">
-                  <TableHeader className="sticky top-0 z-40">
-                    <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Rank ID</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Rank</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Applicable to Company</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Rank Label</TableHead>
-                      <TableHead className="text-white text-xs font-normal text-center py-2 bg-[#52baf3]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rankMasterData.map((rank, index) => (
-                      <TableRow key={rank.id} className="bg-white" data-testid={`row-rank-master-${rank.id}`}>
-                        <TableCell className="py-3 text-center border-r">
-                          <span 
-                            className={`text-sm ${rank.id.startsWith('new_') ? 'text-gray-400 italic' : ''}`} 
-                            data-testid={`text-rank-id-${rank.id}`}
-                            title={rank.id.startsWith('new_') ? 'Rank ID will be auto-generated when saved' : ''}
-                          >
-                            {rank.id.startsWith('new_') ? 'Auto' : (rank.rankId || '')}
-                          </span>
-                        </TableCell>
+                    <TableHeader className="sticky top-0 z-40">
+                      <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                        <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Rank ID</TableHead>
+                        <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Rank</TableHead>
+                        <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Applicable to Company</TableHead>
+                        <TableHead className="text-white text-xs font-normal text-center py-2 border-r border-white/20 bg-[#52baf3]">Rank Label</TableHead>
+                        <TableHead className="text-white text-xs font-normal text-center py-2 bg-[#52baf3]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rankMasterData.map((rank, index) => (
+                        <TableRow key={rank.id} className="bg-white" data-testid={`row-rank-master-${rank.id}`}>
+                          <TableCell className="py-3 text-center border-r">
+                            <span
+                              className={`text-sm ${rank.id.startsWith('new_') ? 'text-gray-400 italic' : ''}`}
+                              data-testid={`text-rank-id-${rank.id}`}
+                              title={rank.id.startsWith('new_') ? 'Rank ID will be auto-generated when saved' : ''}
+                            >
+                              {rank.id.startsWith('new_') ? 'Auto' : (rank.rankId || '')}
+                            </span>
+                          </TableCell>
 
-                        <TableCell className="py-3 text-center border-r">
-                          {isRankMasterEditing && !rank.isSystemRank ? (
-                            <input
-                              type="text"
-                              value={rank.rank || ''}
-                              onChange={(e) => handleRankDataChange(rank.id, 'rank', e.target.value)}
-                              placeholder="Enter rank name"
-                              className="w-full h-8 px-2 text-sm border rounded"
-                              data-testid={`input-rank-${rank.id}`}
+                          <TableCell className="py-3 text-center border-r">
+                            {isRankMasterEditing && !rank.isSystemRank ? (
+                              <input
+                                type="text"
+                                value={rank.rank || ''}
+                                onChange={(e) => handleRankDataChange(rank.id, 'rank', e.target.value)}
+                                placeholder="Enter rank name"
+                                className="w-full h-8 px-2 text-sm border rounded"
+                                data-testid={`input-rank-${rank.id}`}
+                              />
+                            ) : (
+                              <span className={`text-sm ${rank.isSystemRank ? 'text-gray-700' : ''}`} data-testid={`text-rank-${rank.id}`} title={rank.isSystemRank ? 'System rank - cannot be edited' : ''}>{rank.rank || ''}</span>
+                            )}
+                          </TableCell>
+
+                          <TableCell className="text-center py-3 border-r">
+                            <Checkbox
+                              checked={rank.applicableToCompany}
+                              onCheckedChange={(checked) => handleRankDataChange(rank.id, 'applicableToCompany', checked)}
+                              disabled={!isRankMasterEditing}
+                              className="h-4 w-4"
+                              data-testid={`checkbox-applicable-company-${rank.id}`}
                             />
-                          ) : (
-                            <span className={`text-sm ${rank.isSystemRank ? 'text-gray-700' : ''}`} data-testid={`text-rank-${rank.id}`} title={rank.isSystemRank ? 'System rank - cannot be edited' : ''}>{rank.rank || ''}</span>
-                          )}
-                        </TableCell>
+                          </TableCell>
 
-                        <TableCell className="text-center py-3 border-r">
-                          <Checkbox
-                            checked={rank.applicableToCompany}
-                            onCheckedChange={(checked) => handleRankDataChange(rank.id, 'applicableToCompany', checked)}
-                            disabled={!isRankMasterEditing}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-applicable-company-${rank.id}`}
-                          />
-                        </TableCell>
+                          <TableCell className="py-3 text-center border-r">
+                            {!rank.applicableToCompany ? (
+                              <span className="text-gray-400 text-xs" data-testid={`text-rank-label-na-${rank.id}`}>N/A</span>
+                            ) : isRankMasterEditing ? (
+                              <input
+                                type="text"
+                                value={rank.label || ''}
+                                onChange={(e) => handleRankDataChange(rank.id, 'label', e.target.value)}
+                                placeholder="Enter rank label"
+                                className="w-full h-8 px-2 text-sm border rounded"
+                                data-testid={`input-rank-label-${rank.id}`}
+                              />
+                            ) : (
+                              <span className="text-sm" data-testid={`text-rank-label-${rank.id}`}>{rank.label || ''}</span>
+                            )}
+                          </TableCell>
 
-                        <TableCell className="py-3 text-center border-r">
-                          {!rank.applicableToCompany ? (
-                            <span className="text-gray-400 text-xs" data-testid={`text-rank-label-na-${rank.id}`}>N/A</span>
-                          ) : isRankMasterEditing ? (
-                            <input
-                              type="text"
-                              value={rank.label || ''}
-                              onChange={(e) => handleRankDataChange(rank.id, 'label', e.target.value)}
-                              placeholder="Enter rank label"
-                              className="w-full h-8 px-2 text-sm border rounded"
-                              data-testid={`input-rank-label-${rank.id}`}
-                            />
-                          ) : (
-                            <span className="text-sm" data-testid={`text-rank-label-${rank.id}`}>{rank.label || ''}</span>
-                          )}
-                        </TableCell>
-
-                        <TableCell className="text-center py-3">
-                          <div className="flex items-center justify-center gap-1">
-                            {isRankMasterEditing && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleMoveRankUp(index)}
-                                  disabled={index === 0}
-                                  className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-50 disabled:text-gray-300 disabled:cursor-not-allowed"
-                                  data-testid={`button-move-up-${rank.id}`}
-                                  title="Move rank up"
-                                >
-                                  <ChevronUp className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleMoveRankDown(index)}
-                                  disabled={index === rankMasterData.length - 1}
-                                  className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-50 disabled:text-gray-300 disabled:cursor-not-allowed"
-                                  data-testid={`button-move-down-${rank.id}`}
-                                  title="Move rank down"
-                                >
-                                  <ChevronDown className="h-3 w-3" />
-                                </Button>
-                                {!rank.isSystemRank && (permissions.length === 0 || canDelete("Rank Admin")) && (
+                          <TableCell className="text-center py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              {isRankMasterEditing && (
+                                <>
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    onClick={() => handleDeleteRank(rank.id)}
-                                    className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
-                                    data-testid={`button-delete-rank-${rank.id}`}
-                                    title="Delete rank"
+                                    onClick={() => handleMoveRankUp(index)}
+                                    disabled={index === 0}
+                                    className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-50 disabled:text-gray-300 disabled:cursor-not-allowed"
+                                    data-testid={`button-move-up-${rank.id}`}
+                                    title="Move rank up"
                                   >
-                                    <Trash2 className="h-3 w-3" />
+                                    <ChevronUp className="h-3 w-3" />
                                   </Button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleMoveRankDown(index)}
+                                    disabled={index === rankMasterData.length - 1}
+                                    className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-50 disabled:text-gray-300 disabled:cursor-not-allowed"
+                                    data-testid={`button-move-down-${rank.id}`}
+                                    title="Move rank down"
+                                  >
+                                    <ChevronDown className="h-3 w-3" />
+                                  </Button>
+                                  {!rank.isSystemRank && (permissions.length === 0 || canDelete("Rank Admin")) && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleDeleteRank(rank.id)}
+                                      className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
+                                      data-testid={`button-delete-rank-${rank.id}`}
+                                      title="Delete rank"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
                   </Table>
                 </div>
               </div>
@@ -4775,9 +4790,9 @@ const AdminModuleInner = (): JSX.Element => {
                           className={`h-8 ${currentBreakpoint === 'mobile' ? 'w-full' : 'w-48'} justify-between text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent hover:bg-transparent`}
                           data-testid="vessel-select"
                         >
-                          {selectedVessels.length === 0 
-                            ? "Select Vessel or Group to Edit" 
-                            : selectedVessels.length === 1 
+                          {selectedVessels.length === 0
+                            ? "Select Vessel or Group to Edit"
+                            : selectedVessels.length === 1
                               ? vesselOptions.find((v: VesselOption) => v.value === selectedVessels[0])?.label
                               : `${selectedVessels.length} vessels selected`
                           }
@@ -4797,8 +4812,8 @@ const AdminModuleInner = (): JSX.Element => {
                                   // Handle vessel group selection
                                   if (vessel.type === 'group' && vessel.vesselIds) {
                                     // Parse vesselIds if it's a JSON string
-                                    const groupVesselIds = Array.isArray(vessel.vesselIds) 
-                                      ? vessel.vesselIds 
+                                    const groupVesselIds = Array.isArray(vessel.vesselIds)
+                                      ? vessel.vesselIds
                                       : JSON.parse(vessel.vesselIds || '[]');
                                     const allGroupVesselsSelected = groupVesselIds.every((id: string) => selectedVessels.includes(id));
 
@@ -4823,12 +4838,12 @@ const AdminModuleInner = (): JSX.Element => {
                                 className="text-xs"
                               >
                                 <div className="flex items-center space-x-2">
-                                  <Checkbox 
+                                  <Checkbox
                                     checked={(() => {
                                       if (vessel.type === 'group' && vessel.vesselIds) {
                                         // Parse vesselIds if it's a JSON string
-                                        const vesselIdArray = Array.isArray(vessel.vesselIds) 
-                                          ? vessel.vesselIds 
+                                        const vesselIdArray = Array.isArray(vessel.vesselIds)
+                                          ? vessel.vesselIds
                                           : JSON.parse(vessel.vesselIds || '[]');
                                         return vesselIdArray.every((id: string) => selectedVessels.includes(id));
                                       }
@@ -4839,18 +4854,17 @@ const AdminModuleInner = (): JSX.Element => {
                                   <span>{vessel.label}</span>
                                 </div>
                                 <Check
-                                  className={`ml-auto h-4 w-4 ${
-                                    (() => {
+                                  className={`ml-auto h-4 w-4 ${(() => {
                                       if (vessel.type === 'group' && vessel.vesselIds) {
                                         // Parse vesselIds if it's a JSON string
-                                        const vesselIdArray = Array.isArray(vessel.vesselIds) 
-                                          ? vessel.vesselIds 
+                                        const vesselIdArray = Array.isArray(vessel.vesselIds)
+                                          ? vessel.vesselIds
                                           : JSON.parse(vessel.vesselIds || '[]');
                                         return vesselIdArray.every((id: string) => selectedVessels.includes(id)) ? "opacity-100" : "opacity-0";
                                       }
                                       return selectedVessels.includes(vessel.value) ? "opacity-100" : "opacity-0";
                                     })()
-                                  }`}
+                                    }`}
                                 />
                               </CommandItem>
                             ))}
@@ -4978,16 +4992,15 @@ const AdminModuleInner = (): JSX.Element => {
                                 </TableCell>
 
                                 {/* Actual Manning checkbox */}
-                                <TableCell 
-                                  className={`text-center border-r border-gray-200 p-2 ${
-                                    revisionMode && selectedVessels.length > 0 
-                                      ? 'cursor-pointer hover:bg-gray-50' 
+                                <TableCell
+                                  className={`text-center border-r border-gray-200 p-2 ${revisionMode && selectedVessels.length > 0
+                                      ? 'cursor-pointer hover:bg-gray-50'
                                       : 'cursor-not-allowed opacity-50'
-                                  }`}
-                                  title={!revisionMode 
-                                    ? "Enter Revision Mode to edit" 
-                                    : selectedVessels.length === 0 
-                                      ? "Select a vessel first to edit" 
+                                    }`}
+                                  title={!revisionMode
+                                    ? "Enter Revision Mode to edit"
+                                    : selectedVessels.length === 0
+                                      ? "Select a vessel first to edit"
                                       : "Click to toggle Actual Manning"}
                                   onClick={() => {
                                     if (!revisionMode || selectedVessels.length === 0) return;
@@ -4995,7 +5008,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     if (firstVesselId) {
                                       const vesselRank = currentVesselRankLookup.get(rank.id);
                                       const newValue = !(vesselRank?.actualManningFlag || false);
-                                      updateVesselRankData(prev => 
+                                      updateVesselRankData(prev =>
                                         prev.map(r => r.id === rank.id ? { ...r, actualManningFlag: newValue } : r)
                                       );
                                     }
@@ -5004,7 +5017,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   <input
                                     type="checkbox"
                                     checked={currentVesselRankLookup.get(rank.id)?.actualManningFlag || false}
-                                    onChange={() => {}} // Handled by cell onClick
+                                    onChange={() => { }} // Handled by cell onClick
                                     disabled={!revisionMode}
                                     className="h-4 w-4 pointer-events-none"
                                     data-testid={`vessel-actual-manning-${rank.id}`}
@@ -5012,16 +5025,15 @@ const AdminModuleInner = (): JSX.Element => {
                                 </TableCell>
 
                                 {/* Safe Manning checkbox */}
-                                <TableCell 
-                                  className={`text-center p-2 ${
-                                    revisionMode && selectedVessels.length > 0 
-                                      ? 'cursor-pointer hover:bg-gray-50' 
+                                <TableCell
+                                  className={`text-center p-2 ${revisionMode && selectedVessels.length > 0
+                                      ? 'cursor-pointer hover:bg-gray-50'
                                       : 'cursor-not-allowed opacity-50'
-                                  }`}
-                                  title={!revisionMode 
-                                    ? "Enter Revision Mode to edit" 
-                                    : selectedVessels.length === 0 
-                                      ? "Select a vessel first to edit" 
+                                    }`}
+                                  title={!revisionMode
+                                    ? "Enter Revision Mode to edit"
+                                    : selectedVessels.length === 0
+                                      ? "Select a vessel first to edit"
                                       : "Click to toggle Safe Manning"}
                                   onClick={() => {
                                     if (!revisionMode || selectedVessels.length === 0) return;
@@ -5029,7 +5041,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     if (firstVesselId) {
                                       const vesselRank = currentVesselRankLookup.get(rank.id);
                                       const newValue = !(vesselRank?.safeManning || false);
-                                      updateVesselRankData(prev => 
+                                      updateVesselRankData(prev =>
                                         prev.map(r => r.id === rank.id ? { ...r, safeManning: newValue } : r)
                                       );
                                     }
@@ -5038,7 +5050,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   <input
                                     type="checkbox"
                                     checked={currentVesselRankLookup.get(rank.id)?.safeManning || false}
-                                    onChange={() => {}} // Handled by cell onClick
+                                    onChange={() => { }} // Handled by cell onClick
                                     disabled={!revisionMode}
                                     className="h-4 w-4 pointer-events-none"
                                     data-testid={`vessel-safe-manning-${rank.id}`}
@@ -5046,16 +5058,15 @@ const AdminModuleInner = (): JSX.Element => {
                                 </TableCell>
 
                                 {/* Optimum Manning checkbox */}
-                                <TableCell 
-                                  className={`text-center p-2 ${
-                                    revisionMode && selectedVessels.length > 0 
-                                      ? 'cursor-pointer hover:bg-gray-50' 
+                                <TableCell
+                                  className={`text-center p-2 ${revisionMode && selectedVessels.length > 0
+                                      ? 'cursor-pointer hover:bg-gray-50'
                                       : 'cursor-not-allowed opacity-50'
-                                  }`}
-                                  title={!revisionMode 
-                                    ? "Enter Revision Mode to edit" 
-                                    : selectedVessels.length === 0 
-                                      ? "Select a vessel first to edit" 
+                                    }`}
+                                  title={!revisionMode
+                                    ? "Enter Revision Mode to edit"
+                                    : selectedVessels.length === 0
+                                      ? "Select a vessel first to edit"
                                       : "Click to toggle Optimum Manning"}
                                   onClick={() => {
                                     if (!revisionMode || selectedVessels.length === 0) return;
@@ -5063,7 +5074,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     if (firstVesselId) {
                                       const vesselRank = currentVesselRankLookup.get(rank.id);
                                       const newValue = !(vesselRank?.optimumManning || false);
-                                      updateVesselRankData(prev => 
+                                      updateVesselRankData(prev =>
                                         prev.map(r => r.id === rank.id ? { ...r, optimumManning: newValue } : r)
                                       );
                                     }
@@ -5072,7 +5083,7 @@ const AdminModuleInner = (): JSX.Element => {
                                   <input
                                     type="checkbox"
                                     checked={currentVesselRankLookup.get(rank.id)?.optimumManning || false}
-                                    onChange={() => {}} // Handled by cell onClick
+                                    onChange={() => { }} // Handled by cell onClick
                                     disabled={!revisionMode}
                                     className="h-4 w-4 pointer-events-none"
                                     data-testid={`vessel-optimum-manning-${rank.id}`}
@@ -5080,16 +5091,15 @@ const AdminModuleInner = (): JSX.Element => {
                                 </TableCell>
 
                                 {/* High Workload Manning checkbox */}
-                                <TableCell 
-                                  className={`text-center p-2 ${
-                                    revisionMode && selectedVessels.length > 0 
-                                      ? 'cursor-pointer hover:bg-gray-50' 
+                                <TableCell
+                                  className={`text-center p-2 ${revisionMode && selectedVessels.length > 0
+                                      ? 'cursor-pointer hover:bg-gray-50'
                                       : 'cursor-not-allowed opacity-50'
-                                  }`}
-                                  title={!revisionMode 
-                                    ? "Enter Revision Mode to edit" 
-                                    : selectedVessels.length === 0 
-                                      ? "Select a vessel first to edit" 
+                                    }`}
+                                  title={!revisionMode
+                                    ? "Enter Revision Mode to edit"
+                                    : selectedVessels.length === 0
+                                      ? "Select a vessel first to edit"
                                       : "Click to toggle High Workload Manning"}
                                 >
                                   <input
@@ -5097,7 +5107,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     checked={currentVesselRankLookup.get(rank.id)?.highWorkloadManning || false}
                                     onChange={(e) => {
                                       if (!revisionMode || selectedVessels.length === 0) return;
-                                      updateVesselRankData(prev => 
+                                      updateVesselRankData(prev =>
                                         prev.map(r => r.id === rank.id ? { ...r, highWorkloadManning: e.target.checked } : r)
                                       );
                                     }}
@@ -5113,7 +5123,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     type="checkbox"
                                     checked={currentVesselRankLookup.get(rank.id)?.safetyOfficer || false}
                                     onChange={(e) => {
-                                      updateVesselRankData(prev => 
+                                      updateVesselRankData(prev =>
                                         prev.map(r => r.id === rank.id ? { ...r, safetyOfficer: e.target.checked } : r)
                                       );
                                     }}
@@ -5129,7 +5139,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     type="checkbox"
                                     checked={currentVesselRankLookup.get(rank.id)?.sso || false}
                                     onChange={(e) => {
-                                      updateVesselRankData(prev => 
+                                      updateVesselRankData(prev =>
                                         prev.map(r => r.id === rank.id ? { ...r, sso: e.target.checked } : r)
                                       );
                                     }}
@@ -5145,7 +5155,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     type="checkbox"
                                     checked={currentVesselRankLookup.get(rank.id)?.medicalOfficer || false}
                                     onChange={(e) => {
-                                      updateVesselRankData(prev => 
+                                      updateVesselRankData(prev =>
                                         prev.map(r => r.id === rank.id ? { ...r, medicalOfficer: e.target.checked } : r)
                                       );
                                     }}
@@ -5161,7 +5171,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     type="checkbox"
                                     checked={currentVesselRankLookup.get(rank.id)?.navigatingOfficer || false}
                                     onChange={(e) => {
-                                      updateVesselRankData(prev => 
+                                      updateVesselRankData(prev =>
                                         prev.map(r => r.id === rank.id ? { ...r, navigatingOfficer: e.target.checked } : r)
                                       );
                                     }}
@@ -5177,7 +5187,7 @@ const AdminModuleInner = (): JSX.Element => {
                                     type="checkbox"
                                     checked={currentVesselRankLookup.get(rank.id)?.emtOfficer || false}
                                     onChange={(e) => {
-                                      updateVesselRankData(prev => 
+                                      updateVesselRankData(prev =>
                                         prev.map(r => r.id === rank.id ? { ...r, emtOfficer: e.target.checked } : r)
                                       );
                                     }}
@@ -5361,7 +5371,7 @@ const AdminModuleInner = (): JSX.Element => {
   const filteredTrainingData = useMemo(() => {
     const categoryPriority: Record<string, number> = { 'S': 1, 'I': 2, 'O': 3 };
     return localTrainingData.filter(training => {
-      const matchesSearch = trainingSearchFilter === '' || 
+      const matchesSearch = trainingSearchFilter === '' ||
         training.trainingName.toLowerCase().includes(trainingSearchFilter.toLowerCase()) ||
         training.trainingId.toLowerCase().includes(trainingSearchFilter.toLowerCase());
       const matchesCategory = trainingCategoryFilter === 'all' || training.category === trainingCategoryFilter;
@@ -5384,7 +5394,7 @@ const AdminModuleInner = (): JSX.Element => {
     });
 
     return localCompanyTrainingData.filter(training => {
-      const matchesSearch = companyTrainingSearchFilter === '' || 
+      const matchesSearch = companyTrainingSearchFilter === '' ||
         (training.trainingLabel || '').toLowerCase().includes(companyTrainingSearchFilter.toLowerCase()) ||
         (training.companyId || '').toLowerCase().includes(companyTrainingSearchFilter.toLowerCase());
       return matchesSearch;
@@ -5621,11 +5631,10 @@ const AdminModuleInner = (): JSX.Element => {
                 <button
                   key={tab.id}
                   onClick={() => setSelectedTrainingMatrixTab(tab.id)}
-                  className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
-                    selectedTrainingMatrixTab === tab.id
+                  className={`px-4 text-xs rounded-full transition-all duration-200 h-6 flex items-center ${selectedTrainingMatrixTab === tab.id
                       ? "text-[#16569e] font-bold underline"
                       : "text-gray-600 hover:text-gray-800 font-medium"
-                  }`}
+                    }`}
                   data-testid={`tab-training-${tab.id}`}
                 >
                   {tab.label}
@@ -5653,11 +5662,10 @@ const AdminModuleInner = (): JSX.Element => {
                 <Button
                   variant={isTrainingMasterEditing ? "default" : "outline"}
                   onClick={isTrainingMasterEditing ? handleSaveTraining : handleEditTraining}
-                  className={`h-8 text-xs ${
-                    isTrainingMasterEditing 
-                      ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                  className={`h-8 text-xs ${isTrainingMasterEditing
+                      ? "bg-[#16569e] hover:bg-[#0f4078] text-white"
                       : "border-[#e1e8ed] text-[#16569e]"
-                  }`}
+                    }`}
                   data-testid="button-edit-training"
                 >
                   {isTrainingMasterEditing ? "Save" : "Edit"}
@@ -5684,19 +5692,18 @@ const AdminModuleInner = (): JSX.Element => {
                   Filters
                 </Button>
                 {(permissions.length === 0 || canEdit("Admin Training Matrix")) && (
-                <Button
-                  variant={isCompanyTrainingEditing ? "default" : "outline"}
-                  onClick={isCompanyTrainingEditing ? handleSaveCompanyTraining : () => setIsCompanyTrainingEditing(true)}
-                  disabled={companyTrainingData.length === 0}
-                  className={`h-8 text-xs ${
-                    isCompanyTrainingEditing 
-                      ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                      : "border-[#e1e8ed] text-[#16569e]"
-                  }`}
-                  data-testid="button-edit-company-training"
-                >
-                  {isCompanyTrainingEditing ? "Save" : "Edit"}
-                </Button>
+                  <Button
+                    variant={isCompanyTrainingEditing ? "default" : "outline"}
+                    onClick={isCompanyTrainingEditing ? handleSaveCompanyTraining : () => setIsCompanyTrainingEditing(true)}
+                    disabled={companyTrainingData.length === 0}
+                    className={`h-8 text-xs ${isCompanyTrainingEditing
+                        ? "bg-[#16569e] hover:bg-[#0f4078] text-white"
+                        : "border-[#e1e8ed] text-[#16569e]"
+                      }`}
+                    data-testid="button-edit-company-training"
+                  >
+                    {isCompanyTrainingEditing ? "Save" : "Edit"}
+                  </Button>
                 )}
                 {isCompanyTrainingEditing && (
                   <Button
@@ -5729,11 +5736,10 @@ const AdminModuleInner = (): JSX.Element => {
                   <button
                     key={tab.id}
                     onClick={() => setSelectedTrainingMatrixTab(tab.id)}
-                    className={`${currentBreakpoint === 'mobile' ? 'px-2' : 'px-3'} text-xs rounded-full transition-all duration-200 h-6 flex items-center ${
-                      selectedTrainingMatrixTab === tab.id
+                    className={`${currentBreakpoint === 'mobile' ? 'px-2' : 'px-3'} text-xs rounded-full transition-all duration-200 h-6 flex items-center ${selectedTrainingMatrixTab === tab.id
                         ? "text-[#16569e] font-bold underline"
                         : "text-gray-600 hover:text-gray-800 font-medium"
-                    }`}
+                      }`}
                     data-testid={`tab-training-${tab.id}-mobile`}
                   >
                     {tab.label}
@@ -5759,11 +5765,10 @@ const AdminModuleInner = (): JSX.Element => {
                   <Button
                     variant={isTrainingMasterEditing ? "default" : "outline"}
                     onClick={isTrainingMasterEditing ? handleSaveTraining : handleEditTraining}
-                    className={`h-8 text-xs ${
-                      isTrainingMasterEditing 
-                        ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
+                    className={`h-8 text-xs ${isTrainingMasterEditing
+                        ? "bg-[#16569e] hover:bg-[#0f4078] text-white"
                         : "border-[#e1e8ed] text-[#16569e]"
-                    }`}
+                      }`}
                     data-testid="button-edit-training-mobile"
                   >
                     {isTrainingMasterEditing ? "Save" : "Edit"}
@@ -5790,19 +5795,18 @@ const AdminModuleInner = (): JSX.Element => {
                     Filters
                   </Button>
                   {(permissions.length === 0 || canEdit("Admin Training Matrix")) && (
-                  <Button
-                    variant={isCompanyTrainingEditing ? "default" : "outline"}
-                    onClick={isCompanyTrainingEditing ? handleSaveCompanyTraining : () => setIsCompanyTrainingEditing(true)}
-                    disabled={companyTrainingData.length === 0}
-                    className={`h-8 text-xs ${
-                      isCompanyTrainingEditing 
-                        ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                        : "border-[#e1e8ed] text-[#16569e]"
-                    }`}
-                    data-testid="button-edit-company-training-mobile"
-                  >
-                    {isCompanyTrainingEditing ? "Save" : "Edit"}
-                  </Button>
+                    <Button
+                      variant={isCompanyTrainingEditing ? "default" : "outline"}
+                      onClick={isCompanyTrainingEditing ? handleSaveCompanyTraining : () => setIsCompanyTrainingEditing(true)}
+                      disabled={companyTrainingData.length === 0}
+                      className={`h-8 text-xs ${isCompanyTrainingEditing
+                          ? "bg-[#16569e] hover:bg-[#0f4078] text-white"
+                          : "border-[#e1e8ed] text-[#16569e]"
+                        }`}
+                      data-testid="button-edit-company-training-mobile"
+                    >
+                      {isCompanyTrainingEditing ? "Save" : "Edit"}
+                    </Button>
                   )}
                   {isCompanyTrainingEditing && (
                     <Button
@@ -5945,154 +5949,154 @@ const AdminModuleInner = (): JSX.Element => {
                     )}
                     {/* Data Rows */}
                     {!trainingMasterLoading && filteredTrainingData.map((training, index) => {
-                          const sameGroupTrainings = filteredTrainingData.filter(
-                            t => t.category === training.category && t.trainingGroup === training.trainingGroup
-                          );
-                          const groupIndex = sameGroupTrainings.findIndex(t => t.id === training.id);
-                          const isFirstInGroup = groupIndex === 0;
-                          const isLastInGroup = groupIndex === sameGroupTrainings.length - 1;
+                      const sameGroupTrainings = filteredTrainingData.filter(
+                        t => t.category === training.category && t.trainingGroup === training.trainingGroup
+                      );
+                      const groupIndex = sameGroupTrainings.findIndex(t => t.id === training.id);
+                      const isFirstInGroup = groupIndex === 0;
+                      const isLastInGroup = groupIndex === sameGroupTrainings.length - 1;
 
-                          return (
-                            <TableRow 
-                              key={training.id} 
-                              className={`border-b border-gray-100 hover:bg-gray-50 text-xs ${changedTrainings.has(training.id) ? "bg-yellow-50" : ""}`}
-                              data-testid={`row-training-${training.id}`}
-                            >
-                              <TableCell className="text-center text-gray-600">{index + 1}</TableCell>
-                              <TableCell className="text-gray-600">{training.trainingId}</TableCell>
-                              <TableCell className="text-gray-600">
-                                {isTrainingMasterEditing && !training.isDefault ? (
-                                  <Input
-                                    value={training.trainingName}
-                                    onChange={(e) => handleTrainingFieldChange(training.id, 'trainingName', e.target.value)}
-                                    className="h-7 text-xs"
-                                    data-testid={`input-training-name-${training.id}`}
-                                  />
-                                ) : (
-                                  <span>{training.trainingName}</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-gray-600">
-                                {isTrainingMasterEditing && !training.isDefault ? (
-                                  <Select
-                                    value={training.category}
-                                    onValueChange={(value) => handleTrainingFieldChange(training.id, 'category', value)}
-                                  >
-                                    <SelectTrigger className="h-7 text-xs" data-testid={`select-category-${training.id}`}>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {TRAINING_CATEGORIES.map(cat => (
-                                        <SelectItem key={cat.code} value={cat.code}>{cat.label}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  getCategoryLabel(training.category)
-                                )}
-                              </TableCell>
-                              <TableCell className="text-gray-600">
-                                {isTrainingMasterEditing && !training.isDefault ? (
-                                  <Select
-                                    value={training.trainingGroup}
-                                    onValueChange={(value) => handleTrainingFieldChange(training.id, 'trainingGroup', value)}
-                                  >
-                                    <SelectTrigger className="h-7 text-xs" data-testid={`select-group-${training.id}`}>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {TRAINING_GROUPS.map(grp => (
-                                        <SelectItem key={grp.code} value={grp.code}>{grp.label}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                ) : (
-                                  getGroupLabel(training.trainingGroup)
-                                )}
-                              </TableCell>
-                              <TableCell className="text-gray-600">
-                                {isTrainingMasterEditing ? (
-                                  <Input
-                                    value={training.requirementReference || ''}
-                                    onChange={(e) => handleTrainingFieldChange(training.id, 'requirementReference', e.target.value || null)}
-                                    className="h-7 text-xs"
-                                    placeholder="Reference"
-                                    data-testid={`input-requirement-${training.id}`}
-                                  />
-                                ) : (
-                                  training.requirementReference || '-'
-                                )}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={training.applicableToCompany}
-                                  onChange={(e) => handleTrainingFieldChange(training.id, 'applicableToCompany', e.target.checked)}
-                                  disabled={!isTrainingMasterEditing}
-                                  className="h-4 w-4"
-                                  data-testid={`checkbox-company-${training.id}`}
+                      return (
+                        <TableRow
+                          key={training.id}
+                          className={`border-b border-gray-100 hover:bg-gray-50 text-xs ${changedTrainings.has(training.id) ? "bg-yellow-50" : ""}`}
+                          data-testid={`row-training-${training.id}`}
+                        >
+                          <TableCell className="text-center text-gray-600">{index + 1}</TableCell>
+                          <TableCell className="text-gray-600">{training.trainingId}</TableCell>
+                          <TableCell className="text-gray-600">
+                            {isTrainingMasterEditing && !training.isDefault ? (
+                              <Input
+                                value={training.trainingName}
+                                onChange={(e) => handleTrainingFieldChange(training.id, 'trainingName', e.target.value)}
+                                className="h-7 text-xs"
+                                data-testid={`input-training-name-${training.id}`}
+                              />
+                            ) : (
+                              <span>{training.trainingName}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            {isTrainingMasterEditing && !training.isDefault ? (
+                              <Select
+                                value={training.category}
+                                onValueChange={(value) => handleTrainingFieldChange(training.id, 'category', value)}
+                              >
+                                <SelectTrigger className="h-7 text-xs" data-testid={`select-category-${training.id}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {TRAINING_CATEGORIES.map(cat => (
+                                    <SelectItem key={cat.code} value={cat.code}>{cat.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              getCategoryLabel(training.category)
+                            )}
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            {isTrainingMasterEditing && !training.isDefault ? (
+                              <Select
+                                value={training.trainingGroup}
+                                onValueChange={(value) => handleTrainingFieldChange(training.id, 'trainingGroup', value)}
+                              >
+                                <SelectTrigger className="h-7 text-xs" data-testid={`select-group-${training.id}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {TRAINING_GROUPS.map(grp => (
+                                    <SelectItem key={grp.code} value={grp.code}>{grp.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              getGroupLabel(training.trainingGroup)
+                            )}
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            {isTrainingMasterEditing ? (
+                              <Input
+                                value={training.requirementReference || ''}
+                                onChange={(e) => handleTrainingFieldChange(training.id, 'requirementReference', e.target.value || null)}
+                                className="h-7 text-xs"
+                                placeholder="Reference"
+                                data-testid={`input-requirement-${training.id}`}
+                              />
+                            ) : (
+                              training.requirementReference || '-'
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <input
+                              type="checkbox"
+                              checked={training.applicableToCompany}
+                              onChange={(e) => handleTrainingFieldChange(training.id, 'applicableToCompany', e.target.checked)}
+                              disabled={!isTrainingMasterEditing}
+                              className="h-4 w-4"
+                              data-testid={`checkbox-company-${training.id}`}
+                            />
+                          </TableCell>
+                          <TableCell className="text-gray-600">
+                            {training.applicableToCompany ? (
+                              isTrainingMasterEditing ? (
+                                <Input
+                                  value={training.trainingLabel || ''}
+                                  onChange={(e) => handleTrainingFieldChange(training.id, 'trainingLabel', e.target.value || null)}
+                                  className="h-7 text-xs"
+                                  placeholder="Label"
+                                  data-testid={`input-label-${training.id}`}
                                 />
-                              </TableCell>
-                              <TableCell className="text-gray-600">
-                                {training.applicableToCompany ? (
-                                  isTrainingMasterEditing ? (
-                                    <Input
-                                      value={training.trainingLabel || ''}
-                                      onChange={(e) => handleTrainingFieldChange(training.id, 'trainingLabel', e.target.value || null)}
-                                      className="h-7 text-xs"
-                                      placeholder="Label"
-                                      data-testid={`input-label-${training.id}`}
-                                    />
-                                  ) : (
-                                    training.trainingLabel || '-'
-                                  )
-                                ) : (
-                                  <span className="text-gray-400">N/A</span>
+                              ) : (
+                                training.trainingLabel || '-'
+                              )
+                            ) : (
+                              <span className="text-gray-400">N/A</span>
+                            )}
+                          </TableCell>
+                          {isTrainingMasterEditing && (
+                            <TableCell className="text-center">
+                              <div className="flex justify-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleMoveTraining(training, 'up')}
+                                  disabled={isFirstInGroup}
+                                  className="h-6 w-6 p-0"
+                                  data-testid={`button-move-up-${training.id}`}
+                                >
+                                  <ChevronUp className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleMoveTraining(training, 'down')}
+                                  disabled={isLastInGroup}
+                                  className="h-6 w-6 p-0"
+                                  data-testid={`button-move-down-${training.id}`}
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                                {(permissions.length === 0 || canDelete("Admin Training Matrix")) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteTraining(training)}
+                                    disabled={training.isDefault}
+                                    className={`h-6 w-6 p-0 ${training.isDefault ? 'opacity-30' : 'text-red-500 hover:text-red-700'}`}
+                                    data-testid={`button-delete-${training.id}`}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
                                 )}
-                              </TableCell>
-                              {isTrainingMasterEditing && (
-                                <TableCell className="text-center">
-                                  <div className="flex justify-center gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleMoveTraining(training, 'up')}
-                                      disabled={isFirstInGroup}
-                                      className="h-6 w-6 p-0"
-                                      data-testid={`button-move-up-${training.id}`}
-                                    >
-                                      <ChevronUp className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleMoveTraining(training, 'down')}
-                                      disabled={isLastInGroup}
-                                      className="h-6 w-6 p-0"
-                                      data-testid={`button-move-down-${training.id}`}
-                                    >
-                                      <ChevronDown className="h-4 w-4" />
-                                    </Button>
-                                    {(permissions.length === 0 || canDelete("Admin Training Matrix")) && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDeleteTraining(training)}
-                                      disabled={training.isDefault}
-                                      className={`h-6 w-6 p-0 ${training.isDefault ? 'opacity-30' : 'text-red-500 hover:text-red-700'}`}
-                                      data-testid={`button-delete-${training.id}`}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                    )}
-                                  </div>
-                                </TableCell>
-                              )}
-                            </TableRow>
-                          );
-                        })}
-                    </TableBody>
-                  </Table>
+                              </div>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </div>
@@ -6118,38 +6122,38 @@ const AdminModuleInner = (): JSX.Element => {
             {/* Company Training Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden" style={{ maxHeight: 'calc(100vh - 220px)' }}>
               <div className="flex-1 overflow-auto relative">
-                  <Table className="relative" style={{ minWidth: `${700 + applicableRanksForTraining.length * 85}px` }}>
-                    <TableHeader className="sticky top-0 z-50">
-                      <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                        <TableHead className="w-12 text-center text-xs font-normal text-white sticky left-0 z-40 bg-[#52baf3]">#</TableHead>
-                        <TableHead className="w-28 text-xs font-normal text-white sticky left-12 z-40 bg-[#52baf3]">Company ID</TableHead>
-                        <TableHead className="min-w-[200px] text-xs font-normal text-white sticky left-40 z-40 bg-[#52baf3]">Training Label</TableHead>
-                        <TableHead className="w-24 text-xs font-normal text-white bg-[#52baf3]">Abr</TableHead>
-                        <TableHead className="min-w-[150px] text-xs font-normal text-white bg-[#52baf3]">Requirement</TableHead>
-                        <TableHead className="w-28 text-xs font-normal text-white bg-[#52baf3]">Company Group</TableHead>
-                        {isCompanyTrainingEditing && (
-                          <TableHead className="w-20 text-center text-xs font-normal text-white bg-[#52baf3]">Reorder</TableHead>
-                        )}
-                        {isCompanyTrainingEditing && (
-                          <TableHead className="w-16 text-center text-xs font-normal text-white bg-[#52baf3]">
-                            <div className="leading-tight">Select<br/>All</div>
-                          </TableHead>
-                        )}
-                        {/* Rank columns for M/R matrix */}
-                        {applicableRanksForTraining.map(rank => (
-                          <TableHead 
-                            key={rank.id} 
-                            className="w-20 min-w-[80px] text-center text-[10px] font-normal text-white bg-[#52baf3] px-1"
-                            title={rank.rank}
-                          >
-                            <div className="leading-tight whitespace-normal break-words h-8 flex items-center justify-center">
-                              {rank.label || rank.rank}
-                            </div>
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                <Table className="relative" style={{ minWidth: `${700 + applicableRanksForTraining.length * 85}px` }}>
+                  <TableHeader className="sticky top-0 z-50">
+                    <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                      <TableHead className="w-12 text-center text-xs font-normal text-white sticky left-0 z-40 bg-[#52baf3]">#</TableHead>
+                      <TableHead className="w-28 text-xs font-normal text-white sticky left-12 z-40 bg-[#52baf3]">Company ID</TableHead>
+                      <TableHead className="min-w-[200px] text-xs font-normal text-white sticky left-40 z-40 bg-[#52baf3]">Training Label</TableHead>
+                      <TableHead className="w-24 text-xs font-normal text-white bg-[#52baf3]">Abr</TableHead>
+                      <TableHead className="min-w-[150px] text-xs font-normal text-white bg-[#52baf3]">Requirement</TableHead>
+                      <TableHead className="w-28 text-xs font-normal text-white bg-[#52baf3]">Company Group</TableHead>
+                      {isCompanyTrainingEditing && (
+                        <TableHead className="w-20 text-center text-xs font-normal text-white bg-[#52baf3]">Reorder</TableHead>
+                      )}
+                      {isCompanyTrainingEditing && (
+                        <TableHead className="w-16 text-center text-xs font-normal text-white bg-[#52baf3]">
+                          <div className="leading-tight">Select<br />All</div>
+                        </TableHead>
+                      )}
+                      {/* Rank columns for M/R matrix */}
+                      {applicableRanksForTraining.map(rank => (
+                        <TableHead
+                          key={rank.id}
+                          className="w-20 min-w-[80px] text-center text-[10px] font-normal text-white bg-[#52baf3] px-1"
+                          title={rank.rank}
+                        >
+                          <div className="leading-tight whitespace-normal break-words h-8 flex items-center justify-center">
+                            {rank.label || rank.rank}
+                          </div>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {companyTrainingLoading && (
                       <>
                         {Array.from({ length: 10 }).map((_, index) => (
@@ -6174,15 +6178,15 @@ const AdminModuleInner = (): JSX.Element => {
                     {!companyTrainingLoading && filteredCompanyTrainingData.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6 + (isCompanyTrainingEditing ? 2 : 0) + applicableRanksForTraining.length} className="text-center text-gray-500 py-8">
-                          {companyTrainingData.length === 0 
+                          {companyTrainingData.length === 0
                             ? "No company trainings found. Mark trainings as 'Applicable to Company' in Training Master to add them here."
                             : "No trainings match your search."}
                         </TableCell>
                       </TableRow>
                     )}
                     {!companyTrainingLoading && filteredCompanyTrainingData.map((training, index) => (
-                      <TableRow 
-                        key={training.id} 
+                      <TableRow
+                        key={training.id}
                         className={`border-b border-gray-100 hover:bg-gray-50 ${changedCompanyTrainings.has(training.id) ? 'bg-yellow-50' : ''}`}
                         data-company-training-id={training.id}
                         data-testid={`row-company-training-${training.id}`}
@@ -6230,8 +6234,8 @@ const AdminModuleInner = (): JSX.Element => {
                         </TableCell>
                         <TableCell className="text-xs" data-testid={`cell-company-group-${training.id}`}>
                           {isCompanyTrainingEditing ? (
-                            <Select 
-                              value={training.groupCode || '__none__'} 
+                            <Select
+                              value={training.groupCode || '__none__'}
                               onValueChange={(value) => handleCompanyTrainingFieldChange(training.id, 'groupCode', value === '__none__' ? null : value)}
                             >
                               <SelectTrigger className="h-7 text-xs w-full" data-testid={`select-company-group-${training.id}`}>
@@ -6250,11 +6254,11 @@ const AdminModuleInner = (): JSX.Element => {
                             </Select>
                           ) : (
                             <span className="text-gray-600">
-                              {training.groupCode 
+                              {training.groupCode
                                 ? (() => {
-                                    const group = companyTrainingGroups.find(g => g.code === training.groupCode);
-                                    return group?.label ? `${training.groupCode}. ${group.label}` : training.groupCode;
-                                  })()
+                                  const group = companyTrainingGroups.find(g => g.code === training.groupCode);
+                                  return group?.label ? `${training.groupCode}. ${group.label}` : training.groupCode;
+                                })()
                                 : '-'}
                             </span>
                           )}
@@ -6332,8 +6336,8 @@ const AdminModuleInner = (): JSX.Element => {
                           const isChanged = changedRequirements.has(key);
 
                           return (
-                            <TableCell 
-                              key={rank.id} 
+                            <TableCell
+                              key={rank.id}
                               className={`text-center px-1 min-w-[80px] ${isChanged ? 'bg-yellow-50' : ''}`}
                               data-testid={`cell-requirement-${training.id}-${rankIdNum}`}
                             >
@@ -6370,8 +6374,8 @@ const AdminModuleInner = (): JSX.Element => {
                         })}
                       </TableRow>
                     ))}
-                    </TableBody>
-                  </Table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </div>
@@ -6389,9 +6393,9 @@ const AdminModuleInner = (): JSX.Element => {
                       className={`h-8 ${currentBreakpoint === 'mobile' ? 'w-full' : 'w-48'} justify-between text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent hover:bg-transparent`}
                       data-testid="tm-vessel-select"
                     >
-                      {tmSelectedVessels.length === 0 
-                        ? "Select Vessel or Group" 
-                        : tmSelectedVessels.length === 1 
+                      {tmSelectedVessels.length === 0
+                        ? "Select Vessel or Group"
+                        : tmSelectedVessels.length === 1
                           ? vesselOptions.find((v: VesselOption) => v.value === tmSelectedVessels[0])?.label
                           : `${tmSelectedVessels.length} vessels selected`
                       }
@@ -6409,8 +6413,8 @@ const AdminModuleInner = (): JSX.Element => {
                             value={`${vessel.label} ${vessel.value}`}
                             onSelect={() => {
                               if (vessel.type === 'group' && vessel.vesselIds) {
-                                const groupVesselIds = Array.isArray(vessel.vesselIds) 
-                                  ? vessel.vesselIds 
+                                const groupVesselIds = Array.isArray(vessel.vesselIds)
+                                  ? vessel.vesselIds
                                   : JSON.parse(vessel.vesselIds || '[]');
                                 const allGroupVesselsSelected = groupVesselIds.every((id: string) => tmSelectedVessels.includes(id));
 
@@ -6432,11 +6436,11 @@ const AdminModuleInner = (): JSX.Element => {
                             className="text-xs"
                           >
                             <div className="flex items-center space-x-2">
-                              <Checkbox 
+                              <Checkbox
                                 checked={(() => {
                                   if (vessel.type === 'group' && vessel.vesselIds) {
-                                    const vesselIdArray = Array.isArray(vessel.vesselIds) 
-                                      ? vessel.vesselIds 
+                                    const vesselIdArray = Array.isArray(vessel.vesselIds)
+                                      ? vessel.vesselIds
                                       : JSON.parse(vessel.vesselIds || '[]');
                                     return vesselIdArray.every((id: string) => tmSelectedVessels.includes(id));
                                   }
@@ -6447,17 +6451,16 @@ const AdminModuleInner = (): JSX.Element => {
                               <span>{vessel.label}</span>
                             </div>
                             <Check
-                              className={`ml-auto h-4 w-4 ${
-                                (() => {
+                              className={`ml-auto h-4 w-4 ${(() => {
                                   if (vessel.type === 'group' && vessel.vesselIds) {
-                                    const vesselIdArray = Array.isArray(vessel.vesselIds) 
-                                      ? vessel.vesselIds 
+                                    const vesselIdArray = Array.isArray(vessel.vesselIds)
+                                      ? vessel.vesselIds
                                       : JSON.parse(vessel.vesselIds || '[]');
                                     return vesselIdArray.every((id: string) => tmSelectedVessels.includes(id)) ? "opacity-100" : "opacity-0";
                                   }
                                   return tmSelectedVessels.includes(vessel.value) ? "opacity-100" : "opacity-0";
                                 })()
-                              }`}
+                                }`}
                             />
                           </CommandItem>
                         ))}
@@ -6510,11 +6513,10 @@ const AdminModuleInner = (): JSX.Element => {
                         setTmFlexDate(new Date().toISOString().split('T')[0]);
                       }}
                       disabled={tmSelectedVessels.length === 0}
-                      className={`h-8 text-xs ${
-                        tmSelectedVessels.length === 0 
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                      className={`h-8 text-xs ${tmSelectedVessels.length === 0
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                           : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
-                      }`}
+                        }`}
                       data-testid="tm-revision-button"
                     >
                       + Revision
@@ -6559,10 +6561,10 @@ const AdminModuleInner = (): JSX.Element => {
                           const vesselId = tmSelectedVessels[0];
                           const applicableIds = Array.from(tmApplicableTrainings.get(vesselId) || new Set());
                           const revisionData = { applicableTrainingIds: applicableIds };
-                          tmSubmitRevisionMutation.mutate({ 
-                            vesselId, 
-                            revisionDate: tmFlexDate, 
-                            revisionData 
+                          tmSubmitRevisionMutation.mutate({
+                            vesselId,
+                            revisionDate: tmFlexDate,
+                            revisionData
                           });
                         }}
                         className="h-8 bg-[#00AF7B] hover:bg-[#0f4078] text-white text-xs"
@@ -6610,7 +6612,7 @@ const AdminModuleInner = (): JSX.Element => {
                     <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
                       {/* App to Vessel column - first column */}
                       <TableHead className="w-20 text-center text-xs font-normal text-white sticky left-0 z-40 bg-[#52baf3]">
-                        <div className="leading-tight">App. To<br/>Vessel</div>
+                        <div className="leading-tight">App. To<br />Vessel</div>
                       </TableHead>
                       <TableHead className="w-12 text-center text-xs font-normal text-white sticky left-20 z-40 bg-[#52baf3]">#</TableHead>
                       <TableHead className="w-28 text-xs font-normal text-white sticky left-32 z-40 bg-[#52baf3]">Company ID</TableHead>
@@ -6622,8 +6624,8 @@ const AdminModuleInner = (): JSX.Element => {
                       )}
                       {/* Rank columns for M/R matrix - read-only from Company */}
                       {applicableRanksForTraining.map(rank => (
-                        <TableHead 
-                          key={rank.id} 
+                        <TableHead
+                          key={rank.id}
                           className="w-20 min-w-[80px] text-center text-[10px] font-normal text-white bg-[#52baf3] px-1"
                           title={rank.rank}
                         >
@@ -6635,133 +6637,133 @@ const AdminModuleInner = (): JSX.Element => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                  {tmSelectedVessels.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6 + (tmRevisionMode ? 1 : 0) + applicableRanksForTraining.length} className="text-center py-8 text-gray-500">
-                        Please select a vessel to view and configure training applicability
-                      </TableCell>
-                    </TableRow>
-                  ) : companyTrainingLoading ? (
-                    <>
-                      {Array.from({ length: 10 }).map((_, index) => (
-                        <TableRow key={`skeleton-vessel-${index}`} className="border-b border-gray-100">
-                          <TableCell className="text-center sticky left-0 bg-white"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
-                          <TableCell className="text-center sticky left-20 bg-white"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
-                          <TableCell className="sticky left-32 bg-white"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
-                          <TableCell className="sticky left-60 bg-white"><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
-                          <TableCell><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></TableCell>
-                          <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
-                          {tmRevisionMode && <TableCell />}
-                          {applicableRanksForTraining.map(rank => (
-                            <TableCell key={rank.id} className="text-center min-w-[80px]">
-                              <div className="h-4 w-8 bg-gray-200 rounded animate-pulse mx-auto" />
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </>
-                  ) : filteredCompanyTrainingData.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6 + (tmRevisionMode ? 1 : 0) + applicableRanksForTraining.length} className="text-center text-gray-500 py-8">
-                        {companyTrainingData.length === 0 
-                          ? "No company trainings found. Add trainings in the Company tab first."
-                          : "No trainings match your search."}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredCompanyTrainingData.map((training, index) => {
-                      const vesselId = tmSelectedVessels[0];
-                      const applicableSet = tmApplicableTrainings.get(vesselId) || new Set<number>();
-                      const isApplicable = applicableSet.has(training.id);
+                    {tmSelectedVessels.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6 + (tmRevisionMode ? 1 : 0) + applicableRanksForTraining.length} className="text-center py-8 text-gray-500">
+                          Please select a vessel to view and configure training applicability
+                        </TableCell>
+                      </TableRow>
+                    ) : companyTrainingLoading ? (
+                      <>
+                        {Array.from({ length: 10 }).map((_, index) => (
+                          <TableRow key={`skeleton-vessel-${index}`} className="border-b border-gray-100">
+                            <TableCell className="text-center sticky left-0 bg-white"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
+                            <TableCell className="text-center sticky left-20 bg-white"><div className="h-4 w-6 bg-gray-200 rounded animate-pulse mx-auto" /></TableCell>
+                            <TableCell className="sticky left-32 bg-white"><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell className="sticky left-60 bg-white"><div className="h-4 w-40 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell><div className="h-4 w-28 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            <TableCell><div className="h-4 w-16 bg-gray-200 rounded animate-pulse" /></TableCell>
+                            {tmRevisionMode && <TableCell />}
+                            {applicableRanksForTraining.map(rank => (
+                              <TableCell key={rank.id} className="text-center min-w-[80px]">
+                                <div className="h-4 w-8 bg-gray-200 rounded animate-pulse mx-auto" />
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </>
+                    ) : filteredCompanyTrainingData.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6 + (tmRevisionMode ? 1 : 0) + applicableRanksForTraining.length} className="text-center text-gray-500 py-8">
+                          {companyTrainingData.length === 0
+                            ? "No company trainings found. Add trainings in the Company tab first."
+                            : "No trainings match your search."}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredCompanyTrainingData.map((training, index) => {
+                        const vesselId = tmSelectedVessels[0];
+                        const applicableSet = tmApplicableTrainings.get(vesselId) || new Set<number>();
+                        const isApplicable = applicableSet.has(training.id);
 
-                      return (
-                        <TableRow 
-                          key={training.id} 
-                          className={`border-b border-gray-100 hover:bg-gray-50 ${isApplicable ? 'bg-green-50' : ''}`}
-                          data-testid={`row-vessel-training-${training.id}`}
-                        >
-                          {/* App to Vessel checkbox - only editable column */}
-                          <TableCell className="text-center sticky left-0 z-10 bg-white">
-                            {tmRevisionMode ? (
-                              <input
-                                type="checkbox"
-                                checked={isApplicable}
-                                onChange={() => {
-                                  setTmApplicableTrainings(prev => {
-                                    const newMap = new Map(prev);
-                                    const vesselSet = new Set(newMap.get(vesselId) || []);
-                                    if (isApplicable) {
-                                      vesselSet.delete(training.id);
-                                    } else {
-                                      vesselSet.add(training.id);
-                                    }
-                                    newMap.set(vesselId, vesselSet);
-                                    return newMap;
-                                  });
-                                }}
-                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                data-testid={`checkbox-app-to-vessel-${training.id}`}
-                              />
-                            ) : (
-                              <input
-                                type="checkbox"
-                                checked={isApplicable}
-                                disabled
-                                className="h-4 w-4 rounded border-gray-300 text-blue-600 opacity-60"
-                              />
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center text-xs text-gray-600 sticky left-20 z-10 bg-white">{index + 1}</TableCell>
-                          <TableCell className="text-xs sticky left-32 z-10 bg-white">
-                            <span className="text-gray-600">{training.companyId || '-'}</span>
-                          </TableCell>
-                          <TableCell className="text-xs sticky left-60 z-10 bg-white" data-testid={`text-vessel-training-label-${training.id}`}>
-                            {training.trainingLabel || '-'}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            <span className="text-gray-600">{training.requirement || '-'}</span>
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            <span className="text-gray-600">
-                              {training.groupCode 
-                                ? (() => {
+                        return (
+                          <TableRow
+                            key={training.id}
+                            className={`border-b border-gray-100 hover:bg-gray-50 ${isApplicable ? 'bg-green-50' : ''}`}
+                            data-testid={`row-vessel-training-${training.id}`}
+                          >
+                            {/* App to Vessel checkbox - only editable column */}
+                            <TableCell className="text-center sticky left-0 z-10 bg-white">
+                              {tmRevisionMode ? (
+                                <input
+                                  type="checkbox"
+                                  checked={isApplicable}
+                                  onChange={() => {
+                                    setTmApplicableTrainings(prev => {
+                                      const newMap = new Map(prev);
+                                      const vesselSet = new Set(newMap.get(vesselId) || []);
+                                      if (isApplicable) {
+                                        vesselSet.delete(training.id);
+                                      } else {
+                                        vesselSet.add(training.id);
+                                      }
+                                      newMap.set(vesselId, vesselSet);
+                                      return newMap;
+                                    });
+                                  }}
+                                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  data-testid={`checkbox-app-to-vessel-${training.id}`}
+                                />
+                              ) : (
+                                <input
+                                  type="checkbox"
+                                  checked={isApplicable}
+                                  disabled
+                                  className="h-4 w-4 rounded border-gray-300 text-blue-600 opacity-60"
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center text-xs text-gray-600 sticky left-20 z-10 bg-white">{index + 1}</TableCell>
+                            <TableCell className="text-xs sticky left-32 z-10 bg-white">
+                              <span className="text-gray-600">{training.companyId || '-'}</span>
+                            </TableCell>
+                            <TableCell className="text-xs sticky left-60 z-10 bg-white" data-testid={`text-vessel-training-label-${training.id}`}>
+                              {training.trainingLabel || '-'}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <span className="text-gray-600">{training.requirement || '-'}</span>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <span className="text-gray-600">
+                                {training.groupCode
+                                  ? (() => {
                                     const group = companyTrainingGroups.find(g => g.code === training.groupCode);
                                     return group?.label ? `${training.groupCode}. ${group.label}` : training.groupCode;
                                   })()
-                                : '-'}
-                            </span>
-                          </TableCell>
-                          {tmRevisionMode && (
-                            <TableCell className="text-center">
-                              <div className="flex justify-center gap-1">
-                                <ChevronUp className="h-4 w-4 text-gray-300" />
-                                <ChevronDown className="h-4 w-4 text-gray-300" />
-                              </div>
+                                  : '-'}
+                              </span>
                             </TableCell>
-                          )}
-                          {/* M/R requirement cells for each rank - read-only from Company level */}
-                          {applicableRanksForTraining.map(rank => {
-                            const rankIdNum = parseInt(rank.id);
-                            const key = `${training.id}-${rankIdNum}`;
-                            const status = localTrainingRequirements.get(key);
-
-                            return (
-                              <TableCell 
-                                key={rank.id} 
-                                className="text-center px-1 min-w-[80px]"
-                                data-testid={`cell-vessel-requirement-${training.id}-${rankIdNum}`}
-                              >
-                                {/* Read-only display of Company-level M/R requirements - text only */}
-                                <span className={`text-xs font-medium ${status === 'M' ? 'text-red-600' : status === 'R' ? 'text-blue-600' : 'text-gray-300'}`}>
-                                  {status || '-'}
-                                </span>
+                            {tmRevisionMode && (
+                              <TableCell className="text-center">
+                                <div className="flex justify-center gap-1">
+                                  <ChevronUp className="h-4 w-4 text-gray-300" />
+                                  <ChevronDown className="h-4 w-4 text-gray-300" />
+                                </div>
                               </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      );
-                    })
-                  )}
+                            )}
+                            {/* M/R requirement cells for each rank - read-only from Company level */}
+                            {applicableRanksForTraining.map(rank => {
+                              const rankIdNum = parseInt(rank.id);
+                              const key = `${training.id}-${rankIdNum}`;
+                              const status = localTrainingRequirements.get(key);
+
+                              return (
+                                <TableCell
+                                  key={rank.id}
+                                  className="text-center px-1 min-w-[80px]"
+                                  data-testid={`cell-vessel-requirement-${training.id}-${rankIdNum}`}
+                                >
+                                  {/* Read-only display of Company-level M/R requirements - text only */}
+                                  <span className={`text-xs font-medium ${status === 'M' ? 'text-red-600' : status === 'R' ? 'text-blue-600' : 'text-gray-300'}`}>
+                                    {status || '-'}
+                                  </span>
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        );
+                      })
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -6988,33 +6990,31 @@ const AdminModuleInner = (): JSX.Element => {
               >
                 {syncAllMasterDataMutation.isPending ? "Syncing..." : "Sync All"}
               </Button>
-              {(permissions.length === 0 || canEdit("Masters")) && (
-              <Button
-                variant={isMasterInEditMode ? "default" : "outline"}
-                onClick={isMasterInEditMode ? handleSaveMaster : handleEditMaster}
-                className={`h-8 text-xs ${
-                  isMasterInEditMode 
-                    ? "bg-[#16569e] hover:bg-[#0f4078] text-white" 
-                    : "border-[#e1e8ed] text-[#16569e]"
-                }`}
-                data-testid="button-edit-master"
-              >
-                {isMasterInEditMode ? "Save" : "Edit Master"}
-              </Button>
+              {selectedMaster !== "025" && selectedMaster !== "026" && (permissions.length === 0 || canEdit("Masters")) && (
+                <Button
+                  variant={isMasterInEditMode ? "default" : "outline"}
+                  onClick={isMasterInEditMode ? handleSaveMaster : handleEditMaster}
+                  className={`h-8 text-xs ${isMasterInEditMode
+                      ? "bg-[#16569e] hover:bg-[#0f4078] text-white"
+                      : "border-[#e1e8ed] text-[#16569e]"
+                    }`}
+                  data-testid="button-edit-master"
+                >
+                  {isMasterInEditMode ? "Save" : "Edit Master"}
+                </Button>
               )}
-              {(permissions.length === 0 || canCreate("Masters")) && (
-              <Button
-                onClick={handleNewEntry}
-                disabled={!isMasterInEditMode}
-                className={`h-8 text-xs ${
-                  isMasterInEditMode 
-                    ? "bg-[#5dc86f] hover:bg-[#22c55e] text-white" 
-                    : "bg-gray-400 text-gray-600 cursor-not-allowed"
-                }`}
-                data-testid="button-new-entry"
-              >
-                + New Entry
-              </Button>
+              {selectedMaster !== "025" && selectedMaster !== "026" && (permissions.length === 0 || canCreate("Masters")) && (
+                <Button
+                  onClick={handleNewEntry}
+                  disabled={!isMasterInEditMode}
+                  className={`h-8 text-xs ${isMasterInEditMode
+                      ? "bg-[#5dc86f] hover:bg-[#22c55e] text-white"
+                      : "bg-gray-400 text-gray-600 cursor-not-allowed"
+                    }`}
+                  data-testid="button-new-entry"
+                >
+                  + New Entry
+                </Button>
               )}
             </div>
           </div>
@@ -7068,11 +7068,10 @@ const AdminModuleInner = (): JSX.Element => {
                           // Use wouter's navigate for proper routing
                           navigate(`/admin/masters/${master.id}`);
                         }}
-                        className={`p-3 text-xs cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                          selectedMaster === master.id 
-                            ? 'bg-blue-50 border-l-4 border-l-blue-500 text-blue-700 font-medium' 
+                        className={`p-3 text-xs cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition-colors ${selectedMaster === master.id
+                            ? 'bg-blue-50 border-l-4 border-l-blue-500 text-blue-700 font-medium'
                             : 'text-gray-700'
-                        }`}
+                          }`}
                         data-testid={`master-item-${master.id}`}
                       >
                         <div className="flex justify-between items-center">
@@ -7090,1157 +7089,1159 @@ const AdminModuleInner = (): JSX.Element => {
 
               {/* Right Table - Selected Master Data */}
               <div className={`${currentBreakpoint === 'mobile' ? 'w-full' : 'flex-1'}`}>
-                <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
-                  <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "024" ? 'grid-cols-8' : selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" || selectedMaster === "021" ? 'grid-cols-5' : selectedMaster === "020" || selectedMaster === "022" || selectedMaster === "023" ? 'grid-cols-3' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
-                    <div className="p-3 border-r border-blue-400">Entry ID</div>
-                    {selectedMaster === "001" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Nationality</div>
-                        <div className="p-3 border-r border-blue-400">Country</div>
-                      </>
-                    ) : selectedMaster === "002" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Country</div>
-                        <div className="p-3 border-r border-blue-400">Country UN/LOCODE</div>
-                      </>
-                    ) : selectedMaster === "003" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Language</div>
-                        <div className="p-3 border-r border-blue-400">Language Code</div>
-                      </>
-                    ) : selectedMaster === "004" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Vessel Type</div>
-                        <div className="p-3 border-r border-blue-400">Classification</div>
-                      </>
-                    ) : selectedMaster === "014" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Vessel</div>
-                        <div className="p-3 border-r border-blue-400">IMO Number</div>
-                        <div className="p-3 border-r border-blue-400">Vessel Type</div>
-                      </>
-                    ) : selectedMaster === "018" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Port Name</div>
-                        <div className="p-3 border-r border-blue-400">Country</div>
-                        <div className="p-3 border-r border-blue-400">Port Code / UN/LOCODE</div>
-                      </>
-                    ) : selectedMaster === "019" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Language Name</div>
-                        <div className="p-3 border-r border-blue-400">Native Name</div>
-                        <div className="p-3 border-r border-blue-400">ISO Code</div>
-                      </>
-                    ) : selectedMaster === "020" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Country Name</div>
-                      </>
-                    ) : selectedMaster === "021" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Name</div>
-                        <div className="p-3 border-r border-blue-400">Country</div>
-                        <div className="p-3 border-r border-blue-400">Email</div>
-                      </>
-                    ) : selectedMaster === "022" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Name</div>
-                      </>
-                    ) : selectedMaster === "023" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Name</div>
-                      </>
-                    ) : selectedMaster === "024" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">User Name</div>
-                        <div className="p-3 border-r border-blue-400">Role</div>
-                        <div className="p-3 border-r border-blue-400">Designation</div>
-                        <div className="p-3 border-r border-blue-400">User Type</div>
-                        <div className="p-3 border-r border-blue-400">Department</div>
-                        <div className="p-3 border-r border-blue-400">Email</div>
-                      </>
-                    ) : selectedMaster === "012" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Designation</div>
-                        <div className="p-3 border-r border-blue-400">Department</div>
-                      </>
-                    ) : selectedMaster === "013" ? (
-                      <>
-                        <div className="p-3 border-r border-blue-400">First Name</div>
-                        <div className="p-3 border-r border-blue-400">Last Name</div>
-                        <div className="p-3 border-r border-blue-400">Designation</div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="p-3 border-r border-blue-400">Name</div>
-                        <div className="p-3 border-r border-blue-400">Description</div>
-                      </>
-                    )}
-                    <div className="p-3 text-center">Actions</div>
+                {selectedMaster === "025" ? (
+                  <div data-testid="training-status-master-pane">
+                    <TrainingStatusPage />
                   </div>
-                </div>
-                <div className={`${currentBreakpoint === 'mobile' ? 'max-h-64' : 'h-[500px]'} overflow-y-auto ${selectedMaster === "013" ? 'users-master-grid-container' : ''}`}>
-                  {masterDataLoading ? (
-                    <div className="p-3 text-xs text-gray-500">Loading master data...</div>
-                  ) : masterDataError ? (
-                    <div className="p-3 text-xs text-red-500">Error loading master data</div>
-                  ) : selectedMaster === "001" ? (
-                    // Special handling for Nationality Master (001) - Use external API data
-                    nationalityLoading ? (
-                      <div className="p-3 text-xs text-gray-500">Loading nationalities...</div>
-                    ) : nationalityError ? (
-                      <div className="p-3 text-xs text-red-500">Error loading nationalities: {(nationalityError as Error).message}</div>
-                    ) : nationalityData && nationalityData.length > 0 ? (
-                      nationalityData.map((item: any, index: number) => (
-                        <div
-                          key={item.id || item.country || `nationality-${index}`}
-                          className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
-                        >
-                          {/* Column 1: Entry ID */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.natUuid || <em className="text-gray-400">No entry ID</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 2: Nationality Name */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.nationality || <em className="text-gray-400">No nationality</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 3: Country Name */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.countryName || <em className="text-gray-400">No country name</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 4: Actions - External data (read-only) */}
-                          <div className="p-3 flex justify-center">
-                            <span className="text-xs text-gray-400">External</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-3 text-xs text-gray-500">No nationalities found</div>
-                    )
-                  ) : selectedMaster === "004" ? (
-                    // Special handling for Vessel Type Master (004) - Use external API data
-                    vesselTypeLoading ? (
-                      <div className="p-3 text-xs text-gray-500">Loading vessel types...</div>
-                    ) : vesselTypeError ? (
-                      <div className="p-3 text-xs text-red-500">Error loading vessel types: {(vesselTypeError as Error).message}</div>
-                    ) : vesselTypeData && vesselTypeData.length > 0 ? (
-                      vesselTypeData.map((item: any, index: number) => (
-                        <div
-                          key={item.vtuid || item.id || `vessel-type-${index}`}
-                          className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
-                        >
-                          {/* Column 1: Entry ID */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.vtUuid || <em className="text-gray-400">No entry ID</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 2: Vessel Type Name */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.vesselType || item.name || <em className="text-gray-400">No vessel type</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 3: Classification */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {(() => {
-                                const classifications = [];
-                                if (item.tanker === true || item.tanker === 1) classifications.push('Tanker');
-                                if (item.oilTanker === true || item.oilTanker === 1) classifications.push('Oil');
-                                if (item.gasTanker === true || item.gasTanker === 1) classifications.push('Gas');
-                                if (item.chemicalTanker === true || item.chemicalTanker === 1) classifications.push('Chemical');
-                                if (item.dry === true || item.dry === 1) classifications.push('Dry');
-                                if (item.container === true || item.container === 1) classifications.push('Container');
-
-                                return classifications.length > 0 ? classifications.join(', ') : <em className="text-gray-400">No classification</em>;
-                              })()}
-                            </span>
-                          </div>
-
-                          {/* Column 4: Actions - External data (read-only) */}
-                          <div className="p-3 flex justify-center">
-                            <span className="text-xs text-gray-400">External</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-3 text-xs text-gray-500">No vessel types found</div>
-                    )
-                  ) : selectedMaster === "014" ? (
-                    // Vessel Master (014) - Use external vessel master data
-                    vesselMasterLoading ? (
-                      <div className="p-3 text-xs text-gray-500">Loading vessels...</div>
-                    ) : vesselMasterError ? (
-                      <div className="p-3 text-xs text-red-500">Error loading vessels: {(vesselMasterError as Error).message}</div>
-                    ) : vesselMasterData && vesselMasterData.length > 0 ? (
-                      vesselMasterData.map((item: any, index: number) => (
-                        <div
-                          key={item.vesselId || item.id || `vessel-${index}`}
-                          className="grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50"
-                        >
-                          {/* Column 1: Entry ID */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.vesselUuid || <em className="text-gray-400">No entry ID</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 2: Vessel Name */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.vessel || <em className="text-gray-400">No vessel name</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 3: IMO Number */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.imoNumber || <em className="text-gray-400">No IMO number</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 4: Vessel Type */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.vesselType || item.vesselTypeId || <em className="text-gray-400">No vessel type</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 5: Actions - External data (read-only) */}
-                          <div className="p-3 flex justify-center">
-                            <span className="text-xs text-gray-400">External</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-3 text-xs text-gray-500">No vessels found</div>
-                    )
-                  ) : selectedMaster === "015" ? (
-                    // Special handling for Fleet Groups Master (015) - Use external API data
-                    fleetGroupsLoading ? (
-                      <div className="p-3 text-xs text-gray-500">Loading fleet groups...</div>
-                    ) : fleetGroupsError ? (
-                      <div className="p-3 text-xs text-red-500">Error loading fleet groups: {(fleetGroupsError as Error).message}</div>
-                    ) : fleetGroupsData && fleetGroupsData.length > 0 ? (
-                      fleetGroupsData.map((item: any, index: number) => (
-                        <div
-                          key={item.id || `fleet-group-${index}`}
-                          className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
-                        >
-                          {/* Column 1: Entry ID */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.fgUuid || <em className="text-gray-400">No entry ID</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 2: Fleet Group Name */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.name || <em className="text-gray-400">No name</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 3: Vessels */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.vessels || <em className="text-gray-400">No vessels</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 4: Actions - External data (read-only) */}
-                          <div className="p-3 flex justify-center">
-                            <span className="text-xs text-gray-400">External</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-3 text-xs text-gray-500">No fleet groups found</div>
-                    )
-                  ) : selectedMaster === "017" ? (
-                    // Special handling for Additional Groups Master (017) - Use external API data
-                    additionalGroupsLoading ? (
-                      <div className="p-3 text-xs text-gray-500">Loading additional groups...</div>
-                    ) : additionalGroupsError ? (
-                      <div className="p-3 text-xs text-red-500">Error loading additional groups: {(additionalGroupsError as Error).message}</div>
-                    ) : additionalGroupsData && additionalGroupsData.length > 0 ? (
-                      additionalGroupsData.map((item: any, index: number) => (
-                        <div
-                          key={item.id || `additional-group-${index}`}
-                          className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
-                        >
-                          {/* Column 1: Entry ID */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.agUuid || <em className="text-gray-400">No entry ID</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 2: Group Name */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.name || <em className="text-gray-400">No group name</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 3: Vessels */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.vessels || <em className="text-gray-400">No vessels</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 4: Actions - External data (read-only) */}
-                          <div className="p-3 flex justify-center">
-                            <span className="text-xs text-gray-400">External</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-3 text-xs text-gray-500">No additional groups found</div>
-                    )
-                  ) : selectedMaster === "018" ? (
-                    // Special handling for Ports Master (018) - Use external API data
-                    portsLoading ? (
-                      <div className="p-3 text-xs text-gray-500">Loading ports...</div>
-                    ) : portsError ? (
-                      <div className="p-3 text-xs text-red-500">Error loading ports: {(portsError as Error).message}</div>
-                    ) : portsData && portsData.length > 0 ? (
-                      portsData.map((item: any, index: number) => (
-                        <div
-                          key={item.pid || item.id || `port-${index}`}
-                          className="grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50"
-                        >
-                          {/* Column 1: Entry ID */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.portUuid || <em className="text-gray-400">No entry ID</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 2: Port Name */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.name || <em className="text-gray-400">No port name</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 3: Country */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.country || <em className="text-gray-400">No country</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 4: Port Code/UNLOCODE */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.portcode || <em className="text-gray-400">No port code</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 5: Actions - External data (read-only) */}
-                          <div className="p-3 flex justify-center">
-                            <span className="text-xs text-gray-400">External</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-3 text-xs text-gray-500">No ports found</div>
-                    )
-                  ) : selectedMaster === "019" ? (
-                    // Special handling for Languages Master (019) - Use external API data
-                    languagesLoading ? (
-                      <div className="p-3 text-xs text-gray-500">Loading languages...</div>
-                    ) : languagesError ? (
-                      <div className="p-3 text-xs text-red-500">Error loading languages: {(languagesError as Error).message}</div>
-                    ) : languagesData && languagesData.length > 0 ? (
-                      languagesData.map((item: any, index: number) => (
-                        <div
-                          key={item.luid || item.id || `language-${index}`}
-                          className="grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50"
-                        >
-                          {/* Column 1: Entry ID */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.langUuid || <em className="text-gray-400">No entry ID</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 2: Language Name */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.languageName || <em className="text-gray-400">No language name</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 3: Native Name */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.nativeName || <em className="text-gray-400">No native name</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 4: ISO Code */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">
-                              {item.isoCode || <em className="text-gray-400">No ISO code</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 5: Actions - External data (read-only) */}
-                          <div className="p-3 flex justify-center">
-                            <span className="text-xs text-gray-400">External</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-3 text-xs text-gray-500">No languages found</div>
-                    )
-                  ) : selectedMaster === "020" ? (
-                    // Special handling for Country Master (020) - Use external API data
-                    countriesLoading ? (
-                      <div className="p-3 text-xs text-gray-500">Loading countries...</div>
-                    ) : countriesError ? (
-                      <div className="p-3 text-xs text-red-500">Error loading countries: {(countriesError as Error).message}</div>
-                    ) : countriesData && countriesData.length > 0 ? (
-                      countriesData.map((item: any, index: number) => (
-                        <div
-                          key={item.cuid || item.id || `country-${index}`}
-                          className="grid grid-cols-3 gap-0 border-b border-gray-100 hover:bg-gray-50"
-                          data-testid={`country-row-${item.cuid || index}`}
-                        >
-                          {/* Column 1: Entry ID */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`country-entry-id-${item.countryUuid || index}`}>
-                              {item.countryUuid || <em className="text-gray-400">No entry ID</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 2: Country Name */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`country-name-${item.cuid || index}`}>
-                              {item.countryName || item.name || <em className="text-gray-400">No country name</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 3: Actions - External data (read-only) */}
-                          <div className="p-3 flex justify-center">
-                            <span className="text-xs text-gray-400" data-testid={`country-action-${item.cuid || index}`}>External</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-3 text-xs text-gray-500">No countries found</div>
-                    )
-                  ) : selectedMaster === "024" ? (
-                    // Special handling for Users Master (024) - Use external API data from SAIL Audits
-                    externalUsersLoading ? (
-                      <div className="p-3 text-xs text-gray-500">Loading users...</div>
-                    ) : externalUsersError ? (
-                      <div className="p-3 text-xs text-red-500">Error loading users: {(externalUsersError as Error).message}</div>
-                    ) : externalUsersApiData && externalUsersApiData.length > 0 ? (
-                      externalUsersApiData.map((item: any, index: number) => (
-                        <div
-                          key={item.uuid || item.id || `user-${index}`}
-                          className="grid grid-cols-8 gap-0 border-b border-gray-100 hover:bg-gray-50"
-                          data-testid={`user-row-${item.uuid || index}`}
-                        >
-                          {/* Column 1: UUID */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`user-uuid-${item.userUuid || index}`}>
-                              {item.userUuid || <em className="text-gray-400">No UUID</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 2: User Name - binds to fullname field */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`user-name-${item.uuid || index}`}>
-                              {item.fullname || <em className="text-gray-400">No user name</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 3: Role */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`user-role-${item.uuid || index}`}>
-                              {item.role || <em className="text-gray-400">No role</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 4: Designation */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`user-designation-${item.uuid || index}`}>
-                              {item.designation || <em className="text-gray-400">No designation</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 5: User Type */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`user-type-${item.uuid || index}`}>
-                              {item.userType || item.type || <em className="text-gray-400">No user type</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 6: Department */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`user-department-${item.uuid || index}`}>
-                              {item.department || <em className="text-gray-400">No department</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 7: Email */}
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700" data-testid={`user-email-${item.uuid || index}`}>
-                              {item.email || <em className="text-gray-400">No email</em>}
-                            </span>
-                          </div>
-
-                          {/* Column 8: Actions - External data (read-only) */}
-                          <div className="p-3 flex justify-center">
-                            <span className="text-xs text-gray-400" data-testid={`user-action-${item.uuid || index}`}>External</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-3 text-xs text-gray-500">No users found</div>
-                    )
-                  ) : (
-                    (masterData as any[]).map((item: any) => {
-                      // Different logic for identifying new entries based on master type
-                      const isNewEntry = selectedMaster === "001" 
-                        ? !item.countryName && !item.country  // For nationality master
-                        : selectedMaster === "002"
-                        ? !item.name && !item.countryCode     // For country master
-                        : selectedMaster === "003"
-                        ? !item.name && !item.description     // For language master
-                        : selectedMaster === "004"
-                        ? !item.vesselType && !item.vtuid     // For vessel type master
-                        : selectedMaster === "014"
-                        ? !item.vessel && !item.imoNumber && !item.vesselType    // For vessel master
-                        : selectedMaster === "018"
-                        ? !item.portName && !item.portcode     // For port master (port name and port code)
-                        : selectedMaster === "021"
-                        ? !item.name && !item.country && !item.email    // For manning agents master
-                        : selectedMaster === "022"
-                        ? !item.name    // For crew pool master (only name field)
-                        : selectedMaster === "023"
-                        ? !item.name    // For appraisal type master (only name field)
-                        : !item.name && !item.description;   // For other masters
-
-                      // Special handling for Users Master (013) - Always render exactly 5 columns
-                      if (selectedMaster === "013") {
-                        return (
-                          <div key={item.id} className={`${USERS_MASTER_GRID_CLASSES} border-b border-gray-100 hover:bg-gray-50 ${
-                            isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
-                          } users-master-grid-row`}>
-                            {/* Column 1: Entry ID (always rendered) */}
-                            <div className="p-3 border-r border-gray-200">
-                              <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
-                            </div>
-
-                            {/* Column 2: First Name (firstname field) */}
-                            <div className="p-3 border-r border-gray-200">
-                              {isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'firstname', item.firstname)}
-                                  onChange={(e) => updateMasterField(item.id, 'firstname', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter first name..." : ""}
-                                  data-testid={`input-firstname-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.firstname || <em className="text-gray-400">No first name</em>}</span>
-                              )}
-                            </div>
-
-                            {/* Column 3: Last Name (lastname field) */}
-                            <div className="p-3 border-r border-gray-200">
-                              {isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'lastname', item.lastname)}
-                                  onChange={(e) => updateMasterField(item.id, 'lastname', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter last name..." : ""}
-                                  data-testid={`input-lastname-${item.id}`}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.lastname || <em className="text-gray-400">No last name</em>}</span>
-                              )}
-                            </div>
-
-                            {/* Column 4: Designation (designation dropdown) */}
-                            <div className="p-3 border-r border-gray-200">
-                              {isMasterInEditMode ? (
-                                <Select 
-                                  value={getEffectiveValue(item.id, 'designationId', item.designationId)} 
-                                  onValueChange={(value) => updateMasterField(item.id, 'designationId', value)}
-                                >
-                                  <SelectTrigger className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300">
-                                    <SelectValue placeholder={isNewEntry ? "Select designation..." : "Select designation"} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {designationLoading ? (
-                                      <SelectItem value="loading" disabled>Loading designations...</SelectItem>
-                                    ) : (
-                                      (designationData as any[])
-                                        .filter((designation: any) => {
-                                          const value = designation.name || '';
-                                          return value.trim().length > 0;
-                                        })
-                                        .map((designation: any) => (
-                                          <SelectItem 
-                                            key={designation.id} 
-                                            value={designation.entryId || designation.id}
-                                            data-testid={`select-designation-option-${designation.id}`}
-                                          >
-                                            {designation.name || `Designation ${designation.id}`}
-                                          </SelectItem>
-                                        ))
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
+                ) : selectedMaster === "026" ? (
+                  <div data-testid="training-category-master-pane">
+                    <TrainingCategoryPage />
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-[#52baf3] text-white text-xs font-medium p-0">
+                      <div className={`${selectedMaster === "013" ? USERS_MASTER_GRID_CLASSES : `grid ${selectedMaster === "024" ? 'grid-cols-8' : selectedMaster === "014" || selectedMaster === "018" || selectedMaster === "019" || selectedMaster === "021" ? 'grid-cols-5' : selectedMaster === "020" || selectedMaster === "022" || selectedMaster === "023" ? 'grid-cols-3' : 'grid-cols-4'} gap-0`} ${selectedMaster === "013" ? 'users-master-header-grid' : ''}`}>
+                        <div className="p-3 border-r border-blue-400">Entry ID</div>
+                        {selectedMaster === "001" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Nationality</div>
+                            <div className="p-3 border-r border-blue-400">Country</div>
+                          </>
+                        ) : selectedMaster === "002" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Country</div>
+                            <div className="p-3 border-r border-blue-400">Country UN/LOCODE</div>
+                          </>
+                        ) : selectedMaster === "003" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Language</div>
+                            <div className="p-3 border-r border-blue-400">Language Code</div>
+                          </>
+                        ) : selectedMaster === "004" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Vessel Type</div>
+                            <div className="p-3 border-r border-blue-400">Classification</div>
+                          </>
+                        ) : selectedMaster === "014" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Vessel</div>
+                            <div className="p-3 border-r border-blue-400">IMO Number</div>
+                            <div className="p-3 border-r border-blue-400">Vessel Type</div>
+                          </>
+                        ) : selectedMaster === "018" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Port Name</div>
+                            <div className="p-3 border-r border-blue-400">Country</div>
+                            <div className="p-3 border-r border-blue-400">Port Code / UN/LOCODE</div>
+                          </>
+                        ) : selectedMaster === "019" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Language Name</div>
+                            <div className="p-3 border-r border-blue-400">Native Name</div>
+                            <div className="p-3 border-r border-blue-400">ISO Code</div>
+                          </>
+                        ) : selectedMaster === "020" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Country Name</div>
+                          </>
+                        ) : selectedMaster === "021" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Name</div>
+                            <div className="p-3 border-r border-blue-400">Country</div>
+                            <div className="p-3 border-r border-blue-400">Email</div>
+                          </>
+                        ) : selectedMaster === "022" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Name</div>
+                          </>
+                        ) : selectedMaster === "023" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Name</div>
+                          </>
+                        ) : selectedMaster === "024" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">User Name</div>
+                            <div className="p-3 border-r border-blue-400">Role</div>
+                            <div className="p-3 border-r border-blue-400">Designation</div>
+                            <div className="p-3 border-r border-blue-400">User Type</div>
+                            <div className="p-3 border-r border-blue-400">Department</div>
+                            <div className="p-3 border-r border-blue-400">Email</div>
+                          </>
+                        ) : selectedMaster === "012" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Designation</div>
+                            <div className="p-3 border-r border-blue-400">Department</div>
+                          </>
+                        ) : selectedMaster === "013" ? (
+                          <>
+                            <div className="p-3 border-r border-blue-400">First Name</div>
+                            <div className="p-3 border-r border-blue-400">Last Name</div>
+                            <div className="p-3 border-r border-blue-400">Designation</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="p-3 border-r border-blue-400">Name</div>
+                            <div className="p-3 border-r border-blue-400">Description</div>
+                          </>
+                        )}
+                        <div className="p-3 text-center">Actions</div>
+                      </div>
+                    </div>
+                    <div className={`${currentBreakpoint === 'mobile' ? 'max-h-64' : 'h-[500px]'} overflow-y-auto ${selectedMaster === "013" ? 'users-master-grid-container' : ''}`}>
+                      {masterDataLoading ? (
+                        <div className="p-3 text-xs text-gray-500">Loading master data...</div>
+                      ) : masterDataError ? (
+                        <div className="p-3 text-xs text-red-500">Error loading master data</div>
+                      ) : selectedMaster === "001" ? (
+                        // Special handling for Nationality Master (001) - Use external API data
+                        nationalityLoading ? (
+                          <div className="p-3 text-xs text-gray-500">Loading nationalities...</div>
+                        ) : nationalityError ? (
+                          <div className="p-3 text-xs text-red-500">Error loading nationalities: {(nationalityError as Error).message}</div>
+                        ) : nationalityData && nationalityData.length > 0 ? (
+                          nationalityData.map((item: any, index: number) => (
+                            <div
+                              key={item.id || item.country || `nationality-${index}`}
+                              className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                            >
+                              {/* Column 1: Entry ID */}
+                              <div className="p-3 border-r border-gray-200">
                                 <span className="text-xs text-gray-700">
-                                  {(() => {
-                                    const designation = (designationData as any[])?.find((d: any) => d.entryId === item.designationId || d.id === item.designationId);
-                                    return designation?.name || <em className="text-gray-400">No designation</em>;
-                                  })()}
+                                  {item.natUuid || <em className="text-gray-400">No entry ID</em>}
                                 </span>
-                              )}
+                              </div>
+
+                              {/* Column 2: Nationality Name */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.nationality || <em className="text-gray-400">No nationality</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 3: Country Name */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.countryName || <em className="text-gray-400">No country name</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 4: Actions - External data (read-only) */}
+                              <div className="p-3 flex justify-center">
+                                <span className="text-xs text-gray-400">External</span>
+                              </div>
                             </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-xs text-gray-500">No nationalities found</div>
+                        )
+                      ) : selectedMaster === "004" ? (
+                        // Special handling for Vessel Type Master (004) - Use external API data
+                        vesselTypeLoading ? (
+                          <div className="p-3 text-xs text-gray-500">Loading vessel types...</div>
+                        ) : vesselTypeError ? (
+                          <div className="p-3 text-xs text-red-500">Error loading vessel types: {(vesselTypeError as Error).message}</div>
+                        ) : vesselTypeData && vesselTypeData.length > 0 ? (
+                          vesselTypeData.map((item: any, index: number) => (
+                            <div
+                              key={item.vtuid || item.id || `vessel-type-${index}`}
+                              className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                            >
+                              {/* Column 1: Entry ID */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.vtUuid || <em className="text-gray-400">No entry ID</em>}
+                                </span>
+                              </div>
 
-                            {/* Column 5: Actions (delete button) */}
-                            <div className="p-3 flex justify-center">
-                              <button
-                                className={`transition-colors ${
-                                  isMasterInEditMode 
-                                    ? "text-gray-500 hover:text-red-500" 
-                                    : "text-gray-300 cursor-not-allowed"
-                                }`}
-                                onClick={() => deleteMasterEntry(item.id)}
-                                disabled={!isMasterInEditMode}
-                                data-testid={`delete-button-${item.id}`}
-                              >
-                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
+                              {/* Column 2: Vessel Type Name */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.vesselType || item.name || <em className="text-gray-400">No vessel type</em>}
+                                </span>
+                              </div>
 
-                      // Special handling for Manning Agents Master (021) - 5 columns: Entry ID, Name, Country, Email, Actions
-                      if (selectedMaster === "021") {
-                        return (
-                          <div key={item.id} className={`grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50 ${
-                            isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
-                          }`}>
-                            {/* Column 1: Entry ID */}
-                            <div className="p-3 border-r border-gray-200">
-                              <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
-                            </div>
-
-                            {/* Column 2: Name - Using StableInput to prevent value loss during re-renders */}
-                            <div className="p-3 border-r border-gray-200">
-                              {isMasterInEditMode ? (
-                                <StableInput
-                                  value={getEffectiveValue(item.id, 'name', item.name)}
-                                  onChange={(value) => updateMasterField(item.id, 'name', value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter agent name..." : ""}
-                                  data-testid={`input-manning-agent-name-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
-                              )}
-                            </div>
-
-                            {/* Column 3: Country - Using StableInput to prevent value loss during re-renders */}
-                            <div className="p-3 border-r border-gray-200">
-                              {isMasterInEditMode ? (
-                                <StableInput
-                                  value={getEffectiveValue(item.id, 'country', item.country)}
-                                  onChange={(value) => updateMasterField(item.id, 'country', value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter country..." : ""}
-                                  data-testid={`input-manning-agent-country-${item.id}`}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.country || <em className="text-gray-400">No country</em>}</span>
-                              )}
-                            </div>
-
-                            {/* Column 4: Email - Using StableInput to prevent value loss during re-renders */}
-                            <div className="p-3 border-r border-gray-200">
-                              {isMasterInEditMode ? (
-                                <StableInput
-                                  value={getEffectiveValue(item.id, 'email', item.email)}
-                                  onChange={(value) => updateMasterField(item.id, 'email', value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter email..." : ""}
-                                  data-testid={`input-manning-agent-email-${item.id}`}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.email || <em className="text-gray-400">No email</em>}</span>
-                              )}
-                            </div>
-
-                            {/* Column 5: Actions */}
-                            <div className="p-3 flex justify-center">
-                              <button
-                                className={`transition-colors ${
-                                  isMasterInEditMode 
-                                    ? "text-gray-500 hover:text-red-500" 
-                                    : "text-gray-300 cursor-not-allowed"
-                                }`}
-                                onClick={() => deleteMasterEntry(item.id)}
-                                disabled={!isMasterInEditMode}
-                                data-testid={`delete-manning-agent-${item.id}`}
-                              >
-                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      // Special handling for Crew Pool Master (022) - 3 columns: Entry ID, Name, Actions
-                      if (selectedMaster === "022") {
-                        return (
-                          <div key={item.id} className={`grid grid-cols-3 gap-0 border-b border-gray-100 hover:bg-gray-50 ${
-                            isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
-                          }`}>
-                            {/* Column 1: Entry ID */}
-                            <div className="p-3 border-r border-gray-200">
-                              <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
-                            </div>
-
-                            {/* Column 2: Name - Using StableInput to prevent value loss during re-renders */}
-                            <div className="p-3 border-r border-gray-200">
-                              {isMasterInEditMode ? (
-                                <StableInput
-                                  value={getEffectiveValue(item.id, 'name', item.name)}
-                                  onChange={(value) => updateMasterField(item.id, 'name', value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter pool name..." : ""}
-                                  data-testid={`input-crew-pool-name-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
-                              )}
-                            </div>
-
-                            {/* Column 3: Actions */}
-                            <div className="p-3 flex justify-center">
-                              <button
-                                className={`transition-colors ${
-                                  isMasterInEditMode 
-                                    ? "text-gray-500 hover:text-red-500" 
-                                    : "text-gray-300 cursor-not-allowed"
-                                }`}
-                                onClick={() => deleteMasterEntry(item.id)}
-                                disabled={!isMasterInEditMode}
-                                data-testid={`delete-crew-pool-${item.id}`}
-                              >
-                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      // Special handling for Appraisal Type Master (023) - 3 columns: Entry ID, Name, Actions
-                      if (selectedMaster === "023") {
-                        return (
-                          <div key={item.id} className={`grid grid-cols-3 gap-0 border-b border-gray-100 hover:bg-gray-50 ${
-                            isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
-                          }`}>
-                            {/* Column 1: Entry ID */}
-                            <div className="p-3 border-r border-gray-200">
-                              <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
-                            </div>
-
-                            {/* Column 2: Name - Using StableInput to prevent value loss during re-renders */}
-                            <div className="p-3 border-r border-gray-200">
-                              {isMasterInEditMode ? (
-                                <StableInput
-                                  value={getEffectiveValue(item.id, 'name', item.name)}
-                                  onChange={(value) => updateMasterField(item.id, 'name', value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter appraisal type..." : ""}
-                                  data-testid={`input-appraisal-type-name-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
-                              )}
-                            </div>
-
-                            {/* Column 3: Actions */}
-                            <div className="p-3 flex justify-center">
-                              <button
-                                className={`transition-colors ${
-                                  isMasterInEditMode 
-                                    ? "text-gray-500 hover:text-red-500" 
-                                    : "text-gray-300 cursor-not-allowed"
-                                }`}
-                                onClick={() => deleteMasterEntry(item.id)}
-                                disabled={!isMasterInEditMode}
-                                data-testid={`delete-appraisal-type-${item.id}`}
-                              >
-                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      // Original logic for all other master types
-                      return (
-                        <div key={item.id} className={`grid ${selectedMaster === "014" ? 'grid-cols-5' : 'grid-cols-4'} gap-0 border-b border-gray-100 hover:bg-gray-50 ${
-                          isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
-                        }`}>
-                          <div className="p-3 border-r border-gray-200">
-                            <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
-                          </div>
-
-                          {/* Second column - conditional based on master type */}
-                          <div className="p-3 border-r border-gray-200">
-                            {selectedMaster === "001" ? (
-                              // Nationality master - show countryName field
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'countryName', item.countryName)}
-                                  onChange={(e) => updateMasterField(item.id, 'countryName', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter nationality..." : ""}
-                                  data-testid={`input-countryName-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.countryName || <em className="text-gray-400">No nationality</em>}</span>
-                              )
-                            ) : selectedMaster === "002" ? (
-                              // Country master - show name field (country name)
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'name', item.name)}
-                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter country..." : ""}
-                                  data-testid={`input-name-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No country</em>}</span>
-                              )
-                            ) : selectedMaster === "003" ? (
-                              // Language master - show name field (language name)
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'name', item.name)}
-                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter language..." : ""}
-                                  data-testid={`input-name-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No language</em>}</span>
-                              )
-                            ) : selectedMaster === "004" ? (
-                              // Vessel type master - show vesselType field
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'vesselType', item.vesselType)}
-                                  onChange={(e) => updateMasterField(item.id, 'vesselType', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter vessel type..." : ""}
-                                  data-testid={`input-vesselType-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.vesselType || <em className="text-gray-400">No vessel type</em>}</span>
-                              )
-                            ) : selectedMaster === "014" ? (
-                              // Vessel master - show vessel field
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'vessel', item.vessel)}
-                                  onChange={(e) => updateMasterField(item.id, 'vessel', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter vessel name..." : ""}
-                                  data-testid={`input-vessel-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.vessel || <em className="text-gray-400">No vessel</em>}</span>
-                              )
-                            ) : selectedMaster === "018" ? (
-                              // Port master - show portName field (port name) but save to 'name' (safe field)
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'name', item.portName)}
-                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter port name..." : ""}
-                                  data-testid={`input-portName-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.portName || <em className="text-gray-400">No port name</em>}</span>
-                              )
-                            ) : selectedMaster === "012" ? (
-                              // Designation master - show name field (designation name)
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'name', item.name)}
-                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter designation..." : ""}
-                                  data-testid={`input-name-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No designation</em>}</span>
-                              )
-                            ) : (
-                              // Other masters - show name field
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'name', item.name)}
-                                  onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter name..." : ""}
-                                  data-testid={`input-name-${item.id}`}
-                                  autoFocus={isNewEntry}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
-                              )
-                            )}
-                          </div>
-
-                          {/* Third column - conditional based on master type */}
-                          <div className="p-3 border-r border-gray-200">
-                            {selectedMaster === "001" ? (
-                              // Nationality master - show country field
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'country', item.country)}
-                                  onChange={(e) => updateMasterField(item.id, 'country', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter country..." : ""}
-                                  data-testid={`input-country-${item.id}`}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.country || <em className="text-gray-400">No country</em>}</span>
-                              )
-                            ) : selectedMaster === "002" ? (
-                              // Country master - show countryCode field (Country UN/LOCODE)
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'countryCode', item.countryCode)}
-                                  onChange={(e) => updateMasterField(item.id, 'countryCode', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter country code..." : ""}
-                                  data-testid={`input-countryCode-${item.id}`}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.countryCode || <em className="text-gray-400">No country code</em>}</span>
-                              )
-                            ) : selectedMaster === "003" ? (
-                              // Language master - show description field (ISO language code)
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'description', item.description)}
-                                  onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter ISO code..." : ""}
-                                  data-testid={`input-description-${item.id}`}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.description || <em className="text-gray-400">No language code</em>}</span>
-                              )
-                            ) : selectedMaster === "004" ? (
-                              // Vessel type master - show classification based on boolean flags
-                              isMasterInEditMode ? (
-                                <div className="grid grid-cols-3 gap-1 text-xs">
-                                  <label className="flex items-center space-x-1">
-                                    <Checkbox
-                                      checked={Boolean(getEffectiveValue(item.id, 'tanker', item.tanker))}
-                                      onCheckedChange={(checked) => updateMasterField(item.id, 'tanker', Boolean(checked))}
-                                      data-testid={`checkbox-tanker-${item.id}`}
-                                    />
-                                    <span>Tanker</span>
-                                  </label>
-                                  <label className="flex items-center space-x-1">
-                                    <Checkbox
-                                      checked={Boolean(getEffectiveValue(item.id, 'oilTanker', item.oilTanker))}
-                                      onCheckedChange={(checked) => updateMasterField(item.id, 'oilTanker', Boolean(checked))}
-                                      data-testid={`checkbox-oilTanker-${item.id}`}
-                                    />
-                                    <span>Oil Tanker</span>
-                                  </label>
-                                  <label className="flex items-center space-x-1">
-                                    <Checkbox
-                                      checked={Boolean(getEffectiveValue(item.id, 'gasTanker', item.gasTanker))}
-                                      onCheckedChange={(checked) => updateMasterField(item.id, 'gasTanker', Boolean(checked))}
-                                      data-testid={`checkbox-gasTanker-${item.id}`}
-                                    />
-                                    <span>Gas Tanker</span>
-                                  </label>
-                                  <label className="flex items-center space-x-1">
-                                    <Checkbox
-                                      checked={Boolean(getEffectiveValue(item.id, 'chemicalTanker', item.chemicalTanker))}
-                                      onCheckedChange={(checked) => updateMasterField(item.id, 'chemicalTanker', Boolean(checked))}
-                                      data-testid={`checkbox-chemicalTanker-${item.id}`}
-                                    />
-                                    <span>Chemical Tanker</span>
-                                  </label>
-                                  <label className="flex items-center space-x-1">
-                                    <Checkbox
-                                      checked={Boolean(getEffectiveValue(item.id, 'bulk', item.bulk))}
-                                      onCheckedChange={(checked) => updateMasterField(item.id, 'bulk', Boolean(checked))}
-                                      data-testid={`checkbox-bulk-${item.id}`}
-                                    />
-                                    <span>Dry</span>
-                                  </label>
-                                </div>
-                              ) : (
+                              {/* Column 3: Classification */}
+                              <div className="p-3 border-r border-gray-200">
                                 <span className="text-xs text-gray-700">
                                   {(() => {
                                     const classifications = [];
-                                    if (item.tanker) classifications.push('Tanker');
-                                    if (item.oilTanker) classifications.push('Oil');
-                                    if (item.gasTanker) classifications.push('Gas');
-                                    if (item.chemicalTanker) classifications.push('Chemical');
-                                    if (item.bulk) classifications.push('Bulk');
+                                    if (item.tanker === true || item.tanker === 1) classifications.push('Tanker');
+                                    if (item.oilTanker === true || item.oilTanker === 1) classifications.push('Oil');
+                                    if (item.gasTanker === true || item.gasTanker === 1) classifications.push('Gas');
+                                    if (item.chemicalTanker === true || item.chemicalTanker === 1) classifications.push('Chemical');
+                                    if (item.dry === true || item.dry === 1) classifications.push('Dry');
+                                    if (item.container === true || item.container === 1) classifications.push('Container');
+
                                     return classifications.length > 0 ? classifications.join(', ') : <em className="text-gray-400">No classification</em>;
                                   })()}
                                 </span>
-                              )
-                            ) : selectedMaster === "014" ? (
-                              // Vessel master - show imoNumber field
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'imoNumber', item.imoNumber)}
-                                  onChange={(e) => updateMasterField(item.id, 'imoNumber', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter IMO number..." : ""}
-                                  data-testid={`input-imoNumber-${item.id}`}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.imoNumber || <em className="text-gray-400">No IMO number</em>}</span>
-                              )
-                            ) : selectedMaster === "018" ? (
-                              // Port master - show portcode field (port code/UN LOCODE) but save to 'cid' (safe field)
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'cid', item.portcode)}
-                                  onChange={(e) => updateMasterField(item.id, 'cid', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter port code..." : ""}
-                                  data-testid={`input-portcode-${item.id}`}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.portcode || <em className="text-gray-400">No port code</em>}</span>
-                              )
-                            ) : (
-                              // Other masters - show description field
-                              isMasterInEditMode ? (
-                                <Input
-                                  value={getEffectiveValue(item.id, 'description', item.description)}
-                                  onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
-                                  className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
-                                  placeholder={isNewEntry ? "Enter description..." : ""}
-                                  data-testid={`input-description-${item.id}`}
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-700">{item.description || <em className="text-gray-400">No description</em>}</span>
-                              )
-                            )}
-                          </div>
+                              </div>
 
-                          {/* Fourth column - only for Vessel Master (014) */}
-                          {selectedMaster === "014" && (
-                            <div className="p-3 border-r border-gray-200">
-                              <Select 
-                                value={getEffectiveValue(item.id, 'vesselType', item.vesselType)} 
-                                onValueChange={(value) => updateMasterField(item.id, 'vesselType', value)}
-                              >
-                                <SelectTrigger className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300">
-                                  <SelectValue placeholder={isNewEntry ? "Select vessel type..." : "Select type"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {vesselTypeLoading ? (
-                                    <SelectItem value="loading" disabled>Loading vessel types...</SelectItem>
-                                  ) : (
-                                    (vesselTypeData as any[])
-                                      .filter((vesselType: any) => {
-                                        const value = vesselType.vesselType || vesselType.name || '';
-                                        return value.trim().length > 0;
-                                      })
-                                      .map((vesselType: any) => (
-                                        <SelectItem 
-                                          key={vesselType.id} 
-                                          value={vesselType.vesselType || vesselType.name || `fallback-${vesselType.id}`}
-                                          data-testid={`select-vesselType-option-${vesselType.id}`}
-                                        >
-                                          {vesselType.vesselType || vesselType.name || `Vessel Type ${vesselType.id}`}
-                                        </SelectItem>
-                                      ))
-                                  )}
-                                </SelectContent>
-                              </Select>
+                              {/* Column 4: Actions - External data (read-only) */}
+                              <div className="p-3 flex justify-center">
+                                <span className="text-xs text-gray-400">External</span>
+                              </div>
                             </div>
-                          )}
-
-                          <div className="p-3 flex justify-center">
-                            <button
-                              className={`transition-colors ${
-                                isMasterInEditMode 
-                                  ? "text-gray-500 hover:text-red-500" 
-                                  : "text-gray-300 cursor-not-allowed"
-                              }`}
-                              onClick={() => deleteMasterEntry(item.id)}
-                              disabled={!isMasterInEditMode}
-                              data-testid={`delete-button-${item.id}`}
+                          ))
+                        ) : (
+                          <div className="p-3 text-xs text-gray-500">No vessel types found</div>
+                        )
+                      ) : selectedMaster === "014" ? (
+                        // Vessel Master (014) - Use external vessel master data
+                        vesselMasterLoading ? (
+                          <div className="p-3 text-xs text-gray-500">Loading vessels...</div>
+                        ) : vesselMasterError ? (
+                          <div className="p-3 text-xs text-red-500">Error loading vessels: {(vesselMasterError as Error).message}</div>
+                        ) : vesselMasterData && vesselMasterData.length > 0 ? (
+                          vesselMasterData.map((item: any, index: number) => (
+                            <div
+                              key={item.vesselId || item.id || `vessel-${index}`}
+                              className="grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50"
                             >
-                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-                <div className="p-3 text-xs text-gray-500 bg-gray-50 border-t">
-                  Page {(masterData as any[]).length ? '1' : '0'} of {(masterData as any[]).length ? '1' : '0'}
-                </div>
+                              {/* Column 1: Entry ID */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.vesselUuid || <em className="text-gray-400">No entry ID</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 2: Vessel Name */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.vessel || <em className="text-gray-400">No vessel name</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 3: IMO Number */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.imoNumber || <em className="text-gray-400">No IMO number</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 4: Vessel Type */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.vesselType || item.vesselTypeId || <em className="text-gray-400">No vessel type</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 5: Actions - External data (read-only) */}
+                              <div className="p-3 flex justify-center">
+                                <span className="text-xs text-gray-400">External</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-xs text-gray-500">No vessels found</div>
+                        )
+                      ) : selectedMaster === "015" ? (
+                        // Special handling for Fleet Groups Master (015) - Use external API data
+                        fleetGroupsLoading ? (
+                          <div className="p-3 text-xs text-gray-500">Loading fleet groups...</div>
+                        ) : fleetGroupsError ? (
+                          <div className="p-3 text-xs text-red-500">Error loading fleet groups: {(fleetGroupsError as Error).message}</div>
+                        ) : fleetGroupsData && fleetGroupsData.length > 0 ? (
+                          fleetGroupsData.map((item: any, index: number) => (
+                            <div
+                              key={item.id || `fleet-group-${index}`}
+                              className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                            >
+                              {/* Column 1: Entry ID */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.fgUuid || <em className="text-gray-400">No entry ID</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 2: Fleet Group Name */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.name || <em className="text-gray-400">No name</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 3: Vessels */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.vessels || <em className="text-gray-400">No vessels</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 4: Actions - External data (read-only) */}
+                              <div className="p-3 flex justify-center">
+                                <span className="text-xs text-gray-400">External</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-xs text-gray-500">No fleet groups found</div>
+                        )
+                      ) : selectedMaster === "017" ? (
+                        // Special handling for Additional Groups Master (017) - Use external API data
+                        additionalGroupsLoading ? (
+                          <div className="p-3 text-xs text-gray-500">Loading additional groups...</div>
+                        ) : additionalGroupsError ? (
+                          <div className="p-3 text-xs text-red-500">Error loading additional groups: {(additionalGroupsError as Error).message}</div>
+                        ) : additionalGroupsData && additionalGroupsData.length > 0 ? (
+                          additionalGroupsData.map((item: any, index: number) => (
+                            <div
+                              key={item.id || `additional-group-${index}`}
+                              className="grid grid-cols-4 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                            >
+                              {/* Column 1: Entry ID */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.agUuid || <em className="text-gray-400">No entry ID</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 2: Group Name */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.name || <em className="text-gray-400">No group name</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 3: Vessels */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.vessels || <em className="text-gray-400">No vessels</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 4: Actions - External data (read-only) */}
+                              <div className="p-3 flex justify-center">
+                                <span className="text-xs text-gray-400">External</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-xs text-gray-500">No additional groups found</div>
+                        )
+                      ) : selectedMaster === "018" ? (
+                        // Special handling for Ports Master (018) - Use external API data
+                        portsLoading ? (
+                          <div className="p-3 text-xs text-gray-500">Loading ports...</div>
+                        ) : portsError ? (
+                          <div className="p-3 text-xs text-red-500">Error loading ports: {(portsError as Error).message}</div>
+                        ) : portsData && portsData.length > 0 ? (
+                          portsData.map((item: any, index: number) => (
+                            <div
+                              key={item.pid || item.id || `port-${index}`}
+                              className="grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                            >
+                              {/* Column 1: Entry ID */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.portUuid || <em className="text-gray-400">No entry ID</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 2: Port Name */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.name || <em className="text-gray-400">No port name</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 3: Country */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.country || <em className="text-gray-400">No country</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 4: Port Code/UNLOCODE */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.portcode || <em className="text-gray-400">No port code</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 5: Actions - External data (read-only) */}
+                              <div className="p-3 flex justify-center">
+                                <span className="text-xs text-gray-400">External</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-xs text-gray-500">No ports found</div>
+                        )
+                      ) : selectedMaster === "019" ? (
+                        // Special handling for Languages Master (019) - Use external API data
+                        languagesLoading ? (
+                          <div className="p-3 text-xs text-gray-500">Loading languages...</div>
+                        ) : languagesError ? (
+                          <div className="p-3 text-xs text-red-500">Error loading languages: {(languagesError as Error).message}</div>
+                        ) : languagesData && languagesData.length > 0 ? (
+                          languagesData.map((item: any, index: number) => (
+                            <div
+                              key={item.luid || item.id || `language-${index}`}
+                              className="grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                            >
+                              {/* Column 1: Entry ID */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.langUuid || <em className="text-gray-400">No entry ID</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 2: Language Name */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.languageName || <em className="text-gray-400">No language name</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 3: Native Name */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.nativeName || <em className="text-gray-400">No native name</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 4: ISO Code */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">
+                                  {item.isoCode || <em className="text-gray-400">No ISO code</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 5: Actions - External data (read-only) */}
+                              <div className="p-3 flex justify-center">
+                                <span className="text-xs text-gray-400">External</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-xs text-gray-500">No languages found</div>
+                        )
+                      ) : selectedMaster === "020" ? (
+                        // Special handling for Country Master (020) - Use external API data
+                        countriesLoading ? (
+                          <div className="p-3 text-xs text-gray-500">Loading countries...</div>
+                        ) : countriesError ? (
+                          <div className="p-3 text-xs text-red-500">Error loading countries: {(countriesError as Error).message}</div>
+                        ) : countriesData && countriesData.length > 0 ? (
+                          countriesData.map((item: any, index: number) => (
+                            <div
+                              key={item.cuid || item.id || `country-${index}`}
+                              className="grid grid-cols-3 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                              data-testid={`country-row-${item.cuid || index}`}
+                            >
+                              {/* Column 1: Entry ID */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700" data-testid={`country-entry-id-${item.countryUuid || index}`}>
+                                  {item.countryUuid || <em className="text-gray-400">No entry ID</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 2: Country Name */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700" data-testid={`country-name-${item.cuid || index}`}>
+                                  {item.countryName || item.name || <em className="text-gray-400">No country name</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 3: Actions - External data (read-only) */}
+                              <div className="p-3 flex justify-center">
+                                <span className="text-xs text-gray-400" data-testid={`country-action-${item.cuid || index}`}>External</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-xs text-gray-500">No countries found</div>
+                        )
+                      ) : selectedMaster === "024" ? (
+                        // Special handling for Users Master (024) - Use external API data from SAIL Audits
+                        externalUsersLoading ? (
+                          <div className="p-3 text-xs text-gray-500">Loading users...</div>
+                        ) : externalUsersError ? (
+                          <div className="p-3 text-xs text-red-500">Error loading users: {(externalUsersError as Error).message}</div>
+                        ) : externalUsersApiData && externalUsersApiData.length > 0 ? (
+                          externalUsersApiData.map((item: any, index: number) => (
+                            <div
+                              key={item.uuid || item.id || `user-${index}`}
+                              className="grid grid-cols-8 gap-0 border-b border-gray-100 hover:bg-gray-50"
+                              data-testid={`user-row-${item.uuid || index}`}
+                            >
+                              {/* Column 1: UUID */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700" data-testid={`user-uuid-${item.userUuid || index}`}>
+                                  {item.userUuid || <em className="text-gray-400">No UUID</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 2: User Name - binds to fullname field */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700" data-testid={`user-name-${item.uuid || index}`}>
+                                  {item.fullname || <em className="text-gray-400">No user name</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 3: Role */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700" data-testid={`user-role-${item.uuid || index}`}>
+                                  {item.role || <em className="text-gray-400">No role</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 4: Designation */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700" data-testid={`user-designation-${item.uuid || index}`}>
+                                  {item.designation || <em className="text-gray-400">No designation</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 5: User Type */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700" data-testid={`user-type-${item.uuid || index}`}>
+                                  {item.userType || item.type || <em className="text-gray-400">No user type</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 6: Department */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700" data-testid={`user-department-${item.uuid || index}`}>
+                                  {item.department || <em className="text-gray-400">No department</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 7: Email */}
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700" data-testid={`user-email-${item.uuid || index}`}>
+                                  {item.email || <em className="text-gray-400">No email</em>}
+                                </span>
+                              </div>
+
+                              {/* Column 8: Actions - External data (read-only) */}
+                              <div className="p-3 flex justify-center">
+                                <span className="text-xs text-gray-400" data-testid={`user-action-${item.uuid || index}`}>External</span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-xs text-gray-500">No users found</div>
+                        )
+                      ) : (
+                        (masterData as any[]).map((item: any) => {
+                          // Different logic for identifying new entries based on master type
+                          const isNewEntry = selectedMaster === "001"
+                            ? !item.countryName && !item.country  // For nationality master
+                            : selectedMaster === "002"
+                              ? !item.name && !item.countryCode     // For country master
+                              : selectedMaster === "003"
+                                ? !item.name && !item.description     // For language master
+                                : selectedMaster === "004"
+                                  ? !item.vesselType && !item.vtuid     // For vessel type master
+                                  : selectedMaster === "014"
+                                    ? !item.vessel && !item.imoNumber && !item.vesselType    // For vessel master
+                                    : selectedMaster === "018"
+                                      ? !item.portName && !item.portcode     // For port master (port name and port code)
+                                      : selectedMaster === "021"
+                                        ? !item.name && !item.country && !item.email    // For manning agents master
+                                        : selectedMaster === "022"
+                                          ? !item.name    // For crew pool master (only name field)
+                                          : selectedMaster === "023"
+                                            ? !item.name    // For appraisal type master (only name field)
+                                            : !item.name && !item.description;   // For other masters
+
+                          // Special handling for Users Master (013) - Always render exactly 5 columns
+                          if (selectedMaster === "013") {
+                            return (
+                              <div key={item.id} className={`${USERS_MASTER_GRID_CLASSES} border-b border-gray-100 hover:bg-gray-50 ${isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
+                                } users-master-grid-row`}>
+                                {/* Column 1: Entry ID (always rendered) */}
+                                <div className="p-3 border-r border-gray-200">
+                                  <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
+                                </div>
+
+                                {/* Column 2: First Name (firstname field) */}
+                                <div className="p-3 border-r border-gray-200">
+                                  {isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'firstname', item.firstname)}
+                                      onChange={(e) => updateMasterField(item.id, 'firstname', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter first name..." : ""}
+                                      data-testid={`input-firstname-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.firstname || <em className="text-gray-400">No first name</em>}</span>
+                                  )}
+                                </div>
+
+                                {/* Column 3: Last Name (lastname field) */}
+                                <div className="p-3 border-r border-gray-200">
+                                  {isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'lastname', item.lastname)}
+                                      onChange={(e) => updateMasterField(item.id, 'lastname', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter last name..." : ""}
+                                      data-testid={`input-lastname-${item.id}`}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.lastname || <em className="text-gray-400">No last name</em>}</span>
+                                  )}
+                                </div>
+
+                                {/* Column 4: Designation (designation dropdown) */}
+                                <div className="p-3 border-r border-gray-200">
+                                  {isMasterInEditMode ? (
+                                    <Select
+                                      value={getEffectiveValue(item.id, 'designationId', item.designationId)}
+                                      onValueChange={(value) => updateMasterField(item.id, 'designationId', value)}
+                                    >
+                                      <SelectTrigger className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300">
+                                        <SelectValue placeholder={isNewEntry ? "Select designation..." : "Select designation"} />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {designationLoading ? (
+                                          <SelectItem value="loading" disabled>Loading designations...</SelectItem>
+                                        ) : (
+                                          (designationData as any[])
+                                            .filter((designation: any) => {
+                                              const value = designation.name || '';
+                                              return value.trim().length > 0;
+                                            })
+                                            .map((designation: any) => (
+                                              <SelectItem
+                                                key={designation.id}
+                                                value={designation.entryId || designation.id}
+                                                data-testid={`select-designation-option-${designation.id}`}
+                                              >
+                                                {designation.name || `Designation ${designation.id}`}
+                                              </SelectItem>
+                                            ))
+                                        )}
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <span className="text-xs text-gray-700">
+                                      {(() => {
+                                        const designation = (designationData as any[])?.find((d: any) => d.entryId === item.designationId || d.id === item.designationId);
+                                        return designation?.name || <em className="text-gray-400">No designation</em>;
+                                      })()}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Column 5: Actions (delete button) */}
+                                <div className="p-3 flex justify-center">
+                                  <button
+                                    className={`transition-colors ${isMasterInEditMode
+                                        ? "text-gray-500 hover:text-red-500"
+                                        : "text-gray-300 cursor-not-allowed"
+                                      }`}
+                                    onClick={() => deleteMasterEntry(item.id)}
+                                    disabled={!isMasterInEditMode}
+                                    data-testid={`delete-button-${item.id}`}
+                                  >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Special handling for Manning Agents Master (021) - 5 columns: Entry ID, Name, Country, Email, Actions
+                          if (selectedMaster === "021") {
+                            return (
+                              <div key={item.id} className={`grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50 ${isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
+                                }`}>
+                                {/* Column 1: Entry ID */}
+                                <div className="p-3 border-r border-gray-200">
+                                  <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
+                                </div>
+
+                                {/* Column 2: Name - Using StableInput to prevent value loss during re-renders */}
+                                <div className="p-3 border-r border-gray-200">
+                                  {isMasterInEditMode ? (
+                                    <StableInput
+                                      value={getEffectiveValue(item.id, 'name', item.name)}
+                                      onChange={(value) => updateMasterField(item.id, 'name', value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter agent name..." : ""}
+                                      data-testid={`input-manning-agent-name-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
+                                  )}
+                                </div>
+
+                                {/* Column 3: Country - Using StableInput to prevent value loss during re-renders */}
+                                <div className="p-3 border-r border-gray-200">
+                                  {isMasterInEditMode ? (
+                                    <StableInput
+                                      value={getEffectiveValue(item.id, 'country', item.country)}
+                                      onChange={(value) => updateMasterField(item.id, 'country', value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter country..." : ""}
+                                      data-testid={`input-manning-agent-country-${item.id}`}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.country || <em className="text-gray-400">No country</em>}</span>
+                                  )}
+                                </div>
+
+                                {/* Column 4: Email - Using StableInput to prevent value loss during re-renders */}
+                                <div className="p-3 border-r border-gray-200">
+                                  {isMasterInEditMode ? (
+                                    <StableInput
+                                      value={getEffectiveValue(item.id, 'email', item.email)}
+                                      onChange={(value) => updateMasterField(item.id, 'email', value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter email..." : ""}
+                                      data-testid={`input-manning-agent-email-${item.id}`}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.email || <em className="text-gray-400">No email</em>}</span>
+                                  )}
+                                </div>
+
+                                {/* Column 5: Actions */}
+                                <div className="p-3 flex justify-center">
+                                  <button
+                                    className={`transition-colors ${isMasterInEditMode
+                                        ? "text-gray-500 hover:text-red-500"
+                                        : "text-gray-300 cursor-not-allowed"
+                                      }`}
+                                    onClick={() => deleteMasterEntry(item.id)}
+                                    disabled={!isMasterInEditMode}
+                                    data-testid={`delete-manning-agent-${item.id}`}
+                                  >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Special handling for Crew Pool Master (022) - 3 columns: Entry ID, Name, Actions
+                          if (selectedMaster === "022") {
+                            return (
+                              <div key={item.id} className={`grid grid-cols-3 gap-0 border-b border-gray-100 hover:bg-gray-50 ${isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
+                                }`}>
+                                {/* Column 1: Entry ID */}
+                                <div className="p-3 border-r border-gray-200">
+                                  <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
+                                </div>
+
+                                {/* Column 2: Name - Using StableInput to prevent value loss during re-renders */}
+                                <div className="p-3 border-r border-gray-200">
+                                  {isMasterInEditMode ? (
+                                    <StableInput
+                                      value={getEffectiveValue(item.id, 'name', item.name)}
+                                      onChange={(value) => updateMasterField(item.id, 'name', value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter pool name..." : ""}
+                                      data-testid={`input-crew-pool-name-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
+                                  )}
+                                </div>
+
+                                {/* Column 3: Actions */}
+                                <div className="p-3 flex justify-center">
+                                  <button
+                                    className={`transition-colors ${isMasterInEditMode
+                                        ? "text-gray-500 hover:text-red-500"
+                                        : "text-gray-300 cursor-not-allowed"
+                                      }`}
+                                    onClick={() => deleteMasterEntry(item.id)}
+                                    disabled={!isMasterInEditMode}
+                                    data-testid={`delete-crew-pool-${item.id}`}
+                                  >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Special handling for Appraisal Type Master (023) - 3 columns: Entry ID, Name, Actions
+                          if (selectedMaster === "023") {
+                            return (
+                              <div key={item.id} className={`grid grid-cols-3 gap-0 border-b border-gray-100 hover:bg-gray-50 ${isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
+                                }`}>
+                                {/* Column 1: Entry ID */}
+                                <div className="p-3 border-r border-gray-200">
+                                  <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
+                                </div>
+
+                                {/* Column 2: Name - Using StableInput to prevent value loss during re-renders */}
+                                <div className="p-3 border-r border-gray-200">
+                                  {isMasterInEditMode ? (
+                                    <StableInput
+                                      value={getEffectiveValue(item.id, 'name', item.name)}
+                                      onChange={(value) => updateMasterField(item.id, 'name', value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter appraisal type..." : ""}
+                                      data-testid={`input-appraisal-type-name-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
+                                  )}
+                                </div>
+
+                                {/* Column 3: Actions */}
+                                <div className="p-3 flex justify-center">
+                                  <button
+                                    className={`transition-colors ${isMasterInEditMode
+                                        ? "text-gray-500 hover:text-red-500"
+                                        : "text-gray-300 cursor-not-allowed"
+                                      }`}
+                                    onClick={() => deleteMasterEntry(item.id)}
+                                    disabled={!isMasterInEditMode}
+                                    data-testid={`delete-appraisal-type-${item.id}`}
+                                  >
+                                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Original logic for all other master types
+                          return (
+                            <div key={item.id} className={`grid ${selectedMaster === "014" ? 'grid-cols-5' : 'grid-cols-4'} gap-0 border-b border-gray-100 hover:bg-gray-50 ${isNewEntry && isMasterInEditMode ? 'bg-blue-50 border-blue-200' : ''
+                              }`}>
+                              <div className="p-3 border-r border-gray-200">
+                                <span className="text-xs text-gray-700">{item.entryId || item.entry_id || <em className="text-gray-400">No entry ID</em>}</span>
+                              </div>
+
+                              {/* Second column - conditional based on master type */}
+                              <div className="p-3 border-r border-gray-200">
+                                {selectedMaster === "001" ? (
+                                  // Nationality master - show countryName field
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'countryName', item.countryName)}
+                                      onChange={(e) => updateMasterField(item.id, 'countryName', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter nationality..." : ""}
+                                      data-testid={`input-countryName-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.countryName || <em className="text-gray-400">No nationality</em>}</span>
+                                  )
+                                ) : selectedMaster === "002" ? (
+                                  // Country master - show name field (country name)
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'name', item.name)}
+                                      onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter country..." : ""}
+                                      data-testid={`input-name-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No country</em>}</span>
+                                  )
+                                ) : selectedMaster === "003" ? (
+                                  // Language master - show name field (language name)
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'name', item.name)}
+                                      onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter language..." : ""}
+                                      data-testid={`input-name-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No language</em>}</span>
+                                  )
+                                ) : selectedMaster === "004" ? (
+                                  // Vessel type master - show vesselType field
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'vesselType', item.vesselType)}
+                                      onChange={(e) => updateMasterField(item.id, 'vesselType', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter vessel type..." : ""}
+                                      data-testid={`input-vesselType-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.vesselType || <em className="text-gray-400">No vessel type</em>}</span>
+                                  )
+                                ) : selectedMaster === "014" ? (
+                                  // Vessel master - show vessel field
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'vessel', item.vessel)}
+                                      onChange={(e) => updateMasterField(item.id, 'vessel', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter vessel name..." : ""}
+                                      data-testid={`input-vessel-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.vessel || <em className="text-gray-400">No vessel</em>}</span>
+                                  )
+                                ) : selectedMaster === "018" ? (
+                                  // Port master - show portName field (port name) but save to 'name' (safe field)
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'name', item.portName)}
+                                      onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter port name..." : ""}
+                                      data-testid={`input-portName-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.portName || <em className="text-gray-400">No port name</em>}</span>
+                                  )
+                                ) : selectedMaster === "012" ? (
+                                  // Designation master - show name field (designation name)
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'name', item.name)}
+                                      onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter designation..." : ""}
+                                      data-testid={`input-name-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No designation</em>}</span>
+                                  )
+                                ) : (
+                                  // Other masters - show name field
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'name', item.name)}
+                                      onChange={(e) => updateMasterField(item.id, 'name', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter name..." : ""}
+                                      data-testid={`input-name-${item.id}`}
+                                      autoFocus={isNewEntry}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.name || <em className="text-gray-400">No name</em>}</span>
+                                  )
+                                )}
+                              </div>
+
+                              {/* Third column - conditional based on master type */}
+                              <div className="p-3 border-r border-gray-200">
+                                {selectedMaster === "001" ? (
+                                  // Nationality master - show country field
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'country', item.country)}
+                                      onChange={(e) => updateMasterField(item.id, 'country', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter country..." : ""}
+                                      data-testid={`input-country-${item.id}`}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.country || <em className="text-gray-400">No country</em>}</span>
+                                  )
+                                ) : selectedMaster === "002" ? (
+                                  // Country master - show countryCode field (Country UN/LOCODE)
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'countryCode', item.countryCode)}
+                                      onChange={(e) => updateMasterField(item.id, 'countryCode', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter country code..." : ""}
+                                      data-testid={`input-countryCode-${item.id}`}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.countryCode || <em className="text-gray-400">No country code</em>}</span>
+                                  )
+                                ) : selectedMaster === "003" ? (
+                                  // Language master - show description field (ISO language code)
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'description', item.description)}
+                                      onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter ISO code..." : ""}
+                                      data-testid={`input-description-${item.id}`}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.description || <em className="text-gray-400">No language code</em>}</span>
+                                  )
+                                ) : selectedMaster === "004" ? (
+                                  // Vessel type master - show classification based on boolean flags
+                                  isMasterInEditMode ? (
+                                    <div className="grid grid-cols-3 gap-1 text-xs">
+                                      <label className="flex items-center space-x-1">
+                                        <Checkbox
+                                          checked={Boolean(getEffectiveValue(item.id, 'tanker', item.tanker))}
+                                          onCheckedChange={(checked) => updateMasterField(item.id, 'tanker', Boolean(checked))}
+                                          data-testid={`checkbox-tanker-${item.id}`}
+                                        />
+                                        <span>Tanker</span>
+                                      </label>
+                                      <label className="flex items-center space-x-1">
+                                        <Checkbox
+                                          checked={Boolean(getEffectiveValue(item.id, 'oilTanker', item.oilTanker))}
+                                          onCheckedChange={(checked) => updateMasterField(item.id, 'oilTanker', Boolean(checked))}
+                                          data-testid={`checkbox-oilTanker-${item.id}`}
+                                        />
+                                        <span>Oil Tanker</span>
+                                      </label>
+                                      <label className="flex items-center space-x-1">
+                                        <Checkbox
+                                          checked={Boolean(getEffectiveValue(item.id, 'gasTanker', item.gasTanker))}
+                                          onCheckedChange={(checked) => updateMasterField(item.id, 'gasTanker', Boolean(checked))}
+                                          data-testid={`checkbox-gasTanker-${item.id}`}
+                                        />
+                                        <span>Gas Tanker</span>
+                                      </label>
+                                      <label className="flex items-center space-x-1">
+                                        <Checkbox
+                                          checked={Boolean(getEffectiveValue(item.id, 'chemicalTanker', item.chemicalTanker))}
+                                          onCheckedChange={(checked) => updateMasterField(item.id, 'chemicalTanker', Boolean(checked))}
+                                          data-testid={`checkbox-chemicalTanker-${item.id}`}
+                                        />
+                                        <span>Chemical Tanker</span>
+                                      </label>
+                                      <label className="flex items-center space-x-1">
+                                        <Checkbox
+                                          checked={Boolean(getEffectiveValue(item.id, 'bulk', item.bulk))}
+                                          onCheckedChange={(checked) => updateMasterField(item.id, 'bulk', Boolean(checked))}
+                                          data-testid={`checkbox-bulk-${item.id}`}
+                                        />
+                                        <span>Dry</span>
+                                      </label>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-gray-700">
+                                      {(() => {
+                                        const classifications = [];
+                                        if (item.tanker) classifications.push('Tanker');
+                                        if (item.oilTanker) classifications.push('Oil');
+                                        if (item.gasTanker) classifications.push('Gas');
+                                        if (item.chemicalTanker) classifications.push('Chemical');
+                                        if (item.bulk) classifications.push('Bulk');
+                                        return classifications.length > 0 ? classifications.join(', ') : <em className="text-gray-400">No classification</em>;
+                                      })()}
+                                    </span>
+                                  )
+                                ) : selectedMaster === "014" ? (
+                                  // Vessel master - show imoNumber field
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'imoNumber', item.imoNumber)}
+                                      onChange={(e) => updateMasterField(item.id, 'imoNumber', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter IMO number..." : ""}
+                                      data-testid={`input-imoNumber-${item.id}`}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.imoNumber || <em className="text-gray-400">No IMO number</em>}</span>
+                                  )
+                                ) : selectedMaster === "018" ? (
+                                  // Port master - show portcode field (port code/UN LOCODE) but save to 'cid' (safe field)
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'cid', item.portcode)}
+                                      onChange={(e) => updateMasterField(item.id, 'cid', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter port code..." : ""}
+                                      data-testid={`input-portcode-${item.id}`}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.portcode || <em className="text-gray-400">No port code</em>}</span>
+                                  )
+                                ) : (
+                                  // Other masters - show description field
+                                  isMasterInEditMode ? (
+                                    <Input
+                                      value={getEffectiveValue(item.id, 'description', item.description)}
+                                      onChange={(e) => updateMasterField(item.id, 'description', e.target.value)}
+                                      className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300"
+                                      placeholder={isNewEntry ? "Enter description..." : ""}
+                                      data-testid={`input-description-${item.id}`}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-700">{item.description || <em className="text-gray-400">No description</em>}</span>
+                                  )
+                                )}
+                              </div>
+
+                              {/* Fourth column - only for Vessel Master (014) */}
+                              {selectedMaster === "014" && (
+                                <div className="p-3 border-r border-gray-200">
+                                  <Select
+                                    value={getEffectiveValue(item.id, 'vesselType', item.vesselType)}
+                                    onValueChange={(value) => updateMasterField(item.id, 'vesselType', value)}
+                                  >
+                                    <SelectTrigger className="h-6 text-xs border-0 p-0 bg-transparent focus:bg-white focus:border focus:border-blue-300">
+                                      <SelectValue placeholder={isNewEntry ? "Select vessel type..." : "Select type"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {vesselTypeLoading ? (
+                                        <SelectItem value="loading" disabled>Loading vessel types...</SelectItem>
+                                      ) : (
+                                        (vesselTypeData as any[])
+                                          .filter((vesselType: any) => {
+                                            const value = vesselType.vesselType || vesselType.name || '';
+                                            return value.trim().length > 0;
+                                          })
+                                          .map((vesselType: any) => (
+                                            <SelectItem
+                                              key={vesselType.id}
+                                              value={vesselType.vesselType || vesselType.name || `fallback-${vesselType.id}`}
+                                              data-testid={`select-vesselType-option-${vesselType.id}`}
+                                            >
+                                              {vesselType.vesselType || vesselType.name || `Vessel Type ${vesselType.id}`}
+                                            </SelectItem>
+                                          ))
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+
+                              <div className="p-3 flex justify-center">
+                                <button
+                                  className={`transition-colors ${isMasterInEditMode
+                                      ? "text-gray-500 hover:text-red-500"
+                                      : "text-gray-300 cursor-not-allowed"
+                                    }`}
+                                  onClick={() => deleteMasterEntry(item.id)}
+                                  disabled={!isMasterInEditMode}
+                                  data-testid={`delete-button-${item.id}`}
+                                >
+                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                    <div className="p-3 text-xs text-gray-500 bg-gray-50 border-t">
+                      Page {(masterData as any[]).length ? '1' : '0'} of {(masterData as any[]).length ? '1' : '0'}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>
@@ -8299,155 +8300,155 @@ const AdminModuleInner = (): JSX.Element => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <ScrollArea className="h-[500px] w-full">
                 <Table className="bg-white rounded-lg shadow-md overflow-hidden">
-              <TableHeader>
-                <TableRow className="bg-[#52baf3]">
-                  <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
-                    Form
-                  </TableHead>
-                  <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
-                    Rank Group
-                  </TableHead>
-                  <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
-                    Version No
-                  </TableHead>
-                  <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
-                    Version Date
-                  </TableHead>
-                  <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="bg-white">
-                {expandedFormsData.map((form) => (
-                  <TableRow key={form.id} className="border-b border-gray-200 bg-white hover:bg-gray-50">
-                    {form.isFirstInGroup && (
-                      <TableCell 
-                        rowSpan={form.groupSize}
-                        className="text-[#4f5863] text-xs font-semibold py-3 border-r border-gray-200 bg-[#ffffff]"
-                      >
-                        <div className="relative flex items-center gap-3 pr-12">
-                          <span className="truncate min-w-0">{form.name}</span>
-                          {form.category !== 'promotion' && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <label className="ml-auto mr-2 flex items-center gap-1.5 text-[11px] font-normal text-[#4f5863] cursor-pointer whitespace-nowrap shrink-0">
-                                    <Checkbox
-                                      checked={!!(formsData as any[]).find(f => f.id === form.originalFormId)?.isLockForm}
-                                      disabled={updateFormLockMutation.isPending || (permissions.length > 0 && !canEdit("Forms"))}
-                                      onCheckedChange={(checked) => {
-                                        updateFormLockMutation.mutate({
-                                          formId: form.originalFormId,
-                                          isLockForm: checked === true,
-                                        });
-                                      }}
-                                      data-testid={`checkbox-lock-form-${form.originalFormId}`}
-                                    />
-                                    <span>Lock Form Feature</span>
-                                  </label>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom" className="max-w-xs">
-                                  <p>Locks Stage 1 fields after submission and Stage 2 fields after review. Applies to all rank groups under this form.</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                          {(permissions.length === 0 || canCreate("Forms")) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
-                            onClick={() => handleAddRankGroup(form.name)}
+                  <TableHeader>
+                    <TableRow className="bg-[#52baf3]">
+                      <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
+                        Form
+                      </TableHead>
+                      <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
+                        Rank Group
+                      </TableHead>
+                      <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
+                        Version No
+                      </TableHead>
+                      <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3] shadow-sm">
+                        Version Date
+                      </TableHead>
+                      <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3] shadow-sm">
+                        Actions
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="bg-white">
+                    {expandedFormsData.map((form) => (
+                      <TableRow key={form.id} className="border-b border-gray-200 bg-white hover:bg-gray-50">
+                        {form.isFirstInGroup && (
+                          <TableCell
+                            rowSpan={form.groupSize}
+                            className="text-[#4f5863] text-xs font-semibold py-3 border-r border-gray-200 bg-[#ffffff]"
                           >
-                            <Plus className="h-4 w-4 text-gray-500" />
-                          </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    )}
-                    <TableCell className="text-[#4f5863] text-xs font-normal pl-6">
-                      <div className="flex items-center justify-between gap-2">
-                        {form.isPlaceholderRow ? (
-                          <span className="text-gray-400 text-xs italic">No active rank groups</span>
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-2">
-                              <span>{form.rankGroup}</span>
+                            <div className="relative flex items-center gap-3 pr-12">
+                              <span className="truncate min-w-0">{form.name}</span>
+                              {(
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <label className="ml-auto mr-2 flex items-center gap-1.5 text-[11px] font-normal text-[#4f5863] cursor-pointer whitespace-nowrap shrink-0">
+                                        <Checkbox
+                                          checked={!!(formsData as any[]).find(f => f.id === form.originalFormId)?.isLockForm}
+                                          disabled={updateFormLockMutation.isPending || (permissions.length > 0 && !canEdit("Forms"))}
+                                          onCheckedChange={(checked) => {
+                                            updateFormLockMutation.mutate({
+                                              formId: form.originalFormId,
+                                              isLockForm: checked === true,
+                                            });
+                                          }}
+                                          data-testid={`checkbox-lock-form-${form.originalFormId}`}
+                                        />
+                                        <span>Lock Form Feature</span>
+                                      </label>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="max-w-xs">
+                                      <p>Progressively locks each stage of the form after it is submitted/approved. Applies to all rank groups under this form.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                              {(permissions.length === 0 || canCreate("Forms")) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+                                  onClick={() => handleAddRankGroup(form.name)}
+                                >
+                                  <Plus className="h-4 w-4 text-gray-500" />
+                                </Button>
+                              )}
                             </div>
-                            <div className="flex items-center gap-1">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      onClick={() => handleEditRankGroup(form.rankGroup, form.originalFormId)}
-                                      data-testid={`button-view-rankgroup-${form.id}`}
-                                    >
-                                      <Eye className="h-4 w-4 text-gray-500" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>View/Edit: {getRankGroupRanks(form.rankGroup, form.originalFormId)}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      onClick={() => handleArchiveRankGroup(form.rankGroup, form.originalFormId)}
-                                      data-testid={`button-archive-rankgroup-${form.id}`}
-                                    >
-                                      <Archive className="h-4 w-4 text-gray-500" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Archive Rank Group</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </div>
-                          </>
+                          </TableCell>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-[#4f5863] text-xs font-normal">
-                      <div className="flex items-center gap-2">
-                        <span>{form.versionNo}</span>
-                        {form.hasDraft && (
-                          <span
-                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200"
-                            data-testid={`badge-draft-${form.id}`}
-                          >
-                            Draft
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-[#4f5863] text-xs font-normal">
-                      {form.versionDate}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2 justify-center">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleEditClick(form)}
-                        >
-                          <EditIcon className="h-[18px] w-[18px] text-gray-500" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+                        <TableCell className="text-[#4f5863] text-xs font-normal pl-6">
+                          <div className="flex items-center justify-between gap-2">
+                            {form.isPlaceholderRow ? (
+                              <span className="text-gray-400 text-xs italic">No active rank groups</span>
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span>{form.rankGroup}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0"
+                                          onClick={() => handleEditRankGroup(form.rankGroup, form.originalFormId)}
+                                          data-testid={`button-view-rankgroup-${form.id}`}
+                                        >
+                                          <Eye className="h-4 w-4 text-gray-500" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>View/Edit: {getRankGroupRanks(form.rankGroup, form.originalFormId)}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0"
+                                          onClick={() => handleArchiveRankGroup(form.rankGroup, form.originalFormId)}
+                                          data-testid={`button-archive-rankgroup-${form.id}`}
+                                        >
+                                          <Archive className="h-4 w-4 text-gray-500" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Archive Rank Group</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-[#4f5863] text-xs font-normal">
+                          <div className="flex items-center gap-2">
+                            <span>{form.versionNo}</span>
+                            {form.hasDraft && (
+                              <span
+                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200"
+                                data-testid={`badge-draft-${form.id}`}
+                              >
+                                Draft
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-[#4f5863] text-xs font-normal">
+                          {form.versionDate}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2 justify-center">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleEditClick(form)}
+                            >
+                              <EditIcon className="h-[18px] w-[18px] text-gray-500" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
                 </Table>
               </ScrollArea>
             </div>
@@ -8466,9 +8467,9 @@ const AdminModuleInner = (): JSX.Element => {
 
   return (
     <>
-      <SideBarComponent 
-        selectedAdminPage={selectedAdminPage} 
-        setSelectedAdminPage={setSelectedAdminPage} 
+      <SideBarComponent
+        selectedAdminPage={selectedAdminPage}
+        setSelectedAdminPage={setSelectedAdminPage}
         allowedPages={adminAllowedPages}
         isMobileSidebarOpen={isMobileSidebarOpen}
         onCloseMobileSidebar={() => setIsMobileSidebarOpen(false)}
@@ -8486,12 +8487,18 @@ const AdminModuleInner = (): JSX.Element => {
             </button>
           </div>
         </div>
-        {selectedAdminPage === "forms" && renderFormsTable()}
-        {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
-        {selectedAdminPage === "masters" && renderDataMastersModule()}
-        {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
-        {selectedAdminPage === "access-control" && <AccessControlPage />}
-        {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
+        {(permissions.length > 0 && !adminAllowedPages.includes(selectedAdminPage)) ? (
+          <NoAccessPage menuName={adminPageToMenu[selectedAdminPage] || "Admin"} />
+        ) : (
+          <>
+            {selectedAdminPage === "forms" && renderFormsTable()}
+            {selectedAdminPage === "rank-admin" && renderRankAdminModule()}
+            {selectedAdminPage === "masters" && renderDataMastersModule()}
+            {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
+            {selectedAdminPage === "access-control" && <AccessControlPage />}
+            {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
+          </>
+        )}
         {selectedAdminPage === "users" && <UsersAdminPage />}
       </MainLayout>
 
@@ -8526,7 +8533,7 @@ const AdminModuleInner = (): JSX.Element => {
       )}
 
       {/* Add/Edit Rank Group Dialog */}
-      <AddRankGroupDialog 
+      <AddRankGroupDialog
         isOpen={isAddRankGroupOpen}
         onOpenChange={(open) => {
           setIsAddRankGroupOpen(open);
@@ -8544,8 +8551,8 @@ const AdminModuleInner = (): JSX.Element => {
       />
 
       {/* Archive Rank Group Confirmation Dialog */}
-      <AlertDialog 
-        open={archiveConfirmOpen} 
+      <AlertDialog
+        open={archiveConfirmOpen}
         onOpenChange={(open) => {
           setArchiveConfirmOpen(open);
           if (!open) {
@@ -8557,7 +8564,7 @@ const AdminModuleInner = (): JSX.Element => {
           <AlertDialogHeader>
             <AlertDialogTitle>Archive Rank Group</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to archive the rank group "{pendingArchiveRankGroup?.name}"? 
+              Are you sure you want to archive the rank group "{pendingArchiveRankGroup?.name}"?
               This will preserve historical data for older forms.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -8841,11 +8848,11 @@ const AdminModuleInner = (): JSX.Element => {
 };
 
 // Add/Edit Rank Group Dialog Component (moved outside to prevent re-creation on every render)
-const AddRankGroupDialog = ({ 
-  isOpen, 
-  onOpenChange, 
-  selectedFormForRankGroup, 
-  availableRanks, 
+const AddRankGroupDialog = ({
+  isOpen,
+  onOpenChange,
+  selectedFormForRankGroup,
+  availableRanks,
   createRankGroupMutation,
   updateRankGroupMutation,
   editingRankGroup,
@@ -8866,8 +8873,8 @@ const AddRankGroupDialog = ({
   const getInitialRanks = (): string[] => {
     if (!editingRankGroup) return [];
     try {
-      const parsed = typeof editingRankGroup.ranks === 'string' 
-        ? JSON.parse(editingRankGroup.ranks) 
+      const parsed = typeof editingRankGroup.ranks === 'string'
+        ? JSON.parse(editingRankGroup.ranks)
         : editingRankGroup.ranks;
       return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
@@ -8902,7 +8909,7 @@ const AddRankGroupDialog = ({
     queryKey: ['/api/v2/admin/rank-groups', 'form-conflicts', formId, editingRankGroup?.id],
     queryFn: async () => {
       if (!formId) return {};
-      const url = editingRankGroup?.id 
+      const url = editingRankGroup?.id
         ? `/api/v2/admin/rank-groups/form/${formId}/rank-conflicts?excludeGroupId=${editingRankGroup.id}`
         : `/api/v2/admin/rank-groups/form/${formId}/rank-conflicts`;
       const response = await fetch(url);
@@ -8973,7 +8980,7 @@ const AddRankGroupDialog = ({
             {isEditMode ? `Edit Rank Group: ${editingRankGroup?.name}` : `Add Rank Group to ${selectedFormForRankGroup}`}
           </DialogTitle>
           <DialogDescription>
-            {isEditMode 
+            {isEditMode
               ? `Modify the rank group configuration for ${getFormNameForDisplay()}.`
               : "Create a new rank group configuration for different appraisal requirements."
             }
@@ -9023,8 +9030,8 @@ const AddRankGroupDialog = ({
                             }}
                             data-testid={`checkbox-rank-${rank.id}`}
                           />
-                          <label 
-                            htmlFor={`rank-${rank.id}`} 
+                          <label
+                            htmlFor={`rank-${rank.id}`}
                             className={`text-sm flex-1 ${isDisabled ? 'text-muted-foreground' : ''}`}
                           >
                             {rankLabel}
@@ -9058,12 +9065,12 @@ const AddRankGroupDialog = ({
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                disabled={isEditMode ? updateRankGroupMutation.isPending : createRankGroupMutation.isPending} 
+              <Button
+                type="submit"
+                disabled={isEditMode ? updateRankGroupMutation.isPending : createRankGroupMutation.isPending}
                 data-testid="button-save-rank-group"
               >
-                {isEditMode 
+                {isEditMode
                   ? (updateRankGroupMutation.isPending ? "Saving..." : "Save Changes")
                   : (createRankGroupMutation.isPending ? "Adding..." : "Add Rank Group")
                 }
@@ -9137,10 +9144,10 @@ export const AdminModule_v2 = (): JSX.Element => {
       }
 
       // Create save promise
-      const promise = updateEntryMutation.mutateAsync({ 
-        id: entryId as number, 
-        data: processedChanges, 
-        masterId 
+      const promise = updateEntryMutation.mutateAsync({
+        id: entryId as number,
+        data: processedChanges,
+        masterId
       });
 
       promises.push(promise);
@@ -9149,11 +9156,11 @@ export const AdminModule_v2 = (): JSX.Element => {
     // Wait for all saves to complete
     await Promise.all(promises);
 
-    const successMessage = isVesselMasterSave 
+    const successMessage = isVesselMasterSave
       ? `Saved vessel data for ${changes.size} entries (safe mode)`
       : isPortMasterSave
-      ? `Saved port data for ${changes.size} entries (safe mode)`
-      : `Saved changes for ${changes.size} entries`;
+        ? `Saved port data for ${changes.size} entries (safe mode)`
+        : `Saved changes for ${changes.size} entries`;
 
     toast({
       title: "Success",

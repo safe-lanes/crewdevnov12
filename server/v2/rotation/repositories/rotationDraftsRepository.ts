@@ -98,13 +98,15 @@ export class RotationDraftVesselsRepository {
       .orderBy(rotationDraftVesselsV2.sortOrder);
   }
 
-  async create(data: Omit<InsertRotationDraftVesselsV2, "rvUuid">): Promise<RotationDraftVesselsV2> {
+  async create(data: Omit<InsertRotationDraftVesselsV2, "rvUuid">, auditUserUuid: string | null = null): Promise<RotationDraftVesselsV2> {
     const db = getDb();
     const results = await db
       .insert(rotationDraftVesselsV2)
       .values({
         ...data,
         rvUuid: uuidv4(),
+        createdByUuid: auditUserUuid,
+        updatedByUuid: auditUserUuid,
       })
       .returning();
     return results[0];
@@ -139,7 +141,7 @@ export class RotationDraftVesselsRepository {
       .orderBy(rotationDraftVesselsV2.sortOrder);
   }
 
-  async reactivate(rvUuid: string, data: Partial<InsertRotationDraftVesselsV2>): Promise<RotationDraftVesselsV2> {
+  async reactivate(rvUuid: string, data: Partial<InsertRotationDraftVesselsV2>, auditUserUuid: string | null = null): Promise<RotationDraftVesselsV2> {
     const db = getDb();
     const results = await db
       .update(rotationDraftVesselsV2)
@@ -147,30 +149,32 @@ export class RotationDraftVesselsRepository {
         ...data,
         isDeleted: false,
         updatedAt: new Date(),
+        updatedByUuid: auditUserUuid,
       })
       .where(eq(rotationDraftVesselsV2.rvUuid, rvUuid))
       .returning();
     return results[0];
   }
 
-  async update(rvUuid: string, data: Partial<InsertRotationDraftVesselsV2>): Promise<RotationDraftVesselsV2> {
+  async update(rvUuid: string, data: Partial<InsertRotationDraftVesselsV2>, auditUserUuid: string | null = null): Promise<RotationDraftVesselsV2> {
     const db = getDb();
     const results = await db
       .update(rotationDraftVesselsV2)
       .set({
         ...data,
         updatedAt: new Date(),
+        updatedByUuid: auditUserUuid,
       })
       .where(eq(rotationDraftVesselsV2.rvUuid, rvUuid))
       .returning();
     return results[0];
   }
 
-  async softDelete(rvUuid: string): Promise<void> {
+  async softDelete(rvUuid: string, auditUserUuid: string | null = null): Promise<void> {
     const db = getDb();
     await db
       .update(rotationDraftVesselsV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
+      .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
       .where(eq(rotationDraftVesselsV2.rvUuid, rvUuid));
   }
 
@@ -197,13 +201,15 @@ export class RotationDraftRanksRepository {
       .orderBy(rotationDraftRanksV2.sortOrder);
   }
 
-  async create(data: Omit<InsertRotationDraftRanksV2, "rrUuid">): Promise<RotationDraftRanksV2> {
+  async create(data: Omit<InsertRotationDraftRanksV2, "rrUuid">, auditUserUuid: string | null = null): Promise<RotationDraftRanksV2> {
     const db = getDb();
     const results = await db
       .insert(rotationDraftRanksV2)
       .values({
         ...data,
         rrUuid: uuidv4(),
+        createdByUuid: auditUserUuid,
+        updatedByUuid: auditUserUuid,
       })
       .returning();
     return results[0];
@@ -238,7 +244,7 @@ export class RotationDraftRanksRepository {
       .orderBy(rotationDraftRanksV2.sortOrder);
   }
 
-  async reactivate(rrUuid: string, data: Partial<InsertRotationDraftRanksV2>): Promise<RotationDraftRanksV2> {
+  async reactivate(rrUuid: string, data: Partial<InsertRotationDraftRanksV2>, auditUserUuid: string | null = null): Promise<RotationDraftRanksV2> {
     const db = getDb();
     const results = await db
       .update(rotationDraftRanksV2)
@@ -246,30 +252,32 @@ export class RotationDraftRanksRepository {
         ...data,
         isDeleted: false,
         updatedAt: new Date(),
+        updatedByUuid: auditUserUuid,
       })
       .where(eq(rotationDraftRanksV2.rrUuid, rrUuid))
       .returning();
     return results[0];
   }
 
-  async update(rrUuid: string, data: Partial<InsertRotationDraftRanksV2>): Promise<RotationDraftRanksV2> {
+  async update(rrUuid: string, data: Partial<InsertRotationDraftRanksV2>, auditUserUuid: string | null = null): Promise<RotationDraftRanksV2> {
     const db = getDb();
     const results = await db
       .update(rotationDraftRanksV2)
       .set({
         ...data,
         updatedAt: new Date(),
+        updatedByUuid: auditUserUuid,
       })
       .where(eq(rotationDraftRanksV2.rrUuid, rrUuid))
       .returning();
     return results[0];
   }
 
-  async softDelete(rrUuid: string): Promise<void> {
+  async softDelete(rrUuid: string, auditUserUuid: string | null = null): Promise<void> {
     const db = getDb();
     await db
       .update(rotationDraftRanksV2)
-      .set({ isDeleted: true, updatedAt: new Date() })
+      .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
       .where(eq(rotationDraftRanksV2.rrUuid, rrUuid));
   }
 

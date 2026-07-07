@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Save, Send, Plus, MessageSquare, Edit2, Trash2, Check, ChevronsUpDown } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getCrewUserId } from "@/lib/crewUser";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCourseSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
-import { useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
+import { useAppraisalTypesV2, useTrainingStatusOptionsV2, withLegacyStatus, useUsersV2 } from "@/hooks/v2/useMasterDataV2";
 import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
 
@@ -83,6 +84,19 @@ const targetStage1Schema = z.object({
   comment: z.string().optional(),
 });
 
+// Stage 1 SUBMIT-only schemas: Training Name (B1) and Target Setting Name (B2)
+// are mandatory when the user clicks "Submit Stage 1". Draft saves keep using
+// the lenient schemas above, so saving with blank rows is still allowed. This
+// mirrors the existing Part G2 -> Stage 3 required-name pattern
+// (trainingFollowupStage3Schema).
+const trainingStage1SubmitSchema = trainingStage1Schema.extend({
+  training: z.string().trim().min(1, "Training Name is required."),
+});
+
+const targetStage1SubmitSchema = targetStage1Schema.extend({
+  targetSetting: z.string().trim().min(1, "Target Setting Name is required."),
+});
+
 // Competence Assessment schema
 const competenceAssessmentSchema = z.object({
   id: z.string(),
@@ -107,6 +121,10 @@ const trainingNeedsSchema = z.object({
   training: z.string().min(1, "Training name is required"),
   comment: z.string().optional(),
   addedFromDB: z.boolean().optional(),
+  // Database course ID of the selected training (mirrors Part G's
+  // `correspondingInDB`). Used to grey out already-added trainings in the
+  // database selection dialog and prevent duplicate entries.
+  correspondingInDB: z.string().optional(),
 });
 
 // Part F schemas
@@ -152,26 +170,32 @@ const trainingFollowupSchema = z.object({
   id: z.string(),
   training: z.string(),
   correspondingInDB: z.string(),
+  identifiedByUuid: z.string().optional(),
   category: z.string(),
-  status: z.union([
-    z.enum(["Proposed", "Approved", "Planned", "Declined", "Completed"]),
-    z.literal(""),
-  ]),
+  status: z.string(),
   targetDate: z.string().optional(),
   comment: z.string().optional(),
   addedFromDB: z.boolean().optional(),
+});
+
+// Strict version for Stage 3 validation - requires a non-empty training name.
+// Training Name is the primary identifier for G2 follow-up rows, so it must be
+// provided before Stage 3 can be submitted. Draft saves keep using the lenient
+// `trainingFollowupSchema` above.
+const trainingFollowupStage3Schema = trainingFollowupSchema.extend({
+  training: z.string().trim().min(1, "Training name is required in Part G2"),
 });
 
 // Part A schema
 const partASchema = z.object({
   seafarersName: z.string().min(1, "Seafarer's name is required"),
   seafarersRank: z.string().min(1, "Seafarer's rank is required"),
-  nationality: z.string().min(1, "Nationality is required"),
+  nationality: z.string().nullish(),
   vessel: z.string().min(1, "Vessel is required"),
   signOn: z.string().optional(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
   appraisalPeriodFrom: z.string().optional(),
-  appraisalPeriodTo: z.string().optional(),
+  appraisalPeriodTo: z.string().min(1, "Appraisal Period To date is required"),
   personalityIndexCategory: z.string().optional(),
   primaryAppraiser: z.string().optional(),
 });
@@ -184,8 +208,8 @@ const partBSchema = z.object({
 
 // Part B schema for Stage 1 (evaluation optional, empty arrays allowed)
 const partBStage1Schema = z.object({
-  trainings: z.array(trainingStage1Schema).default([]),
-  targets: z.array(targetStage1Schema).default([]),
+  trainings: z.array(trainingStage1SubmitSchema).default([]),
+  targets: z.array(targetStage1SubmitSchema).default([]),
 });
 
 // Part C schema
@@ -223,6 +247,12 @@ const partGSchema = z.object({
   trainingFollowups: z.array(trainingFollowupSchema).default([]),
 });
 
+// Part G schema for Stage 3 validation (requires non-empty G2 training names)
+const partGStage3Schema = z.object({
+  officeReviews: z.array(officeReviewSchema).default([]),
+  trainingFollowups: z.array(trainingFollowupStage3Schema).default([]),
+});
+
 // Stage-specific schemas for validation
 // Stage 1: Parts A & B (Target Setting) - evaluation optional, empty arrays allowed
 const stage1Schema = partASchema.merge(partBStage1Schema);
@@ -231,14 +261,14 @@ const stage1Schema = partASchema.merge(partBStage1Schema);
 const stage2Schema = partCSchema.merge(partDSchema).merge(partESchema).merge(partFStage2Schema);
 
 // Stage 3: Part B (Evaluation required) + Part G (Office Review)
-const stage3Schema = partBSchema.merge(partGSchema);
+const stage3Schema = partBSchema.merge(partGStage3Schema);
 
 // Full appraisal schema (for draft saves and full validation)
 const appraisalSchema = z.object({
   // Part A: Seafarer's Information
   seafarersName: z.string().min(1, "Seafarer's name is required"),
   seafarersRank: z.string().min(1, "Seafarer's rank is required"),
-  nationality: z.string().min(1, "Nationality is required"),
+  nationality: z.string().nullish(),
   vessel: z.string().min(1, "Vessel is required"),
   signOn: z.string().optional(),
   appraisalType: z.string().min(1, "Appraisal type is required"),
@@ -335,6 +365,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const [editingTraining, setEditingTraining] = useState<string | null>(null);
   const [editingTarget, setEditingTarget] = useState<string | null>(null);
   const [trainingComments, setTrainingComments] = useState<{[key: string]: string | null}>({});
+  // Task #540: mirror trainingComments in a ref so the B1 auto-merge effect can
+  // read the latest comment state (including freshly-typed or deleted comments)
+  // when it rebuilds auto rows, without adding trainingComments to its dep array
+  // (which would re-run the merge on every keystroke).
+  const trainingCommentsRef = useRef<{[key: string]: string | null}>({});
+  useEffect(() => { trainingCommentsRef.current = trainingComments; }, [trainingComments]);
   const [targetComments, setTargetComments] = useState<{[key: string]: string | null}>({});
   const [competenceComments, setCompetenceComments] = useState<{[key: string]: string | null}>({});
   const [behaviouralComments, setBehaviouralComments] = useState<{[key: string]: string | null}>({});
@@ -420,13 +456,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     && (isSectionVisible('partB1') || isSectionVisible('partB2'));
 
   // Fetch vessels and ranks from persistent storage
-  const { vessels } = useVesselLookup();
+  const { vessels, getVesselId } = useVesselLookup();
   const { data: availableRanks = [] } = useQuery<Array<{ id: number; name: string; category: string }>>({
     queryKey: ['/api/v2/admin/available-ranks'],
   });
   
   // Company training catalogue used by the G2 "Corresponding in DB" combobox.
   const { options: dbTrainingOptions, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
+  const { statuses: appraisalStatusOptions } = useTrainingStatusOptionsV2("Appraisal");
 
   // Fetch appraisal types from V2 Masters (Master 023)
   const { data: appraisalTypesRaw = [] } = useAppraisalTypesV2();
@@ -437,6 +474,24 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       value: entry.name.toLowerCase().replace(/\s+/g, '-')
     }));
   }, [appraisalTypesRaw]);
+
+  // Users list for the G2 "Identified By" column.
+  const { data: usersV2Data } = useUsersV2();
+  const trainingIdentifiedByUsers = useMemo(() => {
+    const users = usersV2Data || [];
+    const seen = new Set<string>();
+    return users
+      .map((user: any) => ({
+        userUuid: user.userUuid || user.uuid,
+        displayName: user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`,
+      }))
+      .filter((item: { userUuid: string; displayName: string }) => {
+        if (!item.userUuid || !item.displayName?.trim()) return false;
+        if (seen.has(item.userUuid)) return false;
+        seen.add(item.userUuid);
+        return true;
+      });
+  }, [usersV2Data]);
 
   // Fetch existing appraisal data when editing
   // Note: queryKey must include full URL since default fetcher uses queryKey[0] as the URL
@@ -611,6 +666,16 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       r => !autoNames.has((r.training || '').toString().trim().toLowerCase()),
     );
 
+    const normalizeName = (s?: string) => (s || '').toString().trim().toLowerCase();
+    // Latest comment state (including in-flight edits/deletions not yet folded
+    // back into the RHF rows). Used to keep a just-typed comment from being
+    // dropped when the auto rows are rebuilt.
+    const currentComments = trainingCommentsRef.current;
+    // Records how each rebuilt auto row inherits its comment-state key, so we
+    // can re-key `trainingComments` after the merge even when the auto id
+    // changes across a hydration round-trip.
+    const autoCommentReassignments: Array<{ newId: string; priorId?: string }> = [];
+
     const autoRows = (crewTrainingCourses || [])
       .filter(c => inWindow(c.issued))
       .map(c => {
@@ -619,15 +684,36 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         const id = `auto:${stableKey}`;
         // Preserve any existing evaluation/comment across re-renders, including
         // after a server hydration that renumbers IDs. We first try to match by
-        // our prefixed `auto:` id, then fall back to source+training-name —
+        // our prefixed `auto:` id, then fall back to training-name (normalized),
         // which is what survives a hydration round-trip.
         const prior = existingAutoRows.find(r => r.id === id)
-          || existingAutoRows.find(r => r.training === trainingName);
+          || existingAutoRows.find(r => normalizeName(r.training) === normalizeName(trainingName));
+        const priorId = prior?.id;
+        // Resolve the comment, preferring live comment-state so a freshly-typed
+        // (or deleted) comment is never dropped — even when a `form.reset`
+        // (e.g. rank-group config load) has already cleared the RHF auto rows
+        // but left the comment state intact. Order:
+        //   1. live state under the new stable id (survives a reset that wiped
+        //      the RHF rows),
+        //   2. live state under the prior row id (covers an id change across a
+        //      hydration round-trip),
+        //   3. the prior RHF row's comment.
+        // A `null` value marks a deleted comment and resolves to an empty
+        // string, also clearing any stale text still sitting on the RHF row.
+        let comment: string;
+        if (id in currentComments) {
+          comment = currentComments[id] ?? '';
+        } else if (priorId !== undefined && priorId in currentComments) {
+          comment = currentComments[priorId] ?? '';
+        } else {
+          comment = prior?.comment || '';
+        }
+        autoCommentReassignments.push({ newId: id, priorId });
         return {
           id,
           training: trainingName,
           evaluation: prior?.evaluation || '',
-          comment: prior?.comment || '',
+          comment,
           source: 'auto' as const,
         };
       });
@@ -642,6 +728,34 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     if (!same) {
       form.setValue('trainings', next as any, { shouldDirty: false });
     }
+
+    // Re-key `trainingComments` so each auto row's comment state follows its
+    // (possibly rebuilt) id. Strip every stale `auto:` key and re-add the
+    // inherited value under the new id — including `null` for a deleted comment
+    // and `""` for a freshly-opened empty box. Manual-row keys are untouched.
+    // Bail out when nothing actually changed to avoid an extra render.
+    setTrainingComments(prev => {
+      const merged: {[key: string]: string | null} = {};
+      Object.keys(prev).forEach(k => {
+        if (!k.startsWith('auto:')) merged[k] = prev[k];
+      });
+      autoCommentReassignments.forEach(({ newId, priorId }) => {
+        // Keep comment state already stored under the new (stable) id — this is
+        // what survives a `form.reset` that cleared the RHF auto rows. Only fall
+        // back to the prior id when the auto id actually changed across a
+        // rebuild.
+        if (newId in prev) {
+          merged[newId] = prev[newId];
+        } else if (priorId !== undefined && priorId in prev) {
+          merged[newId] = prev[priorId];
+        }
+      });
+      const prevKeys = Object.keys(prev);
+      const mergedKeys = Object.keys(merged);
+      const unchanged = prevKeys.length === mergedKeys.length
+        && mergedKeys.every(k => k in prev && prev[k] === merged[k]);
+      return unchanged ? prev : merged;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(crewTrainingCourses), watchedSignOn, crewMember?.signOn, isPostStage2, hydrationToken]);
 
@@ -707,6 +821,28 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     }
   }, [crewMember, appraisalId, form]);
 
+  // Normalize the vessel field to its master-data UUID. The vessel form value
+  // may be a NAME — seeded from a crew member (new appraisal) or loaded from a
+  // legacy/un-backfilled appraisal via form.reset(). The PartA <Select> options
+  // are keyed by UUID, so the (disabled) field would otherwise show nothing.
+  // Converting name -> UUID keeps the current vessel name visible and ensures
+  // the UUID is what gets persisted on save.
+  //
+  // Keyed off the watched vessel value (not effect declaration order) so it
+  // re-runs whenever the field changes — including after the existing-appraisal
+  // hydration effect's form.reset() runs — and whenever vessel master data
+  // finishes loading (getVesselId identity changes). It converges in one pass:
+  // once the value is a UUID, getVesselId() returns undefined and no further
+  // setValue happens. Names with no master match are left untouched.
+  const watchedVessel = form.watch('vessel');
+  useEffect(() => {
+    if (!watchedVessel) return;
+    const asId = getVesselId(watchedVessel);
+    if (asId && asId !== watchedVessel) {
+      form.setValue('vessel', asId, { shouldDirty: false });
+    }
+  }, [watchedVessel, getVesselId, form]);
+
   // Load rank-group-specific configuration when available (only for new appraisals)
   useEffect(() => {
     const config = formConfig as any;
@@ -753,6 +889,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             id: t.id,
             training: t.training ?? '',
             comment: t.comment ?? '',
+            addedFromDB: t.addedFromDB,
+            correspondingInDB: t.correspondingInDB,
           }))
         : [];
 
@@ -811,6 +949,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         console.log('📋 Resetting form with config values');
         form.reset({ ...currentValues, ...updates }, { keepDefaultValues: false });
       }
+
+      // Task #527: the reset above overwrites `trainings` with the rank-group
+      // defaults (or an empty list), clobbering any D3 auto-rows the B1
+      // auto-merge effect had already injected. Bump the hydration token so
+      // that effect re-runs and re-injects the in-window trainings on top of
+      // the (manual) rank-group rows. Without this, new appraisals show an
+      // empty B1 even when in-window trainings exist.
+      setHydrationToken(t => t + 1);
     }
     
     // Always load hidden fields/sections from rank group config
@@ -879,8 +1025,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       // Calculate ratings from form data
       const competenceScore = calcCompetenceScore(payload.data.competenceAssessments);
       const behavioralScore = calcBehavioralScore(payload.data.behaviouralAssessments);
-      const overallScore = (competenceScore && behavioralScore) 
-        ? ((parseFloat(competenceScore) + parseFloat(behavioralScore)) / 2).toFixed(1) 
+
+      // Average only sections that have a real rating (> 0). Hidden, unrated,
+      // or zero-scoring sections are excluded from the overall.
+      const scores = [competenceScore, behavioralScore]
+        .map(s => (s !== null ? parseFloat(s) : 0))
+        .filter(score => score > 0);
+
+      const overallScore = scores.length > 0
+        ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
         : null;
 
       // Transform form data to backend schema
@@ -895,6 +1048,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         overallRating: overallScore,
         submittedBy: "Current User", // TODO: Replace with actual user
         status: payload.status,
+        auditUserUuid: getCrewUserId(),
       };
 
       // Use PUT for existing appraisals, POST for new ones
@@ -944,14 +1098,14 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       const stageData = {
         seafarersName: formData.seafarersName,
         seafarersRank: formData.seafarersRank,
-        nationality: formData.nationality,
+        nationality: formData.nationality ?? "",
         vessel: formData.vessel,
-        signOn: formData.signOn,
+        signOn: formData.signOn ?? "",
         appraisalType: formData.appraisalType,
-        appraisalPeriodFrom: formData.appraisalPeriodFrom,
-        appraisalPeriodTo: formData.appraisalPeriodTo,
-        personalityIndexCategory: formData.personalityIndexCategory,
-        primaryAppraiser: formData.primaryAppraiser,
+        appraisalPeriodFrom: formData.appraisalPeriodFrom ?? "",
+        appraisalPeriodTo: formData.appraisalPeriodTo ?? "",
+        personalityIndexCategory: formData.personalityIndexCategory ?? "",
+        primaryAppraiser: formData.primaryAppraiser ?? "",
         trainings: formData.trainings,
         targets: formData.targets,
       };
@@ -959,6 +1113,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage1`, {
         data: stageData,
         submittedBy: 'Current User',
+        auditUserUuid: getCrewUserId(),
       });
       return response.json();
     },
@@ -1003,8 +1158,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       };
       const competenceScore = calcScore(formData.competenceAssessments);
       const behavioralScore = calcScore(formData.behaviouralAssessments);
-      const overallScore = (competenceScore && behavioralScore)
-        ? ((parseFloat(competenceScore) + parseFloat(behavioralScore)) / 2).toFixed(1)
+
+      // Average only sections that have a real rating (> 0). Hidden, unrated,
+      // or zero-scoring sections are excluded from the overall.
+      const scores = [competenceScore, behavioralScore]
+        .map(s => (s !== null ? parseFloat(s) : 0))
+        .filter(score => score > 0);
+
+      const overallScore = scores.length > 0
+        ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
         : null;
 
       const stageData = {
@@ -1027,6 +1189,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         competenceRating: competenceScore,
         behavioralRating: behavioralScore,
         overallRating: overallScore,
+        auditUserUuid: getCrewUserId(),
       });
       return response.json();
     },
@@ -1060,6 +1223,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage3`, {
         data: stageData,
         submittedBy: 'Current User',
+        auditUserUuid: getCrewUserId(),
       });
       return response.json();
     },
@@ -1178,27 +1342,47 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       );
       return;
     }
-    // Task #500: Stage 3 requires every B1 training row to carry an Evaluation.
+    // Task #500/#542: Stage 3 requires every B1 training row AND every B2
+    // target row to carry an Evaluation. Check both sections and, if anything
+    // is missing in either, show one generic message naming both sections.
     if (stage === 'stage3') {
-      const trainings = (form.getValues('trainings') || []) as Array<{ evaluation?: string }>;
-      const missing = trainings.findIndex(t => !((t.evaluation || '').toString().trim()));
-      if (missing !== -1) {
+      // Only check sections that are actually visible: hidden sections have
+      // their array payloads cleared during schema validation below, so stale
+      // data in a hidden B1/B2 must not block submission.
+      const trainings = isSectionVisible('partB1')
+        ? (form.getValues('trainings') || []) as Array<{ evaluation?: string }>
+        : [];
+      const targets = isSectionVisible('partB2')
+        ? (form.getValues('targets') || []) as Array<{ evaluation?: string }>
+        : [];
+      const missingB1 = trainings.findIndex(t => !((t.evaluation || '').toString().trim()));
+      const missingB2 = targets.findIndex(t => !((t.evaluation || '').toString().trim()));
+      if (missingB1 !== -1 || missingB2 !== -1) {
         toast({
-          title: 'B1 Evaluation required',
-          description: `Please provide an Evaluation for every B1 training row before submitting Stage 3 (row ${missing + 1} is missing).`,
+          title: 'B1 and B2 Evaluations are required',
+          description: 'B1 and B2 Evaluations are required. Please complete all pending evaluation ratings before submitting Stage 3.',
           variant: 'destructive',
         });
-        // Jump the user back to Part B and focus the offending Evaluation
-        // input so they can act on the error without hunting for it.
+        // Jump the user back to Part B and focus the first offending Evaluation
+        // input so they can act on the error without hunting for it. Prefer the
+        // first missing B1 row; otherwise focus the first missing B2 row.
         try {
           partBRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           setTimeout(() => {
-            // Part B renders its evaluation select with a testid keyed by the
-            // row's stable id, e.g. `select-training-eval-${training.id}`.
-            const missingId = (form.getValues('trainings')?.[missing] as any)?.id;
-            const sel = missingId
-              ? `[data-testid="select-training-eval-${missingId}"]`
-              : `[data-testid^="select-training-eval-"]`;
+            // Part B renders evaluation selects with testids keyed by the row's
+            // stable id, e.g. `select-training-eval-${id}` / `select-target-eval-${id}`.
+            let sel: string;
+            if (missingB1 !== -1) {
+              const missingId = (form.getValues('trainings')?.[missingB1] as any)?.id;
+              sel = missingId
+                ? `[data-testid="select-training-eval-${missingId}"]`
+                : `[data-testid^="select-training-eval-"]`;
+            } else {
+              const missingId = (form.getValues('targets')?.[missingB2] as any)?.id;
+              sel = missingId
+                ? `[data-testid="select-target-eval-${missingId}"]`
+                : `[data-testid^="select-target-eval-"]`;
+            }
             const el = document.querySelector<HTMLElement>(sel);
             el?.focus();
           }, 300);
@@ -1318,9 +1502,23 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const handleSaveDraft = () => {
     console.log('💾 handleSaveDraft called - bypassing validation');
     // Get form data with synced comments from useState hooks
+    // (this also drops completely-blank G2 follow-up rows)
     const data = getFormDataWithSyncedComments();
     console.log('💾 Form values:', data);
     console.log('💾 Form errors (ignored for draft):', form.formState.errors);
+    // Enforce mandatory G2 (Training Follow-up) name even on draft save:
+    // any remaining (non-blank) row must have a training name.
+    const hasMissingTrainingName = (data.trainingFollowups ?? []).some(
+      f => !(f.training ?? '').trim()
+    );
+    if (hasMissingTrainingName) {
+      toast({
+        title: 'Validation Error',
+        description: 'Training name is required in Part G2',
+        variant: 'destructive',
+      });
+      return;
+    }
     // Preserve current workflow status after Stage 1 or Stage 2 submission
     // Only use 'draft' status before Stage 1 has been submitted
     const statusToSave = appraisalStatus === 'draft' ? 'draft' : appraisalStatus;
@@ -1688,6 +1886,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
     return {
       ...data,
+      // Persist the vessel as its master-data UUID so the appraisal always
+      // reflects the vessel's CURRENT name (resolved at display). If the form
+      // value is already a UUID (or the name can't be resolved), keep it as-is.
+      vessel: getVesselId(data.vessel) || data.vessel,
       signOn: data.signOn ?? "",
       appraisalPeriodFrom: data.appraisalPeriodFrom ?? "",
       appraisalPeriodTo: data.appraisalPeriodTo ?? "",
@@ -1778,6 +1980,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       training: template.name,
       comment: "",
       addedFromDB: true,
+      correspondingInDB: template.id,
     }));
     const currentTrainingNeeds = form.getValues("trainingNeeds");
     form.setValue("trainingNeeds", [...currentTrainingNeeds, ...newTrainingNeeds]);
@@ -1813,11 +2016,17 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     form.setValue("trainingNeeds", updatedTrainingNeeds);
   };
 
-  // Calculate overall score (F1)
+  // Calculate overall score (F1) — average only sections that have a real
+  // rating (> 0). Hidden, unrated, or zero-scoring sections are excluded.
   const calculateOverallScore = () => {
-    const competenceScore = parseFloat(calculateSectionScore());
-    const behaviouralScore = parseFloat(calculateBehaviouralSectionScore());
-    return ((competenceScore + behaviouralScore) / 2).toFixed(1);
+    const scores = [
+      parseFloat(calculateSectionScore()),
+      parseFloat(calculateBehaviouralSectionScore()),
+    ].filter(score => score > 0);
+
+    return scores.length > 0
+      ? (scores.reduce((sum, s) => sum + s, 0) / scores.length).toFixed(1)
+      : "0.0";
   };
 
   // Recommendation management functions
@@ -1878,6 +2087,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString(),
       training: "",
       correspondingInDB: "",
+      identifiedByUuid: "",
       category: "",
       status: "" as const,
       targetDate: "",
@@ -1940,6 +2150,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString(),
       training: "",
       correspondingInDB: "",
+      identifiedByUuid: "",
       category: "",
       status: "" as const,
       targetDate: "",
@@ -1954,6 +2165,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       training: template.name,
       correspondingInDB: template.id,
+      identifiedByUuid: "",
       category: "",
       status: "" as const,
       targetDate: "",
@@ -2078,97 +2290,90 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   // tracks Parts C-F so the sidebar highlight follows real-time scroll
   // across the whole form.
   useEffect(() => {
-    if (!continuous1ContainerRef.current) return;
+    const container = continuous1ContainerRef.current;
+    if (!container) return;
     const mergedAF = !isSectionVisible('partB2') || isPostStage1;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let mostVisible = entries[0];
-        
-        entries.forEach((entry) => {
-          if (entry.intersectionRatio > mostVisible.intersectionRatio) {
-            mostVisible = entry;
-          }
-        });
-
-        // Update the active continuous section if there's a significant intersection
-        if (mostVisible && mostVisible.intersectionRatio > 0.4) {
-          const sectionId = mostVisible.target.getAttribute('data-section-id');
-          if (!sectionId) return;
-          const matched = sections.find(s => s.id === sectionId);
-          if (matched?.type === 'continuous1') {
-            if (sectionId !== activeContinuousSection1) setActiveContinuousSection1(sectionId);
-            // In merged A-F mode, ensure only one section is highlighted at a time.
-            if (mergedAF && activeContinuousSection2) setActiveContinuousSection2('');
-          } else if (matched?.type === 'continuous2') {
-            if (sectionId !== activeContinuousSection2) setActiveContinuousSection2(sectionId);
-            if (mergedAF && activeContinuousSection1) setActiveContinuousSection1('');
-          }
-        }
-      },
-      {
-        root: continuous1ContainerRef.current,
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-        rootMargin: '-50px 0px -50px 0px'
-      }
-    );
-
-    // Observe continuous1 sections (A&B). In merged A-F mode, also
-    // observe C-F so the sidebar highlight updates as the user scrolls
-    // past those sections inside the same scroll container.
+    // Sections rendered inside this scroll container. In merged A-F mode the
+    // container holds A-F; otherwise only the continuous1 group (A&B).
     const observed = mergedAF
       ? sections.filter(s => s.type === 'continuous1' || s.type === 'continuous2')
       : sections.filter(s => s.type === 'continuous1');
-    observed.forEach(section => {
-      if (section.ref?.current) {
-        observer.observe(section.ref.current);
+
+    // Pick the active section as the last one whose top has crossed a trigger
+    // line near the top of the container. This is independent of section height,
+    // and the bottom override lets the final section (Part F) highlight even
+    // when the container can't scroll it far enough to dominate the viewport.
+    const computeActive = () => {
+      const present = observed.filter(s => s.ref?.current);
+      if (present.length === 0) return;
+      const containerRect = container.getBoundingClientRect();
+      const atBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight <= 2;
+      let active = present[0];
+      if (atBottom) {
+        active = present[present.length - 1];
+      } else {
+        const triggerY = containerRect.top + containerRect.height * 0.25;
+        for (const s of present) {
+          if (s.ref!.current!.getBoundingClientRect().top <= triggerY) active = s;
+        }
       }
-    });
+      if (active.type === 'continuous1') {
+        if (active.id !== activeContinuousSection1) setActiveContinuousSection1(active.id);
+        // In merged A-F mode, ensure only one section is highlighted at a time.
+        if (mergedAF && activeContinuousSection2) setActiveContinuousSection2('');
+      } else if (active.type === 'continuous2') {
+        if (active.id !== activeContinuousSection2) setActiveContinuousSection2(active.id);
+        if (mergedAF && activeContinuousSection1) setActiveContinuousSection1('');
+      }
+    };
+
+    computeActive();
+    container.addEventListener('scroll', computeActive, { passive: true });
+    window.addEventListener('resize', computeActive);
 
     return () => {
-      observer.disconnect();
+      container.removeEventListener('scroll', computeActive);
+      window.removeEventListener('resize', computeActive);
     };
   }, [activeContinuousSection1, activeContinuousSection2, sections, isPostStage1, isSectionVisible]);
 
-  // Intersection Observer for continuous group 2 (C-F)
+  // Scroll-spy for continuous group 2 (C-F)
   useEffect(() => {
-    if (!continuous2ContainerRef.current) return;
+    const container = continuous2ContainerRef.current;
+    if (!container) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let mostVisible = entries[0];
-        
-        entries.forEach((entry) => {
-          if (entry.intersectionRatio > mostVisible.intersectionRatio) {
-            mostVisible = entry;
-          }
-        });
+    const observed = sections.filter(s => s.type === 'continuous2');
 
-        // Update the active continuous section if there's a significant intersection
-        if (mostVisible && mostVisible.intersectionRatio > 0.6) {
-          const sectionId = mostVisible.target.getAttribute('data-section-id');
-          if (sectionId && sectionId !== activeContinuousSection2) {
-            setActiveContinuousSection2(sectionId);
-          }
+    // Active section = last one whose top crossed a trigger line near the top
+    // of the container, with a bottom override so the final section (Part F)
+    // highlights once the container is scrolled to the end.
+    const computeActive = () => {
+      const present = observed.filter(s => s.ref?.current);
+      if (present.length === 0) return;
+      const containerRect = container.getBoundingClientRect();
+      const atBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight <= 2;
+      let active = present[0];
+      if (atBottom) {
+        active = present[present.length - 1];
+      } else {
+        const triggerY = containerRect.top + containerRect.height * 0.25;
+        for (const s of present) {
+          if (s.ref!.current!.getBoundingClientRect().top <= triggerY) active = s;
         }
-      },
-      {
-        root: continuous2ContainerRef.current,
-        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-        rootMargin: '-50px 0px -50px 0px'
       }
-    );
+      if (active.id !== activeContinuousSection2) setActiveContinuousSection2(active.id);
+    };
 
-    // Observe continuous2 sections (C-F)
-    const continuous2Sections = sections.filter(s => s.type === 'continuous2');
-    continuous2Sections.forEach(section => {
-      if (section.ref?.current) {
-        observer.observe(section.ref.current);
-      }
-    });
+    computeActive();
+    container.addEventListener('scroll', computeActive, { passive: true });
+    window.addEventListener('resize', computeActive);
 
     return () => {
-      observer.disconnect();
+      container.removeEventListener('scroll', computeActive);
+      window.removeEventListener('resize', computeActive);
     };
   }, [activeContinuousSection2, sections]);
 
@@ -2276,12 +2481,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             Negative top margin pulls the row closer to the Part B card so
             it doesn't float in the middle of the section gap. */}
         <div className="flex justify-end gap-4 -mt-2 sm:-mt-4">
-          <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
-            Save
-          </Button>
           <Button 
             type="button"
-            className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+            className="bg-green-600 hover:bg-green-700 text-white px-8" 
             onClick={() => handleStageSubmission('stage1')}
             disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending || isPostStage1}
             data-testid="button-submit-stage1"
@@ -2447,12 +2649,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             <h1 className="text-lg sm:text-xl font-bold">Crew Appraisal Form</h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
-            {isStage1Available && (
-              <>
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={handleSaveDraft}
+                  disabled={isPostStage3}
                   className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
                   data-testid="button-save-draft-header"
                 >
@@ -2463,13 +2664,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   variant="outline" 
                   size="sm"
                   onClick={handleSaveDraft}
+                  disabled={isPostStage3}
                   className="sm:hidden"
                   data-testid="button-save-draft-header-mobile"
                 >
                   <Save className="h-4 w-4" />
                 </Button>
-              </>
-            )}
           </div>
         </div>
 
@@ -2641,6 +2841,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                     addTrainingFollowup={addTrainingFollowupNoArgs}
                     updateTrainingFollowup={updateTrainingFollowup}
                     deleteTrainingFollowup={deleteTrainingFollowup}
+                    users={trainingIdentifiedByUsers}
                     handleStageSubmission={handleStageSubmission}
                     handleSaveDraft={handleSaveDraft}
                     stage3Mutation={stage3Mutation}
@@ -2710,7 +2911,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           name="nationality"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality<RequiredMark /></FormLabel>
+                              <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality</FormLabel>
                               <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
                                 <PopoverTrigger asChild>
                                   <FormControl>
@@ -2725,7 +2926,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                     >
                                       {field.value
                                         ? NATIONALITIES.find(
-                                            (nationality) => nationality.toLowerCase() === field.value.toLowerCase()
+                                            (nationality) => nationality.toLowerCase() === field.value?.toLowerCase()
                                           )
                                         : "Select nationality..."}
                                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -2855,7 +3056,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period From</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
+                                <Input {...field} min={(watchedSignOn || crewMember?.signOn) || undefined} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -2931,7 +3132,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       )}
 
                       <div className="flex justify-end mt-6">
-                        <Button type="button" className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
                           Save
                         </Button>
                       </div>
@@ -3241,12 +3442,12 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       )}
 
                       <div className="flex justify-end gap-4 mt-6">
-                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
                           Save
                         </Button>
                         <Button 
                           type="button"
-                          className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                          className="bg-green-600 hover:bg-green-700 text-white px-8" 
                           onClick={() => handleStageSubmission('stage1')}
                           disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
                         >
@@ -3386,7 +3587,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end mt-6">
-                        <Button type="button" className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-[#60A5FA] hover:bg-[#3B82F6] text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
                           Save
                         </Button>
                       </div>
@@ -3521,7 +3722,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end mt-6">
-                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
                           Save
                         </Button>
                       </div>
@@ -3673,7 +3874,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
 
                       <div className="flex justify-end mt-6">
-                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft}>
+                        <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
                           Save
                         </Button>
                       </div>
@@ -3983,13 +4184,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             type="button"
                             className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8" 
                             onClick={handleSaveDraft}
-                            disabled={saveAppraisalMutation.isPending}
+                            disabled={saveAppraisalMutation.isPending || isPostStage3}
                           >
                             {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
                           </Button>
                           <Button 
                             type="button"
-                            className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                            className="bg-green-600 hover:bg-green-700 text-white px-8" 
                             onClick={() => handleStageSubmission('stage2')}
                             disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'submitted' || appraisalStatus === 'reviewed'}
                           >
@@ -4144,6 +4345,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                             onChange={(value) => updateTrainingFollowup(followup.id, "correspondingInDB", value)}
                                             isLoading={isLoadingDbTrainings}
                                             isError={isErrorDbTrainings}
+                                            fallbackLabel={followup.training}
                                             testId={`select-followup-db-${followup.id}`}
                                           />
                                         )}
@@ -4172,11 +4374,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           }`}
                                         >
                                           <option value="" disabled>Select Status</option>
-                                          <option value="Proposed">Proposed</option>
-                                          <option value="Approved">Approved</option>
-                                          <option value="Planned">Planned</option>
-                                          <option value="Declined">Declined</option>
-                                          <option value="Completed">Completed</option>
+                                          {withLegacyStatus(appraisalStatusOptions, followup.status).map((s) => (
+                                            <option key={s} value={s}>{s}</option>
+                                          ))}
                                         </select>
                                       </td>
                                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
@@ -4277,13 +4477,13 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             type="button"
                             className="bg-[#5fa5fa] hover:bg-[#4a94e8] text-white px-8" 
                             onClick={handleSaveDraft}
-                            disabled={saveAppraisalMutation.isPending}
+                            disabled={saveAppraisalMutation.isPending || isPostStage3}
                           >
                             {saveAppraisalMutation.isPending ? 'Saving...' : 'Save'}
                           </Button>
                           <Button 
                             type="button"
-                            className="bg-[#20c43f] hover:bg-[#1ba838] text-white px-8" 
+                            className="bg-green-600 hover:bg-green-700 text-white px-8" 
                             onClick={() => handleStageSubmission('stage3')}
                             disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'reviewed'}
                           >
@@ -4322,7 +4522,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         open={isTrainingNeedsDialogOpen}
         onClose={() => setIsTrainingNeedsDialogOpen(false)}
         onConfirm={addTrainingNeedsFromDatabase}
-        existingCourseIds={(form.getValues("trainingNeeds") || []).map(t => t.training).filter(Boolean)}
+        existingCourseIds={(form.getValues("trainingNeeds") || []).map(t => t.correspondingInDB).filter(Boolean) as string[]}
       />
 
       {/* Training Followup Database Selection Dialog */}

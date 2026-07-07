@@ -12,6 +12,7 @@ export interface TrainingRow {
   id: string;
   training: string;
   correspondingInDB: string;
+  identifiedByUuid: string;
   category: string;
   status: string;
   completionDate: string;

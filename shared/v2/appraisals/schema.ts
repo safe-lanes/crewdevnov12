@@ -2,7 +2,7 @@ import { pgTable, serial, text, boolean, timestamp, integer } from "drizzle-orm/
 
 export const auditColumns = {
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
   createdByUuid: text("created_by_uuid"),
   updatedByUuid: text("updated_by_uuid"),
   isDeleted: boolean("is_deleted").default(false),
@@ -100,6 +100,8 @@ export const apprTrainingNeedsV2 = pgTable("appr_training_needs_v2", {
   trainingNeedUuid: text("training_need_uuid").notNull().unique(),
   appraisalUuid: text("appraisal_uuid").notNull(),
   training: text("training"),
+  correspondingInDb: text("corresponding_in_db"),
+  identifiedByUuid: text("identified_by_uuid"),
   comment: text("comment"),
   source: text("source").notNull().default("manual"),
   sortOrder: integer("sort_order").default(0),
@@ -156,6 +158,7 @@ export const apprTrainingFollowupsV2 = pgTable("appr_training_followups_v2", {
   appraisalUuid: text("appraisal_uuid").notNull(),
   training: text("training"),
   correspondingInDb: text("corresponding_in_db"),
+  identifiedByUuid: text("identified_by_uuid"),
   category: text("category"),
   status: text("status"),
   targetDate: text("target_date"),

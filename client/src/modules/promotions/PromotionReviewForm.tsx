@@ -21,6 +21,7 @@ import { useVesselTypesV2, useUsersV2, useFleetGroupsV2 } from '@/hooks/v2/useMa
 import { getVesselTypesForDropdown } from '@/utils/data/vesselTypes';
 import type { LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { getCrewUserId } from '@/lib/crewUser';
 import { useToast } from '@/hooks/use-toast';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { calculateChecklistProgressFromJson } from '@/modules/promotions/checklistProgressUtils';
@@ -64,7 +65,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   onClose,
 }) => {
   const { toast } = useToast();
-  const { permissions, canView } = usePermissions();
+  const { permissions, canView, userType } = usePermissions();
+  const isShipUser = userType === 'Ship';
 
   const pmSectionMenuMap: Record<string, string> = {
     a: 'PM Criteria Review',
@@ -118,10 +120,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
 
   const vesselOptions = useMemo(() => {
     if (!vesselMasterData) return [];
-    return vesselMasterData.map((vessel: any) => ({
-      id: String(vessel.id || vessel.vesselId || vessel.nuid),
-      name: vessel.name || vessel.vesselName || 'Unknown Vessel',
-    }));
+    // Use the vessel's stable UUID as the option value (persisted in
+    // vessel_assigned) so promotions reference the vessel by UUID, not by a
+    // numeric/display id. The label remains the current vessel name and is
+    // re-resolved from master data, so a later rename is always reflected.
+    return vesselMasterData
+      .map((vessel: any) => ({
+        id: String(vessel.vesselUuid || vessel.uuid || vessel.entryId || ''),
+        name: vessel.vessel || vessel.name || vessel.vesselName || 'Unknown Vessel',
+      }))
+      .filter((v) => v.id !== '');
   }, [vesselMasterData]);
 
   const [currentUserDisplay, setCurrentUserDisplay] = useState(() => getCurrentUserDisplay());
@@ -176,7 +184,23 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }
     return [];
   }, [usersV2Data]);
-  
+
+  const trainingIdentifiedByUsers = useMemo(() => {
+    const users = usersV2Data || [];
+    const seen = new Set<string>();
+    return users
+      .map((user: any) => ({
+        userUuid: user.userUuid || user.uuid,
+        displayName: user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`,
+      }))
+      .filter((item: { userUuid: string; displayName: string }) => {
+        if (!item.userUuid || !item.displayName?.trim()) return false;
+        if (seen.has(item.userUuid)) return false;
+        seen.add(item.userUuid);
+        return true;
+      });
+  }, [usersV2Data]);
+
   const [selectedApproversForSubmission, setSelectedApproversForSubmission] = useState<{ userUuid: string; displayName: string }[]>([]);
 
   const presentRank = crewMemberData?.presentRank ?? '';
@@ -225,7 +249,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         ? `/api/v2/promotions/reviews/${effectiveReviewUuid}`
         : '/api/v2/promotions/reviews';
       const method = effectiveReviewUuid ? 'PATCH' : 'POST';
-      const response = await apiRequest(method, endpoint, data);
+      const response = await apiRequest(method, endpoint, { ...data, auditUserUuid: getCrewUserId() });
       return response;
     },
     onSuccess: (data: any, variables: SaveMutationVariables) => {
@@ -720,6 +744,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [comments]);
 
   const [approvers, setApprovers] = useState<Approver[]>([]);
+  const hasHydratedRef = useRef(false);
 
   const nextApproverIdRef = useRef(3);
   const nextCesTestIdRef = useRef(2);
@@ -743,7 +768,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   };
 
   useEffect(() => {
-    if (existingReviewData) {
+    if (existingReviewData && !hasHydratedRef.current) {
+      hasHydratedRef.current = true;
       setSavedReviewId(existingReviewData.id);
       
       if (existingReviewData.selectedVesselTypeForA2_3b) {
@@ -988,10 +1014,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           } else {
             criteriaMeetsStatus[parentId] = 'pending';
           }
-        } else if (childMeetsValues.some(v => v === 'yes')) {
-          criteriaMeetsStatus[parentId] = 'yes';
         } else {
-          criteriaMeetsStatus[parentId] = 'pending';
+          const anyChildNo = childIds.some((id, i) => childMeetsValues[i] === 'no' && criteriaVerifiedStatus[id] !== 'na');
+          if (anyChildNo) {
+            criteriaMeetsStatus[parentId] = 'pending';
+          } else {
+            const childVerifiedVals = childIds.map(id => criteriaVerifiedStatus[id] || '');
+            const allOk = childMeetsValues.every((v, i) => v === 'yes' || childVerifiedVals[i] === 'na');
+            criteriaMeetsStatus[parentId] = allOk ? 'yes' : 'pending';
+          }
         }
       }
     });
@@ -1038,22 +1069,43 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       b2VesselTypes: includeB ? vesselTypes : undefined,
       b2FleetGroups: includeB ? vesselClasses : undefined,
       partBNotes: includeB ? (formData.partBNotes || null) : undefined,
-      promotionConfirmed: includeC ? promotionConfirmed : undefined,
+      promotionConfirmed: includeB ? promotionConfirmed : undefined,
+      promotionTiming: includeB ? promotionTiming : undefined,
       vesselAssigned: includeC ? vesselAssigned : undefined,
       promotionDate: includeC ? promotionDate : undefined,
-      promotionTiming: includeC ? promotionTiming : undefined,
       partCNotes: includeC ? (formData.partCNotes || null) : undefined,
     };
   }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses, effectiveReviewUuid]);
 
+  const validateTrainingNames = useCallback(() => {
+    const hasBlankTrainingName = trainingNeeds.some(t => !t.training?.trim());
+    if (hasBlankTrainingName) {
+      toast({
+        title: "Training name is required in part A3",
+        description: "Please enter a training name for every row before saving.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  }, [trainingNeeds, toast]);
+
   const handleSaveDraftA = useCallback(() => {
+    if (!validateTrainingNames()) {
+      return;
+    }
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
       partCNotes: '',
     }, 'a');
+    const approversToPersist = approvers.filter(a => a.approver?.trim());
+    if (approversToPersist.length > 0 || selectedApproversForSubmission.length > 0) {
+      reviewData.approvalData = JSON.stringify(approversToPersist);
+      reviewData.selectedApproversForSubmission = JSON.stringify(selectedApproversForSubmission);
+    }
     saveMutation.mutate({ data: reviewData, action: 'draft' });
-  }, [collectFormData, saveMutation]);
+  }, [collectFormData, saveMutation, validateTrainingNames, approvers, selectedApproversForSubmission]);
 
   const handleSaveDraftB = useCallback(() => {
     const reviewData = collectFormData({
@@ -1074,6 +1126,22 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [collectFormData, saveMutation]);
 
   const handleSubmitPartB = useCallback(() => {
+    if (!promotionConfirmed) {
+      toast({
+        title: "Decision Required",
+        description: "Select a promotion decision (Yes / Waitlist / Rejected) before submitting Part B.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (promotionConfirmed === 'yes' && !promotionTiming) {
+      toast({
+        title: "Promotion Type Required",
+        description: "Select the promotion type (Promoted Onboard / Promoted Prior Joining).",
+        variant: "destructive",
+      });
+      return;
+    }
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
@@ -1081,9 +1149,38 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }, 'b');
     reviewData.status = 'approved';
     saveMutation.mutate({ data: reviewData, action: 'submit-b' });
-  }, [collectFormData, saveMutation]);
+  }, [collectFormData, saveMutation, promotionConfirmed, promotionTiming, toast]);
 
   const handleSubmitPartC = useCallback(() => {
+    // A promotion can only be marked Completed when Part B recorded a "Yes"
+    // decision and a (non-future) Date of Promotion has been entered.
+    if (promotionConfirmed !== 'yes') {
+      toast({
+        title: "Cannot Complete",
+        description: "A promotion can only be completed when the Part B decision is Yes.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!promotionDate) {
+      toast({
+        title: "Date of Promotion Required",
+        description: "Enter the Date of Promotion before completing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const parsedDate = new Date(promotionDate);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    if (!isNaN(parsedDate.getTime()) && parsedDate.getTime() > endOfToday.getTime()) {
+      toast({
+        title: "Invalid Date",
+        description: "The Date of Promotion cannot be in the future.",
+        variant: "destructive",
+      });
+      return;
+    }
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
@@ -1091,10 +1188,18 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }, 'c');
     reviewData.status = 'completed';
     saveMutation.mutate({ data: reviewData, action: 'submit-c' });
-  }, [collectFormData, saveMutation]);
+  }, [collectFormData, saveMutation, promotionConfirmed, promotionDate, toast]);
 
   const handleSubmit = (data: PromotionReviewFormData) => {
-    const reviewData = collectFormData(data, 'a');
+    if (!validateTrainingNames()) {
+      return;
+    }
+    const reviewData = collectFormData(data, 'full');
+    const approversToPersist = approvers.filter(a => a.approver?.trim());
+    if (approversToPersist.length > 0 || selectedApproversForSubmission.length > 0) {
+      reviewData.approvalData = JSON.stringify(approversToPersist);
+      reviewData.selectedApproversForSubmission = JSON.stringify(selectedApproversForSubmission);
+    }
     saveMutation.mutate({ data: reviewData, action: 'draft' });
   };
 
@@ -1175,12 +1280,19 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     if (parentId === 'a2.3') {
       const childrenIds = getChildrenIds(parentId);
       if (childrenIds.length === 0) return 'pending';
-      const anyChildMeets = childrenIds.some(childId => {
+      const anyChildNotMet = childrenIds.some(childId => {
         const child = criteriaData.find(row => row.id === childId);
         if (!child) return false;
-        return getMeetsCriterion(child.required, child.resultFromDb) === 'met';
+        if (child.verified === 'na') return false;
+        return getMeetsCriterion(child.required, child.resultFromDb) === 'not-met';
       });
-      return anyChildMeets ? 'yes' : 'pending';
+      if (anyChildNotMet) return 'pending';
+      const allChildrenOk = childrenIds.every(childId => {
+        const child = criteriaData.find(row => row.id === childId);
+        if (!child) return false;
+        return getMeetsCriterion(child.required, child.resultFromDb) === 'met' || child.verified === 'na';
+      });
+      return allChildrenOk ? 'yes' : 'pending';
     }
 
     const childrenIds = getChildrenIds(parentId);
@@ -1269,6 +1381,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       id: newId,
       training: '',
       correspondingInDB: '',
+      identifiedByUuid: '',
       category: '',
       status: '',
       completionDate: 'dd-mm-yy',
@@ -1304,6 +1417,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
             id: newId,
             training: template.name,
             correspondingInDB: template.id,
+            identifiedByUuid: '',
             category: '',
             status: '',
             completionDate: 'dd-mm-yy',
@@ -1312,6 +1426,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         });
       return [...prev, ...newTrainings];
     });
+    setIsTrainingDialogOpen(false);
   }, []);
 
   const addApprover = useCallback(() => {
@@ -1387,6 +1502,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     if (isSubmittingForApproval) {
       return;
     }
+
+    if (!validateTrainingNames()) {
+      return;
+    }
     
     if (selectedApproversForSubmission.length === 0) {
       toast({
@@ -1456,7 +1575,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       : '/api/v2/promotions/reviews';
     const method = submitReviewUuid ? 'PATCH' : 'POST';
     
-    apiRequest(method, endpoint, reviewData)
+    apiRequest(method, endpoint, { ...reviewData, auditUserUuid: getCrewUserId() })
       .then((data: any) => {
         if (data?.reviewUuid) {
           setSavedReviewUuid(data.reviewUuid);
@@ -1483,7 +1602,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       .finally(() => {
         setIsSubmittingForApproval(false);
       });
-  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData]);
+  }, [selectedApproversForSubmission, toast, collectFormData, effectiveReviewUuid, isSubmittingForApproval, approverMasterData, validateTrainingNames]);
 
   const updateCommentText = useCallback((id: string, text: string) => {
     setComments(prev => prev.map(c => c.id === id ? { ...c, text } : c));
@@ -1497,6 +1616,32 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     />
   ), [cesTests, updateCesTest, deleteCesTest]);
 
+  // Task #569: stage-wise locking, mirroring the appraisal "Lock form" feature.
+  // The admin lock flag lives on the "Promotion Review Form" admin form. While the
+  // review is still editable (draft/in_progress) we read the live flag; once the
+  // review reaches "submitted" we use the snapshot persisted on the review so later
+  // admin toggles do not retroactively change already-submitted reviews.
+  const promotionFormLockLive = useMemo(() => {
+    const promotionReviewForm = formsData?.find(f => f.name === 'Promotion Review Form');
+    return !!(promotionReviewForm as any)?.isLockForm;
+  }, [formsData]);
+
+  const lockState = useMemo(() => {
+    const statusNorm = ((existingReviewData as any)?.status || 'draft').toString().trim().toLowerCase();
+    const isSubmittedPlus = ['submitted', 'approved', 'completed'].includes(statusNorm);
+    const isApprovedPlus = ['approved', 'completed'].includes(statusNorm);
+    const isCompleted = statusNorm === 'completed';
+    const isLockForm = isSubmittedPlus
+      ? !!(existingReviewData as any)?.isLockForm
+      : promotionFormLockLive;
+    return {
+      isLockForm,
+      lockPartA: isLockForm && isSubmittedPlus,
+      lockPartB: isLockForm && isApprovedPlus,
+      lockPartC: isLockForm && isCompleted,
+    };
+  }, [existingReviewData, promotionFormLockLive]);
+
   return (
     <div className="promotion-review-form">
       <BaseSubmoduleForm
@@ -1506,12 +1651,21 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         defaultValues={defaultValues}
         onClose={onClose}
         onSubmit={handleSubmit}
+        disableSaveDraft={lockState.lockPartC}
       >
-      {({ activeSection, form }) => (
+      {({ activeSection, form, showConfirmDialog }) => {
+        const submitMessage = 'Are want to Submit? After the submit the section should be locked.';
+        const confirmSubmitA = () =>
+          showConfirmDialog('Submit for Approval', submitMessage, handleSubmitForApproval);
+        const confirmSubmitB = () =>
+          showConfirmDialog('Submit for Approval', submitMessage, handleSubmitPartB);
+        const confirmSubmitC = () =>
+          showConfirmDialog('Submit for Approval', submitMessage, handleSubmitPartC);
+        return (
         <>
           {activeSection === 'a' && canViewSection('a') && (
             <div className="bg-white rounded-lg p-6">
-              <div className="space-y-6">
+              <fieldset disabled={lockState.lockPartA} className="space-y-6 min-w-0 border-0 p-0 m-0">
                 {rankGroupLookupResult.attempted && !rankGroupLookupResult.found && rankGroupLookupResult.targetRank && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3" data-testid="alert-no-rank-group">
                     <Info className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
@@ -1583,6 +1737,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   checklistProgressData={existingReviewData?.checklistProgressData}
                   minChecklistVerifications={a2Config?.minChecklistVerifications ?? undefined}
                   minChecklistCompletionPercent={a2Config?.minChecklistCompletionPercent ?? undefined}
+                  disabled={lockState.lockPartA}
                 />
 
                 <PartATrainingNeeds
@@ -1602,6 +1757,8 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   dbTrainings={dbTrainings}
                   isLoadingDbTrainings={isLoadingDbTrainings}
                   isErrorDbTrainings={isErrorDbTrainings}
+                  disabled={lockState.lockPartA}
+                  users={trainingIdentifiedByUsers}
                 />
 
                 <div className="border border-[#EAEBEF] rounded-lg p-4">
@@ -1724,10 +1881,11 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                   </div>
 
                   <div className="flex justify-end gap-3">
+                    {/* Hidden from UI only (per request) — button remains fully functional/wired (onClick={handleSaveDraftA}); do not remove or disconnect its logic. */}
                     <Button 
                       type="button"
                       variant="outline" 
-                      className="px-8"
+                      className="hidden px-8 bg-[#60a5fa] text-white hover:bg-[#3b82f6]"
                       onClick={handleSaveDraftA}
                       data-testid="button-save-part-a"
                     >
@@ -1736,7 +1894,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                     <Button 
                       type="button"
                       className="px-8 bg-green-600 hover:bg-green-700"
-                      onClick={handleSubmitForApproval}
+                      onClick={confirmSubmitA}
                       disabled={isSubmittingForApproval}
                       data-testid="button-submit-part-a"
                     >
@@ -1744,11 +1902,21 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                     </Button>
                   </div>
                 </div>
-              </div>
+              </fieldset>
             </div>
           )}
 
           {activeSection === 'b' && canViewSection('b') && (
+            <fieldset disabled={lockState.lockPartB || isShipUser} className="min-w-0 border-0 p-0 m-0">
+            {isShipUser && (
+              <div
+                className="mb-4 rounded-md border border-gray-300 bg-gray-100 px-4 py-3 text-center text-sm font-medium text-gray-600"
+                data-testid="text-office-use-only-b"
+              >
+                For Office use only
+              </div>
+            )}
+            <div className={isShipUser ? 'opacity-60 pointer-events-none' : undefined}>
             <PartBApproval
               approvers={approvers}
               onAddApprover={addApprover}
@@ -1764,30 +1932,44 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               vesselClassOptions={b2FleetGroupOptions}
               isLoadingVesselTypeOptions={isLoadingVesselTypesV2}
               isLoadingVesselClassOptions={isLoadingFleetGroupsV2}
+              promotionConfirmed={promotionConfirmed}
+              onSetPromotionConfirmed={setPromotionConfirmed}
+              promotionTiming={promotionTiming}
+              onSetPromotionTiming={setPromotionTiming}
               onSave={handleSaveDraftB}
-              onSubmit={handleSubmitPartB}
+              onSubmit={confirmSubmitB}
               approverNames={approverMasterData.map(a => a.displayName)}
+              disabled={lockState.lockPartB}
             />
+            </div>
+            </fieldset>
           )}
 
           {activeSection === 'c' && canViewSection('c') && (
+            <fieldset disabled={lockState.lockPartC || isShipUser} className="min-w-0 border-0 p-0 m-0">
+            {isShipUser && (
+              <div
+                className="mb-4 rounded-md border border-gray-300 bg-gray-100 px-4 py-3 text-center text-sm font-medium text-gray-600"
+                data-testid="text-office-use-only-c"
+              >
+                For Office use only
+              </div>
+            )}
+            <div className={isShipUser ? 'opacity-60 pointer-events-none' : undefined}>
             <PartCExecution
-              promotionConfirmed={promotionConfirmed}
-              onSetPromotionConfirmed={setPromotionConfirmed}
-              vesselAssigned={vesselAssigned}
-              onSetVesselAssigned={setVesselAssigned}
               promotionDate={promotionDate}
               onSetPromotionDate={setPromotionDate}
-              promotionTiming={promotionTiming}
-              onSetPromotionTiming={setPromotionTiming}
-              vessels={vesselOptions}
               currentUserDisplay={currentUserDisplay}
               onSave={handleSaveDraftC}
-              onSubmit={handleSubmitPartC}
+              onSubmit={confirmSubmitC}
+              disabled={lockState.lockPartC}
             />
+            </div>
+            </fieldset>
           )}
         </>
-      )}
+        );
+      }}
       </BaseSubmoduleForm>
 
       {showChecklistForm && (

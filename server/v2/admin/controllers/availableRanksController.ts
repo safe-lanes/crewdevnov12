@@ -23,7 +23,9 @@ export const availableRanksController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid rank data", details: result.error.issues });
       }
-      const rank = await availableRanksService.create(result.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const payload = { ...result.data, auditUserUuid };
+      const rank = await availableRanksService.create(payload);
       res.status(201).json(rank);
     } catch (error) {
       console.error("Error creating available rank:", error);
@@ -44,7 +46,9 @@ export const availableRanksController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid rank data", details: result.error.issues });
       }
-      const rank = await availableRanksService.updateById(id, result.data);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const payload = { ...result.data, auditUserUuid };
+      const rank = await availableRanksService.updateById(id, payload);
       res.json(rank);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -97,7 +101,8 @@ export const availableRanksController = {
       if (!Array.isArray(orders)) {
         return res.status(400).json({ error: "Invalid reorder data: body must be an array of {id, sortOrder}" });
       }
-      const success = await availableRanksService.reorder(orders);
+      const auditUserUuid = orders[0]?.auditUserUuid ?? null;
+      const success = await availableRanksService.reorder(orders, auditUserUuid);
       if (!success) {
         return res.status(500).json({ error: "Failed to update rank orders" });
       }

@@ -47,6 +47,7 @@ export class ApprTrainingFollowupsRepository {
             .set({
               training: row.training || null,
               correspondingInDb: row.correspondingInDB || row.correspondingInDb || null,
+              identifiedByUuid: row.identifiedByUuid || null,
               category: row.category || null,
               status: row.status || null,
               targetDate: row.targetDate || null,
@@ -64,6 +65,7 @@ export class ApprTrainingFollowupsRepository {
             appraisalUuid,
             training: row.training || null,
             correspondingInDb: row.correspondingInDB || row.correspondingInDb || null,
+            identifiedByUuid: row.identifiedByUuid || null,
             category: row.category || null,
             status: row.status || null,
             targetDate: row.targetDate || null,

@@ -533,4 +533,17 @@ export const adminApiV2 = {
     if (!res.ok) throw new Error('Failed to fetch my permissions');
     return res.json();
   },
+
+  async getRankScope(rank: string): Promise<{
+    rank: string;
+    rankId: string;
+    isRestricted: boolean;
+    allowedRanks: string[];
+    allowedRankIds: string[];
+  }> {
+    const searchParams = new URLSearchParams({ rank });
+    const res = await fetch(`${V2_BASE}/vessel-org-chart/rank-scope?${searchParams.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch rank scope');
+    return res.json();
+  },
 };

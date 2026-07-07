@@ -83,3 +83,34 @@ export function useV2CrewMembers(params?: { vesselUuid?: string; rank?: string }
     error: query.error,
   };
 }
+
+export interface V2Group {
+  id: number;
+  fgUuid?: string | null;
+  agUuid?: string | null;
+  name: string | null;
+  vessels: string | null;
+}
+
+export function parseGroupVesselNames(vessels: string | null | undefined): string[] {
+  if (!vessels) return [];
+  return Array.from(new Set(vessels.split(',').map(s => s.trim()).filter(Boolean)));
+}
+
+export function useV2FleetGroups() {
+  const query = useQuery<V2Group[]>({
+    queryKey: ['v2', 'rest-hours', 'masters', 'fleet-groups'],
+    queryFn: () => restHoursApiV2.masters.getFleetGroups(),
+    staleTime: 5 * 60 * 1000,
+  });
+  return { fleetGroups: query.data ?? [], isLoading: query.isLoading, error: query.error };
+}
+
+export function useV2AdditionalGroups() {
+  const query = useQuery<V2Group[]>({
+    queryKey: ['v2', 'rest-hours', 'masters', 'additional-groups'],
+    queryFn: () => restHoursApiV2.masters.getAdditionalGroups(),
+    staleTime: 5 * 60 * 1000,
+  });
+  return { additionalGroups: query.data ?? [], isLoading: query.isLoading, error: query.error };
+}

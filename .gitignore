@@ -24,3 +24,10 @@ replit.md
 .replit
 replit.md
 .forkname
+
+# Agent working files
+.agents
+
+# Private attachments storage root
+.private/
+

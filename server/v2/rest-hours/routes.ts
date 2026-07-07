@@ -92,6 +92,7 @@ router.delete("/fixed-tasks/:uuid", fixedTasksController.delete);
 // ============================================
 router.get("/variable-tasks", variableTasksController.getAll);
 router.get("/variable-tasks/drafts", variableTasksController.getDrafts);
+router.get("/variable-tasks/ranks-as-of-date", variableTasksController.getRanksAsOfDate);
 router.get("/variable-tasks/:uuid", variableTasksController.getByUuid);
 router.post("/variable-tasks", variableTasksController.create);
 router.patch("/variable-tasks/:uuid", variableTasksController.update);

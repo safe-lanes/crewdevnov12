@@ -101,12 +101,14 @@ export const rotationDraftsController = {
         .omit({ draftUuid: true, draftId: true })
         .parse(draftFields);
       
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       // Pass vessels, crew, and assignments to service for child table population
       const draft = await rotationDraftsService.create({
         ...validatedData,
         vessels,
         crew,
         assignments,
+        auditUserUuid,
       });
       res.status(201).json(draft);
     } catch (error: any) {
@@ -299,7 +301,8 @@ export const rotationEntriesController = {
       const validatedData = insertRotationEntriesV2Schema
         .omit({ entryUuid: true })
         .parse(req.body);
-      const entry = await rotationEntriesService.create(validatedData);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const entry = await rotationEntriesService.create({ ...validatedData, auditUserUuid });
       res.status(201).json(entry);
     } catch (error: any) {
       if (error instanceof z.ZodError) {

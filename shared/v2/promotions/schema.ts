@@ -2,7 +2,7 @@ import { pgTable, serial, text, boolean, timestamp, integer } from "drizzle-orm/
 
 export const auditColumns = {
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
   createdByUuid: text("created_by_uuid"),
   updatedByUuid: text("updated_by_uuid"),
   isDeleted: boolean("is_deleted").default(false),
@@ -34,6 +34,7 @@ export const promotionReviewsV2 = pgTable("promotion_reviews_v2", {
   partBNotes: text("part_b_notes"),
   partCNotes: text("part_c_notes"),
   status: text("status").notNull().default("draft"),
+  isLockForm: boolean("is_lock_form").notNull().default(false),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });
@@ -94,6 +95,7 @@ export const promoTrainingNeedsV2 = pgTable("promo_training_needs_v2", {
   trainingRowId: text("training_row_id"),
   training: text("training"),
   correspondingInDb: text("corresponding_in_db"),
+  identifiedByUuid: text("identified_by_uuid"),
   category: text("category"),
   status: text("status"),
   completionDate: text("completion_date"),
@@ -126,6 +128,24 @@ export const promoSuitabilityV2 = pgTable("promo_suitability_v2", {
   ...auditColumns,
 });
 
+// Execution ledger — durable, at-most-once record of an applied promotion.
+// Keyed by review_uuid (unique) so the rank-propagation engine flips the rank
+// exactly once per promotion and a future correction tool can reverse it.
+export const promoExecutionLedgerV2 = pgTable("promo_execution_ledger_v2", {
+  id: serial("id").primaryKey(),
+  ledgerUuid: text("ledger_uuid").notNull().unique(),
+  reviewUuid: text("review_uuid").notNull().unique(),
+  crewMemberId: text("crew_member_id").notNull(),
+  crewUuid: text("crew_uuid"),
+  fromRank: text("from_rank"),
+  toRank: text("to_rank").notNull(),
+  effectiveDate: text("effective_date"),
+  promotionTiming: text("promotion_timing"),
+  appliedByUuid: text("applied_by_uuid"),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
 export const promoChecklistProgressV2 = pgTable("promo_checklist_progress_v2", {
   id: serial("id").primaryKey(),
   cpUuid: text("cp_uuid").notNull().unique(),
@@ -140,7 +160,19 @@ export const promoChecklistProgressV2 = pgTable("promo_checklist_progress_v2", {
   date: text("date"),
   verificationsData: text("verifications_data"),
   commentsData: text("comments_data"),
-  attachmentsData: text("attachments_data"),
+  deprecatedAttachmentsData: text("deprecated_attachments_data"),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
+export const promoChecklistAttachmentsV2 = pgTable("promo_checklist_attachments_v2", {
+  id: serial("id").primaryKey(),
+  attUuid: text("att_uuid").notNull().unique(),
+  checklistProgressUuid: text("checklist_progress_uuid").notNull(),
+  fileName: text("file_name").notNull(),
+  filePath: text("file_path").notNull(),
+  fileSize: text("file_size"),
+  fileType: text("file_type"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });

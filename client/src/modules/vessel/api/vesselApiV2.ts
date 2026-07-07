@@ -36,6 +36,7 @@ export interface VesselPlanningV2 {
   relieverContractEndRangeEndMonths: number | null;
   deploymentChecklistCompleted: boolean | null;
   applicableDocsChecked: boolean | null;
+  adminAccept: boolean | null;
   isArchived: boolean;
   archivedDate: string | null;
   createdAt: string;
@@ -113,6 +114,7 @@ export interface UpdatePlanningInput {
   relieverContractEndRangeEndMonths?: number | null;
   deploymentChecklistCompleted?: boolean | null;
   applicableDocsChecked?: boolean | null;
+  adminAccept?: boolean | null;
 }
 
 export interface CrewListExportPayload {

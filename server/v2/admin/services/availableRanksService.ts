@@ -95,7 +95,7 @@ export const availableRanksService = {
     return availableRanksRepo.softDeleteAll();
   },
 
-  async reorder(orders: { id: number; sortOrder: number }[]): Promise<boolean> {
-    return availableRanksRepo.updateSortOrders(orders);
+  async reorder(orders: { id: number; sortOrder: number }[], auditUserUuid: string | null = null): Promise<boolean> {
+    return availableRanksRepo.updateSortOrders(orders, auditUserUuid);
   },
 };

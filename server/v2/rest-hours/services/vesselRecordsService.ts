@@ -42,7 +42,10 @@ async function getOnboardCrewCountsForMonths(
     .where(
       and(
         inArray(crewAssignments.vesselUuid, vesselIds),
-        or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted))
+        or(eq(crewMembersV2.isDeleted, false), isNull(crewMembersV2.isDeleted)),
+        // Only Signed On crew count toward total crew / recording %, so the
+        // count stays consistent with the (Signed On only) RH Records list.
+        eq(crewAssignments.assignmentType, "OnBoard")
       )
     );
 

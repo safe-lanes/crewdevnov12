@@ -24,7 +24,7 @@ export class CriteriaStatusRepository {
       .orderBy(promoCriteriaStatusV2.sortOrder);
   }
 
-  async upsert(reviewUuid: string, criteriaCode: string, data: Partial<InsertPromoCriteriaStatusV2>): Promise<PromoCriteriaStatusV2> {
+  async upsert(reviewUuid: string, criteriaCode: string, data: Partial<InsertPromoCriteriaStatusV2>, auditUserUuid: string | null = null): Promise<PromoCriteriaStatusV2> {
     const db = getDb();
     const existing = await db
       .select()
@@ -37,14 +37,14 @@ export class CriteriaStatusRepository {
     if (existing.length > 0) {
       const results = await db
         .update(promoCriteriaStatusV2)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ ...data, updatedAt: new Date(), updatedByUuid: auditUserUuid })
         .where(eq(promoCriteriaStatusV2.id, existing[0].id))
         .returning();
       return results[0];
     }
     const results = await db
       .insert(promoCriteriaStatusV2)
-      .values({ ...data, csUuid: uuidv4(), reviewUuid, criteriaCode })
+      .values({ ...data, csUuid: uuidv4(), reviewUuid, criteriaCode, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid })
       .returning();
     return results[0];
   }

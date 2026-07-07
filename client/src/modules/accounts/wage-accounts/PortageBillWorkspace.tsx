@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo, useCallback } from "react";
+import { useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,19 +119,20 @@ export function PortageBillWorkspace() {
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   
   // Filter states
-  const [selectedVessel, setSelectedVessel] = useState("mv-atlantic-star");
+  const { data: vessels = [] } = useVesselsV2();
+  const [selectedVessel, setSelectedVessel] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("2025-01");
   
   // Get payroll data for all crew members - using the same hook call structure always
-  const { data: payrollData1, isLoading: isLoading1 } = usePayrollData("2025-05-14");
-  const { data: payrollData2, isLoading: isLoading2 } = usePayrollData("2025-03-12");
-  const { data: payrollData3, isLoading: isLoading3 } = usePayrollData("2025-02-12");
+  const { data: payrollData1, isLoading: isLoading1 } = usePayrollData("DEMO-CREW-PB-001");
+  const { data: payrollData2, isLoading: isLoading2 } = usePayrollData("DEMO-CREW-PB-002");
+  const { data: payrollData3, isLoading: isLoading3 } = usePayrollData("DEMO-CREW-PB-003");
 
   // Create crew data array
   const crewPayrollData = [
-    { crew: { id: "2025-05-14", name: "James Wilson", rank: "Captain" }, payrollData: payrollData1, isLoading: isLoading1 },
-    { crew: { id: "2025-03-12", name: "Sarah Chen", rank: "Chief Engineer" }, payrollData: payrollData2, isLoading: isLoading2 },
-    { crew: { id: "2025-02-12", name: "Mike Rodriguez", rank: "Second Officer" }, payrollData: payrollData3, isLoading: isLoading3 }
+    { crew: { id: "DEMO-CREW-PB-001", name: "James Wilson", rank: "Master" }, payrollData: payrollData1, isLoading: isLoading1 },
+    { crew: { id: "DEMO-CREW-PB-002", name: "Sarah Chen", rank: "Chief Engineer" }, payrollData: payrollData2, isLoading: isLoading2 },
+    { crew: { id: "DEMO-CREW-PB-003", name: "Mike Rodriguez", rank: "Second Officer" }, payrollData: payrollData3, isLoading: isLoading3 }
   ];
 
   // Filter out crew members without data for now
@@ -356,16 +358,7 @@ export function PortageBillWorkspace() {
 
   // Get display values for selected filters
   const getVesselName = (value: string) => {
-    const vessels = {
-      "mv-atlantic-star": "MV Atlantic Star",
-      "mv-atlantic-explorer": "MV Atlantic Explorer", 
-      "mv-pacific-voyager": "MV Pacific Voyager",
-      "mv-northern-star": "MV Northern Star",
-      "mv-southern-cross": "MV Southern Cross",
-      "mv-eastern-dawn": "MV Eastern Dawn",
-      "mv-western-wind": "MV Western Wind"
-    };
-    return vessels[value as keyof typeof vessels] || "MV Atlantic Star";
+    return value === "all" ? "All Vessels" : value;
   };
 
   const getMonthName = (value: string) => {
@@ -451,13 +444,12 @@ export function PortageBillWorkspace() {
               <SelectValue placeholder="Select Vessel" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="mv-atlantic-star">MV Atlantic Star</SelectItem>
-              <SelectItem value="mv-atlantic-explorer">MV Atlantic Explorer</SelectItem>
-              <SelectItem value="mv-pacific-voyager">MV Pacific Voyager</SelectItem>
-              <SelectItem value="mv-northern-star">MV Northern Star</SelectItem>
-              <SelectItem value="mv-southern-cross">MV Southern Cross</SelectItem>
-              <SelectItem value="mv-eastern-dawn">MV Eastern Dawn</SelectItem>
-              <SelectItem value="mv-western-wind">MV Western Wind</SelectItem>
+              <SelectItem value="all">All Vessels</SelectItem>
+              {vessels.map((v: any) => (
+                <SelectItem key={v.vesselUuid} value={v.vessel} data-testid={`option-vessel-${v.vesselUuid}`}>
+                  {v.vessel}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 

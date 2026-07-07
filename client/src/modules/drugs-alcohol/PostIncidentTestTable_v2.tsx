@@ -20,10 +20,7 @@ interface PostIncidentTestData {
 }
 
 interface PostIncidentTestTableProps {
-  filterType: "vessel" | "fleet" | "addGroup";
-  selectedVessels: string[];
-  fleetValue: string;
-  addGroupValue: string;
+  filterVesselNames: string[];
   onEdit?: (recordId: number | string) => void;
 }
 
@@ -122,10 +119,7 @@ const ActionsCellRenderer = (props: ICellRendererParams) => {
 };
 
 export function PostIncidentTestTable_v2({
-  filterType,
-  selectedVessels,
-  fleetValue,
-  addGroupValue,
+  filterVesselNames,
   onEdit,
 }: PostIncidentTestTableProps) {
   const gridRef = useRef<AgGridReact>(null);
@@ -184,17 +178,9 @@ export function PostIncidentTestTable_v2({
       violations: calculateViolations(record.personnelTested),
     }));
     
-    if (filterType === "vessel") {
-      if (selectedVessels.length === 0) return transformed;
-      return transformed.filter(record => selectedVessels.includes(record.vesselName));
-    } else if (filterType === "fleet") {
-      return transformed;
-    } else if (filterType === "addGroup") {
-      return transformed;
-    }
-    
-    return transformed;
-  }, [testRecords, vesselMap, filterType, selectedVessels, fleetValue, addGroupValue]);
+    if (filterVesselNames.length === 0) return transformed;
+    return transformed.filter(record => filterVesselNames.includes(record.vesselName));
+  }, [testRecords, vesselMap, filterVesselNames]);
   
   const columnDefs = useMemo<ColDef<PostIncidentTestData>[]>(() => [
     {
@@ -272,6 +258,7 @@ export function PostIncidentTestTable_v2({
           ref={gridRef}
           rowData={tableData}
           columnDefs={columnDefs}
+          defaultColDef={{ filter: true }}
           gridOptions={{ theme: 'legacy' }}
           domLayout="normal"
           headerHeight={40}

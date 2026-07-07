@@ -36,6 +36,9 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
+import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
+import { useCompanyRanks } from "@/hooks/useCompanyRanks";
+import { useTrainingStatusOptionsV2, withLegacyStatus, useTrainingCategoryOptionsV2, withLegacyCategory } from "@/hooks/v2/useMasterDataV2";
 import { cn } from "@/lib/utils";
 
 type AggregatedRow = {
@@ -46,6 +49,7 @@ type AggregatedRow = {
   training: string | null;
   correspondingInDb: string | null;
   identifiedBy: string | null;
+  identifiedByUuid: string | null;
   category: string | null;
   status: string | null;
   targetDate: string | null;
@@ -55,17 +59,17 @@ type AggregatedRow = {
   rankId: string | null;
 };
 
-type CompanyTrainingLookup = {
-  ctUuid: string;
-  trainingLabel: string;
+// Row shape passed to the grid: AggregatedRow plus the resolved DB training name
+// (raw correspondingInDb id is preserved for the edit dialog).
+type GridRow = AggregatedRow & {
+  correspondingInDbName: string | null;
 };
 
-type RankLookup = {
-  id: number;
-  arUuid: string;
-  rankId: string | null;
+type CompanyTrainingLookup = {
+  id: string;
   name: string;
 };
+
 
 type CrewLookup = {
   crewUuid: string;
@@ -95,9 +99,6 @@ type DialogMode =
   | { kind: "closed" }
   | { kind: "new" }
   | { kind: "edit"; row: AggregatedRow };
-
-const STATUS_OPTIONS = ["Pending", "Scheduled", "In Progress", "Completed", "Cancelled"];
-const CATEGORY_OPTIONS = ["Mandatory", "Recommended", "Optional", "Other"];
 
 // ----- Cell renderers (defined outside component to avoid hooks issues) -----
 const sourceColor = (s: string): string => {
@@ -168,13 +169,13 @@ export const Training = (): JSX.Element => {
     queryKey: ["/api/v2/training-needs"],
   });
 
-  const { data: companyTrainings = [] } = useQuery<CompanyTrainingLookup[]>({
-    queryKey: ["/api/v2/admin/company-trainings"],
-  });
+  // Resolve the stored numeric company-training id (correspondingInDb) to its
+  // display name. The raw id is preserved on the row; only the displayed value
+  // is the resolved name so sort/filter/CSV-Excel export all operate on names.
+  const { options: companyTrainings, getName: getDbTrainingName } = useCompanyTrainings();
+  const { statuses: statusOptions } = useTrainingStatusOptionsV2("Training & Retention");
 
-  const { data: ranks = [] } = useQuery<RankLookup[]>({
-    queryKey: ["/api/v2/admin/available-ranks"],
-  });
+  const { rankOptions: ranks } = useCompanyRanks();
 
   const { data: crew = [] } = useQuery<CrewLookup[]>({
     queryKey: ["/api/v2/crew-pool/crew"],
@@ -204,24 +205,24 @@ export const Training = (): JSX.Element => {
     return Array.from(set);
   }, [rows]);
 
-  const distinctRanks = useMemo<string[]>(() => {
-    const set = new Set<string>();
-    rows.forEach((r) => {
-      if (r.rank) set.add(r.rank);
-    });
-    return Array.from(set).sort();
-  }, [rows]);
 
-  const filtered = useMemo(() => {
+  const filtered = useMemo<GridRow[]>(() => {
     const q = appliedFilters.searchName.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (appliedFilters.source !== "all" && r.source !== appliedFilters.source) return false;
-      if (appliedFilters.rank !== "all" && (r.rank || "") !== appliedFilters.rank) return false;
-      if (appliedFilters.status !== "all" && (r.status || "") !== appliedFilters.status) return false;
-      if (!q) return true;
-      return (r.name || "").toLowerCase().includes(q);
-    });
-  }, [rows, appliedFilters]);
+    return rows
+      .filter((r) => {
+        if (appliedFilters.source !== "all" && r.source !== appliedFilters.source) return false;
+        if (appliedFilters.rank !== "all" && (r.rank || "") !== appliedFilters.rank) return false;
+        if (appliedFilters.status !== "all" && (r.status || "") !== appliedFilters.status) return false;
+        if (!q) return true;
+        return (r.name || "").toLowerCase().includes(q);
+      })
+      .map((r) => ({
+        ...r,
+        correspondingInDbName: r.correspondingInDb
+          ? getDbTrainingName(r.correspondingInDb) ?? r.correspondingInDb
+          : null,
+      }));
+  }, [rows, appliedFilters, getDbTrainingName]);
 
   const setDraft = <K extends keyof FilterState>(k: K, v: FilterState[K]) =>
     setDraftFilters((p) => ({ ...p, [k]: v }));
@@ -304,7 +305,7 @@ export const Training = (): JSX.Element => {
       },
       {
         headerName: "Training (DB)",
-        field: "correspondingInDb",
+        field: "correspondingInDbName",
         flex: 1.2,
         valueFormatter: (p) => p.value || "-",
         cellStyle: { fontSize: "13px", color: "#4f5863" },
@@ -426,8 +427,8 @@ export const Training = (): JSX.Element => {
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="all">All Ranks</SelectItem>
-                  {distinctRanks.map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  {ranks.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -440,7 +441,7 @@ export const Training = (): JSX.Element => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  {STATUS_OPTIONS.map((s) => (
+                  {withLegacyStatus(statusOptions, draftFilters.status === "all" ? undefined : draftFilters.status).map((s) => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>
@@ -603,7 +604,7 @@ type DialogProps = {
   mode: { kind: "new" } | { kind: "edit"; row: AggregatedRow };
   onClose: () => void;
   companyTrainings: CompanyTrainingLookup[];
-  ranks: RankLookup[];
+  ranks: { value: string; label: string }[];
   crew: CrewLookup[];
   users: UserLookup[];
 };
@@ -616,7 +617,7 @@ type FormState = {
   rankId: string;
   training: string;
   correspondingInDb: string;
-  identifiedBy: string;
+  identifiedByUuid: string;
   category: string;
   status: string;
   targetDate: string;
@@ -625,6 +626,8 @@ type FormState = {
 
 function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, users }: DialogProps) {
   const { toast } = useToast();
+  const { statuses: statusOptions } = useTrainingStatusOptionsV2("Training & Retention");
+  const { categories: categoryOptions } = useTrainingCategoryOptionsV2("Training & Retention");
   const isNew = mode.kind === "new";
   const row = mode.kind === "edit" ? mode.row : null;
   const isLimited = !!row && row.editable === "limited";
@@ -638,7 +641,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
     rankId: row?.rankId || "",
     training: row?.training || "",
     correspondingInDb: row?.correspondingInDb || "",
-    identifiedBy: row?.identifiedBy || "",
+    identifiedByUuid: row?.identifiedByUuid || "",
     category: row?.category || "",
     status: row?.status || "",
     targetDate: row?.targetDate || "",
@@ -649,7 +652,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
     setForm((p) => ({ ...p, [k]: v }));
 
   const trainingDbOptions = useMemo(
-    () => companyTrainings.map((t) => ({ value: t.trainingLabel, label: t.trainingLabel })),
+    () => companyTrainings.map((t) => ({ value: t.id, label: t.name })),
     [companyTrainings]
   );
 
@@ -664,7 +667,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
           rankId: form.rankId || null,
           training: form.training || null,
           correspondingInDb: form.correspondingInDb || null,
-          identifiedBy: form.identifiedBy || null,
+          identifiedByUuid: form.identifiedByUuid || null,
           category: form.category || null,
           status: form.status || null,
           targetDate: form.targetDate || null,
@@ -679,7 +682,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
           rankId: form.rankId || null,
           training: form.training || null,
           correspondingInDb: form.correspondingInDb || null,
-          identifiedBy: form.identifiedBy || null,
+          identifiedByUuid: form.identifiedByUuid || null,
           category: form.category || null,
           status: form.status || null,
           targetDate: form.targetDate || null,
@@ -692,12 +695,14 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
           row.source === "Promotion" ? "promotion" : null;
         if (!sourceKey) throw new Error("Unknown source");
 
-        // All three sourced types accept Status, Target/Compl. Date and Comments.
-        // Server persists fields the source table can hold and overlays the rest.
+        // All three sourced types accept Status, Target/Compl. Date, Comments and
+        // Training (in DB). Server persists fields the source table can hold and
+        // overlays the rest — this never touches the original "Training" name.
         await apiRequest("PATCH", `/api/v2/training-needs/source/${sourceKey}/${row.sourceRefUuid}`, {
           status: form.status || null,
           targetDate: form.targetDate || null,
           comments: form.comments || null,
+          correspondingInDb: form.correspondingInDb || null,
         });
       }
     },
@@ -733,6 +738,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
                 onValueChange={(v) => {
                   if (v === "__manual") {
                     set("crewMemberId", "");
+                    set("name", "");
                     return;
                   }
                   const c = crew.find((x) => x.empNo === v);
@@ -762,23 +768,22 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
               <Input value={form.rank} disabled data-testid="input-rank" />
             ) : (
               <Select
-                value={form.rankId || form.rank || "__none"}
+                value={form.rank || "__none"}
                 onValueChange={(v) => {
                   if (v === "__none") {
                     set("rankId", "");
                     set("rank", "");
                     return;
                   }
-                  const r = ranks.find((x) => (x.rankId || x.name) === v);
-                  set("rankId", r?.rankId || "");
-                  set("rank", r?.name || v);
+                  set("rankId", "");
+                  set("rank", v);
                 }}
               >
                 <SelectTrigger data-testid="select-rank"><SelectValue placeholder="Select rank" /></SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="__none">— None —</SelectItem>
                   {ranks.map((r) => (
-                    <SelectItem key={r.arUuid} value={r.rankId || r.name}>{r.name}</SelectItem>
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -826,7 +831,6 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
               onChange={(v) => set("correspondingInDb", v)}
               options={trainingDbOptions}
               placeholder="Search trainings..."
-              disabled={isLimited}
               testId="combobox-training-db"
             />
           </div>
@@ -840,7 +844,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
               <SelectTrigger data-testid="select-status"><SelectValue placeholder="Select" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— None —</SelectItem>
-                {STATUS_OPTIONS.map((s) => (
+                {withLegacyStatus(statusOptions, form.status).map((s) => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
                 ))}
               </SelectContent>
@@ -851,27 +855,27 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
           <div>
             <Label className="text-xs">Identified By</Label>
             {isLimited ? (
-              <Input value={form.identifiedBy} disabled data-testid="input-identified-by" />
+              <Input value={row?.identifiedBy || ""} disabled data-testid="input-identified-by" />
             ) : (
               <Select
-                value={form.identifiedBy || "__none"}
-                onValueChange={(v) => set("identifiedBy", v === "__none" ? "" : v)}
+                value={form.identifiedByUuid || "__none"}
+                onValueChange={(v) => set("identifiedByUuid", v === "__none" ? "" : v)}
               >
                 <SelectTrigger data-testid="select-identified-by">
                   <SelectValue placeholder="Select user" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="__none">— None —</SelectItem>
-                  {form.identifiedBy &&
-                    !users.some((u) => (u.fullname || u.displayName) === form.identifiedBy) && (
-                      <SelectItem value={form.identifiedBy}>{form.identifiedBy}</SelectItem>
+                  {form.identifiedByUuid &&
+                    !users.some((u) => u.userUuid === form.identifiedByUuid) && row?.identifiedBy && (
+                      <SelectItem value={form.identifiedByUuid}>{row.identifiedBy}</SelectItem>
                     )}
                   {users
-                    .filter((u) => u.fullname || u.displayName)
+                    .filter((u) => u.userUuid && (u.fullname || u.displayName))
                     .map((u) => {
                       const label = u.fullname || u.displayName || "";
                       return (
-                        <SelectItem key={u.userUuid || label} value={label}>
+                        <SelectItem key={u.userUuid!} value={u.userUuid!}>
                           {u.designation ? `${label}, ${u.designation}` : label}
                         </SelectItem>
                       );
@@ -891,7 +895,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
               <SelectTrigger data-testid="select-category"><SelectValue placeholder="Select" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— None —</SelectItem>
-                {CATEGORY_OPTIONS.map((c) => (
+                {withLegacyCategory(categoryOptions, form.category).map((c) => (
                   <SelectItem key={c} value={c}>{c}</SelectItem>
                 ))}
               </SelectContent>
@@ -923,9 +927,9 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
 
         {isLimited && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            This row is sourced from {row?.source}. Only Status, Target / Compl. Date
-            and Comments are editable here — they are written back to the source record.
-            Other fields must be edited at the source.
+            This row is sourced from {row?.source}. Only Status, Target / Compl. Date,
+            Comments and Training (in DB) are editable here — they are written back to
+            the source record. Other fields must be edited at the source.
           </p>
         )}
 

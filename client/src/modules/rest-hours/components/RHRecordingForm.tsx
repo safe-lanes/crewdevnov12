@@ -422,12 +422,56 @@ export const RHRecordingForm = ({
   const selectedCrewMember = useMemo(() => {
     return filteredCrewMembers.find((cm: any) => cm.crewMemberId === selectedCrewMemberId || cm.empNo === selectedCrewMemberId);
   }, [filteredCrewMembers, selectedCrewMemberId]);
-  
+
+  // End of the selected month — the as-of date for resolving each crew's
+  // historical rank from promotion history.
+  const monthEndDate = useMemo(() => {
+    if (!selectedPeriod) return '';
+    const [y, m] = selectedPeriod.split('-').map(Number);
+    const lastDayDate = new Date(y, m, 0);
+    return `${y}-${String(m).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+  }, [selectedPeriod]);
+
+  const rosterEmpNos = useMemo(() => {
+    return filteredCrewMembers.map((cm: any) => cm.empNo || cm.crewMemberId).filter(Boolean);
+  }, [filteredCrewMembers]);
+
+  // Resolve the rank each crew member held during the viewed month from
+  // promotion history. For a crew promoted later, an earlier month resolves to
+  // the prior rank instead of their current present_rank — so editing a past
+  // month shows the rank that actually applied then. (Mirrors FixedTasksTable.)
+  const { data: rankAsOfMonth = {} } = useQuery<Record<string, string>>({
+    queryKey: ['v2', 'rest-hours', 'recording-form', 'ranks-as-of-date', monthEndDate, rosterEmpNos],
+    queryFn: () => restHoursApiV2.variableTasks.getRanksAsOfDate(monthEndDate, rosterEmpNos),
+    enabled: open && !!monthEndDate && rosterEmpNos.length > 0,
+  });
+
+  // Resolve the period-applicable rank for a crew member shown in the selector:
+  // the as-of-month-end rank from promotion history, falling back to present_rank.
+  const getDisplayRank = useCallback((cm: any): string => {
+    const id = cm?.empNo || cm?.crewMemberId;
+    return (id && rankAsOfMonth[id]) || cm?.presentRank || '';
+  }, [rankAsOfMonth]);
+
   // Derived values from selections
   const crewMemberName = selectedCrewMember
     ? [selectedCrewMember.firstName, selectedCrewMember.middleName, selectedCrewMember.familyName].filter(Boolean).join(' ')
     : initialCrewMemberName;
-  const rank = selectedCrewMember?.presentRank || initialRank;
+  // True while the selection still matches the record the form was opened with.
+  // In that state `initialRank` is the stored per-rank value (it carries
+  // selectedRecord.rank from RHCrewRecordsTable), so it correctly reflects which
+  // rank period (e.g. an old-rank row in a promotion/split month) was opened.
+  const isInitialSelection =
+    selectedCrewMemberId === initialCrewMemberId && selectedPeriod === initialMonthValue;
+  // Effective rank for display/export/payload: prefer the stored record's rank
+  // for the opened record, otherwise the as-of-month-end rank for the selected
+  // crew (from promotion history), then current present_rank.
+  const rank =
+    (isInitialSelection && initialRank) ||
+    (selectedCrewMember ? getDisplayRank(selectedCrewMember) : '') ||
+    selectedCrewMember?.presentRank ||
+    initialRank ||
+    '';
   const vesselName = getVesselName(selectedVesselId);
 
   // Format month for display (e.g., "2024, Mar")
@@ -523,10 +567,10 @@ export const RHRecordingForm = ({
   // Fetch existing record if available
   // V1 pattern: /api/rest-hours-daily-records/by-key/:crewMemberId/:vesselId/:monthYear
   const { data: existingRecord, isError } = useQuery<RestHoursDailyRecord>({
-    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod],
+    queryKey: ['v2', 'rest-hours', 'daily-records', 'by-key', selectedCrewMemberId, selectedVesselId, selectedPeriod, initialRank],
     queryFn: async () => {
       try {
-        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, selectedVesselId, selectedPeriod);
+        return await restHoursApiV2.dailyRecords.getByKey(selectedCrewMemberId, selectedVesselId, selectedPeriod, initialRank || undefined);
       } catch (error: any) {
         if (error.message?.includes('404') || error.message?.includes('not found')) {
           return null; // No existing record found
@@ -597,7 +641,7 @@ export const RHRecordingForm = ({
   // Filter variable tasks to only those involving the selected crew member
   const crewVariableTasks = useMemo(() => {
     if (!selectedCrewMemberId || !variableTasks.length) return [];
-    return variableTasks.filter(task => isCrewMemberInTask(task, selectedCrewMemberId));
+    return variableTasks.filter(task => !task.isDraft && isCrewMemberInTask(task, selectedCrewMemberId));
   }, [variableTasks, selectedCrewMemberId]);
 
   // Fetch date line adjustments for the selected vessel and month
@@ -746,17 +790,23 @@ export const RHRecordingForm = ({
     records: DailyRecord[],
     adjustments: DateLineAdjustment[]
   ): DailyRecord[] => {
-    if (adjustments.length === 0) return records;
-    
     const retardedDays = new Set(
-      adjustments.filter(adj => adj.type === 'retarded').map(adj => adj.day)
+      adjustments
+        .filter(adj => adj.type === 'retarded')
+        .map(adj => adj.day)
     );
-    
-    if (retardedDays.size === 0) return records;
-    
+
     const result: DailyRecord[] = [];
-    
+
     for (const record of records) {
+      // Prune stale duplicate rows: a 'duplicate' row whose day is no longer
+      // marked Retarded must be removed (e.g. after reverting Retarded -> Normal
+      // on an already-saved sheet). New/unsaved sheets never hit this because
+      // they have no stored duplicate rows to begin with.
+      if (record.occurrence === 'duplicate' && !retardedDays.has(record.day)) {
+        continue;
+      }
+
       // Always add the primary record (normalize if needed)
       const primaryRecord = {
         ...record,
@@ -764,23 +814,31 @@ export const RHRecordingForm = ({
         occurrence: (record.occurrence || 'primary') as 'primary' | 'duplicate',
       };
       result.push(primaryRecord);
-      
+
       // If this is a retarded day, check if we need to add a duplicate record
       if (retardedDays.has(record.day)) {
         // Check if duplicate already exists in the input records
         const existingDuplicate = records.find(
           r => r.day === record.day && r.occurrence === 'duplicate'
         );
-        
+
         if (!existingDuplicate) {
-          // Create a new blank duplicate record
-          const duplicateRecord = createBlankDailyRecord(record.day, record.dayOfWeek, 'duplicate');
-          result.push(duplicateRecord);
+          // Create a new duplicate seeded with the day's planned template
+          // (Fixed Task + Variable Task overlay) in Plan mode — matching a
+          // fresh planned row. buildTemplatedRecords forces duplicates to Plan
+          // (grey), including on Completed-VT days.
+          const blankDuplicate = createBlankDailyRecord(
+            record.day,
+            record.dayOfWeek,
+            'duplicate'
+          );
+          const [templatedDuplicate] = buildTemplatedRecords([blankDuplicate]);
+          result.push(templatedDuplicate);
         }
         // If duplicate exists, it will be added in its own iteration
       }
     }
-    
+
     return result;
   };
 
@@ -810,6 +868,24 @@ export const RHRecordingForm = ({
     
     const cellsMap = new Map<number, VariableTaskCells[]>();
     for (const task of crewVariableTasks) {
+      const cells = parseVariableTaskToCells(task, selectedPeriod);
+      for (const cell of cells) {
+        const existing = cellsMap.get(cell.day) || [];
+        existing.push(cell);
+        cellsMap.set(cell.day, existing);
+      }
+    }
+    return cellsMap;
+  }, [crewVariableTasks, selectedPeriod]);
+
+  // Days that have at least one COMPLETED variable task.
+  // Drives the auto-flip: such a day's Plan row becomes a Record row on open/load.
+  const completedVtCellsMap = useMemo(() => {
+    if (!selectedPeriod || crewVariableTasks.length === 0) return new Map<number, VariableTaskCells[]>();
+
+    const cellsMap = new Map<number, VariableTaskCells[]>();
+    for (const task of crewVariableTasks) {
+      if (task.status !== 'Completed') continue;
       const cells = parseVariableTaskToCells(task, selectedPeriod);
       for (const cell of cells) {
         const existing = cellsMap.get(cell.day) || [];
@@ -854,25 +930,34 @@ export const RHRecordingForm = ({
     return commentsMap;
   }, [crewVariableTasks, selectedPeriod]);
 
-  // Apply fixed tasks template and variable tasks overlay to daily records when available (for new forms)
-  // Note: isPlan is set to true (Plan mode) since new records default to planning mode
-  useEffect(() => {
-    if (!open || existingRecord) return;
-    
-    // Only apply if we have fixed task template or variable tasks
-    const hasFixedTask = fixedTask && Array.isArray(fixedTask.seaHours) && fixedTask.seaHours.length === 48;
-    const hasVariableTasks = variableTaskCellsMap.size > 0;
-    
-    if (!hasFixedTask && !hasVariableTasks) return;
-    
-    // Use seaHours as the template (assuming vessel is at sea by default)
-    const seaHoursArray = Array.isArray(fixedTask?.seaHours) ? (fixedTask.seaHours as string[]) : [];
-    const template: string[] = hasFixedTask ? seaHoursArray.slice() : Array(48).fill('');
-    
-    setDailyRecords(prevRecords => {
-      return prevRecords.map(record => {
-        const newHours = [...template];
-        
+  // Build template-applied rows exactly as a brand-new sheet does:
+  // Fixed Task template + Variable Task overlay in Plan mode (grey),
+  // with Completed-VT days flipped to Record. Shared by new-sheet init and Clear.
+  const buildTemplatedRecords = useCallback((records: DailyRecord[]): DailyRecord[] => {
+    const hasFixedTask =
+      fixedTask &&
+      Array.isArray(fixedTask.seaHours) &&
+      fixedTask.seaHours.length === 48;
+
+    const seaHoursArray = Array.isArray(fixedTask?.seaHours)
+      ? (fixedTask.seaHours as string[])
+      : [];
+
+    const template: string[] = hasFixedTask
+      ? seaHoursArray.slice()
+      : Array(48).fill('');
+
+    return records.map(record => {
+      const isDuplicate = record.occurrence === 'duplicate';
+      const hasCompletedVt = completedVtCellsMap.has(record.day);
+
+      // Duplicates (retarded rows) always show the full planned template in
+      // grey; only primary rows blank the template on a Completed-VT day.
+      const newHours = (hasCompletedVt && !isDuplicate)
+        ? Array(48).fill('')
+        : [...template];
+
+      if (!isDuplicate) {
         const dayCells = variableTaskCellsMap.get(record.day);
         if (dayCells && dayCells.length > 0) {
           for (const cellRange of dayCells) {
@@ -881,42 +966,72 @@ export const RHRecordingForm = ({
             }
           }
         }
-        
-        const restHours = newHours.filter(h => h === '').length / 2;
-        const workHours = 24 - restHours;
+      }
 
-        // Get comments from variable tasks if available
-        const variableTaskComments = variableTaskCommentsMap.get(record.day) || [];
+      const restHours = newHours.filter(h => h === '').length / 2;
 
-        // apply strict isolation
-        const baseComments = (record.comments || '')
-          .split(',')
-          .map(c => c.trim())
-          .filter(Boolean);
+      const workHours = 24 - restHours;
 
-        // Remove variable task comments if already present (case-insensitive)
-        const normalizedVars = new Set(variableTaskComments.map(c => c.trim().toLowerCase()));
+      const variableTaskComments = variableTaskCommentsMap.get(record.day) || [];
 
-        const cleanedBase = normalizedVars.size > 0
+      const baseComments = (record.comments || '')
+        .split(',')
+        .map(c => c.trim())
+        .filter(Boolean);
+
+      const normalizedVars = new Set(
+        variableTaskComments.map(c => c.trim().toLowerCase())
+      );
+
+      const cleanedBase =
+        normalizedVars.size > 0
           ? baseComments.filter(c => !normalizedVars.has(c.toLowerCase()))
           : baseComments;
 
-        const finalComments = [...cleanedBase, ...variableTaskComments]
-          .filter(Boolean)
-          .join(', ');
+      const finalComments = isDuplicate
+        ? cleanedBase.filter(Boolean).join(', ')
+        : [...cleanedBase, ...variableTaskComments].filter(Boolean).join(', ');
 
-        return {
-          ...record,
-          hours: newHours,
-          isPlan: true,
-          userEdited: false,
-          hoursOfRest24hr: restHours,
-          hoursOfWork24hr: workHours,
-          comments: finalComments,
-        };
-      });
+      return {
+        ...record,
+        hours: newHours,
+        isPlan: isDuplicate ? true : (hasCompletedVt ? false : true),
+        userEdited: false,
+        hoursOfRest24hr: restHours,
+        hoursOfWork24hr: workHours,
+        comments: finalComments,
+      };
     });
-  }, [fixedTask, open, existingRecord, variableTaskCellsMap, variableTaskCommentsMap, signOnDate, signOffDate]);
+  }, [
+    fixedTask,
+    completedVtCellsMap,
+    variableTaskCellsMap,
+    variableTaskCommentsMap,
+  ]);
+
+  // Apply fixed tasks template and variable tasks overlay to daily records (for new forms)
+  useEffect(() => {
+    if (!open || existingRecord) return;
+
+    // Apply template for ALL new sheets (Plan mode),
+    // including crews with no tasks.
+    setDailyRecords(prevRecords =>
+      buildTemplatedRecords(prevRecords)
+    );
+
+    // A Completed VT flips Plan rows to Record on open;
+    // mark dirty so auto-save-on-close persists it.
+    if (completedVtCellsMap.size > 0) {
+      setIsDirty(true);
+    }
+  }, [
+    buildTemplatedRecords,
+    open,
+    existingRecord,
+    completedVtCellsMap,
+    signOnDate,
+    signOffDate,
+  ]);
 
   // Load existing record data or explicitly maintain clean state
   useEffect(() => {
@@ -936,6 +1051,11 @@ export const RHRecordingForm = ({
         
         const hasLatestFixedTask = fixedTask && Array.isArray(fixedTask.seaHours) && fixedTask.seaHours.length === 48;
         const latestTemplate: string[] = hasLatestFixedTask ? (fixedTask.seaHours as unknown as string[]).slice() : [];
+        
+        // Any Plan row on a Completed-VT day will be flipped to Record below.
+        const anyCompletedVtFlip = parsedRecords.some(
+          (r: DailyRecord) => r.isPlan && completedVtCellsMap.has(r.day)
+        );
         
         const updatedRecords = parsedRecords.map((record: DailyRecord) => {
           let hours = record.hours;
@@ -961,9 +1081,32 @@ export const RHRecordingForm = ({
               hours = Array(48).fill('');
             }
 
-            const dayCells = variableTaskCellsMap.get(record.day);
-            if (dayCells && dayCells.length > 0) {
-              for (const cellRange of dayCells) {
+            if (record.occurrence !== 'duplicate') {
+              const dayCells = variableTaskCellsMap.get(record.day);
+              if (dayCells && dayCells.length > 0) {
+                for (const cellRange of dayCells) {
+                  for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
+                    hours[i] = 'a';
+                  }
+                }
+              }
+            }
+          }
+
+          // Completed VT on this day: if the row is still Plan (saved), flip it to
+          // Record mode and blank the row except the VT 'a' cells. Rows already saved
+          // as Record (isPlan === false) are never touched here.
+          // Never auto-flip a retarded (duplicate) row to Record; it must
+          // persist as a planned (grey) row. Only primary rows auto-flip.
+          const flipForCompletedVt =
+            record.occurrence !== 'duplicate' &&
+            record.isPlan &&
+            completedVtCellsMap.has(record.day);
+          if (flipForCompletedVt) {
+            hours = Array(48).fill('');
+            const completedDayCells = variableTaskCellsMap.get(record.day);
+            if (completedDayCells && completedDayCells.length > 0) {
+              for (const cellRange of completedDayCells) {
                 for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
                   hours[i] = 'a';
                 }
@@ -990,12 +1133,14 @@ export const RHRecordingForm = ({
             ? baseComments.filter(c => !normalizedVars.has(c.toLowerCase()))
             : baseComments;
 
-          const finalComments = [...cleanedBase, ...variableTaskComments]
-            .filter(Boolean)
-            .join(', ');
+          const isDuplicateRow = record.occurrence === 'duplicate';
+          const finalComments = isDuplicateRow
+            ? cleanedBase.filter(Boolean).join(', ')
+            : [...cleanedBase, ...variableTaskComments].filter(Boolean).join(', ');
 
           return {
             ...record,
+            isPlan: flipForCompletedVt ? false : record.isPlan,
             hours,
             entryId: record.entryId || `day-${record.day}-primary`,
             occurrence: (record.occurrence || 'primary') as 'primary' | 'duplicate',
@@ -1013,13 +1158,18 @@ export const RHRecordingForm = ({
         
         const recordsWithRetarded = ensureRetardedDayRecords(updatedRecords, parsedDateLineAdjustments);
         setDailyRecords(recordsWithRetarded);
+
+        // Persist the auto-flip via the existing auto-save-on-close.
+        if (anyCompletedVtFlip) {
+          setIsDirty(true);
+        }
       } catch (error) {
         console.error('Failed to parse daily records:', error);
       }
     } else if (isError || existingRecord === undefined) {
       console.log('No existing record found - using clean initialized state');
     }
-  }, [existingRecord, isError, open, parsedDateLineAdjustments, fixedTask, variableTaskCellsMap, variableTaskCommentsMap, signOnDate, signOffDate]);
+  }, [existingRecord, isError, open, parsedDateLineAdjustments, fixedTask, variableTaskCellsMap, variableTaskCommentsMap, completedVtCellsMap, signOnDate, signOffDate]);
 
   // Helper function to compute violatingRanges for hover highlighting
   const computeViolatingRanges = (
@@ -1798,8 +1948,20 @@ export const RHRecordingForm = ({
       to = parseInt(effectiveSignOffDate.split('-')[2], 10);
     }
 
+    // When a promotion has split the month, this record only applies to its own
+    // rank-period window [applicableFrom, applicableTo]. Intersect that window so
+    // days belonging to the other rank period render as N/A / non-editable.
+    const applicableFrom = (existingRecord as any)?.applicableFrom as string | null | undefined;
+    const applicableTo = (existingRecord as any)?.applicableTo as string | null | undefined;
+    if (applicableFrom && applicableFrom >= firstDay && applicableFrom <= lastDay) {
+      from = Math.max(from, parseInt(applicableFrom.split('-')[2], 10));
+    }
+    if (applicableTo && applicableTo >= firstDay && applicableTo <= lastDay) {
+      to = Math.min(to, parseInt(applicableTo.split('-')[2], 10));
+    }
+
     return { from, to };
-  }, [selectedPeriod, effectiveSignOnDate, effectiveSignOffDate]);
+  }, [selectedPeriod, effectiveSignOnDate, effectiveSignOffDate, existingRecord]);
 
   // Generate display rows - now 1:1 mapping since retarded days have separate records
   const displayRows = useMemo(() => {
@@ -2129,11 +2291,22 @@ export const RHRecordingForm = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {filteredCrewMembers.map((cm: any) => (
-                  <SelectItem key={cm.crewMemberId || cm.empNo} value={cm.crewMemberId || cm.empNo}>
-                    {cm.presentRank}, {cm.firstName}{cm.middleName ? ' ' + cm.middleName : ''} {cm.familyName}
-                  </SelectItem>
-                ))}
+                {filteredCrewMembers.map((cm: any) => {
+                  const cmId = cm.crewMemberId || cm.empNo;
+                  // For the row the form was opened with, show its stored rank so a
+                  // promotion/split month displays the exact per-rank row being
+                  // edited (not the month-end rank). All other options resolve to
+                  // the as-of-month-end rank from promotion history.
+                  const optionRank =
+                    isInitialSelection && cmId === selectedCrewMemberId && initialRank
+                      ? initialRank
+                      : getDisplayRank(cm);
+                  return (
+                    <SelectItem key={cmId} value={cmId}>
+                      {optionRank}, {cm.firstName}{cm.middleName ? ' ' + cm.middleName : ''} {cm.familyName}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -2661,6 +2834,7 @@ export const RHRecordingForm = ({
                 onClick={handleSave}
                 disabled={saveMutation.isPending}
                 data-testid="button-save"
+                className="bg-[#16569e] hover:bg-[#114a87] text-white"
               >
                 {saveMutation.isPending ? 'Saving...' : 'Save'}
               </Button>

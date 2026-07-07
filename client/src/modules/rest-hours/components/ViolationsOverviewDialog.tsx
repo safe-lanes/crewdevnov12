@@ -284,7 +284,10 @@ export function ViolationsOverviewDialog({
     filteredRecords.forEach(recordContainer => {
         try {
           const dailyRecords: DailyRecord[] = JSON.parse(recordContainer.dailyRecords);
-          dailyRecordsMap.set(recordContainer.crewMemberId, dailyRecords);
+          // Key by crew + vessel + rank so promotion months (multiple rank-period
+          // grids per crew) attribute each grid to its own rank row.
+          const mapKey = `${recordContainer.crewMemberId}-${recordContainer.vesselId}-${normalizeRank(recordContainer.rank)}`;
+          dailyRecordsMap.set(mapKey, dailyRecords);
         } catch (e) {
           console.error('Failed to parse daily records:', e);
         }
@@ -310,8 +313,9 @@ export function ViolationsOverviewDialog({
         return;
       }
 
-      // Get the daily records for this crew member
-      const dailyRecords = dailyRecordsMap.get(crew.crewMemberId) || [];
+      // Get the daily records for this crew member's specific rank row.
+      const dailyRecords =
+        dailyRecordsMap.get(`${crew.crewMemberId}-${crew.vesselId}-${normalizeRank(crew.rank)}`) || [];
 
       // For each day that has a violation, find the corresponding daily record
       violationDays.forEach(day => {

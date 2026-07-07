@@ -32,6 +32,10 @@ const PartAComponent: React.FC<PartAProps> = ({
 }) => {
   const { isLoading: ranksLoading, error: ranksError, rankOptions } = useCompanyRanks();
   const currentRank = form.watch("seafarersRank");
+  // Task #548: "Appraisal Period From" cannot be earlier than the Sign On Date.
+  // Bind the Sign On value (yyyy-mm-dd) to the date input's `min` so the native
+  // calendar disables earlier dates. Omit when no Sign On is set.
+  const signOnValue = form.watch("signOn");
   const hasLegacyRank =
     !!currentRank && !rankOptions.some((option) => option.value === currentRank);
   // Task #505: A locks once Stage 2 has been submitted on a lock-form
@@ -42,7 +46,7 @@ const PartAComponent: React.FC<PartAProps> = ({
   // Stage 3 submit no longer freezes this section.
   const lockSection = !!isLockForm && (!!isPostStage2 || !!isPostStage3);
   return (
-    <fieldset disabled={lockSection} className="contents" data-testid="fieldset-part-a-lock">
+    <fieldset disabled={lockSection} className="min-w-0 border-0 p-0 m-0" data-testid="fieldset-part-a-lock">
     <div ref={partRef} data-section-id="A">
       <Card className="bg-white">
         <CardContent className="p-6">
@@ -103,7 +107,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                 name="nationality"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality<RequiredMark /></FormLabel>
+                    <FormLabel className="text-xs text-gray-500 tracking-wide">Nationality</FormLabel>
                     <FormControl>
                       <Input {...field} readOnly tabIndex={-1} placeholder="Enter nationality" className="bg-gray-50 text-gray-700 cursor-not-allowed focus-visible:ring-0 focus-visible:ring-offset-0" data-testid="input-nationality" />
                     </FormControl>
@@ -128,7 +132,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                       </FormControl>
                       <SelectContent>
                         {vessels.map((vessel) => (
-                          <SelectItem key={vessel.entryId} value={vessel.name}>
+                          <SelectItem key={vessel.entryId} value={vessel.entryId}>
                             {vessel.name}
                           </SelectItem>
                         ))}
@@ -157,7 +161,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Type<RequiredMark /></FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={lockSection}>
                       <FormControl>
                         <SelectTrigger className="bg-[#ffffff]" data-testid="select-appraisal-type">
                           <SelectValue placeholder="Select type" />
@@ -194,7 +198,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                   <FormItem>
                     <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period From</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" data-testid="input-period-from" />
+                      <Input {...field} min={signOnValue || undefined} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" data-testid="input-period-from" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -205,9 +209,22 @@ const PartAComponent: React.FC<PartAProps> = ({
                 name="appraisalPeriodTo"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period To</FormLabel>
+                    <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period To<RequiredMark /></FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" data-testid="input-period-to" />
+                      <Input
+                        {...field}
+                        type="date"
+                        min={form.watch('appraisalPeriodFrom') || undefined}
+                        onChange={(e) => {
+                          const from = form.getValues('appraisalPeriodFrom');
+                          const val = e.target.value;
+                          if (from && val && val < from) return;
+                          field.onChange(e);
+                        }}
+                        placeholder="dd.mm.yyyy"
+                        className="bg-[#ffffff]"
+                        data-testid="input-period-to"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -219,7 +236,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs text-gray-500 tracking-wide">Primary Appraiser</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={lockSection}>
                       <FormControl>
                         <SelectTrigger className="bg-[#ffffff]" data-testid="select-primary-appraiser">
                           <SelectValue placeholder="Select appraiser" />
@@ -249,7 +266,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs text-gray-500 tracking-wide">Personality Index (PI) Category</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={lockSection}>
                         <FormControl>
                           <SelectTrigger className="bg-[#ffffff]" data-testid="select-pi-category">
                             <SelectValue placeholder="Select category" />

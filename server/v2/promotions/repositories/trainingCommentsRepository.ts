@@ -33,7 +33,7 @@ export class TrainingCommentsRepository {
     return results[0];
   }
 
-  async replaceForReview(reviewUuid: string, comments: Omit<InsertPromoTrainingCommentV2, "tcUuid" | "reviewUuid">[]): Promise<PromoTrainingCommentV2[]> {
+  async replaceForReview(reviewUuid: string, comments: Omit<InsertPromoTrainingCommentV2, "tcUuid" | "reviewUuid">[], auditUserUuid: string | null = null): Promise<PromoTrainingCommentV2[]> {
     const db = getDb();
     const existing = await db
       .select()
@@ -44,7 +44,7 @@ export class TrainingCommentsRepository {
       if (existing.length > 0) {
         await db
           .update(promoTrainingCommentsV2)
-          .set({ isDeleted: true, updatedAt: new Date() })
+          .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
           .where(and(eq(promoTrainingCommentsV2.reviewUuid, reviewUuid), eq(promoTrainingCommentsV2.isDeleted, false)));
       }
       return [];
@@ -65,14 +65,14 @@ export class TrainingCommentsRepository {
         usedExistingIds.push(match.id);
         const updated = await db
           .update(promoTrainingCommentsV2)
-          .set({ commentUser: c.commentUser, commentText: c.commentText, sortOrder: i, updatedAt: new Date() })
+          .set({ commentUser: c.commentUser, commentText: c.commentText, sortOrder: i, updatedAt: new Date(), updatedByUuid: auditUserUuid })
           .where(eq(promoTrainingCommentsV2.id, match.id))
           .returning();
         results.push(updated[0]);
       } else {
         const inserted = await db
           .insert(promoTrainingCommentsV2)
-          .values({ ...c, tcUuid: uuidv4(), reviewUuid, sortOrder: i })
+          .values({ ...c, tcUuid: uuidv4(), reviewUuid, sortOrder: i, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid })
           .returning();
         results.push(inserted[0]);
       }
@@ -82,7 +82,7 @@ export class TrainingCommentsRepository {
     if (unusedIds.length > 0) {
       await db
         .update(promoTrainingCommentsV2)
-        .set({ isDeleted: true, updatedAt: new Date() })
+        .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
         .where(inArray(promoTrainingCommentsV2.id, unusedIds));
     }
 

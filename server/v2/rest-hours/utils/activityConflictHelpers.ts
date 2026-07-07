@@ -168,6 +168,11 @@ export function detectActivityConflict(
     for (const dayRecord of dailyRecords) {
       if (dayRecord.isPlan === true) continue;
 
+      // A retarded (duplicate) row is a date-line repeat of the calendar day.
+      // The Variable Task belongs to the ORIGINAL (primary) day, so validate it
+      // only against the primary row — never against the repeated day.
+      if (dayRecord.occurrence === 'duplicate') continue;
+
       const dayNum = dayRecord.day;
       const taskCellRanges = cellsByDay.get(dayNum);
       if (!taskCellRanges) continue;

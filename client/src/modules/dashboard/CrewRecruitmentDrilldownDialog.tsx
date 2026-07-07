@@ -26,6 +26,9 @@ interface CandidateRow {
   nationalityUuid?: string | null;
   status?: string | null;
   createdAt?: string | Date | null;
+  recruitmentDate?: string | null;   // ← ADD THIS
+  manningAgent?: string | null;
+  crewPool?: string | null;
 }
 
 interface CrewRecruitmentDrilldownDialogProps {
@@ -119,7 +122,7 @@ export const CrewRecruitmentDrilldownDialog = ({
   rank,
   period,
   ranks = [],
-  crewPools: _crewPools = [],
+  crewPools = [],
   manningAgents = [],
   nationalities = [],
 }: CrewRecruitmentDrilldownDialogProps) => {
@@ -153,7 +156,7 @@ export const CrewRecruitmentDrilldownDialog = ({
       // bucket. Without this, Waitlist / Draft / etc. show up here too.
       if (!c.status || !RECRUITED_STATUSES.has(String(c.status))) return false;
 
-      const recruited = parseDate(c.createdAt);
+      const recruited = parseDate(c.recruitmentDate);
       if (!recruited) return false;
       if (recruited < range.from || recruited > range.to) return false;
 
@@ -161,23 +164,26 @@ export const CrewRecruitmentDrilldownDialog = ({
       if (!candidateRank || candidateRank !== rank) return false;
 
       if (ranks.length > 0 && !ranks.includes(candidateRank)) return false;
-      if (
-        nationalities.length > 0 &&
-        !nationalities.includes((c.nationalityUuid || "") as string)
-      ) {
-        return false;
+      if (nationalities.length > 0) {
+        const nationalityName =
+          nationalityNameMap.get(String(c.nationalityUuid || "")) || "";
+
+        if (!nationalities.includes(nationalityName)) {
+          return false;
+        }
       }
-      if (manningAgents.length > 0) return false;
+      if (manningAgents.length > 0 && !manningAgents.includes((c.manningAgent || "").trim())) return false;
+      if (crewPools.length > 0 && !crewPools.includes((c.crewPool || "").trim())) return false;
 
       return true;
     });
-  }, [candidates, range, rank, ranks, nationalities, manningAgents]);
+  }, [candidates, range, rank, ranks, nationalities, manningAgents, crewPools, nationalityNameMap]);
 
   const sorted = useMemo(
     () =>
       [...matchingCandidates].sort((a, b) => {
-        const da = parseDate(a.createdAt)?.getTime() ?? 0;
-        const db = parseDate(b.createdAt)?.getTime() ?? 0;
+        const da = parseDate(a.recruitmentDate)?.getTime() ?? 0;
+        const db = parseDate(b.recruitmentDate)?.getTime() ?? 0;
         return db - da;
       }),
     [matchingCandidates],
@@ -240,7 +246,7 @@ export const CrewRecruitmentDrilldownDialog = ({
                       Nationality
                     </th>
                     <th className="w-[13%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">
-                      Date Applied
+                      Date of Recruitment
                     </th>
                     <th className="w-[12%] px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">
                       Status
@@ -270,7 +276,7 @@ export const CrewRecruitmentDrilldownDialog = ({
                         <td className="px-4 py-2 text-sm">{c.presentRank || ""}</td>
                         <td className="px-4 py-2 text-sm">{nationalityName}</td>
                         <td className="px-4 py-2 text-sm">
-                          {formatDate(c.createdAt)}
+                          {formatDate(c.recruitmentDate)}
                         </td>
                         <td className="px-4 py-2 text-sm">
                           {c.status ? (

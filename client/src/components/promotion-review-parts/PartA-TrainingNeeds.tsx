@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Trash2, MessageSquare } from 'lucide-react';
 import type { TrainingRow, Comment } from './types';
 import { DbTrainingCombobox, type DbTrainingOption } from './DbTrainingCombobox';
+import { useTrainingStatusOptionsV2, withLegacyStatus, useTrainingCategoryOptionsV2, withLegacyCategory } from '@/hooks/v2/useMasterDataV2';
 
 interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   trainingNeeds: TrainingRow[];
@@ -24,6 +25,8 @@ interface PartATrainingNeedsProps extends React.HTMLAttributes<HTMLDivElement> {
   dbTrainings: DbTrainingOption[];
   isLoadingDbTrainings?: boolean;
   isErrorDbTrainings?: boolean;
+  disabled?: boolean;
+  users?: { userUuid: string; displayName: string }[];
 }
 
 const getCurrentUserDisplay = (): string => {
@@ -49,9 +52,13 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
   dbTrainings,
   isLoadingDbTrainings = false,
   isErrorDbTrainings = false,
+  disabled = false,
+  users = [],
   ...restProps
 }: PartATrainingNeedsProps) {
   const currentUserDisplay = getCurrentUserDisplay();
+  const { statuses: statusOptions } = useTrainingStatusOptionsV2("Promotion");
+  const { categories: categoryOptions } = useTrainingCategoryOptionsV2("Promotion");
   return (
     <div className="border border-[#EAEBEF] rounded-lg p-4" {...restProps}>
       <div className="flex justify-between items-center mb-4">
@@ -63,6 +70,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
             size="sm" 
             className="text-xs"
             onClick={onOpenTrainingDialog}
+            disabled={disabled}
             data-testid="button-add-training-from-db"
           >
             <Plus className="h-3 w-3 mr-1" />
@@ -74,6 +82,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
             size="sm" 
             className="text-xs" 
             onClick={onAddTrainingRow}
+            disabled={disabled}
             data-testid="button-add-new-training"
           >
             <Plus className="h-3 w-3 mr-1" />
@@ -86,11 +95,12 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
-              <TableHead className="text-xs font-normal text-gray-600 w-[8%]">S.No.</TableHead>
-              <TableHead className="text-xs font-normal text-gray-600 w-[20%]">Training</TableHead>
-              <TableHead className="text-xs font-normal text-gray-600 w-[25%]">Corresponding in DB</TableHead>
-              <TableHead className="text-xs font-normal text-gray-600 w-[17%]">Category</TableHead>
-              <TableHead className="text-xs font-normal text-gray-600 w-[20%]">Status</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[7%]">S.No.</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[16%]">Training</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[20%]">Corresponding in DB</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[16%]">Identified By</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[14%]">Category</TableHead>
+              <TableHead className="text-xs font-normal text-gray-600 w-[17%]">Status</TableHead>
               <TableHead className="text-xs font-normal text-gray-600 w-[10%]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -123,6 +133,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         onChange={(e) => onUpdateTraining(training.id, 'training', e.target.value)}
                         placeholder="Enter training name..."
                         className="h-8 text-xs"
+                        disabled={disabled}
                         data-testid={`input-training-name-${training.id}`}
                       />
                     )}
@@ -139,21 +150,42 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         onChange={(value) => onUpdateTraining(training.id, 'correspondingInDB', value)}
                         isLoading={isLoadingDbTrainings}
                         isError={isErrorDbTrainings}
+                        disabled={disabled}
+                        fallbackLabel={training.training}
                         testId={`select-training-db-${training.id}`}
                       />
                     )}
                   </TableCell>
                   <TableCell>
+                    <Select
+                      value={training.identifiedByUuid || '__none'}
+                      onValueChange={(value) => onUpdateTraining(training.id, 'identifiedByUuid', value === '__none' ? '' : value)}
+                      disabled={disabled}
+                    >
+                      <SelectTrigger className="h-8 text-xs" data-testid={`select-training-identified-by-${training.id}`}>
+                        <SelectValue placeholder="Select user" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[280px]">
+                        <SelectItem value="__none">— None —</SelectItem>
+                        {users.map((u) => (
+                          <SelectItem key={u.userUuid} value={u.userUuid}>{u.displayName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
                     <Select 
                       value={training.category}
                       onValueChange={(value) => onUpdateTraining(training.id, 'category', value)}
+                      disabled={disabled}
                     >
                       <SelectTrigger className="h-8 text-xs" data-testid={`select-training-category-${training.id}`}>
                         <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1. Competence">1. Competence</SelectItem>
-                        <SelectItem value="2. Soft Skills">2. Soft Skills</SelectItem>
+                        {withLegacyCategory(categoryOptions, training.category).map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </TableCell>
@@ -161,16 +193,15 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                     <Select 
                       value={training.status}
                       onValueChange={(value) => onUpdateTraining(training.id, 'status', value)}
+                      disabled={disabled}
                     >
                       <SelectTrigger className="h-8 text-xs" data-testid={`select-training-status-${training.id}`}>
                         <SelectValue placeholder="Select Status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Proposed">Proposed</SelectItem>
-                        <SelectItem value="Approved">Approved</SelectItem>
-                        <SelectItem value="Planned">Planned</SelectItem>
-                        <SelectItem value="Declined">Declined</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
+                        {withLegacyStatus(statusOptions, training.status).map((s) => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </TableCell>
@@ -182,6 +213,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         size="sm" 
                         className="h-7 w-7 p-0" 
                         onClick={() => onDeleteTraining(training.id)}
+                        disabled={disabled}
                         data-testid={`button-training-delete-${training.id}`}
                       >
                         <Trash2 className="h-4 w-4 text-gray-600" />

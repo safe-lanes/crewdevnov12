@@ -103,10 +103,11 @@ export const crewAssignmentsController = {
     try {
       const { crewUuid } = req.params;
       const validatedData = assignToVesselSchema.parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const assignment = await crewAssignmentsService.assignToVessel(
         crewUuid,
         validatedData.vesselUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.status(201).json(assignment);
     } catch (error: any) {
@@ -129,9 +130,10 @@ export const crewAssignmentsController = {
     try {
       const { crewUuid } = req.params;
       const validatedData = signOffSchema.parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const assignment = await crewAssignmentsService.signOff(
         crewUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       if (!assignment) {
         return res.status(404).json({ error: "No active assignment found" });
@@ -154,9 +156,10 @@ export const crewAssignmentsController = {
     try {
       const { assignUuid } = req.params;
       const validatedData = insertCrewAssignmentSchema.partial().parse(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       const assignment = await crewAssignmentsService.update(
         assignUuid,
-        validatedData
+        { ...validatedData, auditUserUuid }
       );
       res.json(assignment);
     } catch (error: any) {

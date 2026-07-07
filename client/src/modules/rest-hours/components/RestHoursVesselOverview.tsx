@@ -80,6 +80,17 @@ export const RestHoursVesselOverview = (): JSX.Element => {
   // Store is the source of truth for vessel selection
   const selectedVessel = planVesselId || "";
 
+  // Draft filter state — only applied on Apply click
+  const [draftPeriod, setDraftPeriod] = useState(periodValue);
+  const [draftVessel, setDraftVessel] = useState(selectedVessel);
+  const [draftRank, setDraftRank] = useState(selectedRank);
+  const [draftSearch, setDraftSearch] = useState(searchText);
+
+  useEffect(() => { setDraftPeriod(periodValue); }, [periodValue]);
+  useEffect(() => { setDraftVessel(selectedVessel); }, [selectedVessel]);
+  useEffect(() => { setDraftRank(selectedRank); }, [selectedRank]);
+  useEffect(() => { setDraftSearch(searchText); }, [searchText]);
+
   // Update store and URL when period changes via dropdown
   const handlePeriodChange = (value: string) => {
     const [year, month] = value.split('-').map(Number);
@@ -93,9 +104,11 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     }
   };
 
-  // Update store when vessel changes via dropdown
-  const handleVesselChange = (value: string) => {
-    setPlanVesselId(value);
+  const handleApply = () => {
+    if (draftPeriod) handlePeriodChange(draftPeriod);
+    if (!isShipUser) setPlanVesselId(draftVessel);
+    setSelectedRank(draftRank);
+    setSearchText(draftSearch);
   };
 
   const { userType, myVessels, canView, permissions } = usePermissions();
@@ -220,14 +233,17 @@ export const RestHoursVesselOverview = (): JSX.Element => {
     }
   };
 
-  // Fetch vessel record to get isLocked state
+    // Fetch vessel record to get isLocked state (scoped to the selected vessel)
   const { data: vesselRecordsForPeriod = [] } = useQuery({
     queryKey: ['/api/v2/rest-hours/vessel-records', selectedVessel, periodValue],
-    queryFn: () => restHoursApiV2.vesselRecords.getAll({ vesselId: selectedVessel, monthValue: periodValue }),
+    queryFn: () => restHoursApiV2.vesselRecords.getAll({ vesselUuid: selectedVessel, monthValue: periodValue }),
     enabled: !!selectedVessel && !!periodValue,
   });
-  const isLocked = !!(vesselRecordsForPeriod[0] as any)?.isLocked;
-
+  // Match the exact vessel + month instead of assuming the first row is correct
+  const vesselRecordForPeriod = vesselRecordsForPeriod.find(
+    (r: any) => r.vesselId === selectedVessel && r.monthValue === periodValue,
+  );
+  const isLocked = !!(vesselRecordForPeriod as any)?.isLocked;
   // Fetch crew records for export using V2 API (matching V1 pattern: vesselId, monthValue)
   const { data: crewRecordsForExport = [] } = useQuery({
     queryKey: ['v2', 'rest-hours', 'crew-records-export', selectedVessel, periodValue, complianceMode, opaMode],
@@ -411,7 +427,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         {/* Period Dropdown */}
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-[#4f5863] dark:text-neutral-300">Period</Label>
-          <Select value={periodValue} onValueChange={handlePeriodChange}>
+          <Select value={draftPeriod} onValueChange={setDraftPeriod}>
             <SelectTrigger 
               className="h-8 w-40 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
               data-testid="select-period"
@@ -432,7 +448,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         {/* Vessel Single Select */}
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-[#4f5863] dark:text-neutral-300">Vessel</Label>
-          <Select value={selectedVessel} onValueChange={handleVesselChange} disabled={isShipUser}>
+          <Select value={draftVessel} onValueChange={setDraftVessel} disabled={isShipUser}>
             <SelectTrigger 
               className="h-8 w-52 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
               disabled={vesselsLoading || isShipUser}
@@ -453,7 +469,7 @@ export const RestHoursVesselOverview = (): JSX.Element => {
         {/* Rank Dropdown */}
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-[#4f5863] dark:text-neutral-300">Rank</Label>
-          <Select value={selectedRank} onValueChange={setSelectedRank}>
+          <Select value={draftRank} onValueChange={setDraftRank}>
             <SelectTrigger 
               className="h-8 w-48 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
               data-testid="select-rank"
@@ -480,12 +496,24 @@ export const RestHoursVesselOverview = (): JSX.Element => {
           <Label className="text-xs text-[#4f5863] dark:text-neutral-300">Search Name or Crew ID</Label>
           <Input
             type="text"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            value={draftSearch}
+            onChange={(e) => setDraftSearch(e.target.value)}
             placeholder="Search..."
             className="h-8 w-64 text-xs text-[#0f172a] placeholder:text-[#8899ae] bg-transparent dark:bg-neutral-900"
             data-testid="input-search"
           />
+        </div>
+
+        {/* Apply Button */}
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-transparent">Apply</Label>
+          <Button
+            onClick={handleApply}
+            className="h-8 bg-[#16569e] hover:bg-[#0d4a8f] text-white text-xs px-4"
+            data-testid="button-apply"
+          >
+            Apply
+          </Button>
         </div>
 
         {/* Clear Button */}

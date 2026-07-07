@@ -8,7 +8,7 @@ const stage1SubmissionSchema = z.object({
   data: z.object({
     seafarersName: z.string().min(1),
     seafarersRank: z.string().min(1),
-    nationality: z.string().min(1),
+    nationality: z.string().nullish(),
     vessel: z.string().min(1),
     appraisalType: z.string().min(1),
     signOn: z.string().optional(),
@@ -97,7 +97,8 @@ export class AppraisalResultsController {
 
   async create(req: Request, res: Response) {
     try {
-      const appraisal = await service.create(req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const appraisal = await service.create({ ...req.body, auditUserUuid });
       res.status(201).json(appraisal);
     } catch (error) {
       console.error("[Appraisals V2] Failed to create appraisal:", error);
@@ -108,7 +109,8 @@ export class AppraisalResultsController {
   async update(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);
-      const appraisal = await service.update(id, req.body);
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const appraisal = await service.update(id, { ...req.body, auditUserUuid });
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -141,7 +143,8 @@ export class AppraisalResultsController {
         return res.status(400).json({ error: "Invalid stage 1 data", details: validationResult.error.issues });
       }
       const { data, submittedBy } = validationResult.data;
-      const appraisal = await service.submitStage(id, "stage1", data, submittedBy || "Unknown");
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const appraisal = await service.submitStage(id, "stage1", { ...data, auditUserUuid }, submittedBy || "Unknown");
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }
@@ -160,9 +163,10 @@ export class AppraisalResultsController {
         return res.status(400).json({ error: "Invalid stage 2 data", details: validationResult.error.issues });
       }
       const { data, submittedBy, competenceRating, behavioralRating, overallRating } = validationResult.data;
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
       // Pass through as-is: `undefined` means "client didn't send it, don't touch existing column";
       // `null` means "client explicitly cleared it". The service only writes fields that are !== undefined.
-      const appraisal = await service.submitStage(id, "stage2", data, submittedBy || "Unknown", {
+      const appraisal = await service.submitStage(id, "stage2", { ...data, auditUserUuid }, submittedBy || "Unknown", {
         competenceRating,
         behavioralRating,
         overallRating,
@@ -185,7 +189,8 @@ export class AppraisalResultsController {
         return res.status(400).json({ error: "Invalid stage 3 data", details: validationResult.error.issues });
       }
       const { data, submittedBy } = validationResult.data;
-      const appraisal = await service.submitStage(id, "stage3", data, submittedBy || "Unknown");
+      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const appraisal = await service.submitStage(id, "stage3", { ...data, auditUserUuid }, submittedBy || "Unknown");
       if (!appraisal) {
         return res.status(404).json({ error: "Appraisal not found" });
       }

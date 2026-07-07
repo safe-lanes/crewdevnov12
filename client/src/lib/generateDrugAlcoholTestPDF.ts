@@ -251,6 +251,22 @@ class PDFBuilder {
     return x + 12;
   }
 
+  drawCheckmarkAt(x: number, baselineY: number): void {
+    const yMid = baselineY + 1;
+    this.currentPage.drawLine({
+      start: { x, y: yMid },
+      end: { x: x + 2.5, y: yMid - 3 },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    });
+    this.currentPage.drawLine({
+      start: { x: x + 2.5, y: yMid - 3 },
+      end: { x: x + 6.5, y: yMid + 4 },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    });
+  }
+
   moveDown(amount: number = LINE_HEIGHT): void {
     this.yPosition -= amount;
     this.checkPageBreak();
@@ -395,16 +411,17 @@ class PDFBuilder {
     this.moveDown(rowHeight);
   }
 
-  drawTableRowWithWrapping(values: string[], colWidths: number[], wrapColumns: number[], baseRowHeight: number = 18): void {
+  drawTableRowWithWrapping(values: string[], colWidths: number[], wrapColumns: number[], baseRowHeight: number = 18, checkmarkCells: boolean[] = []): void {
     const fontSize = 8;
     const lineHeight = 10;
     const padding = 3;
+    const checkOffset = 9;
     
     let maxLines = 1;
     const wrappedTexts: string[][] = [];
     
     for (let i = 0; i < values.length; i++) {
-      const maxWidth = colWidths[i] - 6;
+      const maxWidth = colWidths[i] - 6 - (checkmarkCells[i] ? checkOffset : 0);
       const text = values[i] || '';
       
       if (wrapColumns.includes(i) && this.font.widthOfTextAtSize(text, fontSize) > maxWidth) {
@@ -449,10 +466,16 @@ class PDFBuilder {
     let x = MARGIN;
     for (let i = 0; i < values.length; i++) {
       const lines = wrappedTexts[i];
+      const hasCheck = checkmarkCells[i] === true;
+      const textX = x + padding + (hasCheck ? checkOffset : 0);
       let textY = this.yPosition - padding - lineHeight + 2;
       
+      if (hasCheck) {
+        this.drawCheckmarkAt(x + padding, textY);
+      }
+      
       for (const line of lines) {
-        this.drawTextAt(line, x + padding, textY, fontSize);
+        this.drawTextAt(line, textX, textY, fontSize);
         textY -= lineHeight;
       }
       
@@ -506,10 +529,18 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
   builder.drawTextAt('Drug', radioX + 2, builder.getY(), 9);
   builder.moveDown(LINE_HEIGHT * 1.5);
   
-  builder.drawFieldRow([
-    { label: 'Initiated By', value: formData.initiatedBy || '' },
-    { label: 'Date & Time Test Completed', value: formatDateTime(formData.dateTimeTestCompleted) },
-  ], CONTENT_WIDTH / 2);
+  const generalFields = [
+    { label: 'Initiated By', value: formData.initiatedBy || '' }
+  ];
+
+  if (formData.testType !== 'post-incident') {
+    generalFields.push({
+      label: 'Date & Time Test Completed',
+      value: formatDateTime(formData.dateTimeTestCompleted)
+    });
+  }
+
+  builder.drawFieldRow(generalFields, CONTENT_WIDTH / 2);
   
   if (formData.testType === 'post-incident') {
     builder.drawFieldRow([
@@ -519,16 +550,16 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
     ]);
   }
   
-  if (alcoholDrugTypes.includes('Alcohol')) {
+  if (formData.testType === 'post-incident') {
     builder.drawFieldRow([
-      { label: 'Date & Time (Alcohol Test)', value: formatDateTime(formData.alcoholTestDateTime) },
+      { label: 'Alcohol Test - Date & Time Completed', value: formatDateTime(formData.alcoholTestDateTime) },
       { label: '', value: '' },
     ], CONTENT_WIDTH / 2);
   }
   
-  if (alcoholDrugTypes.includes('Drug')) {
+  if (formData.testType === 'post-incident') {
     builder.drawFieldRow([
-      { label: 'Date & Time (Drug Test)', value: formatDateTime(formData.drugTestDateTime) },
+      { label: 'Drug Test - Date & Time Completed', value: formatDateTime(formData.drugTestDateTime) },
       { label: '', value: '' },
     ], CONTENT_WIDTH / 2);
   }
@@ -548,9 +579,14 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
         builder.moveDown(LINE_HEIGHT);
       }
     }
-    
+  }
+  
+  if (['annual', 'post-incident', 'others'].includes(formData.testType)) {
     builder.drawFieldRow([
-      { label: 'External Test Results Date', value: formatDate(formData.externalTestResultsDate) },
+      {
+        label: 'Date External Test Results received',
+        value: formatDate(formData.externalTestResultsDate)
+      },
     ], CONTENT_WIDTH);
   }
   
@@ -584,10 +620,14 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
   
   builder.drawSubsectionHeader('B1. Personnel Tested');
   
-  if (formData.personnelTested && formData.personnelTested.length > 0) {
-    const showAlcohol = alcoholDrugTypes.includes('Alcohol');
-    const showDrug = alcoholDrugTypes.includes('Drug');
-    
+  const showAlcohol = alcoholDrugTypes.includes('Alcohol');
+  const showDrug = alcoholDrugTypes.includes('Drug');
+
+  const visiblePersonnel = (formData.personnelTested || []).filter(
+    (person) => person.alcoholTest?.checked || person.drugTest?.checked
+  );
+
+  if (visiblePersonnel.length > 0) {
     const personnelHeaders: string[] = ['S/n', 'Rank', 'Name'];
     const personnelWidths: number[] = [30, 60, 80];
     const wrapColumnIndices: number[] = [1, 2];
@@ -612,34 +652,44 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
     
     builder.drawTableHeader(personnelHeaders, scaledWidths);
     
-    formData.personnelTested.forEach((person, index) => {
+    visiblePersonnel.forEach((person, index) => {
       const rowValues: string[] = [
         String(index + 1),
         person.rank || '',
         person.name || '',
       ];
+      const checkmarkCells: boolean[] = [false, false, false];
       
       if (showAlcohol) {
-        const alcoholChecked = person.alcoholTest?.checked ? 'X' : '';
-        const alcoholDateTime = person.alcoholTest?.date ? 
-          `${formatDate(person.alcoholTest.date)}${person.alcoholTest.time ? ' ' + person.alcoholTest.time : ''}` : '';
-        rowValues.push(alcoholChecked + (alcoholDateTime ? ' ' + alcoholDateTime : ''));
-        rowValues.push(person.alcoholResults || '');
-        rowValues.push(person.alcoholViolation ? 'Yes' : 'No');
+        const alcoholChecked = !!person.alcoholTest?.checked;
+        const alcoholDateTime = alcoholChecked && person.alcoholTest?.date
+          ? `${formatDate(person.alcoholTest.date)}${person.alcoholTest.time ? ' ' + person.alcoholTest.time : ''}`
+          : '';
+        rowValues.push(alcoholDateTime);
+        checkmarkCells.push(false);
+        rowValues.push(alcoholChecked ? (person.alcoholResults || '') : '');
+        checkmarkCells.push(false);
+        rowValues.push(alcoholChecked ? (person.alcoholViolation ? 'Yes' : 'No') : '');
+        checkmarkCells.push(false);
       }
       
       if (showDrug) {
-        const drugChecked = person.drugTest?.checked ? 'X' : '';
-        const drugDateTime = person.drugTest?.date ?
-          `${formatDate(person.drugTest.date)}${person.drugTest.time ? ' ' + person.drugTest.time : ''}` : '';
-        rowValues.push(drugChecked + (drugDateTime ? ' ' + drugDateTime : ''));
-        rowValues.push(person.drugResults || '');
-        rowValues.push(person.drugViolation ? 'Yes' : 'No');
+        const drugChecked = !!person.drugTest?.checked;
+        const drugDateTime = drugChecked && person.drugTest?.date
+          ? `${formatDate(person.drugTest.date)}${person.drugTest.time ? ' ' + person.drugTest.time : ''}`
+          : '';
+        rowValues.push(drugDateTime);
+        checkmarkCells.push(false);
+        rowValues.push(drugChecked ? (person.drugResults || '') : '');
+        checkmarkCells.push(false);
+        rowValues.push(drugChecked ? (person.drugViolation ? 'Yes' : 'No') : '');
+        checkmarkCells.push(false);
       }
       
       rowValues.push(person.witness || '');
+      checkmarkCells.push(false);
       
-      builder.drawTableRowWithWrapping(rowValues, scaledWidths, wrapColumnIndices, 20);
+      builder.drawTableRowWithWrapping(rowValues, scaledWidths, wrapColumnIndices, 20, checkmarkCells);
     });
   } else {
     builder.drawText('No personnel records', MARGIN, 9, 'italic', LABEL_COLOR);
@@ -692,6 +742,18 @@ export async function generateDrugAlcoholTestPDF(formData: DrugAlcoholTestFormDa
 }
 
 function wrapText(text: string, maxWidth: number, font: PDFFont, fontSize: number): string[] {
+  const lines: string[] = [];
+  for (const segment of text.split(/\r?\n/)) {
+    if (segment.trim() === '') {
+      lines.push('');
+    } else {
+      lines.push(...wrapSingleLine(segment, maxWidth, font, fontSize));
+    }
+  }
+  return lines;
+}
+
+function wrapSingleLine(text: string, maxWidth: number, font: PDFFont, fontSize: number): string[] {
   const words = text.split(' ');
   const lines: string[] = [];
   let currentLine = '';

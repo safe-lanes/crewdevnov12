@@ -50,7 +50,7 @@ export class ChecklistProgressRepository {
     return results[0];
   }
 
-  async replaceForReview(reviewUuid: string, items: Omit<InsertPromoChecklistProgressV2, "cpUuid" | "reviewUuid">[]): Promise<PromoChecklistProgressV2[]> {
+  async replaceForReview(reviewUuid: string, items: Omit<InsertPromoChecklistProgressV2, "cpUuid" | "reviewUuid">[], auditUserUuid: string | null = null): Promise<PromoChecklistProgressV2[]> {
     const db = getDb();
     const existing = await db
       .select()
@@ -61,7 +61,7 @@ export class ChecklistProgressRepository {
       if (existing.length > 0) {
         await db
           .update(promoChecklistProgressV2)
-          .set({ isDeleted: true, updatedAt: new Date() })
+          .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
           .where(and(eq(promoChecklistProgressV2.reviewUuid, reviewUuid), eq(promoChecklistProgressV2.isDeleted, false)));
       }
       return [];
@@ -91,9 +91,10 @@ export class ChecklistProgressRepository {
             date: item.date,
             verificationsData: item.verificationsData ?? null,
             commentsData: item.commentsData ?? null,
-            attachmentsData: item.attachmentsData ?? null,
+            deprecatedAttachmentsData: item.deprecatedAttachmentsData ?? null,
             sortOrder: i,
             updatedAt: new Date(),
+            updatedByUuid: auditUserUuid,
           })
           .where(eq(promoChecklistProgressV2.id, match.id))
           .returning();
@@ -101,7 +102,7 @@ export class ChecklistProgressRepository {
       } else {
         const inserted = await db
           .insert(promoChecklistProgressV2)
-          .values({ ...item, cpUuid: uuidv4(), reviewUuid, sortOrder: i })
+          .values({ ...item, cpUuid: uuidv4(), reviewUuid, sortOrder: i, createdByUuid: auditUserUuid, updatedByUuid: auditUserUuid })
           .returning();
         results.push(inserted[0]);
       }
@@ -111,7 +112,7 @@ export class ChecklistProgressRepository {
     if (unusedIds.length > 0) {
       await db
         .update(promoChecklistProgressV2)
-        .set({ isDeleted: true, updatedAt: new Date() })
+        .set({ isDeleted: true, updatedAt: new Date(), updatedByUuid: auditUserUuid })
         .where(inArray(promoChecklistProgressV2.id, unusedIds));
     }
 

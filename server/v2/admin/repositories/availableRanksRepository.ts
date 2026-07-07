@@ -3,6 +3,7 @@ import { getDb } from "../../db";
 import { admAvailableRanksV2 } from "../../../../shared/v2/admin/schema";
 import type { AdmAvailableRankV2, InsertAdmAvailableRankV2 } from "../../../../shared/v2/admin/types";
 import { v4 as uuidv4 } from "uuid";
+import { applyAuditUser } from "../utils/auditUser";
 
 export class AvailableRanksRepository {
   async findAll(): Promise<AdmAvailableRankV2[]> {
@@ -99,12 +100,12 @@ export class AvailableRanksRepository {
     return results.length > 0;
   }
 
-  async updateSortOrders(orders: { id: number; sortOrder: number }[]): Promise<boolean> {
+  async updateSortOrders(orders: { id: number; sortOrder: number }[], auditUserUuid: string | null = null): Promise<boolean> {
     const db = getDb();
     for (const { id, sortOrder } of orders) {
       await db
         .update(admAvailableRanksV2)
-        .set({ sortOrder, updatedAt: new Date() })
+        .set(applyAuditUser({ sortOrder, auditUserUuid }))
         .where(and(eq(admAvailableRanksV2.id, id), eq(admAvailableRanksV2.isDeleted, false)));
     }
     return true;

@@ -4,25 +4,27 @@ import { ModuleNavigator } from '../ModuleNavigator'
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem, deepParseJson } from '@/lib/encryptionService';
 import { usePermissions } from '@/contexts/PermissionsContext';
+import NotificationBell from '../NotificationBell';
 import { logout as authLogout } from '@/lib/authToken';
-import { 
-    LayoutGrid, 
+import {
+    LayoutGrid,
     UserPlus,
-    Users, 
-    Ship, 
-    Calendar, 
-    TrendingUp, 
-    FileText, 
-    FlaskConical, 
-    Clock, 
-    BarChart3, 
-    User, 
+    Users,
+    Ship,
+    Calendar,
+    TrendingUp,
+    FileText,
+    FlaskConical,
+    Clock,
+    BarChart3,
+    User,
     Settings,
     Menu,
     X,
     PanelLeft,
     LogOut,
-    UsersRound
+    UsersRound,
+    ClipboardList
 } from "lucide-react";
 
 const navItems = [
@@ -136,17 +138,16 @@ const navItems = [
         inactiveBg: "#f1f1f1",
         inactiveText: "#4f5863",
     },
-    // Temporarily hidden - Account
-    // {
-    //     label: "Account",
-    //     href: "/accounts",
-    //     menuName: "Account",
-    //     icon: User,
-    //     activeBg: "#5DADE2",
-    //     activeText: "white",
-    //     inactiveBg: "#f1f1f1",
-    //     inactiveText: "#4f5863",
-    // },
+    {
+        label: "Account",
+        href: "/accounts",
+        menuName: "Account",
+        icon: User,
+        activeBg: "#5DADE2",
+        activeText: "white",
+        inactiveBg: "#f1f1f1",
+        inactiveText: "#4f5863",
+    },
     {
         label: "Admin",
         href: "/admin",
@@ -157,6 +158,18 @@ const navItems = [
         inactiveBg: "#f1f1f1",
         inactiveText: "#4f5863",
     },
+    // Test Cases menu hidden — page is reachable only via direct /test-cases URL.
+    // Preserved for later restore.
+    // {
+    //     label: "Test Cases",
+    //     href: "/test-cases",
+    //     menuName: "Test Cases",
+    //     icon: ClipboardList,
+    //     activeBg: "#5DADE2",
+    //     activeText: "white",
+    //     inactiveBg: "#f1f1f1",
+    //     inactiveText: "#4f5863",
+    // },
 ];
 
 interface HeaderComponentProps {
@@ -165,8 +178,8 @@ interface HeaderComponentProps {
     isSidebarOpen?: boolean;
 }
 
-export default function HeaderComponent({ 
-    showSidebarToggle = false, 
+export default function HeaderComponent({
+    showSidebarToggle = false,
     onSidebarToggle,
     isSidebarOpen = false
 }: HeaderComponentProps) {
@@ -313,7 +326,7 @@ export default function HeaderComponent({
                                 <PanelLeft size={24} />
                             </button>
                         )}
-                        
+
                         <div className={`flex items-center ${showSidebarToggle && layoutConfig.showMobileSidebarToggle ? 'ml-1' : 'ml-2 sm:ml-4'}`}>
                             <Link to='/'>
                                 <img
@@ -389,50 +402,53 @@ export default function HeaderComponent({
                         </div>
                     </nav>
 
-                    {/* User Profile Avatar */}
-                    <div className="relative flex items-center mr-2 sm:mr-4" ref={profileRef}>
-                        <button
-                            className="flex items-center justify-center w-10 h-10 rounded-full bg-[#16569e] text-white text-sm font-semibold cursor-pointer border-2 border-transparent hover:border-[#51baf4] transition-colors"
-                            onClick={() => setIsProfileOpen(!isProfileOpen)}
-                            data-testid="button-user-profile"
-                            aria-label="User profile menu"
-                        >
-                            {initials}
-                        </button>
+                    {/* Notification Bell & User Profile Avatar */}
+                    <div className="flex items-center gap-3 mr-2 sm:mr-4">
+                        <NotificationBell />
 
-                        {isProfileOpen && (
-                            <div
-                                className="absolute right-0 top-[50px] w-[240px] bg-white rounded-md shadow-lg border border-gray-200 z-[200] py-1"
-                                data-testid="dropdown-user-profile"
+                        <div className="relative flex items-center" ref={profileRef}>
+                            <button
+                                className="flex items-center justify-center w-10 h-10 rounded-full bg-[#16569e] text-white text-sm font-semibold cursor-pointer border-2 border-transparent hover:border-[#51baf4] transition-colors"
+                                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                data-testid="button-user-profile"
+                                aria-label="User profile menu"
                             >
-                                <div className="px-5 py-3">
-                                    <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">User Name :  </span>
-                                    <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-user-name">{userName || '-'}</span>
-                                </div>
-                                <div className="px-5 py-3">
-                                    <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">Designation :  </span>
-                                    <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-designation">{designation || '-'}</span>
-                                </div>
-                                <div className="px-5 py-3 border-b border-gray-200">
-                                    <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">Domain Name :  </span>
-                                    <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-domain-name">{domain || '-'}</span>
-                                </div>
-                                <button
-                                    className="flex items-center gap-2 w-full px-5 py-3 text-sm text-gray-800 font-['Roboto',Helvetica] hover:bg-gray-100 cursor-pointer border-b border-gray-200"
-                                    onClick={handleChangePassword}
-                                    data-testid="button-change-password"
+                                {initials}
+                            </button>
+                            {isProfileOpen && (
+                                <div
+                                    className="absolute right-0 top-[50px] w-[240px] bg-white rounded-md shadow-lg border border-gray-200 z-[200] py-1"
+                                    data-testid="dropdown-user-profile"
                                 >
-                                    Change password
-                                </button>
-                                <button
-                                    className="flex items-center gap-2 w-full px-5 py-3 text-sm text-gray-800 font-['Roboto',Helvetica] hover:bg-gray-100 cursor-pointer"
-                                    onClick={handleLogout}
-                                    data-testid="button-logout"
-                                >
-                                    Logout
-                                </button>
-                            </div>
-                        )}
+                                    <div className="px-5 py-3">
+                                        <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">User Name :  </span>
+                                        <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-user-name">{userName || '-'}</span>
+                                    </div>
+                                    <div className="px-5 py-3">
+                                        <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">Designation :  </span>
+                                        <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-designation">{designation || '-'}</span>
+                                    </div>
+                                    <div className="px-5 py-3 border-b border-gray-200">
+                                        <span className="text-sm text-gray-600 font-['Roboto',Helvetica]">Domain Name :  </span>
+                                        <span className="text-sm font-bold text-gray-900 font-['Roboto',Helvetica]" data-testid="text-domain-name">{domain || '-'}</span>
+                                    </div>
+                                    <button
+                                        className="flex items-center gap-2 w-full px-5 py-3 text-sm text-gray-800 font-['Roboto',Helvetica] hover:bg-gray-100 cursor-pointer border-b border-gray-200"
+                                        onClick={handleChangePassword}
+                                        data-testid="button-change-password"
+                                    >
+                                        Change password
+                                    </button>
+                                    <button
+                                        className="flex items-center gap-2 w-full px-5 py-3 text-sm text-gray-800 font-['Roboto',Helvetica] hover:bg-gray-100 cursor-pointer"
+                                        onClick={handleLogout}
+                                        data-testid="button-logout"
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Hamburger menu button - phone only (below 768px) */}
@@ -453,8 +469,8 @@ export default function HeaderComponent({
 
             {/* Mobile dropdown menu - phone only (below 768px) */}
             {isMobileMenuOpen && (
-                <nav 
-                    className="md:hidden fixed top-[67px] left-0 right-0 bg-[#f1f1f1] border-b-2 border-[#51baf4] shadow-lg z-[99] max-h-[calc(100vh-67px)] overflow-y-auto" 
+                <nav
+                    className="md:hidden fixed top-[67px] left-0 right-0 bg-[#f1f1f1] border-b-2 border-[#51baf4] shadow-lg z-[99] max-h-[calc(100vh-67px)] overflow-y-auto"
                     aria-label="Mobile navigation"
                     data-testid="mobile-nav-menu"
                 >
@@ -487,7 +503,7 @@ export default function HeaderComponent({
             )}
 
             {isMobileMenuOpen && (
-                <div 
+                <div
                     className="md:hidden fixed inset-0 top-[67px] bg-black bg-opacity-25 z-[98]"
                     onClick={() => setIsMobileMenuOpen(false)}
                     data-testid="menu-overlay"

@@ -14,6 +14,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { format as formatDateFns } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -33,6 +42,7 @@ import { VisaSelectionDialog } from './VisaSelectionDialog';
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem, deepParseJson } from '@/lib/encryptionService';
+import { getCrewUserId } from '@/lib/crewUser';
 import type { LicenseTemplate } from '@/utils/data/licenseDceTemplates';
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
@@ -69,6 +79,8 @@ import {
   useDeleteSeaServiceV2,
   useDeleteMedicalV2,
   useDeleteDoctorVisitV2,
+  useDeleteBriefingV2,
+  useDeleteDebriefingV2,
   useAddDocumentAttachmentV2,
   useRemoveDocumentAttachmentV2,
   useAddVisaAttachmentV2,
@@ -87,7 +99,7 @@ import {
   useRemoveDoctorVisitAttachmentV2,
   useTerminateEmploymentV2
 } from './hooks/useCrewPoolV2';
-import type { LegacySeaService, LegacyPreJoiningMedical, LegacyDoctorVisit } from './mappers/v2ToLegacyMapper';
+import type { LegacySeaService, LegacyPreJoiningMedical, LegacyDoctorVisit, LegacyBriefing, LegacyDebriefing } from './mappers/v2ToLegacyMapper';
 import { 
   mapLegacyCrewToV2, 
   mapLegacyPersonalDetailsToV2, 
@@ -101,15 +113,9 @@ import {
   mapLegacySeaServiceToV2,
   mapLegacyPreJoiningMedicalToV2,
   mapLegacyDoctorVisitToV2,
+  mapLegacyBriefingToV2,
+  mapLegacyDebriefingToV2,
 } from './mappers/v2ToLegacyMapper';
-
-function getCrewUserId(): string | null {
-  try {
-    return localStorage.getItem("crewUserId") || null;
-  } catch {
-    return null;
-  }
-}
 
 function withAuditUser<T>(data: T): T {
   const auditUserUuid = getCrewUserId();
@@ -215,6 +221,7 @@ interface FormData {
   manningAgent: string;
   crewPool: string;
   employeeId: string;
+  recruitmentDate: string;
   nextAvailability: string;
   
   // A1.2 Address & Contact Info
@@ -268,6 +275,12 @@ interface FormData {
   
   // F2. Doctor Visits
   doctorVisits: DoctorVisit[];
+
+  // G1. Briefing
+  briefings: Briefing[];
+
+  // G2. De briefing
+  debriefings: Debriefing[];
 }
 
 interface ChildInfo {
@@ -379,6 +392,30 @@ interface DoctorVisit {
   date: string;
   complaint: string; // Complaint / Illness / Injury
   doctorComments: string;
+  attachments?: FileAttachment[];
+}
+
+const SIGN_OFF_REASONS = ['Contract Completed', 'Terminated', 'Medical Reasons', 'Others'];
+
+interface Briefing {
+  id: string;
+  briefingUuid?: string;
+  vesselCode: string;
+  vessel: string;
+  joiningRank: string;
+  dateSignOn: string;
+  attachments?: FileAttachment[];
+}
+
+interface Debriefing {
+  id: string;
+  debriefingUuid?: string;
+  vesselCode: string;
+  vessel: string;
+  rankServed: string;
+  dateSignOn: string;
+  dateSignedOff: string;
+  reasonForSignOff: string;
   attachments?: FileAttachment[];
 }
 
@@ -504,7 +541,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const isDetailedDataLoading = isV2ProfileLoading;
   
   // V2: Dashboard data from V2 API endpoint
-  const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery<CrewDashboardSummary>({
+  const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError, refetch: refetchDashboard } = useQuery<CrewDashboardSummary>({
     queryKey: ['/api/v2/crew-pool/crew', crewUuid, 'dashboard'],
     queryFn: async () => {
       const response = await fetch(`/api/v2/crew-pool/crew/${crewUuid}/dashboard`);
@@ -641,8 +678,40 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     };
   }, []);
   const [terminationDraft, setTerminationDraft] = useState<TerminationDraft>(initialTerminationDraft);
+  // Block popup for On Board crew + double-click guard during the fresh status check
+  const [onBoardBlockMsg, setOnBoardBlockMsg] = useState<string | null>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+
+  // Mandatory fresh check: never Inactive/Terminate a signed-on (On Board) crew.
+  // Rule: allow any KNOWN status except "On Board". Block "On Board".
+  // Fail-safe: if status is unknown (load failed / empty), block too.
+  const ensureNotOnBoard = async (action: 'Inactive' | 'Terminated'): Promise<boolean> => {
+    try {
+      setIsCheckingStatus(true);
+      const { data: fresh } = await refetchDashboard();
+      const freshStatus = fresh?.status?.status;
+
+      if (freshStatus && freshStatus !== 'On Board') {
+        return true;
+      }
+
+      if (freshStatus === 'On Board') {
+        setOnBoardBlockMsg(`Status cannot be changed to ${action} while the crew member is On Board. Please sign off the crew member first.`);
+      } else {
+        setOnBoardBlockMsg(`Unable to verify the crew member's current status. Please reopen the profile and try again.`);
+      }
+      return false;
+    } catch {
+      setOnBoardBlockMsg(`Unable to verify the crew member's current status. Please reopen the profile and try again.`);
+      return false;
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
+  const [isRecruitmentDateEditOpen, setIsRecruitmentDateEditOpen] = useState(false);
+  const [tempRecruitmentDate, setTempRecruitmentDate] = useState<string>('');
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
   const [isTravelDocDialogOpen, setIsTravelDocDialogOpen] = useState(false);
@@ -651,7 +720,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // File attachment dialog state
   const [attachmentDialog, setAttachmentDialog] = useState<{
     open: boolean;
-    section: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'currentSeaService' | 'externalSeaService' | 'preJoiningMedical' | 'doctorVisit';
+    section: 'document' | 'visa' | 'education' | 'license' | 'training' | 'seaService' | 'currentSeaService' | 'externalSeaService' | 'preJoiningMedical' | 'doctorVisit' | 'briefing' | 'debriefing';
     itemId: string;
     itemName: string;
   }>({
@@ -672,6 +741,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [nokEmailError, setNokEmailError] = useState('');
   const [mobileError, setMobileError] = useState('');
   const [firstNameError, setFirstNameError] = useState('');
+  const [recruitmentDateError, setRecruitmentDateError] = useState('');
   const [dobError, setDobError] = useState('');
   const [docDateErrors, setDocDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
   const [visaDateErrors, setVisaDateErrors] = useState<Record<string, { issued?: string; expiry?: string }>>({});
@@ -745,16 +815,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
 
     let resolvedUserId = userId || '';
-    try {
-      if (!resolvedUserId) {
-        const decryptedId = getDecryptedSessionStorageItem('crewUserId', true);
-        resolvedUserId = extractStringValue(decryptedId);
-      }
-      if (!resolvedUserId) resolvedUserId = sessionStorage.getItem('crewUserId') || '';
-      if (!resolvedUserId) resolvedUserId = localStorage.getItem('crewUserId') || '';
-    } catch {
-      resolvedUserId = resolvedUserId || sessionStorage.getItem('crewUserId') || localStorage.getItem('crewUserId') || '';
-    }
+    if (!resolvedUserId) resolvedUserId = getCrewUserId() || '';
 
     return { name: resolvedName, role: resolvedRole, userId: resolvedUserId };
   }, [isTerminateOpen, roleName, userId]);
@@ -976,6 +1037,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     manningAgent: '',
     crewPool: '',
     employeeId: crewMember?.employeeId || '',
+    recruitmentDate: '',
     nextAvailability: '',
     
     // A1.2 Address & Contact Info
@@ -1030,7 +1092,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     preJoiningMedicals: [],
     
     // F2. Doctor Visits
-    doctorVisits: []
+    doctorVisits: [],
+
+    // G1. Briefing
+    briefings: [],
+
+    // G2. De briefing
+    debriefings: []
   });
 
   const runSeaServiceOverlapCheck = useCallback(() => {
@@ -1116,6 +1184,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         const localOnlyExternalSS = preserveLocalRows ? prev.externalSeaService.filter((s: any) => !s.seaUuid) : [];
         const localOnlyMedicals = preserveLocalRows ? prev.preJoiningMedicals.filter((m: any) => !m.medUuid) : [];
         const localOnlyDoctorVisits = preserveLocalRows ? prev.doctorVisits.filter((v: any) => !v.visitUuid) : [];
+        const localOnlyBriefings = preserveLocalRows ? prev.briefings.filter((b: any) => !b.briefingUuid) : [];
+        const localOnlyDebriefings = preserveLocalRows ? prev.debriefings.filter((d: any) => !d.debriefingUuid) : [];
+
+        const withViewUrl = (items: any[], basePath: string) =>
+          (items || []).map((it: any) => ({
+            ...it,
+            attachments: Array.isArray(it?.attachments)
+              ? it.attachments.map((att: any) =>
+                  att?.attUuid ? { ...att, viewUrl: `${basePath}/${att.attUuid}/raw` } : att
+                )
+              : it?.attachments,
+          }));
 
         const serverDocs = Array.isArray(detailedCrewData.documents) 
           ? detailedCrewData.documents 
@@ -1210,6 +1290,44 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             id: v.id || `DRV-${index + 1}`,
           }));
         })();
+        const serverBriefings = (() => {
+          const items = Array.isArray(detailedCrewData.briefings) 
+            ? detailedCrewData.briefings 
+            : detailedCrewData.briefings 
+              ? JSON.parse(detailedCrewData.briefings) 
+              : [];
+          return items.map((b: Briefing, index: number) => ({
+            ...b,
+            id: b.id || `BRF-${index + 1}`,
+            vesselCode: b.vesselCode || '',
+            attachments: Array.isArray((b as any).attachments)
+              ? (b as any).attachments.map((att: any) =>
+                  att?.attUuid
+                    ? { ...att, viewUrl: `/api/v2/crew-pool/briefing-attachments/${att.attUuid}/raw` }
+                    : att
+                )
+              : (b as any).attachments,
+          }));
+        })();
+        const serverDebriefings = (() => {
+          const items = Array.isArray(detailedCrewData.debriefings) 
+            ? detailedCrewData.debriefings 
+            : detailedCrewData.debriefings 
+              ? JSON.parse(detailedCrewData.debriefings) 
+              : [];
+          return items.map((d: Debriefing, index: number) => ({
+            ...d,
+            id: d.id || `DBF-${index + 1}`,
+            vesselCode: d.vesselCode || '',
+            attachments: Array.isArray((d as any).attachments)
+              ? (d as any).attachments.map((att: any) =>
+                  att?.attUuid
+                    ? { ...att, viewUrl: `/api/v2/crew-pool/debriefing-attachments/${att.attUuid}/raw` }
+                    : att
+                )
+              : (d as any).attachments,
+          }));
+        })();
 
         return {
           ...prev,
@@ -1242,6 +1360,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           manningAgent: detailedCrewData.manningAgent || '',
           crewPool: detailedCrewData.crewPool || '',
           employeeId: detailedCrewData.employeeId || '',
+          recruitmentDate: detailedCrewData.recruitmentDate || '',
           nextAvailability: detailedCrewData.nextAvailability || '',
           
           // A1.2 Address & Contact Info
@@ -1276,15 +1395,17 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           nokRelationship: detailedCrewData.nokRelationship || '',
           
           // Complex data arrays - merge server data with local-only rows during deletes
-          documents: [...serverDocs, ...localOnlyDocs],
-          visas: [...serverVisas, ...localOnlyVisas],
-          education: [...serverEdu, ...localOnlyEdu],
-          licenses: [...serverLicenses, ...localOnlyLicenses],
-          trainingCourses: [...serverTraining, ...localOnlyTraining],
-          currentCompanySeaService: [...serverCurrentSS, ...localOnlyCurrentSS],
-          externalSeaService: [...serverExternalSS, ...localOnlyExternalSS],
-          preJoiningMedicals: [...serverMedicals, ...localOnlyMedicals],
-          doctorVisits: [...serverDoctorVisits, ...localOnlyDoctorVisits],
+          documents: [...withViewUrl(serverDocs, '/api/v2/crew-pool/documents/attachments'), ...localOnlyDocs],
+          visas: [...withViewUrl(serverVisas, '/api/v2/crew-pool/visas/attachments'), ...localOnlyVisas],
+          education: [...withViewUrl(serverEdu, '/api/v2/crew-pool/education/attachments'), ...localOnlyEdu],
+          licenses: [...withViewUrl(serverLicenses, '/api/v2/crew-pool/licenses/attachments'), ...localOnlyLicenses],
+          trainingCourses: [...withViewUrl(serverTraining, '/api/v2/crew-pool/training/attachments'), ...localOnlyTraining],
+          currentCompanySeaService: [...withViewUrl(serverCurrentSS, '/api/v2/crew-pool/sea-service/attachments'), ...localOnlyCurrentSS],
+          externalSeaService: [...withViewUrl(serverExternalSS, '/api/v2/crew-pool/sea-service/attachments'), ...localOnlyExternalSS],
+          preJoiningMedicals: [...withViewUrl(serverMedicals, '/api/v2/crew-pool/medical/attachments'), ...localOnlyMedicals],
+          doctorVisits: [...withViewUrl(serverDoctorVisits, '/api/v2/crew-pool/doctor-visits/attachments'), ...localOnlyDoctorVisits],
+          briefings: [...serverBriefings, ...localOnlyBriefings],
+          debriefings: [...serverDebriefings, ...localOnlyDebriefings],
         };
       });
       
@@ -1378,6 +1499,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         manningAgent: '',
         crewPool: '',
         employeeId: '',
+        recruitmentDate: '',
         nextAvailability: '',
         
         // A1.2 Address & Contact Info
@@ -1431,6 +1553,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         
         // F2. Doctor Visits
         doctorVisits: [],
+
+        // G1. Briefing
+        briefings: [],
+
+        // G2. De briefing
+        debriefings: [],
       });
       setUploadedPhoto(null);
     }
@@ -2352,6 +2480,118 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   };
 
+  // G1. Briefing management
+  const addBriefing = () => {
+    setFormData(prev => {
+      const newBriefing: Briefing = {
+        id: getNextId(prev.briefings, 'BRF'),
+        vesselCode: '',
+        vessel: '',
+        joiningRank: '',
+        dateSignOn: '',
+      };
+      return { ...prev, briefings: [newBriefing, ...prev.briefings] };
+    });
+  };
+
+  const updateBriefing = (id: string, field: keyof Briefing, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      briefings: prev.briefings.map(briefing =>
+        briefing.id === id ? { ...briefing, [field]: value } : briefing
+      )
+    }));
+  };
+
+  const removeBriefing = (id: string) => {
+    const briefing = formData.briefings.find(b => b.id === id);
+    const briefingUuid = (briefing as any)?.briefingUuid;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+
+    if (briefingUuid && crewIdentifier) {
+      markDeletingForCrew(crewIdentifier);
+      deleteBriefingMutationV2.mutate(
+        { crewUuid: crewIdentifier, briefingUuid },
+        {
+          onSuccess: () => {
+            setFormData(prev => ({
+              ...prev,
+              briefings: prev.briefings.filter(b => b.id !== id)
+            }));
+            invalidateCrewDashboard(crewIdentifier);
+          },
+          onError: (error) => {
+            clearDeletingForCrew();
+            console.error('Failed to delete briefing record:', error);
+            toast({ title: 'Failed to delete briefing record', variant: 'destructive' });
+          }
+        }
+      );
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        briefings: prev.briefings.filter(b => b.id !== id)
+      }));
+    }
+  };
+
+  // G2. De briefing management
+  const addDebriefing = () => {
+    setFormData(prev => {
+      const newDebriefing: Debriefing = {
+        id: getNextId(prev.debriefings, 'DBF'),
+        vesselCode: '',
+        vessel: '',
+        rankServed: '',
+        dateSignOn: '',
+        dateSignedOff: '',
+        reasonForSignOff: '',
+      };
+      return { ...prev, debriefings: [newDebriefing, ...prev.debriefings] };
+    });
+  };
+
+  const updateDebriefing = (id: string, field: keyof Debriefing, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      debriefings: prev.debriefings.map(debriefing =>
+        debriefing.id === id ? { ...debriefing, [field]: value } : debriefing
+      )
+    }));
+  };
+
+  const removeDebriefing = (id: string) => {
+    const debriefing = formData.debriefings.find(d => d.id === id);
+    const debriefingUuid = (debriefing as any)?.debriefingUuid;
+    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
+
+    if (debriefingUuid && crewIdentifier) {
+      markDeletingForCrew(crewIdentifier);
+      deleteDebriefingMutationV2.mutate(
+        { crewUuid: crewIdentifier, debriefingUuid },
+        {
+          onSuccess: () => {
+            setFormData(prev => ({
+              ...prev,
+              debriefings: prev.debriefings.filter(d => d.id !== id)
+            }));
+            invalidateCrewDashboard(crewIdentifier);
+          },
+          onError: (error) => {
+            clearDeletingForCrew();
+            console.error('Failed to delete debriefing record:', error);
+            toast({ title: 'Failed to delete debriefing record', variant: 'destructive' });
+          }
+        }
+      );
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        debriefings: prev.debriefings.filter(d => d.id !== id)
+      }));
+    }
+  };
+
   // File attachment management functions
   const openAttachmentDialog = (section: typeof attachmentDialog.section, itemId: string, itemName: string) => {
     setAttachmentDialog({
@@ -2383,6 +2623,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         return (formData.preJoiningMedicals.find(m => m.id === itemId) as any)?.medUuid;
       case 'doctorVisit':
         return (formData.doctorVisits.find(v => v.id === itemId) as any)?.visitUuid;
+      case 'briefing':
+        return (formData.briefings.find(b => b.id === itemId) as any)?.briefingUuid;
+      case 'debriefing':
+        return (formData.debriefings.find(d => d.id === itemId) as any)?.debriefingUuid;
       default:
         return undefined;
     }
@@ -2436,6 +2680,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         return formData.preJoiningMedicals.find(m => m.id === itemId)?.attachments || [];
       case 'doctorVisit':
         return formData.doctorVisits.find(v => v.id === itemId)?.attachments || [];
+      case 'briefing':
+        return formData.briefings.find(b => b.id === itemId)?.attachments || [];
+      case 'debriefing':
+        return formData.debriefings.find(d => d.id === itemId)?.attachments || [];
       default:
         return [];
     }
@@ -2507,6 +2755,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             ...prev,
             doctorVisits: prev.doctorVisits.map(v =>
               v.id === itemId ? { ...v, attachments } : v
+            )
+          };
+        case 'briefing':
+          return {
+            ...prev,
+            briefings: prev.briefings.map(b =>
+              b.id === itemId ? { ...b, attachments } : b
+            )
+          };
+        case 'debriefing':
+          return {
+            ...prev,
+            debriefings: prev.debriefings.map(d =>
+              d.id === itemId ? { ...d, attachments } : d
             )
           };
         default:
@@ -5734,26 +5996,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     );
   };
 
-  // Part G — Briefing & De briefing (UI only, dummy data)
-  // Final dynamic form will be configurable from Admin (like Appraisals).
-  const briefingDummyRows = [
-    { id: 'BR-1', vessel: 'MV Atlantic Star', joiningRank: 'Chief Officer', joiningDate: '12/03/2025' },
-    { id: 'BR-2', vessel: 'MV Pacific Dawn', joiningRank: '2nd Officer', joiningDate: '05/11/2024' },
-  ];
-
-  const debriefingDummyRows = [
-    { id: 'DB-1', vessel: 'MV Atlantic Star', rankServed: 'Chief Officer', dateJoined: '12/03/2025', dateSignedOff: '20/09/2025', reasonForSignOff: 'End of contract' },
-    { id: 'DB-2', vessel: 'MV Pacific Dawn', rankServed: '2nd Officer', dateJoined: '05/11/2024', dateSignedOff: '18/05/2025', reasonForSignOff: 'Medical' },
-  ];
-
-  const handleBriefingPlaceholder = () => {
-    toast({
-      title: 'Form coming soon',
-      description: 'The briefing/debriefing form will be configurable from Admin (like Appraisals).',
-      duration: 3000,
-    });
-  };
-
+  // Part G — Briefing & De briefing
   const renderG1Briefing = () => {
     return (
       <div className="mb-6">
@@ -5764,7 +6007,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleBriefingPlaceholder}
+              onClick={addBriefing}
               className="flex items-center gap-2"
               data-testid="button-add-briefing"
             >
@@ -5781,34 +6024,114 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <tr>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Joining Rank</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Joining Date</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date Sign on</th>
                   {canEditSection('G') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {briefingDummyRows.map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-briefing-vessel-${row.id}`}>{row.vessel}</td>
-                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-briefing-rank-${row.id}`}>{row.joiningRank}</td>
-                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-briefing-date-${row.id}`}>{row.joiningDate}</td>
-                    {canEditSection('G') && (
-                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-gray-400 hover:text-blue-600"
-                            onClick={handleBriefingPlaceholder}
-                            data-testid={`button-edit-briefing-${row.id}`}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </td>
-                    )}
+                {formData.briefings.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="p-8 text-center text-gray-500">
+                      No briefing records added yet. Click "ADD" to get started.
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  formData.briefings.map((briefing) => (
+                    <tr key={briefing.id} className="border-t">
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Select
+                          value={briefing.vesselCode || ''}
+                          onValueChange={(value) => {
+                            const selectedVessel = vesselOptions.find(v => v.code === value);
+                            updateBriefing(briefing.id, 'vesselCode', value);
+                            updateBriefing(briefing.id, 'vessel', selectedVessel?.name || '');
+                          }}
+                        >
+                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-briefing-vessel-${briefing.id}`}>
+                            <SelectValue placeholder="Select vessel">
+                              {briefing.vessel || "Select vessel"}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vesselsLoading ? (
+                              <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
+                            ) : vesselOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>No vessels available</SelectItem>
+                            ) : (
+                              vesselOptions.map((vessel) => (
+                                <SelectItem key={vessel.code} value={vessel.code}>
+                                  {vessel.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Select
+                          value={briefing.joiningRank || ''}
+                          onValueChange={(value) => updateBriefing(briefing.id, 'joiningRank', value)}
+                        >
+                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-briefing-rank-${briefing.id}`}>
+                            <SelectValue placeholder="Select rank" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ranksLoading ? (
+                              <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                            ) : rankOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>No ranks available</SelectItem>
+                            ) : (
+                              rankOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <FormattedDateInput
+                          value={briefing.dateSignOn}
+                          onChange={(e) => updateBriefing(briefing.id, 'dateSignOn', e.target.value)}
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          data-testid={`input-briefing-date-${briefing.id}`}
+                        />
+                      </td>
+                      {canEditSection('G') && (
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
+                              onClick={() => handleAttachmentClick('briefing', briefing.id, briefing.vessel || 'Briefing')}
+                              data-testid={`button-attach-briefing-${briefing.id}`}
+                            >
+                              <Paperclip className="h-3 w-3" />
+                              {(briefing.attachments?.length || 0) > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                                  {briefing.attachments?.length}
+                                </span>
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-gray-400 hover:text-red-600"
+                              onClick={() => removeBriefing(briefing.id)}
+                              data-testid={`button-delete-briefing-${briefing.id}`}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -5827,7 +6150,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleBriefingPlaceholder}
+              onClick={addDebriefing}
               className="flex items-center gap-2"
               data-testid="button-add-debriefing"
             >
@@ -5844,38 +6167,141 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <tr>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Rank Served</th>
-                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date Joined</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date Sign on</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Date Signed off</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Reason for Sign off</th>
                   {canEditSection('G') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {debriefingDummyRows.map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-vessel-${row.id}`}>{row.vessel}</td>
-                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-rank-${row.id}`}>{row.rankServed}</td>
-                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-joined-${row.id}`}>{row.dateJoined}</td>
-                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-signedoff-${row.id}`}>{row.dateSignedOff}</td>
-                    <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-debriefing-reason-${row.id}`}>{row.reasonForSignOff}</td>
-                    {canEditSection('G') && (
-                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-gray-400 hover:text-blue-600"
-                            onClick={handleBriefingPlaceholder}
-                            data-testid={`button-edit-debriefing-${row.id}`}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </td>
-                    )}
+                {formData.debriefings.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-gray-500">
+                      No de briefing records added yet. Click "ADD" to get started.
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  formData.debriefings.map((debriefing) => (
+                    <tr key={debriefing.id} className="border-t">
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Select
+                          value={debriefing.vesselCode || ''}
+                          onValueChange={(value) => {
+                            const selectedVessel = vesselOptions.find(v => v.code === value);
+                            updateDebriefing(debriefing.id, 'vesselCode', value);
+                            updateDebriefing(debriefing.id, 'vessel', selectedVessel?.name || '');
+                          }}
+                        >
+                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-debriefing-vessel-${debriefing.id}`}>
+                            <SelectValue placeholder="Select vessel">
+                              {debriefing.vessel || "Select vessel"}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {vesselsLoading ? (
+                              <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
+                            ) : vesselOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>No vessels available</SelectItem>
+                            ) : (
+                              vesselOptions.map((vessel) => (
+                                <SelectItem key={vessel.code} value={vessel.code}>
+                                  {vessel.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Select
+                          value={debriefing.rankServed || ''}
+                          onValueChange={(value) => updateDebriefing(debriefing.id, 'rankServed', value)}
+                        >
+                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-debriefing-rank-${debriefing.id}`}>
+                            <SelectValue placeholder="Select rank" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ranksLoading ? (
+                              <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                            ) : rankOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>No ranks available</SelectItem>
+                            ) : (
+                              rankOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <FormattedDateInput
+                          value={debriefing.dateSignOn}
+                          onChange={(e) => updateDebriefing(debriefing.id, 'dateSignOn', e.target.value)}
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          data-testid={`input-debriefing-signon-${debriefing.id}`}
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <FormattedDateInput
+                          value={debriefing.dateSignedOff}
+                          onChange={(e) => updateDebriefing(debriefing.id, 'dateSignedOff', e.target.value)}
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                          data-testid={`input-debriefing-signedoff-${debriefing.id}`}
+                        />
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                        <Select
+                          value={debriefing.reasonForSignOff || ''}
+                          onValueChange={(value) => updateDebriefing(debriefing.id, 'reasonForSignOff', value)}
+                        >
+                          <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-debriefing-reason-${debriefing.id}`}>
+                            <SelectValue placeholder="Select reason" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SIGN_OFF_REASONS.map((reason) => (
+                              <SelectItem key={reason} value={reason}>
+                                {reason}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      {canEditSection('G') && (
+                        <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                          <div className="flex gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
+                              onClick={() => handleAttachmentClick('debriefing', debriefing.id, debriefing.vessel || 'De briefing')}
+                              data-testid={`button-attach-debriefing-${debriefing.id}`}
+                            >
+                              <Paperclip className="h-3 w-3" />
+                              {(debriefing.attachments?.length || 0) > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">
+                                  {debriefing.attachments?.length}
+                                </span>
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-gray-400 hover:text-red-600"
+                              onClick={() => removeDebriefing(debriefing.id)}
+                              data-testid={`button-delete-debriefing-${debriefing.id}`}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -5897,6 +6323,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       hasErrors = true;
     } else {
       setFirstNameError('');
+    }
+
+    // B header: Date of Recruitment (required, mirrors First Name)
+    if (canEditSection('B') && !(formData.recruitmentDate || '').trim()) {
+      setRecruitmentDateError('Date of Recruitment is required.');
+      hasErrors = true;
+    } else {
+      setRecruitmentDateError('');
     }
 
     // B1: DOB
@@ -6088,6 +6522,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const nonEmptyExternalSea = formData.externalSeaService.filter((sea: any) => sea.seaUuid || !isSeaServiceBlank(sea));
     const nonEmptyMedicals = formData.preJoiningMedicals.filter((med: any) => med.medUuid || !isMedicalBlank(med));
     const nonEmptyDoctorVisits = formData.doctorVisits.filter((dv: any) => dv.visitUuid || !isDoctorVisitBlank(dv));
+    const nonEmptyBriefings = formData.briefings.filter((b: any) => {
+      if (b.briefingUuid) return true;
+      const hasAttachments = (b.attachments || []).some((att: any) => !att.isDeleted);
+      return (b.vesselCode || b.vessel || b.joiningRank || b.dateSignOn || hasAttachments);
+    });
+    const nonEmptyDebriefings = formData.debriefings.filter((d: any) => {
+      if (d.debriefingUuid) return true;
+      const hasAttachments = (d.attachments || []).some((att: any) => !att.isDeleted);
+      return (d.vesselCode || d.vessel || d.rankServed || d.dateSignOn || d.dateSignedOff || d.reasonForSignOff || hasAttachments);
+    });
 
     const cleanedFormData = {
       ...formData,
@@ -6100,6 +6544,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       externalSeaService: nonEmptyExternalSea,
       preJoiningMedicals: nonEmptyMedicals,
       doctorVisits: nonEmptyDoctorVisits,
+      briefings: nonEmptyBriefings,
+      debriefings: nonEmptyDebriefings,
     };
     setFormData(cleanedFormData);
 
@@ -6190,8 +6636,29 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             }
             setDeletedChildUuids([]);
           }
-          if (formData.children && formData.children.length > 0) {
-            formData.children.forEach((child: any, index: number) => {
+          // Keep only rows with at least one filled field (drops ALL blank rows from save + UI).
+          const nonBlankChildren = (formData.children ?? []).filter((c: any) =>
+            (c.firstName ?? '').trim() || (c.middleName ?? '').trim() ||
+            (c.familyName ?? '').trim() || (c.dateOfBirth ?? '').trim() ||
+            (c.gender ?? '').trim()
+          );
+          // Already-saved blank rows (blank but have a childUuid) -> delete from DB so they don't return on reload.
+          const blankSavedChildUuids = (formData.children ?? [])
+            .filter((c: any) => c.childUuid && !deletedChildUuids.includes(c.childUuid) &&
+              !(c.firstName ?? '').trim() && !(c.middleName ?? '').trim() &&
+              !(c.familyName ?? '').trim() && !(c.dateOfBirth ?? '').trim() && !(c.gender ?? '').trim())
+            .map((c: any) => c.childUuid as string);
+          for (const childUuid of blankSavedChildUuids) {
+            miscOps.push(async () => {
+              try { await crewPoolApiV2.deleteChild(crewIdentifier, childUuid); } catch (e) { /* ignore */ }
+            });
+          }
+          // Reflect removal of all blank rows in live state (no refresh; also cleans the PDF source).
+          if (nonBlankChildren.length !== (formData.children?.length ?? 0)) {
+            setFormData(prev => ({ ...prev, children: nonBlankChildren }));
+          }
+          if (nonBlankChildren.length > 0) {
+            nonBlankChildren.forEach((child: any, index: number) => {
               const childData = {
                 firstName: child.firstName,
                 middleName: child.middleName,
@@ -6847,10 +7314,144 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             });
           }
 
+          const nonEmptyBriefings = (cleanedFormData.briefings || []).filter((b: any) => {
+            if (b.briefingUuid) return true;
+            const hasAttachments = (b.attachments || []).some((att: any) => !att.isDeleted);
+            return (b.vesselCode || b.vessel || b.joiningRank || b.dateSignOn || hasAttachments);
+          });
+          if (nonEmptyBriefings.length > 0) {
+            nonEmptyBriefings.forEach((briefing: any, index: number) => {
+              const briefingAttachments = briefing.attachments || [];
+              const capturedNewAttachments = [...briefingAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
+              }));
+              const capturedDeletedAttachments = [...briefingAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const briefingData: LegacyBriefing = {
+                briefingUuid: briefing.briefingUuid,
+                vesselCode: briefing.vesselCode || '',
+                vesselName: briefing.vessel || '',
+                vessel: briefing.vessel || '',
+                joiningRank: briefing.joiningRank || '',
+                dateSignOn: briefing.dateSignOn || '',
+                sortOrder: index,
+              };
+
+              const capturedBriefingLocalId = briefing.id;
+              batch4Operations.push(async () => {
+                if (briefing.briefingUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeBriefingAttachment(crewIdentifier, briefing.briefingUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyBriefingToV2(briefingData));
+                let savedBriefing: any;
+                let entityUuid: string;
+                if (briefing.briefingUuid) {
+                  savedBriefing = await crewPoolApiV2.updateBriefing(crewIdentifier, briefing.briefingUuid, v2Data);
+                  entityUuid = briefing.briefingUuid;
+                } else {
+                  savedBriefing = await crewPoolApiV2.createBriefing(crewIdentifier, v2Data);
+                  entityUuid = savedBriefing?.briefingUuid || savedBriefing?.briefing_uuid;
+                }
+                if (entityUuid && !briefing.briefingUuid) {
+                  uuidUpdates.push({ section: 'briefings', localId: capturedBriefingLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addBriefingAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
+                    });
+                  }
+                }
+                return savedBriefing;
+              });
+            });
+          }
+
+          const nonEmptyDebriefings = (cleanedFormData.debriefings || []).filter((d: any) => {
+            if (d.debriefingUuid) return true;
+            const hasAttachments = (d.attachments || []).some((att: any) => !att.isDeleted);
+            return (d.vesselCode || d.vessel || d.rankServed || d.dateSignOn || d.dateSignedOff || d.reasonForSignOff || hasAttachments);
+          });
+          if (nonEmptyDebriefings.length > 0) {
+            nonEmptyDebriefings.forEach((debriefing: any, index: number) => {
+              const debriefingAttachments = debriefing.attachments || [];
+              const capturedNewAttachments = [...debriefingAttachments.filter((att: any) => !att.attUuid || att.isNew)].map((att: any) => ({
+                attUuid: att.attUuid,
+                isNew: att.isNew || !att.attUuid,
+                fileName: att.name || att.fileName || '',
+                fileData: att.data || att.fileData || '',
+                fileSize: String(att.size || att.fileSize || 0),
+                fileType: att.type || att.fileType || '',
+              }));
+              const capturedDeletedAttachments = [...debriefingAttachments.filter((att: any) => att.isDeleted && att.attUuid)];
+
+              const debriefingData: LegacyDebriefing = {
+                debriefingUuid: debriefing.debriefingUuid,
+                vesselCode: debriefing.vesselCode || '',
+                vesselName: debriefing.vessel || '',
+                vessel: debriefing.vessel || '',
+                rankServed: debriefing.rankServed || '',
+                dateSignOn: debriefing.dateSignOn || '',
+                dateSignedOff: debriefing.dateSignedOff || '',
+                reasonForSignOff: debriefing.reasonForSignOff || '',
+                sortOrder: index,
+              };
+
+              const capturedDebriefingLocalId = debriefing.id;
+              batch4Operations.push(async () => {
+                if (debriefing.debriefingUuid) {
+                  for (const att of capturedDeletedAttachments) {
+                    await crewPoolApiV2.removeDebriefingAttachment(crewIdentifier, debriefing.debriefingUuid, att.attUuid);
+                  }
+                }
+
+                const v2Data = withAuditUser(mapLegacyDebriefingToV2(debriefingData));
+                let savedDebriefing: any;
+                let entityUuid: string;
+                if (debriefing.debriefingUuid) {
+                  savedDebriefing = await crewPoolApiV2.updateDebriefing(crewIdentifier, debriefing.debriefingUuid, v2Data);
+                  entityUuid = debriefing.debriefingUuid;
+                } else {
+                  savedDebriefing = await crewPoolApiV2.createDebriefing(crewIdentifier, v2Data);
+                  entityUuid = savedDebriefing?.debriefingUuid || savedDebriefing?.debriefing_uuid;
+                }
+                if (entityUuid && !debriefing.debriefingUuid) {
+                  uuidUpdates.push({ section: 'debriefings', localId: capturedDebriefingLocalId, uuid: entityUuid });
+                }
+
+                const newAtts = capturedNewAttachments.filter(att => !att.attUuid || att.isNew);
+                for (const att of newAtts) {
+                  if (att.fileName && (att.fileData)) {
+                    await crewPoolApiV2.addDebriefingAttachment(crewIdentifier, entityUuid, {
+                      fileName: att.fileName,
+                      fileUrl: att.fileData,
+                      fileSize: att.fileSize,
+                      mimeType: att.fileType,
+                    });
+                  }
+                }
+                return savedDebriefing;
+              });
+            });
+          }
+
           await processBatch('Batch 1: Documents + Visas', batch1Operations);
           await processBatch('Batch 2: Education + Licenses', batch2Operations);
           await processBatch('Batch 3: Training + Sea Service', batch3Operations);
-          await processBatch('Batch 4: Medicals + Doctor Visits', batch4Operations);
+          await processBatch('Batch 4: Medicals + Doctor Visits + Briefings + De-briefings', batch4Operations);
 
           if (uuidUpdates.length > 0) {
             const uuidKeyMap: Record<string, string> = {
@@ -6863,6 +7464,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               externalSeaService: 'seaUuid',
               preJoiningMedicals: 'medUuid',
               doctorVisits: 'visitUuid',
+              briefings: 'briefingUuid',
+              debriefings: 'debriefingUuid',
             };
             setFormData(prev => {
               const updated = { ...prev };
@@ -6945,6 +7548,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         manningAgent: formData.manningAgent,
         crewPool: formData.crewPool,
         employeeId: formData.employeeId,
+        recruitmentDate: formData.recruitmentDate,
         nextAvailability: formData.nextAvailability,
         countryOfResidence: formData.countryOfResidence,
         nearestAirport: formData.nearestAirport,
@@ -6961,7 +7565,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         spouseMiddleName: formData.spouseMiddleName,
         spouseFamilyName: formData.spouseFamilyName,
         spouseDateOfBirth: formData.spouseDateOfBirth,
-        children: formData.children,
+        children: (formData.children ?? []).filter((c: any) =>
+          (c.firstName ?? '').trim() ||
+          (c.middleName ?? '').trim() ||
+          (c.familyName ?? '').trim() ||
+          (c.dateOfBirth ?? '').trim() ||
+          (c.gender ?? '').trim()
+        ),
         nokFirstName: formData.nokFirstName,
         nokMiddleName: formData.nokMiddleName,
         nokFamilyName: formData.nokFamilyName,
@@ -7192,9 +7802,33 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         }
         setDeletedChildUuids(prev => prev.filter(id => !successfulDeletes.includes(id)));
       }
-      if (formData.children && formData.children.length > 0) {
-        for (let index = 0; index < formData.children.length; index++) {
-          const child = formData.children[index] as any;
+      // Keep only rows with at least one filled field (drops ALL blank rows from save + UI).
+      const nonBlankChildren = (formData.children ?? []).filter((c: any) =>
+        (c.firstName ?? '').trim() || (c.middleName ?? '').trim() ||
+        (c.familyName ?? '').trim() || (c.dateOfBirth ?? '').trim() ||
+        (c.gender ?? '').trim()
+      );
+      // Already-saved blank rows (blank but have a childUuid) -> delete from DB so they don't return on reload.
+      const blankSavedChildUuids = (formData.children ?? [])
+        .filter((c: any) => c.childUuid && !deletedChildUuids.includes(c.childUuid) &&
+          !(c.firstName ?? '').trim() && !(c.middleName ?? '').trim() &&
+          !(c.familyName ?? '').trim() && !(c.dateOfBirth ?? '').trim() && !(c.gender ?? '').trim())
+        .map((c: any) => c.childUuid as string);
+      for (const childUuid of blankSavedChildUuids) {
+        try {
+          await crewPoolApiV2.deleteChild(crewUuid, childUuid);
+        } catch (e) {
+          console.error(`[V2] Failed to delete blank child ${childUuid}:`, e);
+          b3HasErrors = true;
+        }
+      }
+      // Reflect removal of all blank rows in live state (no refresh; also cleans the PDF source).
+      if (nonBlankChildren.length !== (formData.children?.length ?? 0)) {
+        setFormData(prev => ({ ...prev, children: nonBlankChildren }));
+      }
+      if (nonBlankChildren.length > 0) {
+        for (let index = 0; index < nonBlankChildren.length; index++) {
+          const child = nonBlankChildren[index] as any;
           const childData = {
             firstName: child.firstName, middleName: child.middleName,
             familyName: child.familyName, dob: child.dateOfBirth,
@@ -7468,6 +8102,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const deleteSeaServiceMutationV2 = useDeleteSeaServiceV2();
   const deleteMedicalMutationV2 = useDeleteMedicalV2();
   const deleteDoctorVisitMutationV2 = useDeleteDoctorVisitV2();
+  const deleteBriefingMutationV2 = useDeleteBriefingV2();
+  const deleteDebriefingMutationV2 = useDeleteDebriefingV2();
   const addDocumentAttachmentV2 = useAddDocumentAttachmentV2();
   const removeDocumentAttachmentV2 = useRemoveDocumentAttachmentV2();
   const addVisaAttachmentV2 = useAddVisaAttachmentV2();
@@ -7613,7 +8249,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // V2: Status update mutation (for isActive toggle and nextAvailability)
   const statusUpdateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: { isActive?: boolean; nextAvailability?: string } }) => {
+    mutationFn: async ({ id, data }: { id: string; data: { isActive?: boolean; nextAvailability?: string; recruitmentDate?: string } }) => {
       const response = await apiRequest('PATCH', `/api/v2/crew-pool/crew/${id}`, data);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -7667,6 +8303,32 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
     setIsNextAvailabilityEditOpen(false);
     setTempNextAvailability('');
+  };
+
+  // Handle updating date of recruitment (mirrors Next Availability pattern)
+  const handleUpdateRecruitmentDate = async () => {
+    if (!tempRecruitmentDate) return;
+    // V2: Use crewUuid as the primary identifier. For manually added crew that
+    // have not been persisted yet, create the crew record first.
+    let crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
+    if (!crewId) {
+      // New unsaved crew: First Name is required before the crew can be created.
+      if (!(formData.firstName || '').trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Fill the First Name before selecting the Date of Recruitment.",
+          variant: "destructive",
+        });
+        return;
+      }
+      crewId = await ensureCrewExists();
+    }
+    if (crewId) {
+      statusUpdateMutation.mutate({ id: crewId, data: { recruitmentDate: tempRecruitmentDate } });
+      setRecruitmentDateError('');
+    }
+    setIsRecruitmentDateEditOpen(false);
+    setTempRecruitmentDate('');
   };
 
   const handleSave = () => {
@@ -8085,12 +8747,37 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part B Seafarers' Particulars</h2>
                       <div style={{ color: '#16569e' }} className="text-sm">Enter details as applicable</div>
                     </div>
-                    {formData.employeeId && (
-                      <div className="text-right">
-                        <span className="text-sm text-gray-500">Crew ID:</span>
-                        <span className="ml-2 text-base font-medium" style={{ color: '#16569e' }} data-testid="text-crew-id">{formData.employeeId}</span>
+                    <div className="text-right space-y-1">
+                      {formData.employeeId && (
+                        <div>
+                          <span className="text-sm text-gray-500">Crew ID:</span>
+                          <span className="ml-2 text-base font-medium" style={{ color: '#16569e' }} data-testid="text-crew-id">{formData.employeeId}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-end">
+                        <span className="text-sm text-gray-500">Date of Recruitment: <span className="text-red-500">*</span></span>
+                        <span className="ml-2 text-base font-medium" style={{ color: '#16569e' }} data-testid="text-recruitment-date">
+                          {formData.recruitmentDate ? formatDate(formData.recruitmentDate) : '—'}
+                        </span>
+                        {canEditSection('B') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 ml-2"
+                            onClick={() => {
+                              setTempRecruitmentDate(formData.recruitmentDate || '');
+                              setIsRecruitmentDateEditOpen(true);
+                            }}
+                            data-testid="button-edit-recruitment-date"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
-                    )}
+                      {recruitmentDateError && (
+                        <p className="text-xs text-red-500" data-testid="text-recruitment-date-error">{recruitmentDateError}</p>
+                      )}
+                    </div>
                   </div>
                   <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                 </div>
@@ -8221,7 +8908,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Button
               variant={statusData?.isActive === false ? "default" : "outline"}
               className="w-full justify-start"
-              onClick={() => handleToggleActiveStatus(false)}
+              disabled={isCheckingStatus}
+              onClick={async () => {
+                if (!(await ensureNotOnBoard('Inactive'))) return;
+                handleToggleActiveStatus(false);
+              }}
               data-testid="button-set-inactive"
             >
               <div className="w-3 h-3 rounded-full bg-gray-500 mr-3"></div>
@@ -8230,7 +8921,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Button
               variant="outline"
               className="w-full justify-start"
-              onClick={() => {
+              disabled={isCheckingStatus}
+              onClick={async () => {
+                if (!(await ensureNotOnBoard('Terminated'))) return;
                 setIsStatusEditOpen(false);
                 setTerminationDraft(initialTerminationDraft);
                 setIsTerminateOpen(true);
@@ -8243,6 +8936,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* On Board guard popup — blocks Inactive/Terminate for signed-on crew */}
+      <AlertDialog open={!!onBoardBlockMsg} onOpenChange={(open) => { if (!open) setOnBoardBlockMsg(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Action not allowed</AlertDialogTitle>
+            <AlertDialogDescription>{onBoardBlockMsg}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setOnBoardBlockMsg(null)} data-testid="button-close-onboard-block">
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Terminate Employment Dialog */}
       <Dialog
@@ -8429,6 +9137,31 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               Cancel
             </Button>
             <Button onClick={handleUpdateNextAvailability} disabled={!tempNextAvailability}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRecruitmentDateEditOpen} onOpenChange={setIsRecruitmentDateEditOpen}>
+        <DialogContent className="sm:max-w-[350px]">
+          <DialogHeader>
+            <DialogTitle>Set Date of Recruitment</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <label className="text-sm font-medium text-gray-700">Date of Recruitment</label>
+            <FormattedDateInput
+              value={tempRecruitmentDate}
+              onChange={(e) => setTempRecruitmentDate(e.target.value)}
+              className="mt-1"
+              data-testid="input-recruitment-date"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRecruitmentDateEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateRecruitmentDate} disabled={!tempRecruitmentDate}>
               Save
             </Button>
           </DialogFooter>
