@@ -159,6 +159,11 @@ export function DrugAlcoholTestForm_v2({
   const partARef = useRef<HTMLDivElement>(null);
   const partBRef = useRef<HTMLDivElement>(null);
   const continuousScrollContainerRef = useRef<HTMLDivElement>(null);
+  // Refs for B1 table sticky ghost scrollbar
+  const b1TableWrapperRef = useRef<HTMLDivElement>(null);
+  const b1GhostScrollRef = useRef<HTMLDivElement>(null);
+  const b1GhostInnerRef = useRef<HTMLDivElement>(null);
+  const b1SyncingScroll = useRef(false);
   
 
   // Test type labels
@@ -572,6 +577,36 @@ export function DrugAlcoholTestForm_v2({
       setShowSignatoryManualEntry(true);
     }
   }, [isConfirmed, signatoryLookupResult, currentSignatoryName, showSignatoryManualEntry, form]);
+
+  // Keep ghost scrollbar width in sync with actual table content width
+  useEffect(() => {
+    const syncWidth = () => {
+      if (b1TableWrapperRef.current && b1GhostInnerRef.current) {
+        b1GhostInnerRef.current.style.width = `${b1TableWrapperRef.current.scrollWidth}px`;
+      }
+    };
+    syncWidth();
+    window.addEventListener('resize', syncWidth);
+    return () => window.removeEventListener('resize', syncWidth);
+  }, [personnelFields.length]);
+
+  const handleB1TableScroll = () => {
+    if (b1SyncingScroll.current) return;
+    if (b1TableWrapperRef.current && b1GhostScrollRef.current) {
+      b1SyncingScroll.current = true;
+      b1GhostScrollRef.current.scrollLeft = b1TableWrapperRef.current.scrollLeft;
+      b1SyncingScroll.current = false;
+    }
+  };
+
+  const handleB1GhostScroll = () => {
+    if (b1SyncingScroll.current) return;
+    if (b1TableWrapperRef.current && b1GhostScrollRef.current) {
+      b1SyncingScroll.current = true;
+      b1TableWrapperRef.current.scrollLeft = b1GhostScrollRef.current.scrollLeft;
+      b1SyncingScroll.current = false;
+    }
+  };
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
     if (ref.current) {
@@ -1596,7 +1631,7 @@ export function DrugAlcoholTestForm_v2({
                   </div>
 
                   {/* Personnel Table - Horizontal Scroll */}
-                  <div className="overflow-x-auto border rounded-lg">
+                  <div className="overflow-x-auto border rounded-lg" ref={b1TableWrapperRef} onScroll={handleB1TableScroll}>
                     <table className="w-full min-w-max bg-white">
                       <thead>
                         <tr className="border-b bg-gray-50">
@@ -1967,6 +2002,17 @@ export function DrugAlcoholTestForm_v2({
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Ghost scrollbar — sticky at bottom of viewport, always reachable */}
+                  <div
+                    ref={b1GhostScrollRef}
+                    onScroll={handleB1GhostScroll}
+                    className="overflow-x-auto sticky bottom-0 z-10"
+                    style={{ height: '12px' }}
+                  >
+                    <div ref={b1GhostInnerRef} style={{ height: '1px' }} />
+                  </div>
+
                 </div>
 
                 {/* Comments Section */}
