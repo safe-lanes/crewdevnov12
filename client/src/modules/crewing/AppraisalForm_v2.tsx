@@ -1442,6 +1442,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       if (stage === 'stage1') {
         omitForStage(stage1Schema).parse(dataForValidation);
       } else if (stage === 'stage2') {
+        if (!isPostStage1 && !isSectionVisible('partB2')) {
+          omitForStage(stage1Schema).parse(dataForValidation);
+        }
         omitForStage(stage2Schema).parse(dataForValidation);
       } else if (stage === 'stage3') {
         omitForStage(stage3Schema).parse(dataForValidation);
@@ -1486,17 +1489,6 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       stage1Mutation.mutate({ id: idToUse, formData });
     } else if (stage === 'stage2') {
       if (!isPostStage1 && !isSectionVisible('partB2')) {
-        try {
-          omitForStage(stage1Schema).parse(dataForValidation);
-        } catch (validationError: unknown) {
-          const err = validationError as { errors?: Array<{ message?: string }> };
-          toast({
-            title: 'Validation Error',
-            description: err.errors?.[0]?.message || 'Please complete all required fields for this stage.',
-            variant: 'destructive',
-          });
-          return;
-        }
         try {
           await apiRequest('POST', `/api/v2/appraisals/${idToUse}/submit-stage1`, {
             data: {
