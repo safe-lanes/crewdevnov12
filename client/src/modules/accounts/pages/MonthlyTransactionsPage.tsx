@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -106,15 +106,14 @@ export default function MonthlyTransactionsPage() {
     return m;
   }, [payElements]);
 
-  // Manual-entry-friendly elements for the add dialog.
+  // Monthly transactions cover manual-entry and rate×qty elements only;
+  // scale/fixed/percentage elements are posted by the calculation engine.
   const manualElements = useMemo(
     () =>
       payElements.filter(
         (e) =>
           e.status === "active" &&
-          ["manual_entry", "rate_times_qty", "fixed_amount"].includes(
-            e.calcMethod,
-          ),
+          ["manual_entry", "rate_times_qty"].includes(e.calcMethod),
       ),
     [payElements],
   );
@@ -128,6 +127,43 @@ export default function MonthlyTransactionsPage() {
 
   const set = <K extends keyof TxnForm>(key: K, value: TxnForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  // Default the rate from the crew's wage-scale line (rank + element match)
+  // for rate_times_qty elements when adding a transaction.
+  const selectedEngagement = crewByUuid.get(form.crewUuid)?.engagement;
+  const scaleUuid: string = selectedEngagement?.wageScaleUuid ?? "";
+  const { data: scaleDetail } = useQuery<any>({
+    queryKey: [`${ACCOUNTS_BASE}/wage-scales/${scaleUuid}`],
+    enabled: dialogOpen && !editingUuid && !!scaleUuid,
+  });
+  const selectedElement = elementByUuid.get(form.payElementUuid);
+  useEffect(() => {
+    if (editingUuid || !dialogOpen) return;
+    if (!form.crewUuid || !form.payElementUuid) return;
+    if (selectedElement?.calcMethod !== "rate_times_qty") return;
+    const rankId = selectedEngagement?.rankIdAtStart;
+    const line = (scaleDetail?.lines ?? []).find(
+      (l: any) =>
+        l.payElementUuid === form.payElementUuid &&
+        l.rankId === rankId &&
+        !l.isDeleted &&
+        l.rate != null,
+    );
+    if (!line) return;
+    setForm((f) => {
+      const q = parseFloat(f.qty);
+      const r = parseFloat(line.rate);
+      return {
+        ...f,
+        rate: line.rate,
+        amount:
+          !Number.isNaN(q) && !Number.isNaN(r)
+            ? (q * r).toFixed(2)
+            : f.amount,
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.crewUuid, form.payElementUuid, scaleDetail, dialogOpen, editingUuid]);
 
   // qty × rate auto-amount
   const setQtyRate = (qty: string, rate: string) => {
@@ -204,7 +240,7 @@ export default function MonthlyTransactionsPage() {
           amount: form.amount,
           currency: form.currency,
           origin: "office",
-          status: "draft",
+          status: "accepted",
           sourceType: "manual",
           remarks: form.remarks.trim() || null,
         });

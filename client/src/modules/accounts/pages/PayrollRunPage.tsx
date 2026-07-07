@@ -89,6 +89,72 @@ function statusBadge(status: string | null | undefined) {
   );
 }
 
+/** Human-readable derivation of a ledger line from its calc_snapshot. */
+function describeCalc(line: any): string {
+  const s = line?.calcSnapshot;
+  if (!s || typeof s !== "object") return "";
+  const parts: string[] = [];
+  if (s.monthlyAmount != null) {
+    if (s.prorated) {
+      parts.push(
+        `Monthly ${formatMoney(s.monthlyAmount)} × ${s.daysServed}/${s.daysBasis} days = ${formatMoney(s.rawAmount)}`,
+      );
+    } else {
+      parts.push(`Monthly ${formatMoney(s.monthlyAmount)} (not prorated)`);
+    }
+    if (s.scaleYear != null) parts.push(`scale year ${s.scaleYear}`);
+  } else if (s.percentage != null) {
+    parts.push(
+      s.baseAmount != null
+        ? `${s.percentage}% of ${formatMoney(s.baseAmount)}`
+        : `${s.percentage}% of base element`,
+    );
+  } else if (s.qty != null && s.rate != null) {
+    parts.push(`${s.qty} × ${formatMoney(s.rate)} = ${formatMoney(s.rawAmount)}`);
+  } else if (s.txnAmount != null) {
+    parts.push(`Manual entry ${formatMoney(s.txnAmount)}`);
+  } else if (s.value != null) {
+    parts.push(`Fixed amount ${formatMoney(s.value)}`);
+  } else if (s.adjustsLedgerUuid) {
+    parts.push(
+      `Adjustment of ${s.sourcePeriod ?? "prior period"}${s.remarks ? ` — ${s.remarks}` : ""}`,
+    );
+  }
+  if (s.paymentTimingOverriddenBy) parts.push("timing overridden");
+  if (s.fxNote) parts.push(String(s.fxNote));
+  return parts.join(" · ");
+}
+
+/** Drill-down groups: earnings / deductions on board, accruals, fund. */
+const DRILL_GROUPS: {
+  key: string;
+  title: string;
+  match: (l: any) => boolean;
+}[] = [
+  {
+    key: "earnings",
+    title: "Earnings (paid on board)",
+    match: (l) =>
+      l.elementType === "earning" && l.paymentTiming === "paid_on_board",
+  },
+  {
+    key: "deductions",
+    title: "Deductions (paid on board)",
+    match: (l) =>
+      l.elementType !== "earning" && l.paymentTiming === "paid_on_board",
+  },
+  {
+    key: "accruals",
+    title: "Settlement Accruals (payable at settlement)",
+    match: (l) => l.paymentTiming === "payable_at_settlement",
+  },
+  {
+    key: "fund",
+    title: "Fund Remittances",
+    match: (l) => l.paymentTiming === "remitted_to_fund",
+  },
+];
+
 interface AnchorForm {
   scaleYearAtStart: string;
   nextStepDate: string;
@@ -468,6 +534,13 @@ export default function PayrollRunPage() {
       },
       { headerName: "Rank", field: "rankId", width: 90 },
       {
+        headerName: "Balance B/F",
+        field: "balanceBf",
+        width: 120,
+        type: "rightAligned",
+        valueFormatter: (p) => formatMoney(p.value),
+      },
+      {
         headerName: "Earned Gross",
         field: "earnedGross",
         width: 130,
@@ -506,6 +579,27 @@ export default function PayrollRunPage() {
         headerName: "Balance C/F",
         field: "balanceCf",
         width: 120,
+        type: "rightAligned",
+        valueFormatter: (p) => formatMoney(p.value),
+      },
+      {
+        headerName: "Leave B/F",
+        field: "leaveBf",
+        width: 100,
+        type: "rightAligned",
+        valueFormatter: (p) => formatMoney(p.value),
+      },
+      {
+        headerName: "Leave This Mo",
+        field: "leaveThisMonth",
+        width: 120,
+        type: "rightAligned",
+        valueFormatter: (p) => formatMoney(p.value),
+      },
+      {
+        headerName: "Leave C/F",
+        field: "leaveCf",
+        width: 100,
         type: "rightAligned",
         valueFormatter: (p) => formatMoney(p.value),
       },
@@ -812,50 +906,71 @@ export default function PayrollRunPage() {
         open={!!drillCrewUuid}
         onOpenChange={(o) => !o && setDrillCrewUuid(null)}
       >
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Wage Detail —{" "}
               {crewByUuid.get(drillCrewUuid ?? "")?.crewName ?? drillCrewUuid}
             </DialogTitle>
           </DialogHeader>
-          {(["earning", "deduction", "employer_contribution"] as const).map(
-            (type) => {
-              const lines = drillLines.filter((l) => l.elementType === type);
-              if (lines.length === 0) return null;
-              const title =
-                type === "earning"
-                  ? "Earnings"
-                  : type === "deduction"
-                    ? "Deductions"
-                    : "Employer Contributions";
-              return (
-                <div key={type} className="space-y-1">
-                  <h3 className="text-sm font-medium">{title}</h3>
-                  <table className="w-full text-xs border">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="text-left px-2 py-1">Element</th>
-                        <th className="text-left px-2 py-1">Timing</th>
-                        <th className="text-right px-2 py-1">Days/Qty</th>
-                        <th className="text-right px-2 py-1">Rate</th>
-                        <th className="text-right px-2 py-1">Amount</th>
-                        <th className="text-left px-2 py-1">Source</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {lines.map((l) => (
+          {DRILL_GROUPS.map((group) => {
+            const lines = drillLines.filter(group.match);
+            if (lines.length === 0) return null;
+            const subtotal = lines.reduce(
+              (s, l) => s + (parseFloat(l.amount) || 0),
+              0,
+            );
+            return (
+              <div key={group.key} className="space-y-1">
+                <h3 className="text-sm font-medium">{group.title}</h3>
+                <table className="w-full text-xs border">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="text-left px-2 py-1">Element</th>
+                      <th className="text-left px-2 py-1">Derivation</th>
+                      <th className="text-right px-2 py-1">Days/Qty</th>
+                      <th className="text-right px-2 py-1">Rate</th>
+                      <th className="text-right px-2 py-1">Amount</th>
+                      <th className="text-left px-2 py-1">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lines.map((l) => {
+                      const derivation = describeCalc(l);
+                      const snapWarning = l.calcSnapshot?.warning;
+                      return (
                         <tr
                           key={l.ledgerUuid}
                           className="border-t"
                           data-testid={`row-ledger-${l.ledgerUuid}`}
                         >
                           <td className="px-2 py-1">
-                            {elementByUuid.get(l.payElementUuid)?.name ??
-                              l.elementCode}
+                            <div>
+                              {elementByUuid.get(l.payElementUuid)?.name ??
+                                l.elementCode}
+                            </div>
+                            {l.elementType !== "earning" && (
+                              <div className="text-[10px] text-muted-foreground">
+                                {l.elementType === "employer_contribution"
+                                  ? "employer contribution"
+                                  : l.elementType}
+                              </div>
+                            )}
                           </td>
-                          <td className="px-2 py-1">
-                            {TIMING_LABEL[l.paymentTiming] ?? l.paymentTiming}
+                          <td
+                            className="px-2 py-1 text-muted-foreground"
+                            data-testid={`text-derivation-${l.ledgerUuid}`}
+                          >
+                            {derivation}
+                            {snapWarning && (
+                              <div className="flex items-start gap-1 text-amber-700">
+                                <AlertTriangle
+                                  size={11}
+                                  className="mt-0.5 shrink-0"
+                                />
+                                <span>{String(snapWarning)}</span>
+                              </div>
+                            )}
                           </td>
                           <td className="px-2 py-1 text-right">
                             {l.daysServed ?? l.qty ?? ""}
@@ -868,13 +983,25 @@ export default function PayrollRunPage() {
                           </td>
                           <td className="px-2 py-1">{l.sourceType}</td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              );
-            },
-          )}
+                      );
+                    })}
+                    <tr className="border-t bg-slate-50 font-medium">
+                      <td className="px-2 py-1" colSpan={4}>
+                        Subtotal
+                      </td>
+                      <td
+                        className="px-2 py-1 text-right"
+                        data-testid={`text-subtotal-${group.key}`}
+                      >
+                        {formatMoney(subtotal.toFixed(2))}
+                      </td>
+                      <td />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
           {drillLines.length === 0 && (
             <p className="text-sm text-muted-foreground">
               No ledger lines for this crew member.
