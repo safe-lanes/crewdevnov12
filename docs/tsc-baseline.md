@@ -2,7 +2,11 @@
 
 **Captured:** 2026-07-06
 **Total errors:** 228
-**Affected files:** 40
+**Affected files:** 41
+
+> Correction (2026-07-07): the original header said 40 files, but the table
+> below has always listed 41 files whose error counts sum to exactly 228.
+> The header was a miscount; the file list and totals are unchanged.
 
 The dev workflow (`npm run dev`) runs the server via `tsx` and the client via
 Vite — neither type-checks. These 228 errors predate current work and do not
@@ -15,7 +19,7 @@ Every task summary **must** report tsc error counts relative to this baseline:
 
 1. Run `./node_modules/.bin/tsc > /tmp/t.txt 2>&1; grep -c "error TS" /tmp/t.txt`
 2. Count errors in your changed files: `grep "error TS" /tmp/t.txt | grep "<your file>"`
-3. Report: **"Baseline 228 errors across 40 files — this task adds N new errors
+3. Report: **"Baseline 228 errors across 41 files — this task adds N new errors
    in touched files (target: 0)."**
 4. If a formerly-clean file now appears in the error list, or an existing file's
    error count grew, investigate before closing the task.

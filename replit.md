@@ -133,7 +133,7 @@ Apply these to **every new table**:
 - PascalCase for components, camelCase for functions
 - Date format: DD-MMM-YYYY
 - Concise and professional communication
-- **tsc baseline reporting (required):** Every task summary must state how many new tsc errors were introduced in touched files relative to the established baseline of 228 errors across 40 files (see `docs/tsc-baseline.md`, captured 2026-07-06). Target is 0 new errors. Use `comm -12` of changed files vs tsc error files to verify. Do NOT fix unrelated baseline errors.
+- **tsc baseline reporting (required):** Every task summary must state how many new tsc errors were introduced in touched files relative to the established baseline of 228 errors across 41 files (see `docs/tsc-baseline.md`, captured 2026-07-06; header corrected 2026-07-07 — the table always listed 41 files). Target is 0 new errors. Use `comm -12` of changed files vs tsc error files to verify. Do NOT fix unrelated baseline errors.
 
 ## Database Migrations
 - Sequential numbering: `NNNN_descriptive_name.sql`
@@ -141,7 +141,7 @@ Apply these to **every new table**:
 - Migrations auto-run per tenant on first connection
 
 ## Key Documentation
-- `docs/tsc-baseline.md` — TypeScript error baseline (228 errors, 40 files, 2026-07-06); use for per-task new-error reporting
+- `docs/tsc-baseline.md` — TypeScript error baseline (228 errors, 41 files, 2026-07-06; header corrected 2026-07-07); use for per-task new-error reporting
 - `docs/ARCHITECTURE.md` — System architecture overview
 - `docs/DATABASE_SCHEMA.md` — Database schema reference
 - `docs/API_DOCUMENTATION.md` — API reference
