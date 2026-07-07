@@ -14,6 +14,11 @@ const updateSchema = z
     nextStepDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     wageScaleUuid: z.string().min(1),
     status: z.enum(["draft", "active", "completed", "settled", "cancelled"]),
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    endDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable(),
   })
   .partial();
 

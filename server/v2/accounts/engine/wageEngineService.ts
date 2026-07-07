@@ -164,17 +164,50 @@ const reads = new EngineReads();
 const ledgerRepo = new LedgerRepository();
 const balanceService = new BalanceService();
 
+/** Inclusive date-range overlap; a null end date means open-ended. */
+function rangesOverlap(
+  aStart: string,
+  aEnd: string | null,
+  bStart: string,
+  bEnd: string | null,
+): boolean {
+  return (bEnd == null || aStart <= bEnd) && (aEnd == null || bStart <= aEnd);
+}
+
 /**
  * Settlement freeze guard (amendment to Prompt 05): once a final settlement
  * is submitted (or beyond), the engine refuses to re-run any period of that
  * engagement — a re-run would silently diverge the ledger from the payout.
+ * Overlap-aware: a frozen settlement on ANY same-crew engagement whose
+ * service window overlaps a run engagement's window also freezes the run —
+ * pre-existing overlap data must not bypass the guard.
  */
 async function assertNoFrozenSettlements(
   engagements: AccEngagementV2[],
 ): Promise<void> {
-  const frozen = await reads.findFrozenSettlements(
-    engagements.map((e) => e.engagementUuid),
-  );
+  if (engagements.length === 0) return;
+  const crewUuids = [...new Set(engagements.map((e) => e.crewUuid))];
+  const crewEngagements = await reads.findEngagementsByCrewUuids(crewUuids);
+  const candidateUuids = new Set(engagements.map((e) => e.engagementUuid));
+  for (const e of engagements) {
+    if (!e.startDate) continue;
+    for (const other of crewEngagements) {
+      if (
+        other.crewUuid === e.crewUuid &&
+        other.engagementUuid !== e.engagementUuid &&
+        other.startDate != null &&
+        rangesOverlap(
+          e.startDate,
+          e.endDate ?? null,
+          other.startDate,
+          other.endDate ?? null,
+        )
+      ) {
+        candidateUuids.add(other.engagementUuid);
+      }
+    }
+  }
+  const frozen = await reads.findFrozenSettlements([...candidateUuids]);
   if (frozen.length === 0) return;
   const names = await reads.findCrewNames(frozen.map((s) => s.crewUuid));
   const parts = frozen.map(

@@ -680,13 +680,17 @@ the service layer:
    `draft`. Marking paid sets `paid_date`/`payment_reference` and flips the
    engagement to `settled`; post-paid the crew's balances read zero.
 9. **Settlement freeze guard (0159).** Once an engagement has a settlement
-   past `draft`, all ledger-mutating operations for that engagement (payroll
-   runs, monthly transactions, adjustments) are rejected with a 409 naming the
-   settlement; the settlement must be reverted to draft first.
+   past `draft`, ledger-mutating runs for that engagement are rejected with a
+   409 naming the settlement; the settlement must be reverted to draft first.
+   The guard is **overlap-aware**: a frozen settlement on any same-crew
+   engagement whose service window overlaps a run engagement's window also
+   blocks the run — pre-existing overlap data cannot bypass the guard.
 10. **Engagement overlap guard (0159).** A crew member may not have two open
-    engagements covering the same dates: creates/updates and the crewing sync
-    reject overlapping windows, and `GET /engagements/audit` reports existing
-    overlapping clusters (surfaced as a banner on the Payroll Run page).
+    engagements covering the same dates: the crewing sync and PATCH updates
+    reject overlapping windows — PATCH validates the *effective post-patch*
+    record (patched status/dates merged over persisted values) — and
+    `GET /engagements/audit` reports existing overlapping clusters (surfaced
+    as a banner on the Payroll Run page).
 
 ---
 

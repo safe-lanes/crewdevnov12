@@ -91,12 +91,22 @@ const engOvlB2 = u();
 const engOvlC1 = u();
 const assignOvlC = u();
 const txnFrz = u();
+// freeze-via-overlap + PATCH-date-change fixtures
+const crewOvlD = u();
+const crewOvlE = u();
+const engOvlD1 = u();
+const engOvlD2 = u();
+const engOvlE1 = u();
+const engOvlE2 = u();
+const vslOvlD = `VSL_OVLD_${S}`;
+const stlOvlD = u();
 let s1SettlementUuid: string | null = null;
 let frzSettlementUuid: string | null = null;
 
 const allEngagements = [
   engH1, engH2, engH3, engH4, engFeb, engLock, engTim, engBal, engFbk,
   engS1, engMiss, engFrz, engOvlA1, engOvlA2, engOvlB1, engOvlB2, engOvlC1,
+  engOvlD1, engOvlD2, engOvlE1, engOvlE2,
 ];
 
 const promoLedgerUuid = u();
@@ -380,6 +390,25 @@ describe("Wage Calculation Engine (H1–H5)", () => {
     await engagement(engOvlB2, crewOvlB, vslOvlOther, scaleH1, RANK_MST, "2026-02-15", "2027-02-15");
     // overlap sync case: existing open engagement + a new assignment elsewhere
     await engagement(engOvlC1, crewOvlC, vslOvlOther, scaleH1, RANK_MST, "2026-01-01", "2027-01-01");
+    // freeze-via-overlap case: completed engagement with a submitted settlement
+    // + a same-crew engagement overlapping its window (seeded directly, as
+    // pre-existing overlap data would be)
+    await engagement(engOvlD1, crewOvlD, vslOvlD, scaleH1, RANK_MST, "2026-03-01", "2027-03-01", {
+      end_date: "2026-03-31",
+      status: "completed",
+    });
+    await engagement(engOvlD2, crewOvlD, vslOvlOther, scaleH1, RANK_MST, "2026-03-15", "2027-03-15");
+    await insert("acc_settlements_v2", {
+      settlement_uuid: stlOvlD,
+      engagement_uuid: engOvlD1,
+      crew_uuid: crewOvlD,
+      status: "submitted",
+    });
+    // PATCH date-change case: two non-overlapping engagements for one crew
+    await engagement(engOvlE1, crewOvlE, vslOvlOther, scaleH1, RANK_MST, "2026-01-01", "2027-01-01", {
+      end_date: "2026-02-28",
+    });
+    await engagement(engOvlE2, crewOvlE, vslOvlOther, scaleH1, RANK_MST, "2026-06-01", "2027-06-01");
     await insert("crew_assignments", {
       assign_uuid: assignOvlC,
       crew_uuid: crewOvlC,
@@ -1202,6 +1231,30 @@ describe("Wage Calculation Engine (H1–H5)", () => {
     expect(err.reason).toContain("overlapping engagement");
     expect(err.reason).toContain(engOvlC1);
     expect(body.created).toEqual([]);
+  });
+
+  it("freeze guard: run blocked by a submitted settlement on an OVERLAPPING engagement", async () => {
+    const res = await runEngagement(engOvlD2, "2026-03");
+    expect(res.status).toBe(409);
+    expect(res.body.error).toContain(stlOvlD);
+  });
+
+  it("overlap: PATCH date change creating an overlap ⇒ 409; non-overlapping change ⇒ 200", async () => {
+    const bad = await fetch(`${V2_BASE}/engagements/${engOvlE2}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startDate: "2026-02-01" }),
+    });
+    expect(bad.status).toBe(409);
+    expect((await bad.json()).error).toContain(engOvlE1);
+
+    const ok = await fetch(`${V2_BASE}/engagements/${engOvlE2}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startDate: "2026-07-01" }),
+    });
+    expect(ok.status).toBe(200);
+    expect((await ok.json()).startDate).toBe("2026-07-01");
   });
 
   it("overlap: audit endpoint lists the seeded overlap group", async () => {

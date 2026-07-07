@@ -407,22 +407,40 @@ export const engagementsService = {
     data: Partial<
       Pick<
         InsertAccEngagementV2,
-        "scaleYearAtStart" | "nextStepDate" | "wageScaleUuid" | "status"
+        | "scaleYearAtStart"
+        | "nextStepDate"
+        | "wageScaleUuid"
+        | "status"
+        | "startDate"
+        | "endDate"
       >
     > & { auditUserUuid?: string },
   ): Promise<AccEngagementV2 | undefined> {
-    if (data.status && OVERLAP_STATUSES.has(data.status)) {
+    // Overlap guard: whenever an overlap-relevant field changes (status or
+    // service dates), validate the EFFECTIVE post-patch record — the patch
+    // merged over persisted values — against the crew's other engagements.
+    const touchesOverlapFields =
+      data.status !== undefined ||
+      data.startDate !== undefined ||
+      data.endDate !== undefined;
+    if (touchesOverlapFields) {
       const engagement =
         await engagementsRepository.findByUuid(engagementUuid);
-      if (engagement?.startDate) {
+      if (!engagement) return undefined;
+      const effectiveStatus = data.status ?? engagement.status;
+      const effectiveStart =
+        data.startDate !== undefined ? data.startDate : engagement.startDate;
+      const effectiveEnd =
+        data.endDate !== undefined ? data.endDate : engagement.endDate;
+      if (OVERLAP_STATUSES.has(effectiveStatus) && effectiveStart) {
         const others = (
           await engagementsRepository.findByCrewUuids([engagement.crewUuid])
         ).filter((e) => e.engagementUuid !== engagementUuid);
         const conflict = findOverlapConflict(
           {
             crewUuid: engagement.crewUuid,
-            startDate: engagement.startDate,
-            endDate: engagement.endDate ?? null,
+            startDate: effectiveStart,
+            endDate: effectiveEnd ?? null,
             engagementUuid,
           },
           others,

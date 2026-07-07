@@ -301,6 +301,26 @@ export class EngineReads {
   }
 
   /**
+   * All live engagements for the given crews. Used by the freeze guard to
+   * resolve overlapping engagements of the same crew.
+   */
+  async findEngagementsByCrewUuids(
+    crewUuids: string[],
+  ): Promise<AccEngagementV2[]> {
+    if (crewUuids.length === 0) return [];
+    const db = getDb();
+    return db
+      .select()
+      .from(accEngagementsV2)
+      .where(
+        and(
+          inArray(accEngagementsV2.crewUuid, crewUuids),
+          eq(accEngagementsV2.isDeleted, false),
+        ),
+      );
+  }
+
+  /**
    * Settlements in a re-run-freezing status (submitted/approved/paid/locked)
    * for any of the given engagements. Used by the engine's freeze guard.
    */
