@@ -6135,7 +6135,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   <Plus className="h-4 w-4" />
                                 </Button>
                               )}
-                              <Button
+                              {formData.b2References.length > 1 && (
+                                <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
@@ -6150,6 +6151,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -6580,7 +6582,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     <Plus className="h-4 w-4" />
                                   </Button>
                                 )}
-                                <Button
+                                {formData.b3Authorities.length > 1 && (
+                                  <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
@@ -6595,6 +6598,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -7046,7 +7050,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     <Plus className="h-4 w-4" />
                                   </Button>
                                 )}
-                                <Button
+                                {formData.b4Certs.length > 1 && (
+                                  <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
@@ -7061,6 +7066,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -7542,7 +7548,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     <Plus className="h-4 w-4" />
                                   </Button>
                                 )}
-                                <Button
+                                {formData.b5Tests.length > 1 && (
+                                  <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
@@ -7557,6 +7564,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -7918,7 +7926,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     <Plus className="h-4 w-4" />
                                   </Button>
                                 )}
-                                <Button
+                                {formData.b6Interviews.length > 1 && (
+                                  <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
@@ -7941,6 +7950,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
+                                )}
                               </div>
                             </div>
                             
