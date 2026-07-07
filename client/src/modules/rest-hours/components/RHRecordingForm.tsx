@@ -957,11 +957,13 @@ export const RHRecordingForm = ({
         ? Array(48).fill('')
         : [...template];
 
-      const dayCells = variableTaskCellsMap.get(record.day);
-      if (dayCells && dayCells.length > 0) {
-        for (const cellRange of dayCells) {
-          for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
-            newHours[i] = 'a';
+      if (!isDuplicate) {
+        const dayCells = variableTaskCellsMap.get(record.day);
+        if (dayCells && dayCells.length > 0) {
+          for (const cellRange of dayCells) {
+            for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
+              newHours[i] = 'a';
+            }
           }
         }
       }
@@ -986,9 +988,9 @@ export const RHRecordingForm = ({
           ? baseComments.filter(c => !normalizedVars.has(c.toLowerCase()))
           : baseComments;
 
-      const finalComments = [...cleanedBase, ...variableTaskComments]
-        .filter(Boolean)
-        .join(', ');
+      const finalComments = isDuplicate
+        ? cleanedBase.filter(Boolean).join(', ')
+        : [...cleanedBase, ...variableTaskComments].filter(Boolean).join(', ');
 
       return {
         ...record,
@@ -1079,11 +1081,13 @@ export const RHRecordingForm = ({
               hours = Array(48).fill('');
             }
 
-            const dayCells = variableTaskCellsMap.get(record.day);
-            if (dayCells && dayCells.length > 0) {
-              for (const cellRange of dayCells) {
-                for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
-                  hours[i] = 'a';
+            if (record.occurrence !== 'duplicate') {
+              const dayCells = variableTaskCellsMap.get(record.day);
+              if (dayCells && dayCells.length > 0) {
+                for (const cellRange of dayCells) {
+                  for (let i = cellRange.startCell; i <= cellRange.endCell && i < 48; i++) {
+                    hours[i] = 'a';
+                  }
                 }
               }
             }
@@ -1129,9 +1133,10 @@ export const RHRecordingForm = ({
             ? baseComments.filter(c => !normalizedVars.has(c.toLowerCase()))
             : baseComments;
 
-          const finalComments = [...cleanedBase, ...variableTaskComments]
-            .filter(Boolean)
-            .join(', ');
+          const isDuplicateRow = record.occurrence === 'duplicate';
+          const finalComments = isDuplicateRow
+            ? cleanedBase.filter(Boolean).join(', ')
+            : [...cleanedBase, ...variableTaskComments].filter(Boolean).join(', ');
 
           return {
             ...record,
