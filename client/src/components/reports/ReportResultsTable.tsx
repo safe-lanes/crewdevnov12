@@ -68,6 +68,8 @@ export function ReportResultsTable({
           headerName: col.label,
           sortable: col.sortable !== false,
           resizable: true,
+          flex: 1,
+          minWidth: 100,
           valueFormatter: (params) => formatCell(params.value, col.type),
         };
         if (col.type === "number") {
@@ -75,7 +77,6 @@ export function ReportResultsTable({
         } else {
           def.filter = "agTextColumnFilter";
         }
-        if (col.width) def.width = col.width;
         if (col.align === "right") {
           def.cellStyle = { textAlign: "right" };
           def.headerClass = "ag-right-aligned-header";
