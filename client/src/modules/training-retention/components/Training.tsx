@@ -205,13 +205,6 @@ export const Training = (): JSX.Element => {
     return Array.from(set);
   }, [rows]);
 
-  const distinctRanks = useMemo<string[]>(() => {
-    const set = new Set<string>();
-    rows.forEach((r) => {
-      if (r.rank) set.add(r.rank);
-    });
-    return Array.from(set).sort();
-  }, [rows]);
 
   const filtered = useMemo<GridRow[]>(() => {
     const q = appliedFilters.searchName.trim().toLowerCase();
@@ -434,8 +427,8 @@ export const Training = (): JSX.Element => {
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="all">All Ranks</SelectItem>
-                  {distinctRanks.map((r) => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  {ranks.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
