@@ -32,6 +32,7 @@ const elBAS = u(); // scale_lookup basic — forbidden to vessel
 const elVOT = u(); // rate_times_qty overtime
 const elADV = u(); // advance_recovery deduction (dual-record trigger)
 const elBND = u(); // bond_slop_chest deduction
+const elBON = u(); // manual_entry bonus — non-vessel category, forbidden to vessel
 
 const vslA = `VSL_VPA_${S}`; // lifecycle
 const vslB = `VSL_VPB_${S}`; // CTM math
@@ -145,7 +146,7 @@ describe("Vessel submission package & CTM cash account (Prompt 06)", () => {
       code: `VP_VOT_${S}`,
       name: "VP Variable OT",
       type: "earning",
-      category: "overtime",
+      category: "overtime_variable",
       calc_method: "rate_times_qty",
       prorate: false,
       payment_timing: "paid_on_board",
@@ -173,6 +174,19 @@ describe("Vessel submission package & CTM cash account (Prompt 06)", () => {
       type: "deduction",
       category: "bond_slop_chest",
       calc_method: "fixed_amount",
+      prorate: false,
+      payment_timing: "paid_on_board",
+      rounding_rule: "nearest",
+      rounding_precision: "0.01",
+      status: "active",
+    });
+    await insert("acc_pay_elements_v2", {
+      pay_element_uuid: elBON,
+      code: `VP_BON_${S}`,
+      name: "VP Bonus",
+      type: "earning",
+      category: "bonus",
+      calc_method: "manual_entry",
       prorate: false,
       payment_timing: "paid_on_board",
       rounding_rule: "nearest",
@@ -269,7 +283,7 @@ describe("Vessel submission package & CTM cash account (Prompt 06)", () => {
     ]);
     await tryQuery(
       "DELETE FROM acc_pay_elements_v2 WHERE pay_element_uuid = ANY($1)",
-      [[elBAS, elVOT, elADV, elBND]],
+      [[elBAS, elVOT, elADV, elBND, elBON]],
     );
     await db.end();
   });
@@ -286,6 +300,37 @@ describe("Vessel submission package & CTM cash account (Prompt 06)", () => {
     );
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/scale-derived/i);
+  });
+
+  it("rejects a vessel transaction on a non-vessel category element with 400", async () => {
+    const res = await api(
+      "POST",
+      "/monthly-transactions",
+      txnBody({ vesselUuid: vslA, payElementUuid: elBON, amount: "250.00" }),
+      tokenA,
+    );
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/bonus/i);
+  });
+
+  it("allows a vessel transaction on an allowed fixed-amount category (bond)", async () => {
+    const create = await api(
+      "POST",
+      "/monthly-transactions",
+      txnBody({ vesselUuid: vslA, payElementUuid: elBND, amount: "40.00" }),
+      tokenA,
+    );
+    expect(create.status).toBe(201);
+    expect(create.body.origin).toBe("vessel");
+    expect(create.body.status).toBe("draft");
+    // Clean up so the lifecycle group's counts are unaffected.
+    const del = await api(
+      "DELETE",
+      `/monthly-transactions/${create.body.txnUuid}`,
+      undefined,
+      tokenA,
+    );
+    expect([200, 204]).toContain(del.status);
   });
 
   // ==========================================================================

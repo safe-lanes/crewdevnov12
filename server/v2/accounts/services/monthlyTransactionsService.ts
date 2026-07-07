@@ -71,12 +71,37 @@ async function requireElement(
   return element;
 }
 
-/** Hard principle: the vessel never touches scale-derived wages. */
+/**
+ * Vessel-side entry categories (spec Prompt 06): variable OT, on-board cash
+ * advances, bond/slop chest, radio/tel, allotment transactions and misc
+ * one-off/other deductions. Everything else is office-only.
+ * Keep in sync with VESSEL_ENTRY_CATEGORIES in VesselPortagePage.tsx.
+ */
+export const VESSEL_ALLOWED_CATEGORIES = new Set([
+  "overtime_variable",
+  "advance_recovery",
+  "bond_slop_chest",
+  "communication",
+  "allotment",
+  "one_off",
+  "other",
+]);
+
+/**
+ * Hard principle: the vessel never touches scale-derived wages, and vessel
+ * entry is limited to the vessel-side variable categories above.
+ */
 function assertVesselElementAllowed(element: AccPayElementV2): void {
   if (element.calcMethod === "scale_lookup") {
     throw coded(
       "VALIDATION",
       `Vessel users cannot enter scale-derived wage elements (${element.code})`,
+    );
+  }
+  if (!VESSEL_ALLOWED_CATEGORIES.has(element.category)) {
+    throw coded(
+      "VALIDATION",
+      `Vessel users cannot enter '${element.category}' elements (${element.code}); allowed categories: ${[...VESSEL_ALLOWED_CATEGORIES].join(", ")}`,
     );
   }
 }

@@ -88,6 +88,18 @@ const CTM_LINE_TYPES = [
   { value: "adjustment", label: "Adjustment" },
 ];
 
+// Vessel-side entry categories (spec Prompt 06). Keep in sync with
+// VESSEL_ALLOWED_CATEGORIES in monthlyTransactionsService.ts.
+const VESSEL_ENTRY_CATEGORIES = new Set([
+  "overtime_variable",
+  "advance_recovery",
+  "bond_slop_chest",
+  "communication",
+  "allotment",
+  "one_off",
+  "other",
+]);
+
 interface EntryForm {
   payElementUuid: string;
   qty: string;
@@ -221,7 +233,8 @@ export default function VesselPortagePage() {
       payElements.filter(
         (e) =>
           e.status === "active" &&
-          ["manual_entry", "rate_times_qty"].includes(e.calcMethod),
+          e.calcMethod !== "scale_lookup" &&
+          VESSEL_ENTRY_CATEGORIES.has(e.category),
       ),
     [payElements],
   );
