@@ -464,7 +464,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                 disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || isPostStage2}
                 data-testid="button-submit-stage-2"
               >
-                {stage2Mutation.isPending ? 'Submitting...' : 'Submit Stage 2'}
+                {stage2Mutation.isPending ? 'Submitting...' : 'Submit'}
               </Button>
             </div>
           </div>

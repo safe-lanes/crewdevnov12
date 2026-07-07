@@ -1320,15 +1320,15 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       let title = '';
       let description = '';
       if (stage === 'stage1') {
-        title = 'Submit Stage 1';
+        title = 'Submit';
         description = 'Are you sure you want to submit Stage 1? You will still be able to save drafts and continue to Stage 2 afterwards.';
       } else if (stage === 'stage2') {
-        title = 'Submit Stage 2';
+        title = 'Submit';
         description = isLockForm
           ? 'Form will be locked upon submission. If you want to make changes before final submission, you can use the Draft Save option.'
           : 'Are you sure you want to submit Stage 2?';
       } else {
-        title = 'Submit Stage 3';
+        title = 'Submit';
         // Task #513: only warn about a full-form lock when the admin
         // lock-form flag is on; otherwise use a neutral confirmation.
         description = isLockForm
@@ -1485,6 +1485,33 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     if (stage === 'stage1') {
       stage1Mutation.mutate({ id: idToUse, formData });
     } else if (stage === 'stage2') {
+      if (!isPostStage1 && !isSectionVisible('partB2')) {
+        try {
+          await apiRequest('POST', `/api/v2/appraisals/${idToUse}/submit-stage1`, {
+            data: {
+              seafarersName: formData.seafarersName,
+              seafarersRank: formData.seafarersRank,
+              nationality: formData.nationality ?? "",
+              vessel: formData.vessel,
+              signOn: formData.signOn ?? "",
+              appraisalType: formData.appraisalType,
+              appraisalPeriodFrom: formData.appraisalPeriodFrom ?? "",
+              appraisalPeriodTo: formData.appraisalPeriodTo ?? "",
+              personalityIndexCategory: formData.personalityIndexCategory ?? "",
+              primaryAppraiser: formData.primaryAppraiser ?? "",
+              trainings: formData.trainings,
+              targets: formData.targets,
+            },
+            submittedBy: 'Current User',
+            auditUserUuid: getCrewUserId(),
+          });
+          setAppraisalStatus('preliminary');
+          queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
+        } catch (e: any) {
+          toast({ title: 'Error', description: e.message || 'Failed to submit. Please try again.', variant: 'destructive' });
+          return;
+        }
+      }
       stage2Mutation.mutate({ id: idToUse, formData });
     } else if (stage === 'stage3') {
       stage3Mutation.mutate({ id: idToUse, formData });
@@ -2480,6 +2507,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         {/* Stage 1 Action Buttons - kept in parent for form-level control.
             Negative top margin pulls the row closer to the Part B card so
             it doesn't float in the middle of the section gap. */}
+        {isSectionVisible('partB2') && (
         <div className="flex justify-end gap-4 -mt-2 sm:-mt-4">
           <Button 
             type="button"
@@ -2488,9 +2516,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending || isPostStage1}
             data-testid="button-submit-stage1"
           >
-            {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
+            {stage1Mutation.isPending ? 'Submitting...' : 'Submit'}
           </Button>
         </div>
+        )}
       </div>
     );
   };
@@ -3441,6 +3470,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                       </div>
                       )}
 
+                      {isSectionVisible('partB2') && (
                       <div className="flex justify-end gap-4 mt-6">
                         <Button type="button" className="bg-blue-600 hover:bg-blue-700 text-white px-8" onClick={handleSaveDraft} disabled={isPostStage3}>
                           Save
@@ -3451,9 +3481,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                           onClick={() => handleStageSubmission('stage1')}
                           disabled={stage1Mutation.isPending || saveAppraisalMutation.isPending}
                         >
-                          {stage1Mutation.isPending ? 'Submitting...' : 'Submit Stage 1'}
+                          {stage1Mutation.isPending ? 'Submitting...' : 'Submit'}
                         </Button>
                       </div>
+                      )}
                       </div>
                     </CardContent>
                   </Card>
@@ -4194,7 +4225,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             onClick={() => handleStageSubmission('stage2')}
                             disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'submitted' || appraisalStatus === 'reviewed'}
                           >
-                            {stage2Mutation.isPending ? 'Submitting...' : 'Submit Stage 2'}
+                            {stage2Mutation.isPending ? 'Submitting...' : 'Submit'}
                           </Button>
                         </div>
                       </CardContent>
@@ -4487,7 +4518,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                             onClick={() => handleStageSubmission('stage3')}
                             disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'reviewed'}
                           >
-                            {stage3Mutation.isPending ? 'Submitting...' : 'Submit Stage 3'}
+                            {stage3Mutation.isPending ? 'Submitting...' : 'Submit'}
                           </Button>
                         </div>
                       </CardContent>

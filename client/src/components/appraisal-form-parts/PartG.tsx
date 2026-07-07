@@ -320,7 +320,7 @@ const PartGComponent: React.FC<PartGProps> = ({
                 disabled={stage3Mutation.isPending || saveAppraisalMutation.isPending || appraisalStatus === 'reviewed'}
                 data-testid="button-submit-stage-3"
               >
-                {stage3Mutation.isPending ? 'Submitting...' : 'Submit Stage 3'}
+                {stage3Mutation.isPending ? 'Submitting...' : 'Submit'}
               </Button>
             </div>
           </div>
