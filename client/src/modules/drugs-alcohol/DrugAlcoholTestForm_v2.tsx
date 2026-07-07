@@ -583,7 +583,9 @@ export function DrugAlcoholTestForm_v2({
   useEffect(() => {
     const syncWidth = () => {
       if (b1TableWrapperRef.current && b1GhostInnerRef.current && b1GhostScrollRef.current && b1NameThRef.current) {
-        const stickyOffset = b1NameThRef.current.offsetLeft + b1NameThRef.current.offsetWidth;
+        const nameRect = b1NameThRef.current.getBoundingClientRect();
+        const wrapperRect = b1TableWrapperRef.current.getBoundingClientRect();
+        const stickyOffset = nameRect.right - wrapperRect.left;
         b1GhostScrollRef.current.style.marginLeft = `${stickyOffset}px`;
         b1GhostInnerRef.current.style.width = `${b1TableWrapperRef.current.scrollWidth - stickyOffset}px`;
       }
