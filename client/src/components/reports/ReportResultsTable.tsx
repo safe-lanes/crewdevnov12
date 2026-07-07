@@ -90,7 +90,7 @@ export function ReportResultsTable({
   return (
     <div className="border border-gray-200 rounded bg-white" data-testid="report-results-table">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-gray-50">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50">
         <div className="text-sm text-gray-700" data-testid="text-report-result-summary">
           {isLoading ? (
             <span>Loading…</span>

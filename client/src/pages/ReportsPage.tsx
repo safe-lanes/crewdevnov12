@@ -494,7 +494,7 @@ function FilterControl({
         onValueChange={(v) => onChange(v)}
         disabled={loading || isEmpty}
       >
-        <SelectTrigger className="h-9 w-[180px]" data-testid={testIdBase}>
+        <SelectTrigger className="h-8 w-[180px]" data-testid={testIdBase}>
           <SelectValue placeholder={computedPlaceholder} />
         </SelectTrigger>
         <SelectContent>
@@ -535,7 +535,7 @@ function FilterControl({
             type="date"
             value={range.from}
             onChange={(e) => onChange({ from: e.target.value, to: range.to })}
-            className="h-9 w-[150px]"
+            className="h-8 w-[150px]"
             data-testid={`${testIdBase}-from`}
           />
           <span className="text-xs text-gray-500">to</span>
@@ -543,7 +543,7 @@ function FilterControl({
             type="date"
             value={range.to}
             onChange={(e) => onChange({ from: range.from, to: e.target.value })}
-            className="h-9 w-[150px]"
+            className="h-8 w-[150px]"
             data-testid={`${testIdBase}-to`}
           />
         </div>
@@ -564,7 +564,7 @@ function FilterControl({
             type="number"
             value={Number.isFinite(num) ? num : 0}
             onChange={(e) => onChange(Number(e.target.value))}
-            className="h-9 w-[80px] bg-yellow-50"
+            className="h-8 w-[80px] bg-yellow-50"
             data-testid={`${testIdBase}-days`}
           />
           <span className="text-xs text-gray-600">Days</span>
@@ -575,7 +575,7 @@ function FilterControl({
       const current = typeof value === "string" ? value : undefined;
       return (
         <Select value={current} onValueChange={(v) => onChange(v)}>
-          <SelectTrigger className="h-9 w-[140px]" data-testid={testIdBase}>
+          <SelectTrigger className="h-8 w-[140px]" data-testid={testIdBase}>
             <SelectValue placeholder={filter.label} />
           </SelectTrigger>
           <SelectContent>
@@ -972,7 +972,7 @@ function ReportsContent(): JSX.Element {
 
         {/* RIGHT: Detail panel */}
         <div
-          className="bg-white border border-gray-200 rounded shadow-sm min-h-[60vh] p-6"
+          className="bg-white border border-gray-200 rounded shadow-sm min-h-[60vh] p-4"
           data-testid="panel-reports-detail"
         >
           {!selected ? (
@@ -991,22 +991,22 @@ function ReportsContent(): JSX.Element {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-5" data-testid="detail-reports-selected">
+            <div className="flex flex-col gap-3" data-testid="detail-reports-selected">
               {/* Heading */}
-              <div>
-                <div className="text-xs uppercase tracking-wide text-[#52baf3] font-semibold">
-                  {selected.category.label}
-                </div>
+              <div className="flex items-baseline gap-2">
                 <div
-                  className="text-xl font-bold text-gray-800 mt-1"
+                  className="text-lg font-bold text-gray-800"
                   data-testid="text-reports-selected-label"
                 >
                   {selected.leaf.label}
                 </div>
+                <div className="text-xs uppercase tracking-wide text-[#52baf3] font-semibold">
+                  {selected.category.label}
+                </div>
               </div>
 
               {/* Filter row */}
-              <div className="flex flex-wrap items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded">
+              <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded">
                 {selectedFilters.map((f, idx) => (
                   <FilterControl
                     key={`${selected.leaf.id}-${idx}`}
@@ -1023,7 +1023,7 @@ function ReportsContent(): JSX.Element {
                     type="button"
                     onClick={handleGenerate}
                     disabled={isRunningCurrent}
-                    className="h-9 bg-[#52baf3] hover:bg-[#16569e] text-white"
+                    className="h-8 bg-[#52baf3] hover:bg-[#16569e] text-white"
                     data-testid="button-reports-generate"
                   >
                     {isRunningCurrent ? "Generating…" : "Generate"}
