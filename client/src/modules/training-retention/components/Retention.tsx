@@ -235,14 +235,15 @@ export const Retention = (): JSX.Element => {
   // and a manual refresh shows the user the normal page.
   const initialDeepLink = useMemo(() => readDeepLinkParams(), []);
 
-  const [periodValue, setPeriodValue] = useState<PeriodFilterValue | undefined>(() => {
-    if (!initialDeepLink) return undefined;
+  const [periodValue, setPeriodValue] = useState<PeriodFilterValue>(() => {
+    const yearOnly: PeriodFilterValue = { mode: "year", year: new Date().getFullYear() };
+    if (!initialDeepLink) return yearOnly;
     const from = parseIsoDate(initialDeepLink.periodFrom);
     const to = parseIsoDate(initialDeepLink.periodTo);
     if (from && to) {
       return { mode: "date-range", dateFrom: from, dateTo: to };
     }
-    return undefined;
+    return yearOnly;
   });
   const [selectedRanks, setSelectedRanks] = useState<string[]>(
     () => initialDeepLink?.rankIds ?? [],
@@ -282,7 +283,7 @@ export const Retention = (): JSX.Element => {
     selectedAgents.length > 0;
 
   const clearFilters = () => {
-    setPeriodValue(undefined);
+    setPeriodValue({ mode: "year", year: new Date().getFullYear() });
     setSelectedRanks([]);
     setSelectedPools([]);
     setSelectedAgents([]);
