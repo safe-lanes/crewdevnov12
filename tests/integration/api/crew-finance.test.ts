@@ -23,6 +23,11 @@ const V2_BASE = `${API_BASE}/api/v2/accounts`;
  *     replacement determinism on re-run of an unlocked month.
  *  3. Allotment lifecycle: active in May, suspended for June, reactivated
  *     for July ⇒ deduction lines in May & July only.
+ *  4. Negative net warning: over-allotment (100 + 3500 vs gross 3000)
+ *     ⇒ net −600.00 ⇒ run completes with a persisted
+ *     {crewUuid, code: 'negative_net', message} warning — warn, never block.
+ *  5. Settlement E2E: engagement Apr–May with allotment + advance + bond
+ *     ⇒ nets 2700.00 / 2740.00 ⇒ settlement net payable 5440.00.
  */
 
 const S = `${Date.now()}`;
@@ -36,12 +41,15 @@ const RANK_AB = `AB_CF_${S}`;
 const crewBond = u();
 const crewAdv = u();
 const crewAlt = u();
+const crewStl = u();
 const vslBond = `VSL_CFB_${S}`;
 const vslAdv = `VSL_CFA_${S}`;
 const vslAlt = `VSL_CFL_${S}`;
+const vslStl = `VSL_CFS_${S}`;
 const engBond = u();
 const engAdv = u();
 const engAlt = u();
+const engStl = u();
 
 const manualBondTxn = u();
 
@@ -198,6 +206,7 @@ describe("Crew Finance (Prompt 07): allotments, advances, bond", () => {
       [crewBond, "BND"],
       [crewAdv, "ADV"],
       [crewAlt, "ALT"],
+      [crewStl, "STL"],
     ] as const) {
       await insert("crew_members_v2", {
         crew_uuid: crew,
@@ -205,10 +214,12 @@ describe("Crew Finance (Prompt 07): allotments, advances, bond", () => {
         first_name: `CF ${tag}`,
       });
     }
-    for (const [eng, crew, vsl] of [
-      [engBond, crewBond, vslBond],
-      [engAdv, crewAdv, vslAdv],
-      [engAlt, crewAlt, vslAlt],
+    for (const [eng, crew, vsl, endDate] of [
+      [engBond, crewBond, vslBond, null],
+      [engAdv, crewAdv, vslAdv, null],
+      [engAlt, crewAlt, vslAlt, null],
+      // settlement E2E: signed off 31-May — exactly two service months
+      [engStl, crewStl, vslStl, "2026-05-31"],
     ] as const) {
       await insert("acc_engagements_v2", {
         engagement_uuid: eng,
@@ -216,7 +227,7 @@ describe("Crew Finance (Prompt 07): allotments, advances, bond", () => {
         engagement_type: "voyage_contract",
         vessel_uuid: vsl,
         start_date: "2026-04-01",
-        end_date: null,
+        end_date: endDate,
         wage_scale_uuid: scaleCF,
         rank_id_at_start: RANK_AB,
         currency: "USD",
@@ -235,7 +246,21 @@ describe("Crew Finance (Prompt 07): allotments, advances, bond", () => {
         console.error("cleanup failed:", sql, e);
       }
     };
-    const engs = [engBond, engAdv, engAlt];
+    const engs = [engBond, engAdv, engAlt, engStl];
+    await tryQuery(
+      `DELETE FROM acc_settlement_adjustments_v2 WHERE settlement_uuid IN
+       (SELECT settlement_uuid FROM acc_settlements_v2 WHERE engagement_uuid = ANY($1))`,
+      [engs],
+    );
+    await tryQuery(
+      `DELETE FROM acc_settlement_approvals_v2 WHERE settlement_uuid IN
+       (SELECT settlement_uuid FROM acc_settlements_v2 WHERE engagement_uuid = ANY($1))`,
+      [engs],
+    );
+    await tryQuery(
+      "DELETE FROM acc_settlements_v2 WHERE engagement_uuid = ANY($1)",
+      [engs],
+    );
     await tryQuery(
       "DELETE FROM acc_wage_ledger_v2 WHERE engagement_uuid = ANY($1)",
       [engs],
@@ -252,23 +277,23 @@ describe("Crew Finance (Prompt 07): allotments, advances, bond", () => {
     );
     await tryQuery(
       "DELETE FROM acc_monthly_transactions_v2 WHERE crew_uuid = ANY($1)",
-      [[crewBond, crewAdv, crewAlt]],
+      [[crewBond, crewAdv, crewAlt, crewStl]],
     );
-    await tryQuery("DELETE FROM acc_bond_items_v2 WHERE crew_uuid = $1", [
-      crewBond,
+    await tryQuery("DELETE FROM acc_bond_items_v2 WHERE crew_uuid = ANY($1)", [
+      [crewBond, crewStl],
     ]);
-    await tryQuery("DELETE FROM acc_advances_v2 WHERE crew_uuid = $1", [
-      crewAdv,
+    await tryQuery("DELETE FROM acc_advances_v2 WHERE crew_uuid = ANY($1)", [
+      [crewAdv, crewStl],
     ]);
-    await tryQuery("DELETE FROM acc_allotments_v2 WHERE crew_uuid = $1", [
-      crewAlt,
+    await tryQuery("DELETE FROM acc_allotments_v2 WHERE crew_uuid = ANY($1)", [
+      [crewAlt, crewStl],
     ]);
     await tryQuery(
       "DELETE FROM acc_engagements_v2 WHERE engagement_uuid = ANY($1)",
       [engs],
     );
     await tryQuery("DELETE FROM crew_members_v2 WHERE crew_uuid = ANY($1)", [
-      [crewBond, crewAdv, crewAlt],
+      [crewBond, crewAdv, crewAlt, crewStl],
     ]);
     await tryQuery("DELETE FROM acc_wage_scale_lines_v2 WHERE scale_uuid = $1", [
       scaleCF,
@@ -525,5 +550,146 @@ describe("Crew Finance (Prompt 07): allotments, advances, bond", () => {
     // the gap month stays empty
     const june = bySource(await ledgerLines(engAlt, "2026-06"), "allotment");
     expect(june.length).toBe(0);
+  });
+
+  // ==========================================================================
+  // 4. Negative net — warn, never block (Prompt 07 follow-up)
+  // ==========================================================================
+  it("over-allotment drives September net to −600.00 — run completes with a persisted negative_net warning", async () => {
+    // second allotment 3500.00 valid for September only ⇒ deductions
+    // 100.00 + 3500.00 = 3600.00 vs gross 3000.00 ⇒ net −600.00
+    const res = await api("POST", "/allotments", {
+      crewUuid: crewAlt,
+      beneficiaryName: "Over Allotment",
+      relationship: "other",
+      allotmentType: "fixed",
+      value: "3500",
+      currency: "USD",
+      validFrom: "2026-09-01",
+      validTo: "2026-09-30",
+      status: "active",
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(record(res.body).allotmentUuid).toBeTruthy();
+
+    const { status, body } = await runEngagement(engAlt, "2026-09");
+    expect(status).toBe(200);
+    expect(body?.run?.status).toBe("completed"); // warn — never block
+
+    // both allotments post in full (exact figures)
+    const alt = bySource(await ledgerLines(engAlt, "2026-09"), "allotment");
+    expect(alt.map((l) => l.amount).sort()).toEqual(["100.00", "3500.00"]);
+
+    // session warnings carry the amount
+    const warnings = (body.warnings ?? []) as string[];
+    expect(
+      warnings.some(
+        (w) =>
+          w.includes("negative net payable on board") && w.includes("-600.00"),
+      ),
+      `run warnings: ${JSON.stringify(warnings)}`,
+    ).toBe(true);
+
+    // persisted on the run row as {crewUuid, code, message} for Step 2
+    const run = await db.query(
+      "SELECT warnings FROM acc_calculation_runs_v2 WHERE calc_run_uuid = $1",
+      [body.run.calcRunUuid],
+    );
+    const persisted = (run.rows[0]?.warnings ?? []) as Array<
+      Record<string, any>
+    >;
+    const neg = persisted.find((w) => w.code === "negative_net");
+    expect(neg, JSON.stringify(persisted)).toBeTruthy();
+    expect(neg!.crewUuid).toBe(crewAlt);
+    expect(neg!.message).toContain("-600.00");
+  });
+
+  // ==========================================================================
+  // 5. Settlement E2E — allotment + advance + bond in the final settlement
+  // ==========================================================================
+  it("settlement reflects allotment, advance recovery and bond: net payable 5440.00", async () => {
+    // allotment 100.00/month across the whole engagement
+    const alt = await api("POST", "/allotments", {
+      crewUuid: crewStl,
+      beneficiaryName: "Stl Beneficiary",
+      relationship: "spouse",
+      allotmentType: "fixed",
+      value: "100",
+      currency: "USD",
+      validFrom: "2026-04-01",
+      status: "active",
+    });
+    expect(alt.status, JSON.stringify(alt.body)).toBe(201);
+
+    // advance 300.00 recovered at 200.00/month from April ⇒ 200 / 100 (clamped)
+    const adv = await api("POST", "/advances", {
+      crewUuid: crewStl,
+      amount: "300",
+      recoveryAmount: "200",
+      currency: "USD",
+      period: "2026-04",
+      status: "approved",
+      reason: "CF settlement E2E",
+    });
+    expect(adv.status, JSON.stringify(adv.body)).toBe(201);
+
+    // bond items 40.00 + 20.00 in May ⇒ one rollup deduction of 60.00
+    for (const [itemName, unitPrice] of [
+      ["Snacks", "40.00"],
+      ["Phone card", "20.00"],
+    ] as const) {
+      const bi = await api("POST", "/bond-items", {
+        crewUuid: crewStl,
+        itemName,
+        quantity: "1",
+        unitPrice,
+        currency: "USD",
+        period: "2026-05",
+        autoDeduct: true,
+        status: "pending",
+      });
+      expect(bi.status, JSON.stringify(bi.body)).toBe(201);
+    }
+
+    // run both service months — exact nets:
+    //   Apr: 3000 − (100 allotment + 200 advance)          = 2700.00
+    //   May: 3000 − (100 allotment + 100 advance + 60 bond) = 2740.00
+    for (const [period, expectedNet] of [
+      ["2026-04", "2700.00"],
+      ["2026-05", "2740.00"],
+    ] as const) {
+      const { status, body } = await runEngagement(engStl, period);
+      expect(status).toBe(200);
+      const totals = ((body.crewTotals ?? []) as any[]).find(
+        (t) => t.crewUuid === crewStl,
+      );
+      expect(totals?.netOnBoard, `period ${period}`).toBe(expectedNet);
+    }
+
+    // per-source ledger check: all three deduction types present in May
+    const may = await ledgerLines(engStl, "2026-05");
+    expect(bySource(may, "allotment")[0]?.amount).toBe("100.00");
+    expect(bySource(may, "advance_recovery")[0]?.amount).toBe("100.00");
+    expect(bySource(may, "bond")[0]?.amount).toBe("60.00");
+
+    // settlement: balance 2700 + 2740 = 5440.00, no settlement-timed accruals
+    const res = await api("POST", "/settlements/compute", {
+      engagementUuid: engStl,
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    const settlement = res.body.settlement;
+    expect(settlement.status).toBe("draft");
+    expect(settlement.balancePaid).toBe("5440.00");
+    expect(settlement.accrualsPaid).toBe("0.00");
+    expect(settlement.netPayable).toBe("5440.00");
+    expect(
+      settlement.statementSnapshot.balance.byPeriod.map((p: any) => [
+        p.period,
+        p.netOnBoard,
+      ]),
+    ).toEqual([
+      ["2026-04", "2700.00"],
+      ["2026-05", "2740.00"],
+    ]);
   });
 });

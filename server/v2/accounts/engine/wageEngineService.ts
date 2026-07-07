@@ -1313,6 +1313,18 @@ function calcEngagement(
     });
   }
 
+  // Negative net (Prompt 07 follow-up): a crew-month whose deductions exceed the
+  // paid-on-board earnings is legal but almost always an over-allotment or
+  // over-recovery — warn, never block. Bucketing mirrors summarizeCrew so
+  // the warning always agrees with the net_on_board shown in Step 2.
+  const netTotals = summarizeCrew({ engagement, lines, errors, warnings: [] });
+  if (toCents(netTotals.netOnBoard) < 0) {
+    warnings.push({
+      code: "negative_net",
+      message: `negative net payable on board for crew ${engagement.crewUuid} in ${ctx.month.period}: ${netTotals.netOnBoard} (gross ${netTotals.earnedGross} − deductions ${netTotals.deductions})`,
+    });
+  }
+
   return { engagement, lines, errors, warnings };
 }
 
