@@ -120,6 +120,7 @@ const txnFx = u();
 const allotH4 = u();
 const advH4 = u();
 const bondH4 = u();
+const txnBnd = u();
 const portageLock = u();
 
 let db: Client;
@@ -529,6 +530,25 @@ describe("Wage Calculation Engine (H1–H5)", () => {
       currency: "USD",
       period: "2026-06",
       status: "active",
+      txn_uuid: txnBnd,
+    });
+    // Single-posting-path (Prompt 07): the engine posts bond via the
+    // accepted rollup transaction maintained by bondItemsService, not the
+    // itemized rows. The fixture mirrors that rollup for the item above.
+    await insert("acc_monthly_transactions_v2", {
+      txn_uuid: txnBnd,
+      engagement_uuid: engH4,
+      crew_uuid: crewH4,
+      vessel_uuid: vslH4,
+      period: "2026-06",
+      pay_element_uuid: el.BND,
+      qty: null,
+      amount: "45.00",
+      currency: "USD",
+      origin: "office",
+      status: "accepted",
+      source_type: "bond",
+      source_uuid: `bond:${crewH4}:2026-06`,
     });
 
     // -- locked portage fixture ------------------------------------------------------
@@ -597,7 +617,7 @@ describe("Wage Calculation Engine (H1–H5)", () => {
       [[epeSubs, epeCadj, epeTimLv, epeTimPf, epeFbkGot]],
     );
     await tryQuery("DELETE FROM acc_monthly_transactions_v2 WHERE txn_uuid = ANY($1)", [
-      [txnVot, txnFx, txnFrz],
+      [txnVot, txnFx, txnFrz, txnBnd],
     ]);
     await tryQuery("DELETE FROM acc_allotments_v2 WHERE allotment_uuid = $1", [allotH4]);
     await tryQuery("DELETE FROM acc_advances_v2 WHERE advance_uuid = $1", [advH4]);

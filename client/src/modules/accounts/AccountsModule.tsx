@@ -13,6 +13,8 @@ import PortageBillPage from "./pages/PortageBillPage";
 import MonthlyTransactionsPage from "./pages/MonthlyTransactionsPage";
 import SettlementsPage from "./pages/SettlementsPage";
 import VesselPortagePage from "./pages/VesselPortagePage";
+import AllotmentsPage from "./pages/AllotmentsPage";
+import CashBondPage from "./pages/CashBondPage";
 
 interface PageMeta {
   page: string;
@@ -60,6 +62,16 @@ const PAGE_META: PageMeta[] = [
     page: "vessel-portage",
     menu: "Account Vessel Portage",
     path: "/accounts/payroll/vessel-portage",
+  },
+  {
+    page: "allotments",
+    menu: "Account Allotments",
+    path: "/accounts/crew-finance/allotments",
+  },
+  {
+    page: "cash-bond",
+    menu: "Account Cash & Bond",
+    path: "/accounts/crew-finance/cash-bond",
   },
   {
     page: "tenant-config",
@@ -136,6 +148,10 @@ export function AccountsModule() {
         return <SettlementsPage />;
       case "vessel-portage":
         return <VesselPortagePage />;
+      case "allotments":
+        return <AllotmentsPage />;
+      case "cash-bond":
+        return <CashBondPage />;
       default:
         return null;
     }

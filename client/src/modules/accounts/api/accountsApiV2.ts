@@ -173,6 +173,40 @@ export const accountsApiV2 = {
         comment,
       }),
   },
+  allotments: {
+    create: (data: Record<string, unknown>) =>
+      req("POST", `${ACCOUNTS_BASE}/allotments`, data),
+    update: (uuid: string, data: Record<string, unknown>) =>
+      req("PATCH", `${ACCOUNTS_BASE}/allotments/${uuid}`, data),
+    suspend: (uuid: string) =>
+      req("POST", `${ACCOUNTS_BASE}/allotments/${uuid}/suspend`),
+    reactivate: (uuid: string) =>
+      req("POST", `${ACCOUNTS_BASE}/allotments/${uuid}/reactivate`),
+    end: (uuid: string, validTo?: string) =>
+      req("POST", `${ACCOUNTS_BASE}/allotments/${uuid}/end`, { validTo }),
+    remove: (uuid: string) =>
+      req("DELETE", `${ACCOUNTS_BASE}/allotments/${uuid}`),
+  },
+  advances: {
+    create: (data: Record<string, unknown>) =>
+      req("POST", `${ACCOUNTS_BASE}/advances`, data),
+    update: (uuid: string, data: Record<string, unknown>) =>
+      req("PATCH", `${ACCOUNTS_BASE}/advances/${uuid}`, data),
+    cancel: (uuid: string) =>
+      req("POST", `${ACCOUNTS_BASE}/advances/${uuid}/cancel`),
+    close: (uuid: string, remark: string) =>
+      req("POST", `${ACCOUNTS_BASE}/advances/${uuid}/close`, { remark }),
+    remove: (uuid: string) =>
+      req("DELETE", `${ACCOUNTS_BASE}/advances/${uuid}`),
+  },
+  bondItems: {
+    create: (data: Record<string, unknown>) =>
+      req("POST", `${ACCOUNTS_BASE}/bond-items`, data),
+    update: (uuid: string, data: Record<string, unknown>) =>
+      req("PATCH", `${ACCOUNTS_BASE}/bond-items/${uuid}`, data),
+    remove: (uuid: string) =>
+      req("DELETE", `${ACCOUNTS_BASE}/bond-items/${uuid}`),
+  },
   ctm: {
     updateHeader: (
       vesselUuid: string,

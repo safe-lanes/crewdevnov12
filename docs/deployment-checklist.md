@@ -38,8 +38,8 @@ Migrations auto-run per tenant on first connection. Verify after deploy:
   and seeds role access by copying each role's grant on the top-level
   `Account` menu.
 
-Check the startup log for `Applied: 0161…` / `0162…` (or `Skipped` when
-already applied) on every tenant.
+Check the startup log for `Applied: 0161…` / `0162…` / `0163…` / `0164…`
+(or `Skipped` when already applied) on every tenant.
 
 ## 3. RBAC review
 
@@ -50,6 +50,14 @@ already applied) on every tenant.
 - Office reviewers need **edit** on `Account Monthly Transactions`
   (accept / reject / re-open) and on `Account Vessel Portage`
   (return-to-vessel).
+- Crew-finance pages (migration 0164): `Account Allotments` and
+  `Account Cash & Bond` are seeded by copying each role's top-level `Account`
+  grant. Review after the seed and remove/trim rows for roles that should not
+  manage crew finance (office-only pages; ship roles normally need no access).
+- `acc_tenant_config_v2.max_allotment_percent` (migration 0163) is NULL by
+  default = **no cap** on percentage allotments. Set it per tenant (e.g.
+  `80.0`) if the office wants allotment percentage caps enforced on
+  create/edit.
 
 ## 4. Environment
 

@@ -69,6 +69,9 @@ router.get("/allotments/:uuid", allotmentsController.getByUuid);
 router.post("/allotments", allotmentsController.create);
 router.put("/allotments/:uuid", allotmentsController.update);
 router.patch("/allotments/:uuid", allotmentsController.update);
+router.post("/allotments/:uuid/suspend", allotmentsController.suspend);
+router.post("/allotments/:uuid/reactivate", allotmentsController.reactivate);
+router.post("/allotments/:uuid/end", allotmentsController.end);
 router.delete("/allotments/:uuid", allotmentsController.delete);
 
 // ============================================
@@ -76,10 +79,13 @@ router.delete("/allotments/:uuid", allotmentsController.delete);
 // ============================================
 router.get("/advances", advancesController.getAll);
 router.get("/advances/crew/:crewUuid", advancesController.getByCrew);
+router.get("/advances/:uuid/detail", advancesController.getDetail);
 router.get("/advances/:uuid", advancesController.getByUuid);
 router.post("/advances", advancesController.create);
 router.put("/advances/:uuid", advancesController.update);
 router.patch("/advances/:uuid", advancesController.update);
+router.post("/advances/:uuid/cancel", advancesController.cancel);
+router.post("/advances/:uuid/close", advancesController.close);
 router.delete("/advances/:uuid", advancesController.delete);
 
 // ============================================

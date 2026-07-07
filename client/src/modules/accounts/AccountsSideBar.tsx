@@ -86,6 +86,21 @@ const ACTIVE_SECTIONS: SideSection[] = [
     ],
   },
   {
+    label: "Crew Finance",
+    items: [
+      {
+        name: "Allotments",
+        icon: <Send size={20} className={iconClass} />,
+        page: "allotments",
+      },
+      {
+        name: "Cash & Bond",
+        icon: <Wallet size={20} className={iconClass} />,
+        page: "cash-bond",
+      },
+    ],
+  },
+  {
     label: "Admin",
     items: [
       {
@@ -98,8 +113,6 @@ const ACTIVE_SECTIONS: SideSection[] = [
 ];
 
 const COMING_SOON: SideItem[] = [
-  { name: "Allotments", icon: <Send size={20} />, page: "allotments" },
-  { name: "Cash & Bond", icon: <Wallet size={20} />, page: "cash-bond" },
   { name: "Reports", icon: <BarChart3 size={20} />, page: "reports" },
 ];
 

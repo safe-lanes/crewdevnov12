@@ -34,7 +34,6 @@ import type {
   AccMonthlyTransactionV2,
   AccAllotmentV2,
   AccAdvanceV2,
-  AccBondItemV2,
   AccCalculationRunV2,
   AccPortageBillV2,
   InsertAccWageLedgerV2,
@@ -65,7 +64,8 @@ interface CalcContext {
   txnsByEngagement: Map<string, AccMonthlyTransactionV2[]>;
   allotmentsByCrew: Map<string, AccAllotmentV2[]>;
   advancesByCrew: Map<string, AccAdvanceV2[]>;
-  bondsByCrew: Map<string, AccBondItemV2[]>;
+  /** advance_uuid -> cents recovered in periods strictly before this run. */
+  advancePriorRecoveredCents: Map<string, number>;
   nationalityByCrew: Map<string, string | null>;
 }
 
@@ -744,7 +744,7 @@ async function buildContext(
     txns,
     allotments,
     advances,
-    bonds,
+    priorRecoveryLines,
     nationalityByCrew,
   ] = await Promise.all([
     reads.findActiveElements(),
@@ -755,9 +755,36 @@ async function buildContext(
     reads.findAcceptedTxns(engagementUuids, month.period),
     reads.findActiveAllotments(crewUuids),
     reads.findAdvanceRecoveries(crewUuids, month.period),
-    reads.findBondDeductions(crewUuids, month.period),
+    reads.findPriorRecoveryLines(crewUuids, month.period),
     reads.findCrewNationalities(crewUuids),
   ]);
+
+  // Prior recovered per advance (clamp basis, spec Prompt 07 2b). Preview
+  // lines (portage_uuid IS NULL) are not cleaned up when the same month is
+  // later run for a portage, so per (advance, period) we count only the
+  // portage-attached lines when any exist, else the preview lines —
+  // counting both would double-count a month.
+  const advancePriorRecoveredCents = new Map<string, number>();
+  {
+    const byAdvancePeriod = new Map<string, typeof priorRecoveryLines>();
+    for (const line of priorRecoveryLines) {
+      if (!line.sourceUuid) continue;
+      const key = `${line.sourceUuid}|${line.period}`;
+      const list = byAdvancePeriod.get(key);
+      if (list) list.push(line);
+      else byAdvancePeriod.set(key, [line]);
+    }
+    for (const [key, group] of byAdvancePeriod) {
+      const advanceUuid = key.slice(0, key.indexOf("|"));
+      const portageLines = group.filter((l) => l.portageUuid != null);
+      const counted = portageLines.length > 0 ? portageLines : group;
+      const sum = counted.reduce((s, l) => s + toCents(l.amount), 0);
+      advancePriorRecoveredCents.set(
+        advanceUuid,
+        (advancePriorRecoveredCents.get(advanceUuid) ?? 0) + sum,
+      );
+    }
+  }
 
   const elementsMap = new Map(elements.map((e) => [e.payElementUuid, e]));
   const elementsByCategory = groupBy(elements, (e) => e.category);
@@ -778,7 +805,7 @@ async function buildContext(
     txnsByEngagement: groupBy(txns, (t) => t.engagementUuid),
     allotmentsByCrew: groupBy(allotments, (a) => a.crewUuid),
     advancesByCrew: groupBy(advances, (a) => a.crewUuid),
-    bondsByCrew: groupBy(bonds, (b) => b.crewUuid),
+    advancePriorRecoveredCents,
     nationalityByCrew,
   };
 }
@@ -1147,7 +1174,9 @@ function calcEngagement(
       amount: centsToString(amountCents),
       currency: txn.currency,
       ...fxColumns(txn.currency, centsToString(amountCents), ctx.config, snapshot),
-      sourceType: "monthly_txn",
+      // Bond rollup transactions keep their 'bond' source tag on the ledger
+      // line so bond deductions stay traceable (spec Prompt 07 2a).
+      sourceType: txn.sourceType === "bond" ? "bond" : "monthly_txn",
       sourceUuid: txn.txnUuid,
       calcSnapshot: withConfig(ctx, snapshot),
       isAdjustment: false,
@@ -1163,6 +1192,9 @@ function calcEngagement(
     .reduce((s, l) => s + toCents(l.amount), 0);
 
   // ---- Allotments --------------------------------------------------------
+  // Lifecycle (spec Prompt 07 2c): only status='active' allotments (read
+  // filter) whose validity window overlaps the month post — suspended/ended
+  // post nothing. The full monthly value posts whenever valid: no proration.
   const allotments = (ctx.allotmentsByCrew.get(engagement.crewUuid) ?? [])
     .filter(
       (a) =>
@@ -1201,6 +1233,10 @@ function calcEngagement(
   }
 
   // ---- Advance recoveries -------------------------------------------------
+  // Clamp (spec Prompt 07 2b): posted = min(recovery_amount, outstanding),
+  // outstanding = advance amount − Σ recovery lines posted in periods
+  // strictly BEFORE this run (deterministic across replacement re-runs of
+  // an unlocked month). Fully recovered ⇒ no line.
   const advances = (ctx.advancesByCrew.get(engagement.crewUuid) ?? [])
     .filter(
       (a) => !a.engagementUuid || a.engagementUuid === engagement.engagementUuid,
@@ -1217,47 +1253,48 @@ function calcEngagement(
     }
     const rule = el.roundingRule as RoundingRule;
     const unit = precisionToUnitCents(el.roundingPrecision);
-    const amountCents = roundCents(
+    const totalCents = toCents(advance.amount as string);
+    const priorCents =
+      ctx.advancePriorRecoveredCents.get(advance.advanceUuid) ?? 0;
+    const outstandingCents = totalCents - priorCents;
+    if (outstandingCents <= 0) continue; // fully recovered — no line
+    const recoveryCents = roundCents(
       toCents(advance.recoveryAmount as string),
       rule,
       unit,
     );
+    const amountCents = Math.min(recoveryCents, outstandingCents);
+    if (amountCents <= 0) continue;
     lines.push(
       deductionLine(ctx, base, svcFrom, svcTo, lastState.rankId, el, amountCents,
         advance.currency, "advance_recovery", advance.advanceUuid, {
           advanceUuid: advance.advanceUuid,
+          advanceAmount: advance.amount,
           recoveryAmount: advance.recoveryAmount,
+          priorRecovered: centsToString(priorCents),
+          outstandingBefore: centsToString(outstandingCents),
+          clamped: amountCents < recoveryCents,
         }),
     );
   }
 
   // ---- Bond / slop chest ---------------------------------------------------
-  const bonds = (ctx.bondsByCrew.get(engagement.crewUuid) ?? [])
-    .filter(
-      (b) => !b.engagementUuid || b.engagementUuid === engagement.engagementUuid,
-    )
-    .sort((a, b) => a.bondItemUuid.localeCompare(b.bondItemUuid));
-  for (const bond of bonds) {
-    const el = categoryElement(ctx, "bond_slop_chest");
-    if (!el) {
-      errors.push("no active pay element with category 'bond_slop_chest'");
-      break;
-    }
-    const rule = el.roundingRule as RoundingRule;
-    const unit = precisionToUnitCents(el.roundingPrecision);
-    const amountCents = roundCents(
-      toCents(bond.deductionAmount ?? bond.totalPrice),
-      rule,
-      unit,
-    );
-    lines.push(
-      deductionLine(ctx, base, svcFrom, svcTo, lastState.rankId, el, amountCents,
-        bond.currency, "bond", bond.bondItemUuid, {
-          bondItemUuid: bond.bondItemUuid,
-          itemName: bond.itemName,
-          deductionAmount: bond.deductionAmount ?? bond.totalPrice,
-        }),
-    );
+  // Single-posting-path (spec Prompt 07 2a): bond items are NOT posted
+  // directly. bondItemsService maintains ONE rolled-up monthly transaction
+  // per crew-month (source_type='bond', element category bond_slop_chest),
+  // which posts through the accepted-transaction loop above. If a manual
+  // bond-category transaction coexists with the rollup, warn — don't block.
+  const bondCatTxns = txns.filter(
+    (t) => ctx.elements.get(t.payElementUuid)?.category === "bond_slop_chest",
+  );
+  if (
+    bondCatTxns.some((t) => t.sourceType === "bond") &&
+    bondCatTxns.some((t) => t.sourceType !== "bond")
+  ) {
+    warnings.push({
+      code: "bond_double_entry",
+      message: `possible bond double entry for crew ${engagement.crewUuid} in ${ctx.month.period}: the crew-month has both a bond rollup transaction and manual bond-category transaction(s)`,
+    });
   }
 
   // Safety net (spec Prompt 04): an engagement in service that resolves to

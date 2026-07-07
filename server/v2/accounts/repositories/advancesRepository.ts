@@ -1,11 +1,21 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray, asc } from "drizzle-orm";
 import { getDb } from "../../db";
-import { accAdvancesV2 } from "../../../../shared/v2/accounts/schema";
+import {
+  accAdvancesV2,
+  accWageLedgerV2,
+} from "../../../../shared/v2/accounts/schema";
 import type {
   AccAdvanceV2,
   InsertAccAdvanceV2,
 } from "../../../../shared/v2/accounts/types";
 import { v4 as uuidv4 } from "uuid";
+
+export interface AdvanceRecoveryLine {
+  sourceUuid: string | null;
+  period: string;
+  portageUuid: string | null;
+  amount: string;
+}
 
 export class AdvancesRepository {
   async findAll(filters?: {
@@ -73,5 +83,29 @@ export class AdvancesRepository {
       .where(eq(accAdvancesV2.advanceUuid, advanceUuid))
       .returning();
     return results.length > 0;
+  }
+
+  /** Recovery ledger lines for the given advances (preview + portage). */
+  async findRecoveryLines(
+    advanceUuids: string[],
+  ): Promise<AdvanceRecoveryLine[]> {
+    if (advanceUuids.length === 0) return [];
+    const db = getDb();
+    return db
+      .select({
+        sourceUuid: accWageLedgerV2.sourceUuid,
+        period: accWageLedgerV2.period,
+        portageUuid: accWageLedgerV2.portageUuid,
+        amount: accWageLedgerV2.amount,
+      })
+      .from(accWageLedgerV2)
+      .where(
+        and(
+          eq(accWageLedgerV2.sourceType, "advance_recovery"),
+          inArray(accWageLedgerV2.sourceUuid, advanceUuids),
+          eq(accWageLedgerV2.isDeleted, false),
+        ),
+      )
+      .orderBy(asc(accWageLedgerV2.period));
   }
 }

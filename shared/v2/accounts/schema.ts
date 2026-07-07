@@ -51,6 +51,11 @@ export const accTenantConfigV2 = pgTable("acc_tenant_config_v2", {
   seniorityBasis: text("seniority_basis").notNull().default("rank_service_all_employers"), // rank_service_all_employers | rank_service_company | company_tenure
   allowManualSeniorityAnchor: boolean("allow_manual_seniority_anchor").notNull().default(true),
   autoLockOnApproval: boolean("auto_lock_on_approval").notNull().default(true),
+  // 0163: allotment soft cap (% of scale-resolved monthly gross; null = no check)
+  maxAllotmentPercent: numeric("max_allotment_percent", {
+    precision: 10,
+    scale: 4,
+  }),
   settings: jsonb("settings"),
   ...auditColumns,
 });
@@ -333,7 +338,10 @@ export const accBondItemsV2 = pgTable(
     crewName: text("crew_name"),
     itemName: text("item_name").notNull(),
     category: text("category"),
-    quantity: integer("quantity").notNull().default(1),
+    // widened integer -> numeric(10,2) in migration 0163
+    quantity: numeric("quantity", { precision: 10, scale: 2 })
+      .notNull()
+      .default("1"),
     unitPrice: numeric("unit_price", { precision: 14, scale: 2 })
       .notNull()
       .default("0"),
@@ -348,6 +356,8 @@ export const accBondItemsV2 = pgTable(
     // new columns
     engagementUuid: text("engagement_uuid"),
     period: text("period"), // YYYY-MM
+    // 0163: link to the rolled-up monthly transaction for the crew-month
+    txnUuid: text("txn_uuid"),
     ...auditColumns,
   },
   (table) => ({
@@ -374,12 +384,16 @@ export const accAllotmentsV2 = pgTable(
     priority: integer("priority").notNull().default(1),
     validFrom: date("valid_from"),
     validTo: date("valid_to"),
-    status: text("status").notNull().default("active"), // active | pending | expired
+    status: text("status").notNull().default("active"), // active | suspended | ended (0163)
     kycComplete: boolean("kyc_complete").notNull().default(false),
     bankVerified: boolean("bank_verified").notNull().default(false),
     // new columns
     engagementUuid: text("engagement_uuid"),
     payeeCurrency: text("payee_currency"),
+    // 0163: bank detail columns (payee_name -> beneficiary_name,
+    // payee_relationship -> relationship, bank_account_number -> account_number)
+    ibanSwift: text("iban_swift"),
+    bankCountry: text("bank_country"),
     ...auditColumns,
   },
   (table) => ({

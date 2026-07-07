@@ -11,6 +11,7 @@ export class BondItemsRepository {
   async findAll(filters?: {
     crewUuid?: string;
     status?: string;
+    period?: string;
   }): Promise<AccBondItemV2[]> {
     const db = getDb();
     const conditions = [eq(accBondItemsV2.isDeleted, false)];
@@ -20,11 +21,33 @@ export class BondItemsRepository {
     if (filters?.status) {
       conditions.push(eq(accBondItemsV2.status, filters.status));
     }
+    if (filters?.period) {
+      conditions.push(eq(accBondItemsV2.period, filters.period));
+    }
     return db
       .select()
       .from(accBondItemsV2)
       .where(and(...conditions))
       .orderBy(desc(accBondItemsV2.createdAt));
+  }
+
+  /** Point every live bond item of the crew-month at the rollup txn. */
+  async linkTxn(
+    crewUuid: string,
+    period: string,
+    txnUuid: string | null,
+  ): Promise<void> {
+    const db = getDb();
+    await db
+      .update(accBondItemsV2)
+      .set({ txnUuid, updatedAt: new Date() })
+      .where(
+        and(
+          eq(accBondItemsV2.crewUuid, crewUuid),
+          eq(accBondItemsV2.period, period),
+          eq(accBondItemsV2.isDeleted, false),
+        ),
+      );
   }
 
   async findByUuid(bondItemUuid: string): Promise<AccBondItemV2 | undefined> {

@@ -461,6 +461,7 @@ converted to money; `sale_date` to date; new columns added.
 | `status` | text | pending \| deducted \| cancelled |
 | `engagement_uuid` | text | **new** → `acc_engagements_v2` |
 | `period` | text | **new** `YYYY-MM` |
+| `txn_uuid` | text | **0163** → the crew-month bond rollup transaction |
 
 #### `acc_allotments_v2` (retained / altered)
 Crew allotments to beneficiaries. `value` converted to money; `valid_from` /
@@ -478,10 +479,12 @@ Crew allotments to beneficiaries. `value` converted to money; `valid_from` /
 | `bank_name` / `account_number` | text | |
 | `priority` | integer | default 1 |
 | `valid_from` / `valid_to` | date | |
-| `status` | text | active \| pending \| expired |
+| `status` | text | CHECK `active` \| `suspended` \| `ended` (0163; legacy `pending`/`expired` remapped) |
 | `kyc_complete` / `bank_verified` | boolean | default false |
 | `engagement_uuid` | text | **new** → `acc_engagements_v2` |
 | `payee_currency` | text | **new** ISO 4217 |
+| `iban_swift` | text | **0163** IBAN / SWIFT for the beneficiary bank |
+| `bank_country` | text | **0163** beneficiary bank country |
 
 #### `acc_ctm_v2`
 Cash-to-master per vessel + period.
@@ -802,6 +805,37 @@ on-board cash advance auto-creates a CTM line — single entry, two records).
 `acc_ctm_v2` gains `submitted_by_uuid` / `submitted_date` (vessel submission
 audit) and `portage_uuid` (link to the vessel-month portage bill).
 Idempotent (`IF NOT EXISTS`).
+
+## Migration notes (`0163_allotments_cash_bond.sql`)
+
+Allotments & cash/bond management (Prompt 07), additive + data remap,
+idempotent:
+
+- `acc_allotments_v2`: added `iban_swift` / `bank_country` (text, nullable);
+  legacy statuses remapped (`pending → suspended`, `expired → ended`, anything
+  else → `active`) before a new guarded `CHECK`
+  (`active | suspended | ended`) and default `active` — the allotment
+  lifecycle is now suspend/reactivate/end, not free-text.
+- `acc_bond_items_v2`: added `txn_uuid` (text, nullable) — link to the
+  crew-month bond **rollup** transaction that the item is aggregated into;
+  `quantity` widened `integer → numeric(10,2)` (fractional quantities).
+- `acc_tenant_config_v2`: added `max_allotment_percent` (`numeric(10,4)`,
+  nullable) — office-configurable cap on percentage allotments; `NULL`
+  disables the cap check.
+- `acc_monthly_transactions_v2`: partial unique index
+  `uq_acc_monthly_txn_bond_rollup` on `(crew_uuid, period)` where
+  `source_type = 'bond' AND is_deleted = false` — enforces the single-posting
+  path (at most ONE live bond rollup per crew-month).
+
+## Migration notes (`0164_allotments_cash_bond_rbac.sql`)
+
+RBAC seed for the two crew-finance office pages (same copy-from-parent
+pattern as 0155/0158/0160/0162): registers `Account Allotments`
+(`/accounts/crew-finance/allotments`, sort 10) and `Account Cash & Bond`
+(`/accounts/crew-finance/cash-bond`, sort 11) under the top-level `Account`
+menu and copies each role's `Account` grant row to both new menus. Roles
+without an `Account` grant get no row (default no access). Idempotent via
+`NOT EXISTS`.
 
 ## Wage calculation engine rules
 

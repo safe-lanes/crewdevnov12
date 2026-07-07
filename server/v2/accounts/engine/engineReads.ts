@@ -1,4 +1,4 @@
-import { eq, and, inArray, lt } from "drizzle-orm";
+import { eq, and, inArray, lt, lte } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   accTenantConfigV2,
@@ -11,7 +11,6 @@ import {
   accMonthlyTransactionsV2,
   accAllotmentsV2,
   accAdvancesV2,
-  accBondItemsV2,
   accWageLedgerV2,
   accSettlementsV2,
 } from "../../../../shared/v2/accounts/schema";
@@ -28,7 +27,6 @@ import type {
   AccMonthlyTransactionV2,
   AccAllotmentV2,
   AccAdvanceV2,
-  AccBondItemV2,
   AccWageLedgerV2,
   AccSettlementV2,
 } from "../../../../shared/v2/accounts/types";
@@ -203,7 +201,13 @@ export class EngineReads {
       );
   }
 
-  /** Advances with a recovery due in the given period. */
+  /**
+   * Advances with a recovery potentially due in the given period: the
+   * advance's period is its FIRST recovery month; recovery then continues
+   * in later months until the clamp (min(recovery, outstanding), spec
+   * Prompt 07 2b) exhausts the advance. Cancelled/closed advances never
+   * post.
+   */
   async findAdvanceRecoveries(
     crewUuids: string[],
     period: string,
@@ -216,8 +220,8 @@ export class EngineReads {
       .where(
         and(
           inArray(accAdvancesV2.crewUuid, crewUuids),
-          eq(accAdvancesV2.period, period),
-          inArray(accAdvancesV2.status, ["approved", "disbursed"]),
+          lte(accAdvancesV2.period, period),
+          inArray(accAdvancesV2.status, ["approved", "disbursed", "open"]),
           eq(accAdvancesV2.isDeleted, false),
         ),
       );
@@ -227,24 +231,41 @@ export class EngineReads {
     );
   }
 
-  async findBondDeductions(
+  /**
+   * Advance-recovery ledger lines posted in periods strictly BEFORE the
+   * run period (clamp basis, spec Prompt 07 2b). Only earlier periods
+   * count so re-running an unlocked middle month stays deterministic even
+   * after later months have posted.
+   */
+  async findPriorRecoveryLines(
     crewUuids: string[],
-    period: string,
-  ): Promise<AccBondItemV2[]> {
+    beforePeriod: string,
+  ): Promise<
+    Array<{
+      sourceUuid: string | null;
+      period: string;
+      portageUuid: string | null;
+      amount: string;
+    }>
+  > {
     if (crewUuids.length === 0) return [];
     const db = getDb();
-    const rows = await db
-      .select()
-      .from(accBondItemsV2)
+    return db
+      .select({
+        sourceUuid: accWageLedgerV2.sourceUuid,
+        period: accWageLedgerV2.period,
+        portageUuid: accWageLedgerV2.portageUuid,
+        amount: accWageLedgerV2.amount,
+      })
+      .from(accWageLedgerV2)
       .where(
         and(
-          inArray(accBondItemsV2.crewUuid, crewUuids),
-          eq(accBondItemsV2.period, period),
-          eq(accBondItemsV2.autoDeduct, true),
-          eq(accBondItemsV2.isDeleted, false),
+          inArray(accWageLedgerV2.crewUuid, crewUuids),
+          eq(accWageLedgerV2.sourceType, "advance_recovery"),
+          lt(accWageLedgerV2.period, beforePeriod),
+          eq(accWageLedgerV2.isDeleted, false),
         ),
       );
-    return rows.filter((b: AccBondItemV2) => b.status !== "cancelled");
   }
 
   /** crew_uuid -> nationality_uuid (null when unknown). */

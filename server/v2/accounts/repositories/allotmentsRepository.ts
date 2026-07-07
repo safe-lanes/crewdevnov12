@@ -1,6 +1,9 @@
 import { eq, and, asc } from "drizzle-orm";
 import { getDb } from "../../db";
-import { accAllotmentsV2 } from "../../../../shared/v2/accounts/schema";
+import {
+  accAllotmentsV2,
+  accWageLedgerV2,
+} from "../../../../shared/v2/accounts/schema";
 import type {
   AccAllotmentV2,
   InsertAccAllotmentV2,
@@ -75,5 +78,25 @@ export class AllotmentsRepository {
       .where(eq(accAllotmentsV2.allotmentUuid, allotmentUuid))
       .returning();
     return results.length > 0;
+  }
+
+  /** Allotment uuids that have a ledger line in the given period. */
+  async findPostedAllotmentUuids(period: string): Promise<Set<string>> {
+    const db = getDb();
+    const rows = await db
+      .selectDistinct({ sourceUuid: accWageLedgerV2.sourceUuid })
+      .from(accWageLedgerV2)
+      .where(
+        and(
+          eq(accWageLedgerV2.sourceType, "allotment"),
+          eq(accWageLedgerV2.period, period),
+          eq(accWageLedgerV2.isDeleted, false),
+        ),
+      );
+    return new Set(
+      rows
+        .map((r: { sourceUuid: string | null }) => r.sourceUuid)
+        .filter((u: string | null): u is string => u != null),
+    );
   }
 }

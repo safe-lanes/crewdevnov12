@@ -189,6 +189,13 @@ export const monthlyTransactionsService = {
     },
     actor?: RequestActor,
   ): Promise<AccMonthlyTransactionV2> {
+    // Bond rollup txns are system-maintained from bond items (spec 2a).
+    if (data.sourceType === "bond") {
+      throw coded(
+        "VALIDATION",
+        "Bond rollup transactions are maintained automatically from bond items; enter bond items instead",
+      );
+    }
     const element = await requireElement(data.payElementUuid);
     if (actor?.vesselUser) {
       assertVesselScope(actor, data.vesselUuid);
@@ -208,6 +215,11 @@ export const monthlyTransactionsService = {
     actor?: RequestActor,
   ): Promise<AccMonthlyTransactionV2> {
     const existing = await this.getByUuid(txnUuid);
+    if (existing.sourceType === "bond" || data.sourceType === "bond") {
+      throw conflict(
+        "This transaction is the bond rollup for the crew-month; edit the underlying bond items instead",
+      );
+    }
     if (actor?.vesselUser) {
       assertVesselScope(actor, existing.vesselUuid);
       if (data.vesselUuid && data.vesselUuid !== existing.vesselUuid) {
@@ -251,6 +263,11 @@ export const monthlyTransactionsService = {
     auditUserUuid?: string,
   ): Promise<void> {
     const existing = await this.getByUuid(txnUuid);
+    if (existing.sourceType === "bond") {
+      throw conflict(
+        "This transaction is the bond rollup for the crew-month; delete the underlying bond items instead",
+      );
+    }
     if (actor?.vesselUser) {
       assertVesselScope(actor, existing.vesselUuid);
       if (existing.origin !== "vessel") {
