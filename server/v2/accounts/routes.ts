@@ -12,6 +12,8 @@ import {
   monthlyTransactionsController,
   portageController,
   settlementsController,
+  ctmController,
+  vesselPortageController,
 } from "./controllers";
 
 const router = Router();
@@ -139,7 +141,7 @@ router.post("/calc/adjustments", calcController.createAdjustments);
 router.get("/ledger", calcController.getLedger);
 
 // ============================================
-// MONTHLY TRANSACTIONS (office entry, lock-guarded)
+// MONTHLY TRANSACTIONS (office + vessel entry, lock-guarded)
 // ============================================
 router.get("/monthly-transactions", monthlyTransactionsController.getAll);
 router.get("/monthly-transactions/:uuid", monthlyTransactionsController.getByUuid);
@@ -147,6 +149,43 @@ router.post("/monthly-transactions", monthlyTransactionsController.create);
 router.put("/monthly-transactions/:uuid", monthlyTransactionsController.update);
 router.patch("/monthly-transactions/:uuid", monthlyTransactionsController.update);
 router.delete("/monthly-transactions/:uuid", monthlyTransactionsController.delete);
+router.post(
+  "/monthly-transactions/:uuid/accept",
+  monthlyTransactionsController.accept,
+);
+router.post(
+  "/monthly-transactions/:uuid/reject",
+  monthlyTransactionsController.reject,
+);
+
+// ============================================
+// VESSEL PORTAGE (vessel-side submission package)
+// ============================================
+router.get(
+  "/vessel-portage/:vesselUuid/:period/status",
+  vesselPortageController.getStatus,
+);
+router.post(
+  "/vessel-portage/:vesselUuid/:period/submit",
+  vesselPortageController.submit,
+);
+router.post(
+  "/vessel-portage/:portageUuid/return",
+  vesselPortageController.returnToVessel,
+);
+
+// ============================================
+// CTM CASH ACCOUNT (header + lines, closing server-computed)
+// NOTE: /ctm/lines/* must be registered before /ctm/:vesselUuid/:period.
+// ============================================
+router.put("/ctm/lines/:lineUuid", ctmController.updateLine);
+router.patch("/ctm/lines/:lineUuid", ctmController.updateLine);
+router.delete("/ctm/lines/:lineUuid", ctmController.deleteLine);
+router.get("/ctm/:vesselUuid/:period", ctmController.get);
+router.put("/ctm/:vesselUuid/:period", ctmController.updateHeader);
+router.patch("/ctm/:vesselUuid/:period", ctmController.updateHeader);
+router.post("/ctm/:vesselUuid/:period/lines", ctmController.createLine);
+router.post("/ctm/:vesselUuid/:period/reconcile", ctmController.reconcile);
 
 // ============================================
 // BOND PURCHASES

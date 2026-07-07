@@ -12,3 +12,4 @@ export { EngagementsRepository } from "./engagementsRepository";
 export { MonthlyTransactionsRepository } from "./monthlyTransactionsRepository";
 export { PortageRepository } from "./portageRepository";
 export { SettlementsRepository } from "./settlementsRepository";
+export { CtmRepository } from "./ctmRepository";

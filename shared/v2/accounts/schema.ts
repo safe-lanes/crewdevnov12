@@ -272,6 +272,9 @@ export const accMonthlyTransactionsV2 = pgTable(
     sourceType: text("source_type"), // advance | bond | ctm | manual
     sourceUuid: text("source_uuid"),
     remarks: text("remarks"),
+    // 0161 vessel submission package
+    reviewComment: text("review_comment"), // office comment on reject/return
+    ctmLineUuid: text("ctm_line_uuid"), // linked CTM line for on-board cash advances
     ...auditColumns,
   },
   (table) => ({
@@ -397,6 +400,10 @@ export const accCtmV2 = pgTable(
     closingBalance: numeric("closing_balance", { precision: 14, scale: 2 }),
     currency: text("currency").notNull().default("USD"),
     status: text("status").notNull().default("open"), // open | submitted | reconciled | locked
+    // 0161 vessel submission package
+    submittedByUuid: text("submitted_by_uuid"),
+    submittedDate: date("submitted_date"),
+    portageUuid: text("portage_uuid"), // link to the vessel-month portage bill
     ...auditColumns,
   },
   (table) => ({

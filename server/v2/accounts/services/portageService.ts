@@ -1,5 +1,6 @@
 import { PortageRepository } from "../repositories";
 import { tenantConfigService } from "./tenantConfigService";
+import { ctmService } from "./ctmService";
 import { wageEngineService } from "../engine";
 import type { CrewTotals } from "../engine";
 import type {
@@ -132,6 +133,12 @@ export const portageService = {
             lockedDate: new Date().toISOString().slice(0, 10),
             updatedByUuid: auditUserUuid ?? null,
           }))!;
+          // Prompt 06: when the portage locks, the linked CTM locks too.
+          await ctmService.lockForPortage(
+            portage.vesselUuid,
+            portage.period,
+            auditUserUuid,
+          );
         } else {
           updatedPortage = (await repo.updatePortage(portage.portageUuid, {
             status: "approved",

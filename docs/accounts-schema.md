@@ -417,6 +417,8 @@ Variable per-period transactions (tier 3 of precedence).
 | `source_type` | text | CHECK `advance` \| `bond` \| `ctm` \| `manual` |
 | `source_uuid` | text | link to originating record |
 | `remarks` | text | |
+| `review_comment` | text | **0161** office comment on reject/return |
+| `ctm_line_uuid` | text | **0161** → `acc_ctm_lines_v2` (on-board cash advance dual record) |
 
 #### `acc_advances_v2` (retained / altered)
 Cash advances. Existing columns kept; `amount` & `recovery_amount` converted to
@@ -489,9 +491,12 @@ Cash-to-master per vessel + period.
 | `ctm_uuid` | text uniq | business key |
 | `vessel_uuid` | text | |
 | `period` | text | `YYYY-MM` CHECK |
-| `opening_balance` / `received_amount` / `closing_balance` | money | |
+| `opening_balance` / `received_amount` / `closing_balance` | money | `closing_balance` server-computed, never client-supplied |
 | `currency` | text | ISO 4217 |
 | `status` | text | CHECK `open` \| `submitted` \| `reconciled` \| `locked` |
+| `submitted_by_uuid` | text | **0161** vessel submission audit |
+| `submitted_date` | date | **0161** vessel submission audit |
+| `portage_uuid` | text | **0161** → `acc_portage_bills_v2` |
 
 #### `acc_ctm_lines_v2`
 Individual cash-to-master movements.
@@ -787,6 +792,16 @@ RBAC-only migration: registers `Account Settlements`
 (`/accounts/payroll/settlements`, sort order 8) under the top-level `Account`
 menu and seeds `adm_roleaccess_ac` per role by copying each role's grant on
 the top-level `Account` menu — same pattern as 0155/0158. Idempotent.
+
+## Migration notes (`0161_vessel_submission_ctm.sql`)
+
+Vessel submission package & CTM cash account (Prompt 06):
+`acc_monthly_transactions_v2` gains `review_comment` (office comment on
+reject/return, shown to the vessel) and `ctm_line_uuid` (link when a vessel
+on-board cash advance auto-creates a CTM line — single entry, two records).
+`acc_ctm_v2` gains `submitted_by_uuid` / `submitted_date` (vessel submission
+audit) and `portage_uuid` (link to the vessel-month portage bill).
+Idempotent (`IF NOT EXISTS`).
 
 ## Wage calculation engine rules
 

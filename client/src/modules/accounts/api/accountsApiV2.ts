@@ -155,5 +155,39 @@ export const accountsApiV2 = {
       req("PATCH", `${ACCOUNTS_BASE}/monthly-transactions/${uuid}`, data),
     remove: (uuid: string) =>
       req("DELETE", `${ACCOUNTS_BASE}/monthly-transactions/${uuid}`),
+    accept: (uuid: string) =>
+      req("POST", `${ACCOUNTS_BASE}/monthly-transactions/${uuid}/accept`),
+    reject: (uuid: string, reviewComment: string) =>
+      req("POST", `${ACCOUNTS_BASE}/monthly-transactions/${uuid}/reject`, {
+        reviewComment,
+      }),
+  },
+  vesselPortage: {
+    submit: (vesselUuid: string, period: string) =>
+      req(
+        "POST",
+        `${ACCOUNTS_BASE}/vessel-portage/${vesselUuid}/${period}/submit`,
+      ),
+    returnToVessel: (portageUuid: string, comment: string) =>
+      req("POST", `${ACCOUNTS_BASE}/vessel-portage/${portageUuid}/return`, {
+        comment,
+      }),
+  },
+  ctm: {
+    updateHeader: (
+      vesselUuid: string,
+      period: string,
+      data: Record<string, unknown>,
+    ) => req("PUT", `${ACCOUNTS_BASE}/ctm/${vesselUuid}/${period}`, data),
+    createLine: (
+      vesselUuid: string,
+      period: string,
+      data: Record<string, unknown>,
+    ) =>
+      req("POST", `${ACCOUNTS_BASE}/ctm/${vesselUuid}/${period}/lines`, data),
+    updateLine: (lineUuid: string, data: Record<string, unknown>) =>
+      req("PATCH", `${ACCOUNTS_BASE}/ctm/lines/${lineUuid}`, data),
+    removeLine: (lineUuid: string) =>
+      req("DELETE", `${ACCOUNTS_BASE}/ctm/lines/${lineUuid}`),
   },
 };

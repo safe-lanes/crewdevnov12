@@ -51,6 +51,18 @@ export class PortageRepository {
     return rows[0];
   }
 
+  /** Create the vessel-month portage header (vessel submit before any run). */
+  async createPortage(
+    data: Omit<InsertAccPortageBillV2, "portageUuid">,
+  ): Promise<AccPortageBillV2> {
+    const db = getDb();
+    const rows = await db
+      .insert(accPortageBillsV2)
+      .values({ ...data, portageUuid: uuidv4() })
+      .returning();
+    return rows[0];
+  }
+
   async updatePortage(
     portageUuid: string,
     data: Partial<InsertAccPortageBillV2>,

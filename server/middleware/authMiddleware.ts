@@ -7,6 +7,14 @@ export interface JwtPayload {
   id: number;
   domain: string;
   userType: string;
+  /**
+   * Optional vessel assignments for vessel-role ("Ship") users.
+   * When present, vessel-scoped endpoints (accounts vessel-portage / CTM /
+   * monthly transactions) enforce that Ship users only mutate data for these
+   * vessel UUIDs. Provided by the parent SAIL Audits app; see
+   * docs/deployment-checklist.md.
+   */
+  vessels?: string[];
   iat?: number;
   exp?: number;
 }
@@ -100,6 +108,19 @@ export function authMiddleware(
 
   if (!JWT_SECRET) {
     if (AUTH_BYPASS) {
+      // Dev-only impersonation: with AUTH_BYPASS active there is no secret to
+      // verify against, but if the caller supplies a Bearer token we decode it
+      // (unverified) so integration tests can simulate user roles (e.g. a
+      // vessel "Ship" user with a `vessels` claim). Never runs in production —
+      // AUTH_BYPASS requires NODE_ENV=development.
+      const bypassToken = extractToken(req);
+      if (bypassToken) {
+        const decoded = jwt.decode(bypassToken);
+        if (decoded && typeof decoded === "object") {
+          req.user = decoded as JwtPayload;
+          req.tokenData = decoded as JwtPayload;
+        }
+      }
       next();
       return;
     }

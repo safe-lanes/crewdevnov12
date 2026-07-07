@@ -12,6 +12,7 @@ import PayrollRunPage from "./pages/PayrollRunPage";
 import PortageBillPage from "./pages/PortageBillPage";
 import MonthlyTransactionsPage from "./pages/MonthlyTransactionsPage";
 import SettlementsPage from "./pages/SettlementsPage";
+import VesselPortagePage from "./pages/VesselPortagePage";
 
 interface PageMeta {
   page: string;
@@ -54,6 +55,11 @@ const PAGE_META: PageMeta[] = [
     page: "settlements",
     menu: "Account Settlements",
     path: "/accounts/payroll/settlements",
+  },
+  {
+    page: "vessel-portage",
+    menu: "Account Vessel Portage",
+    path: "/accounts/payroll/vessel-portage",
   },
   {
     page: "tenant-config",
@@ -128,6 +134,8 @@ export function AccountsModule() {
         return <MonthlyTransactionsPage />;
       case "settlements":
         return <SettlementsPage />;
+      case "vessel-portage":
+        return <VesselPortagePage />;
       default:
         return null;
     }

@@ -196,6 +196,13 @@ export default function PayrollRunPage() {
     queryKey: [`${ACCOUNTS_BASE}/engagements/audit`],
     enabled: hasFilter,
   });
+  // Vessel submission package status (portage + CTM + entry counts).
+  const { data: vesselPkg } = useQuery<any>({
+    queryKey: [
+      `${ACCOUNTS_BASE}/vessel-portage/${vesselUuid}/${period}/status`,
+    ],
+    enabled: hasFilter,
+  });
 
   const portage = workspace?.portage ?? null;
   const approvals: any[] = workspace?.approvals ?? [];
@@ -702,6 +709,29 @@ export default function PayrollRunPage() {
               <h2 className="font-medium text-sm">
                 Step 1 · Crew &amp; Engagement Review ({reviewRows.length})
               </h2>
+              {vesselPkg && (
+                <div
+                  className="flex items-center gap-2 text-xs text-muted-foreground"
+                  data-testid="text-vessel-package-status"
+                >
+                  <span>Vessel package:</span>
+                  <Badge variant="outline" className="text-xs">
+                    {(vesselPkg.portage?.status ?? "open").replace(/_/g, " ")}
+                  </Badge>
+                  {vesselPkg.ctm && (
+                    <Badge variant="outline" className="text-xs">
+                      CTM {vesselPkg.ctm.status}
+                    </Badge>
+                  )}
+                  {vesselPkg.counts && (
+                    <span>
+                      {vesselPkg.counts.submitted ?? 0} submitted ·{" "}
+                      {vesselPkg.counts.accepted ?? 0} accepted ·{" "}
+                      {vesselPkg.counts.rejected ?? 0} rejected
+                    </span>
+                  )}
+                </div>
+              )}
               {!readOnly && (
                 <Button
                   size="sm"

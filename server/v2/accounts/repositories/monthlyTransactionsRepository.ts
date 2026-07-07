@@ -18,11 +18,15 @@ export class MonthlyTransactionsRepository {
     crewUuid?: string;
     engagementUuid?: string;
     status?: string;
+    origin?: string;
   }): Promise<AccMonthlyTransactionV2[]> {
     const db = getDb();
     const conditions = [eq(accMonthlyTransactionsV2.isDeleted, false)];
     if (filters?.vesselUuid) {
       conditions.push(eq(accMonthlyTransactionsV2.vesselUuid, filters.vesselUuid));
+    }
+    if (filters?.origin) {
+      conditions.push(eq(accMonthlyTransactionsV2.origin, filters.origin));
     }
     if (filters?.period) {
       conditions.push(eq(accMonthlyTransactionsV2.period, filters.period));
@@ -100,6 +104,58 @@ export class MonthlyTransactionsRepository {
       .where(eq(accMonthlyTransactionsV2.txnUuid, txnUuid))
       .returning();
     return results[0];
+  }
+
+  /** Live transaction linked to a CTM line (advance dual-record). */
+  async findByCtmLine(
+    ctmLineUuid: string,
+  ): Promise<AccMonthlyTransactionV2 | undefined> {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(accMonthlyTransactionsV2)
+      .where(
+        and(
+          eq(accMonthlyTransactionsV2.ctmLineUuid, ctmLineUuid),
+          eq(accMonthlyTransactionsV2.isDeleted, false),
+        ),
+      );
+    return rows[0];
+  }
+
+  /**
+   * Bulk vessel-origin status flip for the submit/return lifecycle
+   * (e.g. draft → submitted on vessel submit; submitted → draft on office
+   * return, stamping the office comment on the reverted rows).
+   */
+  async flipVesselStatus(
+    vesselUuid: string,
+    period: string,
+    fromStatus: string,
+    toStatus: string,
+    opts?: { reviewComment?: string | null; auditUserUuid?: string },
+  ): Promise<AccMonthlyTransactionV2[]> {
+    const db = getDb();
+    return db
+      .update(accMonthlyTransactionsV2)
+      .set({
+        status: toStatus,
+        ...(opts?.reviewComment !== undefined
+          ? { reviewComment: opts.reviewComment }
+          : {}),
+        updatedByUuid: opts?.auditUserUuid ?? null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(accMonthlyTransactionsV2.vesselUuid, vesselUuid),
+          eq(accMonthlyTransactionsV2.period, period),
+          eq(accMonthlyTransactionsV2.origin, "vessel"),
+          eq(accMonthlyTransactionsV2.status, fromStatus),
+          eq(accMonthlyTransactionsV2.isDeleted, false),
+        ),
+      )
+      .returning();
   }
 
   async softDelete(txnUuid: string): Promise<boolean> {

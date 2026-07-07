@@ -11,6 +11,7 @@ import {
   Receipt,
   BarChart3,
   Lock,
+  Ship,
 } from "lucide-react";
 import { useViewport, getLayoutConfig } from "@/hooks/useViewport";
 import {
@@ -76,6 +77,11 @@ const ACTIVE_SECTIONS: SideSection[] = [
         name: "Settlements",
         icon: <Receipt size={20} className={iconClass} />,
         page: "settlements",
+      },
+      {
+        name: "Vessel Portage",
+        icon: <Ship size={20} className={iconClass} />,
+        page: "vessel-portage",
       },
     ],
   },

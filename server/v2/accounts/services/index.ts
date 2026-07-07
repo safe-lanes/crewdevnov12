@@ -9,3 +9,5 @@ export { engagementsService } from "./engagementsService";
 export { monthlyTransactionsService } from "./monthlyTransactionsService";
 export { portageService } from "./portageService";
 export { settlementsService } from "./settlementsService";
+export { ctmService } from "./ctmService";
+export { vesselPortageService } from "./vesselPortageService";

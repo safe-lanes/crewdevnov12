@@ -24,7 +24,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, Download, Lock } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Download,
+  Lock,
+  Check,
+  X,
+  RotateCcw,
+} from "lucide-react";
 import {
   accountsApiV2,
   parseApiError,
@@ -64,6 +73,8 @@ export default function MonthlyTransactionsPage() {
 
   const [vesselUuid, setVesselUuid] = useState("");
   const [period, setPeriod] = useState(currentPeriod());
+  const [originFilter, setOriginFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const hasFilter = !!vesselUuid && !!period;
 
   const listKey = [
@@ -118,12 +129,25 @@ export default function MonthlyTransactionsPage() {
     [payElements],
   );
 
+  const filteredTxns = useMemo(
+    () =>
+      txns.filter(
+        (t) =>
+          (originFilter === "all" || t.origin === originFilter) &&
+          (statusFilter === "all" || t.status === statusFilter),
+      ),
+    [txns, originFilter, statusFilter],
+  );
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUuid, setEditingUuid] = useState<string | null>(null);
   const [form, setForm] = useState<TxnForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<any | null>(null);
+  const [rejectComment, setRejectComment] = useState("");
+  const [reviewing, setReviewing] = useState(false);
 
   const set = <K extends keyof TxnForm>(key: K, value: TxnForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -278,6 +302,66 @@ export default function MonthlyTransactionsPage() {
     }
   };
 
+  const acceptTxn = async (row: any) => {
+    setReviewing(true);
+    try {
+      await accountsApiV2.monthlyTransactions.accept(row.txnUuid);
+      queryClient.invalidateQueries({ queryKey: listKey });
+      toast({ title: "Entry accepted" });
+    } catch (err) {
+      toast({
+        title: "Accept failed",
+        description: parseApiError(err).message,
+        variant: "destructive",
+      });
+    } finally {
+      setReviewing(false);
+    }
+  };
+
+  const rejectTxn = async () => {
+    if (!rejectTarget || !rejectComment.trim()) return;
+    setReviewing(true);
+    try {
+      await accountsApiV2.monthlyTransactions.reject(
+        rejectTarget.txnUuid,
+        rejectComment.trim(),
+      );
+      queryClient.invalidateQueries({ queryKey: listKey });
+      setRejectTarget(null);
+      setRejectComment("");
+      toast({ title: "Entry rejected" });
+    } catch (err) {
+      toast({
+        title: "Reject failed",
+        description: parseApiError(err).message,
+        variant: "destructive",
+      });
+    } finally {
+      setReviewing(false);
+    }
+  };
+
+  // Office may re-open a rejected vessel entry back to draft.
+  const reopenTxn = async (row: any) => {
+    setReviewing(true);
+    try {
+      await accountsApiV2.monthlyTransactions.update(row.txnUuid, {
+        status: "draft",
+      });
+      queryClient.invalidateQueries({ queryKey: listKey });
+      toast({ title: "Entry re-opened as draft" });
+    } catch (err) {
+      toast({
+        title: "Re-open failed",
+        description: parseApiError(err).message,
+        variant: "destructive",
+      });
+    } finally {
+      setReviewing(false);
+    }
+  };
+
   const gridApiRef = useRef<GridApi | null>(null);
   const onGridReady = (e: GridReadyEvent) => {
     gridApiRef.current = e.api;
@@ -344,20 +428,83 @@ export default function MonthlyTransactionsPage() {
         field: "status",
         width: 110,
         cellRenderer: (p: any) => (
-          <Badge variant="outline" className="text-xs">
+          <Badge
+            variant="outline"
+            className={`text-xs ${
+              p.value === "rejected"
+                ? "border-red-300 bg-red-50 text-red-800"
+                : p.value === "accepted"
+                  ? "border-green-300 bg-green-50 text-green-800"
+                  : p.value === "submitted"
+                    ? "border-blue-300 bg-blue-50 text-blue-800"
+                    : ""
+            }`}
+          >
             {p.value}
           </Badge>
         ),
       },
+      {
+        headerName: "Review Comment",
+        field: "reviewComment",
+        flex: 2,
+        minWidth: 140,
+        cellClass: "text-red-700",
+      },
       { headerName: "Remarks", field: "remarks", flex: 2, minWidth: 140 },
       {
         headerName: "Actions",
-        width: 100,
+        width: 150,
         sortable: false,
         filter: false,
-        cellRenderer: (p: any) =>
-          isLocked ? null : (
+        cellRenderer: (p: any) => {
+          if (isLocked) return null;
+          const row = p.data;
+          const isVesselRow = row.origin === "vessel";
+          return (
             <div className="flex items-center gap-1 h-full">
+              {isVesselRow && row.status === "submitted" && mayEdit && (
+                <>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-green-700"
+                    title="Accept entry"
+                    disabled={reviewing}
+                    onClick={() => acceptTxn(row)}
+                    data-testid={`button-accept-txn-${row.txnUuid}`}
+                  >
+                    <Check size={14} />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 text-red-600"
+                    title="Reject entry"
+                    disabled={reviewing}
+                    onClick={() => {
+                      setRejectComment("");
+                      setRejectTarget(row);
+                    }}
+                    data-testid={`button-reject-txn-${row.txnUuid}`}
+                  >
+                    <X size={14} />
+                  </Button>
+                </>
+              )}
+              {isVesselRow && row.status === "rejected" && mayEdit && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  title="Re-open as draft"
+                  disabled={reviewing}
+                  onClick={() => reopenTxn(row)}
+                  data-testid={`button-reopen-txn-${row.txnUuid}`}
+                >
+                  <RotateCcw size={14} />
+                </Button>
+              )}
               {mayEdit && (
                 <Button
                   size="icon"
@@ -381,10 +528,11 @@ export default function MonthlyTransactionsPage() {
                 </Button>
               )}
             </div>
-          ),
+          );
+        },
       },
     ],
-    [crewByUuid, elementByUuid, isLocked, mayEdit, mayDelete],
+    [crewByUuid, elementByUuid, isLocked, mayEdit, mayDelete, reviewing],
   );
 
   return (
@@ -412,12 +560,46 @@ export default function MonthlyTransactionsPage() {
         onVesselChange={setVesselUuid}
         onPeriodChange={setPeriod}
       >
+        <div className="space-y-1">
+          <Label className="text-xs text-gray-600">Origin</Label>
+          <Select value={originFilter} onValueChange={setOriginFilter}>
+            <SelectTrigger
+              className="h-9 w-32 bg-white"
+              data-testid="select-filter-origin"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All origins</SelectItem>
+              <SelectItem value="office">Office</SelectItem>
+              <SelectItem value="vessel">Vessel</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-gray-600">Status</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger
+              className="h-9 w-32 bg-white"
+              data-testid="select-filter-status"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="submitted">Submitted</SelectItem>
+              <SelectItem value="accepted">Accepted</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="ml-auto flex gap-2">
           <Button
             size="sm"
             variant="outline"
             onClick={exportCsv}
-            disabled={txns.length === 0}
+            disabled={filteredTxns.length === 0}
             data-testid="button-export-txns"
           >
             <Download size={14} className="mr-1" /> Export
@@ -452,7 +634,7 @@ export default function MonthlyTransactionsPage() {
             </div>
           ) : (
             <AgGridTable
-              rowData={txns}
+              rowData={filteredTxns}
               columnDefs={cols}
               onGridReady={onGridReady}
               height="480px"
@@ -568,6 +750,49 @@ export default function MonthlyTransactionsPage() {
               data-testid="button-save-txn"
             >
               {saving ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reject dialog (comment required) */}
+      <Dialog
+        open={!!rejectTarget}
+        onOpenChange={(o) => !o && setRejectTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Entry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm">
+              Reject this{" "}
+              {elementByUuid.get(rejectTarget?.payElementUuid)?.name ?? ""}{" "}
+              entry of {formatMoney(rejectTarget?.amount)}{" "}
+              {rejectTarget?.currency} for{" "}
+              {crewByUuid.get(rejectTarget?.crewUuid)?.crewName ??
+                rejectTarget?.crewUuid}
+              ? A comment is required and will be shown to the vessel.
+            </p>
+            <Textarea
+              rows={3}
+              placeholder="Reason for rejection…"
+              value={rejectComment}
+              onChange={(e) => setRejectComment(e.target.value)}
+              data-testid="input-reject-comment"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={rejectTxn}
+              disabled={reviewing || !rejectComment.trim()}
+              className="bg-red-600 hover:bg-red-700"
+              data-testid="button-confirm-reject-txn"
+            >
+              {reviewing ? "Rejecting…" : "Reject"}
             </Button>
           </DialogFooter>
         </DialogContent>
