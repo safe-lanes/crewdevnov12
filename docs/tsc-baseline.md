@@ -1,15 +1,29 @@
 # TypeScript Error Baseline
 
-**Captured:** 2026-07-06
-**Total errors:** 228
-**Affected files:** 41
+**Captured:** 2026-07-06 (re-verified 2026-07-07)
+**Total errors:** 220
+**Affected files:** 40
 
-> Correction (2026-07-07): the original header said 40 files, but the table
-> below has always listed 41 files whose error counts sum to exactly 228.
-> The header was a miscount; the file list and totals are unchanged.
+> Correction (2026-07-07): the original 2026-07-06 header said 40 files, but
+> the capture's table listed 41 files summing to 228 — the header was a
+> miscount at the time. Superseded by the re-baseline below.
+
+> Re-baseline (2026-07-07): the baseline is now **220 errors across 40
+> files**. The original capture listed 8 errors in
+> `server/utils/tenantConnectionManager.ts` that are not reproducible
+> against any committed tree: type-checking the capture commit itself
+> (42b2d035), the pre-Task-#95 tree (fe25c406) and the pre-Task-#100 tree
+> (3493afa9) with the current toolchain all yield exactly 220 errors in the
+> 40 files below, and `tenantConnectionManager.ts` (unchanged since well
+> before the capture) checks clean in every one. No dependency change is
+> involved (`package.json`/`package-lock.json` untouched since before the
+> capture). Conclusion: those 8 errors were an artifact of transient
+> working-tree state at capture time, not of any commit — no task "fixed"
+> them. The row has been removed from the table; all other 40 rows were
+> verified identical, per-file, against a fresh run.
 
 The dev workflow (`npm run dev`) runs the server via `tsx` and the client via
-Vite — neither type-checks. These 228 errors predate current work and do not
+Vite — neither type-checks. These 220 errors predate current work and do not
 block the running application. They are **not regressions**; they are a
 pre-existing condition of this codebase under strict mode.
 
@@ -19,7 +33,7 @@ Every task summary **must** report tsc error counts relative to this baseline:
 
 1. Run `./node_modules/.bin/tsc > /tmp/t.txt 2>&1; grep -c "error TS" /tmp/t.txt`
 2. Count errors in your changed files: `grep "error TS" /tmp/t.txt | grep "<your file>"`
-3. Report: **"Baseline 228 errors across 41 files — this task adds N new errors
+3. Report: **"Baseline 220 errors across 40 files — this task adds N new errors
    in touched files (target: 0)."**
 4. If a formerly-clean file now appears in the error list, or an existing file's
    error count grew, investigate before closing the task.
@@ -37,7 +51,6 @@ Do **not** attempt to fix unrelated baseline errors — that is scope creep.
 | 11 | `server/v2/crew-pool/services/dashboardService.ts` |
 | 10 | `client/src/modules/admin/AdminModule.tsx` |
 |  9 | `server/v2/rotation/services/dueCrewService.ts` |
-|  8 | `server/utils/tenantConnectionManager.ts` |
 |  8 | `server/migrate-json-to-postgres.ts` |
 |  6 | `server/v2/alerts/services/alertsService.ts` |
 |  6 | `server/v2/admin/repositories/accessControlRepository.ts` |

@@ -337,14 +337,18 @@ export const ctmService = {
     return this.getDetail(vesselUuid, period, auditUserUuid);
   },
 
-  /** Office return: CTM submitted → open. */
+  /**
+   * Office return: CTM submitted/reconciled → open. A returned month is
+   * fully editable aboard; any prior reconciliation is void once the month
+   * reopens (the office re-reconciles after resubmission).
+   */
   async reopenForVessel(
     vesselUuid: string,
     period: string,
     auditUserUuid?: string,
   ): Promise<void> {
     const ctm = await repo.findByVesselPeriod(vesselUuid, period);
-    if (ctm && ctm.status === "submitted") {
+    if (ctm && (ctm.status === "submitted" || ctm.status === "reconciled")) {
       await repo.update(ctm.ctmUuid, {
         status: "open",
         updatedByUuid: auditUserUuid ?? null,

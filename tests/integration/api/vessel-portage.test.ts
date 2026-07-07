@@ -744,6 +744,35 @@ describe("Vessel submission package & CTM cash account (Prompt 06)", () => {
       expect(lines.some((l) => l.payElementUuid === elBND)).toBe(true);
     });
 
+    it("reconciled CTM → return ⇒ CTM reopens and vessel can edit it", async () => {
+      // Office reconciles the (resubmitted) month's CTM.
+      const rec = await api("POST", `/ctm/${vslA}/${PERIOD}/reconcile`, {});
+      expect(rec.status).toBe(200);
+      expect(rec.body.status).toBe("reconciled");
+
+      // Office returns the month — reconciliation is void once it reopens.
+      const ret = await api(
+        "POST",
+        `/vessel-portage/${portageUuid}/return`,
+        { comment: "Recheck the cash account" },
+      );
+      expect(ret.status).toBe(200);
+      expect(ret.body.portage.status).toBe("returned");
+
+      const ctm = await api("GET", `/ctm/${vslA}/${PERIOD}`, undefined, tokenA);
+      expect(ctm.body.ctm.status).toBe("open");
+
+      // A returned month is fully editable aboard, CTM included.
+      const edit = await api(
+        "PUT",
+        `/ctm/${vslA}/${PERIOD}`,
+        { receivedAmount: "5100.00" },
+        tokenA,
+      );
+      expect(edit.status).toBe(200);
+      expect(edit.body.ctm.receivedAmount).toBe("5100.00");
+    });
+
     it("lock ⇒ vessel edits and creates are refused; CTM locked", async () => {
       await db.query(
         `UPDATE acc_portage_bills_v2
