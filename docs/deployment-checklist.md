@@ -64,7 +64,11 @@ Check the startup log for `Applied: 0161…` / `0162…` / `0163…` / `0164…`
 - `AUTH_BYPASS` / `VITE_AUTH_BYPASS` must be **unset or false** in production.
 - Multi-tenant: `MASTER_DATABASE_URL` set; single-tenant: `DATABASE_URL` only.
 
-## 5. Smoke test (per tenant)
+## 5. Currency
+
+v1 operates single-currency per tenant — all wage scales and engagements must use the tenant functional currency; mixed currencies compute at 1:1 and will misstate totals.
+
+## 6. Smoke test (per tenant)
 
 1. Log in as a Ship user → Accounts → Vessel Portage: vessel is fixed to the
    JWT vessel, period defaults to the current month.
