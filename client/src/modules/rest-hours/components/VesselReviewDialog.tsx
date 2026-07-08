@@ -373,6 +373,7 @@ export function VesselReviewDialog({
       // Then update the vessel review submission date
       return restHoursApiV2.vesselRecords.submitVesselReview(vesselId, {
         comment: vesselComment,
+        monthValue,
       });
     },
     onSuccess: () => {
@@ -412,6 +413,7 @@ export function VesselReviewDialog({
         reviewerName,
         reviewerPosition,
         reviewDate,
+        monthValue,
       });
     },
     onSuccess: () => {

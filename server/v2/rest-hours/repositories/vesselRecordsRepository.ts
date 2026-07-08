@@ -45,7 +45,7 @@ export class VesselRecordsRepository {
     return results[0];
   }
 
-  async findByVesselId(vesselId: string): Promise<RhVesselRecordV2 | undefined> {
+  async findByVesselId(vesselId: string, monthValue?: string): Promise<RhVesselRecordV2 | undefined> {
     const db = getDb();
     const results = await db
       .select()
@@ -53,7 +53,8 @@ export class VesselRecordsRepository {
       .where(
         and(
           eq(rhVesselRecordsV2.vesselId, vesselId),
-          eq(rhVesselRecordsV2.isDeleted, false)
+          eq(rhVesselRecordsV2.isDeleted, false),
+          ...(monthValue ? [eq(rhVesselRecordsV2.monthValue, monthValue)] : [])
         )
       )
       .orderBy(desc(rhVesselRecordsV2.createdAt));

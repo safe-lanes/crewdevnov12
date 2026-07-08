@@ -283,8 +283,8 @@ export const vesselRecordsService = {
     }
   },
 
-  async getByVesselId(vesselId: string): Promise<RhVesselRecordV2> {
-    const record = await vesselRecordsRepository.findByVesselId(vesselId);
+  async getByVesselId(vesselId: string, monthValue?: string): Promise<RhVesselRecordV2> {
+    const record = await vesselRecordsRepository.findByVesselId(vesselId, monthValue);
     if (!record) {
       throw new Error(`Vessel record not found for vesselId: ${vesselId}`);
     }
@@ -295,9 +295,10 @@ export const vesselRecordsService = {
     vesselId: string,
     data: {
       auditUserUuid?: string;
+      monthValue?: string;
     }
   ): Promise<RhVesselRecordV2> {
-    const record = await this.getByVesselId(vesselId);
+    const record = await this.getByVesselId(vesselId, data.monthValue);
 
     const updateData: Partial<InsertRhVesselRecordV2> & { auditUserUuid?: string } = {
       vesselReviewStatus: "Submitted",
@@ -312,9 +313,10 @@ export const vesselRecordsService = {
     vesselId: string,
     data: {
       auditUserUuid?: string;
+      monthValue?: string;
     }
   ): Promise<RhVesselRecordV2> {
-    const record = await this.getByVesselId(vesselId);
+    const record = await this.getByVesselId(vesselId, data.monthValue);
 
     const updateData: Partial<InsertRhVesselRecordV2> & { auditUserUuid?: string } = {
       officeReviewStatus: "Submitted",
