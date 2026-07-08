@@ -50,6 +50,10 @@
   color: white !important;
 }
 
+.ag-theme-alpine .ag-paging-panel .ag-icon {
+  color: #374151 !important;
+}
+
 .ag-theme-alpine .ag-header-cell .ag-icon {
   color: white !important;
 }

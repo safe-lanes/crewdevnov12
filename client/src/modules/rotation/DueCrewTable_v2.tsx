@@ -1,11 +1,10 @@
 import type { FC } from 'react';
-import { useMemo, useRef, useCallback, useState } from 'react';
+import { useMemo, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import AgGridTable from '@/components/AgGrid/AgGridTable';
 import type { ColDef, ICellRendererParams, IHeaderParams } from 'ag-grid-community';
 import { format, addMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { useRankNormalization, addRankAliasesToMap } from '@/hooks/useRankNormalization';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 const clamp = (value: number, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 
@@ -223,16 +222,6 @@ export const DueCrewTable_v2: FC<DueCrewTableV2Props> = ({
   rankValue,
 }) => {
   const gridApiRef = useRef<any>(null);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-
-  const handlePaginationChanged = useCallback(() => {
-    const api = gridApiRef.current;
-    if (!api || api.isDestroyed()) return;
-    setCurrentPage(api.paginationGetCurrentPage());
-    setTotalPages(api.paginationGetTotalPages());
-  }, []);
-
   const { filterCrewWithVariants, getCanonicalRankName } = useRankNormalization();
   
   const { data: rawCrewData = [], isLoading } = useDueCrewV2({
@@ -352,14 +341,12 @@ export const DueCrewTable_v2: FC<DueCrewTableV2Props> = ({
     pagination: true,
     paginationPageSize: 50,
     paginationPageSizeSelector: [25, 50, 100],
-    suppressPaginationPanel: true,
-    onPaginationChanged: handlePaginationChanged,
     getRowId: (params: any) => {
       if (params.data?.id) return params.data.id.toString();
       if (params.node?.rowIndex !== undefined) return `row-${params.node.rowIndex}`;
       return `fallback-${Math.random().toString(36).substring(7)}`;
     },
-  }), [handlePaginationChanged]);
+  }), []);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -376,57 +363,18 @@ export const DueCrewTable_v2: FC<DueCrewTableV2Props> = ({
   }
 
   return (
-    <div>
-      <div ref={containerRef} className="h-[calc(100vh-280px)] bg-white rounded-bl-lg border border-gray-200 overflow-hidden">
-        <AgGridTable
-          rowData={crewData}
-          columnDefs={columnDefs}
-          context={{}}
-          onGridReady={handleGridReady}
-          height="100%"
-          enableExport={false}
-          enableSideBar={false}
-          enableStatusBar={false}
-          gridOptions={gridOptionsConfig}
-        />
-      </div>
-      {totalPages > 1 && (
-        <div className="flex items-center justify-end gap-1 px-4 py-2 bg-white border border-t-0 border-gray-200 text-sm text-gray-600 select-none">
-          <button
-            onClick={() => gridApiRef.current?.paginationGoToFirstPage()}
-            disabled={currentPage === 0}
-            className="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-            data-testid="btn-page-first"
-          >
-            <ChevronsLeft className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => gridApiRef.current?.paginationGoToPreviousPage()}
-            disabled={currentPage === 0}
-            className="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-            data-testid="btn-page-prev"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <span className="px-2">Page {currentPage + 1} of {totalPages}</span>
-          <button
-            onClick={() => gridApiRef.current?.paginationGoToNextPage()}
-            disabled={currentPage >= totalPages - 1}
-            className="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-            data-testid="btn-page-next"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => gridApiRef.current?.paginationGoToLastPage()}
-            disabled={currentPage >= totalPages - 1}
-            className="p-1 rounded hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-            data-testid="btn-page-last"
-          >
-            <ChevronsRight className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+    <div ref={containerRef} className="h-[calc(100vh-280px)] bg-white rounded-bl-lg border border-gray-200 overflow-hidden">
+      <AgGridTable
+        rowData={crewData}
+        columnDefs={columnDefs}
+        context={{}}
+        onGridReady={handleGridReady}
+        height="100%"
+        enableExport={false}
+        enableSideBar={false}
+        enableStatusBar={false}
+        gridOptions={gridOptionsConfig}
+      />
     </div>
   );
 };
