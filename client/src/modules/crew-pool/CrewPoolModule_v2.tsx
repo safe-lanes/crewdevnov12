@@ -1448,7 +1448,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         </Button>
                         {selectedCrewPoolPage === "crew-database" && (permissions.length === 0 || canCreate("Crew Database")) && (
                         <>
-                        {/* <Button
+                        <Button
                             variant="outline"
                             className="h-8 w-32 text-xs border-[#e1e8ed] text-gray-700 font-medium bg-white hover:bg-gray-50"
                             onClick={() => setIsImportDialogOpen(true)}
@@ -1456,7 +1456,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         >
                             <Upload className="h-3 w-3 mr-1" />
                             Import Crew
-                        </Button> */}
+                        </Button>
                         <Button
                             className="h-8 w-32 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white"
                             onClick={() => {

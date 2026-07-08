@@ -5,14 +5,17 @@
  * All column headers use plain English — internal field mapping is handled
  * by the import service (crewImportService.ts).
  */
-import XLSX from "xlsx-js-style";
+import ExcelJS from "exceljs";
 import { getDb } from "../../db";
 import {
   masterNationalities,
   masterVesselTypes,
   masterCountries,
   masterLanguages,
+  masterManningAgents,
+  masterVessels,
 } from "../../../../shared/schema";
+import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
 import { eq } from "drizzle-orm";
 
 // ============================================================================
@@ -134,18 +137,24 @@ export const EDUCATION_COLUMNS = [
 async function fetchReferenceData() {
   const db = getDb();
 
-  const [nationalities, vesselTypes, countries, languages] = await Promise.all([
+  const [nationalities, vesselTypes, countries, languages, ranks, manningAgents, vessels] = await Promise.all([
     db.select({ name: masterNationalities.nationality }).from(masterNationalities).where(eq(masterNationalities.isDeleted, false)),
     db.select({ name: masterVesselTypes.vesselType }).from(masterVesselTypes).where(eq(masterVesselTypes.isDeleted, false)),
     db.select({ name: masterCountries.countryName }).from(masterCountries).where(eq(masterCountries.isDeleted, false)),
     db.select({ name: masterLanguages.languageName }).from(masterLanguages).where(eq(masterLanguages.isDeleted, false)),
+    db.select({ name: admCompanyRanksV2.rank }).from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false)),
+    db.select({ name: masterManningAgents.name }).from(masterManningAgents).where(eq(masterManningAgents.isDeleted, false)),
+    db.select({ name: masterVessels.vessel }).from(masterVessels),
   ]);
 
   return {
-    nationalities: nationalities.map((n: { name: string | null }) => n.name).filter(Boolean).sort() as string[],
-    vesselTypes: vesselTypes.map((v: { name: string | null }) => v.name).filter(Boolean).sort() as string[],
-    countries: countries.map((c: { name: string | null }) => c.name).filter(Boolean).sort() as string[],
-    languages: languages.map((l: { name: string | null }) => l.name).filter(Boolean).sort() as string[],
+    nationalities: Array.from(new Set(nationalities.map((n: { name: string | null }) => n.name).filter(Boolean))).sort() as string[],
+    vesselTypes: Array.from(new Set(vesselTypes.map((v: { name: string | null }) => v.name).filter(Boolean))).sort() as string[],
+    countries: Array.from(new Set(countries.map((c: { name: string | null }) => c.name).filter(Boolean))).sort() as string[],
+    languages: Array.from(new Set(languages.map((l: { name: string | null }) => l.name).filter(Boolean))).sort() as string[],
+    ranks: Array.from(new Set(ranks.map((r: { name: string | null }) => r.name).filter(Boolean))).sort() as string[],
+    manningAgents: Array.from(new Set(manningAgents.map((m: { name: string | null }) => m.name).filter(Boolean))).sort() as string[],
+    vessels: Array.from(new Set(vessels.map((v: { name: string | null }) => v.name).filter(Boolean))).sort() as string[],
   };
 }
 
@@ -153,53 +162,75 @@ async function fetchReferenceData() {
  * Build a data sheet with headers + example row
  */
 function buildDataSheet(
-  columns: typeof CREW_DETAILS_COLUMNS,
-): XLSX.WorkSheet {
-  // Row 1: Headers
-  const headers = columns.map(c => c.header);
-  // Row 2: Example data
-  const examples = columns.map(c => c.example);
+  wb: ExcelJS.Workbook,
+  name: string,
+  columns: typeof CREW_DETAILS_COLUMNS
+): ExcelJS.Worksheet {
+  const ws = wb.addWorksheet(name, {
+    views: [{ showGridLines: true }]
+  });
 
-  const ws = XLSX.utils.aoa_to_sheet([headers, examples]);
-
-  // Set column widths
-  ws["!cols"] = columns.map(c => ({
-    wch: Math.max(c.header.length, c.example.length, 18) + 2,
+  // 1. Column configuration
+  ws.columns = columns.map(c => ({
+    header: c.header,
+    key: c.header,
+    width: Math.max(c.header.length, c.example?.length || 10, 15) + 3
   }));
 
-  // Apply cell styles for header (row 0) and example data (row 1)
-  const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
-  for (let c = range.s.c; c <= range.e.c; c++) {
-    // Header styling
-    const headerAddr = XLSX.utils.encode_cell({ r: 0, c });
-    const headerCell = ws[headerAddr];
-    if (headerCell) {
-      const isRequired = columns[c]?.required;
-      headerCell.s = {
-        font: { bold: true, name: "Calibri", sz: 11 },
-        fill: {
-          fgColor: { rgb: isRequired ? "FFF2CC" : "F2F2F2" } // Yellow background for required, Light grey for optional
-        },
-        border: {
-          top: { style: "thin", color: { rgb: "D9D9D9" } },
-          bottom: { style: "medium", color: { rgb: "404040" } },
-          left: { style: "thin", color: { rgb: "D9D9D9" } },
-          right: { style: "thin", color: { rgb: "D9D9D9" } }
-        },
-        alignment: { vertical: "center", horizontal: "left" }
-      };
-    }
+  // 2. Format headers
+  const headerRow = ws.getRow(1);
+  headerRow.height = 25;
+  headerRow.eachCell((cell, colNumber) => {
+    const colDef = columns[colNumber - 1];
+    cell.font = {
+      name: "Calibri",
+      bold: true,
+      size: 11,
+      color: { argb: "FF000000" }
+    };
+    cell.alignment = { vertical: "middle", horizontal: "left" };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FFD9D9D9" } },
+      bottom: { style: "medium", color: { argb: "FF404040" } },
+      left: { style: "thin", color: { argb: "FFD9D9D9" } },
+      right: { style: "thin", color: { argb: "FFD9D9D9" } }
+    };
 
-    // Example styling
-    const exampleAddr = XLSX.utils.encode_cell({ r: 1, c });
-    const exampleCell = ws[exampleAddr];
-    if (exampleCell) {
-      exampleCell.s = {
-        font: { italic: true, color: { rgb: "7F7F7F" }, name: "Calibri", sz: 11 },
-        alignment: { vertical: "center", horizontal: "left" }
+    if (colDef.required) {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFFFF2CC" } // Light yellow/orange-yellow
+      };
+    } else {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF2F2F2" } // Light gray
       };
     }
-  }
+  });
+
+  // 3. Format example row
+  const exampleRow = ws.getRow(2);
+  exampleRow.height = 20;
+  columns.forEach((c, colNumber) => {
+    const cell = exampleRow.getCell(colNumber + 1);
+    cell.value = c.example;
+    cell.font = {
+      name: "Calibri",
+      italic: true,
+      size: 11,
+      color: { argb: "FF7F7F7F" }
+    };
+    cell.alignment = { vertical: "middle", horizontal: "left" };
+    cell.border = {
+      top: { style: "thin", color: { argb: "FFD9D9D9" } },
+      bottom: { style: "thin", color: { argb: "FFD9D9D9" } },
+      left: { style: "thin", color: { argb: "FFD9D9D9" } },
+      right: { style: "thin", color: { argb: "FFD9D9D9" } }
+    };
+  });
 
   return ws;
 }
@@ -207,61 +238,155 @@ function buildDataSheet(
 /**
  * Build the Instructions & Reference Data sheet
  */
-function buildInstructionsSheet(refData: {
-  nationalities: string[];
-  vesselTypes: string[];
-  countries: string[];
-  languages: string[];
-}): XLSX.WorkSheet {
-  const rows: (string | undefined)[][] = [];
+function buildInstructionsSheet(
+  ws: ExcelJS.Worksheet,
+  refData: {
+    nationalities: string[];
+    vesselTypes: string[];
+    countries: string[];
+    languages: string[];
+    ranks: string[];
+    manningAgents: string[];
+    vessels: string[];
+  }
+) {
+  ws.views = [{ showGridLines: true }];
+  ws.getColumn(1).width = 80;
 
-  // Title
-  rows.push(["CREW IMPORT TEMPLATE — INSTRUCTIONS"]);
-  rows.push([]);
+  ws.getCell("A1").value = "CREW IMPORT TEMPLATE — INSTRUCTIONS";
+  ws.getCell("A1").font = { name: "Calibri", bold: true, size: 16, color: { argb: "FF16569E" } };
 
-  // General instructions
-  rows.push(["HOW TO USE THIS TEMPLATE"]);
-  rows.push(["1. Fill in the 'Crew Details' sheet first — one row per crew member"]);
-  rows.push(["2. Use the Seafarer Code column to link data across sheets (Documents, Licenses, etc.)"]);
-  rows.push(["3. Leave Seafarer Code blank for new crew — the system will auto-generate one"]);
-  rows.push(["4. If you provide a Seafarer Code, it must be unique across all rows"]);
-  rows.push(["5. Required columns are marked with yellow background in each sheet"]);
-  rows.push(["6. Dates can be in these formats: DD-MMM-YYYY (15-Mar-1985), DD/MM/YYYY (15/03/1985), or YYYY-MM-DD (1985-03-15)"]);
-  rows.push(["7. Row 2 in each sheet has example data — delete it before uploading"]);
-  rows.push(["8. Do NOT change column headers or sheet names"]);
-  rows.push([]);
-
-  // Color legend
-  rows.push(["COLOR LEGEND"]);
-  rows.push(["Yellow background = Required field (must be filled)"]);
-  rows.push(["White background = Optional field (can be left blank)"]);
-  rows.push(["Row 2 (example) = Sample data — DELETE before uploading"]);
-  rows.push([]);
-
-  // Reference data sections
-  const sections: [string, string[]][] = [
-    ["VALID NATIONALITIES", refData.nationalities],
-    ["VALID VESSEL TYPES", refData.vesselTypes],
-    ["VALID COUNTRIES", refData.countries],
-    ["VALID LANGUAGES", refData.languages],
-    ["VALID GENDERS", ["Male", "Female"]],
-    ["VALID ENGLISH PROFICIENCY", ["Good", "Fair", "Poor"]],
-    ["VALID MARITAL STATUS", ["Single", "Married", "Divorced", "Widowed"]],
-    ["VALID CURRENT STATUS", ["On Board", "On Leave", "Available", "In Transit", "Inactive", "Terminated", "Terminated - NFR"]],
+  const instructions = [
+    "",
+    "HOW TO USE THIS TEMPLATE",
+    "1. Fill in the 'Crew Details' sheet first — one row per crew member",
+    "2. Use the Seafarer Code column to link data across sheets (Documents, Licenses, etc.)",
+    "3. Leave Seafarer Code blank for new crew — the system will auto-generate one",
+    "4. If you provide a Seafarer Code, it must be unique across all rows",
+    "5. Required columns are marked with yellow background in each sheet",
+    "6. Dates can be in these formats: DD-MMM-YYYY (15-Mar-1985), DD/MM/YYYY (15/03/1985), or YYYY-MM-DD (1985-03-15)",
+    "7. Row 2 in each sheet has example data — delete it before uploading",
+    "8. Do NOT change column headers or sheet names",
+    "",
+    "COLOR LEGEND",
+    "Yellow background = Required field (must be filled)",
+    "White/Gray background = Optional field (can be left blank)",
+    "Row 2 (example) = Sample data — DELETE before uploading",
+    "",
   ];
 
-  for (const [title, values] of sections) {
-    rows.push([title]);
-    for (const val of values) {
-      rows.push(["  " + val]);
+  instructions.forEach((inst, idx) => {
+    const rowNum = idx + 2;
+    const cell = ws.getCell(rowNum, 1);
+    cell.value = inst;
+    if (inst.startsWith("HOW TO USE") || inst.startsWith("COLOR LEGEND")) {
+      cell.font = { name: "Calibri", bold: true, size: 12, color: { argb: "FF000000" } };
+    } else {
+      cell.font = { name: "Calibri", size: 11, color: { argb: "FF333333" } };
     }
-    rows.push([]);
+  });
+
+  const refStartRow = 26;
+  const headers = [
+    "",
+    "Nationalities",
+    "Vessel Types",
+    "Countries",
+    "Languages",
+    "Genders",
+    "English Proficiency",
+    "Marital Status",
+    "Current Status",
+    "Company or External",
+    "Ranks",
+    "Manning Agents",
+    "Company Vessels"
+  ];
+  const refHeaderRow = ws.getRow(refStartRow);
+  refHeaderRow.values = headers;
+  refHeaderRow.eachCell((cell, colNum) => {
+    if (colNum > 1) {
+      cell.font = { name: "Calibri", bold: true, size: 11, color: { argb: "FF000000" } };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFD9E1F2" }
+      };
+      cell.border = {
+        bottom: { style: "medium", color: { argb: "FF000000" } }
+      };
+    }
+  });
+
+  const valStartRow = refStartRow + 1;
+
+  refData.nationalities.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 2).value = val;
+  });
+  refData.vesselTypes.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 3).value = val;
+  });
+  refData.countries.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 4).value = val;
+  });
+  refData.languages.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 5).value = val;
+  });
+
+  const genders = ["Male", "Female"];
+  genders.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 6).value = val;
+  });
+
+  const engProfs = ["Good", "Fair", "Poor"];
+  engProfs.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 7).value = val;
+  });
+
+  const maritals = ["Single", "Married", "Divorced", "Widowed"];
+  maritals.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 8).value = val;
+  });
+
+  const statuses = ["On Board", "On Leave", "Available", "In Transit", "Inactive", "Terminated", "Terminated - NFR"];
+  statuses.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 9).value = val;
+  });
+
+  const coExt = ["Company", "External"];
+  coExt.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 10).value = val;
+  });
+
+  refData.ranks.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 11).value = val;
+  });
+
+  refData.manningAgents.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 12).value = val;
+  });
+
+  refData.vessels.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 13).value = val;
+  });
+
+  for (let col = 2; col <= 13; col++) {
+    ws.getColumn(col).width = 20;
+    const maxLen = Math.max(
+      refData.nationalities.length,
+      refData.countries.length,
+      refData.ranks.length,
+      refData.manningAgents.length,
+      refData.vessels.length,
+      100
+    );
+    for (let r = valStartRow; r <= valStartRow + maxLen; r++) {
+      const cell = ws.getCell(r, col);
+      if (cell.value) {
+        cell.font = { name: "Calibri", size: 10, color: { argb: "FF595959" } };
+      }
+    }
   }
-
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [{ wch: 80 }];
-
-  return ws;
 }
 
 /**
@@ -270,45 +395,104 @@ function buildInstructionsSheet(refData: {
 export async function generateImportTemplate(): Promise<Buffer> {
   const refData = await fetchReferenceData();
 
-  const wb = XLSX.utils.book_new();
+  const wb = new ExcelJS.Workbook();
 
   // Sheet 1: Instructions & Reference
-  const instrSheet = buildInstructionsSheet(refData);
-  XLSX.utils.book_append_sheet(wb, instrSheet, "Instructions & Reference");
+  const instrSheet = wb.addWorksheet("Instructions & Reference");
+  buildInstructionsSheet(instrSheet, refData);
 
   // Sheet 2: Crew Details
-  const crewSheet = buildDataSheet(CREW_DETAILS_COLUMNS);
-  XLSX.utils.book_append_sheet(wb, crewSheet, "Crew Details");
+  const crewSheet = buildDataSheet(wb, "Crew Details", CREW_DETAILS_COLUMNS);
 
   // Sheet 3: Emergency Contact
-  const nokSheet = buildDataSheet(NOK_COLUMNS);
-  XLSX.utils.book_append_sheet(wb, nokSheet, "Emergency Contact");
+  const nokSheet = buildDataSheet(wb, "Emergency Contact", NOK_COLUMNS);
 
   // Sheet 4: Travel Documents
-  const docsSheet = buildDataSheet(DOCUMENTS_COLUMNS);
-  XLSX.utils.book_append_sheet(wb, docsSheet, "Travel Documents");
+  const docsSheet = buildDataSheet(wb, "Travel Documents", DOCUMENTS_COLUMNS);
 
   // Sheet 5: Travel Visas
-  const visasSheet = buildDataSheet(VISAS_COLUMNS);
-  XLSX.utils.book_append_sheet(wb, visasSheet, "Travel Visas");
+  const visasSheet = buildDataSheet(wb, "Travel Visas", VISAS_COLUMNS);
 
   // Sheet 6: Licenses & Certificates
-  const licSheet = buildDataSheet(LICENSES_COLUMNS);
-  XLSX.utils.book_append_sheet(wb, licSheet, "Licenses & Certificates");
+  const licSheet = buildDataSheet(wb, "Licenses & Certificates", LICENSES_COLUMNS);
 
   // Sheet 7: Sea Service History
-  const seaSheet = buildDataSheet(SEA_SERVICE_COLUMNS);
-  XLSX.utils.book_append_sheet(wb, seaSheet, "Sea Service History");
+  const seaSheet = buildDataSheet(wb, "Sea Service History", SEA_SERVICE_COLUMNS);
 
   // Sheet 8: Training Courses
-  const trainSheet = buildDataSheet(TRAINING_COLUMNS);
-  XLSX.utils.book_append_sheet(wb, trainSheet, "Training Courses");
+  const trainSheet = buildDataSheet(wb, "Training Courses", TRAINING_COLUMNS);
 
   // Sheet 9: Education Details
-  const eduSheet = buildDataSheet(EDUCATION_COLUMNS);
-  XLSX.utils.book_append_sheet(wb, eduSheet, "Education Details");
+  const eduSheet = buildDataSheet(wb, "Education Details", EDUCATION_COLUMNS);
+
+  // Apply Dropdown validations
+  const refStartRow = 27;
+  const natFormula = `='Instructions & Reference'!$B$27:$B$${refStartRow + refData.nationalities.length - 1}`;
+  const vtFormula = `='Instructions & Reference'!$C$27:$C$${refStartRow + refData.vesselTypes.length - 1}`;
+  const countryFormula = `='Instructions & Reference'!$D$27:$D$${refStartRow + refData.countries.length - 1}`;
+  const langFormula = `='Instructions & Reference'!$E$27:$E$${refStartRow + refData.languages.length - 1}`;
+  const genderFormula = `='Instructions & Reference'!$F$27:$F$28`;
+  const engProfFormula = `='Instructions & Reference'!$G$27:$G$29`;
+  const maritalFormula = `='Instructions & Reference'!$H$27:$H$30`;
+  const statusFormula = `='Instructions & Reference'!$I$27:$I$33`;
+  const coExtFormula = `='Instructions & Reference'!$J$27:$J$28`;
+  const rankFormula = `='Instructions & Reference'!$K$27:$K$${refStartRow + refData.ranks.length - 1}`;
+  const manningAgentFormula = `='Instructions & Reference'!$L$27:$L$${refStartRow + refData.manningAgents.length - 1}`;
+
+  const getColIndex = (columnsList: typeof CREW_DETAILS_COLUMNS, header: string) => {
+    return columnsList.findIndex(c => c.header === header) + 1;
+  };
+
+  const applyDropdown = (ws: ExcelJS.Worksheet, header: string, columnsList: typeof CREW_DETAILS_COLUMNS, formula: string) => {
+    const colIdx = getColIndex(columnsList, header);
+    if (colIdx > 0) {
+      for (let row = 3; row <= 200; row++) {
+        ws.getCell(row, colIdx).dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [formula],
+          showErrorMessage: true,
+          errorStyle: 'warning',
+          errorTitle: 'Invalid Selection',
+          error: 'Please select a valid option from the dropdown list.'
+        };
+      }
+    }
+  };
+
+  // Crew Details sheet validations
+  applyDropdown(crewSheet, "Gender", CREW_DETAILS_COLUMNS, genderFormula);
+  applyDropdown(crewSheet, "English Proficiency", CREW_DETAILS_COLUMNS, engProfFormula);
+  applyDropdown(crewSheet, "Marital Status", CREW_DETAILS_COLUMNS, maritalFormula);
+  applyDropdown(crewSheet, "Current Status", CREW_DETAILS_COLUMNS, statusFormula);
+  applyDropdown(crewSheet, "Nationality", CREW_DETAILS_COLUMNS, natFormula);
+  applyDropdown(crewSheet, "Vessel Type Experience", CREW_DETAILS_COLUMNS, vtFormula);
+  applyDropdown(crewSheet, "Country of Residence", CREW_DETAILS_COLUMNS, countryFormula);
+  applyDropdown(crewSheet, "Place of Birth (Country)", CREW_DETAILS_COLUMNS, countryFormula);
+  applyDropdown(crewSheet, "Native Language", CREW_DETAILS_COLUMNS, langFormula);
+  applyDropdown(crewSheet, "Present Rank / Designation", CREW_DETAILS_COLUMNS, rankFormula);
+  applyDropdown(crewSheet, "Rank Applied For", CREW_DETAILS_COLUMNS, rankFormula);
+  applyDropdown(crewSheet, "Manning Agent", CREW_DETAILS_COLUMNS, manningAgentFormula);
+
+  // Sea Service History sheet validations
+  applyDropdown(seaSheet, "Company or External?", SEA_SERVICE_COLUMNS, coExtFormula);
+  applyDropdown(seaSheet, "Vessel Type", SEA_SERVICE_COLUMNS, vtFormula);
+  applyDropdown(seaSheet, "Rank Served", SEA_SERVICE_COLUMNS, rankFormula);
+
+  // Conditional Vessel Name Dropdown: If Column B is "Company", show Company Vessels list dropdown, else free text
+  const vesselColIdx = getColIndex(SEA_SERVICE_COLUMNS, "Vessel Name");
+  if (vesselColIdx > 0) {
+    for (let row = 3; row <= 200; row++) {
+      seaSheet.getCell(row, vesselColIdx).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`=IF($B${row}="Company", 'Instructions & Reference'!$M$27:$M$${refStartRow + refData.vessels.length - 1}, "")`],
+        showErrorMessage: false // Allow custom text if External service type
+      };
+    }
+  }
 
   // Write to buffer
-  const xlsxBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  const xlsxBuffer = await wb.xlsx.writeBuffer();
   return Buffer.from(xlsxBuffer);
 }

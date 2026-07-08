@@ -38,13 +38,21 @@ import {
  * Parse dates from various formats the client might use.
  * Returns ISO string (YYYY-MM-DD) or null if invalid.
  */
-function parseDate(value: any): string | null {
+export function parseDate(value: any): string | null {
   if (!value) return null;
 
-  // Handle Excel serial date numbers
-  if (typeof value === "number") {
-    const excelEpoch = new Date(1899, 11, 30);
-    const date = new Date(excelEpoch.getTime() + value * 86400000);
+  // Handle native Date objects
+  if (value instanceof Date) {
+    if (!isNaN(value.getTime())) {
+      return value.toISOString().split("T")[0];
+    }
+    return null;
+  }
+
+  // Handle Excel serial date numbers (represented as numbers or strings)
+  const num = Number(value);
+  if (!isNaN(num) && num > 10000 && num < 70000) {
+    const date = new Date((num - 25569) * 86400000);
     if (!isNaN(date.getTime())) {
       return date.toISOString().split("T")[0];
     }
@@ -70,24 +78,33 @@ function parseDate(value: any): string | null {
     }
   }
 
-  // Try DD-MMM-YYYY (15-Mar-1985)
+  // Try DD-MMM-YYYY or DD-MMM-YY (15-Mar-1985 / 20-May-96)
   const monthNames: Record<string, string> = {
     jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
     jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
   };
-  const mmmMatch = str.match(/^(\d{1,2})[- ]([A-Za-z]{3})[- ](\d{4})$/);
+  const mmmMatch = str.match(/^(\d{1,2})[- ]([A-Za-z]{3})[- ](\d{2,4})$/);
   if (mmmMatch) {
-    const [, dd, mmm, yyyy] = mmmMatch;
+    const [, dd, mmm, yyOrYyyy] = mmmMatch;
     const mm = monthNames[mmm.toLowerCase()];
     if (mm) {
+      let yyyy = yyOrYyyy;
+      if (yyOrYyyy.length === 2) {
+        const yearNum = parseInt(yyOrYyyy);
+        // If year is >= 50, assume 19xx, else 20xx
+        yyyy = String(yearNum >= 50 ? 1900 + yearNum : 2000 + yearNum);
+      }
       return `${yyyy}-${mm}-${dd.padStart(2, "0")}`;
     }
   }
 
-  // Last resort: try JS Date parsing
+  // Last resort: try JS Date parsing with a year sanity guard
   const fallback = new Date(str);
   if (!isNaN(fallback.getTime())) {
-    return fallback.toISOString().split("T")[0];
+    const parsedYear = fallback.getFullYear();
+    if (parsedYear > 1800 && parsedYear < 2100) {
+      return fallback.toISOString().split("T")[0];
+    }
   }
 
   return null;
