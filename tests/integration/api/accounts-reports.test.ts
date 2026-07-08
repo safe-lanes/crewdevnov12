@@ -38,9 +38,12 @@ const u = () => randomUUID();
 const el = { BAS: u(), OTF: u(), LVE: u(), ALT: u(), PF: u() };
 const crewA = u();
 const crewB = u();
+const crewC = u(); // two engagements in one month (May)
 const vsl = u();
 const engA = u();
 const engB = u();
+const engC1 = u();
+const engC2 = u();
 const portageApr = u();
 const CALC_RUN = u();
 const RANK = `AB_RPT_${S}`;
@@ -187,17 +190,26 @@ describe("Accounts Reports: payslips, GL export, fleet summary", () => {
       first_name: "RPT",
       family_name: "Bob",
     });
-    for (const [eng, crew] of [
-      [engA, crewA],
-      [engB, crewB],
+    await insert("crew_members_v2", {
+      crew_uuid: crewC,
+      emp_no: `TEST_RPT_${S}_C`,
+      first_name: "RPT",
+      family_name: "Carol",
+    });
+    // crew C: two back-to-back engagements inside May
+    for (const [eng, crew, start, end] of [
+      [engA, crewA, "2026-03-01", null],
+      [engB, crewB, "2026-03-01", null],
+      [engC1, crewC, "2026-05-01", "2026-05-15"],
+      [engC2, crewC, "2026-05-16", null],
     ] as const) {
       await insert("acc_engagements_v2", {
         engagement_uuid: eng,
         crew_uuid: crew,
         engagement_type: "voyage_contract",
         vessel_uuid: vsl,
-        start_date: "2026-03-01",
-        end_date: null,
+        start_date: start,
+        end_date: end,
         rank_id_at_start: RANK,
         currency: "USD",
         status: "active",
@@ -229,6 +241,11 @@ describe("Accounts Reports: payslips, GL export, fleet summary", () => {
     await seedLine({ crew: crewA, eng: engA, period: "2026-04", element: "BAS", type: "earning", timing: "paid_on_board", amount: "999.00", portage: null });
 
     await seedLine({ crew: crewB, eng: engB, period: "2026-04", element: "BAS", type: "earning", timing: "paid_on_board", amount: "2000.00", portage: portageApr, from: "2026-04-01", to: "2026-04-30", days: "30.00" });
+
+    // crew C May: split month across TWO engagements (no portage → draft)
+    await seedLine({ crew: crewC, eng: engC1, period: "2026-05", element: "BAS", type: "earning", timing: "paid_on_board", amount: "1500.00", from: "2026-05-01", to: "2026-05-15", days: "15.00" });
+    await seedLine({ crew: crewC, eng: engC2, period: "2026-05", element: "BAS", type: "earning", timing: "paid_on_board", amount: "1600.00", from: "2026-05-16", to: "2026-05-31", days: "16.00" });
+    await seedLine({ crew: crewC, eng: engC2, period: "2026-05", element: "ALT", type: "deduction", timing: "paid_on_board", amount: "300.00", from: "2026-05-16", to: "2026-05-31" });
   }, 60_000);
 
   afterAll(async () => {
@@ -241,8 +258,8 @@ describe("Accounts Reports: payslips, GL export, fleet summary", () => {
     };
     await tryQuery("DELETE FROM acc_wage_ledger_v2 WHERE ledger_uuid = ANY($1)", [ledgerUuids]);
     await tryQuery("DELETE FROM acc_portage_bills_v2 WHERE portage_uuid = $1", [portageApr]);
-    await tryQuery("DELETE FROM acc_engagements_v2 WHERE engagement_uuid = ANY($1)", [[engA, engB]]);
-    await tryQuery("DELETE FROM crew_members_v2 WHERE crew_uuid = ANY($1)", [[crewA, crewB]]);
+    await tryQuery("DELETE FROM acc_engagements_v2 WHERE engagement_uuid = ANY($1)", [[engA, engB, engC1, engC2]]);
+    await tryQuery("DELETE FROM crew_members_v2 WHERE crew_uuid = ANY($1)", [[crewA, crewB, crewC]]);
     await tryQuery("DELETE FROM acc_pay_elements_v2 WHERE pay_element_uuid = ANY($1)", [Object.values(el)]);
     if (insertedConfigUuid) {
       await tryQuery("DELETE FROM acc_tenant_config_v2 WHERE config_uuid = $1", [insertedConfigUuid]);
@@ -321,6 +338,25 @@ describe("Accounts Reports: payslips, GL export, fleet summary", () => {
     expect(bob.totals.netOnBoard).toBe("2000.00");
     expect(bob.totals.balanceBf).toBe("0.00");
     expect(bob.totals.balanceCf).toBe("2000.00");
+  });
+
+  it("batch returns ONE payslip per crew even with two engagements in the month", async () => {
+    const r = await get(`/reports/payslips?vesselUuid=${vsl}&period=2026-05`);
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.payslips).toHaveLength(1); // Carol once, not per engagement
+    const carol = r.body.payslips[0];
+    expect(carol.crewName).toBe("RPT Carol");
+    expect(carol.engagementUuid).toBe(engC2); // latest engagement is primary
+    expect(carol.sections.earnings).toHaveLength(2); // both sub-periods kept
+    expect(carol.sections.earnings.map((l: any) => l.amount)).toEqual([
+      "1500.00",
+      "1600.00",
+    ]); // ordered by sub-period start
+    expect(carol.totals.earnedGross).toBe("3100.00"); // 1500 + 1600
+    expect(carol.totals.deductions).toBe("300.00");
+    expect(carol.totals.netOnBoard).toBe("2800.00");
+    expect(carol.daysServed).toBe("31"); // 15 + 16 across sub-periods
+    expect(r.body.isDraft).toBe(true); // May has no portage bill
   });
 
   // ==========================================================================

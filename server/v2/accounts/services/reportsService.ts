@@ -438,7 +438,13 @@ export const reportsService = {
     return this.payslipForEngagement(withLines[0].engagementUuid, period);
   },
 
-  /** Batch payslips for a vessel + period (one per crew with ledger lines). */
+  /**
+   * Batch payslips for a vessel + period — strictly ONE payslip per crew
+   * with ledger lines that month. The superseding rule is applied per
+   * engagement, then the crew's effective lines are merged across
+   * engagements; the latest engagement (by start date) is the primary for
+   * header details and balance B/F (same rule as payslipForCrew).
+   */
   async payslipBatch(
     vesselUuid: string,
     period: string,
@@ -461,24 +467,42 @@ export const reportsService = {
     const engagementByUuid = new Map(
       engagements.map((e) => [e.engagementUuid, e]),
     );
-    const allLines = Array.from(byEngagement.values()).flat();
+    // group the effective lines by crew (one payslip per crew)
+    const byCrew = new Map<
+      string,
+      { engagements: AccEngagementV2[]; lines: AccWageLedgerV2[] }
+    >();
+    for (const [engagementUuid, lines] of byEngagement) {
+      const engagement = engagementByUuid.get(engagementUuid);
+      if (!engagement) continue;
+      let agg = byCrew.get(engagement.crewUuid);
+      if (!agg) {
+        agg = { engagements: [], lines: [] };
+        byCrew.set(engagement.crewUuid, agg);
+      }
+      agg.engagements.push(engagement);
+      agg.lines.push(...lines);
+    }
+    const allLines = Array.from(byCrew.values()).flatMap((a) => a.lines);
     const [elements, crewDetails, vesselNames] = await Promise.all([
       reportsRepo.findElementsByUuids(
         Array.from(new Set(allLines.map((l) => l.payElementUuid))),
       ),
-      reportsRepo.findCrewDetails(
-        Array.from(new Set(allLines.map((l) => l.crewUuid))),
-      ),
+      reportsRepo.findCrewDetails(Array.from(byCrew.keys())),
       engagementsRepo.findVesselNames([vesselUuid]),
     ]);
     const payslips: Payslip[] = [];
-    for (const [engagementUuid, lines] of byEngagement) {
-      const engagement = engagementByUuid.get(engagementUuid);
-      if (!engagement) continue;
+    for (const agg of byCrew.values()) {
+      agg.engagements.sort((a, b) =>
+        String(b.startDate ?? "").localeCompare(String(a.startDate ?? "")),
+      );
+      agg.lines.sort((a, b) =>
+        String(a.periodFrom ?? "").localeCompare(String(b.periodFrom ?? "")),
+      );
       payslips.push(
         await buildPayslip(
-          engagement,
-          lines,
+          agg.engagements[0],
+          agg.lines,
           period,
           portage,
           elements,
