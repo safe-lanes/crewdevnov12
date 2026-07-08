@@ -9154,6 +9154,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               value={tempRecruitmentDate}
               onChange={(e) => setTempRecruitmentDate(e.target.value)}
               className="mt-1"
+              max={todayStr}
               data-testid="input-recruitment-date"
             />
           </div>

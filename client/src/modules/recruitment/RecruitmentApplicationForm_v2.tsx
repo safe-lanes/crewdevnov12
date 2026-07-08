@@ -9007,6 +9007,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           value={formData.c3RecruitmentDate}
                           onChange={(e) => updateFormData('c3RecruitmentDate', e.target.value)}
                           className="max-w-[200px]"
+                          max={todayStr}
                           data-testid="input-c3-recruitment-date"
                         />
                       </div>
