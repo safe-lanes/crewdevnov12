@@ -7,7 +7,7 @@ import { masterNationalities, masterVessels } from "../../../../shared/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import type { ReportHandler } from "../types";
 import type { ReportColumn, ReportResultRow } from "../../../../shared/v2/reports/types";
-import { dateExpr, dateFilter, fullNameExpr } from "./_shared";
+import { dateExpr, dateFilter, fullNameExpr, noSignOffExpr } from "./_shared";
 
 const baseCrewConditions = (): SQL[] => [
   eq(crewMembersV2.isDeleted, false),
@@ -22,7 +22,7 @@ const currentVesselNameExpr = sql<string | null>`(
   WHERE vessel_planning_v2.crew_uuid = crew_members_v2.crew_uuid
     AND vessel_planning_v2.is_deleted = FALSE
     AND vessel_planning_v2.is_archived = FALSE
-    AND vessel_planning_v2.sign_off_date IS NULL
+    AND NULLIF(vessel_planning_v2.sign_off_date, '') IS NULL
   LIMIT 1
 )`;
 
@@ -32,7 +32,7 @@ const currentPlanRankExpr = sql<string | null>`(
   WHERE vessel_planning_v2.crew_uuid = crew_members_v2.crew_uuid
     AND vessel_planning_v2.is_deleted = FALSE
     AND vessel_planning_v2.is_archived = FALSE
-    AND vessel_planning_v2.sign_off_date IS NULL
+    AND NULLIF(vessel_planning_v2.sign_off_date, '') IS NULL
   LIMIT 1
 )`;
 
@@ -42,7 +42,7 @@ const currentReliefDueExpr = sql<string | null>`(
   WHERE vessel_planning_v2.crew_uuid = crew_members_v2.crew_uuid
     AND vessel_planning_v2.is_deleted = FALSE
     AND vessel_planning_v2.is_archived = FALSE
-    AND vessel_planning_v2.sign_off_date IS NULL
+    AND NULLIF(vessel_planning_v2.sign_off_date, '') IS NULL
   LIMIT 1
 )`;
 
@@ -461,7 +461,7 @@ export const crewContractExpiryReport: ReportHandler<z.infer<typeof expiryFilter
     const conds: SQL[] = [
       eq(vesselPlanningV2.isDeleted, false),
       eq(vesselPlanningV2.isArchived, false),
-      isNull(vesselPlanningV2.signOffDate),
+      noSignOffExpr(vesselPlanningV2.signOffDate),
       isNotNull(vesselPlanningV2.crewUuid),
       sql`${reliefDueDate} IS NOT NULL`,
       sql`${reliefDueDate} BETWEEN CURRENT_DATE AND CURRENT_DATE + (${n} || ' days')::interval`,

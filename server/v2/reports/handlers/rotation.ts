@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq, isNull, isNotNull, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
@@ -7,7 +7,7 @@ import { masterVessels } from "../../../../shared/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import type { ReportHandler } from "../types";
 import type { ReportColumn, ReportResultRow } from "../../../../shared/v2/reports/types";
-import { dateExpr, fullNameExpr } from "./_shared";
+import { dateExpr, fullNameExpr, noSignOffExpr } from "./_shared";
 
 const nameExpr = fullNameExpr(crewMembersV2.firstName, crewMembersV2.middleName, crewMembersV2.familyName);
 const reliefDueDate = dateExpr(vesselPlanningV2.reliefDue);
@@ -54,7 +54,7 @@ export const rotationOverdueReliefReport: ReportHandler<z.infer<typeof overdueFi
     const conds: SQL[] = [
       eq(vesselPlanningV2.isDeleted, false),
       eq(vesselPlanningV2.isArchived, false),
-      isNull(vesselPlanningV2.signOffDate),
+      noSignOffExpr(vesselPlanningV2.signOffDate),
       isNotNull(vesselPlanningV2.crewUuid),
       sql`${reliefDueDate} IS NOT NULL`,
       sql`${reliefDueDate} < CURRENT_DATE - (${n} || ' days')::interval`,
@@ -125,7 +125,7 @@ export const rotationPlannedReliefsReport: ReportHandler<z.infer<typeof plannedF
     const conds: SQL[] = [
       eq(vesselPlanningV2.isDeleted, false),
       eq(vesselPlanningV2.isArchived, false),
-      isNull(vesselPlanningV2.signOffDate),
+      noSignOffExpr(vesselPlanningV2.signOffDate),
       isNotNull(vesselPlanningV2.crewUuid),
       sql`${reliefDueDate} IS NOT NULL`,
       sql`${reliefDueDate} BETWEEN CURRENT_DATE AND CURRENT_DATE + (${n} || ' days')::interval`,

@@ -8,7 +8,7 @@ import { masterVessels } from "../../../../shared/schema";
 import { rhVesselRecordsV2 } from "../../../../shared/v2/rest-hours/schema";
 import type { ReportHandler } from "../types";
 import type { ReportColumn } from "../../../../shared/v2/reports/types";
-import { dateExpr, dateFilter, fullNameExpr } from "./_shared";
+import { dateExpr, dateFilter, fullNameExpr, noSignOffExpr } from "./_shared";
 
 const nameExpr = fullNameExpr(crewMembersV2.firstName, crewMembersV2.middleName, crewMembersV2.familyName);
 
@@ -41,7 +41,7 @@ export const crewOnBoardReport: ReportHandler<z.infer<typeof cobFilters>> = {
     const conds: SQL[] = [
       eq(vesselPlanningV2.isDeleted, false),
       eq(vesselPlanningV2.isArchived, false),
-      isNull(vesselPlanningV2.signOffDate),
+      noSignOffExpr(vesselPlanningV2.signOffDate),
       isNotNull(vesselPlanningV2.crewUuid),
       eq(crewMembersV2.isDeleted, false),
     ];

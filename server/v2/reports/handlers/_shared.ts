@@ -19,6 +19,13 @@ export const dateFilter = z
   }, "Invalid calendar date")
   .optional();
 
+// A crew member counts as still on board until an actual sign-off date is
+// recorded. Some flows (e.g. confirming a relief in Planning) write an empty
+// string into sign_off_date, so treat '' the same as NULL.
+export function noSignOffExpr(signOffCol: PgColumn | SQL): SQL {
+  return sql`NULLIF(${signOffCol}, '') IS NULL`;
+}
+
 export function fullNameExpr(
   first: PgColumn | SQL,
   middle: PgColumn | SQL,
