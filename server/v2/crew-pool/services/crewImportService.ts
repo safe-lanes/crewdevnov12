@@ -8,6 +8,7 @@
  * If ANY row fails, ALL rows are rolled back. Zero partial data.
  */
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { ilike, eq } from "drizzle-orm";
@@ -130,6 +131,8 @@ export interface ValidationError {
   column: string;
   value: string | null;
   message: string;
+  /** "manual_value" = manually typed value not found in the dropdown/master list */
+  errorType?: "manual_value" | "standard";
 }
 
 export interface ValidationResult {
@@ -237,7 +240,7 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
     } else {
       const natUuid = await resolveMasterDataUuid(nationality, "nationality");
       if (!natUuid) {
-        errors.push({ sheet: "Crew Details", row: rowNum, column: "Nationality", value: nationality, message: `Nationality "${nationality}" not found. Check the 'Instructions & Reference' sheet for valid values.` });
+        errors.push({ sheet: "Crew Details", row: rowNum, column: "Nationality", value: nationality, message: `Nationality "${nationality}" not found. Check the 'Instructions & Reference' sheet for valid values.`, errorType: "manual_value" });
       }
     }
 
@@ -275,7 +278,7 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
     if (vesselType) {
       const vtUuid = await resolveMasterDataUuid(vesselType, "vesselType");
       if (!vtUuid) {
-        errors.push({ sheet: "Crew Details", row: rowNum, column: "Vessel Type Experience", value: vesselType, message: `Vessel Type "${vesselType}" not found. Check the 'Instructions & Reference' sheet for valid values.` });
+        errors.push({ sheet: "Crew Details", row: rowNum, column: "Vessel Type Experience", value: vesselType, message: `Vessel Type "${vesselType}" not found. Check the 'Instructions & Reference' sheet for valid values.`, errorType: "manual_value" });
       }
     }
 
@@ -283,7 +286,7 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
     if (countryRes) {
       const cUuid = await resolveCountryUuid(countryRes);
       if (!cUuid) {
-        errors.push({ sheet: "Crew Details", row: rowNum, column: "Country of Residence", value: countryRes, message: `Country "${countryRes}" not found. Check the 'Instructions & Reference' sheet for valid values.` });
+        errors.push({ sheet: "Crew Details", row: rowNum, column: "Country of Residence", value: countryRes, message: `Country "${countryRes}" not found. Check the 'Instructions & Reference' sheet for valid values.`, errorType: "manual_value" });
       }
     }
 
@@ -291,7 +294,7 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
     if (birthCountry) {
       const cUuid = await resolveCountryUuid(birthCountry);
       if (!cUuid) {
-        errors.push({ sheet: "Crew Details", row: rowNum, column: "Place of Birth (Country)", value: birthCountry, message: `Country "${birthCountry}" not found. Check the 'Instructions & Reference' sheet for valid values.` });
+        errors.push({ sheet: "Crew Details", row: rowNum, column: "Place of Birth (Country)", value: birthCountry, message: `Country "${birthCountry}" not found. Check the 'Instructions & Reference' sheet for valid values.`, errorType: "manual_value" });
       }
     }
 
@@ -316,22 +319,22 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
     // Dropdown field value validations
     const gender = getCellValue(row, "Gender");
     if (gender && !["male", "female"].includes(gender.toLowerCase())) {
-      errors.push({ sheet: "Crew Details", row: rowNum, column: "Gender", value: gender, message: `Gender must be 'Male' or 'Female'` });
+      errors.push({ sheet: "Crew Details", row: rowNum, column: "Gender", value: gender, message: `Gender must be 'Male' or 'Female'`, errorType: "manual_value" });
     }
 
     const engProf = getCellValue(row, "English Proficiency");
     if (engProf && !["good", "fair", "poor"].includes(engProf.toLowerCase())) {
-      errors.push({ sheet: "Crew Details", row: rowNum, column: "English Proficiency", value: engProf, message: `English Proficiency must be 'Good', 'Fair', or 'Poor'` });
+      errors.push({ sheet: "Crew Details", row: rowNum, column: "English Proficiency", value: engProf, message: `English Proficiency must be 'Good', 'Fair', or 'Poor'`, errorType: "manual_value" });
     }
 
     const marital = getCellValue(row, "Marital Status");
     if (marital && !["single", "married", "divorced", "widowed"].includes(marital.toLowerCase())) {
-      errors.push({ sheet: "Crew Details", row: rowNum, column: "Marital Status", value: marital, message: `Marital Status must be 'Single', 'Married', 'Divorced', or 'Widowed'` });
+      errors.push({ sheet: "Crew Details", row: rowNum, column: "Marital Status", value: marital, message: `Marital Status must be 'Single', 'Married', 'Divorced', or 'Widowed'`, errorType: "manual_value" });
     }
 
     const statusVal = getCellValue(row, "Current Status");
     if (statusVal && !["on board", "on leave", "available", "in transit", "inactive", "terminated", "terminated - nfr"].includes(statusVal.toLowerCase())) {
-      errors.push({ sheet: "Crew Details", row: rowNum, column: "Current Status", value: statusVal, message: `Current Status must be 'On Board', 'On Leave', 'Available', 'In Transit', 'Inactive', 'Terminated', or 'Terminated - NFR'` });
+      errors.push({ sheet: "Crew Details", row: rowNum, column: "Current Status", value: statusVal, message: `Current Status must be 'On Board', 'On Leave', 'Available', 'In Transit', 'Inactive', 'Terminated', or 'Terminated - NFR'`, errorType: "manual_value" });
     }
   }
 
@@ -387,13 +390,13 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
     if (vt) {
       const vtUuid = await resolveMasterDataUuid(vt, "vesselType");
       if (!vtUuid) {
-        errors.push({ sheet: "Sea Service History", row: i + 2, column: "Vessel Type", value: vt, message: `Vessel Type "${vt}" not found. Check the 'Instructions & Reference' sheet.` });
+        errors.push({ sheet: "Sea Service History", row: i + 2, column: "Vessel Type", value: vt, message: `Vessel Type "${vt}" not found. Check the 'Instructions & Reference' sheet.`, errorType: "manual_value" });
       }
     }
 
     const sType = getCellValue(row, "Company or External?");
     if (sType && !["company", "external"].includes(sType.toLowerCase())) {
-      errors.push({ sheet: "Sea Service History", row: i + 2, column: "Company or External?", value: sType, message: `"Company or External?" must be 'Company' or 'External'` });
+      errors.push({ sheet: "Sea Service History", row: i + 2, column: "Company or External?", value: sType, message: `"Company or External?" must be 'Company' or 'External'`, errorType: "manual_value" });
     }
   }
 
@@ -868,25 +871,54 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
 // ERROR REPORT GENERATOR
 // ============================================================================
 
-export function generateErrorReport(errors: ValidationError[]): Buffer {
-  const wb = XLSX.utils.book_new();
+export async function generateErrorReport(errors: ValidationError[]): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Import Errors");
 
-  const rows = [
-    ["Sheet", "Row", "Column", "Value", "Error Message"],
-    ...errors.map(e => [e.sheet, e.row, e.column, e.value || "", e.message]),
+  ws.columns = [
+    { header: "Sheet", key: "sheet", width: 25 },
+    { header: "Row", key: "row", width: 8 },
+    { header: "Column", key: "column", width: 30 },
+    { header: "Value", key: "value", width: 25 },
+    { header: "Error Type", key: "errorType", width: 22 },
+    { header: "Error Message", key: "message", width: 70 },
   ];
 
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [
-    { wch: 25 },
-    { wch: 6 },
-    { wch: 30 },
-    { wch: 25 },
-    { wch: 60 },
-  ];
+  // Header styling
+  const headerRow = ws.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.eachCell(cell => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD9E1F2" } };
+    cell.border = { bottom: { style: "medium", color: { argb: "FF404040" } } };
+  });
 
-  XLSX.utils.book_append_sheet(wb, ws, "Import Errors");
+  const MANUAL_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFC000" } }; // orange
+  const STANDARD_FILL: ExcelJS.FillPattern = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFC7CE" } }; // light red
 
-  const xlsxBuffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  for (const e of errors) {
+    const isManual = e.errorType === "manual_value";
+    const row = ws.addRow({
+      sheet: e.sheet,
+      row: e.row,
+      column: e.column,
+      value: e.value || "",
+      errorType: isManual ? "Unrecognized manual value" : "Data error",
+      message: e.message,
+    });
+    row.eachCell(cell => {
+      cell.fill = isManual ? MANUAL_FILL : STANDARD_FILL;
+    });
+  }
+
+  // Legend
+  ws.addRow([]);
+  const legendTitle = ws.addRow(["Legend"]);
+  legendTitle.font = { bold: true };
+  const legendManual = ws.addRow(["Orange = Manually typed value not found in dropdown/master list. Not imported — pick a valid value or ask an admin to add it to master data."]);
+  legendManual.getCell(1).fill = MANUAL_FILL;
+  const legendStandard = ws.addRow(["Red = Other data error (missing required field, invalid date format, duplicate, etc.)"]);
+  legendStandard.getCell(1).fill = STANDARD_FILL;
+
+  const xlsxBuffer = await wb.xlsx.writeBuffer();
   return Buffer.from(xlsxBuffer);
 }

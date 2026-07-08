@@ -63,7 +63,7 @@ export const crewImportController = {
 
       if (!result.isValid) {
         // Generate downloadable error report
-        const errorReportBuffer = generateErrorReport(result.errors);
+        const errorReportBuffer = await generateErrorReport(result.errors);
         const errorReportBase64 = errorReportBuffer.toString("base64");
 
         return res.json({
@@ -108,7 +108,7 @@ export const crewImportController = {
       if (!result.success) {
         // Generate downloadable error report
         if (result.errors.length > 0) {
-          const errorReportBuffer = generateErrorReport(result.errors);
+          const errorReportBuffer = await generateErrorReport(result.errors);
           const errorReportBase64 = errorReportBuffer.toString("base64");
 
           return res.status(400).json({

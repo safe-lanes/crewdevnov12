@@ -271,7 +271,11 @@ function buildInstructionsSheet(
     "COLOR LEGEND",
     "Yellow background = Required field (must be filled)",
     "White/Gray background = Optional field (can be left blank)",
+    "Orange cell = Manually typed value not found in the dropdown list (will be reported as an error on upload)",
     "Row 2 (example) = Sample data — DELETE before uploading",
+    "",
+    "NOTE: You may type values manually instead of using the dropdowns. Manually typed values that do not match",
+    "the Reference Data lists will be highlighted in orange and rejected during import (listed in the error report).",
     "",
   ];
 
@@ -443,6 +447,25 @@ export async function generateImportTemplate(): Promise<Buffer> {
     return columnsList.findIndex(c => c.header === header) + 1;
   };
 
+  // Convert a 1-based column index to an Excel column letter (1 → A, 27 → AA)
+  const colLetter = (idx: number): string => {
+    let letter = "";
+    let n = idx;
+    while (n > 0) {
+      const rem = (n - 1) % 26;
+      letter = String.fromCharCode(65 + rem) + letter;
+      n = Math.floor((n - 1) / 26);
+    }
+    return letter;
+  };
+
+  // Orange fill for manually typed values not present in the dropdown list
+  const MANUAL_VALUE_FILL: ExcelJS.FillPattern = {
+    type: "pattern",
+    pattern: "solid",
+    bgColor: { argb: "FFFFC000" },
+  };
+
   const applyDropdown = (ws: ExcelJS.Worksheet, header: string, columnsList: typeof CREW_DETAILS_COLUMNS, formula: string) => {
     const colIdx = getColIndex(columnsList, header);
     if (colIdx > 0) {
@@ -451,12 +474,25 @@ export async function generateImportTemplate(): Promise<Buffer> {
           type: 'list',
           allowBlank: true,
           formulae: [formula],
-          showErrorMessage: true,
-          errorStyle: 'warning',
-          errorTitle: 'Invalid Selection',
-          error: 'Please select a valid option from the dropdown list.'
+          // Non-blocking: user may type manual values; they get highlighted instead
+          showErrorMessage: false,
         };
       }
+
+      // Conditional formatting: highlight cells whose value is not in the reference list
+      const letter = colLetter(colIdx);
+      const refRange = formula.replace(/^=/, ""); // e.g. 'Instructions & Reference'!$B$27:$B$50
+      ws.addConditionalFormatting({
+        ref: `${letter}3:${letter}200`,
+        rules: [
+          {
+            type: "expression",
+            priority: 1,
+            formulae: [`AND($${letter}3<>"",COUNTIF(${refRange},$${letter}3)=0)`],
+            style: { fill: MANUAL_VALUE_FILL },
+          },
+        ],
+      });
     }
   };
 
@@ -482,14 +518,29 @@ export async function generateImportTemplate(): Promise<Buffer> {
   // Conditional Vessel Name Dropdown: If Column B is "Company", show Company Vessels list dropdown, else free text
   const vesselColIdx = getColIndex(SEA_SERVICE_COLUMNS, "Vessel Name");
   if (vesselColIdx > 0) {
+    const vesselListRange = `'Instructions & Reference'!$M$27:$M$${refStartRow + refData.vessels.length - 1}`;
     for (let row = 3; row <= 200; row++) {
       seaSheet.getCell(row, vesselColIdx).dataValidation = {
         type: 'list',
         allowBlank: true,
-        formulae: [`=IF($B${row}="Company", 'Instructions & Reference'!$M$27:$M$${refStartRow + refData.vessels.length - 1}, "")`],
+        formulae: [`=IF($B${row}="Company", ${vesselListRange}, "")`],
         showErrorMessage: false // Allow custom text if External service type
       };
     }
+
+    // Highlight manually typed vessel names for "Company" rows that don't match the vessel list
+    const vLetter = colLetter(vesselColIdx);
+    seaSheet.addConditionalFormatting({
+      ref: `${vLetter}3:${vLetter}200`,
+      rules: [
+        {
+          type: "expression",
+          priority: 1,
+          formulae: [`AND($B3="Company",$${vLetter}3<>"",COUNTIF(${vesselListRange},$${vLetter}3)=0)`],
+          style: { fill: MANUAL_VALUE_FILL },
+        },
+      ],
+    });
   }
 
   // Write to buffer
