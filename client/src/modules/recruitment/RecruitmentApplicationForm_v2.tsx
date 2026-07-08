@@ -8917,7 +8917,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <div>
                     <div className="flex justify-between items-center mb-4">
                       <Label className="text-xs text-gray-500 tracking-wide flex-1 pr-4">
-                        C3.1 Recruitment confirmed:
+                        C3.1 Recruitment confirmed: <span className="text-red-500">*</span>
                       </Label>
                       <div className="flex items-center min-w-[300px]">
                         <div className="flex gap-6">
@@ -9032,6 +9032,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <Button 
                   className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
                   onClick={() => {
+                    if (!formData.c3RecruitmentStatus) {
+                      toast({
+                        title: "Validation Error",
+                        description: "Please select a recruitment decision (Yes, Waitlist, or Rejected) before submitting.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
                     if (!validateC3RecruitmentDate()) return;
                     const currentDate = formatDate(new Date());
                     setFormData(prev => ({ ...prev, c3SubmittedBy: currentUserDisplay, c3SubmittedDate: currentDate }));
