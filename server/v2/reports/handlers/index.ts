@@ -19,6 +19,7 @@ import {
   restHourComplianceReport,
 } from "./restHours";
 import { certsExpiringReport } from "./training";
+import { daViolationsReport } from "./drugAlcohol";
 import {
   crewOnBoardReport,
   vesselManningStatusReport,
@@ -69,6 +70,9 @@ export function registerAllReports(): void {
 
   // Training
   registerReport(certsExpiringReport);
+
+  // Drug & Alcohol
+  registerReport(daViolationsReport);
 
   // Vessel
   registerReport(crewOnBoardReport);

@@ -132,17 +132,16 @@ const REPORT_TREE: ReportCategory[] = [
       { id: "appr-scores-summary", label: "Appraisal Scores Summary" },
     ],
   },
-  // Temporarily hidden from Reports sidebar (uncomment to restore).
-  // Only child ("D&A Tests Due") is hidden, so the whole category is hidden
-  // to avoid showing an empty category.
-  // {
-  //   id: "drug-alcohol",
-  //   label: "Drug & Alcohol",
-  //   icon: FlaskConical,
-  //   children: [
-  //     { id: "da-tests-due", label: "D&A Tests Due" },
-  //   ],
-  // },
+  {
+    id: "drug-alcohol",
+    label: "Drug & Alcohol",
+    icon: FlaskConical,
+    children: [
+      // Temporarily hidden from Reports sidebar (uncomment to restore)
+      // { id: "da-tests-due", label: "D&A Tests Due" },
+      { id: "da-violations", label: "D&A Violations" },
+    ],
+  },
   {
     id: "rest-hours",
     label: "Rest Hours",
@@ -168,6 +167,7 @@ type FilterKind =
   | "nationality"
   | "source"
   | "dateRange"
+  | "testType"
   | "withinDays"
   | "byDays"
   | "onBoard"
@@ -324,6 +324,11 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
     { kind: "rank", label: "Filter by Rank" },
     { kind: "withinDays", label: "Within", defaultValue: 30 },
   ],
+  "da-violations": [
+    { kind: "vessel", label: "Filter by Vessel" },
+    { kind: "testType", label: "Test Type" },
+    { kind: "dateRange", label: "Test Date Range" },
+  ],
 
   // Rest Hours
   "rh-violations": [
@@ -347,6 +352,14 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
 // Rank / vessel / nationality lists are loaded from the live master data hooks
 // (see ReportsContent) and supplied to FilterControl via the `options` prop.
 const SOURCE_OPTIONS = ["Direct", "Agency", "Referral", "Job Portal", "Walk-in"];
+// Same test types (values + labels) as the dashboard D&A Violations drilldown.
+const TEST_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "annual", label: "Annual" },
+  { value: "periodic", label: "Periodic" },
+  { value: "monthly", label: "Monthly" },
+  { value: "post-incident", label: "Post-Incident" },
+  { value: "others", label: "Others" },
+];
 const STATUS_OPTIONS = ["All", "Pending", "In Progress", "Completed"];
 
 interface DynamicOptions {
@@ -523,6 +536,27 @@ function FilterControl({
       return renderSelect(filter.label, SOURCE_OPTIONS);
     case "status":
       return renderSelect(filter.label, STATUS_OPTIONS);
+    case "testType": {
+      const current = typeof value === "string" ? value : undefined;
+      return (
+        <Select value={current} onValueChange={(v) => onChange(v)}>
+          <SelectTrigger className="h-8 w-[180px]" data-testid={testIdBase}>
+            <SelectValue placeholder={filter.label} />
+          </SelectTrigger>
+          <SelectContent>
+            {TEST_TYPE_OPTIONS.map((opt) => (
+              <SelectItem
+                key={opt.value}
+                value={opt.value}
+                data-testid={`${testIdBase}-option-${opt.value}`}
+              >
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    }
     case "dateRange": {
       const range =
         value && typeof value === "object" && "from" in value
@@ -622,6 +656,7 @@ function buildFiltersPayload(
       case "nationality":
       case "source":
       case "status":
+      case "testType":
       case "onBoard":
       case "onLeave":
         out[d.kind] = v;
