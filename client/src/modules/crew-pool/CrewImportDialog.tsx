@@ -348,6 +348,10 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                   <span className="font-semibold text-gray-800 text-sm">{validationResult.summary.crewCount}</span>
                 </div>
                 <div className="bg-white p-2.5 rounded border border-emerald-100">
+                  <span className="text-gray-500 block">Children Details</span>
+                  <span className="font-semibold text-gray-800 text-sm" data-testid="text-children-count">{validationResult.summary.childrenCount}</span>
+                </div>
+                <div className="bg-white p-2.5 rounded border border-emerald-100">
                   <span className="text-gray-500 block">Emergency Contacts</span>
                   <span className="font-semibold text-gray-800 text-sm">{validationResult.summary.nokCount}</span>
                 </div>

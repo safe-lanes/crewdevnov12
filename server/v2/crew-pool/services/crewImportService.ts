@@ -15,6 +15,7 @@ import { ilike, eq } from "drizzle-orm";
 import {
   crewMembersV2,
   crewPersonalDetails,
+  crewChildren,
   crewAddresses,
   crewFamilyInfo,
   crewNextOfKin,
@@ -115,6 +116,26 @@ export function parseDate(value: any): string | null {
 // COLUMN MAPPING — Simple headers → internal fields
 // ============================================================================
 
+/**
+ * Resolve a language name to its UUID from the master_languages table.
+ */
+async function resolveLanguageUuid(value: string | null | undefined): Promise<string | null> {
+  if (!value || value.trim() === "") return null;
+  try {
+    const db = getDb();
+    const { masterLanguages } = await import("../../../../shared/schema");
+    const result = await db
+      .select({ uuid: masterLanguages.langUuid })
+      .from(masterLanguages)
+      .where(eq(masterLanguages.languageName, value.trim()))
+      .limit(1);
+    return result[0]?.uuid || null;
+  } catch (error) {
+    console.error(`Error resolving language UUID for value "${value}":`, error);
+    return null;
+  }
+}
+
 function getCellValue(row: Record<string, any>, header: string): string | null {
   const val = row[header];
   if (val === undefined || val === null || String(val).trim() === "") return null;
@@ -139,6 +160,7 @@ export interface ValidationResult {
   isValid: boolean;
   summary: {
     crewCount: number;
+    childrenCount: number;
     nokCount: number;
     documentsCount: number;
     visasCount: number;
@@ -154,6 +176,7 @@ export interface ImportResult {
   success: boolean;
   imported: {
     crew: number;
+    children: number;
     nok: number;
     documents: number;
     visas: number;
@@ -172,6 +195,7 @@ export interface ImportResult {
 
 interface ParsedData {
   crewRows: Record<string, any>[];
+  childrenRows: Record<string, any>[];
   nokRows: Record<string, any>[];
   documentRows: Record<string, any>[];
   visaRows: Record<string, any>[];
@@ -196,6 +220,7 @@ function parseExcelBuffer(buffer: Buffer): ParsedData {
 
   return {
     crewRows: readSheet("Crew Details"),
+    childrenRows: readSheet("Children Details"),
     nokRows: readSheet("Emergency Contact"),
     documentRows: readSheet("Travel Documents"),
     visaRows: readSheet("Travel Visas"),
@@ -323,8 +348,20 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
     }
 
     const engProf = getCellValue(row, "English Proficiency");
-    if (engProf && !["good", "fair", "poor"].includes(engProf.toLowerCase())) {
-      errors.push({ sheet: "Crew Details", row: rowNum, column: "English Proficiency", value: engProf, message: `English Proficiency must be 'Good', 'Fair', or 'Poor'`, errorType: "manual_value" });
+    if (engProf && !["none", "basic", "intermediate", "fluent", "native"].includes(engProf.toLowerCase())) {
+      errors.push({ sheet: "Crew Details", row: rowNum, column: "English Proficiency", value: engProf, message: `English Proficiency must be 'None', 'Basic', 'Intermediate', 'Fluent', or 'Native'`, errorType: "manual_value" });
+    }
+
+    // Foreign Languages: comma-separated list, each value must match the languages master
+    const foreignLangs = getCellValue(row, "Foreign Languages");
+    if (foreignLangs) {
+      const langNames = foreignLangs.split(",").map(s => s.trim()).filter(Boolean);
+      for (const langName of langNames) {
+        const uuid = await resolveLanguageUuid(langName);
+        if (!uuid) {
+          errors.push({ sheet: "Crew Details", row: rowNum, column: "Foreign Languages", value: langName, message: `Language "${langName}" not found. Check the 'Instructions & Reference' sheet for valid values.`, errorType: "manual_value" });
+        }
+      }
     }
 
     const marital = getCellValue(row, "Marital Status");
@@ -375,6 +412,7 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
   }
 
   // Validate sub-sheets
+  validateSubSheet(data.childrenRows, "Children Details", ["First Name"], ["Date of Birth"]);
   validateSubSheet(data.nokRows, "Emergency Contact", [], []);
   validateSubSheet(data.documentRows, "Travel Documents", ["Document Name", "Document Number"], ["Date of Issue", "Date of Expiry"]);
   validateSubSheet(data.visaRows, "Travel Visas", ["Country", "Visa Type", "Visa Number / Serial Number"], ["Date of Issue", "Date of Expiry"]);
@@ -382,6 +420,14 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
   validateSubSheet(data.seaServiceRows, "Sea Service History", ["Vessel Name", "Sign On Date"], ["Sign On Date", "Sign Off Date"]);
   validateSubSheet(data.trainingRows, "Training Courses", ["Course Name"], ["Date of Issue", "Date of Expiry"]);
   validateSubSheet(data.educationRows, "Education Details", ["Institution", "Qualifications / Degree"], ["Date of Completion"]);
+
+  // Validate gender values in Children Details
+  for (let i = 0; i < data.childrenRows.length; i++) {
+    const gender = getCellValue(data.childrenRows[i], "Gender");
+    if (gender && !["male", "female"].includes(gender.toLowerCase())) {
+      errors.push({ sheet: "Children Details", row: i + 2, column: "Gender", value: gender, message: `Gender must be 'Male' or 'Female'`, errorType: "manual_value" });
+    }
+  }
 
   // Validate vessel types in sea service
   for (let i = 0; i < data.seaServiceRows.length; i++) {
@@ -404,6 +450,7 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
     isValid: errors.length === 0,
     summary: {
       crewCount: data.crewRows.length,
+      childrenCount: data.childrenRows.length,
       nokCount: data.nokRows.length,
       documentsCount: data.documentRows.length,
       visasCount: data.visaRows.length,
@@ -462,7 +509,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
   if (!validation.isValid) {
     return {
       success: false,
-      imported: { crew: 0, nok: 0, documents: 0, visas: 0, licenses: 0, seaService: 0, training: 0, education: 0 },
+      imported: { crew: 0, children: 0, nok: 0, documents: 0, visas: 0, licenses: 0, seaService: 0, training: 0, education: 0 },
       seafarerCodes: [],
       errors: validation.errors,
     };
@@ -478,7 +525,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
   try {
     return await db.transaction(async (tx: any) => {
       const now = new Date();
-      const counts = { crew: 0, nok: 0, documents: 0, visas: 0, licenses: 0, seaService: 0, training: 0, education: 0 };
+      const counts = { crew: 0, children: 0, nok: 0, documents: 0, visas: 0, licenses: 0, seaService: 0, training: 0, education: 0 };
 
       // ---- STEP 1: Create crew members ----
       for (let i = 0; i < data.crewRows.length; i++) {
@@ -533,6 +580,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
         const placeOfBirthCity = getCellValue(row, "Place of Birth (City)");
         const nativeLanguage = getCellValue(row, "Native Language");
         const englishProficiency = getCellValue(row, "English Proficiency");
+        const foreignLanguages = getCellValue(row, "Foreign Languages");
         const manningAgent = getCellValue(row, "Manning Agent");
         const crewPool = getCellValue(row, "Crew Pool");
         const birthCountry = getCellValue(row, "Place of Birth (Country)");
@@ -553,7 +601,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
         }
 
         const hasPersonalDetails = heightCm || weightKg || placeOfBirthCity || nativeLanguage ||
-          englishProficiency || manningAgent || crewPool || birthCountry;
+          foreignLanguages || englishProficiency || manningAgent || crewPool || birthCountry;
 
         if (hasPersonalDetails) {
           // Calculate BMI if both height and weight are provided
@@ -575,6 +623,9 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
             placeOfBirthCity,
             placeOfBirthCountryUuid: birthCountryUuid,
             nativeLanguageUuid,
+            foreignLanguages: foreignLanguages
+              ? foreignLanguages.split(",").map(s => s.trim()).filter(Boolean).join(", ")
+              : null,
             englishProficiency,
             manningAgent,
             crewPool,
@@ -667,6 +718,26 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
       function resolveCrewUuid(seafarerCode: string | null): string | null {
         if (!seafarerCode) return null;
         return empNoToCrewUuid.get(seafarerCode) || null;
+      }
+
+      // Children Details
+      for (const row of data.childrenRows) {
+        const code = getCellValue(row, "Seafarer Code");
+        const crewUuid = resolveCrewUuid(code);
+        if (!crewUuid) continue; // Skip if no matching crew
+
+        await tx.insert(crewChildren).values({
+          childUuid: uuidv4(),
+          crewUuid,
+          firstName: getCellValue(row, "First Name"),
+          middleName: getCellValue(row, "Middle Name"),
+          familyName: getCellValue(row, "Family Name"),
+          dob: parseDate(getCellValue(row, "Date of Birth")),
+          gender: getCellValue(row, "Gender"),
+          createdAt: now,
+          updatedAt: now,
+        });
+        counts.children++;
       }
 
       // Next of Kin
@@ -854,7 +925,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
     console.error("Crew import failed (transaction rolled back):", error);
     return {
       success: false,
-      imported: { crew: 0, nok: 0, documents: 0, visas: 0, licenses: 0, seaService: 0, training: 0, education: 0 },
+      imported: { crew: 0, children: 0, nok: 0, documents: 0, visas: 0, licenses: 0, seaService: 0, training: 0, education: 0 },
       seafarerCodes: [],
       errors: [{
         sheet: "System",

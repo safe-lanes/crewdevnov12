@@ -47,7 +47,8 @@ export const CREW_DETAILS_COLUMNS = [
   { header: "Height (cm)", required: false, example: "175", note: "" },
   { header: "Weight (kg)", required: false, example: "72", note: "" },
   { header: "Native Language", required: false, example: "Hindi", note: "Must match Reference Data sheet" },
-  { header: "English Proficiency", required: false, example: "Good", note: "Good / Fair / Poor" },
+  { header: "Foreign Languages", required: false, example: "English, French", note: "Comma-separated; each must match Reference Data sheet" },
+  { header: "English Proficiency", required: false, example: "Fluent", note: "None / Basic / Intermediate / Fluent / Native" },
   { header: "Marital Status", required: false, example: "Married", note: "Single / Married / Divorced / Widowed" },
   { header: "No. of Dependent Children", required: false, example: "2", note: "" },
   { header: "Manning Agent", required: false, example: "ABC Manning", note: "" },
@@ -58,6 +59,15 @@ export const CREW_DETAILS_COLUMNS = [
   { header: "Spouse First Name", required: false, example: "Priya", note: "" },
   { header: "Spouse Family Name", required: false, example: "Sharma", note: "" },
   { header: "Spouse Date of Birth", required: false, example: "20-Jun-1988", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+];
+
+export const CHILDREN_COLUMNS = [
+  { header: "Seafarer Code", required: true, example: "A000001", note: "Must match Crew Details sheet" },
+  { header: "First Name", required: true, example: "Aarav", note: "" },
+  { header: "Middle Name", required: false, example: "Kumar", note: "" },
+  { header: "Family Name", required: false, example: "Sharma", note: "" },
+  { header: "Date of Birth", required: false, example: "10-Aug-2015", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Gender", required: false, example: "Male", note: "Male / Female" },
 ];
 
 export const NOK_COLUMNS = [
@@ -342,7 +352,7 @@ function buildInstructionsSheet(
     ws.getCell(valStartRow + idx, 6).value = val;
   });
 
-  const engProfs = ["Good", "Fair", "Poor"];
+  const engProfs = ["None", "Basic", "Intermediate", "Fluent", "Native"];
   engProfs.forEach((val, idx) => {
     ws.getCell(valStartRow + idx, 7).value = val;
   });
@@ -408,10 +418,13 @@ export async function generateImportTemplate(): Promise<Buffer> {
   // Sheet 2: Crew Details
   const crewSheet = buildDataSheet(wb, "Crew Details", CREW_DETAILS_COLUMNS);
 
-  // Sheet 3: Emergency Contact
+  // Sheet 3: Children Details
+  const childrenSheet = buildDataSheet(wb, "Children Details", CHILDREN_COLUMNS);
+
+  // Sheet 4: Emergency Contact
   const nokSheet = buildDataSheet(wb, "Emergency Contact", NOK_COLUMNS);
 
-  // Sheet 4: Travel Documents
+  // Sheet 5: Travel Documents
   const docsSheet = buildDataSheet(wb, "Travel Documents", DOCUMENTS_COLUMNS);
 
   // Sheet 5: Travel Visas
@@ -436,7 +449,7 @@ export async function generateImportTemplate(): Promise<Buffer> {
   const countryFormula = `='Instructions & Reference'!$D$27:$D$${refStartRow + refData.countries.length - 1}`;
   const langFormula = `='Instructions & Reference'!$E$27:$E$${refStartRow + refData.languages.length - 1}`;
   const genderFormula = `='Instructions & Reference'!$F$27:$F$28`;
-  const engProfFormula = `='Instructions & Reference'!$G$27:$G$29`;
+  const engProfFormula = `='Instructions & Reference'!$G$27:$G$31`;
   const maritalFormula = `='Instructions & Reference'!$H$27:$H$30`;
   const statusFormula = `='Instructions & Reference'!$I$27:$I$33`;
   const coExtFormula = `='Instructions & Reference'!$J$27:$J$28`;
@@ -509,6 +522,37 @@ export async function generateImportTemplate(): Promise<Buffer> {
   applyDropdown(crewSheet, "Present Rank / Designation", CREW_DETAILS_COLUMNS, rankFormula);
   applyDropdown(crewSheet, "Rank Applied For", CREW_DETAILS_COLUMNS, rankFormula);
   applyDropdown(crewSheet, "Manning Agent", CREW_DETAILS_COLUMNS, manningAgentFormula);
+
+  // Foreign Languages: dropdown picks one language, but multiple comma-separated
+  // values may be typed manually. Only highlight single values not in the list
+  // (comma-separated combos are validated server-side on upload).
+  const flColIdx = getColIndex(CREW_DETAILS_COLUMNS, "Foreign Languages");
+  if (flColIdx > 0) {
+    for (let row = 3; row <= 200; row++) {
+      crewSheet.getCell(row, flColIdx).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [langFormula],
+        showErrorMessage: false,
+      };
+    }
+    const flLetter = colLetter(flColIdx);
+    const langRange = langFormula.replace(/^=/, "");
+    crewSheet.addConditionalFormatting({
+      ref: `${flLetter}3:${flLetter}200`,
+      rules: [
+        {
+          type: "expression",
+          priority: 1,
+          formulae: [`AND($${flLetter}3<>"",ISERROR(FIND(",",$${flLetter}3)),COUNTIF(${langRange},$${flLetter}3)=0)`],
+          style: { fill: MANUAL_VALUE_FILL },
+        },
+      ],
+    });
+  }
+
+  // Children Details sheet validations
+  applyDropdown(childrenSheet, "Gender", CHILDREN_COLUMNS, genderFormula);
 
   // Sea Service History sheet validations
   applyDropdown(seaSheet, "Company or External?", SEA_SERVICE_COLUMNS, coExtFormula);
