@@ -1,19 +1,15 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardCard } from "@/modules/dashboard/DashboardCard";
-import {
-  ManagementFilterBar,
-  EMPTY_MANAGEMENT_FILTERS,
-  type ManagementFilters,
-} from "@/modules/dashboard/ManagementFilterBar";
+import { ManagementFilterBar } from "@/modules/dashboard/ManagementFilterBar";
 import { CrewRecruitmentRankChart } from "@/modules/dashboard/CrewRecruitmentRankChart";
 import { CrewPromotionsRankChart } from "@/modules/dashboard/CrewPromotionsRankChart";
 import { CrewAppraisalsRankChart } from "@/modules/dashboard/CrewAppraisalsRankChart";
 import { CrewPoolRankChart } from "@/modules/dashboard/CrewPoolRankChart";
 import { CrewRetentionMetrics } from "@/modules/dashboard/CrewRetentionMetrics";
 import { DAAnalysisMetrics } from "@/modules/dashboard/DAAnalysisMetrics";
-import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
+import { useDashboardFiltersStore } from "@/stores/dashboardFiltersStore";
 
 type DashboardTab = "management" | "operation";
 
@@ -22,15 +18,7 @@ const PLACEHOLDER_CARDS: { label: string; testId: string }[] = [];
 export const DashboardPage = () => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("management");
 
-  const defaultPeriod = useMemo<PeriodFilterValue>(() => {
-    const now = new Date();
-    return { mode: "year", year: now.getFullYear() };
-  }, []);
-
-  const [period, setPeriod] = useState<PeriodFilterValue>(defaultPeriod);
-  const [filters, setFilters] = useState<ManagementFilters>(
-    EMPTY_MANAGEMENT_FILTERS,
-  );
+  const { period, filters, setPeriod, setFilters, clearFilters } = useDashboardFiltersStore();
 
   return (
     <div
@@ -79,10 +67,7 @@ export const DashboardPage = () => {
             onPeriodChange={setPeriod}
             filters={filters}
             onFiltersChange={setFilters}
-            onClear={() => {
-              setPeriod(defaultPeriod);
-              setFilters(EMPTY_MANAGEMENT_FILTERS);
-            }}
+            onClear={clearFilters}
           />
           <div
             className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
