@@ -421,11 +421,18 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
   validateSubSheet(data.trainingRows, "Training Courses", ["Course Name"], ["Date of Issue", "Date of Expiry"]);
   validateSubSheet(data.educationRows, "Education Details", ["Institution", "Qualifications / Degree"], ["Date of Completion"]);
 
-  // Validate gender values in Children Details
+  // Validate Children Details: gender values + required linkage to a Crew Details row
   for (let i = 0; i < data.childrenRows.length; i++) {
     const gender = getCellValue(data.childrenRows[i], "Gender");
     if (gender && !["male", "female"].includes(gender.toLowerCase())) {
       errors.push({ sheet: "Children Details", row: i + 2, column: "Gender", value: gender, message: `Gender must be 'Male' or 'Female'`, errorType: "manual_value" });
+    }
+
+    // Children can only link to crew rows with an explicit Seafarer Code in this file
+    // (auto-generated codes are unknown at fill time), so the code must match a crew row.
+    const code = getCellValue(data.childrenRows[i], "Seafarer Code");
+    if (code && !crewCodesInFile.has(code)) {
+      errors.push({ sheet: "Children Details", row: i + 2, column: "Seafarer Code", value: code, message: `Seafarer Code "${code}" does not match any row in the Crew Details sheet` });
     }
   }
 
