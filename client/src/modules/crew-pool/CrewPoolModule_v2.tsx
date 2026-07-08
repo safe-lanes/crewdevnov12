@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { useQueryClient } from '@tanstack/react-query';
-import { FilterIcon, PlusIcon, EditIcon } from 'lucide-react';
+import { FilterIcon, PlusIcon, EditIcon, Upload } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import { format, parseISO, isValid } from 'date-fns';
@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CrewInfoForm_v2 } from './CrewInfoForm_v2';
+import { CrewImportDialog } from './CrewImportDialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
@@ -77,6 +78,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     const [showFilters, setShowFilters] = useState(true);
     const [gridApi, setGridApi] = useState<GridApi | null>(null);
     const [isCrewInfoFormOpen, setIsCrewInfoFormOpen] = useState(false);
+    const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
     const [selectedCrewMember, setSelectedCrewMember] = useState<any | null>(null);
     const viewport = useViewport();
     const viewportConfig = getViewportConfig(viewport);
@@ -1445,6 +1447,16 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                             Filters
                         </Button>
                         {selectedCrewPoolPage === "crew-database" && (permissions.length === 0 || canCreate("Crew Database")) && (
+                        <>
+                        <Button
+                            variant="outline"
+                            className="h-8 w-32 text-xs border-[#e1e8ed] text-gray-700 font-medium bg-white hover:bg-gray-50"
+                            onClick={() => setIsImportDialogOpen(true)}
+                            data-testid="button-import-crew"
+                        >
+                            <Upload className="h-3 w-3 mr-1" />
+                            Import Crew
+                        </Button>
                         <Button
                             className="h-8 w-32 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white"
                             onClick={() => {
@@ -1456,6 +1468,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                             <PlusIcon className="h-3 w-3 mr-1" />
                             New Crew
                         </Button>
+                        </>
                         )}
 
                     </div>
@@ -1469,6 +1482,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 onClose={handleCloseCrewInfoForm}
                 crewMember={selectedCrewMember}
                 onCrewMemberChange={(newCrewMember) => setSelectedCrewMember(newCrewMember)}
+            />
+
+            {/* Crew Import Dialog */}
+            <CrewImportDialog
+                isOpen={isImportDialogOpen}
+                onClose={() => setIsImportDialogOpen(false)}
             />
         </div>
     );

@@ -15,6 +15,7 @@ import {
   crewBriefingController,
   crewTransferController,
   dashboardController,
+  crewImportController,
 } from "./controllers";
 
 const router = Router();
@@ -216,5 +217,12 @@ router.get("/doctor-visits/attachments/:attUuid/raw", crewMedicalController.serv
 router.post("/transfer/recruitment", crewTransferController.transferFromRecruitment);
 router.get("/transfer/recruitment/:recCanUuid/check-duplicate", crewTransferController.checkDuplicate);
 router.post("/transfer/validate", crewTransferController.validateTransfer);
+
+// ============================================
+// CREW IMPORT (Excel/CSV)
+// ============================================
+router.get("/import/template", crewImportController.downloadTemplate);
+router.post("/import/validate", crewImportController.validate);
+router.post("/import/execute", crewImportController.execute);
 
 export default router;

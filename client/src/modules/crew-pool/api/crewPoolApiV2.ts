@@ -488,4 +488,28 @@ export const crewPoolApiV2 = {
     const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/sign-off`, data);
     return response.json();
   },
+
+  async downloadTemplate() {
+    const response = await fetch(`${V2_BASE}/import/template`);
+    if (!response.ok) throw new Error('Failed to download template');
+    return response.blob();
+  },
+
+  async validateImport(fileData: string) {
+    const response = await apiRequest('POST', `${V2_BASE}/import/validate`, { fileData });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Validation failed');
+    }
+    return response.json();
+  },
+
+  async executeImport(fileData: string) {
+    const response = await apiRequest('POST', `${V2_BASE}/import/execute`, { fileData });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Import failed');
+    }
+    return response.json();
+  },
 };
