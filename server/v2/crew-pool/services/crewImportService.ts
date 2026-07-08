@@ -254,24 +254,13 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
       errors.push({ sheet: "Crew Details", row: rowNum, column: "First Name", value: null, message: "First Name is required" });
     }
 
-    const familyName = getCellValue(row, "Last Name / Family Name");
-    if (!familyName) {
-      errors.push({ sheet: "Crew Details", row: rowNum, column: "Last Name / Family Name", value: null, message: "Last Name / Family Name is required" });
-    }
-
+    // Nationality is optional (matches Crew Pool form), but must match master data when provided
     const nationality = getCellValue(row, "Nationality");
-    if (!nationality) {
-      errors.push({ sheet: "Crew Details", row: rowNum, column: "Nationality", value: null, message: "Nationality is required" });
-    } else {
+    if (nationality) {
       const natUuid = await resolveMasterDataUuid(nationality, "nationality");
       if (!natUuid) {
         errors.push({ sheet: "Crew Details", row: rowNum, column: "Nationality", value: nationality, message: `Nationality "${nationality}" not found. Check the 'Instructions & Reference' sheet for valid values.`, errorType: "manual_value" });
       }
-    }
-
-    const rank = getCellValue(row, "Present Rank / Designation");
-    if (!rank) {
-      errors.push({ sheet: "Crew Details", row: rowNum, column: "Present Rank / Designation", value: null, message: "Present Rank / Designation is required" });
     }
 
     // Seafarer Code duplicate check (falls back to Employee ID if blank)
@@ -414,12 +403,12 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
   // Validate sub-sheets
   validateSubSheet(data.childrenRows, "Children Details", ["First Name"], ["Date of Birth"]);
   validateSubSheet(data.nokRows, "Emergency Contact", [], []);
-  validateSubSheet(data.documentRows, "Travel Documents", ["Document Name", "Document Number"], ["Date of Issue", "Date of Expiry"]);
-  validateSubSheet(data.visaRows, "Travel Visas", ["Country", "Visa Type", "Visa Number / Serial Number"], ["Date of Issue", "Date of Expiry"]);
+  validateSubSheet(data.documentRows, "Travel Documents", ["Document Name"], ["Date of Issue", "Date of Expiry"]);
+  validateSubSheet(data.visaRows, "Travel Visas", ["Country", "Visa Type"], ["Date of Issue", "Date of Expiry"]);
   validateSubSheet(data.licenseRows, "Licenses & Certificates", ["Certificate / Document Name"], ["Date of Issue", "Date of Expiry"]);
-  validateSubSheet(data.seaServiceRows, "Sea Service History", ["Vessel Name", "Sign On Date"], ["Sign On Date", "Sign Off Date"]);
+  validateSubSheet(data.seaServiceRows, "Sea Service History", ["Vessel Name", "Vessel Type", "Rank Served", "Sign On Date", "Sign Off Date"], ["Sign On Date", "Sign Off Date"]);
   validateSubSheet(data.trainingRows, "Training Courses", ["Course Name"], ["Date of Issue", "Date of Expiry"]);
-  validateSubSheet(data.educationRows, "Education Details", ["Institution", "Qualifications / Degree"], ["Date of Completion"]);
+  validateSubSheet(data.educationRows, "Education Details", ["Qualifications / Degree"], ["Date of Completion"]);
 
   // Validate Children Details: gender values + required linkage to a Crew Details row
   for (let i = 0; i < data.childrenRows.length; i++) {
