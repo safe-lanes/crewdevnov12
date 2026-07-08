@@ -3405,6 +3405,15 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       return;
     }
 
+    if (isMainSubmit && (!formData.selectedApproversForSubmission || formData.selectedApproversForSubmission.length === 0)) {
+      toast({
+        title: "No Approver Selected",
+        description: "Please select at least one approver before submitting for approval.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsSavingScreening(true);
 
@@ -8592,7 +8601,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     {/* Submit for Approval to */}
                     <div className="pt-4 border-t border-gray-200">
                       <div className="flex items-center gap-4">
-                        <Label className="text-sm text-gray-600 whitespace-nowrap">Submit for Approval to:</Label>
+                        <Label className="text-sm text-gray-600 whitespace-nowrap">Submit for Approval to: <span className="text-red-500">*</span></Label>
                         <div className="relative flex-1 max-w-md">
                           <Popover>
                             <PopoverTrigger asChild>
