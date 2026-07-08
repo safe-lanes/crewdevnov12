@@ -63,8 +63,10 @@ export function DrugsAlcoholModule_v2() {
         const recordUuid = sp.get('recordUuid');
         const page = sp.get('page');
         if (!recordUuid) return null;
-        return { recordUuid, page };
+        return { recordUuid, page, from: sp.get('from') };
     }, []);
+
+    const [fromDashboard] = useState(() => initialDeepLink?.from === 'dashboard');
 
     // Strip deep-link params from the URL synchronously on mount, before any
     // async work has a chance to run. This keeps wouter's cached location
@@ -73,7 +75,7 @@ export function DrugsAlcoholModule_v2() {
         if (!initialDeepLink || typeof window === 'undefined') return;
         const sp = new URLSearchParams(window.location.search);
         let changed = false;
-        for (const key of ['recordUuid', 'page']) {
+        for (const key of ['recordUuid', 'page', 'from']) {
             if (sp.has(key)) { sp.delete(key); changed = true; }
         }
         if (changed) {
@@ -236,6 +238,9 @@ export function DrugsAlcoholModule_v2() {
         setFormTestType(undefined);
         setFormVesselId(undefined);
         setEditingRecordUuid(undefined);
+        if (fromDashboard && typeof window !== 'undefined') {
+            window.history.back();
+        }
     };
 
     const transformFormDataForAPI = (data: any, status: 'draft' | 'submitted') => {

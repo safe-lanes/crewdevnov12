@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 export type DAViolationType = "alcohol" | "drug";
@@ -185,22 +186,13 @@ export const DAViolationsDrilldownDialog = ({
     return base;
   };
 
-  const isRowOpenable = (row: ViolationFormSummary): boolean =>
-    !!(row.testType && TEST_TYPE_TO_PAGE[row.testType]);
-
-  const handleRowClick = (row: ViolationFormSummary) => {
+  const handleViewClick = (row: ViolationFormSummary) => {
     const page = row.testType ? TEST_TYPE_TO_PAGE[row.testType] : undefined;
-    if (!page) {
-      // Unknown / unmapped test type — refuse to navigate rather than
-      // silently opening the wrong sub-page.
-      return;
-    }
+    if (!page) return;
     const qp = new URLSearchParams();
     qp.set("recordUuid", row.daUuid);
     qp.set("page", page);
-    // Do NOT call onOpenChange(false). Drill-down state lives in the
-    // dashboard URL, so navigating away leaves it intact and the browser
-    // back button will restore the popup automatically.
+    qp.set("from", "dashboard");
     setLocation(`/drugs-alcohol?${qp.toString()}`);
   };
 
@@ -271,18 +263,19 @@ export const DAViolationsDrilldownDialog = ({
           )}
 
           {(isLoading || data.length > 0) && (
-            <div className="overflow-hidden rounded-md border border-[#e1e8ed] bg-white">
+            <div className="border rounded-lg overflow-hidden max-h-[60vh] overflow-y-auto">
               <table
-                className="w-full text-sm"
+                className="w-full border-collapse"
                 data-testid="table-da-drilldown-forms"
               >
-                <thead className="bg-[#f7fafc] text-left text-xs font-semibold text-[#475569]">
+                <thead className="bg-blue-50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-2">Test Type</th>
-                    <th className="px-4 py-2">Test Date</th>
-                    <th className="px-4 py-2">Vessel</th>
-                    <th className="px-4 py-2 text-right">Alcohol Violations</th>
-                    <th className="px-4 py-2 text-right">Drug Violations</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Test Type</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Test Date</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Vessel</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Alcohol Violations</th>
+                    <th className="px-4 py-2 text-left text-sm font-semibold bg-blue-50 border-b border-blue-200">Drug Violations</th>
+                    <th className="px-4 py-2 text-center text-sm font-semibold bg-blue-50 border-b border-blue-200">View</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -290,85 +283,76 @@ export const DAViolationsDrilldownDialog = ({
                     ? Array.from({ length: 3 }).map((_, i) => (
                         <tr
                           key={`skel-${i}`}
-                          className="border-t border-[#eef2f7]"
+                          className="border-t border-gray-100"
                           data-testid={`row-da-drilldown-skeleton-${i}`}
                         >
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-2">
                             <Skeleton className="h-4 w-20" />
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-2">
                             <Skeleton className="h-4 w-24" />
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-2">
                             <Skeleton className="h-4 w-32" />
                           </td>
-                          <td className="px-4 py-3 text-right">
-                            <Skeleton className="ml-auto h-4 w-8" />
+                          <td className="px-4 py-2">
+                            <Skeleton className="h-4 w-8" />
                           </td>
-                          <td className="px-4 py-3 text-right">
-                            <Skeleton className="ml-auto h-4 w-8" />
+                          <td className="px-4 py-2">
+                            <Skeleton className="h-4 w-8" />
                           </td>
+                          <td className="px-4 py-2" />
                         </tr>
                       ))
                     : visibleRows.map((row) => {
-                        const openable = isRowOpenable(row);
+                        const openable = !!(row.testType && TEST_TYPE_TO_PAGE[row.testType]);
                         return (
                         <tr
                           key={row.daUuid}
-                          className={
-                            "border-t border-[#eef2f7] focus:outline-none " +
-                            (openable
-                              ? "cursor-pointer hover:bg-[#f7fafc] focus:bg-[#f7fafc]"
-                              : "cursor-not-allowed text-[#94a3b8]")
-                          }
-                          tabIndex={openable ? 0 : -1}
-                          onClick={openable ? () => handleRowClick(row) : undefined}
-                          onKeyDown={
-                            openable
-                              ? (e) => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    handleRowClick(row);
-                                  }
-                                }
-                              : undefined
-                          }
-                          title={
-                            openable
-                              ? undefined
-                              : "Cannot open: unsupported test type"
-                          }
+                          className="hover:bg-gray-50 border-t border-gray-100"
                           data-testid={`row-da-drilldown-${row.daUuid}`}
                         >
                           <td
-                            className="px-4 py-3 text-[#0f172a]"
+                            className="px-4 py-2 text-sm"
                             data-testid={`cell-da-test-type-${row.daUuid}`}
                           >
                             {formatTestType(row)}
                           </td>
                           <td
-                            className="px-4 py-3 text-[#0f172a] tabular-nums"
+                            className="px-4 py-2 text-sm tabular-nums"
                             data-testid={`cell-da-test-date-${row.daUuid}`}
                           >
                             {formatDate(row.testDate)}
                           </td>
                           <td
-                            className="px-4 py-3 text-[#0f172a]"
+                            className="px-4 py-2 text-sm"
                             data-testid={`cell-da-vessel-${row.daUuid}`}
                           >
                             {row.vesselName || "—"}
                           </td>
                           <td
-                            className="px-4 py-3 text-right font-semibold text-[#0f172a] tabular-nums"
+                            className="px-4 py-2 text-sm tabular-nums"
                             data-testid={`cell-da-alcohol-${row.daUuid}`}
                           >
                             {row.alcoholViolations}
                           </td>
                           <td
-                            className="px-4 py-3 text-right font-semibold text-[#0f172a] tabular-nums"
+                            className="px-4 py-2 text-sm tabular-nums"
                             data-testid={`cell-da-drug-${row.daUuid}`}
                           >
                             {row.drugViolations}
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={!openable}
+                              onClick={() => handleViewClick(row)}
+                              data-testid={`button-view-da-${row.daUuid}`}
+                              className="text-xs"
+                            >
+                              View
+                            </Button>
                           </td>
                         </tr>
                         );
