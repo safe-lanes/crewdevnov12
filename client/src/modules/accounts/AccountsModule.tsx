@@ -15,6 +15,9 @@ import SettlementsPage from "./pages/SettlementsPage";
 import VesselPortagePage from "./pages/VesselPortagePage";
 import AllotmentsPage from "./pages/AllotmentsPage";
 import CashBondPage from "./pages/CashBondPage";
+import PayslipsPage from "./pages/PayslipsPage";
+import GlExportPage from "./pages/GlExportPage";
+import FleetSummaryPage from "./pages/FleetSummaryPage";
 
 interface PageMeta {
   page: string;
@@ -72,6 +75,21 @@ const PAGE_META: PageMeta[] = [
     page: "cash-bond",
     menu: "Account Cash & Bond",
     path: "/accounts/crew-finance/cash-bond",
+  },
+  {
+    page: "payslips",
+    menu: "Account Payslips",
+    path: "/accounts/reports/payslips",
+  },
+  {
+    page: "gl-export",
+    menu: "Account GL Export",
+    path: "/accounts/reports/gl-export",
+  },
+  {
+    page: "fleet-summary",
+    menu: "Account Fleet Summary",
+    path: "/accounts/reports/fleet-summary",
   },
   {
     page: "tenant-config",
@@ -152,6 +170,12 @@ export function AccountsModule() {
         return <AllotmentsPage />;
       case "cash-bond":
         return <CashBondPage />;
+      case "payslips":
+        return <PayslipsPage />;
+      case "gl-export":
+        return <GlExportPage />;
+      case "fleet-summary":
+        return <FleetSummaryPage />;
       default:
         return null;
     }

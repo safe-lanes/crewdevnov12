@@ -468,3 +468,37 @@
   display: none;
 }
 
+/* Accounts payslip printing: isolate the statement area and repeat the
+   per-crew header/footer (table thead/tfoot) on every printed page. */
+@media print {
+  body.payslip-printing * {
+    visibility: hidden;
+  }
+  body.payslip-printing .payslip-print-area,
+  body.payslip-printing .payslip-print-area * {
+    visibility: visible;
+  }
+  body.payslip-printing .payslip-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+  }
+  .payslip-statement {
+    border: none !important;
+    border-radius: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  .payslip-break {
+    break-before: page;
+    page-break-before: always;
+  }
+  .payslip-table thead {
+    display: table-header-group;
+  }
+  .payslip-table tfoot {
+    display: table-footer-group;
+  }
+}
+

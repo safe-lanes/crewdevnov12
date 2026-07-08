@@ -12,3 +12,4 @@ export { portageController } from "./portageController";
 export { settlementsController } from "./settlementsController";
 export { ctmController } from "./ctmController";
 export { vesselPortageController } from "./vesselPortageController";
+export { reportsController } from "./reportsController";

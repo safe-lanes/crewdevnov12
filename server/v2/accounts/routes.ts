@@ -14,6 +14,7 @@ import {
   settlementsController,
   ctmController,
   vesselPortageController,
+  reportsController,
 } from "./controllers";
 
 const router = Router();
@@ -145,6 +146,14 @@ router.post("/calc/run", calcController.run);
 router.post("/calc/run-engagement", calcController.runEngagement);
 router.post("/calc/adjustments", calcController.createAdjustments);
 router.get("/ledger", calcController.getLedger);
+
+// ============================================
+// REPORTS (read-only ledger projections)
+// ============================================
+router.get("/reports/payslip", reportsController.payslip);
+router.get("/reports/payslips", reportsController.payslipBatch);
+router.get("/reports/gl-export", reportsController.glExport);
+router.get("/reports/fleet-summary", reportsController.fleetSummary);
 
 // ============================================
 // MONTHLY TRANSACTIONS (office + vessel entry, lock-guarded)

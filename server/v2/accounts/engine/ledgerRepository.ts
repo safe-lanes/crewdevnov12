@@ -290,6 +290,48 @@ export class LedgerRepository {
       );
   }
 
+  async findLinesByVesselPeriod(
+    vesselUuid: string,
+    period: string,
+  ): Promise<AccWageLedgerV2[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(accWageLedgerV2)
+      .where(
+        and(
+          eq(accWageLedgerV2.vesselUuid, vesselUuid),
+          eq(accWageLedgerV2.period, period),
+          eq(accWageLedgerV2.isDeleted, false),
+        ),
+      )
+      .orderBy(
+        asc(accWageLedgerV2.crewUuid),
+        asc(accWageLedgerV2.periodFrom),
+        asc(accWageLedgerV2.elementCode),
+        asc(accWageLedgerV2.id),
+      );
+  }
+
+  /** All ledger lines of one period across vessels (fleet reports). */
+  async findLinesByPeriod(period: string): Promise<AccWageLedgerV2[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(accWageLedgerV2)
+      .where(
+        and(
+          eq(accWageLedgerV2.period, period),
+          eq(accWageLedgerV2.isDeleted, false),
+        ),
+      )
+      .orderBy(
+        asc(accWageLedgerV2.vesselUuid),
+        asc(accWageLedgerV2.crewUuid),
+        asc(accWageLedgerV2.id),
+      );
+  }
+
   async findLineByUuid(
     ledgerUuid: string,
   ): Promise<AccWageLedgerV2 | undefined> {

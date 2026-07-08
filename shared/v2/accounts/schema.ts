@@ -56,6 +56,8 @@ export const accTenantConfigV2 = pgTable("acc_tenant_config_v2", {
     precision: 10,
     scale: 4,
   }),
+  // 0165: balancing GL account for net wages payable (GL export); null = UNMAPPED
+  glWagesPayableCode: text("gl_wages_payable_code"),
   settings: jsonb("settings"),
   ...auditColumns,
 });

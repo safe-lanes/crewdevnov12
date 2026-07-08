@@ -4,6 +4,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -37,6 +38,7 @@ interface ConfigForm {
   seniorityBasis: string;
   allowManualSeniorityAnchor: boolean;
   autoLockOnApproval: boolean;
+  glWagesPayableCode: string;
 }
 
 function Field({
@@ -112,6 +114,7 @@ export default function TenantConfigPage() {
       seniorityBasis: data.seniorityBasis ?? "rank_service_all_employers",
       allowManualSeniorityAnchor: data.allowManualSeniorityAnchor ?? true,
       autoLockOnApproval: data.autoLockOnApproval ?? true,
+      glWagesPayableCode: data.glWagesPayableCode ?? "",
     });
   }, [data]);
 
@@ -131,7 +134,10 @@ export default function TenantConfigPage() {
     if (!form) return;
     setSaving(true);
     try {
-      await accountsApiV2.config.update({ ...form });
+      await accountsApiV2.config.update({
+        ...form,
+        glWagesPayableCode: form.glWagesPayableCode.trim() || null,
+      });
       await queryClient.invalidateQueries({ queryKey: CONFIG_KEY });
       toast({
         title: "Configuration saved",
@@ -210,6 +216,19 @@ export default function TenantConfigPage() {
               testId="select-fx-rate-policy"
               disabled={!editable}
             />
+            <Field
+              label="GL wages payable account"
+              helper="GL account code the GL export credits with the month's net wages payable. Leave blank to flag it as UNMAPPED."
+            >
+              <Input
+                value={form.glWagesPayableCode}
+                onChange={(e) => set("glWagesPayableCode", e.target.value)}
+                placeholder="e.g. 2100-WAGES"
+                className="h-9"
+                disabled={!editable}
+                data-testid="input-gl-wages-payable-code"
+              />
+            </Field>
           </CardContent>
         </Card>
 

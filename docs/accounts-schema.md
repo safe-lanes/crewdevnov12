@@ -234,6 +234,8 @@ Single-row per-tenant behaviour configuration.
 | `seniority_basis` | text | CHECK `rank_service_all_employers` \| `rank_service_company` \| `company_tenure` (default `rank_service_all_employers`); how a crew's seniority step is measured (added 0154) |
 | `allow_manual_seniority_anchor` | boolean | default true; whether an operator may manually override the derived seniority step on an engagement (added 0154) |
 | `auto_lock_on_approval` | boolean | default true |
+| `max_allotment_percent` | numeric(10,4) | allotment soft cap (% of monthly gross); null = no check (added 0163) |
+| `gl_wages_payable_code` | text | balancing GL account for net wages payable in the GL export; null shows as UNMAPPED (added 0165) |
 | `settings` | jsonb | free-form extra config |
 
 ### B. Master tier

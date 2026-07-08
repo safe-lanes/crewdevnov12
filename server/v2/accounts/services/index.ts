@@ -11,3 +11,4 @@ export { portageService } from "./portageService";
 export { settlementsService } from "./settlementsService";
 export { ctmService } from "./ctmService";
 export { vesselPortageService } from "./vesselPortageService";
+export { reportsService } from "./reportsService";

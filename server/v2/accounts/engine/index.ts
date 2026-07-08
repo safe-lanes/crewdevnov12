@@ -19,4 +19,11 @@ export const ledgerQueries = {
     readOnlyRepo.findLinesByPortage(portageUuid),
   findLinesByEngagementPeriod: (engagementUuid: string, period: string) =>
     readOnlyRepo.findLinesByEngagementPeriod(engagementUuid, period),
+  findLinesByVesselPeriod: (vesselUuid: string, period: string) =>
+    readOnlyRepo.findLinesByVesselPeriod(vesselUuid, period),
+  findLinesByPeriod: (period: string) => readOnlyRepo.findLinesByPeriod(period),
+  findPortage: (vesselUuid: string, period: string) =>
+    readOnlyRepo.findPortage(vesselUuid, period),
 };
+
+export { BalanceService } from "./balanceService";

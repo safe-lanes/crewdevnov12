@@ -10,7 +10,8 @@ import {
   Repeat,
   Receipt,
   BarChart3,
-  Lock,
+  BookText,
+  FileText,
   Ship,
 } from "lucide-react";
 import { useViewport, getLayoutConfig } from "@/hooks/useViewport";
@@ -101,6 +102,26 @@ const ACTIVE_SECTIONS: SideSection[] = [
     ],
   },
   {
+    label: "Reports",
+    items: [
+      {
+        name: "Payslips",
+        icon: <FileText size={20} className={iconClass} />,
+        page: "payslips",
+      },
+      {
+        name: "GL Export",
+        icon: <BookText size={20} className={iconClass} />,
+        page: "gl-export",
+      },
+      {
+        name: "Fleet Summary",
+        icon: <BarChart3 size={20} className={iconClass} />,
+        page: "fleet-summary",
+      },
+    ],
+  },
+  {
     label: "Admin",
     items: [
       {
@@ -110,10 +131,6 @@ const ACTIVE_SECTIONS: SideSection[] = [
       },
     ],
   },
-];
-
-const COMING_SOON: SideItem[] = [
-  { name: "Reports", icon: <BarChart3 size={20} />, page: "reports" },
 ];
 
 type AccountsSideBarProps = {
@@ -190,47 +207,6 @@ export default function AccountsSideBar({
             ))}
           </div>
         ))}
-
-        <div className="w-full flex flex-col border-t border-white/10 mt-1">
-          {!isCompact && (
-            <div className="px-1 pt-2 pb-1 text-[9px] font-semibold uppercase tracking-wide text-white/40 text-center">
-              Coming Soon
-            </div>
-          )}
-          {COMING_SOON.map((item) => (
-            <Tooltip key={item.page} delayDuration={0}>
-              <TooltipTrigger asChild>
-                <div
-                  className="w-full flex flex-col items-center justify-center flex-shrink-0 cursor-not-allowed bg-[#16569e] opacity-40 relative"
-                  style={{ height: itemHeight }}
-                  data-testid={`sidebar-comingsoon-${item.page}`}
-                  aria-disabled="true"
-                >
-                  <div className="text-white/70 text-[10px] font-normal flex flex-col items-center justify-center text-center">
-                    <div className={isCompact ? "" : "mb-1"}>
-                      {item.icon}
-                    </div>
-                    {!isCompact && (
-                      <div className="leading-tight break-words max-w-full px-1">
-                        {item.name}
-                      </div>
-                    )}
-                  </div>
-                  <Lock
-                    size={9}
-                    className="absolute top-1 right-1 text-white/70"
-                  />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent
-                side="right"
-                className="bg-[#16569e] text-white border-none"
-              >
-                {item.name} — coming soon
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
 
         <div className="w-full flex-1 bg-[#16569e]" />
       </aside>
