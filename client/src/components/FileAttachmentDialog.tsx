@@ -298,11 +298,14 @@ export function FileAttachmentDialog({
       if (fileData.startsWith('data:')) {
         const blob = dataUrlToBlob(fileData);
         const url = URL.createObjectURL(blob);
-        downloadViaLink(url, fileName, true);
-        toast({
-          title: 'File Downloaded',
-          description: 'Save the record to preview this file in a new tab.',
-        });
+        const newTab = window.open(url, '_blank');
+        if (newTab) {
+          newTab.opener = null;
+        } else {
+          // Popup blocked — fall back to a download.
+          downloadViaLink(url, fileName, true);
+        }
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
       } else {
         window.open(fileData, '_blank', 'noopener,noreferrer');
       }
