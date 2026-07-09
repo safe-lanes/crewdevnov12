@@ -5653,7 +5653,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
   const renderContinuousSections = () => {
     return (
-      <fieldset disabled={isPartALocked} className="min-w-0 border-0 p-0 m-0">
+      <fieldset disabled={isPartALocked} className="min-w-0 border-0 p-0 m-0 locked-section">
       <div className="space-y-6">
         <div ref={a1Ref} data-section-id="A1">
           <Card className="bg-white border border-gray-200 shadow-sm">
@@ -5779,7 +5779,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     switch (activeSection) {
       case 'B':
         return (
-          <fieldset disabled={isFullyLocked} className="min-w-0 border-0 p-0 m-0">
+          <fieldset disabled={isFullyLocked} className="min-w-0 border-0 p-0 m-0 locked-section">
           <Card className="bg-white border border-gray-200 shadow-sm">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">
@@ -8675,7 +8675,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         );
       case 'C':
         return (
-          <fieldset disabled={isFullyLocked} className="min-w-0 border-0 p-0 m-0">
+          <fieldset disabled={isFullyLocked} className="min-w-0 border-0 p-0 m-0 locked-section">
           <Card className="bg-white border border-gray-200 shadow-sm">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">

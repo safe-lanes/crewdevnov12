@@ -468,3 +468,22 @@
   display: none;
 }
 
+/* Recruitment form locked sections */
+fieldset.locked-section:disabled {
+  cursor: not-allowed;
+}
+
+fieldset.locked-section:disabled div[class*="cursor-pointer"],
+fieldset.locked-section:disabled label[class*="cursor-pointer"] {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+fieldset.locked-section:disabled .text-gray-900 {
+  color: #9ca3af;
+}
+
+fieldset.locked-section:disabled td > span {
+  color: #9ca3af;
+}
+
