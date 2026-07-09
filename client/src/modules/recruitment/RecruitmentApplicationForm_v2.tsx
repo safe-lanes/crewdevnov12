@@ -5648,12 +5648,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     );
   };
 
-  const isPartALocked = !!formData.screeningDate;
-  const isFullyLocked = !!formData.c3SubmittedDate;
-
   const renderContinuousSections = () => {
     return (
-      <fieldset disabled={isPartALocked} className="min-w-0 border-0 p-0 m-0 locked-section">
       <div className="space-y-6">
         <div ref={a1Ref} data-section-id="A1">
           <Card className="bg-white border border-gray-200 shadow-sm">
@@ -5757,17 +5753,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     </>
                   )}
                 </div>
-                <div title="Form will be locked after submission.">
-                  <Button className="bg-green-600 hover:bg-green-700 text-white px-8" onClick={handleA5SubmitForScreening} disabled={savingInProgress} data-testid="button-submit-for-screening">
-                    {savingInProgress ? 'Saving...' : 'Submit for Screening'}
-                  </Button>
-                </div>
+                <Button className="bg-green-600 hover:bg-green-700 text-white px-8" onClick={handleA5SubmitForScreening} disabled={savingInProgress} data-testid="button-submit-for-screening">
+                  {savingInProgress ? 'Saving...' : 'Submit for Screening'}
+                </Button>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
-      </fieldset>
     );
   };
 
@@ -5779,7 +5772,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     switch (activeSection) {
       case 'B':
         return (
-          <fieldset disabled={isFullyLocked} className="min-w-0 border-0 p-0 m-0 locked-section">
           <Card className="bg-white border border-gray-200 shadow-sm">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">
@@ -8671,11 +8663,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               </div>
             </CardContent>
           </Card>
-          </fieldset>
         );
       case 'C':
         return (
-          <fieldset disabled={isFullyLocked} className="min-w-0 border-0 p-0 m-0 locked-section">
           <Card className="bg-white border border-gray-200 shadow-sm">
             <CardContent className="p-3 sm:p-4 lg:p-6">
               <div className="pb-4 mb-6">
@@ -9040,7 +9030,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               </div>
 
               <div className="flex justify-end gap-2 mt-6 pt-4">
-                <div title="Form will be locked after submission.">
                 <Button 
                   className="bg-[#00AF7B] hover:bg-[#009B6B] text-white px-8"
                   onClick={() => {
@@ -9062,11 +9051,9 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 >
                   {savingInProgress ? 'Saving...' : 'Save Approval'}
                 </Button>
-                </div>
               </div>
             </CardContent>
           </Card>
-          </fieldset>
         );
       default:
         return (
@@ -9111,13 +9098,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               size="sm"
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
               onClick={handleSaveOnly}
-              disabled={isFullyLocked || savingInProgress}
+              disabled={savingInProgress}
               data-testid="button-save-draft"
             >
               <Save className="h-4 w-4 mr-2" />
               {savingInProgress ? 'Saving...' : 'Save Draft'}
             </Button>
-            <Button variant="outline" size="sm" className="sm:hidden" onClick={handleSaveOnly} disabled={isFullyLocked || savingInProgress}>
+            <Button variant="outline" size="sm" className="sm:hidden" onClick={handleSaveOnly} disabled={savingInProgress}>
               <Save className="h-4 w-4" />
             </Button>
           </div>
