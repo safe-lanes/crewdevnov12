@@ -23,8 +23,7 @@ import { eq } from "drizzle-orm";
 // ============================================================================
 
 export const CREW_DETAILS_COLUMNS = [
-  { header: "Seafarer Code", required: false, example: "A000001", note: "Leave blank for auto-generation" },
-  { header: "Employee ID", required: false, example: "EMP-2024-001", note: "" },
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Mandatory — must be unique" },
   { header: "First Name", required: true, example: "Rajesh", note: "" },
   { header: "Middle Name", required: false, example: "Kumar", note: "" },
   { header: "Last Name / Family Name", required: false, example: "Sharma", note: "" },
@@ -62,7 +61,7 @@ export const CREW_DETAILS_COLUMNS = [
 ];
 
 export const CHILDREN_COLUMNS = [
-  { header: "Seafarer Code", required: true, example: "A000001", note: "Must match Crew Details sheet" },
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "First Name", required: true, example: "Aarav", note: "" },
   { header: "Middle Name", required: false, example: "Kumar", note: "" },
   { header: "Family Name", required: false, example: "Sharma", note: "" },
@@ -71,7 +70,7 @@ export const CHILDREN_COLUMNS = [
 ];
 
 export const NOK_COLUMNS = [
-  { header: "Seafarer Code", required: true, example: "A000001", note: "Must match Crew Details sheet" },
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "Contact Person First Name", required: false, example: "Priya", note: "" },
   { header: "Contact Person Family Name", required: false, example: "Sharma", note: "" },
   { header: "Relationship", required: false, example: "Spouse", note: "" },
@@ -81,7 +80,7 @@ export const NOK_COLUMNS = [
 ];
 
 export const DOCUMENTS_COLUMNS = [
-  { header: "Seafarer Code", required: true, example: "A000001", note: "Must match Crew Details sheet" },
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "Document Name", required: true, example: "Passport", note: "" },
   { header: "Document Number", required: false, example: "J1234567", note: "" },
   { header: "Date of Issue", required: false, example: "15-Jan-2020", note: "DD-MMM-YYYY or DD/MM/YYYY" },
@@ -90,7 +89,7 @@ export const DOCUMENTS_COLUMNS = [
 ];
 
 export const LICENSES_COLUMNS = [
-  { header: "Seafarer Code", required: true, example: "A000001", note: "Must match Crew Details sheet" },
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "Certificate / Document Name", required: true, example: "COC Deck", note: "" },
   { header: "Certificate Number", required: false, example: "COC-12345", note: "" },
   { header: "Issuing Authority", required: false, example: "DG Shipping", note: "" },
@@ -99,7 +98,7 @@ export const LICENSES_COLUMNS = [
 ];
 
 export const SEA_SERVICE_COLUMNS = [
-  { header: "Seafarer Code", required: true, example: "A000001", note: "Must match Crew Details sheet" },
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "Company or External?", required: false, example: "Company", note: "Company / External" },
   { header: "Vessel Name", required: true, example: "MT Pacific Star", note: "" },
   { header: "Vessel Type", required: true, example: "Oil Tanker", note: "Must match Reference Data sheet" },
@@ -112,7 +111,7 @@ export const SEA_SERVICE_COLUMNS = [
 ];
 
 export const TRAINING_COLUMNS = [
-  { header: "Seafarer Code", required: true, example: "A000001", note: "Must match Crew Details sheet" },
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "Course Name", required: true, example: "STCW Basic Safety", note: "" },
   { header: "Certificate Number", required: false, example: "TC-98765", note: "" },
   { header: "Issuing Authority", required: false, example: "Maritime Academy", note: "" },
@@ -121,7 +120,7 @@ export const TRAINING_COLUMNS = [
 ];
 
 export const VISAS_COLUMNS = [
-  { header: "Seafarer Code", required: true, example: "A000001", note: "Must match Crew Details sheet" },
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "Country", required: true, example: "United States", note: "Must match Reference Data sheet" },
   { header: "Visa Type", required: true, example: "C1/D", note: "" },
   { header: "Visa Number / Serial Number", required: false, example: "V9876543", note: "" },
@@ -130,7 +129,7 @@ export const VISAS_COLUMNS = [
 ];
 
 export const EDUCATION_COLUMNS = [
-  { header: "Seafarer Code", required: true, example: "A000001", note: "Must match Crew Details sheet" },
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "Institution", required: false, example: "Maritime Academy", note: "" },
   { header: "Subjects / Field of Study", required: false, example: "Marine Engineering", note: "" },
   { header: "Qualifications / Degree", required: true, example: "Bachelor of Science", note: "" },
@@ -270,9 +269,9 @@ function buildInstructionsSheet(
     "",
     "HOW TO USE THIS TEMPLATE",
     "1. Fill in the 'Crew Details' sheet first — one row per crew member",
-    "2. Use the Seafarer Code column to link data across sheets (Documents, Licenses, etc.)",
-    "3. Leave Seafarer Code blank for new crew — the system will auto-generate one",
-    "4. If you provide a Seafarer Code, it must be unique across all rows",
+    "2. Use the Employee ID column to link data across sheets (Documents, Licenses, etc.)",
+    "3. Employee ID is mandatory for every crew member — it cannot be left blank",
+    "4. Each Employee ID must be unique across all rows (and not already exist in the system)",
     "5. Required columns are marked with yellow background in each sheet",
     "6. Dates can be in these formats: DD-MMM-YYYY (15-Mar-1985), DD/MM/YYYY (15/03/1985), or YYYY-MM-DD (1985-03-15)",
     "7. Row 2 in each sheet has example data — delete it before uploading",

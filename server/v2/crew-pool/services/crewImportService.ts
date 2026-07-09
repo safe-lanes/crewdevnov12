@@ -11,7 +11,7 @@ import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
-import { ilike, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
   crewMembersV2,
   crewPersonalDetails,
@@ -263,14 +263,13 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
       }
     }
 
-    // Seafarer Code duplicate check (falls back to Employee ID if blank)
-    let empNo = getCellValue(row, "Seafarer Code");
+    // Employee ID: mandatory + duplicate checks
+    const empNo = getCellValue(row, "Employee ID");
     if (!empNo) {
-      empNo = getCellValue(row, "Employee ID");
-    }
-    if (empNo) {
+      errors.push({ sheet: "Crew Details", row: rowNum, column: "Employee ID", value: null, message: "Employee ID is required" });
+    } else {
       if (seafarerCodes.has(empNo.toUpperCase())) {
-        errors.push({ sheet: "Crew Details", row: rowNum, column: "Seafarer Code", value: empNo, message: `Duplicate Seafarer Code or Employee ID "${empNo}" found in this file` });
+        errors.push({ sheet: "Crew Details", row: rowNum, column: "Employee ID", value: empNo, message: `Duplicate Employee ID "${empNo}" found in this file` });
       } else {
         seafarerCodes.add(empNo.toUpperCase());
         // Check DB for existing
@@ -281,7 +280,7 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
           .where(eq(crewMembersV2.empNo, empNo))
           .limit(1);
         if (existing.length > 0) {
-          errors.push({ sheet: "Crew Details", row: rowNum, column: "Seafarer Code", value: empNo, message: `Seafarer Code or Employee ID "${empNo}" already exists in the system` });
+          errors.push({ sheet: "Crew Details", row: rowNum, column: "Employee ID", value: empNo, message: `Employee ID "${empNo}" already exists in the system` });
         }
       }
       crewCodesInFile.add(empNo);
@@ -375,14 +374,12 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
       const row = rows[i];
       const rowNum = i + 2;
 
-      // Seafarer Code is always required and must match Crew Details
-      const code = getCellValue(row, "Seafarer Code");
+      // Employee ID is always required and must match Crew Details
+      const code = getCellValue(row, "Employee ID");
       if (!code) {
-        errors.push({ sheet: sheetName, row: rowNum, column: "Seafarer Code", value: null, message: "Seafarer Code is required to link to a crew member" });
-      } else if (crewCodesInFile.size > 0 && !crewCodesInFile.has(code)) {
-        // Only warn if the crew sheet has codes defined — if they're auto-generated, we can't check
-        // Actually, if crew sheet doesn't have this code at all (no row for it), it's still valid
-        // because the code might be auto-generated. We'll validate linkage during import.
+        errors.push({ sheet: sheetName, row: rowNum, column: "Employee ID", value: null, message: "Employee ID is required to link to a crew member" });
+      } else if (!crewCodesInFile.has(code)) {
+        errors.push({ sheet: sheetName, row: rowNum, column: "Employee ID", value: code, message: `Employee ID "${code}" does not match any row in the Crew Details sheet` });
       }
 
       for (const field of requiredFields) {
@@ -410,18 +407,11 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
   validateSubSheet(data.trainingRows, "Training Courses", ["Course Name"], ["Date of Issue", "Date of Expiry"]);
   validateSubSheet(data.educationRows, "Education Details", ["Qualifications / Degree"], ["Date of Completion"]);
 
-  // Validate Children Details: gender values + required linkage to a Crew Details row
+  // Validate Children Details: gender values (linkage is enforced in validateSubSheet)
   for (let i = 0; i < data.childrenRows.length; i++) {
     const gender = getCellValue(data.childrenRows[i], "Gender");
     if (gender && !["male", "female"].includes(gender.toLowerCase())) {
       errors.push({ sheet: "Children Details", row: i + 2, column: "Gender", value: gender, message: `Gender must be 'Male' or 'Female'`, errorType: "manual_value" });
-    }
-
-    // Children can only link to crew rows with an explicit Seafarer Code in this file
-    // (auto-generated codes are unknown at fill time), so the code must match a crew row.
-    const code = getCellValue(data.childrenRows[i], "Seafarer Code");
-    if (code && !crewCodesInFile.has(code)) {
-      errors.push({ sheet: "Children Details", row: i + 2, column: "Seafarer Code", value: code, message: `Seafarer Code "${code}" does not match any row in the Crew Details sheet` });
     }
   }
 
@@ -463,39 +453,6 @@ export async function validateImportData(buffer: Buffer): Promise<ValidationResu
 // IMPORT ENGINE — Transaction-based, all-or-nothing
 // ============================================================================
 
-/**
- * Generate next available emp number
- */
-async function generateNextEmpNo(db: any, usedNumbers: Set<string>): Promise<string> {
-  const results = await db
-    .select({ empNo: crewMembersV2.empNo })
-    .from(crewMembersV2)
-    .where(ilike(crewMembersV2.empNo, "A%"));
-
-  let maxNum = 0;
-  for (const row of results) {
-    if (row.empNo) {
-      const match = row.empNo.match(/A(\d+)/i);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        if (num > maxNum) maxNum = num;
-      }
-    }
-  }
-
-  // Also consider numbers we've already generated in this batch
-  for (const used of usedNumbers) {
-    const match = used.match(/A(\d+)/i);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (num > maxNum) maxNum = num;
-    }
-  }
-
-  const nextNum = maxNum + 1;
-  return `A${nextNum.toString().padStart(6, "0")}`;
-}
-
 export async function executeImport(buffer: Buffer): Promise<ImportResult> {
   const data = parseExcelBuffer(buffer);
   const db = getDb();
@@ -527,15 +484,8 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
       for (let i = 0; i < data.crewRows.length; i++) {
         const row = data.crewRows[i];
 
-        let empNo = getCellValue(row, "Seafarer Code");
-        if (!empNo) {
-          const empId = getCellValue(row, "Employee ID");
-          if (empId) {
-            empNo = empId;
-          } else {
-            empNo = await generateNextEmpNo(tx, usedEmpNos);
-          }
-        }
+        // Employee ID is mandatory (validated above) and is stored as the crew code (empNo)
+        const empNo = getCellValue(row, "Employee ID")!;
         usedEmpNos.add(empNo);
         rowIndexToEmpNo.set(i, empNo);
 
@@ -546,14 +496,11 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
         const nationalityUuid = await resolveMasterDataUuid(getCellValue(row, "Nationality"), "nationality");
         const vesselTypeUuid = await resolveMasterDataUuid(getCellValue(row, "Vessel Type Experience"), "vesselType");
 
-        // Handle empty employee ID
-        const employeeId = getCellValue(row, "Employee ID");
-
         // Insert crew member
         await tx.insert(crewMembersV2).values({
           crewUuid,
           empNo,
-          employeeId: employeeId || null,
+          employeeId: null,
           firstName: getCellValue(row, "First Name"),
           middleName: getCellValue(row, "Middle Name"),
           familyName: getCellValue(row, "Last Name / Family Name"),
@@ -708,17 +655,17 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
         counts.crew++;
       }
 
-      // ---- STEP 2: Create sub-records (linked by Seafarer Code) ----
+      // ---- STEP 2: Create sub-records (linked by Employee ID) ----
 
-      // Helper: resolve crewUuid from Seafarer Code
-      function resolveCrewUuid(seafarerCode: string | null): string | null {
-        if (!seafarerCode) return null;
-        return empNoToCrewUuid.get(seafarerCode) || null;
+      // Helper: resolve crewUuid from Employee ID
+      function resolveCrewUuid(employeeId: string | null): string | null {
+        if (!employeeId) return null;
+        return empNoToCrewUuid.get(employeeId) || null;
       }
 
       // Children Details
       for (const row of data.childrenRows) {
-        const code = getCellValue(row, "Seafarer Code");
+        const code = getCellValue(row, "Employee ID");
         const crewUuid = resolveCrewUuid(code);
         if (!crewUuid) continue; // Skip if no matching crew
 
@@ -738,7 +685,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
 
       // Next of Kin
       for (const row of data.nokRows) {
-        const code = getCellValue(row, "Seafarer Code");
+        const code = getCellValue(row, "Employee ID");
         const crewUuid = resolveCrewUuid(code);
         if (!crewUuid) continue; // Skip if no matching crew
 
@@ -759,7 +706,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
 
       // Documents
       for (const row of data.documentRows) {
-        const code = getCellValue(row, "Seafarer Code");
+        const code = getCellValue(row, "Employee ID");
         const crewUuid = resolveCrewUuid(code);
         if (!crewUuid) continue;
 
@@ -779,7 +726,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
 
       // Licenses
       for (const row of data.licenseRows) {
-        const code = getCellValue(row, "Seafarer Code");
+        const code = getCellValue(row, "Employee ID");
         const crewUuid = resolveCrewUuid(code);
         if (!crewUuid) continue;
 
@@ -799,7 +746,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
 
       // Sea Service
       for (const row of data.seaServiceRows) {
-        const code = getCellValue(row, "Seafarer Code");
+        const code = getCellValue(row, "Employee ID");
         const crewUuid = resolveCrewUuid(code);
         if (!crewUuid) continue;
 
@@ -848,7 +795,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
 
       // Training Courses
       for (const row of data.trainingRows) {
-        const code = getCellValue(row, "Seafarer Code");
+        const code = getCellValue(row, "Employee ID");
         const crewUuid = resolveCrewUuid(code);
         if (!crewUuid) continue;
 
@@ -868,7 +815,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
 
       // Travel Visas
       for (const row of data.visaRows) {
-        const code = getCellValue(row, "Seafarer Code");
+        const code = getCellValue(row, "Employee ID");
         const crewUuid = resolveCrewUuid(code);
         if (!crewUuid) continue;
 
@@ -892,7 +839,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
 
       // Education Details
       for (const row of data.educationRows) {
-        const code = getCellValue(row, "Seafarer Code");
+        const code = getCellValue(row, "Employee ID");
         const crewUuid = resolveCrewUuid(code);
         if (!crewUuid) continue;
 
