@@ -168,6 +168,7 @@ export const PartBApproval = memo(function PartBApproval({
                     <Label htmlFor={`${approver.id}-no`} className="text-sm cursor-pointer">No</Label>
                   </div>
                 </RadioGroup>
+                {!approver.isFromPartA && (
                 <Button 
                   type="button"
                   variant="ghost" 
@@ -178,6 +179,7 @@ export const PartBApproval = memo(function PartBApproval({
                 >
                   <Plus className="h-4 w-4 text-gray-600 rotate-45" />
                 </Button>
+                )}
               </div>
               {approver.comments && (
                 <div className="bg-gray-50 p-3 rounded">
