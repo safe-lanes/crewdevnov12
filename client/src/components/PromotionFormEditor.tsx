@@ -192,10 +192,18 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
       (t) => (t.description?.trim() || (t.minScore != null && Number.isFinite(t.minScore)))
     );
 
+    const cleanedChecklistSections = (data.checklistSections ?? [])
+      .map((section) => ({
+        ...section,
+        assessmentPoints: section.assessmentPoints.filter((p) => p.text?.trim()),
+      }))
+      .filter((section) => section.title?.trim() || section.assessmentPoints.length > 0);
+
     const cleanedData = {
       ...data,
       otherCriteria: cleanedOtherCriteria,
       cesTests: cleanedCesTests,
+      checklistSections: cleanedChecklistSections,
     };
 
     const configurationJson = JSON.stringify({
