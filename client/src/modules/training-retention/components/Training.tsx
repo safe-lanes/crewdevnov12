@@ -768,7 +768,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
               <Input value={form.rank} disabled data-testid="input-rank" />
             ) : (
               <Select
-                value={form.rank || "__none"}
+                value={form.rank || undefined}
                 onValueChange={(v) => {
                   if (v === "__none") {
                     set("rankId", "");
@@ -779,7 +779,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
                   set("rank", v);
                 }}
               >
-                <SelectTrigger data-testid="select-rank"><SelectValue placeholder="Select rank" /></SelectTrigger>
+                <SelectTrigger data-testid="select-rank"><SelectValue placeholder="Select Rank" /></SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="__none">— None —</SelectItem>
                   {ranks.map((r) => (
@@ -838,10 +838,10 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
           <div>
             <Label className="text-xs">Status</Label>
             <Select
-              value={form.status || "__none"}
+              value={form.status || undefined}
               onValueChange={(v) => set("status", v === "__none" ? "" : v)}
             >
-              <SelectTrigger data-testid="select-status"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger data-testid="select-status"><SelectValue placeholder="Select Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— None —</SelectItem>
                 {withLegacyStatus(statusOptions, form.status).map((s) => (
@@ -888,11 +888,11 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
           <div>
             <Label className="text-xs">Category</Label>
             <Select
-              value={form.category || "__none"}
+              value={form.category || undefined}
               onValueChange={(v) => set("category", v === "__none" ? "" : v)}
               disabled={isLimited}
             >
-              <SelectTrigger data-testid="select-category"><SelectValue placeholder="Select" /></SelectTrigger>
+              <SelectTrigger data-testid="select-category"><SelectValue placeholder="Select Category" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">— None —</SelectItem>
                 {withLegacyCategory(categoryOptions, form.category).map((c) => (
