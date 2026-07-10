@@ -80,6 +80,8 @@ export const daViolationsReport: ReportHandler<Filters> = {
         dateTimeTestCompleted: row.dateTimeTestCompleted,
         incidentDateTime: row.incidentDateTime,
         testDateTime: row.testDateTime,
+        alcoholTestDateTime: row.alcoholTestDateTime,
+        drugTestDateTime: row.drugTestDateTime,
       });
       if (!dateStr) continue;
       if (filters.dateFrom && dateStr < filters.dateFrom) continue;

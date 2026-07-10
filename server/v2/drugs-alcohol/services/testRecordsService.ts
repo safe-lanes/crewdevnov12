@@ -195,13 +195,15 @@ export function pickRelevantDate(
     dateTimeTestCompleted: string | null | undefined;
     incidentDateTime: string | null | undefined;
     testDateTime: string | null | undefined;
+    alcoholTestDateTime?: string | null | undefined;
+    drugTestDateTime?: string | null | undefined;
   }
 ): string | null {
   const normalized = (testType || "").toLowerCase().trim();
   if (normalized === "post-incident") {
     return (
-      parseDateLeniently(dates.incidentDateTime) ??
-      parseDateLeniently(dates.dateTimeTestCompleted)
+      parseDateLeniently(dates.alcoholTestDateTime) ??
+      parseDateLeniently(dates.drugTestDateTime)
     );
   }
   return (
@@ -515,6 +517,8 @@ export const testRecordsService = {
         dateTimeTestCompleted: row.dateTimeTestCompleted,
         incidentDateTime: row.incidentDateTime,
         testDateTime: row.testDateTime,
+        alcoholTestDateTime: row.alcoholTestDateTime,
+        drugTestDateTime: row.drugTestDateTime,
       });
       if (!dateStr) continue;
       if (dateStr < periodFrom || dateStr > periodTo) continue;

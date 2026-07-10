@@ -247,6 +247,8 @@ export class TestRecordsRepository {
       dateTimeTestCompleted: string | null;
       incidentDateTime: string | null;
       testDateTime: string | null;
+      alcoholTestDateTime: string | null;
+      drugTestDateTime: string | null;
       crewId: string | null;
       rank: string | null;
       crewPool: string | null;
@@ -267,6 +269,8 @@ export class TestRecordsRepository {
         dateTimeTestCompleted: daTestRecordsV2.dateTimeTestCompleted,
         incidentDateTime: daTestRecordsV2.incidentDateTime,
         testDateTime: daTestRecordsV2.testDateTime,
+        alcoholTestDateTime: daTestRecordsV2.alcoholTestDateTime,
+        drugTestDateTime: daTestRecordsV2.drugTestDateTime,
         crewId: daPersonnelTestedV2.crewId,
         rank: daPersonnelTestedV2.rank,
         crewPool: crewPersonalDetails.crewPool,
