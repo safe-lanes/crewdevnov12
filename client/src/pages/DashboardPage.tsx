@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardCard } from "@/modules/dashboard/DashboardCard";
@@ -19,6 +19,13 @@ export const DashboardPage = () => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("management");
 
   const { period, filters, setPeriod, setFilters, clearFilters } = useDashboardFiltersStore();
+
+  useEffect(() => {
+    const cameFromDrilldown = new URLSearchParams(window.location.search).has("drilldown");
+    if (!cameFromDrilldown) {
+      clearFilters();
+    }
+  }, [clearFilters]);
 
   return (
     <div
