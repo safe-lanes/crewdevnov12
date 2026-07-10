@@ -26,6 +26,31 @@ const currentVesselNameExpr = sql<string | null>`(
   LIMIT 1
 )`;
 
+// Mirrors Crew Pool's latestVesselPlanning.vpVesselUuid:
+// the latest PRIMARY vessel-planning row's vessel (no sign-off filter, to match the list view).
+const cpPlanVesselExpr = sql<string | null>`(
+  SELECT vessel_planning_v2.vessel_uuid
+  FROM vessel_planning_v2
+  WHERE vessel_planning_v2.crew_uuid = crew_members_v2.crew_uuid
+    AND vessel_planning_v2.is_archived = FALSE
+    AND vessel_planning_v2.is_deleted = FALSE
+    AND vessel_planning_v2.crew_status = 'primary'
+  ORDER BY vessel_planning_v2.sign_on_date DESC, vessel_planning_v2.id DESC
+  LIMIT 1
+)`;
+
+// Mirrors Crew Pool's latestAssignment.vesselUuid:
+// the latest CURRENT crew-assignment row's vessel.
+const cpAssignmentVesselExpr = sql<string | null>`(
+  SELECT crew_assignments.vessel_uuid
+  FROM crew_assignments
+  WHERE crew_assignments.crew_uuid = crew_members_v2.crew_uuid
+    AND crew_assignments.is_current = TRUE
+    AND crew_assignments.is_deleted = FALSE
+  ORDER BY crew_assignments.sign_on_date DESC, crew_assignments.id DESC
+  LIMIT 1
+)`;
+
 const currentPlanRankExpr = sql<string | null>`(
   SELECT vessel_planning_v2.rank
   FROM vessel_planning_v2
@@ -79,7 +104,13 @@ export const crewOnLeaveReport: ReportHandler<z.infer<typeof onLeaveFilters>> = 
     const db = getDb();
     const conds: SQL[] = [
       ...baseCrewConditions(),
-      eq(crewMembersV2.status, 'On Leave'),
+      // active — matches Crew Pool `isActive !== false`
+      sql`${crewMembersV2.isActive} IS DISTINCT FROM FALSE`,
+      // not terminated — matches Crew Pool `status !== 'Terminated'`
+      sql`(${crewMembersV2.status} IS NULL OR ${crewMembersV2.status} <> 'Terminated')`,
+      // On Leave = no vessel in EITHER source (matches effectiveVessel = plan || assignment being empty)
+      sql`NULLIF(${cpPlanVesselExpr}, '') IS NULL`,
+      sql`NULLIF(${cpAssignmentVesselExpr}, '') IS NULL`,
     ];
     if (filters.rank) conds.push(eq(crewMembersV2.presentRank, filters.rank));
     if (filters.nationality) conds.push(eq(masterNationalities.nationality, filters.nationality));
