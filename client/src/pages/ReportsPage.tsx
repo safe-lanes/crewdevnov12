@@ -192,6 +192,7 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
   ],
   "rec-waitlist": [
     { kind: "rank", label: "Filter by Rank" },
+    { kind: "dateRange", label: "Date Range" },
   ],
   "rec-rejected": [
     { kind: "rank", label: "Filter by Rank" },
