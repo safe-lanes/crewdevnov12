@@ -51,7 +51,10 @@ const nameExpr = fullNameExpr(crewMembersV2.firstName, crewMembersV2.middleName,
 // ============================================================
 // cp-on-leave : Active crew with no current vessel assignment.
 // ============================================================
-const onLeaveFilters = z.object({ rank: z.string().trim().min(1).optional() }).strict();
+const onLeaveFilters = z.object({
+  rank: z.string().trim().min(1).optional(),
+  nationality: z.string().trim().min(1).optional(),
+}).strict();
 const onLeaveCols: ReportColumn[] = [
   { key: "empNo", label: "Emp No", type: "text", width: 110 },
   { key: "name", label: "Name", type: "text" },
@@ -80,6 +83,7 @@ export const crewOnLeaveReport: ReportHandler<z.infer<typeof onLeaveFilters>> = 
       sql`${currentVesselNameExpr} IS NULL`,
     ];
     if (filters.rank) conds.push(eq(crewMembersV2.presentRank, filters.rank));
+    if (filters.nationality) conds.push(eq(masterNationalities.nationality, filters.nationality));
 
     const where = and(...conds);
     const totalRes = await db

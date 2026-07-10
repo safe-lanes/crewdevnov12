@@ -263,6 +263,7 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
   ],
   "cp-on-leave": [
     { kind: "rank", label: "Filter by Rank" },
+    { kind: "nationality", label: "Filter by Nationality" },
   ],
   "cp-available-to-join": [
     { kind: "rank", label: "Filter by Rank" },
