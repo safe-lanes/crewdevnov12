@@ -1,4 +1,4 @@
-import { eq, and, isNull, ilike, inArray, or, sql } from "drizzle-orm";
+import { eq, and, isNull, ilike, notIlike, inArray, or, sql } from "drizzle-orm";
 import { aliasedTable } from "drizzle-orm";
 import { getDb } from "../../db";
 import { crewMembersV2, crewAssignments, crewSeaService, crewPersonalDetails, crewLicenses } from "../../../../shared/v2/crew-pool/schema";
@@ -128,7 +128,17 @@ export const crewAvailabilityService = {
         and(
           eq(crewMembersV2.isDeleted, false),
           isNull(crewMembersV2.archivedAt),
-          ilike(crewMembersV2.status, "active"),
+          // Exclude terminated crew — valid statuses are On Board, On Leave,
+          // Available, In Transit, etc.  The old ilike(status, 'active')
+          // matched nothing because 'active' is not a real status value.
+          or(
+            isNull(crewMembersV2.status),
+            and(
+              notIlike(crewMembersV2.status, "terminated"),
+              notIlike(crewMembersV2.status, "terminated - nfr"),
+              notIlike(crewMembersV2.status, "inactive"),
+            ),
+          ),
           eq(crewMembersV2.isActive, true),
           or(
             eq(crewMembersV2.presentRank, rank),
@@ -360,7 +370,14 @@ export const crewAvailabilityService = {
       eq(crewMembersV2.presentRank, rank),
       eq(crewMembersV2.isDeleted, false),
       isNull(crewMembersV2.archivedAt),
-      ilike(crewMembersV2.status, "active"),
+      or(
+        isNull(crewMembersV2.status),
+        and(
+          notIlike(crewMembersV2.status, "terminated"),
+          notIlike(crewMembersV2.status, "terminated - nfr"),
+          notIlike(crewMembersV2.status, "inactive"),
+        ),
+      ),
       eq(crewMembersV2.isActive, true),
     ];
 
