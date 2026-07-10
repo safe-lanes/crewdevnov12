@@ -380,7 +380,10 @@ export const crewContactDetailsReport: ReportHandler<z.infer<typeof contactFilte
   filterSchema: contactFilters,
   async run(filters, ctx) {
     const db = getDb();
-    const conds: SQL[] = [...baseCrewConditions()];
+    const conds: SQL[] = [
+      ...baseCrewConditions(),
+      sql`(${crewMembersV2.status} IS NULL OR ${crewMembersV2.status} NOT ILIKE 'Terminated%')`,
+    ];
     if (filters.rank) conds.push(eq(crewMembersV2.presentRank, filters.rank));
     if (filters.vessel) conds.push(sql`${currentVesselNameExpr} = ${filters.vessel}`);
     const where = and(...conds);

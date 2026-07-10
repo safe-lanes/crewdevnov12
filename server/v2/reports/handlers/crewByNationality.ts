@@ -41,6 +41,7 @@ export const crewByNationalityReport: ReportHandler<Filters> = {
     const conditions: SQL[] = [
       eq(crewMembersV2.isDeleted, false),
       isNull(crewMembersV2.archivedAt),
+      sql`(${crewMembersV2.status} IS NULL OR ${crewMembersV2.status} NOT ILIKE 'Terminated%')`,
     ];
     if (filters.nationality) {
       conditions.push(

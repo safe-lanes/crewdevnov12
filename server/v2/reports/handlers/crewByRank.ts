@@ -41,6 +41,7 @@ export const crewByRankReport: ReportHandler<Filters> = {
     const conditions: SQL[] = [
       eq(crewMembersV2.isDeleted, false),
       isNull(crewMembersV2.archivedAt),
+      sql`(${crewMembersV2.status} IS NULL OR ${crewMembersV2.status} NOT ILIKE 'Terminated%')`,
     ];
     if (filters.rank) {
       conditions.push(eq(crewMembersV2.presentRank, filters.rank));
