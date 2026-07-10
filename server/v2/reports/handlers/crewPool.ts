@@ -79,8 +79,7 @@ export const crewOnLeaveReport: ReportHandler<z.infer<typeof onLeaveFilters>> = 
     const db = getDb();
     const conds: SQL[] = [
       ...baseCrewConditions(),
-      eq(crewMembersV2.isActive, true),
-      sql`${currentVesselNameExpr} IS NULL`,
+      eq(crewMembersV2.status, 'On Leave'),
     ];
     if (filters.rank) conds.push(eq(crewMembersV2.presentRank, filters.rank));
     if (filters.nationality) conds.push(eq(masterNationalities.nationality, filters.nationality));
