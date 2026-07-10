@@ -290,7 +290,7 @@ export const crewNotForRehireReport: ReportHandler<z.infer<typeof nfrFilters>> =
     const db = getDb();
     const conds: SQL[] = [
       eq(crewMembersV2.isDeleted, false),
-      sql`LOWER(COALESCE(${crewMembersV2.status}, '')) IN ('not for rehire', 'not-for-rehire', 'blacklisted', 'do not rehire')`,
+      eq(crewMembersV2.notForHire, true),
     ];
     if (filters.rank) conds.push(eq(crewMembersV2.presentRank, filters.rank));
     if (filters.nationality) conds.push(eq(masterNationalities.nationality, filters.nationality));
