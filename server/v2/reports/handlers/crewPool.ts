@@ -217,6 +217,7 @@ export const crewTerminatedReport: ReportHandler<z.infer<typeof termFilters>> = 
     const conds: SQL[] = [
       eq(crewMembersV2.isDeleted, false),
       eq(crewMembersV2.isActive, false),
+      sql`${crewMembersV2.status} ILIKE 'Terminated%'`,
     ];
     if (filters.rank) conds.push(eq(crewMembersV2.presentRank, filters.rank));
     if (filters.dateFrom) conds.push(sql`COALESCE(${crewMembersV2.archivedAt}, ${crewMembersV2.updatedAt}) >= ${filters.dateFrom}::date`);
