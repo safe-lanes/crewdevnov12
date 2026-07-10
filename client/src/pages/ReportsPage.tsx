@@ -195,7 +195,7 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
   ],
   "rec-rejected": [
     { kind: "rank", label: "Filter by Rank" },
-    { kind: "dateRange", label: "Rejection Date Range" },
+    { kind: "dateRange", label: "Date Range" },
   ],
   "rec-applications-by-source": [
     { kind: "source", label: "Application Source" },
