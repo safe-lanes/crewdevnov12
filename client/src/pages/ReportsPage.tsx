@@ -188,7 +188,7 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
   // Recruitment
   "rec-recruited": [
     { kind: "rank", label: "Filter by Rank" },
-    { kind: "dateRange", label: "Joining Date Range" },
+    { kind: "dateRange", label: "Date Range" },
   ],
   "rec-waitlist": [
     { kind: "rank", label: "Filter by Rank" },

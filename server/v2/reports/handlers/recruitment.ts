@@ -115,12 +115,88 @@ function makeStatusReport(
   };
 }
 
-export const recRecruitedReport = makeStatusReport(
-  "rec-recruited",
-  "Recruited",
-  ["recruited"],
-  "Joining Date",
-);
+const recruitedDateExpr = sql<string | null>`(
+  SELECT NULLIF(TRIM(crd.recruitment_date), '')
+  FROM cand_recruitment_decision crd
+  WHERE crd.rec_can_uuid = recruitment_candidates_v2.rec_can_uuid
+    AND crd.is_deleted = FALSE
+  ORDER BY crd.id DESC
+  LIMIT 1
+)`;
+
+export const recRecruitedReport: ReportHandler<{ rank?: string; dateFrom?: string; dateTo?: string }> = {
+  reportId: "rec-recruited",
+  title: "Recruited",
+  columns: [
+    { key: "fileNo", label: "File No", type: "text", width: 110 },
+    { key: "name", label: "Name", type: "text" },
+    { key: "rankAppliedFor", label: "Rank Applied", type: "text" },
+    { key: "nationalityName", label: "Nationality", type: "text" },
+    { key: "status", label: "Status", type: "status", width: 130 },
+    { key: "lastUpdated", label: "Recruited Date", type: "date", width: 140 },
+  ],
+  filterSchema: z.object({
+    rank: z.string().trim().min(1).optional(),
+    dateFrom: dateFilter,
+    dateTo: dateFilter,
+  }).strict(),
+  async run(filters, ctx) {
+    const db = getDb();
+    const conds: SQL[] = [
+      eq(recruitmentCandidatesV2.isDeleted, false),
+      inArray(
+        sql<string>`LOWER(COALESCE(${recruitmentCandidatesV2.status}, ''))`,
+        ["recruited"],
+      ),
+    ];
+    if (filters.rank) conds.push(eq(recruitmentCandidatesV2.rankAppliedFor, filters.rank));
+    if (filters.dateFrom) conds.push(sql`${recruitedDateExpr}::date >= ${filters.dateFrom}::date`);
+    if (filters.dateTo) conds.push(sql`${recruitedDateExpr}::date <= ${filters.dateTo}::date`);
+    const where = and(...conds);
+    const totalRes = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(recruitmentCandidatesV2)
+      .leftJoin(masterNationalities, eq(recruitmentCandidatesV2.nationalityUuid, masterNationalities.natUuid))
+      .where(where);
+    const total = Number(totalRes[0]?.c ?? 0);
+    const sortMap: Record<string, PgColumn | SQL> = {
+      fileNo: recruitmentCandidatesV2.fileNo,
+      name: recruitmentCandidatesV2.firstName,
+      rankAppliedFor: recruitmentCandidatesV2.rankAppliedFor,
+      nationalityName: masterNationalities.nationality,
+      status: recruitmentCandidatesV2.status,
+      lastUpdated: recruitedDateExpr,
+    };
+    const sortKey = ctx.sort?.key ?? "lastUpdated";
+    const order = (ctx.sort?.direction === "desc" ? desc : asc)(sortMap[sortKey] ?? sortMap.lastUpdated);
+    const rows = await db
+      .select({
+        fileNo: recruitmentCandidatesV2.fileNo,
+        name: candNameExpr,
+        rankAppliedFor: recruitmentCandidatesV2.rankAppliedFor,
+        nationalityName: masterNationalities.nationality,
+        status: recruitmentCandidatesV2.status,
+        lastUpdated: recruitedDateExpr,
+      })
+      .from(recruitmentCandidatesV2)
+      .leftJoin(masterNationalities, eq(recruitmentCandidatesV2.nationalityUuid, masterNationalities.natUuid))
+      .where(where)
+      .orderBy(order, asc(recruitmentCandidatesV2.recCanUuid))
+      .limit(ctx.pageSize)
+      .offset((ctx.page - 1) * ctx.pageSize);
+    return {
+      rows: rows.map((r: (typeof rows)[number]) => ({
+        fileNo: r.fileNo ?? null,
+        name: r.name ?? null,
+        rankAppliedFor: r.rankAppliedFor ?? null,
+        nationalityName: r.nationalityName ?? null,
+        status: r.status ?? null,
+        lastUpdated: r.lastUpdated ?? null,
+      })),
+      total,
+    };
+  },
+};
 
 const waitlistedDateExpr = sql<string | null>`(
   SELECT NULLIF(TRIM(crd.recruitment_date), '')
