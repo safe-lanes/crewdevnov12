@@ -769,6 +769,24 @@ export class ScreeningB6Repository {
     return results[0];
   }
 
+  async findInterviewItemByUuid(intUuid: string): Promise<ScreeningB6InterviewItem | undefined> {
+    const db = getDb();
+    const results = await db.select().from(screeningB6InterviewItems).where(
+      and(eq(screeningB6InterviewItems.intUuid, intUuid), eq(screeningB6InterviewItems.isDeleted, false))
+    ).limit(1);
+    return results[0];
+  }
+
+  async getRecCanUuidByB6Uuid(b6Uuid: string): Promise<string | undefined> {
+    const db = getDb();
+    const results = await db.select({ recCanUuid: screeningB6Interviews.recCanUuid })
+      .from(screeningB6Interviews)
+      .where(and(eq(screeningB6Interviews.b6Uuid, b6Uuid), eq(screeningB6Interviews.isDeleted, false)))
+      .limit(1);
+    return results[0]?.recCanUuid;
+  }
+
+
   async findComments(b6Uuid: string): Promise<ScreeningB6Comment[]> {
     const db = getDb();
     return db.select().from(screeningB6Comments).where(

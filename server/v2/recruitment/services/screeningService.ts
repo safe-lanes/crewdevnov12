@@ -31,6 +31,11 @@ import type {
   InsertScreeningB8Shortlisting,
 } from "../../../../shared/v2/recruitment/types";
 import { fileStorageService } from "../../shared/fileStorageService.js";
+import { recruitmentCandidatesV2 } from "../../../../shared/v2/recruitment/schema";
+import { sendEmail, logEmailEvent } from "../../shared/emailService.js";
+import { buildInterviewAssignmentEmail } from "../templates/interviewNotificationTemplate.js";
+
+
 
 /**
  * Delete a stored attachment binary from disk. Skips base64 data: values
@@ -55,6 +60,8 @@ async function resolveUserUuid(value: string): Promise<string | null> {
   if (!value) return null;
   
   const db = getDb();
+  
+  // 1. Try exact match by userUuid directly (if it was passed as UUID)
   const byUuid = await db.select().from(masterUsers)
     .where(eq(masterUsers.userUuid, value))
     .limit(1);
@@ -62,14 +69,37 @@ async function resolveUserUuid(value: string): Promise<string | null> {
     return byUuid[0].userUuid;
   }
   
-  const displayNameParts = value.split(' ,');
-  if (displayNameParts.length === 2) {
-    const fullname = displayNameParts[0].trim();
-    const designation = displayNameParts[1].trim();
-    const results = await db.select().from(masterUsers)
-      .where(eq(masterUsers.fullname, fullname))
+  // 2. Try exact match by displayName column (corresponds to dropdown value)
+  const byDisplayName = await db.select().from(masterUsers)
+    .where(eq(masterUsers.displayName, value))
+    .limit(1);
+  if (byDisplayName.length > 0 && byDisplayName[0].userUuid) {
+    return byDisplayName[0].userUuid;
+  }
+  
+  // 3. Try parsing string split by designation separator (fullname + " ," + designation)
+  const separator = value.includes(' ,') ? ' ,' : (value.includes(',') ? ',' : null);
+  if (separator) {
+    const parts = value.split(separator);
+    const namePart = parts[0].trim();
+    const designationPart = parts[1].trim();
+    
+    // Try matching namePart against fullname
+    let results = await db.select().from(masterUsers)
+      .where(eq(masterUsers.fullname, namePart))
       .limit(10);
-    const exactMatch = results.find((u: { designation?: string | null; userUuid?: string | null }) => u.designation === designation);
+      
+    // Fall back to matching namePart against firstname if fullname is empty
+    if (results.length === 0) {
+      results = await db.select().from(masterUsers)
+        .where(eq(masterUsers.firstname, namePart))
+        .limit(10);
+    }
+    
+    // Disambiguate multiple matches using designation
+    const exactMatch = results.find((u: { designation?: string | null; userUuid?: string | null }) => 
+      u.designation && u.designation.trim().toLowerCase() === designationPart.toLowerCase()
+    );
     if (exactMatch && exactMatch.userUuid) {
       return exactMatch.userUuid;
     }
@@ -78,15 +108,26 @@ async function resolveUserUuid(value: string): Promise<string | null> {
     }
   }
   
+  // 4. Try matching exact string against fullname
   const byFullname = await db.select().from(masterUsers)
     .where(eq(masterUsers.fullname, value))
     .limit(1);
   if (byFullname.length > 0 && byFullname[0].userUuid) {
     return byFullname[0].userUuid;
   }
+
+  // 5. Try matching exact string against firstname
+  const byFirstname = await db.select().from(masterUsers)
+    .where(eq(masterUsers.firstname, value))
+    .limit(1);
+  if (byFirstname.length > 0 && byFirstname[0].userUuid) {
+    return byFirstname[0].userUuid;
+  }
   
   return null;
 }
+
+
 
 export class ScreeningB1Service {
   async getByCandidate(recCanUuid: string): Promise<ScreeningB1Initial | undefined> {
@@ -583,37 +624,101 @@ export class ScreeningB6Service {
   }
 
   async createInterviewItem(b6Uuid: string, data: Record<string, unknown>, userUuid?: string) {
+    logEmailEvent('INFO', `createInterviewItem called. b6Uuid: ${b6Uuid}`, { data, userUuid });
     const auditUser = extractAuditUser(userUuid, data);
     const resolvedData = { ...data };
     if (data.interviewerUuid && typeof data.interviewerUuid === 'string') {
       const resolvedUuid = await resolveUserUuid(data.interviewerUuid);
+      logEmailEvent('INFO', `Resolved interviewerUuid from: ${data.interviewerUuid} to: ${resolvedUuid}`);
       if (resolvedUuid) {
         resolvedData.interviewerUuid = resolvedUuid;
       }
     }
-    return screeningB6Repository.createInterviewItem({
+    const createdItem = await screeningB6Repository.createInterviewItem({
       intUuid: uuidv4(),
       b6Uuid,
       ...resolvedData,
       createdByUuid: auditUser,
       updatedByUuid: auditUser,
     } as any);
+
+    logEmailEvent('INFO', `Created interview item in DB with UUID: ${createdItem.intUuid}`, createdItem);
+
+    // Trigger notification if interviewer is assigned
+    if (createdItem.interviewerUuid) {
+      logEmailEvent('INFO', 'Interviewer UUID exists in created item, resolving candidate recCanUuid...');
+      const recCanUuid = await screeningB6Repository.getRecCanUuidByB6Uuid(b6Uuid);
+      logEmailEvent('INFO', `Resolved recCanUuid: ${recCanUuid}`);
+      if (recCanUuid) {
+        triggerInterviewAssignmentNotification(
+          recCanUuid,
+          createdItem.interviewerUuid,
+          createdItem.interviewDate
+        );
+      } else {
+        logEmailEvent('WARN', `Could not fetch recCanUuid for b6Uuid: ${b6Uuid}`);
+      }
+    } else {
+      logEmailEvent('INFO', 'No interviewerUuid assigned to created item.');
+    }
+
+    return createdItem;
   }
 
   async updateInterviewItem(intUuid: string, data: Record<string, unknown>, userUuid?: string) {
+    logEmailEvent('INFO', `updateInterviewItem called. intUuid: ${intUuid}`, { data, userUuid });
     const auditUser = extractAuditUser(userUuid, data);
     const resolvedData = { ...data };
     if (data.interviewerUuid && typeof data.interviewerUuid === 'string') {
       const resolvedUuid = await resolveUserUuid(data.interviewerUuid);
+      logEmailEvent('INFO', `Resolved interviewerUuid from: ${data.interviewerUuid} to: ${resolvedUuid}`);
       if (resolvedUuid) {
         resolvedData.interviewerUuid = resolvedUuid;
       }
     }
-    return screeningB6Repository.updateInterviewItem(intUuid, {
+
+    // Fetch current item before update to check if interviewer changes
+    logEmailEvent('INFO', `Fetching current interview item for intUuid: ${intUuid}`);
+    const currentItem = await screeningB6Repository.findInterviewItemByUuid(intUuid);
+    logEmailEvent('INFO', `Current item before update:`, currentItem);
+
+    const updatedItem = await screeningB6Repository.updateInterviewItem(intUuid, {
       ...resolvedData,
       updatedByUuid: auditUser,
     } as any);
+
+    logEmailEvent('INFO', `Updated interview item in DB:`, updatedItem);
+
+    // Trigger notification if interviewer is changed/assigned
+    if (updatedItem && updatedItem.interviewerUuid) {
+      const oldInterviewer = currentItem?.interviewerUuid;
+      const newInterviewer = updatedItem.interviewerUuid;
+      logEmailEvent('INFO', `Comparing interviewers: Old=${oldInterviewer}, New=${newInterviewer}`);
+      if (oldInterviewer !== newInterviewer) {
+        logEmailEvent('INFO', 'Interviewer has changed/assigned. Resolving recCanUuid...');
+        const recCanUuid = await screeningB6Repository.getRecCanUuidByB6Uuid(updatedItem.b6Uuid);
+        logEmailEvent('INFO', `Resolved recCanUuid: ${recCanUuid}`);
+        if (recCanUuid) {
+          triggerInterviewAssignmentNotification(
+            recCanUuid,
+            newInterviewer,
+            updatedItem.interviewDate
+          );
+        } else {
+          logEmailEvent('WARN', `Could not fetch recCanUuid for b6Uuid: ${updatedItem.b6Uuid}`);
+        }
+      } else {
+        logEmailEvent('INFO', 'Interviewer has not changed.');
+      }
+    } else {
+      logEmailEvent('INFO', 'No interviewerUuid set on updated item.');
+    }
+
+    return updatedItem;
   }
+
+
+
 
   async getComments(b6Uuid: string) {
     return screeningB6Repository.findComments(b6Uuid);
@@ -833,3 +938,82 @@ export const screeningB5Service = new ScreeningB5Service();
 export const screeningB6Service = new ScreeningB6Service();
 export const screeningB7Service = new ScreeningB7Service();
 export const screeningB8Service = new ScreeningB8Service();
+
+async function triggerInterviewAssignmentNotification(
+  recCanUuid: string,
+  interviewerUuid: string,
+  interviewDate?: string | null
+): Promise<void> {
+  logEmailEvent('INFO', `triggerInterviewAssignmentNotification triggered. recCanUuid: ${recCanUuid}, interviewerUuid: ${interviewerUuid}, interviewDate: ${interviewDate}`);
+
+  try {
+    const db = getDb();
+    
+    // 1. Fetch candidate details
+    logEmailEvent('INFO', 'Querying recruitmentCandidatesV2...');
+    const candidateResult = await db.select({
+      firstName: recruitmentCandidatesV2.firstName,
+      familyName: recruitmentCandidatesV2.familyName,
+      rankAppliedFor: recruitmentCandidatesV2.rankAppliedFor,
+      fileNo: recruitmentCandidatesV2.fileNo
+    })
+    .from(recruitmentCandidatesV2)
+    .where(eq(recruitmentCandidatesV2.recCanUuid, recCanUuid))
+    .limit(1);
+
+    const candidate = candidateResult[0];
+    logEmailEvent('INFO', 'Query result candidate:', candidate);
+    if (!candidate) {
+      logEmailEvent('WARN', `Candidate with UUID ${recCanUuid} not found.`);
+      return;
+    }
+
+    // 2. Fetch interviewer details
+    logEmailEvent('INFO', 'Querying masterUsers...');
+    const interviewerResult = await db.select({
+      email: masterUsers.email,
+      fullname: masterUsers.fullname
+    })
+    .from(masterUsers)
+    .where(eq(masterUsers.userUuid, interviewerUuid))
+    .limit(1);
+
+    const interviewer = interviewerResult[0];
+    logEmailEvent('INFO', 'Query result interviewer:', interviewer);
+    if (!interviewer || !interviewer.email) {
+      logEmailEvent('WARN', `Interviewer with UUID ${interviewerUuid} has no valid email.`);
+      return;
+    }
+
+    // 3. Construct application deep link
+    const origin = process.env.VITE_API_CREWING_URL;
+    if(!origin) {
+      logEmailEvent('WARN', `VITE_API_CREWING_URL not found.`);
+      return;
+    }
+    const applicationLink = `${origin}/recruitment/${recCanUuid}`;
+    logEmailEvent('INFO', `Generated applicationLink: ${applicationLink}`);
+
+    // 4. Build email and send
+    const seafarerName = [candidate.firstName, candidate.familyName].filter(Boolean).join(' ') || 'Candidate';
+    const rank = candidate.rankAppliedFor || 'N/A';
+    
+    const emailData = buildInterviewAssignmentEmail({
+      interviewerName: interviewer.fullname || 'Interviewer',
+      seafarerName,
+      rank,
+      interviewDate,
+      applicationRef: candidate.fileNo,
+      applicationLink
+    });
+
+    logEmailEvent('INFO', `Built email subject: ${emailData.subject}`);
+    logEmailEvent('INFO', `Invoking sendEmail to: ${interviewer.email}`);
+    sendEmail([interviewer.email], emailData.subject, emailData.html);
+  } catch (error: any) {
+    logEmailEvent('ERROR', `Error triggering interview assignment email:`, error.message || error);
+  }
+}
+
+
+

@@ -31,3 +31,4 @@ replit.md
 # Private attachments storage root
 .private/
 
+logs/
