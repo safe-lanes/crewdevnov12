@@ -251,6 +251,7 @@ const changesCols: ReportColumn[] = [
   { key: "empNo", label: "Emp No", type: "text", width: 110 },
   { key: "name", label: "Name", type: "text" },
   { key: "rank", label: "Rank", type: "text" },
+  { key: "changeType", label: "Change Type", type: "text", width: 140 },
   { key: "signOnDate", label: "Sign On", type: "date", width: 130 },
   { key: "signOffDate", label: "Sign Off", type: "date", width: 130 },
 ];
@@ -275,16 +276,35 @@ export const vesselCrewChangesReport: ReportHandler<z.infer<typeof changesFilter
     // the requested window. Using BETWEEN per event is correct; the previous
     // (>=from OR ...) AND (<=to OR ...) split could match rows with neither
     // event actually inside the window.
+    // changeType label reuses the exact same checks that admit the row, so
+    // the label can never disagree with the filtering. NULL (blank) when no
+    // date filters are applied.
+    let changeTypeExpr: SQL<string | null> = sql<string | null>`NULL`;
+    const buildChangeType = (onIn: SQL, offIn: SQL) =>
+      sql<string | null>`CASE
+        WHEN ${onIn} AND ${offIn} THEN 'Sign On / Sign Off'
+        WHEN ${onIn} THEN 'Sign On'
+        WHEN ${offIn} THEN 'Sign Off'
+      END`;
     if (filters.dateFrom && filters.dateTo) {
       const from = filters.dateFrom;
       const to = filters.dateTo;
-      conds.push(sql`((${onDate} BETWEEN ${from}::date AND ${to}::date) OR (${offDate} BETWEEN ${from}::date AND ${to}::date))`);
+      const onIn = sql`(${onDate} BETWEEN ${from}::date AND ${to}::date)`;
+      const offIn = sql`(${offDate} BETWEEN ${from}::date AND ${to}::date)`;
+      conds.push(sql`(${onIn} OR ${offIn})`);
+      changeTypeExpr = buildChangeType(onIn, offIn);
     } else if (filters.dateFrom) {
       const from = filters.dateFrom;
-      conds.push(sql`(${onDate} >= ${from}::date OR ${offDate} >= ${from}::date)`);
+      const onIn = sql`(${onDate} >= ${from}::date)`;
+      const offIn = sql`(${offDate} >= ${from}::date)`;
+      conds.push(sql`(${onIn} OR ${offIn})`);
+      changeTypeExpr = buildChangeType(onIn, offIn);
     } else if (filters.dateTo) {
       const to = filters.dateTo;
-      conds.push(sql`(${onDate} <= ${to}::date OR ${offDate} <= ${to}::date)`);
+      const onIn = sql`(${onDate} <= ${to}::date)`;
+      const offIn = sql`(${offDate} <= ${to}::date)`;
+      conds.push(sql`(${onIn} OR ${offIn})`);
+      changeTypeExpr = buildChangeType(onIn, offIn);
     }
     const where = and(...conds);
 
@@ -313,6 +333,7 @@ export const vesselCrewChangesReport: ReportHandler<z.infer<typeof changesFilter
         empNo: crewMembersV2.empNo,
         name: nameExpr,
         rank: vesselPlanningV2.rank,
+        changeType: changeTypeExpr,
         signOnDate: vesselPlanningV2.signOnDate,
         signOffDate: vesselPlanningV2.signOffDate,
       })
@@ -331,6 +352,7 @@ export const vesselCrewChangesReport: ReportHandler<z.infer<typeof changesFilter
         empNo: r.empNo ?? null,
         name: r.name ?? null,
         rank: r.rank ?? null,
+        changeType: r.changeType ?? null,
         signOnDate: r.signOnDate ?? null,
         signOffDate: r.signOffDate ?? null,
       })),
