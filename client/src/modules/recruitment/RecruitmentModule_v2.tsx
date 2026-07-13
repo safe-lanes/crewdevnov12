@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { parseISO, format, isValid } from 'date-fns';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
@@ -36,6 +37,20 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
   const [showFilters, setShowFilters] = useState(true);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<V2CandidateListItem | null>(null);
+  // When true, the open form is reflected in the URL as /recruitment/<recCanUuid>
+  // (opened via Edit/Attachment click or a path deep-link). Query-param deep-links
+  // from the dashboard drill-down and the New Crew form do NOT sync the URL.
+  const [urlSynced, setUrlSynced] = useState(false);
+  const [location, navigate] = useLocation();
+  const pathCandidateUuid = useMemo(() => {
+    const m = location.match(/^\/recruitment\/([^/?#]+)/);
+    if (!m) return null;
+    try {
+      return decodeURIComponent(m[1]);
+    } catch {
+      return m[1];
+    }
+  }, [location]);
   const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -168,6 +183,39 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
     return all.filter(p => canView(pageToMenu[p] || p));
   }, [permissions, canView]);
 
+  // Path deep-link entry: /recruitment/<recCanUuid>. Open the matching
+  // candidate's form once the list + permissions are loaded. Unknown or
+  // not-permitted uuids fall back to the plain list view.
+  useEffect(() => {
+    if (!pathCandidateUuid) return;
+    if (showApplicationForm) return;
+    if (isLoading || permissionsLoading) return;
+    const list = (allCandidates as V2CandidateListItem[]) || [];
+    const found = list.find((c) => c.recCanUuid === pathCandidateUuid);
+    if (found) {
+      const candidatePage = (Object.keys(STATUS_MAPPING) as (keyof typeof STATUS_MAPPING)[])
+        .find((page) => STATUS_MAPPING[page].includes(found.status));
+      const isAllowed = permissions.length === 0 || (!!candidatePage && allowedPages.includes(candidatePage));
+      if (isAllowed) {
+        setSelectedCandidate({ ...found, middleName: found.middleName || '' });
+        setUrlSynced(true);
+        setShowApplicationForm(true);
+        return;
+      }
+    }
+    navigate('/recruitment', { replace: true });
+  }, [pathCandidateUuid, showApplicationForm, isLoading, permissionsLoading, allCandidates, permissions, allowedPages, navigate]);
+
+  // Browser Back (or any navigation that removes the uuid segment) closes a
+  // URL-synced form.
+  useEffect(() => {
+    if (urlSynced && showApplicationForm && !pathCandidateUuid) {
+      setShowApplicationForm(false);
+      setSelectedCandidate(null);
+      setUrlSynced(false);
+    }
+  }, [urlSynced, showApplicationForm, pathCandidateUuid]);
+
   const recruitmentPageToMenu: Record<string, string> = useMemo(() => ({
     "in-progress": "In Progress", "recruited": "Recruited", "waitlist": "Waitlist", "rejected": "Rejected"
   }), []);
@@ -180,7 +228,11 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         ...params.data,
         middleName: params.data.middleName || ''
       });
+      setUrlSynced(true);
       setShowApplicationForm(true);
+      if (params.data?.recCanUuid) {
+        navigate(`/recruitment/${encodeURIComponent(params.data.recCanUuid)}`);
+      }
       
       setTimeout(() => {
         const a2Section = document.querySelector('[data-section="A2"]');
@@ -195,7 +247,11 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         ...params.data,
         middleName: params.data.middleName || ''
       });
+      setUrlSynced(true);
       setShowApplicationForm(true);
+      if (params.data?.recCanUuid) {
+        navigate(`/recruitment/${encodeURIComponent(params.data.recCanUuid)}`);
+      }
     };
 
     const handleDeleteClick = () => {
@@ -267,7 +323,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         )}
       </div>
     );
-  }, [deleteMutation, toast, permissions, canEdit, canDelete, currentMenuName]);
+  }, [deleteMutation, toast, permissions, canEdit, canDelete, currentMenuName, navigate]);
 
   const columnDefs: ColDef[] = useMemo(() => {
     const baseColumns: ColDef[] = [
@@ -898,9 +954,13 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                 ?._openedFromDeepLink === true;
             setShowApplicationForm(false);
             setSelectedCandidate(null);
-            // If we were opened via the dashboard drill-down deep link, walk
-            // one step back so the popup is restored on the dashboard.
-            if (wasDeepLinked && typeof window !== 'undefined') {
+            if (urlSynced) {
+              // URL-synced form: drop the uuid segment from the URL.
+              setUrlSynced(false);
+              navigate('/recruitment');
+            } else if (wasDeepLinked && typeof window !== 'undefined') {
+              // If we were opened via the dashboard drill-down deep link, walk
+              // one step back so the popup is restored on the dashboard.
               window.history.back();
             }
           }}

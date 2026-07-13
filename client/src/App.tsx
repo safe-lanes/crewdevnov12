@@ -101,7 +101,7 @@ function AuthenticatedApp() {
                   <Route path="/dashboard">
                     <ProtectedRoute menuName="Dashboard" fallbackRoute="/recruitment"><DashboardPage /></ProtectedRoute>
                   </Route>
-                  <Route path="/recruitment">
+                  <Route path="/recruitment/:recCanUuid?">
                     <ProtectedRoute menuName="Recruitment"><RecruitmentWrapper /></ProtectedRoute>
                   </Route>
                   <Route path="/crew-pool">
