@@ -8354,9 +8354,38 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       setTempRecruitmentDate('');
       return;
     }
-    // Existing saved crew: unchanged — change/set date, saved directly to server
-    statusUpdateMutation.mutate({ id: crewId, data: { recruitmentDate: tempRecruitmentDate } });
+    // Existing saved crew: save the date to the server, but WITHOUT triggering
+    // the full-profile refetch that would overwrite unsaved local edits.
+    updateFormData('recruitmentDate', tempRecruitmentDate);   // date visible in header + validation passes
     setRecruitmentDateError('');
+    try {
+      const response = await apiRequest('PATCH', `/api/v2/crew-pool/crew/${crewId}`, { recruitmentDate: tempRecruitmentDate });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      // Refresh the crew list grid (safe — doesn't touch the open form)
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', 'list'] });
+      // Mark the profile cache stale WITHOUT refetching now — fresh data loads
+      // next time the form is opened; no reload = no wipe of unsaved edits
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewId, 'full-profile'], refetchType: 'none' });
+      // Also mark the crew's broader caches (single crew, documents, visas, etc.)
+      // stale without refetching now — same coverage as the old broad invalidation
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', crewId], refetchType: 'none' });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewId, 'dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewId, 'assignments'] });
+      toast({
+        title: "Status Updated",
+        description: "Crew member status has been updated.",
+        duration: 3000,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to update status: ${error.message}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
     setIsRecruitmentDateEditOpen(false);
     setTempRecruitmentDate('');
   };
