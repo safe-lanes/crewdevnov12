@@ -1603,7 +1603,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           if (!crewUuid && sectionId === 'B1') {
             const trimmedFirstName = (formData.firstName || '').trim();
             if (trimmedFirstName) {
-              crewUuid = await ensureCrewExists();
+              if ((formData.recruitmentDate || '').trim()) {
+                crewUuid = await ensureCrewExists();
+              } else {
+                setRecruitmentDateError('Date of Recruitment is required.');
+                toast({
+                  title: "Validation Error",
+                  description: "Set the Date of Recruitment to create the crew record.",
+                  variant: "destructive",
+                });
+              }
             } else {
               const hasB1Data = !!(
                 (formData.familyName || '').trim() ||
@@ -7919,7 +7928,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Ensure crew record exists before allowing section edits
   // This implements the "save-before-edit" pattern for new crew records
-  const ensureCrewExists = async (): Promise<string | null> => {
+  const ensureCrewExists = async (recruitmentDateOverride?: string): Promise<string | null> => {
     const existingUuid = getEffectiveCrewUuid();
     if (existingUuid) {
       return existingUuid;
@@ -7942,6 +7951,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         presentRank: formData.presentRank || '',
         dateOfBirth: formData.dateOfBirth || '',
         uploadedPhoto: uploadedPhoto || null,
+        recruitmentDate: recruitmentDateOverride || formData.recruitmentDate || undefined,
       };
       
       // Use the same V2 mapping pipeline as the createCrewMutationV2 hook
@@ -8051,6 +8061,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         toast({
           title: "Missing Required Field",
           description: "Please fill in 'First Name' in Section B1 (General Particulars) before editing this section.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!getEffectiveCrewUuid() && !(formData.recruitmentDate || '').trim()) {
+        setRecruitmentDateError('Date of Recruitment is required.');
+        toast({
+          title: "Validation Error",
+          description: "Set the Date of Recruitment to create the crew record.",
           variant: "destructive",
         });
         return;
@@ -8314,24 +8333,30 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const handleUpdateRecruitmentDate = async () => {
     if (!tempRecruitmentDate) return;
     // V2: Use crewUuid as the primary identifier. For manually added crew that
-    // have not been persisted yet, create the crew record first.
+    // have not been persisted yet, hold the date locally; create the crew only
+    // when both First Name and Date of Recruitment are present.
     let crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     if (!crewId) {
-      // New unsaved crew: First Name is required before the crew can be created.
-      if (!(formData.firstName || '').trim()) {
+      // New unsaved crew: keep the date in the form (header now shows it)
+      updateFormData('recruitmentDate', tempRecruitmentDate);
+      setRecruitmentDateError('');
+      if ((formData.firstName || '').trim()) {
+        await ensureCrewExists(tempRecruitmentDate);
+      } else {
+        setFirstNameError('First name is required.');
         toast({
           title: "Validation Error",
-          description: "Fill the First Name before selecting the Date of Recruitment.",
+          description: "Fill the First Name to create the crew record.",
           variant: "destructive",
         });
-        return;
       }
-      crewId = await ensureCrewExists();
+      setIsRecruitmentDateEditOpen(false);
+      setTempRecruitmentDate('');
+      return;
     }
-    if (crewId) {
-      statusUpdateMutation.mutate({ id: crewId, data: { recruitmentDate: tempRecruitmentDate } });
-      setRecruitmentDateError('');
-    }
+    // Existing saved crew: unchanged — change/set date, saved directly to server
+    statusUpdateMutation.mutate({ id: crewId, data: { recruitmentDate: tempRecruitmentDate } });
+    setRecruitmentDateError('');
     setIsRecruitmentDateEditOpen(false);
     setTempRecruitmentDate('');
   };
