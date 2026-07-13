@@ -7646,6 +7646,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           to: s.to,
           periodMonths: s.periodMonths,
           experienceCategories: s.experienceCategories,
+          signOffReason: (s as any).signOffReason,
         })),
         externalSeaService: formData.externalSeaService.map(s => ({
           id: s.id,
