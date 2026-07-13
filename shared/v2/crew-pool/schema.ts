@@ -358,6 +358,7 @@ export const crewSeaService = pgTable("crew_sea_service", {
   toDate: text("to_date"),
   periodMonths: text("period_months"),
   experienceCategories: text("experience_categories").array(),
+  signOffReason: text("sign_off_reason"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });

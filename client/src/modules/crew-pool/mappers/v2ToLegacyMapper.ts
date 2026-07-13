@@ -645,6 +645,7 @@ export interface LegacySeaService {
   toDate: string;
   periodMonths: string;
   experienceCategories: string[];
+  signOffReason?: string;
   attachments?: LegacyAttachment[];
   sortOrder?: number;
 }
@@ -669,6 +670,7 @@ export function mapV2SeaServiceToLegacy(v2: any): LegacySeaService {
     toDate: v2?.toDate || '',
     periodMonths: v2?.periodMonths?.toString() || '',
     experienceCategories: v2?.experienceCategories || [],
+    signOffReason: v2?.signOffReason || '',
     sortOrder: v2?.sortOrder,
     attachments: (v2?.attachments || []).map((att: any) => ({
       id: att.attUuid || att.id || '',

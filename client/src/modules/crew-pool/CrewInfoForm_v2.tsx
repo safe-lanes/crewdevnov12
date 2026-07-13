@@ -5120,13 +5120,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">To <span className="text-red-500">*</span></th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Period(M)</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Experience</th>
+                  <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Reason of Sign Off</th>
                   {canEditSection('E') && <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {formData.currentCompanySeaService.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="p-8 text-center text-gray-500">
+                    <td colSpan={12} className="p-8 text-center text-gray-500">
                       No current company sea service records added yet. Click "ADD" to get started.
                     </td>
                   </tr>
@@ -5410,6 +5411,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         ) : (
                           <span className="text-gray-400 text-[11px]">—</span>
                         )}
+                      </td>
+                      <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4" data-testid={`text-sign-off-reason-${service.id}`}>
+                        {(service as any).signOffReason || <span className="text-gray-400">—</span>}
                       </td>
                       {canEditSection('E') && (
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">

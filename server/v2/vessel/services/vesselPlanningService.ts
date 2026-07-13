@@ -1071,6 +1071,7 @@ export const vesselPlanningService = {
           .update(crewSeaService)
           .set({
             toDate: data.signOffDate,
+            signOffReason: data.signOffReason || null,
             updatedAt: new Date(),
             updatedByUuid: data.auditUserUuid || null,
           })

@@ -76,6 +76,7 @@ interface SeaService {
   to: string;
   periodMonths: string;
   experienceCategories?: string[];
+  signOffReason?: string;
 }
 
 interface PreJoiningMedical {
@@ -948,7 +949,8 @@ function drawPartE(builder: PDFBuilder, formData: CrewInfoFormData): void {
 
   builder.drawSubsectionHeader('E1. Details of Sea Service (Company)');
   const seaColWidths = [CONTENT_WIDTH * 0.12, CONTENT_WIDTH * 0.09, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.06, CONTENT_WIDTH * 0.15];
-  builder.drawTableHeader(['Vessel Name', 'Vessel Type', 'Deadweight', 'Engine Type/ Power', 'Owner / operator', 'Rank', 'From', 'To', 'Period(M)', 'Experience'], seaColWidths);
+  const e1ColWidths = [CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.09, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.07, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.10, CONTENT_WIDTH * 0.06, CONTENT_WIDTH * 0.11, CONTENT_WIDTH * 0.11];
+  builder.drawTableHeader(['Vessel Name', 'Vessel Type', 'Deadweight', 'Engine Type/ Power', 'Owner / operator', 'Rank', 'From', 'To', 'Period(M)', 'Experience', 'Reason of Sign Off'], e1ColWidths);
   if (formData.currentCompanySeaService && formData.currentCompanySeaService.length > 0) {
     for (const service of formData.currentCompanySeaService) {
       builder.drawTableRow([
@@ -962,10 +964,11 @@ function drawPartE(builder: PDFBuilder, formData: CrewInfoFormData): void {
         formatDate(service.to),
         service.periodMonths || '',
         (service.experienceCategories || []).join(', '),
-      ], seaColWidths);
+        service.signOffReason || '-',
+      ], e1ColWidths);
     }
   } else {
-    builder.drawTableRow(['-', '-', '-', '-', '-', '-', '-', '-', '-', '-'], seaColWidths);
+    builder.drawTableRow(['-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-'], e1ColWidths);
   }
 
   builder.drawSubsectionHeader('E2. Details of Sea Service (External)');

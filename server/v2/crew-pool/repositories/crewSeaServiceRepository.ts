@@ -71,6 +71,7 @@ export class CrewSeaServiceRepository {
         ownerOperator: crewSeaService.ownerOperator,
         periodMonths: crewSeaService.periodMonths,
         experienceCategories: crewSeaService.experienceCategories,
+        signOffReason: crewSeaService.signOffReason,
         sortOrder: crewSeaService.sortOrder,
         createdAt: crewSeaService.createdAt,
         createdByUuid: crewSeaService.createdByUuid,
