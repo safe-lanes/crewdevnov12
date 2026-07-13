@@ -637,6 +637,7 @@ export const screeningB7TrainingItems = pgTable("screening_b7_training_items", {
   status: text("status"),
   dueDate: text("due_date"),
   comments: text("comments"),
+  source: text("source"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });

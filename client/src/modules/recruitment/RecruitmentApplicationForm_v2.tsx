@@ -343,7 +343,7 @@ interface LocalFormData {
   b6Interviews: Array<{ id: string; serverId?: number; date: string; interviewer: string; status: string; result: string; comments: string }>;
   b6InterviewItems: Array<{ id: string; serverId?: number; date?: string; interviewer?: string; status?: string; result?: string; comments?: string; interviewerName?: string; interviewDate?: string; interviewType?: string; remarks?: string }>;
   b6InterviewComments: {[key: string]: string};
-  b7TrainingNeeds: Array<{ id: string; serverId?: number; training?: string; identifiedBy?: string; category?: string; dueDate?: string; comments?: string; trainingName?: string; trainingType?: string; provider?: string; scheduledDate?: string; status?: string; remarks?: string }>;
+  b7TrainingNeeds: Array<{ id: string; serverId?: number; training?: string; identifiedBy?: string; category?: string; dueDate?: string; comments?: string; trainingName?: string; trainingType?: string; provider?: string; scheduledDate?: string; status?: string; remarks?: string; source?: 'manual' | 'database' }>;
   b8Shortlisted: string;
   b8SelectedApprovers: Array<{ id: string; serverId?: number; approverName?: string; approverRole?: string; approvalDate?: string; decision?: string; remarks?: string }>;
   b2ReferenceItems: Array<{ id: string; serverId?: number; date?: string; nameDesignation?: string; contactInfo?: string; employerName?: string; contactPerson?: string; contactNumber?: string; dateContacted?: string; feedback?: string; rating?: string }>;
@@ -1787,6 +1787,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           status: training.status || '',
           dueDate: training.dueDate || '',
           comments: training.comments || '',
+          source: (training.source === 'database' ? 'database' : 'manual') as 'manual' | 'database',
         })),
       }));
     }
@@ -2325,7 +2326,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         category: trainingCategoryOptions.includes(course.requirement) ? course.requirement : '',
         status: '',
         dueDate: '',
-        comments: ''
+        comments: '',
+        source: 'database' as const
       }));
       return {
         ...prev,
@@ -3666,6 +3668,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               identifiedByUuid: training.identifiedBy || null,
               dueDate: training.dueDate || null,
               comments: training.comments || null,
+              source: training.source || null,
               sortOrder: index,
             },
           }));
@@ -3679,6 +3682,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               identifiedByUuid: training.identifiedBy || null,
               dueDate: training.dueDate || null,
               comments: training.comments || null,
+              source: training.source || null,
               sortOrder: index,
             },
           }));
@@ -8181,7 +8185,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           const newId = String(Date.now());
                           setFormData(prev => ({
                             ...prev,
-                            b7TrainingNeeds: [...prev.b7TrainingNeeds, { id: newId, training: '', identifiedBy: '', category: '', status: '', dueDate: '', comments: '' }]
+                            b7TrainingNeeds: [...prev.b7TrainingNeeds, { id: newId, training: '', identifiedBy: '', category: '', status: '', dueDate: '', comments: '', source: 'manual' as const }]
                           }));
                         }}
                         className="text-gray-600 border-gray-300 hover:bg-gray-50"
@@ -8230,7 +8234,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     setB7TrainingNameErrors(prev => ({ ...prev, [training.id]: 'Training name is required' }));
                                   }
                                 }}
-                                className={`text-[#4f5863] text-[13px] border ${b7TrainingNameErrors[training.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
+                                readOnly={training.source === 'database'}
+                                className={`text-[#4f5863] text-[13px] border ${b7TrainingNameErrors[training.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto ${training.source === 'database' ? 'bg-gray-50 cursor-default' : ''}`}
                                 placeholder="Enter training/course name"
                                 data-testid={`input-b7-training-name-${idx}`}
                               />

@@ -907,6 +907,7 @@ export class ScreeningB7Repository {
       status: screeningB7TrainingItems.status,
       dueDate: screeningB7TrainingItems.dueDate,
       comments: screeningB7TrainingItems.comments,
+      source: screeningB7TrainingItems.source,
       sortOrder: screeningB7TrainingItems.sortOrder,
       isDeleted: screeningB7TrainingItems.isDeleted,
       createdAt: screeningB7TrainingItems.createdAt,

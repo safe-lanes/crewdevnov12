@@ -2439,6 +2439,7 @@ export interface ScreeningB7TrainingItem {
   status?: string;
   dueDate?: string;
   comments?: string;
+  source?: string;
   sortOrder?: number;
 }
 
