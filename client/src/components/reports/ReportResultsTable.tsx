@@ -6,6 +6,7 @@ import { AgGridTable } from "@/components/AgGrid/AgGridTable";
 import { downloadCsv, rowsToCsv } from "@/lib/csvExport";
 import { downloadXlsx } from "@/lib/xlsxExport";
 import { downloadPdf } from "@/lib/pdfExport";
+import { formatDate } from "@/utils/format";
 import type {
   ReportColumn,
   ReportColumnType,
@@ -27,6 +28,10 @@ interface ReportResultsTableProps {
 function formatCell(value: unknown, type?: ReportColumnType): string {
   if (value === null || value === undefined || value === "") return "—";
   if (type === "boolean") return value ? "Yes" : "No";
+  if (type === "date") {
+    const formatted = formatDate(String(value));
+    return formatted || String(value);
+  }
   if (type === "number" && typeof value === "number") {
     return value.toLocaleString();
   }
@@ -47,17 +52,30 @@ export function ReportResultsTable({
     .toLowerCase()
     .replace(/\s+/g, "-");
 
+  const exportRows = useMemo(() => {
+    const dateKeys = columns.filter((c) => c.type === "date").map((c) => c.key);
+    if (dateKeys.length === 0) return rows;
+    return rows.map((row) => {
+      const copy = { ...row };
+      for (const k of dateKeys) {
+        const v = copy[k];
+        if (typeof v === "string" && v) copy[k] = formatDate(v) || v;
+      }
+      return copy;
+    });
+  }, [columns, rows]);
+
   const handleExportCsv = () => {
-    const csv = rowsToCsv(exportColumns, rows);
+    const csv = rowsToCsv(exportColumns, exportRows);
     downloadCsv(baseFilename, csv);
   };
 
   const handleExportXlsx = () => {
-    downloadXlsx(baseFilename, exportColumns, rows, title || "Report");
+    downloadXlsx(baseFilename, exportColumns, exportRows, title || "Report");
   };
 
   const handleExportPdf = () => {
-    downloadPdf(baseFilename, title || "Report", exportColumns, rows);
+    downloadPdf(baseFilename, title || "Report", exportColumns, exportRows);
   };
 
   const columnDefs = useMemo<ColDef[]>(
