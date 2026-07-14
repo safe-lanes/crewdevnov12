@@ -269,10 +269,13 @@ export default function WageScaleEditor({
 
   // --- column management ---
   const [colToAdd, setColToAdd] = useState("");
+  const INELIGIBLE_HINTS: Record<string, string> = {
+    fixed_amount: "Fixed amount — not a scale column",
+    manual_entry: "Manual entry — entered as transactions",
+    percentage_of_base: "Percentage of base — computed at run time",
+  };
   const columnCandidates = elements.filter(
-    (e: any) =>
-      COLUMN_METHODS.includes(e.calcMethod) &&
-      !columns.some((c) => c.uuid === e.payElementUuid),
+    (e: any) => !columns.some((c) => c.uuid === e.payElementUuid),
   );
   const addColumn = () => {
     const el = elementByUuid.get(colToAdd);
@@ -582,11 +585,25 @@ export default function WageScaleEditor({
                 <SelectValue placeholder="Add element column…" />
               </SelectTrigger>
               <SelectContent>
-                {columnCandidates.map((e: any) => (
-                  <SelectItem key={e.payElementUuid} value={e.payElementUuid}>
-                    {e.code} — {e.name}
-                  </SelectItem>
-                ))}
+                {columnCandidates.map((e: any) => {
+                  const eligible = COLUMN_METHODS.includes(e.calcMethod);
+                  return (
+                    <SelectItem
+                      key={e.payElementUuid}
+                      value={e.payElementUuid}
+                      disabled={!eligible}
+                      className={eligible ? "" : "opacity-50"}
+                      data-testid={`option-add-column-${e.code}`}
+                    >
+                      {e.code} — {e.name}
+                      {!eligible && (
+                        <span className="ml-1 text-muted-foreground">
+                          ({INELIGIBLE_HINTS[e.calcMethod] ?? "Not a scale column"})
+                        </span>
+                      )}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
             <Button

@@ -141,9 +141,13 @@ export class PayElementsRepository {
     return results.length > 0;
   }
 
-  /** Distinct wage scales that reference this element through a live line. */
+  /**
+   * Distinct wage scales that reference this element through a live line,
+   * optionally restricted to the given scale statuses.
+   */
   async findReferencingScales(
     payElementUuid: string,
+    statuses?: string[],
   ): Promise<{ scaleUuid: string; scaleName: string }[]> {
     const db = getDb();
     const rows = await db
@@ -161,6 +165,9 @@ export class PayElementsRepository {
           eq(accWageScaleLinesV2.payElementUuid, payElementUuid),
           eq(accWageScaleLinesV2.isDeleted, false),
           eq(accWageScalesV2.isDeleted, false),
+          ...(statuses && statuses.length > 0
+            ? [inArray(accWageScalesV2.status, statuses)]
+            : []),
         ),
       );
     const seen = new Map<string, string>();

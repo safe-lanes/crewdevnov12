@@ -1286,4 +1286,87 @@ describe("Wage Calculation Engine (H1–H5)", () => {
     const uuids = group.engagements.map((e: any) => e.engagementUuid).sort();
     expect(uuids).toEqual([engOvlB1, engOvlB2].sort());
   });
+
+  // ---- Task 120: overlap resolution -----------------------------------------------
+  it("overlap resolution: run blocked → cancel line-free duplicate → audit clears → run unblocks", async () => {
+    // 1. Run for the overlapping crew is blocked while both engagements are open.
+    const blocked = await runEngagement(engOvlB1, "2026-03");
+    expect(blocked.status).toBe(409);
+
+    // 2. Cancel the line-free duplicate via the existing PATCH endpoint
+    //    (the same call the "Cancel engagement" UI action makes).
+    const cancel = await fetch(`${V2_BASE}/engagements/${engOvlB2}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "cancelled" }),
+    });
+    expect(cancel.status).toBe(200);
+    expect((await cancel.json()).status).toBe("cancelled");
+
+    // 3. The overlap audit no longer lists the crew (cache-buster: test-env
+    //    fetch caches GETs per URL).
+    const audit = await fetch(`${V2_BASE}/engagements/audit?after=cancel`);
+    expect(audit.status).toBe(200);
+    const groups = (await audit.json()) as any[];
+    expect(groups.find((g) => g.crewUuid === crewOvlB)).toBeUndefined();
+
+    // 4. The run for the surviving engagement now unblocks.
+    const unblocked = await runEngagement(engOvlB1, "2026-03");
+    expect(unblocked.status, JSON.stringify(unblocked.body)).toBe(200);
+  });
+
+  // ---- Task 120: pay-element deactivation guard scope -----------------------------
+  it("deactivation guard: blocked by ACTIVE scale refs with supersede message; superseded-only refs deactivate; delete stays blocked", async () => {
+    // Element referenced by the ACTIVE scale H1 cannot be deactivated.
+    const blocked = await fetch(`${V2_BASE}/pay-elements/${el.SUBS}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "inactive" }),
+    });
+    expect(blocked.status).toBe(409);
+    const blockedBody = await blocked.json();
+    expect(blockedBody.error).toContain("Referenced by active scale(s):");
+    expect(blockedBody.error).toContain(
+      "Supersede the scale without this element, then deactivate.",
+    );
+
+    // Element referenced ONLY by a superseded scale CAN be deactivated…
+    const elSup = u();
+    const scaleSup = u();
+    await payElement(elSup, `ZSUP_${S}`);
+    await insert("acc_wage_scales_v2", {
+      scale_uuid: scaleSup,
+      scale_name: `Test Scale SUP ${S}`,
+      currency: "USD",
+      effective_from: "2024-01-01",
+      status: "superseded",
+    });
+    await scaleLine(scaleSup, RANK_MST, elSup, "100");
+
+    const deactivate = await fetch(`${V2_BASE}/pay-elements/${elSup}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "inactive" }),
+    });
+    expect(deactivate.status, await deactivate.text()).toBe(200);
+
+    // …but delete remains blocked by ANY reference (even superseded-only).
+    const del = await fetch(`${V2_BASE}/pay-elements/${elSup}`, {
+      method: "DELETE",
+    });
+    expect(del.status).toBe(409);
+
+    // cleanup fixture rows
+    await db.query(
+      "DELETE FROM acc_wage_scale_lines_v2 WHERE scale_uuid = $1",
+      [scaleSup],
+    );
+    await db.query("DELETE FROM acc_wage_scales_v2 WHERE scale_uuid = $1", [
+      scaleSup,
+    ]);
+    await db.query(
+      "DELETE FROM acc_pay_elements_v2 WHERE pay_element_uuid = $1",
+      [elSup],
+    );
+  });
 });

@@ -56,6 +56,24 @@ async function validateBusinessRules(merged: Partial<AccPayElementV2>) {
   }
 }
 
+/**
+ * Deactivation guard: blocked only by references from ACTIVE or DRAFT wage
+ * scales (superseded-only references don't block a deactivate).
+ */
+async function assertNotReferencedByLiveScales(payElementUuid: string) {
+  const scales = await payElementsRepository.findReferencingScales(
+    payElementUuid,
+    ["active", "draft"],
+  );
+  if (scales.length === 0) return;
+  const err: any = new Error(
+    `Referenced by active scale(s): ${scales.map((s) => s.scaleName).join(", ")}. Supersede the scale without this element, then deactivate.`,
+  );
+  err.code = "REFERENCED";
+  err.references = { scales, engagementOverrides: 0 };
+  throw err;
+}
+
 /** Block delete/deactivate when the element is referenced anywhere. */
 async function assertNotReferenced(payElementUuid: string, action: string) {
   const [scales, engagementOverrides] = await Promise.all([
@@ -127,7 +145,7 @@ export const payElementsService = {
     const merged = { ...existing, ...data } as Partial<AccPayElementV2>;
     await validateBusinessRules(merged);
     if (data.status === "inactive" && existing.status !== "inactive") {
-      await assertNotReferenced(payElementUuid, "deactivate");
+      await assertNotReferencedByLiveScales(payElementUuid);
     }
     const dataWithAudit = applyAuditUser(data, false);
     let updated: AccPayElementV2 | undefined;

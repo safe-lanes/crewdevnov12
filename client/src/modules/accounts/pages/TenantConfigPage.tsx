@@ -20,6 +20,7 @@ import { accountsApiV2, parseApiError, ACCOUNTS_BASE } from "../api/accountsApiV
 import {
   PREPARATION_MODES,
   PRORATION_BASES,
+  DAY_INCLUSION_RULES,
   FX_RATE_POLICIES,
   SENIORITY_BASES,
   EMPLOYMENT_MODELS,
@@ -32,6 +33,8 @@ const CONFIG_KEY = [`${ACCOUNTS_BASE}/config`];
 interface ConfigForm {
   preparationMode: string;
   prorationBasis: string;
+  dayInclusionRule: string;
+  maxAllotmentPercent: string;
   functionalCurrency: string;
   fxRatePolicy: string;
   employmentModelsEnabled: string[];
@@ -108,6 +111,9 @@ export default function TenantConfigPage() {
     setForm({
       preparationMode: data.preparationMode ?? "office_prepares",
       prorationBasis: data.prorationBasis ?? "thirty_day_month",
+      dayInclusionRule: data.dayInclusionRule ?? "both_inclusive",
+      maxAllotmentPercent:
+        data.maxAllotmentPercent != null ? String(data.maxAllotmentPercent) : "",
       functionalCurrency: data.functionalCurrency ?? "USD",
       fxRatePolicy: data.fxRatePolicy ?? "month_end",
       employmentModelsEnabled: data.employmentModelsEnabled ?? [],
@@ -137,6 +143,7 @@ export default function TenantConfigPage() {
       await accountsApiV2.config.update({
         ...form,
         glWagesPayableCode: form.glWagesPayableCode.trim() || null,
+        maxAllotmentPercent: form.maxAllotmentPercent.trim() || null,
       });
       await queryClient.invalidateQueries({ queryKey: CONFIG_KEY });
       toast({
@@ -199,6 +206,15 @@ export default function TenantConfigPage() {
               disabled={!editable}
             />
             <SelectField
+              label="Day inclusion rule"
+              helper="Whether the sign-off day itself counts as a paid service day."
+              value={form.dayInclusionRule}
+              options={DAY_INCLUSION_RULES}
+              onChange={(v) => set("dayInclusionRule", v)}
+              testId="select-day-inclusion-rule"
+              disabled={!editable}
+            />
+            <SelectField
               label="Functional currency"
               helper="The reporting currency all amounts are converted to for company totals."
               value={form.functionalCurrency}
@@ -227,6 +243,23 @@ export default function TenantConfigPage() {
                 className="h-9"
                 disabled={!editable}
                 data-testid="input-gl-wages-payable-code"
+              />
+            </Field>
+            <Field
+              label="Max allotment percent"
+              helper="Soft cap: warns when a crew member's active allotments exceed this percentage of their scale gross. Leave blank to disable."
+            >
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                value={form.maxAllotmentPercent}
+                onChange={(e) => set("maxAllotmentPercent", e.target.value)}
+                placeholder="e.g. 80"
+                className="h-9"
+                disabled={!editable}
+                data-testid="input-max-allotment-percent"
               />
             </Field>
           </CardContent>

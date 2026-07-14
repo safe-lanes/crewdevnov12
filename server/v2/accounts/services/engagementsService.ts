@@ -15,8 +15,25 @@ export interface SyncError {
   reason: string;
 }
 
+export interface SyncUpdate {
+  engagementUuid: string;
+  crewUuid: string;
+  field: "startDate" | "endDate";
+  old: string | null;
+  new: string | null;
+}
+
+export interface SyncAttention {
+  engagementUuid: string;
+  crewUuid: string;
+  reason: string;
+}
+
 export interface SyncResult {
   created: AccEngagementV2[];
+  updated: SyncUpdate[];
+  cancelled: Array<{ engagementUuid: string; crewUuid: string }>;
+  attention: SyncAttention[];
   skippedExisting: number;
   skippedNoOverlap: number;
   errors: SyncError[];
@@ -187,10 +204,135 @@ export const engagementsService = {
 
     const result: SyncResult = {
       created: [],
+      updated: [],
+      cancelled: [],
+      attention: [],
       skippedExisting: 0,
       skippedNoOverlap: 0,
       errors: [],
     };
+
+    // ---- Reconciliation of existing assignment-derived engagements -----
+    // Only start_date / end_date / status are ever touched; manual anchor
+    // fields (scale_year_at_start, next_step_date, wage scale) and timing
+    // overrides are never overwritten. Settled/cancelled engagements and
+    // engagements frozen by a settlement in submitted+ are never modified.
+    const vesselEngagements =
+      await engagementsRepository.findAssignmentDerivedByVessel(vesselUuid);
+    const assignmentByUuid = new Map(assignments.map((a) => [a.assignUuid, a]));
+    const engagementUuids = vesselEngagements.map((e) => e.engagementUuid);
+    const [lineCounts, frozen] = await Promise.all([
+      engagementsRepository.countLedgerLinesByEngagements(engagementUuids),
+      engagementsRepository.findFrozenSettlementEngagements(engagementUuids),
+    ]);
+
+    for (const engagement of vesselEngagements) {
+      if (engagement.status === "settled" || engagement.status === "cancelled") {
+        continue;
+      }
+      if (frozen.has(engagement.engagementUuid)) continue;
+      const assignment = assignmentByUuid.get(engagement.assignmentUuid!);
+      const lineCount = lineCounts.get(engagement.engagementUuid) ?? 0;
+
+      if (!assignment) {
+        // Orphan: source assignment removed.
+        if (lineCount > 0) {
+          result.attention.push({
+            engagementUuid: engagement.engagementUuid,
+            crewUuid: engagement.crewUuid,
+            reason:
+              "assignment removed/changed but wage history exists — review manually",
+          });
+        } else {
+          await engagementsRepository.update(engagement.engagementUuid, {
+            status: "cancelled",
+            ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}),
+          });
+          result.cancelled.push({
+            engagementUuid: engagement.engagementUuid,
+            crewUuid: engagement.crewUuid,
+          });
+          const local = crewEngagements.find(
+            (e: AccEngagementV2) =>
+              e.engagementUuid === engagement.engagementUuid,
+          );
+          if (local) local.status = "cancelled";
+        }
+        continue;
+      }
+
+      const newStart = parseTextDate(assignment.signOnDate);
+      const newEnd = parseTextDate(assignment.signOffDate);
+      if (newStart === undefined || newEnd === undefined || newStart == null) {
+        // Unparseable/missing source dates are reported by the create loop.
+        continue;
+      }
+
+      const stillOverlaps =
+        newStart <= month.monthEnd &&
+        (newEnd == null || newEnd >= month.monthStart);
+      if (!stillOverlaps) {
+        // Assignment no longer overlaps the period.
+        if (lineCount > 0) {
+          result.attention.push({
+            engagementUuid: engagement.engagementUuid,
+            crewUuid: engagement.crewUuid,
+            reason:
+              "assignment removed/changed but wage history exists — review manually",
+          });
+        } else {
+          await engagementsRepository.update(engagement.engagementUuid, {
+            status: "cancelled",
+            ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}),
+          });
+          result.cancelled.push({
+            engagementUuid: engagement.engagementUuid,
+            crewUuid: engagement.crewUuid,
+          });
+          const local = crewEngagements.find(
+            (e: AccEngagementV2) =>
+              e.engagementUuid === engagement.engagementUuid,
+          );
+          if (local) local.status = "cancelled";
+        }
+        continue;
+      }
+
+      const patch: Partial<InsertAccEngagementV2> = {};
+      if (newStart !== engagement.startDate) {
+        patch.startDate = newStart;
+        result.updated.push({
+          engagementUuid: engagement.engagementUuid,
+          crewUuid: engagement.crewUuid,
+          field: "startDate",
+          old: engagement.startDate ?? null,
+          new: newStart,
+        });
+      }
+      if ((newEnd ?? null) !== (engagement.endDate ?? null)) {
+        patch.endDate = newEnd;
+        result.updated.push({
+          engagementUuid: engagement.engagementUuid,
+          crewUuid: engagement.crewUuid,
+          field: "endDate",
+          old: engagement.endDate ?? null,
+          new: newEnd,
+        });
+      }
+      if (Object.keys(patch).length > 0) {
+        await engagementsRepository.update(engagement.engagementUuid, {
+          ...patch,
+          ...(auditUserUuid ? { updatedByUuid: auditUserUuid } : {}),
+        });
+        const local = crewEngagements.find(
+          (e) => e.engagementUuid === engagement.engagementUuid,
+        );
+        if (local) {
+          if (patch.startDate !== undefined) local.startDate = patch.startDate;
+          if (patch.endDate !== undefined) local.endDate = patch.endDate ?? null;
+        }
+      }
+    }
 
     for (const assignment of assignments) {
       const startDate = parseTextDate(assignment.signOnDate);
@@ -338,6 +480,10 @@ export const engagementsService = {
       if (list) list.push(o);
       else overridesByEngagement.set(o.engagementUuid, [o]);
     }
+    const ledgerLineCounts =
+      await engagementsRepository.countLedgerLinesByEngagements(
+        engagements.map((e) => e.engagementUuid),
+      );
     return overlapping.map((a) => {
       const engagement = engagementByAssignment.get(a.assignUuid) ?? null;
       const info = crewInfo.get(a.crewUuid);
@@ -355,6 +501,9 @@ export const engagementsService = {
         timingOverrides: engagement
           ? (overridesByEngagement.get(engagement.engagementUuid) ?? [])
           : [],
+        ledgerLineCount: engagement
+          ? (ledgerLineCounts.get(engagement.engagementUuid) ?? 0)
+          : 0,
       };
     });
   },
@@ -427,6 +576,20 @@ export const engagementsService = {
       const engagement =
         await engagementsRepository.findByUuid(engagementUuid);
       if (!engagement) return undefined;
+      if (data.status === "cancelled" && engagement.status !== "cancelled") {
+        const counts =
+          await engagementsRepository.countLedgerLinesByEngagements([
+            engagementUuid,
+          ]);
+        const lineCount = counts.get(engagementUuid) ?? 0;
+        if (lineCount > 0) {
+          const err = new Error(
+            `Engagement has ${lineCount} wage ledger line(s) — it cannot be cancelled. Review the wage history manually.`,
+          ) as Error & { code: string };
+          err.code = "CONFLICT";
+          throw err;
+        }
+      }
       const effectiveStatus = data.status ?? engagement.status;
       const effectiveStart =
         data.startDate !== undefined ? data.startDate : engagement.startDate;
@@ -496,6 +659,10 @@ export const engagementsService = {
     const crewInfo = await engagementsRepository.findCrewInfo(
       groups.map((g) => g.crewUuid),
     );
+    const ledgerLineCounts =
+      await engagementsRepository.countLedgerLinesByEngagements(
+        groups.flatMap((g) => g.engagements.map((e) => e.engagementUuid)),
+      );
     const vesselNames = await engagementsRepository.findVesselNames(
       Array.from(
         new Set(
@@ -520,6 +687,7 @@ export const engagementsService = {
         endDate: e.endDate,
         status: e.status,
         assignmentUuid: e.assignmentUuid,
+        ledgerLineCount: ledgerLineCounts.get(e.engagementUuid) ?? 0,
       })),
     }));
   },

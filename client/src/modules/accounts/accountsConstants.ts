@@ -22,6 +22,11 @@ export const PRORATION_BASES: Option[] = [
   opt("calendar_days", "Calendar days"),
 ];
 
+export const DAY_INCLUSION_RULES: Option[] = [
+  opt("both_inclusive", "Both sign-on and sign-off days paid"),
+  opt("exclude_sign_off_day", "Exclude sign-off day"),
+];
+
 export const FX_RATE_POLICIES: Option[] = [
   opt("month_end", "Month-end rate"),
   opt("transaction_date", "Transaction-date rate"),

@@ -15,6 +15,7 @@ import {
   accSettlementsV2,
 } from "../../../../shared/v2/accounts/schema";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { masterNationalities } from "../../../../shared/schema";
 import { promoExecutionLedgerV2 } from "../../../../shared/v2/promotions/schema";
 import type {
   AccTenantConfigV2,
@@ -283,6 +284,28 @@ export class EngineReads {
       .from(crewMembersV2)
       .where(inArray(crewMembersV2.crewUuid, crewUuids));
     for (const r of rows) map.set(r.crewUuid, r.nationalityUuid ?? null);
+    return map;
+  }
+
+  /** nat_uuid -> display name (nationality, falling back to country name). */
+  async findNationalityNames(
+    natUuids: string[],
+  ): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    const distinct = Array.from(new Set(natUuids.filter(Boolean)));
+    if (distinct.length === 0) return map;
+    const db = getDb();
+    const rows = await db
+      .select({
+        natUuid: masterNationalities.natUuid,
+        nationality: masterNationalities.nationality,
+        countryName: masterNationalities.countryName,
+      })
+      .from(masterNationalities)
+      .where(inArray(masterNationalities.natUuid, distinct));
+    for (const r of rows) {
+      if (r.natUuid) map.set(r.natUuid, r.nationality || r.countryName || r.natUuid);
+    }
     return map;
   }
 

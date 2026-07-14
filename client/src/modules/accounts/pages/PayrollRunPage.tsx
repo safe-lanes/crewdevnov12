@@ -35,6 +35,8 @@ import {
   XCircle,
   AlertTriangle,
   ChevronRight,
+  CalendarX,
+  Ban,
 } from "lucide-react";
 import {
   accountsApiV2,
@@ -192,8 +194,9 @@ export default function PayrollRunPage() {
   const { data: wageScales = [] } = useQuery<any[]>({
     queryKey: [`${ACCOUNTS_BASE}/wage-scales`],
   });
+  const auditKey = [`${ACCOUNTS_BASE}/engagements/audit`];
   const { data: auditGroups = [] } = useQuery<any[]>({
-    queryKey: [`${ACCOUNTS_BASE}/engagements/audit`],
+    queryKey: auditKey,
     enabled: hasFilter,
   });
   // Vessel submission package status (portage + CTM + entry counts).
@@ -266,7 +269,7 @@ export default function PayrollRunPage() {
       queryClient.invalidateQueries({ queryKey: reviewKey });
       toast({
         title: "Sync complete",
-        description: `${result.created?.length ?? 0} created, ${result.skippedExisting ?? 0} already engaged, ${result.errors?.length ?? 0} errors`,
+        description: `${result.created?.length ?? 0} created, ${result.updated?.length ?? 0} updated, ${result.cancelled?.length ?? 0} cancelled, ${result.attention?.length ?? 0} need attention, ${result.errors?.length ?? 0} errors`,
       });
     } catch (err) {
       toast({
@@ -351,6 +354,64 @@ export default function PayrollRunPage() {
       });
     } finally {
       setSavingAnchor(false);
+    }
+  };
+
+  // ---- set end date / cancel engagement actions (RBAC: edit permission) ----
+  const [endDateRow, setEndDateRow] = useState<any | null>(null);
+  const [endDateValue, setEndDateValue] = useState("");
+  const [savingEndDate, setSavingEndDate] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<any | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
+  const openEndDate = (engagement: any, crewName?: string) => {
+    setEndDateRow({ engagement, crewName });
+    setEndDateValue(engagement?.endDate ?? "");
+  };
+
+  const saveEndDate = async () => {
+    if (!endDateRow?.engagement || !endDateValue) return;
+    setSavingEndDate(true);
+    try {
+      await accountsApiV2.engagements.update(
+        endDateRow.engagement.engagementUuid,
+        { endDate: endDateValue },
+      );
+      queryClient.invalidateQueries({ queryKey: reviewKey });
+      queryClient.invalidateQueries({ queryKey: auditKey });
+      setEndDateRow(null);
+      toast({ title: "End date updated" });
+    } catch (err) {
+      toast({
+        title: "Update failed",
+        description: parseApiError(err).message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingEndDate(false);
+    }
+  };
+
+  const doCancelEngagement = async () => {
+    if (!cancelTarget?.engagement) return;
+    setCancelling(true);
+    try {
+      await accountsApiV2.engagements.update(
+        cancelTarget.engagement.engagementUuid,
+        { status: "cancelled" },
+      );
+      queryClient.invalidateQueries({ queryKey: reviewKey });
+      queryClient.invalidateQueries({ queryKey: auditKey });
+      setCancelTarget(null);
+      toast({ title: "Engagement cancelled" });
+    } catch (err) {
+      toast({
+        title: "Cancel failed",
+        description: parseApiError(err).message,
+        variant: "destructive",
+      });
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -519,7 +580,7 @@ export default function PayrollRunPage() {
       },
       {
         headerName: "Actions",
-        width: 110,
+        width: 170,
         sortable: false,
         filter: false,
         cellRenderer: (p: any) =>
@@ -543,6 +604,35 @@ export default function PayrollRunPage() {
               >
                 <Clock size={14} />
               </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7"
+                title="Set end date"
+                onClick={() =>
+                  openEndDate(p.data.engagement, p.data.crewName)
+                }
+                data-testid={`button-end-date-${p.data.crewUuid}`}
+              >
+                <CalendarX size={14} />
+              </Button>
+              {(p.data.ledgerLineCount ?? 0) === 0 && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-red-600 hover:text-red-700"
+                  title="Cancel engagement"
+                  onClick={() =>
+                    setCancelTarget({
+                      engagement: p.data.engagement,
+                      crewName: p.data.crewName,
+                    })
+                  }
+                  data-testid={`button-cancel-engagement-${p.data.crewUuid}`}
+                >
+                  <Ban size={14} />
+                </Button>
+              )}
             </div>
           ) : null,
       },
@@ -752,10 +842,73 @@ export default function PayrollRunPage() {
               <div className="px-4 py-2 border-b text-xs space-y-1 bg-slate-50">
                 <div data-testid="text-sync-summary">
                   Sync: {syncResult.created?.length ?? 0} created ·{" "}
+                  {syncResult.updated?.length ?? 0} updated ·{" "}
+                  {syncResult.cancelled?.length ?? 0} cancelled ·{" "}
+                  {syncResult.attention?.length ?? 0} need attention ·{" "}
                   {syncResult.skippedExisting ?? 0} already engaged ·{" "}
                   {syncResult.skippedNoOverlap ?? 0} outside period ·{" "}
                   {syncResult.errors?.length ?? 0} errors
                 </div>
+                {(
+                  [
+                    {
+                      key: "created",
+                      label: "Created",
+                      items: syncResult.created ?? [],
+                      render: (it: any) =>
+                        `${crewByUuid.get(it.crewUuid)?.crewName ?? it.crewName ?? it.crewUuid} — engagement created${it.startDate ? ` (${formatDate(it.startDate)} → ${it.endDate ? formatDate(it.endDate) : "open"})` : ""}`,
+                    },
+                    {
+                      key: "updated",
+                      label: "Updated",
+                      items: syncResult.updated ?? [],
+                      render: (it: any) =>
+                        `${crewByUuid.get(it.crewUuid)?.crewName ?? it.crewName ?? it.crewUuid} — ${it.changes ?? it.reason ?? "dates aligned with crewing assignment"}`,
+                    },
+                    {
+                      key: "cancelled",
+                      label: "Cancelled",
+                      items: syncResult.cancelled ?? [],
+                      render: (it: any) =>
+                        `${crewByUuid.get(it.crewUuid)?.crewName ?? it.crewName ?? it.crewUuid} — ${it.reason ?? "assignment removed or no longer in period"}`,
+                    },
+                    {
+                      key: "attention",
+                      label: "Needs attention",
+                      items: syncResult.attention ?? [],
+                      render: (it: any) =>
+                        `${crewByUuid.get(it.crewUuid)?.crewName ?? it.crewName ?? it.crewUuid} — ${it.reason ?? "manual review required"}${it.ledgerLineCount != null ? ` (${it.ledgerLineCount} ledger lines)` : ""}`,
+                    },
+                  ] as const
+                ).map(
+                  (section) =>
+                    section.items.length > 0 && (
+                      <details
+                        key={section.key}
+                        className="rounded border bg-white"
+                        data-testid={`sync-section-${section.key}`}
+                      >
+                        <summary className="cursor-pointer px-2 py-1 font-medium select-none">
+                          {section.label} ({section.items.length})
+                        </summary>
+                        <ul className="px-4 py-1 space-y-0.5 list-disc list-inside">
+                          {section.items.map((it: any, i: number) => (
+                            <li
+                              key={i}
+                              className={
+                                section.key === "attention"
+                                  ? "text-amber-700"
+                                  : ""
+                              }
+                              data-testid={`sync-${section.key}-${i}`}
+                            >
+                              {section.render(it)}
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    ),
+                )}
                 {(syncResult.errors ?? []).map((e: any, i: number) => (
                   <div
                     key={i}
@@ -1278,24 +1431,78 @@ export default function PayrollRunPage() {
                     crewByUuid.get(g.crewUuid)?.crewName ??
                     g.crewUuid}
                 </div>
-                <div className="space-y-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {(g.engagements ?? []).map((e: any) => (
                     <div
                       key={e.engagementUuid}
-                      className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+                      className="border rounded p-2 text-xs space-y-1"
                       data-testid={`overlap-engagement-${e.engagementUuid}`}
                     >
-                      <span className="font-medium text-foreground">
-                        {e.vesselName ?? e.vesselUuid}
-                      </span>
-                      <span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-foreground">
+                          {e.vesselName ?? e.vesselUuid}
+                        </span>
+                        {e.status && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {e.status}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-muted-foreground">
                         {formatDate(e.startDate)} →{" "}
                         {e.endDate ? formatDate(e.endDate) : "open"}
-                      </span>
-                      {e.status && (
-                        <Badge variant="outline" className="text-[10px]">
-                          {e.status}
-                        </Badge>
+                      </div>
+                      <div className="text-muted-foreground">
+                        Source:{" "}
+                        {e.assignmentUuid
+                          ? `crewing assignment ${e.assignmentUuid.slice(0, 8)}…`
+                          : "manual engagement"}
+                      </div>
+                      <div
+                        className="text-muted-foreground"
+                        data-testid={`text-ledger-count-${e.engagementUuid}`}
+                      >
+                        {e.ledgerLineCount ?? 0} ledger line
+                        {(e.ledgerLineCount ?? 0) === 1 ? "" : "s"}
+                      </div>
+                      {!readOnly && (
+                        <div className="flex items-center gap-1 pt-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[11px]"
+                            onClick={() =>
+                              openEndDate(
+                                e,
+                                g.crewName ??
+                                  crewByUuid.get(g.crewUuid)?.crewName,
+                              )
+                            }
+                            data-testid={`button-overlap-end-date-${e.engagementUuid}`}
+                          >
+                            <CalendarX size={12} className="mr-1" />
+                            Set end date
+                          </Button>
+                          {(e.ledgerLineCount ?? 0) === 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-[11px] text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() =>
+                                setCancelTarget({
+                                  engagement: e,
+                                  crewName:
+                                    g.crewName ??
+                                    crewByUuid.get(g.crewUuid)?.crewName,
+                                })
+                              }
+                              data-testid={`button-overlap-cancel-${e.engagementUuid}`}
+                            >
+                              <Ban size={12} className="mr-1" />
+                              Cancel engagement
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))}
@@ -1310,6 +1517,77 @@ export default function PayrollRunPage() {
               data-testid="button-close-overlaps"
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Set end date dialog ---- */}
+      <Dialog
+        open={!!endDateRow}
+        onOpenChange={(o) => !o && setEndDateRow(null)}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              Set End Date{endDateRow?.crewName ? ` — ${endDateRow.crewName}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>End date</Label>
+            <Input
+              type="date"
+              value={endDateValue}
+              onChange={(e) => setEndDateValue(e.target.value)}
+              data-testid="input-end-date"
+            />
+            <p className="text-xs text-muted-foreground">
+              Ends the engagement on this date. Existing ledger lines are kept;
+              future periods will no longer include this engagement.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEndDateRow(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={saveEndDate}
+              disabled={savingEndDate || !endDateValue}
+              data-testid="button-save-end-date"
+            >
+              {savingEndDate ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Cancel engagement dialog ---- */}
+      <Dialog
+        open={!!cancelTarget}
+        onOpenChange={(o) => !o && setCancelTarget(null)}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              Cancel Engagement
+              {cancelTarget?.crewName ? ` — ${cancelTarget.crewName}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This marks the engagement as cancelled so it is excluded from
+            payroll. Only engagements with no ledger lines can be cancelled.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelTarget(null)}>
+              Keep engagement
+            </Button>
+            <Button
+              onClick={doCancelEngagement}
+              disabled={cancelling}
+              className="bg-red-600 hover:bg-red-700"
+              data-testid="button-confirm-cancel-engagement"
+            >
+              {cancelling ? "Cancelling…" : "Cancel engagement"}
             </Button>
           </DialogFooter>
         </DialogContent>

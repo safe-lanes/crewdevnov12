@@ -67,6 +67,7 @@ interface CalcContext {
   /** advance_uuid -> cents recovered in periods strictly before this run. */
   advancePriorRecoveredCents: Map<string, number>;
   nationalityByCrew: Map<string, string | null>;
+  nationalityNames: Map<string, string>;
 }
 
 /** Ledger line before run/portage identifiers are attached. */
@@ -228,6 +229,53 @@ async function assertNoFrozenSettlements(
   );
 }
 
+/** Statuses whose date ranges may not overlap for the same crew. */
+const LIVE_OVERLAP_STATUSES = new Set(["draft", "active", "completed"]);
+
+/**
+ * Overlap guard (Task 120): a crew member with two live engagements covering
+ * the same dates would double-count wages, so the run refuses until the
+ * overlap is resolved (cancel or end-date one of the engagements).
+ */
+async function assertNoOverlappingEngagements(
+  engagements: AccEngagementV2[],
+): Promise<void> {
+  const live = engagements.filter((e) =>
+    LIVE_OVERLAP_STATUSES.has(e.status),
+  );
+  if (live.length === 0) return;
+  const crewUuids = [...new Set(live.map((e) => e.crewUuid))];
+  const crewEngagements = await reads.findEngagementsByCrewUuids(crewUuids);
+  const conflicts: string[] = [];
+  for (const e of live) {
+    if (!e.startDate) continue;
+    for (const other of crewEngagements) {
+      if (
+        other.crewUuid === e.crewUuid &&
+        other.engagementUuid !== e.engagementUuid &&
+        LIVE_OVERLAP_STATUSES.has(other.status) &&
+        other.startDate != null &&
+        rangesOverlap(
+          e.startDate,
+          e.endDate ?? null,
+          other.startDate,
+          other.endDate ?? null,
+        )
+      ) {
+        conflicts.push(
+          `${e.crewUuid}: ${e.engagementUuid} overlaps ${other.engagementUuid} (${other.startDate} – ${other.endDate ?? "open"}, ${other.status})`,
+        );
+      }
+    }
+  }
+  if (conflicts.length > 0) {
+    throw new EngineError(
+      "CONFLICT",
+      `Run blocked by overlapping open engagements — resolve via the engagement overlap audit first: ${conflicts.join("; ")}`,
+    );
+  }
+}
+
 /** Run-row warnings payload: structured, crew-attributed (0159). */
 function persistableWarnings(results: EngagementResult[]) {
   return results.flatMap((r) =>
@@ -280,6 +328,7 @@ export const wageEngineService = {
       month.monthEnd,
     );
     await assertNoFrozenSettlements(engagements);
+    await assertNoOverlappingEngagements(engagements);
     const ctx = await buildContext(config, month, engagements);
 
     const results = engagements
@@ -424,6 +473,7 @@ export const wageEngineService = {
     }
 
     await assertNoFrozenSettlements([engagement]);
+    await assertNoOverlappingEngagements([engagement]);
     const configRow = await reads.getConfig();
     const config = toEngineConfig(configRow);
     const ctx = await buildContext(config, month, [engagement]);
@@ -786,6 +836,15 @@ async function buildContext(
     }
   }
 
+  const nationalityNames = await reads.findNationalityNames([
+    ...Array.from(nationalityByCrew.values()).filter(
+      (v): v is string => v != null,
+    ),
+    ...scaleLines
+      .map((l) => l.nationalityUuid)
+      .filter((v): v is string => v != null),
+  ]);
+
   const elementsMap = new Map(elements.map((e) => [e.payElementUuid, e]));
   const elementsByCategory = groupBy(elements, (e) => e.category);
   for (const list of elementsByCategory.values()) {
@@ -807,6 +866,7 @@ async function buildContext(
     advancesByCrew: groupBy(advances, (a) => a.crewUuid),
     advancePriorRecoveredCents,
     nationalityByCrew,
+    nationalityNames,
   };
 }
 
@@ -1309,7 +1369,7 @@ function calcEngagement(
       message:
         scaleLines.length === 0
           ? `skipped: no scale lines for rank ${engagement.rankIdAtStart} on the assigned wage scale`
-          : `skipped: no ledger lines produced for rank ${engagement.rankIdAtStart} (scale lines exist but none were applicable)`,
+          : `skipped: ${diagnoseSkip(ctx, engagement, scaleLines)}`,
     });
   }
 
@@ -1326,6 +1386,62 @@ function calcEngagement(
   }
 
   return { engagement, lines, errors, warnings };
+}
+
+/**
+ * One-line diagnosis of WHY rank-matching scale lines produced no ledger
+ * lines: names the failed match dimension (nationality or scale year).
+ */
+function diagnoseSkip(
+  ctx: CalcContext,
+  engagement: AccEngagementV2,
+  scaleLines: AccWageScaleLineV2[],
+): string {
+  const rank = engagement.rankIdAtStart;
+  const crewNat = ctx.nationalityByCrew.get(engagement.crewUuid) ?? null;
+  const natName = (uuid: string | null) =>
+    uuid == null ? "any" : (ctx.nationalityNames.get(uuid) ?? uuid);
+
+  // Nationality dimension: lines usable for this crew member are the
+  // nationality-specific ones (if any) else the nationality-agnostic pool.
+  const natSpecific = crewNat
+    ? scaleLines.filter((l) => l.nationalityUuid === crewNat)
+    : [];
+  const natAgnostic = scaleLines.filter((l) => l.nationalityUuid == null);
+  const pool = natSpecific.length > 0 ? natSpecific : natAgnostic;
+  if (pool.length === 0) {
+    const available = Array.from(
+      new Set(
+        scaleLines
+          .map((l) => l.nationalityUuid)
+          .filter((v): v is string => v != null)
+          .map((v) => natName(v)),
+      ),
+    );
+    return `no scale line for rank ${rank} matching nationality ${natName(crewNat)} (lines exist only for: ${available.join(", ") || "none"})`;
+  }
+
+  // Scale-year / experience-band dimension.
+  const scaleYear = engagement.scaleYearAtStart ?? 1;
+  const months = (scaleYear - 1) * 12;
+  const inBand = pool.filter(
+    (l) =>
+      (l.experienceMinMonths == null || months >= l.experienceMinMonths) &&
+      (l.experienceMaxMonths == null || months <= l.experienceMaxMonths),
+  );
+  if (inBand.length === 0) {
+    const years = pool.map((l) => ({
+      min: l.experienceMinMonths == null ? 1 : Math.floor(l.experienceMinMonths / 12) + 1,
+      max: l.experienceMaxMonths == null ? null : Math.floor(l.experienceMaxMonths / 12) + 1,
+    }));
+    const minYear = Math.min(...years.map((y) => y.min));
+    const maxYear = years.some((y) => y.max == null)
+      ? null
+      : Math.max(...years.map((y) => y.max!));
+    return `no scale line for rank ${rank} matching scale year ${scaleYear} (lines cover years ${minYear}–${maxYear ?? "open"})`;
+  }
+
+  return `no ledger lines produced for rank ${rank} (scale lines exist but none were applicable)`;
 }
 
 // ============================================================================

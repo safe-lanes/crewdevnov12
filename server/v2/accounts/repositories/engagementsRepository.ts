@@ -5,6 +5,8 @@ import {
   accEngagementsV2,
   accWageScalesV2,
   accEngagementPayElementsV2,
+  accWageLedgerV2,
+  accSettlementsV2,
 } from "../../../../shared/v2/accounts/schema";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
@@ -137,6 +139,73 @@ export class EngagementsRepository {
       if (r.vesselUuid) map.set(r.vesselUuid, r.vessel ?? r.vesselUuid);
     }
     return map;
+  }
+
+  /** Live assignment-derived engagements of one vessel (any status). */
+  async findAssignmentDerivedByVessel(
+    vesselUuid: string,
+  ): Promise<AccEngagementV2[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(accEngagementsV2)
+      .where(
+        and(
+          eq(accEngagementsV2.vesselUuid, vesselUuid),
+          isNotNull(accEngagementsV2.assignmentUuid),
+          eq(accEngagementsV2.isDeleted, false),
+        ),
+      );
+  }
+
+  /** engagement_uuid -> count of live ledger lines (wage history). */
+  async countLedgerLinesByEngagements(
+    engagementUuids: string[],
+  ): Promise<Map<string, number>> {
+    const map = new Map<string, number>();
+    if (engagementUuids.length === 0) return map;
+    const db = getDb();
+    const rows = await db
+      .select({ engagementUuid: accWageLedgerV2.engagementUuid })
+      .from(accWageLedgerV2)
+      .where(
+        and(
+          inArray(accWageLedgerV2.engagementUuid, engagementUuids),
+          eq(accWageLedgerV2.isDeleted, false),
+        ),
+      );
+    for (const r of rows as Array<{ engagementUuid: string }>) {
+      map.set(r.engagementUuid, (map.get(r.engagementUuid) ?? 0) + 1);
+    }
+    return map;
+  }
+
+  /** Engagements frozen by a settlement in submitted or later status. */
+  async findFrozenSettlementEngagements(
+    engagementUuids: string[],
+  ): Promise<Set<string>> {
+    const set = new Set<string>();
+    if (engagementUuids.length === 0) return set;
+    const db = getDb();
+    const rows = await db
+      .select({ engagementUuid: accSettlementsV2.engagementUuid })
+      .from(accSettlementsV2)
+      .where(
+        and(
+          inArray(accSettlementsV2.engagementUuid, engagementUuids),
+          inArray(accSettlementsV2.status, [
+            "submitted",
+            "approved",
+            "paid",
+            "locked",
+          ]),
+          eq(accSettlementsV2.isDeleted, false),
+        ),
+      );
+    for (const r of rows as Array<{ engagementUuid: string }>) {
+      set.add(r.engagementUuid);
+    }
+    return set;
   }
 
   // ---- Sync inputs -------------------------------------------------------
