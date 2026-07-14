@@ -146,7 +146,7 @@ export const EDUCATION_COLUMNS = [
 export const MEDICALS_COLUMNS = [
   { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "Vessel Name", required: false, example: "MT Pacific Star", note: "Matches a company vessel where possible; kept as typed otherwise" },
-  { header: "Examination Date", required: true, example: "10-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Examination Date", required: false, example: "10-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Blood Pressure", required: false, example: "120/80", note: "" },
   { header: "Weight", required: false, example: "72", note: "" },
   { header: "Any Medication Prescribed", required: false, example: "None", note: "" },
@@ -160,7 +160,7 @@ export const DOCTOR_VISITS_COLUMNS = [
   { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "Vessel", required: false, example: "MT Pacific Star", note: "" },
   { header: "Port", required: false, example: "Singapore", note: "" },
-  { header: "Visit Date", required: true, example: "15-Mar-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Visit Date", required: false, example: "15-Mar-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Doctor Name", required: false, example: "Dr. Lee", note: "" },
   { header: "Clinic/Hospital", required: false, example: "Raffles Medical", note: "" },
   { header: "Reason", required: false, example: "Fever", note: "" },
@@ -176,7 +176,7 @@ export const BRIEFINGS_COLUMNS = [
   { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "Vessel Name", required: false, example: "MT Pacific Star", note: "Matches a company vessel where possible; kept as typed otherwise" },
   { header: "Joining Rank", required: false, example: "Chief Officer", note: "" },
-  { header: "Date Sign On", required: true, example: "15-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Date Sign On", required: false, example: "15-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Attachment Ref", required: false, example: "EMP-2024-001-B1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
@@ -184,7 +184,7 @@ export const DEBRIEFINGS_COLUMNS = [
   { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
   { header: "Vessel Name", required: false, example: "MT Pacific Star", note: "Matches a company vessel where possible; kept as typed otherwise" },
   { header: "Rank Served", required: false, example: "Chief Officer", note: "" },
-  { header: "Date Sign On", required: true, example: "15-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Date Sign On", required: false, example: "15-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Date Signed Off", required: false, example: "15-Jul-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Reason for Sign Off", required: false, example: "Contract completion", note: "" },
   { header: "Attachment Ref", required: false, example: "EMP-2024-001-DB1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },

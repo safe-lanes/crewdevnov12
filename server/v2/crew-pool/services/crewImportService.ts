@@ -719,10 +719,10 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
   validateSubSheet(data.seaServiceRows, "Sea Service History", ["Vessel Name", "Vessel Type", "Rank Served", "Sign On Date", "Sign Off Date"], ["Sign On Date", "Sign Off Date"], true);
   validateSubSheet(data.trainingRows, "Training Courses", ["Course Name"], ["Date of Issue", "Date of Expiry"], true);
   validateSubSheet(data.educationRows, "Education Details", ["Qualifications / Degree"], ["Date of Completion"], true);
-  validateSubSheet(data.medicalRows, "Pre-Joining Medicals", ["Examination Date"], ["Examination Date", "Expiry Date"], true);
-  validateSubSheet(data.doctorVisitRows, "Doctor Visits", ["Visit Date"], ["Visit Date", "Follow-Up Date"], true);
-  validateSubSheet(data.briefingRows, "Briefings", ["Date Sign On"], ["Date Sign On"], true);
-  validateSubSheet(data.debriefingRows, "De-briefings", ["Date Sign On"], ["Date Sign On", "Date Signed Off"], true);
+  validateSubSheet(data.medicalRows, "Pre-Joining Medicals", [], ["Examination Date", "Expiry Date"], true);
+  validateSubSheet(data.doctorVisitRows, "Doctor Visits", [], ["Visit Date", "Follow-Up Date"], true);
+  validateSubSheet(data.briefingRows, "Briefings", [], ["Date Sign On"], true);
+  validateSubSheet(data.debriefingRows, "De-briefings", [], ["Date Sign On", "Date Signed Off"], true);
 
   // Children gender values
   for (let i = 0; i < data.childrenRows.length; i++) {
