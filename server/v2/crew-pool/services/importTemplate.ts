@@ -376,7 +376,8 @@ function buildInstructionsSheet(
     "Company or External",
     "Ranks",
     "Manning Agents",
-    "Company Vessels"
+    "Company Vessels",
+    "Fit For Duty",
   ];
   const refHeaderRow = ws.getRow(refStartRow);
   refHeaderRow.values = headers;
@@ -446,7 +447,12 @@ function buildInstructionsSheet(
     ws.getCell(valStartRow + idx, 13).value = val;
   });
 
-  for (let col = 2; col <= 13; col++) {
+  const fitForDutyValues = ["Fit", "Unfit", "Fit with Restrictions"];
+  fitForDutyValues.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 14).value = val;
+  });
+
+  for (let col = 2; col <= 14; col++) {
     ws.getColumn(col).width = 20;
     const maxLen = Math.max(
       refData.nationalities.length,
@@ -530,7 +536,7 @@ export async function generateImportTemplate(): Promise<Buffer> {
   const rankFormula = `='Instructions & Reference'!$K$27:$K$${refStartRow + refData.ranks.length - 1}`;
   const manningAgentFormula = `='Instructions & Reference'!$L$27:$L$${refStartRow + refData.manningAgents.length - 1}`;
   const vesselFormula = `='Instructions & Reference'!$M$27:$M$${refStartRow + refData.vessels.length - 1}`;
-  const fitForDutyFormula = `"Fit,Unfit,Fit with Restrictions"`;
+  const fitForDutyFormula = `='Instructions & Reference'!$N$27:$N$29`;
 
   const getColIndex = (columnsList: typeof CREW_DETAILS_COLUMNS, header: string) => {
     return columnsList.findIndex(c => c.header === header) + 1;
@@ -681,16 +687,16 @@ export async function generateImportTemplate(): Promise<Buffer> {
   };
 
   // Pre-Joining Medicals (Part F)
-  applyPlainDropdown(medicalSheet, "Vessel Name", MEDICALS_COLUMNS, vesselFormula);
-  applyPlainDropdown(medicalSheet, "Fit For Duty", MEDICALS_COLUMNS, fitForDutyFormula);
+  applyDropdown(medicalSheet, "Vessel Name", MEDICALS_COLUMNS, vesselFormula);
+  applyDropdown(medicalSheet, "Fit For Duty", MEDICALS_COLUMNS, fitForDutyFormula);
 
   // Briefings (Part G)
-  applyPlainDropdown(briefingSheet, "Vessel Name", BRIEFINGS_COLUMNS, vesselFormula);
-  applyPlainDropdown(briefingSheet, "Joining Rank", BRIEFINGS_COLUMNS, rankFormula);
+  applyDropdown(briefingSheet, "Vessel Name", BRIEFINGS_COLUMNS, vesselFormula);
+  applyDropdown(briefingSheet, "Joining Rank", BRIEFINGS_COLUMNS, rankFormula);
 
   // De-briefings (Part G)
-  applyPlainDropdown(debriefingSheet, "Vessel Name", DEBRIEFINGS_COLUMNS, vesselFormula);
-  applyPlainDropdown(debriefingSheet, "Rank Served", DEBRIEFINGS_COLUMNS, rankFormula);
+  applyDropdown(debriefingSheet, "Vessel Name", DEBRIEFINGS_COLUMNS, vesselFormula);
+  applyDropdown(debriefingSheet, "Rank Served", DEBRIEFINGS_COLUMNS, rankFormula);
 
   // Attachment Ref auto-fill: a stable, human-readable reference generated from
   // the row's Employee ID (col A) plus a per-sheet prefix and a running count.
