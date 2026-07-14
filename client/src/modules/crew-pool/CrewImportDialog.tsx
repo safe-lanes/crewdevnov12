@@ -26,9 +26,25 @@ interface CrewImportDialogProps {
   onClose: () => void;
 }
 
+// Categories mirror the ImportCounts keys returned by the backend.
+const IMPORT_CATEGORIES: { key: string; label: string }[] = [
+  { key: "crew", label: "Crew Members" },
+  { key: "children", label: "Children Details" },
+  { key: "nok", label: "Emergency Contacts" },
+  { key: "documents", label: "Travel Documents" },
+  { key: "visas", label: "Travel Visas" },
+  { key: "licenses", label: "Licenses & COCs" },
+  { key: "seaService", label: "Sea Service History" },
+  { key: "training", label: "Training Courses" },
+  { key: "education", label: "Education Details" },
+  { key: "medicals", label: "Pre-Joining Medicals" },
+  { key: "doctorVisits", label: "Doctor Visits" },
+  { key: "briefings", label: "Briefings" },
+  { key: "debriefings", label: "De-briefings" },
+];
+
 export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [base64Data, setBase64Data] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "validating" | "valid" | "invalid" | "importing" | "success">("idle");
   const [validationResult, setValidationResult] = useState<any>(null);
   const [importResult, setImportResult] = useState<any>(null);
@@ -41,7 +57,6 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
   // Reset state on close
   const handleClose = () => {
     setFile(null);
-    setBase64Data(null);
     setStatus("idle");
     setValidationResult(null);
     setImportResult(null);
@@ -74,15 +89,6 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
     setStatus("idle");
     setValidationResult(null);
     setErrorMessage(null);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      // Get base64 string without data url prefix
-      const base64 = result.split(",")[1];
-      setBase64Data(base64);
-    };
-    reader.readAsDataURL(selectedFile);
   };
 
   // Download blank template from API
@@ -113,12 +119,13 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
 
   // Validate file (dry-run)
   const handleValidate = async () => {
-    if (!base64Data) return;
+    if (!file) return;
     setStatus("validating");
     setErrorMessage(null);
 
     try {
-      const res = await crewPoolApiV2.validateImport(base64Data);
+      const buffer = await file.arrayBuffer();
+      const res = await crewPoolApiV2.validateImport(buffer);
       setValidationResult(res);
       if (res.isValid) {
         setStatus("valid");
@@ -138,11 +145,12 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
 
   // Execute actual import
   const handleImport = async () => {
-    if (!base64Data) return;
+    if (!file) return;
     setStatus("importing");
 
     try {
-      const res = await crewPoolApiV2.executeImport(base64Data);
+      const buffer = await file.arrayBuffer();
+      const res = await crewPoolApiV2.executeImport(buffer);
       setImportResult(res);
       if (res.success) {
         setStatus("success");
@@ -266,7 +274,6 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                   className="h-8 w-8 text-gray-400 hover:text-gray-600"
                   onClick={() => {
                     setFile(null);
-                    setBase64Data(null);
                   }}
                 >
                   <X className="h-4 w-4" />
@@ -323,7 +330,6 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                   className="text-xs text-gray-600"
                   onClick={() => {
                     setFile(null);
-                    setBase64Data(null);
                     setStatus("idle");
                     setValidationResult(null);
                   }}
@@ -343,58 +349,54 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
               </div>
               
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="bg-white p-2.5 rounded border border-emerald-100">
-                  <span className="text-gray-500 block">Crew Members</span>
-                  <span className="font-semibold text-gray-800 text-sm">{validationResult.summary.crewCount}</span>
-                </div>
-                <div className="bg-white p-2.5 rounded border border-emerald-100">
-                  <span className="text-gray-500 block">Children Details</span>
-                  <span className="font-semibold text-gray-800 text-sm" data-testid="text-children-count">{validationResult.summary.childrenCount}</span>
-                </div>
-                <div className="bg-white p-2.5 rounded border border-emerald-100">
-                  <span className="text-gray-500 block">Emergency Contacts</span>
-                  <span className="font-semibold text-gray-800 text-sm">{validationResult.summary.nokCount}</span>
-                </div>
-                <div className="bg-white p-2.5 rounded border border-emerald-100">
-                  <span className="text-gray-500 block">Travel Documents</span>
-                  <span className="font-semibold text-gray-800 text-sm">{validationResult.summary.documentsCount}</span>
-                </div>
-                <div className="bg-white p-2.5 rounded border border-emerald-100">
-                  <span className="text-gray-500 block">Travel Visas</span>
-                  <span className="font-semibold text-gray-800 text-sm">{validationResult.summary.visasCount}</span>
-                </div>
-                <div className="bg-white p-2.5 rounded border border-emerald-100">
-                  <span className="text-gray-500 block">Licenses & COCs</span>
-                  <span className="font-semibold text-gray-800 text-sm">{validationResult.summary.licensesCount}</span>
-                </div>
-                <div className="bg-white p-2.5 rounded border border-emerald-100">
-                  <span className="text-gray-500 block">Sea Service History</span>
-                  <span className="font-semibold text-gray-800 text-sm">{validationResult.summary.seaServiceCount}</span>
-                </div>
-                <div className="bg-white p-2.5 rounded border border-emerald-100">
-                  <span className="text-gray-500 block">Training Courses</span>
-                  <span className="font-semibold text-gray-800 text-sm">{validationResult.summary.trainingCount}</span>
-                </div>
-                <div className="bg-white p-2.5 rounded border border-emerald-100">
-                  <span className="text-gray-500 block">Education Details</span>
-                  <span className="font-semibold text-gray-800 text-sm">{validationResult.summary.educationCount}</span>
-                </div>
+                {IMPORT_CATEGORIES.map((cat) => (
+                  <div key={cat.key} className="bg-white p-2.5 rounded border border-emerald-100">
+                    <span className="text-gray-500 block">{cat.label}</span>
+                    <span
+                      className="font-semibold text-gray-800 text-sm"
+                      data-testid={`text-${cat.key}-count`}
+                    >
+                      {validationResult.summary?.[cat.key] ?? 0}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
           {status === "success" && importResult && (
-            <div className="space-y-4 text-center p-6">
-              <CheckCircle className="h-14 w-14 text-[#5dc86f] mx-auto" />
-              <div>
+            <div className="space-y-4 p-6">
+              <div className="text-center space-y-2">
+                <CheckCircle className="h-14 w-14 text-[#5dc86f] mx-auto" />
                 <h3 className="text-lg font-semibold text-gray-800">Crew Imported Successfully</h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-500">
                   Successfully completed bulk import. {importResult.imported.crew} seafarers are now added to your database.
                 </p>
               </div>
-              <Button className="bg-[#5dc86f] text-white hover:bg-[#218838]" onClick={handleClose}>
-                Finish
-              </Button>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                {IMPORT_CATEGORIES.map((cat) => {
+                  const imported = importResult.imported?.[cat.key] ?? 0;
+                  const expected = importResult.expected?.[cat.key] ?? imported;
+                  return (
+                    <div key={cat.key} className="bg-[#f8fafc] p-2.5 rounded border border-[#e2e8f0]">
+                      <span className="text-gray-500 block">{cat.label}</span>
+                      <span
+                        className="font-semibold text-gray-800 text-sm"
+                        data-testid={`text-imported-${cat.key}`}
+                      >
+                        {imported} / {expected}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="text-center">
+                <Button className="bg-[#5dc86f] text-white hover:bg-[#218838]" onClick={handleClose}>
+                  Finish
+                </Button>
+              </div>
             </div>
           )}
         </div>

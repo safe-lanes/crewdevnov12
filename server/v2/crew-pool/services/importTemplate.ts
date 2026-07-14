@@ -136,6 +136,50 @@ export const EDUCATION_COLUMNS = [
   { header: "Date of Completion", required: false, example: "15-May-2010", note: "DD-MMM-YYYY or DD/MM/YYYY" },
 ];
 
+// Part F — Medical
+export const MEDICALS_COLUMNS = [
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
+  { header: "Vessel Name", required: false, example: "MT Pacific Star", note: "Matches a company vessel where possible; kept as typed otherwise" },
+  { header: "Examination Date", required: true, example: "10-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Blood Pressure", required: false, example: "120/80", note: "" },
+  { header: "Weight", required: false, example: "72", note: "" },
+  { header: "Any Medication Prescribed", required: false, example: "None", note: "" },
+  { header: "Clinic/Hospital", required: false, example: "Apollo Clinic", note: "" },
+  { header: "Fit For Duty", required: false, example: "Fit", note: "Fit / Unfit / Fit with Restrictions" },
+  { header: "Expiry Date", required: false, example: "09-Jan-2026", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+];
+
+export const DOCTOR_VISITS_COLUMNS = [
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
+  { header: "Vessel", required: false, example: "MT Pacific Star", note: "" },
+  { header: "Port", required: false, example: "Singapore", note: "" },
+  { header: "Visit Date", required: true, example: "15-Mar-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Doctor Name", required: false, example: "Dr. Lee", note: "" },
+  { header: "Clinic/Hospital", required: false, example: "Raffles Medical", note: "" },
+  { header: "Reason", required: false, example: "Fever", note: "" },
+  { header: "Doctor Comments", required: false, example: "Rest advised", note: "" },
+  { header: "Diagnosis", required: false, example: "Viral infection", note: "" },
+  { header: "Treatment", required: false, example: "Paracetamol", note: "" },
+  { header: "Follow-Up Date", required: false, example: "22-Mar-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+];
+
+// Part G — Briefing & De-briefing
+export const BRIEFINGS_COLUMNS = [
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
+  { header: "Vessel Name", required: false, example: "MT Pacific Star", note: "Matches a company vessel where possible; kept as typed otherwise" },
+  { header: "Joining Rank", required: false, example: "Chief Officer", note: "" },
+  { header: "Date Sign On", required: true, example: "15-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+];
+
+export const DEBRIEFINGS_COLUMNS = [
+  { header: "Employee ID", required: true, example: "EMP-2024-001", note: "Must match Crew Details sheet" },
+  { header: "Vessel Name", required: false, example: "MT Pacific Star", note: "Matches a company vessel where possible; kept as typed otherwise" },
+  { header: "Rank Served", required: false, example: "Chief Officer", note: "" },
+  { header: "Date Sign On", required: true, example: "15-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Date Signed Off", required: false, example: "15-Jul-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Reason for Sign Off", required: false, example: "Contract completion", note: "" },
+];
+
 // ============================================================================
 // TEMPLATE BUILDER
 // ============================================================================
@@ -441,6 +485,18 @@ export async function generateImportTemplate(): Promise<Buffer> {
   // Sheet 9: Education Details
   const eduSheet = buildDataSheet(wb, "Education Details", EDUCATION_COLUMNS);
 
+  // Sheet 10: Pre-Joining Medicals (Part F)
+  const medicalSheet = buildDataSheet(wb, "Pre-Joining Medicals", MEDICALS_COLUMNS);
+
+  // Sheet 11: Doctor Visits (Part F)
+  const doctorVisitSheet = buildDataSheet(wb, "Doctor Visits", DOCTOR_VISITS_COLUMNS);
+
+  // Sheet 12: Briefings (Part G)
+  const briefingSheet = buildDataSheet(wb, "Briefings", BRIEFINGS_COLUMNS);
+
+  // Sheet 13: De-briefings (Part G)
+  const debriefingSheet = buildDataSheet(wb, "De-briefings", DEBRIEFINGS_COLUMNS);
+
   // Apply Dropdown validations
   const refStartRow = 27;
   const natFormula = `='Instructions & Reference'!$B$27:$B$${refStartRow + refData.nationalities.length - 1}`;
@@ -454,6 +510,8 @@ export async function generateImportTemplate(): Promise<Buffer> {
   const coExtFormula = `='Instructions & Reference'!$J$27:$J$28`;
   const rankFormula = `='Instructions & Reference'!$K$27:$K$${refStartRow + refData.ranks.length - 1}`;
   const manningAgentFormula = `='Instructions & Reference'!$L$27:$L$${refStartRow + refData.manningAgents.length - 1}`;
+  const vesselFormula = `='Instructions & Reference'!$M$27:$M$${refStartRow + refData.vessels.length - 1}`;
+  const fitForDutyFormula = `"Fit,Unfit,Fit with Restrictions"`;
 
   const getColIndex = (columnsList: typeof CREW_DETAILS_COLUMNS, header: string) => {
     return columnsList.findIndex(c => c.header === header) + 1;
@@ -585,6 +643,33 @@ export async function generateImportTemplate(): Promise<Buffer> {
       ],
     });
   }
+
+  // Plain dropdown (no orange highlight) — for convenience fields that are NOT
+  // rejected server-side when typed manually (vessel name, rank, fit-for-duty).
+  const applyPlainDropdown = (ws: ExcelJS.Worksheet, header: string, columnsList: typeof CREW_DETAILS_COLUMNS, formula: string) => {
+    const colIdx = getColIndex(columnsList, header);
+    if (colIdx <= 0) return;
+    for (let row = 3; row <= 200; row++) {
+      ws.getCell(row, colIdx).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: [formula],
+        showErrorMessage: false,
+      };
+    }
+  };
+
+  // Pre-Joining Medicals (Part F)
+  applyPlainDropdown(medicalSheet, "Vessel Name", MEDICALS_COLUMNS, vesselFormula);
+  applyPlainDropdown(medicalSheet, "Fit For Duty", MEDICALS_COLUMNS, fitForDutyFormula);
+
+  // Briefings (Part G)
+  applyPlainDropdown(briefingSheet, "Vessel Name", BRIEFINGS_COLUMNS, vesselFormula);
+  applyPlainDropdown(briefingSheet, "Joining Rank", BRIEFINGS_COLUMNS, rankFormula);
+
+  // De-briefings (Part G)
+  applyPlainDropdown(debriefingSheet, "Vessel Name", DEBRIEFINGS_COLUMNS, vesselFormula);
+  applyPlainDropdown(debriefingSheet, "Rank Served", DEBRIEFINGS_COLUMNS, rankFormula);
 
   // Write to buffer
   const xlsxBuffer = await wb.xlsx.writeBuffer();

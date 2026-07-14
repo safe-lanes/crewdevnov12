@@ -495,8 +495,16 @@ export const crewPoolApiV2 = {
     return response.blob();
   },
 
-  async validateImport(fileData: string) {
-    const response = await apiRequest('POST', `${V2_BASE}/import/validate`, { fileData });
+  // Send the workbook as raw binary (application/octet-stream) so very large
+  // files (lakhs of rows) are not inflated ~33% by base64 or blocked by the
+  // global JSON body limit. tenant/auth headers are injected by the global
+  // fetch wrapper (tenantFetch.ts).
+  async validateImport(fileBuffer: ArrayBuffer) {
+    const response = await fetch(`${V2_BASE}/import/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: fileBuffer,
+    });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(error.message || 'Validation failed');
@@ -504,8 +512,12 @@ export const crewPoolApiV2 = {
     return response.json();
   },
 
-  async executeImport(fileData: string) {
-    const response = await apiRequest('POST', `${V2_BASE}/import/execute`, { fileData });
+  async executeImport(fileBuffer: ArrayBuffer) {
+    const response = await fetch(`${V2_BASE}/import/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: fileBuffer,
+    });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }));
       throw new Error(error.message || 'Import failed');

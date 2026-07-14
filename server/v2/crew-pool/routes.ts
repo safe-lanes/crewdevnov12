@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import {
   crewMembersController,
   crewAssignmentsController,
@@ -221,8 +221,12 @@ router.post("/transfer/validate", crewTransferController.validateTransfer);
 // ============================================
 // CREW IMPORT (Excel/CSV)
 // ============================================
+// Import files are sent as raw binary (application/octet-stream). Use a route-
+// level body parser with a high limit so large workbooks (lakhs of rows) are
+// accepted without raising the global JSON limit.
+const importBodyParser = raw({ type: "application/octet-stream", limit: "200mb" });
 router.get("/import/template", crewImportController.downloadTemplate);
-router.post("/import/validate", crewImportController.validate);
-router.post("/import/execute", crewImportController.execute);
+router.post("/import/validate", importBodyParser, crewImportController.validate);
+router.post("/import/execute", importBodyParser, crewImportController.execute);
 
 export default router;
