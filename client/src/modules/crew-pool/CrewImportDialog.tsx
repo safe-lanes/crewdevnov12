@@ -44,24 +44,76 @@ const IMPORT_CATEGORIES: { key: string; label: string }[] = [
 ];
 
 export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
+  const [mode, setMode] = useState<"data" | "attachments">("data");
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<"idle" | "validating" | "valid" | "invalid" | "importing" | "success">("idle");
   const [validationResult, setValidationResult] = useState<any>(null);
   const [importResult, setImportResult] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
+  // Attachment ZIP upload (second step of the import flow)
+  const [zipFile, setZipFile] = useState<File | null>(null);
+  const [attachStatus, setAttachStatus] = useState<"idle" | "uploading" | "done">("idle");
+  const [attachResult, setAttachResult] = useState<any>(null);
+  const zipInputRef = useRef<HTMLInputElement>(null);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Reset state on close
   const handleClose = () => {
+    setMode("data");
     setFile(null);
     setStatus("idle");
     setValidationResult(null);
     setImportResult(null);
     setErrorMessage(null);
+    setZipFile(null);
+    setAttachStatus("idle");
+    setAttachResult(null);
     onClose();
+  };
+
+  // Select ZIP for attachment upload
+  const handleZipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    const extension = selectedFile.name.split(".").pop()?.toLowerCase();
+    if (extension !== "zip") {
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Please upload a ZIP archive of your attachment files.",
+      });
+      return;
+    }
+    setZipFile(selectedFile);
+    setAttachStatus("idle");
+    setAttachResult(null);
+  };
+
+  // Upload the attachment ZIP
+  const handleUploadAttachments = async () => {
+    if (!zipFile) return;
+    setAttachStatus("uploading");
+    try {
+      const buffer = await zipFile.arrayBuffer();
+      const res = await crewPoolApiV2.uploadAttachmentsZip(buffer);
+      setAttachResult(res);
+      setAttachStatus("done");
+      toast({
+        title: "Attachments processed",
+        description: `${res.imported} file(s) attached, ${res.skippedCount} skipped.`,
+      });
+    } catch (err: any) {
+      setAttachStatus("idle");
+      toast({
+        variant: "destructive",
+        title: "Attachment upload failed",
+        description: err.message || "Failed to upload attachments",
+      });
+    }
   };
 
   // Trigger file dialog
@@ -214,10 +266,35 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
             </DialogTitle>
           </div>
           <p className="text-sm text-gray-500 mt-1">
-            Bulk-import crew members, travel docs, licenses, sea service, and training using a simple Excel sheet.
+            Step 1: import crew data from the Excel sheet. Step 2: upload a ZIP of the supporting attachment files.
           </p>
         </DialogHeader>
 
+        {/* Mode toggle: Excel data vs attachment ZIP */}
+        <div className="flex gap-1 p-1 bg-[#f1f5f9] rounded-lg">
+          <button
+            type="button"
+            data-testid="tab-import-data"
+            onClick={() => setMode("data")}
+            className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${
+              mode === "data" ? "bg-white text-[#2c3e50] shadow-sm" : "text-gray-500"
+            }`}
+          >
+            Crew Data
+          </button>
+          <button
+            type="button"
+            data-testid="tab-import-attachments"
+            onClick={() => setMode("attachments")}
+            className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${
+              mode === "attachments" ? "bg-white text-[#2c3e50] shadow-sm" : "text-gray-500"
+            }`}
+          >
+            Attachments
+          </button>
+        </div>
+
+        {mode === "data" && (
         <div className="py-4 space-y-4">
           {/* Download Template Button */}
           {status === "idle" && (
@@ -400,6 +477,105 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
             </div>
           )}
         </div>
+        )}
+
+        {mode === "attachments" && (
+          <div className="py-4 space-y-4">
+            <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg text-xs text-gray-600">
+              Zip your files so each one sits in a{" "}
+              <span className="font-mono text-gray-800">&lt;Employee ID&gt;/&lt;Attachment Ref&gt;/</span>{" "}
+              folder (the Attachment Ref comes from the Excel sheet), then upload the ZIP here.
+            </div>
+
+            {!zipFile ? (
+              <div
+                className="flex flex-col items-center justify-center border-2 border-dashed border-[#cbd5e1] hover:border-[#5dc86f] cursor-pointer rounded-lg p-10 space-y-3 bg-[#fafcfd] transition-colors"
+                onClick={() => zipInputRef.current?.click()}
+                data-testid="dropzone-attachments-zip"
+              >
+                <Upload className="h-10 w-10 text-gray-400" />
+                <div className="text-center">
+                  <span className="text-[#3b82f6] font-medium hover:underline text-sm">Upload a ZIP</span>
+                  <span className="text-gray-500 text-sm"> of attachment files</span>
+                </div>
+                <p className="text-xs text-gray-400">PDF, PNG or JPEG files, up to 5MB each</p>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-4 border border-[#e2e8f0] rounded-lg bg-white">
+                <div className="flex items-center space-x-3">
+                  <FileSpreadsheet className="h-8 w-8 text-[#3b82f6]" />
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 truncate max-w-[280px]" data-testid="text-zip-name">
+                      {zipFile.name}
+                    </h4>
+                    <p className="text-xs text-gray-400">{(zipFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                </div>
+                {attachStatus === "idle" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-gray-400 hover:text-gray-600"
+                    onClick={() => setZipFile(null)}
+                    data-testid="button-clear-zip"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {attachStatus === "uploading" && (
+              <div className="flex flex-col items-center justify-center p-6 space-y-3">
+                <Loader2 className="h-8 w-8 text-[#5dc86f] animate-spin" />
+                <p className="text-sm text-gray-600 font-medium">Uploading & attaching files...</p>
+              </div>
+            )}
+
+            {attachStatus === "done" && attachResult && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="bg-emerald-50 p-2.5 rounded border border-emerald-100">
+                    <span className="text-gray-500 block">Attached</span>
+                    <span className="font-semibold text-emerald-700 text-sm" data-testid="text-attached-count">
+                      {attachResult.imported}
+                    </span>
+                  </div>
+                  <div className="bg-amber-50 p-2.5 rounded border border-amber-100">
+                    <span className="text-gray-500 block">Skipped</span>
+                    <span className="font-semibold text-amber-700 text-sm" data-testid="text-skipped-count">
+                      {attachResult.skippedCount}
+                    </span>
+                  </div>
+                </div>
+
+                {attachResult.skipped?.length > 0 && (
+                  <div className="max-h-48 overflow-y-auto border border-amber-100 rounded-lg divide-y divide-amber-50">
+                    {attachResult.skipped.map((s: { path: string; reason: string }, i: number) => (
+                      <div key={i} className="p-2.5 text-xs" data-testid={`row-skipped-${i}`}>
+                        <div className="flex items-start space-x-2">
+                          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
+                          <div>
+                            <p className="font-mono text-gray-700 break-all">{s.path}</p>
+                            <p className="text-gray-500">{s.reason}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <input
+              type="file"
+              ref={zipInputRef}
+              onChange={handleZipChange}
+              accept=".zip"
+              className="hidden"
+            />
+          </div>
+        )}
 
         <input
           type="file"
@@ -409,7 +585,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
           className="hidden"
         />
 
-        {status !== "success" && (
+        {mode === "data" && status !== "success" && (
           <DialogFooter className="gap-2 sm:gap-0 mt-4 border-t pt-4">
             <Button variant="outline" onClick={handleClose} disabled={status === "validating" || status === "importing"}>
               Cancel
@@ -424,6 +600,25 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
             {status === "valid" && (
               <Button className="bg-[#5dc86f] text-white hover:bg-[#218838]" onClick={handleImport}>
                 Confirm Import
+              </Button>
+            )}
+          </DialogFooter>
+        )}
+
+        {mode === "attachments" && (
+          <DialogFooter className="gap-2 sm:gap-0 mt-4 border-t pt-4">
+            <Button variant="outline" onClick={handleClose} disabled={attachStatus === "uploading"}>
+              {attachStatus === "done" ? "Close" : "Cancel"}
+            </Button>
+
+            {zipFile && attachStatus !== "done" && (
+              <Button
+                className="bg-[#5dc86f] text-white hover:bg-[#218838]"
+                onClick={handleUploadAttachments}
+                disabled={attachStatus === "uploading"}
+                data-testid="button-upload-attachments"
+              >
+                Upload Attachments
               </Button>
             )}
           </DialogFooter>

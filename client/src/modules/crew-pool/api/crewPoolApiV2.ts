@@ -524,4 +524,20 @@ export const crewPoolApiV2 = {
     }
     return response.json();
   },
+
+  // Upload a ZIP of attachment files as raw binary. Each file must live under a
+  // <Employee ID>/<Attachment Ref>/<file> folder path. tenant/auth headers are
+  // injected by the global fetch wrapper (tenantFetch.ts).
+  async uploadAttachmentsZip(fileBuffer: ArrayBuffer) {
+    const response = await fetch(`${V2_BASE}/import/attachments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/zip' },
+      body: fileBuffer,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || 'Attachment import failed');
+    }
+    return response.json();
+  },
 };

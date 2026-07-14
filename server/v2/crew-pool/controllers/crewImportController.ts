@@ -13,6 +13,7 @@ import {
   executeImport,
   generateErrorReport,
 } from "../services/crewImportService";
+import { importAttachmentsZip } from "../services/crewAttachmentImportService";
 
 export const crewImportController = {
   /**
@@ -125,6 +126,38 @@ export const crewImportController = {
       console.error("Error executing import:", error);
       res.status(500).json({
         error: "Import failed",
+        message: error.message,
+      });
+    }
+  },
+
+  /**
+   * Import a ZIP of attachment files, attaching each to the record identified by
+   * its `<Employee ID>/<Attachment Ref>/<file>` folder path inside the ZIP.
+   * Unmatched or invalid files are skipped and reported rather than failing the
+   * whole upload.
+   */
+  async importAttachments(req: Request, res: Response) {
+    try {
+      let buffer: Buffer;
+
+      if (req.body && req.body.fileData) {
+        buffer = Buffer.from(req.body.fileData, "base64");
+      } else if (req.body && Buffer.isBuffer(req.body)) {
+        buffer = req.body;
+      } else {
+        return res.status(400).json({
+          error: "No file provided",
+          message: "Send the ZIP file as raw binary body with Content-Type: application/zip (or application/octet-stream).",
+        });
+      }
+
+      const result = await importAttachmentsZip(buffer);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error importing attachments:", error);
+      res.status(500).json({
+        error: "Attachment import failed",
         message: error.message,
       });
     }

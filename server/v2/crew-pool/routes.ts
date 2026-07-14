@@ -225,8 +225,14 @@ router.post("/transfer/validate", crewTransferController.validateTransfer);
 // level body parser with a high limit so large workbooks (lakhs of rows) are
 // accepted without raising the global JSON limit.
 const importBodyParser = raw({ type: "application/octet-stream", limit: "200mb" });
+// Attachment ZIP uploads may arrive with a zip content-type; accept both.
+const attachmentZipBodyParser = raw({
+  type: ["application/zip", "application/octet-stream", "application/x-zip-compressed"],
+  limit: "200mb",
+});
 router.get("/import/template", crewImportController.downloadTemplate);
 router.post("/import/validate", importBodyParser, crewImportController.validate);
 router.post("/import/execute", importBodyParser, crewImportController.execute);
+router.post("/import/attachments", attachmentZipBodyParser, crewImportController.importAttachments);
 
 export default router;

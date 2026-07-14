@@ -86,6 +86,7 @@ export const DOCUMENTS_COLUMNS = [
   { header: "Date of Issue", required: false, example: "15-Jan-2020", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Date of Expiry", required: false, example: "14-Jan-2030", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Issuing Authority", required: false, example: "Govt of India", note: "" },
+  { header: "Attachment Ref", required: false, example: "EMP-2024-001-D1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
 export const LICENSES_COLUMNS = [
@@ -95,6 +96,7 @@ export const LICENSES_COLUMNS = [
   { header: "Issuing Authority", required: false, example: "DG Shipping", note: "" },
   { header: "Date of Issue", required: false, example: "01-Jun-2019", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Date of Expiry", required: false, example: "01-Jun-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Attachment Ref", required: false, example: "EMP-2024-001-L1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
 export const SEA_SERVICE_COLUMNS = [
@@ -108,6 +110,7 @@ export const SEA_SERVICE_COLUMNS = [
   { header: "Owner / Operator", required: false, example: "Pacific Shipping", note: "" },
   { header: "Deadweight", required: false, example: "50000", note: "DWT (Number)" },
   { header: "Engine Type / Power", required: false, example: "MAN B&W 6S60MC", note: "" },
+  { header: "Attachment Ref", required: false, example: "EMP-2024-001-S1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
 export const TRAINING_COLUMNS = [
@@ -117,6 +120,7 @@ export const TRAINING_COLUMNS = [
   { header: "Issuing Authority", required: false, example: "Maritime Academy", note: "" },
   { header: "Date of Issue", required: false, example: "20-Mar-2021", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Date of Expiry", required: false, example: "19-Mar-2026", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Attachment Ref", required: false, example: "EMP-2024-001-T1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
 export const VISAS_COLUMNS = [
@@ -126,6 +130,7 @@ export const VISAS_COLUMNS = [
   { header: "Visa Number / Serial Number", required: false, example: "V9876543", note: "" },
   { header: "Date of Issue", required: false, example: "15-Jan-2023", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Date of Expiry", required: false, example: "14-Jan-2028", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Attachment Ref", required: false, example: "EMP-2024-001-V1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
 export const EDUCATION_COLUMNS = [
@@ -134,6 +139,7 @@ export const EDUCATION_COLUMNS = [
   { header: "Subjects / Field of Study", required: false, example: "Marine Engineering", note: "" },
   { header: "Qualifications / Degree", required: true, example: "Bachelor of Science", note: "" },
   { header: "Date of Completion", required: false, example: "15-May-2010", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Attachment Ref", required: false, example: "EMP-2024-001-E1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
 // Part F — Medical
@@ -147,6 +153,7 @@ export const MEDICALS_COLUMNS = [
   { header: "Clinic/Hospital", required: false, example: "Apollo Clinic", note: "" },
   { header: "Fit For Duty", required: false, example: "Fit", note: "Fit / Unfit / Fit with Restrictions" },
   { header: "Expiry Date", required: false, example: "09-Jan-2026", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Attachment Ref", required: false, example: "EMP-2024-001-M1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
 export const DOCTOR_VISITS_COLUMNS = [
@@ -161,6 +168,7 @@ export const DOCTOR_VISITS_COLUMNS = [
   { header: "Diagnosis", required: false, example: "Viral infection", note: "" },
   { header: "Treatment", required: false, example: "Paracetamol", note: "" },
   { header: "Follow-Up Date", required: false, example: "22-Mar-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Attachment Ref", required: false, example: "EMP-2024-001-DV1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
 // Part G — Briefing & De-briefing
@@ -169,6 +177,7 @@ export const BRIEFINGS_COLUMNS = [
   { header: "Vessel Name", required: false, example: "MT Pacific Star", note: "Matches a company vessel where possible; kept as typed otherwise" },
   { header: "Joining Rank", required: false, example: "Chief Officer", note: "" },
   { header: "Date Sign On", required: true, example: "15-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Attachment Ref", required: false, example: "EMP-2024-001-B1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
 export const DEBRIEFINGS_COLUMNS = [
@@ -178,6 +187,7 @@ export const DEBRIEFINGS_COLUMNS = [
   { header: "Date Sign On", required: true, example: "15-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Date Signed Off", required: false, example: "15-Jul-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Reason for Sign Off", required: false, example: "Contract completion", note: "" },
+  { header: "Attachment Ref", required: false, example: "EMP-2024-001-DB1", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
 // ============================================================================
@@ -329,6 +339,15 @@ function buildInstructionsSheet(
     "",
     "NOTE: You may type values manually instead of using the dropdowns. Manually typed values that do not match",
     "the Reference Data lists will be highlighted in orange and rejected during import (listed in the error report).",
+    "",
+    "ATTACHMENTS (OPTIONAL — UPLOADED SEPARATELY AS A ZIP)",
+    "Documents, Visas, Licenses, Sea Service, Training, Education, Medicals, Doctor Visits, Briefings and",
+    "De-briefings each have an auto-filled 'Attachment Ref' column. It fills in automatically as you enter the",
+    "Employee ID for a row (e.g. EMP-2024-001-D1). Do NOT edit these values.",
+    "After importing this workbook, upload a ZIP of the files. Inside the ZIP, place each file under a folder path:",
+    "    <Employee ID>/<Attachment Ref>/<your-file.pdf>",
+    "For example: EMP-2024-001/EMP-2024-001-D1/passport.pdf",
+    "Allowed file types: PDF, PNG, JPEG. Max 5 MB per file. Files that do not match a row are skipped and reported.",
     "",
   ];
 
@@ -670,6 +689,38 @@ export async function generateImportTemplate(): Promise<Buffer> {
   // De-briefings (Part G)
   applyPlainDropdown(debriefingSheet, "Vessel Name", DEBRIEFINGS_COLUMNS, vesselFormula);
   applyPlainDropdown(debriefingSheet, "Rank Served", DEBRIEFINGS_COLUMNS, rankFormula);
+
+  // Attachment Ref auto-fill: a stable, human-readable reference generated from
+  // the row's Employee ID (col A) plus a per-sheet prefix and a running count.
+  // The user copies this value as the ZIP sub-folder name that holds the row's
+  // file(s). COUNTIF over an expanding range guarantees a unique suffix per
+  // employee within the sheet, and the distinct prefix keeps refs unique across
+  // sheets for the same crew. No volatile functions (RAND) so values are stable.
+  const applyAttachmentRefFormula = (
+    ws: ExcelJS.Worksheet,
+    columnsList: typeof CREW_DETAILS_COLUMNS,
+    prefix: string,
+  ) => {
+    const colIdx = getColIndex(columnsList, "Attachment Ref");
+    if (colIdx <= 0) return;
+    for (let row = 3; row <= 200; row++) {
+      ws.getCell(row, colIdx).value = {
+        formula: `IF($A${row}="","",$A${row}&"-${prefix}"&COUNTIF($A$3:$A${row},$A${row}))`,
+        result: "",
+      };
+    }
+  };
+
+  applyAttachmentRefFormula(docsSheet, DOCUMENTS_COLUMNS, "D");
+  applyAttachmentRefFormula(visasSheet, VISAS_COLUMNS, "V");
+  applyAttachmentRefFormula(licSheet, LICENSES_COLUMNS, "L");
+  applyAttachmentRefFormula(seaSheet, SEA_SERVICE_COLUMNS, "S");
+  applyAttachmentRefFormula(trainSheet, TRAINING_COLUMNS, "T");
+  applyAttachmentRefFormula(eduSheet, EDUCATION_COLUMNS, "E");
+  applyAttachmentRefFormula(medicalSheet, MEDICALS_COLUMNS, "M");
+  applyAttachmentRefFormula(doctorVisitSheet, DOCTOR_VISITS_COLUMNS, "DV");
+  applyAttachmentRefFormula(briefingSheet, BRIEFINGS_COLUMNS, "B");
+  applyAttachmentRefFormula(debriefingSheet, DEBRIEFINGS_COLUMNS, "DB");
 
   // Write to buffer
   const xlsxBuffer = await wb.xlsx.writeBuffer();

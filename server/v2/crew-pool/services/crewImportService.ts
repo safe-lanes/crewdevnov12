@@ -652,12 +652,18 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
     }
   }
 
+  // Attachment Ref uniqueness tracking: within a single crew, each Attachment
+  // Ref must be unique across ALL attachment-bearing sheets so the ZIP import
+  // can resolve a folder name to exactly one record. Keyed by normalized empNo.
+  const attachmentRefsByEmpNo = new Map<string, Map<string, { sheet: string; row: number }>>();
+
   // ---- Sub-sheet validation helper ----
   function validateSubSheet(
     rows: Record<string, any>[],
     sheetName: string,
     requiredFields: string[],
     dateFields: string[],
+    checkAttachmentRef = false,
   ) {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -682,21 +688,41 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
           errors.push({ sheet: sheetName, row: rowNum, column: field, value: val, message: `Invalid date format. Use DD-MMM-YYYY, DD/MM/YYYY, or YYYY-MM-DD` });
         }
       }
+
+      // Attachment Ref must be unique within a crew across all attachment sheets.
+      if (checkAttachmentRef && code) {
+        const ref = getCellValue(row, "Attachment Ref");
+        if (ref) {
+          const empKey = normalizeEmpNo(code);
+          const refKey = ref.trim().toUpperCase();
+          let refs = attachmentRefsByEmpNo.get(empKey);
+          if (!refs) {
+            refs = new Map();
+            attachmentRefsByEmpNo.set(empKey, refs);
+          }
+          const existing = refs.get(refKey);
+          if (existing) {
+            errors.push({ sheet: sheetName, row: rowNum, column: "Attachment Ref", value: ref, message: `Duplicate Attachment Ref "${ref}" for this crew — already used on '${existing.sheet}' row ${existing.row}. Each Attachment Ref must be unique per crew.` });
+          } else {
+            refs.set(refKey, { sheet: sheetName, row: rowNum });
+          }
+        }
+      }
     }
   }
 
   validateSubSheet(data.childrenRows, "Children Details", ["First Name"], ["Date of Birth"]);
   validateSubSheet(data.nokRows, "Emergency Contact", [], []);
-  validateSubSheet(data.documentRows, "Travel Documents", ["Document Name"], ["Date of Issue", "Date of Expiry"]);
-  validateSubSheet(data.visaRows, "Travel Visas", ["Country", "Visa Type"], ["Date of Issue", "Date of Expiry"]);
-  validateSubSheet(data.licenseRows, "Licenses & Certificates", ["Certificate / Document Name"], ["Date of Issue", "Date of Expiry"]);
-  validateSubSheet(data.seaServiceRows, "Sea Service History", ["Vessel Name", "Vessel Type", "Rank Served", "Sign On Date", "Sign Off Date"], ["Sign On Date", "Sign Off Date"]);
-  validateSubSheet(data.trainingRows, "Training Courses", ["Course Name"], ["Date of Issue", "Date of Expiry"]);
-  validateSubSheet(data.educationRows, "Education Details", ["Qualifications / Degree"], ["Date of Completion"]);
-  validateSubSheet(data.medicalRows, "Pre-Joining Medicals", ["Examination Date"], ["Examination Date", "Expiry Date"]);
-  validateSubSheet(data.doctorVisitRows, "Doctor Visits", ["Visit Date"], ["Visit Date", "Follow-Up Date"]);
-  validateSubSheet(data.briefingRows, "Briefings", ["Date Sign On"], ["Date Sign On"]);
-  validateSubSheet(data.debriefingRows, "De-briefings", ["Date Sign On"], ["Date Sign On", "Date Signed Off"]);
+  validateSubSheet(data.documentRows, "Travel Documents", ["Document Name"], ["Date of Issue", "Date of Expiry"], true);
+  validateSubSheet(data.visaRows, "Travel Visas", ["Country", "Visa Type"], ["Date of Issue", "Date of Expiry"], true);
+  validateSubSheet(data.licenseRows, "Licenses & Certificates", ["Certificate / Document Name"], ["Date of Issue", "Date of Expiry"], true);
+  validateSubSheet(data.seaServiceRows, "Sea Service History", ["Vessel Name", "Vessel Type", "Rank Served", "Sign On Date", "Sign Off Date"], ["Sign On Date", "Sign Off Date"], true);
+  validateSubSheet(data.trainingRows, "Training Courses", ["Course Name"], ["Date of Issue", "Date of Expiry"], true);
+  validateSubSheet(data.educationRows, "Education Details", ["Qualifications / Degree"], ["Date of Completion"], true);
+  validateSubSheet(data.medicalRows, "Pre-Joining Medicals", ["Examination Date"], ["Examination Date", "Expiry Date"], true);
+  validateSubSheet(data.doctorVisitRows, "Doctor Visits", ["Visit Date"], ["Visit Date", "Follow-Up Date"], true);
+  validateSubSheet(data.briefingRows, "Briefings", ["Date Sign On"], ["Date Sign On"], true);
+  validateSubSheet(data.debriefingRows, "De-briefings", ["Date Sign On"], ["Date Sign On", "Date Signed Off"], true);
 
   // Children gender values
   for (let i = 0; i < data.childrenRows.length; i++) {
@@ -757,6 +783,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
       if (!crewUuid) continue;
       resolved.documents.push({
         docUuid: uuidv4(), crewUuid,
+        attachmentRef: getCellValue(row, "Attachment Ref"),
         documentName: getCellValue(row, "Document Name"),
         number: getCellValue(row, "Document Number"),
         issued: parseDate(getCellValue(row, "Date of Issue")),
@@ -771,6 +798,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
       if (!crewUuid) continue;
       resolved.licenses.push({
         licUuid: uuidv4(), crewUuid,
+        attachmentRef: getCellValue(row, "Attachment Ref"),
         certificateDocument: getCellValue(row, "Certificate / Document Name"),
         certificateNo: getCellValue(row, "Certificate Number"),
         issuingAuthority: getCellValue(row, "Issuing Authority"),
@@ -801,6 +829,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
       }
       resolved.seaService.push({
         seaUuid: uuidv4(), crewUuid,
+        attachmentRef: getCellValue(row, "Attachment Ref"),
         serviceType, vesselName, vesselUuid,
         vesselTypeUuid: resolveFromMap(maps.vesselType, vtName),
         rank: getCellValue(row, "Rank Served"),
@@ -817,6 +846,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
       if (!crewUuid) continue;
       resolved.training.push({
         trainUuid: uuidv4(), crewUuid,
+        attachmentRef: getCellValue(row, "Attachment Ref"),
         trainingCourse: getCellValue(row, "Course Name"),
         certificateNo: getCellValue(row, "Certificate Number"),
         issuingAuthority: getCellValue(row, "Issuing Authority"),
@@ -832,6 +862,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
       const countryVal = getCellValue(row, "Country");
       resolved.visas.push({
         visaUuid: uuidv4(), crewUuid,
+        attachmentRef: getCellValue(row, "Attachment Ref"),
         countryUuid: resolveFromMap(maps.country, countryVal),
         country: countryVal,
         visaType: getCellValue(row, "Visa Type"),
@@ -847,6 +878,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
       if (!crewUuid) continue;
       resolved.education.push({
         eduUuid: uuidv4(), crewUuid,
+        attachmentRef: getCellValue(row, "Attachment Ref"),
         institution: getCellValue(row, "Institution"),
         subjectsField: getCellValue(row, "Subjects / Field of Study"),
         qualifications: getCellValue(row, "Qualifications / Degree"),
@@ -863,6 +895,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
       const vesselName = getCellValue(row, "Vessel Name");
       resolved.medicals.push({
         medUuid: uuidv4(), crewUuid,
+        attachmentRef: getCellValue(row, "Attachment Ref"),
         vesselUuid: resolveFromMap(maps.vessel, vesselName),
         vesselName,
         examinationDate: parseDate(getCellValue(row, "Examination Date")),
@@ -882,6 +915,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
       if (!crewUuid) continue;
       resolved.doctorVisits.push({
         visitUuid: uuidv4(), crewUuid,
+        attachmentRef: getCellValue(row, "Attachment Ref"),
         vessel: getCellValue(row, "Vessel"),
         port: getCellValue(row, "Port"),
         visitDate: parseDate(getCellValue(row, "Visit Date")),
@@ -903,6 +937,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
       const vesselName = getCellValue(row, "Vessel Name");
       resolved.briefings.push({
         briefingUuid: uuidv4(), crewUuid,
+        attachmentRef: getCellValue(row, "Attachment Ref"),
         vesselUuid: resolveFromMap(maps.vessel, vesselName),
         vesselName,
         joiningRank: getCellValue(row, "Joining Rank"),
@@ -918,6 +953,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
       const vesselName = getCellValue(row, "Vessel Name");
       resolved.debriefings.push({
         debriefingUuid: uuidv4(), crewUuid,
+        attachmentRef: getCellValue(row, "Attachment Ref"),
         vesselUuid: resolveFromMap(maps.vessel, vesselName),
         vesselName,
         rankServed: getCellValue(row, "Rank Served"),
