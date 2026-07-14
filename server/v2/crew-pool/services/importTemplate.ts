@@ -549,12 +549,12 @@ export async function generateImportTemplate(): Promise<Buffer> {
   };
 
   // Orange fill for manually typed values not present in the dropdown list.
-  // ExcelJS solid fills use fgColor for the visible colour; bgColor is for
-  // patterned fills and has no effect when pattern is "solid".
+  // ExcelJS conditional formatting (DXF) uses bgColor for the visible solid
+  // fill colour — the opposite of regular cell fills which use fgColor.
   const MANUAL_VALUE_FILL: ExcelJS.FillPattern = {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: "FFFFC000" },
+    bgColor: { argb: "FFFFC000" },
   };
 
   const applyDropdown = (ws: ExcelJS.Worksheet, header: string, columnsList: typeof CREW_DETAILS_COLUMNS, formula: string) => {
