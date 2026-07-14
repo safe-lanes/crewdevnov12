@@ -226,6 +226,27 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
     }
   };
 
+  // Download skipped-attachments report as a CSV
+  const handleDownloadSkippedReport = () => {
+    if (!attachResult?.skipped?.length) return;
+    const rows: string[] = ["File Path,Reason"];
+    for (const s of attachResult.skipped as { path: string; reason: string }[]) {
+      const escapedPath = `"${s.path.replace(/"/g, '""')}"`;
+      const escapedReason = `"${s.reason.replace(/"/g, '""')}"`;
+      rows.push(`${escapedPath},${escapedReason}`);
+    }
+    const csv = rows.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "SAIL_Skipped_Attachments.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   // Download Excel error report returned in base64
   const handleDownloadErrorReport = () => {
     if (!validationResult?.errorReport) return;
@@ -562,6 +583,22 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                 </div>
 
                 {attachResult.skipped?.length > 0 && (
+                  <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-amber-700 font-medium">
+                      {attachResult.skipped.length} file{attachResult.skipped.length !== 1 ? "s" : ""} skipped
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs border-amber-200 text-amber-700 hover:bg-amber-50"
+                      onClick={handleDownloadSkippedReport}
+                      data-testid="button-download-skipped-report"
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1" />
+                      Download report
+                    </Button>
+                  </div>
                   <div className="max-h-48 overflow-y-auto border border-amber-100 rounded-lg divide-y divide-amber-50">
                     {attachResult.skipped.map((s: { path: string; reason: string }, i: number) => (
                       <div key={i} className="p-2.5 text-xs" data-testid={`row-skipped-${i}`}>
@@ -574,6 +611,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                         </div>
                       </div>
                     ))}
+                  </div>
                   </div>
                 )}
               </div>
