@@ -43,6 +43,45 @@ Check the startup log for `Applied: 0161…` / `0162…` / `0163…` / `0164…`
 
 ## 3. RBAC review
 
+### 3a. Client onboarding: grant Accounts menus via the Access Control UI
+
+The RBAC seed migrations (0141/0155/0158/0160/0162/0164/0166) copy each
+role's grant on the top-level `Account` menu. On a tenant where no role has
+that grant yet (e.g. a fresh tenant), **no Accounts rows are seeded at all**
+— every role sees no Accounts menus until grants are applied manually. Apply
+them through the Access Control admin UI as part of client onboarding:
+
+1. Log in as an admin user and open the **Crewing** app switcher (top-left).
+2. Go to **Admin** (the admin module) → in the left sidebar click
+   **Access Control**.
+3. In the **Roles** list (left panel) click the role to configure
+   (e.g. `Admin`).
+4. In the menu tree (right panel) scroll to the **Account** parent row and
+   expand it with the chevron. All 14 Accounts child menus appear under it
+   (15 total including the `Account` parent):
+   Payroll Run, Portage Bill, Monthly Transactions, Settlements,
+   Vessel Portage, Allotments, Cash & Bond, Payslips, GL Export,
+   Fleet Summary, Pay Elements, Wage Scales, CBA Reference,
+   Tenant Configuration.
+5. Tick the permission checkboxes per menu (`View` / `Create` / `Edit` /
+   `Delete`), or use the row's **Select All** checkbox.
+6. Click **Save Changes** (bottom-right). Repeat steps 3–6 for each role.
+
+Reference policy (as applied on the dev tenant):
+
+| Role | Grant |
+| --- | --- |
+| Admin, Super Admin, Sail Admin | Full (V/C/E/D) on `Account` + all 14 sub-menus |
+| User | View only on `Account` + all 14 sub-menus |
+| Vessel Admin, Vessel User, Vessel User 2–4 | View on `Account`; View/Create/Edit on `Account Vessel Portage`; nothing else |
+| Vessel Management | View only on `Account`, `Account Vessel Portage`, `Account Portage Bill` |
+| External 1–5 | No grants (no Accounts menus visible) |
+
+Note: a role needs **View on the top-level `Account` menu** for the Accounts
+module entry to appear at all, plus View on each sub-menu it should reach.
+
+### 3b. Post-seed review
+
 - Roles that should NOT see the vessel workspace: remove their
   `Account Vessel Portage` row in role access (Admin → Roles) after the seed.
 - Ship-role users need at least **view + create + edit** on
@@ -58,6 +97,55 @@ Check the startup log for `Applied: 0161…` / `0162…` / `0163…` / `0164…`
   default = **no cap** on percentage allotments. Set it per tenant (e.g.
   `80.0`) if the office wants allotment percentage caps enforced on
   create/edit.
+
+### 3c. Dev verification with scoped AUTH_BYPASS (no parent-app login)
+
+In development there is no parent app to issue signed JWTs. With
+`AUTH_BYPASS=true` and `JWT_SECRET` unset, the backend accepts an **unsigned**
+Bearer token and decodes it without verification (dev-only impersonation;
+never active in production). This "scoped bypass" lets you exercise the real
+RBAC + vessel-scope code paths as any role. **Production guardrail:** never
+set `AUTH_BYPASS` or leave `JWT_SECRET` unset outside local development.
+
+1. **Backend, as a Vessel User (Ship)** — build an unsigned JWT
+   (`base64url(header).base64url(payload).x`) with payload:
+
+   ```json
+   {
+     "userId": "dev-test",
+     "role": "Vessel User",
+     "roleId": "<ruid of Vessel User>",
+     "userType": "Ship",
+     "vessels": ["<vessel-uuid>"]
+   }
+   ```
+
+   Send it as `Authorization: Bearer <token>` with `x-tenant-id`. Expected:
+   - `GET /api/v2/admin/access-control/my-permissions?roleId=<ruid>` returns
+     `canview: true` only for `Account` and `Account Vessel Portage`.
+   - `GET /api/v2/accounts/vessel-portage/<own-vessel-uuid>/<period>/status`
+     → 200; the same call for any other vessel uuid → 403 (fail-closed).
+   - An object-shaped `vessels` entry (`[{"vesselId": …}]`) → 403 — the claim
+     must be plain string UUIDs (see §1).
+   - A no-grant role (e.g. `External 1` roleId) gets `canview: false` on all
+     15 Accounts menus.
+
+2. **Frontend menu gating** — with `VITE_AUTH_BYPASS=true`, the UI reads the
+   simulated profile from `localStorage.userProfile` (plain JSON accepted in
+   dev). In the browser console:
+
+   ```js
+   localStorage.setItem("userProfile", JSON.stringify({
+     role: "Vessel User", roleId: "<ruid>", userId: "dev-test",
+     userType: "Ship",
+     myVessels: [{ vessel: "<name>", vesselId: "<vessel-uuid>", imoNumber: "" }]
+   })); location.reload();
+   ```
+
+   Expected: the Accounts sidebar shows **only Vessel Portage**, fixed to the
+   profile vessel. With `role: "External 1"` (+ its roleId, no `myVessels`),
+   the Accounts module shows the no-access page and no Accounts menus.
+   Remove the override with `localStorage.removeItem("userProfile")`.
 
 ## 4. Environment
 
