@@ -87,6 +87,8 @@ type ResolvedRecord = {
 export interface AttachmentImportResult {
   success: boolean;
   imported: number;
+  recordsCovered: number;
+  crewCovered: number;
   skippedCount: number;
   skipped: { path: string; reason: string }[];
 }
@@ -156,6 +158,9 @@ export async function importAttachmentsZip(
 
   const skipped: { path: string; reason: string }[] = [];
   let imported = 0;
+  // Distinct parent records and crew that received at least one attachment.
+  const recordsCovered = new Set<string>();
+  const crewCovered = new Set<string>();
 
   // JSZip keeps entries keyed by their full path; iterate deterministically.
   const entries = Object.values(zip.files).sort((a, b) => a.name.localeCompare(b.name));
@@ -248,11 +253,15 @@ export async function importAttachmentsZip(
       continue;
     }
     imported++;
+    recordsCovered.add(record.parentUuid);
+    crewCovered.add(crew.crewUuid);
   }
 
   return {
     success: true,
     imported,
+    recordsCovered: recordsCovered.size,
+    crewCovered: crewCovered.size,
     skippedCount: skipped.length,
     skipped,
   };

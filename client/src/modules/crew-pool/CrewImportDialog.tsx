@@ -536,7 +536,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div className="bg-emerald-50 p-2.5 rounded border border-emerald-100">
-                    <span className="text-gray-500 block">Attached</span>
+                    <span className="text-gray-500 block">Files Attached</span>
                     <span className="font-semibold text-emerald-700 text-sm" data-testid="text-attached-count">
                       {attachResult.imported}
                     </span>
@@ -545,6 +545,18 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                     <span className="text-gray-500 block">Skipped</span>
                     <span className="font-semibold text-amber-700 text-sm" data-testid="text-skipped-count">
                       {attachResult.skippedCount}
+                    </span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded border border-[#e2e8f0]">
+                    <span className="text-gray-500 block">Records Covered</span>
+                    <span className="font-semibold text-gray-800 text-sm" data-testid="text-records-covered">
+                      {attachResult.recordsCovered}
+                    </span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded border border-[#e2e8f0]">
+                    <span className="text-gray-500 block">Crew Covered</span>
+                    <span className="font-semibold text-gray-800 text-sm" data-testid="text-crew-covered">
+                      {attachResult.crewCovered}
                     </span>
                   </div>
                 </div>
