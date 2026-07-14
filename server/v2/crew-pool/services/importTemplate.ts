@@ -548,11 +548,13 @@ export async function generateImportTemplate(): Promise<Buffer> {
     return letter;
   };
 
-  // Orange fill for manually typed values not present in the dropdown list
+  // Orange fill for manually typed values not present in the dropdown list.
+  // ExcelJS solid fills use fgColor for the visible colour; bgColor is for
+  // patterned fills and has no effect when pattern is "solid".
   const MANUAL_VALUE_FILL: ExcelJS.FillPattern = {
     type: "pattern",
     pattern: "solid",
-    bgColor: { argb: "FFFFC000" },
+    fgColor: { argb: "FFFFC000" },
   };
 
   const applyDropdown = (ws: ExcelJS.Worksheet, header: string, columnsList: typeof CREW_DETAILS_COLUMNS, formula: string) => {
