@@ -1,4 +1,6 @@
 import { apiRequest } from '@/lib/queryClient';
+import { getAuthToken } from '@/lib/authToken';
+import { getTenantId } from '@/lib/tenantStorage';
 
 const V2_BASE = '/api/v2/crew-pool';
 
@@ -525,19 +527,53 @@ export const crewPoolApiV2 = {
     return response.json();
   },
 
-  // Upload a ZIP of attachment files as raw binary. Each file must live under a
-  // <Employee ID>/<Attachment Ref>/<file> folder path. tenant/auth headers are
-  // injected by the global fetch wrapper (tenantFetch.ts).
-  async uploadAttachmentsZip(fileBuffer: ArrayBuffer) {
-    const response = await fetch(`${V2_BASE}/import/attachments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/zip' },
-      body: fileBuffer,
+  // Upload a ZIP of attachment files as raw binary using XHR so we get real
+  // upload progress events. Each file must live under a
+  // <Employee ID>/<Attachment Ref>/<file> folder path.
+  // onProgress receives a value 0-100 representing upload percent.
+  uploadAttachmentsZip(
+    fileBuffer: ArrayBuffer,
+    onProgress?: (percent: number) => void,
+  ): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${V2_BASE}/import/attachments`);
+      xhr.setRequestHeader('Content-Type', 'application/zip');
+
+      const tenantId = getTenantId();
+      if (tenantId) xhr.setRequestHeader('x-tenant-id', tenantId);
+      const token = getAuthToken();
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable && onProgress) {
+          onProgress(Math.round((evt.loaded / evt.total) * 100));
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 401) {
+          reject(new Error('401: Unauthorized - redirecting to login'));
+          return;
+        }
+        if (xhr.status < 200 || xhr.status >= 300) {
+          try {
+            const err = JSON.parse(xhr.responseText);
+            reject(new Error(err.message || err.error || 'Attachment import failed'));
+          } catch {
+            reject(new Error(xhr.statusText || 'Attachment import failed'));
+          }
+          return;
+        }
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error('Invalid response from server'));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.send(fileBuffer);
     });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: response.statusText }));
-      throw new Error(error.message || 'Attachment import failed');
-    }
-    return response.json();
   },
 };

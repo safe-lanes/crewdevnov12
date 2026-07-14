@@ -56,6 +56,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [attachStatus, setAttachStatus] = useState<"idle" | "uploading" | "done">("idle");
   const [attachResult, setAttachResult] = useState<any>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const zipInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
@@ -72,6 +73,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
     setZipFile(null);
     setAttachStatus("idle");
     setAttachResult(null);
+    setUploadProgress(0);
     onClose();
   };
 
@@ -97,9 +99,13 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
   const handleUploadAttachments = async () => {
     if (!zipFile) return;
     setAttachStatus("uploading");
+    setUploadProgress(0);
     try {
       const buffer = await zipFile.arrayBuffer();
-      const res = await crewPoolApiV2.uploadAttachmentsZip(buffer);
+      const res = await crewPoolApiV2.uploadAttachmentsZip(buffer, (pct) => {
+        setUploadProgress(pct);
+      });
+      setUploadProgress(100);
       setAttachResult(res);
       setAttachStatus("done");
       toast({
@@ -108,6 +114,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
       });
     } catch (err: any) {
       setAttachStatus("idle");
+      setUploadProgress(0);
       toast({
         variant: "destructive",
         title: "Attachment upload failed",
@@ -547,9 +554,28 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
             )}
 
             {attachStatus === "uploading" && (
-              <div className="flex flex-col items-center justify-center p-6 space-y-3">
-                <Loader2 className="h-8 w-8 text-[#5dc86f] animate-spin" />
-                <p className="text-sm text-gray-600 font-medium">Uploading & attaching files...</p>
+              <div className="space-y-3 p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg" data-testid="upload-progress-container">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-gray-700 flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 text-[#5dc86f] animate-spin" />
+                    Uploading & attaching files…
+                  </span>
+                  <span className="text-gray-500 tabular-nums" data-testid="text-upload-percent">
+                    {uploadProgress}%
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-[#e2e8f0] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#5dc86f] rounded-full transition-all duration-200"
+                    style={{ width: `${uploadProgress}%` }}
+                    data-testid="progress-bar-upload"
+                  />
+                </div>
+                {zipFile && (
+                  <p className="text-xs text-gray-400">
+                    {(zipFile.size / 1024 / 1024).toFixed(2)} MB total
+                  </p>
+                )}
               </div>
             )}
 
