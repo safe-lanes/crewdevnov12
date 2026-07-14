@@ -226,16 +226,17 @@ export function sendEmail(
     const ccParam = uniqueCc.length > 0 ? uniqueCc : undefined;
 
     try {
-      logEmailEvent('INFO', `Attempting to send email via Local Gmail API. To: ${to.join(', ')} | CC: ${uniqueCc.join(', ')}`);
-      await sendViaLocalGmail(to, subject, htmlBody, ccParam, bcc);
-    } catch (localGmailError: any) {
-      logEmailEvent('WARN', 'Local Gmail send failed. Falling back to External API...', localGmailError.message || localGmailError);
+      logEmailEvent('INFO', `Attempting to send email via External API. To: ${to.join(', ')} | CC: ${uniqueCc.join(', ')}`);
+      await sendViaExternalApi(to, subject, htmlBody, ccParam, bcc);
+    } catch (externalApiError: any) {
+      logEmailEvent('WARN', 'External API send failed. Falling back to Local Gmail API...', externalApiError.message || externalApiError);
       try {
-        await sendViaExternalApi(to, subject, htmlBody, ccParam, bcc);
-      } catch (externalApiError: any) {
-        logEmailEvent('ERROR', 'Critical: Fallback to External API also failed. Email was NOT sent.', externalApiError.message || externalApiError);
+        await sendViaLocalGmail(to, subject, htmlBody, ccParam, bcc);
+      } catch (localGmailError: any) {
+        logEmailEvent('ERROR', 'Critical: Fallback to Local Gmail API also failed. Email was NOT sent.', localGmailError.message || localGmailError);
       }
     }
   })();
 }
+
 
