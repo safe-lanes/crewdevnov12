@@ -638,6 +638,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     s === 'Terminated - NFR' ||
     s === 'Terminated Employment' ||
     s === 'Terminated Employment - NFR';
+  const isCrewTerminated = isTerminatedStatus(statusData?.status);
   const experienceData = dashboardData?.experience;
   const shipTypesData = dashboardData?.shipTypes;
   const rankExperienceData = dashboardData?.rankExperience;
@@ -6325,6 +6326,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Save Draft functionality
   const handleSaveDraft = () => {
+    if (isCrewTerminated) return;
     if (isBatchSavingRef.current) return;
 
     let hasErrors = false;
@@ -7733,6 +7735,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Auto-save functionality — saves the specific section's data to the backend
   const handleSectionAutoSave = async (sectionId: string, crewUuidOverride?: string) => {
+    if (isCrewTerminated) return;
     if (isBatchSavingRef.current) return;
     const crewUuid = crewUuidOverride || getEffectiveCrewUuid();
     if (!crewUuid) return;
@@ -8053,6 +8056,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Toggle edit section with auto-save and ensure crew exists (B2/B3 only)
   const toggleEditSection = async (sectionId: 'B1' | 'B2' | 'B3') => {
+    if (isCrewTerminated) return;
     const isCurrentlyEditing = editingSections[sectionId];
     
     // For B2 and B3, validate mandatory fields before allowing edit on new crew
@@ -8652,7 +8656,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={handleSaveDraft}
-              disabled={isSaving}
+              disabled={isSaving || isCrewTerminated}
               data-testid="button-save-draft"
             >
               <Save className="h-4 w-4 mr-2" />
@@ -8664,7 +8668,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               className="sm:hidden"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={handleSaveDraft}
-              disabled={isSaving}
+              disabled={isSaving || isCrewTerminated}
               data-testid="button-save-draft-mobile"
             >
               <Save className="h-4 w-4" />
@@ -8709,6 +8713,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           {/* Left Sidebar - Photo + Enhanced Stepper (Hidden on Mobile) */}
           <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-gray-50 border-r overflow-y-auto">
             {/* Photo Upload Section */}
+            <fieldset disabled={isCrewTerminated} className={isCrewTerminated ? 'terminated-lock' : ''}>
             {renderSidebarPhotoUpload()}
             
             {/* Crew Pool Dropdown */}
@@ -8729,6 +8734,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 </SelectContent>
               </Select>
             </div>
+            </fieldset>
             
             {/* Stepper Navigation */}
             <div className="p-3">
@@ -8787,7 +8793,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </aside>
           
           {/* Main Content Area - Continuous Scroll */}
-          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb] space-y-6">
+          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb]">
+            <fieldset disabled={isCrewTerminated} className={`space-y-6 ${isCrewTerminated ? 'terminated-lock' : ''}`}>
             {/* A - Dashboard */}
             {canViewSection('A') && (
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionARef} data-section="A">
@@ -8941,6 +8948,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               </CardContent>
             </Card>
             )}
+            </fieldset>
           </div>
         </div>
       </div>

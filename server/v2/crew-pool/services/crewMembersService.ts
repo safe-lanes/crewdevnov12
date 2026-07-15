@@ -366,7 +366,12 @@ export const crewMembersService = {
     crewUuid: string,
     data: Partial<InsertCrewMemberV2> & { nationality?: string; vesselType?: string; auditUserUuid?: string | null }
   ): Promise<CrewMemberV2> {
-    await this.getByUuid(crewUuid);
+    const existingCrew = await this.getByUuid(crewUuid);
+
+    if (existingCrew.status?.startsWith('Terminated')) {
+      delete (data as any).status;
+      delete (data as any).isActive;
+    }
 
     if (data.empNo) {
       const existing = await crewMembersRepository.findByEmpNo(data.empNo);
