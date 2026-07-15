@@ -227,7 +227,7 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
 
   // Vessel
   "vsl-crew-on-board": [
-    { kind: "vessel", label: "Select Vessel" },
+    { kind: "vessel", label: "Filter by Vessel" },
     { kind: "rank", label: "Filter by Rank" },
   ],
   "vsl-manning-status": [
@@ -238,7 +238,7 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
     { kind: "rank", label: "Filter by Rank" },
   ],
   "vsl-crew-changes": [
-    { kind: "vessel", label: "Select Vessel" },
+    { kind: "vessel", label: "Filter by Vessel" },
     { kind: "dateRange", label: "Date Range" },
   ],
   "vsl-owner-manning": [
