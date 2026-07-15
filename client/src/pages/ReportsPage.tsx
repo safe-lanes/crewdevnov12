@@ -42,6 +42,7 @@ import { useNationalitiesV2, useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 interface ReportLeaf {
   id: string;
   label: string;
+  comingSoon?: boolean;
 }
 
 interface ReportCategory {
@@ -158,6 +159,7 @@ const REPORT_TREE: ReportCategory[] = [
     label: "Training",
     icon: GraduationCap,
     children: [
+      { id: "trn-needs-pending", label: "Training Needs Pending", comingSoon: true },
     ],
   },
 ];
@@ -1032,6 +1034,16 @@ function ReportsContent(): JSX.Element {
               <div className="text-sm text-gray-500 mt-1 max-w-xs">
                 Select a report from the tree on the left to view its filters.
               </div>
+            </div>
+          ) : selected.leaf.comingSoon ? (
+            <div
+              className="flex flex-col items-center text-center justify-center min-h-[55vh]"
+              data-testid="text-reports-coming-soon"
+            >
+              <div className="w-14 h-14 rounded-full bg-[#eaf4fb] flex items-center justify-center mb-4">
+                <Clock size={28} className="text-[#52baf3]" />
+              </div>
+              <div className="text-base font-semibold text-gray-800">Coming Soon</div>
             </div>
           ) : (
             <div className="flex flex-col gap-3" data-testid="detail-reports-selected">
