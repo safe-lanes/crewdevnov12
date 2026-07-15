@@ -101,6 +101,7 @@ const REPORT_TREE: ReportCategory[] = [
       { id: "cp-contact-details", label: "Contact Details of Crew" },
       { id: "cp-contract-expiry", label: "Contract Expiry Within N Days" },
       { id: "trn-certs-expiring", label: "License & Other Documents Expiring Within N Days" },
+      { id: "trn-training-expiring", label: "Training Expiring Within N Days" },
     ],
   },
   {
@@ -344,6 +345,11 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
 
   // Training
   "trn-certs-expiring": [
+    { kind: "withinDays", label: "Within", defaultValue: 30 },
+    { kind: "rank", label: "Filter by Rank" },
+    { kind: "onBoard", label: "On Board" },
+  ],
+  "trn-training-expiring": [
     { kind: "withinDays", label: "Within", defaultValue: 30 },
     { kind: "rank", label: "Filter by Rank" },
     { kind: "onBoard", label: "On Board" },
