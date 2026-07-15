@@ -504,15 +504,10 @@
 
 
 /* Terminated crew record: read-only lock styling */
-.terminated-lock input:disabled,
-.terminated-lock textarea:disabled,
-.terminated-lock select:disabled,
-.terminated-lock button:disabled {
+fieldset.terminated-lock {
   opacity: 0.6;
-  cursor: not-allowed !important;
-  pointer-events: auto !important; /* so the blocked cursor shows on hover */
+  cursor: not-allowed;
 }
-.terminated-lock label,
-.terminated-lock .cursor-pointer {
-  cursor: not-allowed !important;
+fieldset.terminated-lock * {
+  pointer-events: none !important;
 }
