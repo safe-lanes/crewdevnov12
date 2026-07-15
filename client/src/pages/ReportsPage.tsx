@@ -71,23 +71,6 @@ const REPORT_TREE: ReportCategory[] = [
     ],
   },
   {
-    id: "vessel",
-    label: "Vessel",
-    icon: Ship,
-    children: [
-      { id: "vsl-crew-on-board", label: "Crew on Board by Vessel" },
-      { id: "vsl-crew-changes", label: "Crew Changes by Vessel" },
-      // Temporarily hidden from Reports sidebar (uncomment to restore)
-      // { id: "vsl-manning-status", label: "Vessel Manning Status" },
-      // { id: "vsl-vacancies", label: "Vacancies by Vessel" },
-      // { id: "vsl-owner-manning", label: "Owner-wise Manning" },
-      // { id: "vsl-flag-manning", label: "Flag-wise Manning" },
-      // { id: "vsl-visit-schedule", label: "Vessel Visit Schedule" },
-      // { id: "vsl-signon-signoff", label: "Sign-on/Sign-off Log" },
-      // { id: "vsl-compliance-summary", label: "Vessel Compliance Summary" },
-    ],
-  },
-  {
     id: "crew-pool",
     label: "Crew Pool",
     icon: Users,
@@ -103,6 +86,23 @@ const REPORT_TREE: ReportCategory[] = [
       { id: "cp-contract-expiry", label: "Contract Expiry Within N Days" },
       { id: "trn-certs-expiring", label: "License & Other Documents Expiring Within N Days" },
       { id: "trn-training-expiring", label: "Training Expiring Within N Days" },
+    ],
+  },
+  {
+    id: "vessel",
+    label: "Vessel",
+    icon: Ship,
+    children: [
+      { id: "vsl-crew-on-board", label: "Crew on Board by Vessel" },
+      { id: "vsl-crew-changes", label: "Crew Changes by Vessel" },
+      // Temporarily hidden from Reports sidebar (uncomment to restore)
+      // { id: "vsl-manning-status", label: "Vessel Manning Status" },
+      // { id: "vsl-vacancies", label: "Vacancies by Vessel" },
+      // { id: "vsl-owner-manning", label: "Owner-wise Manning" },
+      // { id: "vsl-flag-manning", label: "Flag-wise Manning" },
+      // { id: "vsl-visit-schedule", label: "Vessel Visit Schedule" },
+      // { id: "vsl-signon-signoff", label: "Sign-on/Sign-off Log" },
+      // { id: "vsl-compliance-summary", label: "Vessel Compliance Summary" },
     ],
   },
   {
