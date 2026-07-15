@@ -1,5 +1,6 @@
 import { eq, and, desc, asc, sql, getTableName } from "drizzle-orm";
 import { getDb } from "../../db";
+import { admRoleMasterAc } from "../../../../shared/v2/admin/schema";
 import {
   masterNationalities,
   masterVessels,
@@ -31,6 +32,7 @@ const MASTER_TABLE_MAP: Record<string, any> = {
   languages: masterLanguages,
   countries: masterCountries,
   users: masterUsers,
+  roles: admRoleMasterAc,
 };
 
 const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
@@ -126,6 +128,15 @@ const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
     department: 'department',
     role: 'role',
     displayName: 'displayName',
+  },
+  roles: {
+    ruid: 'ruid',
+    role: 'assignedRole',
+    roletype: 'roletype',
+    isActive: 'isActive',
+    isDeleted: 'isDeleted',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
   },
 };
 
@@ -654,10 +665,6 @@ export class MastersRepository {
 
       console.log(`[MastersRepository] syncMasterData(${masterType}): tableName=${tableName}`);
 
-      await db.execute(
-        sql.raw(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`)
-      );
-
       const insertData = data.map((item) => {
         const row: any = {};
         for (const [apiField, schemaField] of Object.entries(mapping)) {
@@ -674,20 +681,27 @@ export class MastersRepository {
         return row;
       });
 
-      console.log(`[MastersRepository] syncMasterData(${masterType}): inserting ${insertData.length} rows`);
-
-      if (insertData.length > 0) {
-        const BATCH_SIZE = 1000;
-        let totalInserted = 0;
-
-        for (let i = 0; i < insertData.length; i += BATCH_SIZE) {
-          const batch = insertData.slice(i, i + BATCH_SIZE);
-          await db.insert(table).values(batch);
-          totalInserted += batch.length;
-          console.log(`[MastersRepository] Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}: ${totalInserted}/${insertData.length} rows`);
-        }
-        console.log(`[MastersRepository] Successfully inserted ${totalInserted} rows into ${masterType}`);
+      if (insertData.length === 0) {
+        console.log(`[MastersRepository] syncMasterData(${masterType}): No valid data to insert, skipping truncate`);
+        return { count: 0 };
       }
+
+      console.log(`[MastersRepository] syncMasterData(${masterType}): ${insertData.length} rows to sync, truncating and inserting`);
+
+      await db.execute(
+        sql.raw(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`)
+      );
+
+      const BATCH_SIZE = 1000;
+      let totalInserted = 0;
+
+      for (let i = 0; i < insertData.length; i += BATCH_SIZE) {
+        const batch = insertData.slice(i, i + BATCH_SIZE);
+        await db.insert(table).values(batch);
+        totalInserted += batch.length;
+        console.log(`[MastersRepository] Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}: ${totalInserted}/${insertData.length} rows`);
+      }
+      console.log(`[MastersRepository] Successfully inserted ${totalInserted} rows into ${masterType}`);
 
       return { count: insertData.length };
     } catch (error) {

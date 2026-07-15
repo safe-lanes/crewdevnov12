@@ -40,7 +40,7 @@ function applyBasicFieldTransformation(entry: any): any {
 
 const VALID_MASTER_TYPES = [
   'nationalities', 'vessels', 'vesselTypes', 'additionalGroups',
-  'ports', 'fleetGroups', 'languages', 'countries', 'users'
+  'ports', 'fleetGroups', 'languages', 'countries', 'users', 'roles'
 ];
 
 const API_KEY_MAP: Record<string, string> = {
@@ -53,6 +53,7 @@ const API_KEY_MAP: Record<string, string> = {
   'languages': 'languages',
   'countries': 'countries',
   'users': 'users',
+  'roles': 'roles',
 };
 
 export const dataMasterController = {
