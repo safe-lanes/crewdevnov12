@@ -42,7 +42,7 @@ const certCols: ReportColumn[] = [
 
 export const certsExpiringReport: ReportHandler<z.infer<typeof certFilters>> = {
   reportId: "trn-certs-expiring",
-  title: "Certificates Expiring Within N Days",
+  title: "License & Other Documents Expiring Within N Days",
   columns: certCols,
   filterSchema: certFilters,
   async run(filters, ctx) {

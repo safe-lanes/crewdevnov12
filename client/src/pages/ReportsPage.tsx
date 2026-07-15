@@ -100,6 +100,7 @@ const REPORT_TREE: ReportCategory[] = [
       { id: "cp-by-nationality", label: "Crew by Nationality" },
       { id: "cp-contact-details", label: "Contact Details of Crew" },
       { id: "cp-contract-expiry", label: "Contract Expiry Within N Days" },
+      { id: "trn-certs-expiring", label: "License & Other Documents Expiring Within N Days" },
     ],
   },
   {
@@ -156,7 +157,6 @@ const REPORT_TREE: ReportCategory[] = [
     label: "Training",
     icon: GraduationCap,
     children: [
-      { id: "trn-certs-expiring", label: "Certificates Expiring Within N Days" },
     ],
   },
 ];
