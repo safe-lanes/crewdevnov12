@@ -109,7 +109,6 @@ export function tenantMiddleware(
                 next();
               });
             },
-            jwtResult.domain,
           );
         })
         .catch((err) => {

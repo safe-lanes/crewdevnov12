@@ -124,7 +124,7 @@ export function sanitizeFileName(name: string): string {
  */
 function resolveDomain(domainOverride?: string): string {
   if (domainOverride && domainOverride.trim()) return domainOverride;
-  return tenantConnectionManager.getCurrentDomain() || tenantConnectionManager.getCurrentTenantId() || "main";
+  return tenantConnectionManager.getCurrentTenantId() || "main";
 }
 
 /**
