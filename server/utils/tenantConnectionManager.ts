@@ -48,6 +48,7 @@ interface TenantCacheEntry {
 interface TuidValidationCacheEntry {
   status: "active" | "not_found" | "inactive";
   expiresAt: number;
+  domain?: string;
 }
 
 interface PoolCacheEntry {
@@ -59,6 +60,7 @@ interface PoolCacheEntry {
 interface TenantStore {
   db: DrizzleInstance;
   tenantId: string;
+  domain?: string;
 }
 
 interface CircuitBreakerEntry {
@@ -202,7 +204,7 @@ class TenantConnectionManager {
     }
   }
 
-  async validateTuid(tuid: string): Promise<void> {
+  async validateTuid(tuid: string): Promise<{ domain: string | null }> {
     if (!this._isMultiTenantEnabled || !this.masterDb) {
       throw new Error("Multi-tenant is not configured");
     }
@@ -215,7 +217,7 @@ class TenantConnectionManager {
       if (cached.status === "inactive") {
         throw new TenantInactiveError(tuid, "tuid");
       }
-      return;
+      return { domain: cached.domain ?? null };
     }
 
     if (this.tuidValidationCache.size >= TUID_CACHE_MAX_SIZE) {
@@ -226,6 +228,7 @@ class TenantConnectionManager {
       const result = await this.masterDb
         .select({
           tuid: tenants.tuid,
+          domain: tenants.domain,
           isActive: tenants.isActive,
           isDeleted: tenants.isDeleted,
         })
@@ -251,10 +254,13 @@ class TenantConnectionManager {
         throw new TenantInactiveError(tuid, "tuid");
       }
 
+      const domain = typeof row.domain === "string" ? row.domain : null;
       this.tuidValidationCache.set(tuid, {
         status: "active",
         expiresAt: Date.now() + CACHE_TTL_MS,
+        domain: domain ?? undefined,
       });
+      return { domain };
     } catch (err) {
       if (err instanceof TenantNotFoundError) throw err;
       if (err instanceof TenantInactiveError) throw err;
@@ -382,9 +388,9 @@ class TenantConnectionManager {
     }
   }
 
-  async runInTenantContext<T>(tuid: string, callback: () => T | Promise<T>): Promise<T> {
+  async runInTenantContext<T>(tuid: string, callback: () => T | Promise<T>, domain?: string): Promise<T> {
     const db = await this.getTenantDb(tuid);
-    return this.tenantStorage.run({ db, tenantId: tuid }, callback);
+    return this.tenantStorage.run({ db, tenantId: tuid, domain }, callback);
   }
 
   getCurrentTenantDb(): DrizzleInstance | null {
@@ -393,6 +399,10 @@ class TenantConnectionManager {
 
   getCurrentTenantId(): string | null {
     return this.tenantStorage.getStore()?.tenantId ?? null;
+  }
+
+  getCurrentDomain(): string | null {
+    return this.tenantStorage.getStore()?.domain ?? null;
   }
 
   async getActiveTenants(): Promise<string[]> {

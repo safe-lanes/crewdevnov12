@@ -109,6 +109,7 @@ export function tenantMiddleware(
                 next();
               });
             },
+            jwtResult.domain,
           );
         })
         .catch((err) => {
@@ -129,14 +130,14 @@ export function tenantMiddleware(
 
   tenantConnectionManager
     .validateTuid(tenantId)
-    .then(() => {
+    .then(({ domain }) => {
       return tenantConnectionManager.runInTenantContext(tenantId!, () => {
         return new Promise<void>((resolve, reject) => {
           res.on("finish", resolve);
           res.on("error", reject);
           next();
         });
-      });
+      }, domain ?? undefined);
     })
     .catch((err) => {
       if (res.headersSent) return;
