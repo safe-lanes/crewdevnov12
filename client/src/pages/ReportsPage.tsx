@@ -911,7 +911,7 @@ function ReportsContent(): JSX.Element {
             <div className="flex items-center gap-3 normal-case font-normal">
               <button
                 type="button"
-                className="flex items-center gap-1 hover:underline"
+                className="hidden flex items-center gap-1 hover:underline"
                 data-testid="button-reports-edit"
               >
                 <Pencil size={12} />
