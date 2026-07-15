@@ -878,6 +878,13 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               isFromPartA: a.isFromPartA !== undefined ? a.isFromPartA : true
             }));
             setApprovers(approversWithFlag);
+            const maxApproverId = approversWithFlag.reduce((max: number, a: Approver) => {
+              const n = parseInt(a.id, 10);
+              return Number.isFinite(n) && n > max ? n : max;
+            }, 0);
+            if (maxApproverId >= nextApproverIdRef.current) {
+              nextApproverIdRef.current = maxApproverId + 1;
+            }
           }
         } catch {}
       }
