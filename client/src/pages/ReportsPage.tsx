@@ -728,7 +728,7 @@ function ReportsContent(): JSX.Element {
           .map((r) => r.label)
           .filter((s): s is string => !!s && s.trim().length > 0),
       ),
-    ).sort((a, b) => a.localeCompare(b));
+    );
 
     const vesselsArr =
       ((vesselsRaw as any)?.vessels as any[]) ||
