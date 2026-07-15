@@ -59,6 +59,7 @@ interface PoolCacheEntry {
 interface TenantStore {
   db: DrizzleInstance;
   tenantId: string;
+  domain?: string;
 }
 
 interface CircuitBreakerEntry {
@@ -382,9 +383,9 @@ class TenantConnectionManager {
     }
   }
 
-  async runInTenantContext<T>(tuid: string, callback: () => T | Promise<T>): Promise<T> {
+  async runInTenantContext<T>(tuid: string, callback: () => T | Promise<T>, domain?: string): Promise<T> {
     const db = await this.getTenantDb(tuid);
-    return this.tenantStorage.run({ db, tenantId: tuid }, callback);
+    return this.tenantStorage.run({ db, tenantId: tuid, domain }, callback);
   }
 
   getCurrentTenantDb(): DrizzleInstance | null {
@@ -393,6 +394,10 @@ class TenantConnectionManager {
 
   getCurrentTenantId(): string | null {
     return this.tenantStorage.getStore()?.tenantId ?? null;
+  }
+
+  getCurrentDomain(): string | null {
+    return this.tenantStorage.getStore()?.domain ?? null;
   }
 
   async getActiveTenants(): Promise<string[]> {
