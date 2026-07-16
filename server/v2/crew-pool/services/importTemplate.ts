@@ -20,7 +20,7 @@ import { eq } from "drizzle-orm";
 
 // Maximum number of data rows for the main data sheets (crew details, sea service, etc.).
 // Drives dropdown/validation ranges — range-based, so file size is unaffected by this value.
-const TEMPLATE_MAX_ROWS = 10000;
+const TEMPLATE_MAX_ROWS = 5000;
 
 // Maximum rows for attachment sheets. Each row requires its own formula cell (Attachment Ref
 // uses a row-specific COUNTIF range), so this directly controls file size.
