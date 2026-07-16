@@ -517,7 +517,7 @@ function FilterControl({
         onValueChange={(v) => onChange(v)}
         disabled={loading || isEmpty}
       >
-        <SelectTrigger className="h-8 w-[180px]" data-testid={testIdBase}>
+        <SelectTrigger className="h-8 w-auto min-w-[180px]" data-testid={testIdBase}>
           <SelectValue placeholder={computedPlaceholder} />
         </SelectTrigger>
         <SelectContent>
@@ -550,7 +550,7 @@ function FilterControl({
       const current = typeof value === "string" ? value : undefined;
       return (
         <Select value={current} onValueChange={(v) => onChange(v)}>
-          <SelectTrigger className="h-8 w-[180px]" data-testid={testIdBase}>
+          <SelectTrigger className="h-8 w-auto min-w-[180px]" data-testid={testIdBase}>
             <SelectValue placeholder={filter.label} />
           </SelectTrigger>
           <SelectContent>
