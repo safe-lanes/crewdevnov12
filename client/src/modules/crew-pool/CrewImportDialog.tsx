@@ -108,9 +108,10 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
       setUploadProgress(100);
       setAttachResult(res);
       setAttachStatus("done");
+      const dupNote = res.duplicates > 0 ? `, ${res.duplicates} duplicate(s)` : "";
       toast({
         title: "Attachments processed",
-        description: `${res.imported} file(s) attached, ${res.skippedCount} skipped.`,
+        description: `${res.imported} file(s) attached, ${res.skippedCount} skipped${dupNote}.`,
       });
     } catch (err: any) {
       setAttachStatus("idle");

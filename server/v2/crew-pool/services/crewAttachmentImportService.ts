@@ -279,6 +279,9 @@ export async function importAttachmentsZip(
       skipped.push({ path: rawPath, reason: err?.message || "Failed to save attachment record." });
       continue;
     }
+    // Mark this (parentUuid, fileName) as now existing so a second occurrence of
+    // the same file within this ZIP batch is also caught as a duplicate.
+    existingAttachments.add(dupKey);
     imported++;
     recordsCovered.add(record.parentUuid);
     crewCovered.add(crew.crewUuid);
