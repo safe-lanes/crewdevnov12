@@ -40,7 +40,7 @@ export class TrainingCategoryRepository {
       .select({ sortOrder: masterTrainingCategory.sortOrder })
       .from(masterTrainingCategory)
       .where(eq(masterTrainingCategory.module, module));
-    return rows.reduce((max, r) => Math.max(max, r.sortOrder ?? 0), 0) + 1;
+    return rows.reduce((max: number, r: { sortOrder: number | null }) => Math.max(max, r.sortOrder ?? 0), 0) + 1;
   }
 
   // Creates (or reactivates) one row per (module, label).
@@ -133,7 +133,7 @@ export class TrainingCategoryRepository {
       .where(and(eq(masterTrainingCategory.label, originalLabel), eq(masterTrainingCategory.isDeleted, false)));
 
     const selected = new Set(modules);
-    const existingModules = new Set(existingRows.map((r) => r.module));
+    const existingModules = new Set(existingRows.map((r: MasterTrainingCategory) => r.module));
 
     // Rename validation first (all-or-nothing before mutating)
     if (label !== originalLabel) {

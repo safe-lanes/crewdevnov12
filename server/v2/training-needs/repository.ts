@@ -163,7 +163,7 @@ export class TrainingNeedsRepository {
       .from(trainingNeedsOtherV2)
       .leftJoin(masterUsers, eq(masterUsers.userUuid, trainingNeedsOtherV2.identifiedByUuid))
       .where(eq(trainingNeedsOtherV2.isDeleted, false));
-    const otherRows = otherRowsRaw.map(r => ({ ...r.row, resolvedIdentifiedBy: r.resolvedIdentifiedBy }));
+    const otherRows = otherRowsRaw.map((r: { row: TrainingNeedOther; resolvedIdentifiedBy: string | null }) => ({ ...r.row, resolvedIdentifiedBy: r.resolvedIdentifiedBy }));
 
     const result: AggregatedTrainingNeed[] = [];
 

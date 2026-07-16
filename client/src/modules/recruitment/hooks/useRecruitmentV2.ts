@@ -2452,10 +2452,10 @@ export interface ScreeningB7TrainingItem {
   training?: string;
   identifiedByUuid?: string;
   category?: string;
-  status?: string;
+  status?: string | null;
   dueDate?: string;
   comments?: string;
-  source?: string;
+  source?: string | null;
   sortOrder?: number;
 }
 

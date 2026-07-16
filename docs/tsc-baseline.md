@@ -22,6 +22,30 @@
 > them. The row has been removed from the table; all other 40 rows were
 > verified identical, per-file, against a fresh run.
 
+> Drift correction (2026-07-16): a full run found 231 errors across 43 files —
+> 11 drift errors introduced by merged tasks after the capture. All 11 were
+> fixed with runtime-neutral type-only changes, restoring the baseline to
+> exactly **220 errors across 40 files** (per-file table verified identical):
+> - 3 × TS7006 in `server/v2/masters/repositories/trainingStatusRepository.ts`
+>   (introduced by Task #702, commit 82189215) — implicit-any callback params
+>   on getDb() query results; fixed with explicit parameter annotations.
+> - 3 × TS7006 in `server/v2/masters/repositories/trainingCategoryRepository.ts`
+>   (Task #710, commit ceed7831) — same pattern, same fix.
+> - 1 × TS7006 in `server/v2/training-needs/repository.ts` line 165
+>   (Task #723, commit 5e3d3c95) — same pattern, same fix.
+> - 4 × TS2322 in `client/src/modules/recruitment/RecruitmentApplicationForm_v2.tsx`
+>   (55 → 59): 2 from the `status` field (Task #713, commit 6f66ab78) and 2 from
+>   the `source` field (commit 23c9039c, B7 source tracking) — `x || null`
+>   assigned to `Partial<ScreeningB7TrainingItem>` fields typed `string |
+>   undefined`. Fixed by widening only `status` and `source` to `string | null`
+>   in the interface (`useRecruitmentV2.ts`); the 10 identical baseline errors
+>   on the adjacent fields were deliberately left untouched (fixing them is
+>   baseline scope creep).
+> Attribution method: swapped the capture-commit version of the recruitment
+> form into the tree (55 errors reproduced), then git blame on each error line;
+> ancestry checks confirmed all introducing commits merged after capture
+> commit 42b2d035.
+
 The dev workflow (`npm run dev`) runs the server via `tsx` and the client via
 Vite — neither type-checks. These 220 errors predate current work and do not
 block the running application. They are **not regressions**; they are a
