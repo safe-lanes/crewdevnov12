@@ -63,20 +63,21 @@ type EntityConfig = {
   recordUuidColumn: any;
   attachTable: any;
   attachParentKey: string;
+  attachParentColumn: any; // Drizzle column reference on attachTable — used for pre-load dedup query
   folder: string;
 };
 
 const ENTITY_CONFIGS: EntityConfig[] = [
-  { recordTable: crewDocuments, recordUuidColumn: crewDocuments.docUuid, attachTable: crewDocumentsAttachments, attachParentKey: "docUuid", folder: "documents" },
-  { recordTable: crewVisas, recordUuidColumn: crewVisas.visaUuid, attachTable: crewVisasAttachments, attachParentKey: "visaUuid", folder: "visas" },
-  { recordTable: crewLicenses, recordUuidColumn: crewLicenses.licUuid, attachTable: crewLicensesAttachments, attachParentKey: "licUuid", folder: "licenses" },
-  { recordTable: crewTrainingCourses, recordUuidColumn: crewTrainingCourses.trainUuid, attachTable: crewTrainingAttachments, attachParentKey: "trainUuid", folder: "training" },
-  { recordTable: crewSeaService, recordUuidColumn: crewSeaService.seaUuid, attachTable: crewSeaServiceAttachments, attachParentKey: "seaUuid", folder: "sea-service" },
-  { recordTable: crewEducation, recordUuidColumn: crewEducation.eduUuid, attachTable: crewEducationAttachments, attachParentKey: "eduUuid", folder: "education" },
-  { recordTable: crewPreJoiningMedicals, recordUuidColumn: crewPreJoiningMedicals.medUuid, attachTable: crewMedicalAttachments, attachParentKey: "medUuid", folder: "medical" },
-  { recordTable: crewDoctorVisits, recordUuidColumn: crewDoctorVisits.visitUuid, attachTable: crewDoctorVisitsAttachments, attachParentKey: "visitUuid", folder: "medical" },
-  { recordTable: crewBriefings, recordUuidColumn: crewBriefings.briefingUuid, attachTable: crewBriefingAttachments, attachParentKey: "briefingUuid", folder: "briefing" },
-  { recordTable: crewDebriefings, recordUuidColumn: crewDebriefings.debriefingUuid, attachTable: crewDebriefingAttachments, attachParentKey: "debriefingUuid", folder: "debriefing" },
+  { recordTable: crewDocuments, recordUuidColumn: crewDocuments.docUuid, attachTable: crewDocumentsAttachments, attachParentKey: "docUuid", attachParentColumn: crewDocumentsAttachments.docUuid, folder: "documents" },
+  { recordTable: crewVisas, recordUuidColumn: crewVisas.visaUuid, attachTable: crewVisasAttachments, attachParentKey: "visaUuid", attachParentColumn: crewVisasAttachments.visaUuid, folder: "visas" },
+  { recordTable: crewLicenses, recordUuidColumn: crewLicenses.licUuid, attachTable: crewLicensesAttachments, attachParentKey: "licUuid", attachParentColumn: crewLicensesAttachments.licUuid, folder: "licenses" },
+  { recordTable: crewTrainingCourses, recordUuidColumn: crewTrainingCourses.trainUuid, attachTable: crewTrainingAttachments, attachParentKey: "trainUuid", attachParentColumn: crewTrainingAttachments.trainUuid, folder: "training" },
+  { recordTable: crewSeaService, recordUuidColumn: crewSeaService.seaUuid, attachTable: crewSeaServiceAttachments, attachParentKey: "seaUuid", attachParentColumn: crewSeaServiceAttachments.seaUuid, folder: "sea-service" },
+  { recordTable: crewEducation, recordUuidColumn: crewEducation.eduUuid, attachTable: crewEducationAttachments, attachParentKey: "eduUuid", attachParentColumn: crewEducationAttachments.eduUuid, folder: "education" },
+  { recordTable: crewPreJoiningMedicals, recordUuidColumn: crewPreJoiningMedicals.medUuid, attachTable: crewMedicalAttachments, attachParentKey: "medUuid", attachParentColumn: crewMedicalAttachments.medUuid, folder: "medical" },
+  { recordTable: crewDoctorVisits, recordUuidColumn: crewDoctorVisits.visitUuid, attachTable: crewDoctorVisitsAttachments, attachParentKey: "visitUuid", attachParentColumn: crewDoctorVisitsAttachments.visitUuid, folder: "medical" },
+  { recordTable: crewBriefings, recordUuidColumn: crewBriefings.briefingUuid, attachTable: crewBriefingAttachments, attachParentKey: "briefingUuid", attachParentColumn: crewBriefingAttachments.briefingUuid, folder: "briefing" },
+  { recordTable: crewDebriefings, recordUuidColumn: crewDebriefings.debriefingUuid, attachTable: crewDebriefingAttachments, attachParentKey: "debriefingUuid", attachParentColumn: crewDebriefingAttachments.debriefingUuid, folder: "debriefing" },
 ];
 
 type ResolvedRecord = {
@@ -87,6 +88,7 @@ type ResolvedRecord = {
 export interface AttachmentImportResult {
   success: boolean;
   imported: number;
+  duplicates: number;
   recordsCovered: number;
   crewCovered: number;
   skippedCount: number;
@@ -156,8 +158,25 @@ export async function importAttachmentsZip(
     }
   }
 
+  // ---- Pre-load existing (parentUuid, fileName) pairs to prevent duplicates ----
+  const existingAttachments = new Set<string>();
+  for (const config of ENTITY_CONFIGS) {
+    const rows = await db
+      .select({
+        parentUuid: config.attachParentColumn,
+        fileName: config.attachTable.fileName,
+      })
+      .from(config.attachTable);
+    for (const row of rows) {
+      if (row.parentUuid && row.fileName) {
+        existingAttachments.add(`${row.parentUuid}::${normalizeKey(row.fileName)}`);
+      }
+    }
+  }
+
   const skipped: { path: string; reason: string }[] = [];
   let imported = 0;
+  let duplicates = 0;
   // Distinct parent records and crew that received at least one attachment.
   const recordsCovered = new Set<string>();
   const crewCovered = new Set<string>();
@@ -202,6 +221,14 @@ export async function importAttachmentsZip(
     const record = recordByCrewAndRef.get(refKey);
     if (!record) {
       skipped.push({ path: rawPath, reason: `No record found with Attachment Ref "${refRaw}" for Employee ID "${empNoRaw}".` });
+      continue;
+    }
+
+    // ---- Duplicate check: skip if this (parentUuid, fileName) already exists ----
+    const dupKey = `${record.parentUuid}::${normalizeKey(fileName)}`;
+    if (existingAttachments.has(dupKey)) {
+      skipped.push({ path: rawPath, reason: `A file named "${fileName}" is already attached to this record (Attachment Ref: "${refRaw}").` });
+      duplicates++;
       continue;
     }
 
@@ -260,6 +287,7 @@ export async function importAttachmentsZip(
   return {
     success: true,
     imported,
+    duplicates,
     recordsCovered: recordsCovered.size,
     crewCovered: crewCovered.size,
     skippedCount: skipped.length,
