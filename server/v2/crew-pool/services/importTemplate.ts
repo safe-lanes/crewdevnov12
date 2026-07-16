@@ -195,7 +195,7 @@ export const DEBRIEFINGS_COLUMNS = [
   { header: "Rank Served", required: false, example: "Chief Officer", note: "" },
   { header: "Date Sign On", required: false, example: "15-Jan-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Date Signed Off", required: false, example: "15-Jul-2024", note: "DD-MMM-YYYY or DD/MM/YYYY" },
-  { header: "Reason for Sign Off", required: false, example: "Contract completion", note: "" },
+  { header: "Reason for Sign Off", required: false, example: "Contract Completed", note: "Contract Completed / Terminated / Medical Reasons / Others" },
   { header: "Attachment Ref", required: false, example: "EMP-2024-001-DB1_MT Pacific Star", note: "Auto-filled. Use as the ZIP sub-folder name for this row's file(s)." },
 ];
 
@@ -387,6 +387,7 @@ function buildInstructionsSheet(
     "Manning Agents",
     "Company Vessels",
     "Fit For Duty",
+    "Sign Off Reasons",
   ];
   const refHeaderRow = ws.getRow(refStartRow);
   refHeaderRow.values = headers;
@@ -459,6 +460,11 @@ function buildInstructionsSheet(
   const fitForDutyValues = ["Fit", "Unfit", "Fit with Restrictions"];
   fitForDutyValues.forEach((val, idx) => {
     ws.getCell(valStartRow + idx, 14).value = val;
+  });
+
+  const signOffReasons = ["Contract Completed", "Terminated", "Medical Reasons", "Others"];
+  signOffReasons.forEach((val, idx) => {
+    ws.getCell(valStartRow + idx, 15).value = val;
   });
 
   for (let col = 2; col <= 14; col++) {
@@ -547,6 +553,7 @@ export async function generateImportTemplate(): Promise<Buffer> {
   const manningAgentFormula = `='Instructions & Reference'!$L$27:$L$${refStartRow + refData.manningAgents.length - 1}`;
   const vesselFormula = `='Instructions & Reference'!$M$27:$M$${refStartRow + refData.vessels.length - 1}`;
   const fitForDutyFormula = `='Instructions & Reference'!$N$27:$N$29`;
+  const signOffReasonFormula = `='Instructions & Reference'!$O$27:$O$30`;
 
   const getColIndex = (columnsList: typeof CREW_DETAILS_COLUMNS, header: string) => {
     return columnsList.findIndex(c => c.header === header) + 1;
@@ -706,6 +713,7 @@ export async function generateImportTemplate(): Promise<Buffer> {
   // De-briefings (Part G)
   applyDropdown(debriefingSheet, "Vessel Name", DEBRIEFINGS_COLUMNS, vesselFormula);
   applyDropdown(debriefingSheet, "Rank Served", DEBRIEFINGS_COLUMNS, rankFormula);
+  applyDropdown(debriefingSheet, "Reason for Sign Off", DEBRIEFINGS_COLUMNS, signOffReasonFormula);
 
   // Attachment Ref auto-fill: a stable, human-readable reference generated from
   // the row's Employee ID (col A) plus a per-sheet prefix and a running count.
