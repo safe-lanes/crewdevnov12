@@ -717,12 +717,38 @@ export async function generateImportTemplate(): Promise<Buffer> {
     const colIdx = getColIndex(columnsList, "Attachment Ref");
     if (colIdx <= 0) return;
 
+    // Wraps an Excel cell reference with SUBSTITUTE calls that replace every
+    // character forbidden in Windows/Linux folder names with "_".
+    // Two passes per character: space-padded first (consumes surrounding
+    // whitespace, e.g. " / " → "_"), bare second (catches unpadded occurrences).
+    const sanitizeForFolder = (cellRef: string): string => {
+      // [bare Excel string arg, space-padded Excel string arg]
+      const pairs: [string, string][] = [
+        ['"/"',  '" / "'],   // forward slash
+        ['"\\"', '" \\ "'],  // backslash
+        ['":"',  '" : "'],   // colon
+        ['"*"',  '" * "'],   // asterisk
+        ['"?"',  '" ? "'],   // question mark
+        ['""""', '" "" "'],  // double-quote (Excel: """" = one literal ")
+        ['"<"',  '" < "'],   // less-than
+        ['">"',  '" > "'],   // greater-than
+        ['"|"',  '" | "'],   // pipe
+      ];
+      return pairs.reduce(
+        (expr, [bare, padded]) =>
+          `SUBSTITUTE(SUBSTITUTE(${expr},${padded},"_"),${bare},"_")`,
+        cellRef,
+      );
+    };
+
     // Write formulas for all data rows
     for (let row = 3; row <= TEMPLATE_MAX_ROWS + 2; row++) {
+      // sanitizeForFolder is applied to the *display* parts only.
+      // The COUNTIF criteria still reference the raw $A{row} so deduplication works.
       const suffix = descriptorCol
-        ? `&IF(${descriptorCol}${row}<>"","_"&${descriptorCol}${row},"")`
+        ? `&IF(${descriptorCol}${row}<>"","_"&${sanitizeForFolder(`${descriptorCol}${row}`)},"")`
         : "";
-      const formula = `IF($A${row}="","",$A${row}&"-${prefix}"&COUNTIF($A$3:$A${row},$A${row})${suffix})`;
+      const formula = `IF($A${row}="","",${sanitizeForFolder(`$A${row}`)}&"-${prefix}"&COUNTIF($A$3:$A${row},$A${row})${suffix})`;
       ws.getCell(row, colIdx).value = { formula, result: "" };
     }
 
