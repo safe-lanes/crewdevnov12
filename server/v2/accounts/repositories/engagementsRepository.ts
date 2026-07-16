@@ -10,7 +10,7 @@ import {
 } from "../../../../shared/v2/accounts/schema";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
-import { masterVessels } from "../../../../shared/schema";
+import { masterVessels, masterVesselTypes } from "../../../../shared/schema";
 import type {
   AccEngagementV2,
   InsertAccEngagementV2,
@@ -260,6 +260,20 @@ export class EngagementsRepository {
       .from(masterVessels)
       .where(eq(masterVessels.vesselUuid, vesselUuid));
     return rows[0]?.vesselType ?? null;
+  }
+
+  /** Live vessel-type master rows (vt_uuid + display name) for canonical resolution. */
+  async findVesselTypeMaster(): Promise<
+    Array<{ vtUuid: string | null; vesselType: string | null }>
+  > {
+    const db = getDb();
+    return db
+      .select({
+        vtUuid: masterVesselTypes.vtUuid,
+        vesselType: masterVesselTypes.vesselType,
+      })
+      .from(masterVesselTypes)
+      .where(eq(masterVesselTypes.isDeleted, false));
   }
 
   async findActiveScales(): Promise<AccWageScaleV2[]> {

@@ -12,6 +12,7 @@ const engagementsRepository = new EngagementsRepository();
 export interface SyncError {
   assignUuid: string;
   crewUuid: string | null;
+  crewName?: string | null;
   reason: string;
 }
 
@@ -37,6 +38,7 @@ export interface SyncResult {
   skippedExisting: number;
   skippedNoOverlap: number;
   errors: SyncError[];
+  warnings: string[];
 }
 
 /**
@@ -148,9 +150,9 @@ function overlapConflictError(conflict: AccEngagementV2): Error {
   return err;
 }
 
-function resolveScaleForStart(
+export function resolveScaleForStart(
   scales: AccWageScaleV2[],
-  vesselType: string | null,
+  vesselTypeUuid: string | null,
   startDate: string,
 ): AccWageScaleV2 | undefined {
   const effective = scales.filter(
@@ -161,9 +163,9 @@ function resolveScaleForStart(
   const byNewest = (a: AccWageScaleV2, b: AccWageScaleV2) =>
     (b.effectiveFrom ?? "").localeCompare(a.effectiveFrom ?? "") ||
     a.scaleUuid.localeCompare(b.scaleUuid);
-  if (vesselType) {
+  if (vesselTypeUuid) {
     const typed = effective
-      .filter((s) => s.vesselTypeUuid === vesselType)
+      .filter((s) => s.vesselTypeUuid === vesselTypeUuid)
       .sort(byNewest);
     if (typed.length > 0) return typed[0];
   }
@@ -171,6 +173,89 @@ function resolveScaleForStart(
     .filter((s) => s.vesselTypeUuid == null && s.vesselGroupUuid == null)
     .sort(byNewest);
   return fleetWide[0];
+}
+
+/**
+ * Vessel-type canonicalization: master_vessels stores the type as a NAME
+ * string (synced from the parent system) while wage scales store the
+ * canonical master_vessel_types.vt_uuid. Translate the vessel's stored
+ * value to the canonical vt_uuid before scale matching.
+ */
+export interface VesselTypeContext {
+  /** Human-readable type name for messages (as stored on the vessel). */
+  typeName: string | null;
+  /** Canonical master_vessel_types.vt_uuid, or null when no/unmatched type. */
+  vesselTypeUuid: string | null;
+  /** True when the vessel HAS a type value but it matches no master row. */
+  unmatched: boolean;
+}
+
+export function resolveVesselTypeContext(
+  storedType: string | null,
+  masterTypes: Array<{ vtUuid: string | null; vesselType: string | null }>,
+): VesselTypeContext {
+  if (storedType == null || storedType.trim() === "") {
+    return { typeName: null, vesselTypeUuid: null, unmatched: false };
+  }
+  const trimmed = storedType.trim();
+  const lower = trimmed.toLowerCase();
+  // Value already the canonical vt_uuid (defensive: accept either form).
+  const byUuid = masterTypes.find(
+    (t) => t.vtUuid != null && t.vtUuid.toLowerCase() === lower,
+  );
+  if (byUuid?.vtUuid) {
+    return {
+      typeName: byUuid.vesselType ?? trimmed,
+      vesselTypeUuid: byUuid.vtUuid,
+      unmatched: false,
+    };
+  }
+  // Case-insensitive name match against the vessel-type master.
+  const byName = masterTypes.find(
+    (t) =>
+      t.vtUuid != null &&
+      (t.vesselType ?? "").trim().toLowerCase() === lower,
+  );
+  if (byName?.vtUuid) {
+    return { typeName: trimmed, vesselTypeUuid: byName.vtUuid, unmatched: false };
+  }
+  return { typeName: trimmed, vesselTypeUuid: null, unmatched: true };
+}
+
+/**
+ * Full scale-resolution outcome for one engagement start date, encoding the
+ * unmatched-type fallback rules:
+ *  - matched type → typed scale, else fleet-wide, else generic error
+ *  - unmatched type name → fleet-wide with a warning, else explanatory error
+ * Never throws.
+ */
+export function resolveScaleOutcome(
+  scales: AccWageScaleV2[],
+  ctx: VesselTypeContext,
+  startDate: string,
+): {
+  scale?: AccWageScaleV2;
+  usedFleetWideForUnmatchedType: boolean;
+  errorReason?: string;
+} {
+  const scale = resolveScaleForStart(scales, ctx.vesselTypeUuid, startDate);
+  if (scale) {
+    return {
+      scale,
+      usedFleetWideForUnmatchedType:
+        ctx.unmatched && scale.vesselTypeUuid == null,
+    };
+  }
+  if (ctx.unmatched) {
+    return {
+      usedFleetWideForUnmatchedType: false,
+      errorReason: `vessel type "${ctx.typeName}" not found in vessel-type master and no active fleet-wide wage scale at ${startDate}`,
+    };
+  }
+  return {
+    usedFleetWideForUnmatchedType: false,
+    errorReason: `no active wage scale for vessel type '${ctx.typeName ?? "-"}' or fleet-wide at ${startDate}`,
+  };
 }
 
 export const engagementsService = {
@@ -193,14 +278,25 @@ export const engagementsService = {
       existing.map((e) => e.assignmentUuid).filter(Boolean),
     );
     const crewUuids = Array.from(new Set(assignments.map((a) => a.crewUuid)));
-    const crewRanks = await engagementsRepository.findCrewRanks(crewUuids);
+    const crewInfo = await engagementsRepository.findCrewInfo(crewUuids);
     const crewEngagements =
       await engagementsRepository.findByCrewUuids(crewUuids);
-    const vesselType = await engagementsRepository.findVesselType(vesselUuid);
+    const vesselTypeName =
+      await engagementsRepository.findVesselType(vesselUuid);
+    const masterTypes = await engagementsRepository.findVesselTypeMaster();
+    const typeCtx = resolveVesselTypeContext(vesselTypeName, masterTypes);
     const scales = await engagementsRepository.findActiveScales();
     const resolveRankCode = buildRankResolver(
       await engagementsRepository.findCompanyRanks(),
     );
+
+    // "AMIT SHARMA (AB) (uuid)" — name + rank for humans, uuid in parens.
+    const crewLabel = (crewUuid: string): string => {
+      const info = crewInfo.get(crewUuid);
+      if (!info?.name) return crewUuid;
+      const rank = info.presentRank ? ` (${info.presentRank})` : "";
+      return `${info.name}${rank} (${crewUuid})`;
+    };
 
     const result: SyncResult = {
       created: [],
@@ -210,7 +306,9 @@ export const engagementsService = {
       skippedExisting: 0,
       skippedNoOverlap: 0,
       errors: [],
+      warnings: [],
     };
+    let warnedUnmatchedType = false;
 
     // ---- Reconciliation of existing assignment-derived engagements -----
     // Only start_date / end_date / status are ever touched; manual anchor
@@ -341,6 +439,7 @@ export const engagementsService = {
         result.errors.push({
           assignUuid: assignment.assignUuid,
           crewUuid: assignment.crewUuid,
+          crewName: crewLabel(assignment.crewUuid),
           reason: `unparseable sign_on_date '${assignment.signOnDate}'`,
         });
         continue;
@@ -349,6 +448,7 @@ export const engagementsService = {
         result.errors.push({
           assignUuid: assignment.assignUuid,
           crewUuid: assignment.crewUuid,
+          crewName: crewLabel(assignment.crewUuid),
           reason: `unparseable sign_off_date '${assignment.signOffDate}'`,
         });
         continue;
@@ -357,6 +457,7 @@ export const engagementsService = {
         result.errors.push({
           assignUuid: assignment.assignUuid,
           crewUuid: assignment.crewUuid,
+          crewName: crewLabel(assignment.crewUuid),
           reason: "missing sign_on_date",
         });
         continue;
@@ -380,15 +481,17 @@ export const engagementsService = {
         result.errors.push({
           assignUuid: assignment.assignUuid,
           crewUuid: assignment.crewUuid,
+          crewName: crewLabel(assignment.crewUuid),
           reason: `overlapping engagement ${conflict.engagementUuid} (${conflict.startDate} – ${conflict.endDate ?? "open"}, ${conflict.status}) already exists for this crew member — resolve via the engagement overlap audit`,
         });
         continue;
       }
-      const rawRank = crewRanks.get(assignment.crewUuid) ?? null;
+      const rawRank = crewInfo.get(assignment.crewUuid)?.presentRank ?? null;
       if (!rawRank) {
         result.errors.push({
           assignUuid: assignment.assignUuid,
           crewUuid: assignment.crewUuid,
+          crewName: crewLabel(assignment.crewUuid),
           reason: "crew member has no present_rank",
         });
         continue;
@@ -398,19 +501,28 @@ export const engagementsService = {
         result.errors.push({
           assignUuid: assignment.assignUuid,
           crewUuid: assignment.crewUuid,
+          crewName: crewLabel(assignment.crewUuid),
           reason: `unmapped rank: ${rawRank}`,
         });
         continue;
       }
-      const scale = resolveScaleForStart(scales, vesselType, startDate);
-      if (!scale) {
+      const outcome = resolveScaleOutcome(scales, typeCtx, startDate);
+      if (!outcome.scale) {
         result.errors.push({
           assignUuid: assignment.assignUuid,
           crewUuid: assignment.crewUuid,
-          reason: `no active wage scale for vessel type '${vesselType ?? "-"}' or fleet-wide at ${startDate}`,
+          crewName: crewLabel(assignment.crewUuid),
+          reason: outcome.errorReason!,
         });
         continue;
       }
+      if (outcome.usedFleetWideForUnmatchedType && !warnedUnmatchedType) {
+        result.warnings.push(
+          `vessel type "${typeCtx.typeName}" not found in vessel-type master — using fleet-wide scale`,
+        );
+        warnedUnmatchedType = true;
+      }
+      const scale = outcome.scale;
       const dataWithAudit = applyAuditUser(
         {
           auditUserUuid,

@@ -909,6 +909,16 @@ export default function PayrollRunPage() {
                       </details>
                     ),
                 )}
+                {(syncResult.warnings ?? []).map((w: string, i: number) => (
+                  <div
+                    key={`w-${i}`}
+                    className="flex items-start gap-1 text-amber-700"
+                    data-testid={`text-sync-warning-${i}`}
+                  >
+                    <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                    <span>{w}</span>
+                  </div>
+                ))}
                 {(syncResult.errors ?? []).map((e: any, i: number) => (
                   <div
                     key={i}
