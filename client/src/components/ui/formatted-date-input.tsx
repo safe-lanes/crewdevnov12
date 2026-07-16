@@ -15,7 +15,7 @@ interface FormattedDateInputProps {
 }
 
 const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
-  ({ value, onChange, onBlur, className, min, max, "data-testid": dataTestId }, ref) => {
+  ({ value, onChange, onBlur, className, min, max, placeholder, "data-testid": dataTestId }, ref) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
     const formatted = value ? formatDate(value) : "";
 
@@ -37,7 +37,7 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
         }}
       >
         <span className={cn("flex-1 select-none", !formatted && "text-muted-foreground")}>
-          {formatted || "dd-mm-yyyy"}
+          {formatted || placeholder || "dd-mm-yyyy"}
         </span>
         <CalendarDays className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 ml-1" />
         <input

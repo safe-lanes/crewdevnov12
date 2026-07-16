@@ -69,7 +69,7 @@ export const restHourViolationsReport: ReportHandler<z.infer<typeof violFilters>
     const rows = await db
       .select({
         vesselName: masterVessels.vessel,
-        monthValue: rhCrewRecordsV2.monthValue,
+        monthValue: sql<string>`to_char(${monthAsDate}, 'Mon-YYYY')`,
         name: rhCrewRecordsV2.name,
         rank: rhCrewRecordsV2.rank,
         totalViolations: rhCrewRecordsV2.totalViolations,
@@ -154,7 +154,7 @@ export const restHourComplianceReport: ReportHandler<z.infer<typeof compFilters>
     const rows = await db
       .select({
         vesselName: masterVessels.vessel,
-        monthValue: rhVesselRecordsV2.monthValue,
+        monthValue: sql<string>`to_char(${vMonthAsDate}, 'Mon-YYYY')`,
         totalCrew: rhVesselRecordsV2.totalCrew,
         recordingStatusPercent: rhVesselRecordsV2.recordingStatusPercent,
         totalViolations: rhVesselRecordsV2.totalViolations,

@@ -24,6 +24,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { FormattedDateInput } from "@/components/ui/formatted-date-input";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -575,18 +576,18 @@ function FilterControl({
       return (
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-600 whitespace-nowrap">{filter.label}:</span>
-          <Input
-            type="date"
+          <FormattedDateInput
             value={range.from}
             onChange={(e) => onChange({ from: e.target.value, to: range.to })}
+            placeholder="DD-MMM-YYYY"
             className="h-8 w-[150px]"
             data-testid={`${testIdBase}-from`}
           />
           <span className="text-xs text-gray-500">to</span>
-          <Input
-            type="date"
+          <FormattedDateInput
             value={range.to}
             onChange={(e) => onChange({ from: range.from, to: e.target.value })}
+            placeholder="DD-MMM-YYYY"
             className="h-8 w-[150px]"
             data-testid={`${testIdBase}-to`}
           />
