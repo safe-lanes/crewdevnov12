@@ -686,6 +686,7 @@ function ReportsContent(): JSX.Element {
   const [filterValuesByReport, setFilterValuesByReport] = useState<
     Record<string, Record<number, FilterValue>>
   >({});
+  const [clearCounter, setClearCounter] = useState(0);
   // Per-report results cache so switching back to a report keeps its last result.
   const [resultsByReport, setResultsByReport] = useState<
     Record<string, ReportRunResponse>
@@ -861,6 +862,16 @@ function ReportsContent(): JSX.Element {
 
   const handleGenerate = () => {
     runReport();
+  };
+
+  const handleClearFilters = () => {
+    if (!selectedReportId) return;
+    setFilterValuesByReport((prev) => ({ ...prev, [selectedReportId]: {} }));
+    setResultsByReport((prev) => {
+      const { [selectedReportId]: _removed, ...rest } = prev;
+      return rest;
+    });
+    setClearCounter((c) => c + 1);
   };
 
   const currentResult = selectedReportId
@@ -1065,7 +1076,7 @@ function ReportsContent(): JSX.Element {
               <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded">
                 {selectedFilters.map((f, idx) => (
                   <FilterControl
-                    key={`${selected.leaf.id}-${idx}`}
+                    key={`${selected.leaf.id}-${idx}-${clearCounter}`}
                     filter={f}
                     reportId={selected.leaf.id}
                     index={idx}
@@ -1074,7 +1085,16 @@ function ReportsContent(): JSX.Element {
                     onChange={(v) => setFilterValue(idx, v)}
                   />
                 ))}
-                <div className="ml-auto">
+                <div className="ml-auto flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleClearFilters}
+                    className="h-8 text-[#8798ad] border-[#e1e8ed]"
+                    data-testid="button-reports-clear"
+                  >
+                    Clear
+                  </Button>
                   <Button
                     type="button"
                     onClick={handleGenerate}
