@@ -478,6 +478,7 @@ export async function generateImportTemplate(): Promise<Buffer> {
   const refData = await fetchReferenceData();
 
   const wb = new ExcelJS.Workbook();
+  wb.calcProperties.fullCalcOnLoad = true;
 
   // Sheet 1: Instructions & Reference
   const instrSheet = wb.addWorksheet("Instructions & Reference");
@@ -712,6 +713,8 @@ export async function generateImportTemplate(): Promise<Buffer> {
   ) => {
     const colIdx = getColIndex(columnsList, "Attachment Ref");
     if (colIdx <= 0) return;
+
+    // Write formulas
     for (let row = 3; row <= 200; row++) {
       const suffix = descriptorCol
         ? `&IF(${descriptorCol}${row}<>"","_"&${descriptorCol}${row},"")`
@@ -719,6 +722,27 @@ export async function generateImportTemplate(): Promise<Buffer> {
       const formula = `IF($A${row}="","",$A${row}&"-${prefix}"&COUNTIF($A$3:$A${row},$A${row})${suffix})`;
       ws.getCell(row, colIdx).value = { formula, result: "" };
     }
+
+    // Protect the Attachment Ref column so users cannot accidentally clear the
+    // formula (e.g. by pressing Delete on a whole row). All other data cells
+    // (rows 3–200) are unlocked so users can type freely. Header/example rows
+    // (1–2) remain locked by default. No password so users can unprotect if needed.
+    const totalCols = columnsList.length;
+    for (let row = 3; row <= 200; row++) {
+      for (let col = 1; col <= totalCols; col++) {
+        ws.getCell(row, col).protection = col === colIdx
+          ? { locked: true }
+          : { locked: false };
+      }
+    }
+    ws.protect("", {
+      selectLockedCells: true,
+      selectUnlockedCells: true,
+      insertRows: true,
+      deleteRows: true,
+      sort: true,
+      autoFilter: true,
+    });
   };
 
   applyAttachmentRefFormula(docsSheet, DOCUMENTS_COLUMNS, "D", "B");
