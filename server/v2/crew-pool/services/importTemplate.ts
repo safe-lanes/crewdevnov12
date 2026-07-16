@@ -33,7 +33,7 @@ export const CREW_DETAILS_COLUMNS = [
   { header: "Present Rank / Designation", required: false, example: "Master", note: "" },
   { header: "Rank Applied For", required: false, example: "Chief Officer", note: "" },
   { header: "Vessel Type Experience", required: false, example: "Oil Tanker", note: "Must match Reference Data sheet" },
-  { header: "Current Status", required: false, example: "On Leave", note: "On Board / On Leave" },
+  { header: "Current Status", required: false, example: "Active", note: "Active / Terminated" },
   { header: "Email Address", required: false, example: "rajesh@email.com", note: "" },
   { header: "Mobile Number", required: false, example: "+91-9876543210", note: "" },
   { header: "Phone / Landline", required: false, example: "022-12345678", note: "" },
@@ -425,7 +425,7 @@ function buildInstructionsSheet(
     ws.getCell(valStartRow + idx, 8).value = val;
   });
 
-  const statuses = ["On Board", "On Leave", "Available", "In Transit", "Inactive", "Terminated", "Terminated - NFR"];
+  const statuses = ["Active", "Terminated"];
   statuses.forEach((val, idx) => {
     ws.getCell(valStartRow + idx, 9).value = val;
   });
@@ -531,7 +531,7 @@ export async function generateImportTemplate(): Promise<Buffer> {
   const genderFormula = `='Instructions & Reference'!$F$27:$F$28`;
   const engProfFormula = `='Instructions & Reference'!$G$27:$G$31`;
   const maritalFormula = `='Instructions & Reference'!$H$27:$H$30`;
-  const statusFormula = `='Instructions & Reference'!$I$27:$I$33`;
+  const statusFormula = `='Instructions & Reference'!$I$27:$I$28`;
   const coExtFormula = `='Instructions & Reference'!$J$27:$J$28`;
   const rankFormula = `='Instructions & Reference'!$K$27:$K$${refStartRow + refData.ranks.length - 1}`;
   const manningAgentFormula = `='Instructions & Reference'!$L$27:$L$${refStartRow + refData.manningAgents.length - 1}`;

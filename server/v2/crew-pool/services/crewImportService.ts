@@ -521,9 +521,12 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
     }
 
     const statusVal = getCellValue(row, "Current Status");
-    if (statusVal && !["on board", "on leave", "available", "in transit", "inactive", "terminated", "terminated - nfr"].includes(statusVal.toLowerCase())) {
-      errors.push({ sheet: "Crew Details", row: rowNum, column: "Current Status", value: statusVal, message: `Current Status must be 'On Board', 'On Leave', 'Available', 'In Transit', 'Inactive', 'Terminated', or 'Terminated - NFR'`, errorType: "manual_value" });
+    if (statusVal && !["active", "terminated"].includes(statusVal.toLowerCase())) {
+      errors.push({ sheet: "Crew Details", row: rowNum, column: "Current Status", value: statusVal, message: `Current Status must be 'Active' or 'Terminated'`, errorType: "manual_value" });
     }
+    const resolvedStatus = statusVal
+      ? (statusVal.toLowerCase() === "terminated" ? "Terminated" : "On Leave")
+      : "On Leave";
 
     // ---- Build resolved insert payloads (only when a valid, linkable crew) ----
     if (resolve && resolved && linkable) {
@@ -544,7 +547,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
         vesselTypeUuid: vesselTypeUuids[0] ?? null,
         presentRank: getCellValue(row, "Present Rank / Designation"),
         rankAppliedFor: getCellValue(row, "Rank Applied For"),
-        status: statusVal || "On Leave",
+        status: resolvedStatus,
         recruitmentDate: parseDate(recruitDate),
         isActive: true,
         createdAt: now,
