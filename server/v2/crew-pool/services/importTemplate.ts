@@ -18,6 +18,10 @@ import {
 import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
 import { eq } from "drizzle-orm";
 
+// Maximum number of data rows written into the template (rows 3 – TEMPLATE_MAX_ROWS+2).
+// Changing this one constant updates every loop, formula range, and validation range.
+const TEMPLATE_MAX_ROWS = 10000;
+
 // ============================================================================
 // SHEET DEFINITIONS — Column headers the client sees
 // ============================================================================
@@ -567,21 +571,20 @@ export async function generateImportTemplate(): Promise<Buffer> {
   const applyDropdown = (ws: ExcelJS.Worksheet, header: string, columnsList: typeof CREW_DETAILS_COLUMNS, formula: string) => {
     const colIdx = getColIndex(columnsList, header);
     if (colIdx > 0) {
-      for (let row = 3; row <= 200; row++) {
-        ws.getCell(row, colIdx).dataValidation = {
-          type: 'list',
-          allowBlank: true,
-          formulae: [formula],
-          // Non-blocking: user may type manual values; they get highlighted instead
-          showErrorMessage: false,
-        };
-      }
+      const letter = colLetter(colIdx);
+      const lastRow = TEMPLATE_MAX_ROWS + 2;
+      // Range-based: one XML entry regardless of row count
+      (ws as any).dataValidations.add(`${letter}3:${letter}${lastRow}`, {
+        type: 'list',
+        allowBlank: true,
+        formulae: [formula],
+        showErrorMessage: false,
+      });
 
       // Conditional formatting: highlight cells whose value is not in the reference list
-      const letter = colLetter(colIdx);
       const refRange = formula.replace(/^=/, ""); // e.g. 'Instructions & Reference'!$B$27:$B$50
       ws.addConditionalFormatting({
-        ref: `${letter}3:${letter}200`,
+        ref: `${letter}3:${letter}${lastRow}`,
         rules: [
           {
             type: "expression",
@@ -613,18 +616,17 @@ export async function generateImportTemplate(): Promise<Buffer> {
   // (comma-separated combos are validated server-side on upload).
   const flColIdx = getColIndex(CREW_DETAILS_COLUMNS, "Foreign Languages");
   if (flColIdx > 0) {
-    for (let row = 3; row <= 200; row++) {
-      crewSheet.getCell(row, flColIdx).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [langFormula],
-        showErrorMessage: false,
-      };
-    }
     const flLetter = colLetter(flColIdx);
+    const flLastRow = TEMPLATE_MAX_ROWS + 2;
+    (crewSheet as any).dataValidations.add(`${flLetter}3:${flLetter}${flLastRow}`, {
+      type: 'list',
+      allowBlank: true,
+      formulae: [langFormula],
+      showErrorMessage: false,
+    });
     const langRange = langFormula.replace(/^=/, "");
     crewSheet.addConditionalFormatting({
-      ref: `${flLetter}3:${flLetter}200`,
+      ref: `${flLetter}3:${flLetter}${flLastRow}`,
       rules: [
         {
           type: "expression",
@@ -648,19 +650,21 @@ export async function generateImportTemplate(): Promise<Buffer> {
   const vesselColIdx = getColIndex(SEA_SERVICE_COLUMNS, "Vessel Name");
   if (vesselColIdx > 0) {
     const vesselListRange = `'Instructions & Reference'!$M$27:$M$${refStartRow + refData.vessels.length - 1}`;
-    for (let row = 3; row <= 200; row++) {
-      seaSheet.getCell(row, vesselColIdx).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [`=IF($B${row}="Company", ${vesselListRange}, "")`],
-        showErrorMessage: false // Allow custom text if External service type
-      };
-    }
+    const vLetter = colLetter(vesselColIdx);
+    const vLastRow = TEMPLATE_MAX_ROWS + 2;
+    // Static list (showErrorMessage:false lets External-service rows type freely).
+    // The per-row IF formula cannot be range-collapsed; conditional formatting
+    // already handles the "Company only" orange-highlight rule.
+    (seaSheet as any).dataValidations.add(`${vLetter}3:${vLetter}${vLastRow}`, {
+      type: 'list',
+      allowBlank: true,
+      formulae: [vesselListRange],
+      showErrorMessage: false,
+    });
 
     // Highlight manually typed vessel names for "Company" rows that don't match the vessel list
-    const vLetter = colLetter(vesselColIdx);
     seaSheet.addConditionalFormatting({
-      ref: `${vLetter}3:${vLetter}200`,
+      ref: `${vLetter}3:${vLetter}${vLastRow}`,
       rules: [
         {
           type: "expression",
@@ -677,14 +681,13 @@ export async function generateImportTemplate(): Promise<Buffer> {
   const applyPlainDropdown = (ws: ExcelJS.Worksheet, header: string, columnsList: typeof CREW_DETAILS_COLUMNS, formula: string) => {
     const colIdx = getColIndex(columnsList, header);
     if (colIdx <= 0) return;
-    for (let row = 3; row <= 200; row++) {
-      ws.getCell(row, colIdx).dataValidation = {
-        type: "list",
-        allowBlank: true,
-        formulae: [formula],
-        showErrorMessage: false,
-      };
-    }
+    const letter = colLetter(colIdx);
+    (ws as any).dataValidations.add(`${letter}3:${letter}${TEMPLATE_MAX_ROWS + 2}`, {
+      type: "list",
+      allowBlank: true,
+      formulae: [formula],
+      showErrorMessage: false,
+    });
   };
 
   // Pre-Joining Medicals (Part F)
@@ -714,8 +717,8 @@ export async function generateImportTemplate(): Promise<Buffer> {
     const colIdx = getColIndex(columnsList, "Attachment Ref");
     if (colIdx <= 0) return;
 
-    // Write formulas
-    for (let row = 3; row <= 200; row++) {
+    // Write formulas for all data rows
+    for (let row = 3; row <= TEMPLATE_MAX_ROWS + 2; row++) {
       const suffix = descriptorCol
         ? `&IF(${descriptorCol}${row}<>"","_"&${descriptorCol}${row},"")`
         : "";
@@ -723,17 +726,15 @@ export async function generateImportTemplate(): Promise<Buffer> {
       ws.getCell(row, colIdx).value = { formula, result: "" };
     }
 
-    // Protect the Attachment Ref column so users cannot accidentally clear the
-    // formula (e.g. by pressing Delete on a whole row). All other data cells
-    // (rows 3–200) are unlocked so users can type freely. Header/example rows
-    // (1–2) remain locked by default. No password so users can unprotect if needed.
+    // Protect the Attachment Ref column using column-level default styles so
+    // the locked:false flag is stored once per column, not once per cell.
+    // This keeps file size O(cols) regardless of TEMPLATE_MAX_ROWS.
     const totalCols = columnsList.length;
-    for (let row = 3; row <= 200; row++) {
-      for (let col = 1; col <= totalCols; col++) {
-        ws.getCell(row, col).protection = col === colIdx
-          ? { locked: true }
-          : { locked: false };
+    for (let col = 1; col <= totalCols; col++) {
+      if (col !== colIdx) {
+        ws.getColumn(col).style = { protection: { locked: false } };
       }
+      // Attachment Ref column keeps Excel's default (locked:true) — no change needed.
     }
     ws.protect("", {
       selectLockedCells: true,
