@@ -1,4 +1,5 @@
-import { PortageRepository } from "../repositories";
+import { PortageRepository, EngagementsRepository } from "../repositories";
+import { sortByRankOrder } from "./engagementsService";
 import { tenantConfigService } from "./tenantConfigService";
 import { ctmService } from "./ctmService";
 import { wageEngineService } from "../engine";
@@ -10,6 +11,7 @@ import type {
 } from "../../../../shared/v2/accounts/types";
 
 const repo = new PortageRepository();
+const engagementsRepo = new EngagementsRepository();
 
 function coded(code: "CONFLICT" | "VALIDATION" | "NOT_FOUND", message: string) {
   const err = new Error(message) as Error & { code: string };
@@ -37,12 +39,28 @@ export const portageService = {
     if (!portage) {
       return { portage: null, approvals: [], crewTotals: [], latestRun: null };
     }
-    const [approvals, crewTotals, latestRun] = await Promise.all([
-      repo.findApprovalsByPortage(portage.portageUuid),
-      wageEngineService.summaryForPortage(portage.portageUuid, period),
-      repo.findLatestRun(portage.portageUuid),
-    ]);
-    return { portage, approvals, crewTotals, latestRun: latestRun ?? null };
+    const [approvals, crewTotals, latestRun, rankSortOrders] =
+      await Promise.all([
+        repo.findApprovalsByPortage(portage.portageUuid),
+        wageEngineService.summaryForPortage(portage.portageUuid, period),
+        repo.findLatestRun(portage.portageUuid),
+        engagementsRepo.findRankSortOrders(),
+      ]);
+    const crewNames = await engagementsRepo.findCrewInfo(
+      Array.from(new Set(crewTotals.map((t) => t.crewUuid))),
+    );
+    const sortedTotals = sortByRankOrder(
+      crewTotals,
+      rankSortOrders,
+      (t) => t.rankId,
+      (t) => crewNames.get(t.crewUuid)?.name || t.crewUuid,
+    );
+    return {
+      portage,
+      approvals,
+      crewTotals: sortedTotals,
+      latestRun: latestRun ?? null,
+    };
   },
 
   /** Submit for approval: status → office_review + fresh Pending rows. */

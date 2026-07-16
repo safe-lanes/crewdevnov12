@@ -9,7 +9,7 @@ import {
   accSettlementsV2,
 } from "../../../../shared/v2/accounts/schema";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
+import { admCompanyRanksV2, admAvailableRanksV2 } from "../../../../shared/v2/admin/schema";
 import { masterVessels, masterVesselTypes } from "../../../../shared/schema";
 import type {
   AccEngagementV2,
@@ -251,6 +251,25 @@ export class EngagementsRepository {
       })
       .from(admCompanyRanksV2)
       .where(eq(admCompanyRanksV2.isDeleted, false));
+  }
+
+  /** rank_id -> canonical sort_order from the Admin available-ranks master. */
+  async findRankSortOrders(): Promise<Map<string, number>> {
+    const db = getDb();
+    const rows = await db
+      .select({
+        rankId: admAvailableRanksV2.rankId,
+        sortOrder: admAvailableRanksV2.sortOrder,
+      })
+      .from(admAvailableRanksV2)
+      .where(eq(admAvailableRanksV2.isDeleted, false));
+    const map = new Map<string, number>();
+    for (const r of rows as Array<{ rankId: string | null; sortOrder: number | null }>) {
+      if (r.rankId != null && !map.has(r.rankId)) {
+        map.set(r.rankId, r.sortOrder ?? 0);
+      }
+    }
+    return map;
   }
 
   async findVesselType(vesselUuid: string): Promise<string | null> {

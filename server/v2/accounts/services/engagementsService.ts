@@ -93,6 +93,28 @@ function buildRankResolver(
   };
 }
 
+/**
+ * Sort rows by the Admin-defined canonical rank order (available-ranks
+ * sort_order), unmapped ranks last, then alphabetically by name.
+ */
+export function sortByRankOrder<T>(
+  rows: T[],
+  sortOrders: Map<string, number>,
+  getRankId: (row: T) => string | null,
+  getName: (row: T) => string,
+): T[] {
+  return [...rows].sort((a, b) => {
+    const ra = getRankId(a);
+    const rb = getRankId(b);
+    const oa = ra != null ? sortOrders.get(ra) : undefined;
+    const ob = rb != null ? sortOrders.get(rb) : undefined;
+    if (oa !== undefined && ob !== undefined && oa !== ob) return oa - ob;
+    if (oa !== undefined && ob === undefined) return -1;
+    if (oa === undefined && ob !== undefined) return 1;
+    return getName(a).localeCompare(getName(b));
+  });
+}
+
 /** Statuses whose date ranges may not overlap for the same crew. */
 const OVERLAP_STATUSES = new Set(["draft", "active", "completed"]);
 
@@ -596,7 +618,12 @@ export const engagementsService = {
       await engagementsRepository.countLedgerLinesByEngagements(
         engagements.map((e) => e.engagementUuid),
       );
-    return overlapping.map((a) => {
+    const [rankSortOrders, companyRanks] = await Promise.all([
+      engagementsRepository.findRankSortOrders(),
+      engagementsRepository.findCompanyRanks(),
+    ]);
+    const resolveRank = buildRankResolver(companyRanks);
+    const rows = overlapping.map((a) => {
       const engagement = engagementByAssignment.get(a.assignUuid) ?? null;
       const info = crewInfo.get(a.crewUuid);
       return {
@@ -618,6 +645,14 @@ export const engagementsService = {
           : 0,
       };
     });
+    return sortByRankOrder(
+      rows,
+      rankSortOrders,
+      (r) =>
+        r.engagement?.rankIdAtStart ??
+        (r.presentRank ? resolveRank(r.presentRank) : null),
+      (r) => r.crewName,
+    );
   },
 
   /**
