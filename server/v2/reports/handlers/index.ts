@@ -31,6 +31,7 @@ import {
   apprPendingReport,
   apprScoresSummaryReport,
 } from "./appraisals";
+import { promoExecutedReport } from "./promotions";
 import {
   recRecruitedReport,
   recWaitlistReport,
@@ -81,6 +82,9 @@ export function registerAllReports(): void {
   registerReport(vesselVacanciesReport);
   registerReport(vesselCrewChangesReport);
   registerReport(vesselComplianceSummaryReport);
+
+  // Promotion
+  registerReport(promoExecutedReport);
 
   // Appraisals
   registerReport(apprPendingReport);
