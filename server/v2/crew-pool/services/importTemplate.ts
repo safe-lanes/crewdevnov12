@@ -18,9 +18,14 @@ import {
 import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
 import { eq } from "drizzle-orm";
 
-// Maximum number of data rows written into the template (rows 3 – TEMPLATE_MAX_ROWS+2).
-// Changing this one constant updates every loop, formula range, and validation range.
+// Maximum number of data rows for the main data sheets (crew details, sea service, etc.).
+// Drives dropdown/validation ranges — range-based, so file size is unaffected by this value.
 const TEMPLATE_MAX_ROWS = 10000;
+
+// Maximum rows for attachment sheets. Each row requires its own formula cell (Attachment Ref
+// uses a row-specific COUNTIF range), so this directly controls file size.
+// 5000 covers large crews with multiple attachments per person while keeping the file small.
+const ATTACHMENT_MAX_ROWS = 5000;
 
 // ============================================================================
 // SHEET DEFINITIONS — Column headers the client sees
@@ -742,7 +747,7 @@ export async function generateImportTemplate(): Promise<Buffer> {
     };
 
     // Write formulas for all data rows
-    for (let row = 3; row <= TEMPLATE_MAX_ROWS + 2; row++) {
+    for (let row = 3; row <= ATTACHMENT_MAX_ROWS + 2; row++) {
       // sanitizeForFolder is applied to the *display* parts only.
       // The COUNTIF criteria still reference the raw $A{row} so deduplication works.
       const suffix = descriptorCol
