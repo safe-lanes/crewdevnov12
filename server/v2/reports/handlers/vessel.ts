@@ -8,7 +8,7 @@ import { masterVessels } from "../../../../shared/schema";
 import { rhVesselRecordsV2 } from "../../../../shared/v2/rest-hours/schema";
 import type { ReportHandler } from "../types";
 import type { ReportColumn } from "../../../../shared/v2/reports/types";
-import { dateExpr, dateFilter, fullNameExpr, noSignOffExpr } from "./_shared";
+import { dateExpr, dateFilter, fullNameExpr } from "./_shared";
 
 const nameExpr = fullNameExpr(crewMembersV2.firstName, crewMembersV2.middleName, crewMembersV2.familyName);
 
@@ -41,12 +41,11 @@ export const crewOnBoardReport: ReportHandler<z.infer<typeof cobFilters>> = {
     const conds: SQL[] = [
       eq(vesselPlanningV2.isDeleted, false),
       eq(vesselPlanningV2.isArchived, false),
-      noSignOffExpr(vesselPlanningV2.signOffDate),
       isNotNull(vesselPlanningV2.crewUuid),
       eq(crewMembersV2.isDeleted, false),
     ];
     if (filters.vessel) conds.push(eq(masterVessels.vessel, filters.vessel));
-    if (filters.rank) conds.push(eq(vesselPlanningV2.rank, filters.rank));
+    if (filters.rank) conds.push(sql`regexp_replace(${vesselPlanningV2.rank}, '_[0-9]+$', '') = ${filters.rank}`);
     const where = and(...conds);
 
     const totalRes = await db
