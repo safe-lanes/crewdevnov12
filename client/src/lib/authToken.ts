@@ -1,4 +1,5 @@
 import { getDecryptedSessionStorageItem } from "./encryptionService";
+import { getDevPersonaToken } from "./devPersona";
 
 const PARENT_LOGIN_URL = import.meta.env.VITE_PARENT_LOGIN_URL || "";
 const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === "true";
@@ -6,7 +7,10 @@ const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === "true";
 let redirecting = false;
 
 export function getAuthToken(): string | null {
-  if (AUTH_BYPASS) return null;
+  // Dev bypass: no real credentials. If the dev persona switcher has set an
+  // unsigned override token, send it so the backend (AUTH_BYPASS decode path)
+  // sees the simulated identity; otherwise send no Authorization header.
+  if (AUTH_BYPASS) return getDevPersonaToken();
   const decrypted = getDecryptedSessionStorageItem("credentials", true);
   if (typeof decrypted === "string" && decrypted.length > 0) {
     return decrypted;

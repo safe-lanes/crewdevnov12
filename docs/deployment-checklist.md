@@ -130,22 +130,26 @@ set `AUTH_BYPASS` or leave `JWT_SECRET` unset outside local development.
    - A no-grant role (e.g. `External 1` roleId) gets `canview: false` on all
      15 Accounts menus.
 
-2. **Frontend menu gating** — with `VITE_AUTH_BYPASS=true`, the UI reads the
-   simulated profile from `localStorage.userProfile` (plain JSON accepted in
-   dev). In the browser console:
+2. **Frontend persona switching** — with `VITE_AUTH_BYPASS=true`, use the
+   **dev persona switcher** in the header (amber "DEV" button next to the
+   notification bell). It replaces the old console `localStorage.userProfile`
+   snippet: selecting a persona atomically writes both the simulated
+   `userProfile` (read by the UI) and an unsigned dev Bearer token (sent by
+   API calls so the backend's bypass decode path sees the same identity),
+   then reloads. Personas: Sail Admin (default — clears the override), Admin,
+   User, Vessel Management, and Vessel User (with a vessel sub-selector;
+   remembers the last-used vessel). Role ruids are resolved live from the
+   access-control roles master by name.
 
-   ```js
-   localStorage.setItem("userProfile", JSON.stringify({
-     role: "Vessel User", roleId: "<ruid>", userId: "dev-test",
-     userType: "Ship",
-     myVessels: [{ vessel: "<name>", vesselId: "<vessel-uuid>", imoNumber: "" }]
-   })); location.reload();
-   ```
+   Expected for Vessel User: the Accounts sidebar shows **only Vessel
+   Portage**, fixed to the selected vessel, and a vessel-portage API call for
+   any other vessel returns 403. Selecting **Sail Admin** reverts to the
+   default (full menus).
 
-   Expected: the Accounts sidebar shows **only Vessel Portage**, fixed to the
-   profile vessel. With `role: "External 1"` (+ its roleId, no `myVessels`),
-   the Accounts module shows the no-access page and no Accounts menus.
-   Remove the override with `localStorage.removeItem("userProfile")`.
+   The switcher is compiled out of production builds (guarded by the
+   build-time `import.meta.env.VITE_AUTH_BYPASS === "true"` check) and is
+   inert at runtime without the flag. Production identity comes solely from
+   real parent-app login credentials.
 
 ## 4. Environment
 

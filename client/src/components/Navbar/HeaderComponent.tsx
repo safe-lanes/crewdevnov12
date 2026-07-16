@@ -5,6 +5,7 @@ import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { getDecryptedLocalStorageItem, getDecryptedSessionStorageItem, deepParseJson } from '@/lib/encryptionService';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import NotificationBell from '../NotificationBell';
+import DevPersonaSwitcher from './DevPersonaSwitcher';
 import { 
     LayoutGrid, 
     UserPlus,
@@ -392,6 +393,7 @@ export default function HeaderComponent({
 
                     {/* Notification Bell & User Profile Avatar */}
                     <div className="flex items-center gap-3 mr-2 sm:mr-4">
+                        {import.meta.env.VITE_AUTH_BYPASS === "true" && <DevPersonaSwitcher />}
                         <NotificationBell />
 
                         <div className="relative flex items-center" ref={profileRef}>
