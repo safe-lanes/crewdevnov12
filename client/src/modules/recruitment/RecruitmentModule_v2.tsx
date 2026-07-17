@@ -26,11 +26,71 @@ import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useNationalitiesV2, useVesselTypesV2, useManningAgentsV2 } from '@/hooks/v2/useMasterDataV2';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
-import { useV2Candidates, useV2DeleteCandidate } from './hooks/useRecruitmentV2';
+import { useV2Candidates, useV2DeleteCandidate, useV2ScreeningStagesSummary } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { STATUS_MAPPING } from './statusBuckets';
 
 export { STATUS_MAPPING, RECRUITED_STATUSES } from './statusBuckets';
+
+function ScreeningStatusCellRenderer(params: ICellRendererParams) {
+  const recCanUuid: string | null = params.data?.recCanUuid ?? null;
+  const isScreening = params.value === 'Screening';
+  const { data: stages, isLoading } = useV2ScreeningStagesSummary(isScreening ? recCanUuid : null);
+
+  if (!isScreening) {
+    return <span style={{ fontSize: 'inherit', color: 'inherit' }}>{params.value || ''}</span>;
+  }
+
+  return (
+    <HoverCard openDelay={200} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <span
+          data-testid={`screening-status-trigger-${recCanUuid}`}
+          className="cursor-default underline decoration-dotted"
+          style={{ fontSize: 'inherit', color: 'inherit' }}
+        >
+          Screening
+        </span>
+      </HoverCardTrigger>
+      <HoverCardContent
+        className="w-72 p-0"
+        side="left"
+        align="start"
+      >
+        <div className="px-3 py-2 border-b bg-gray-50 rounded-t-md">
+          <p className="text-xs font-semibold text-gray-700">Screening Stages</p>
+        </div>
+        <div className="divide-y">
+          {isLoading ? (
+            <div className="px-3 py-2 text-xs text-gray-400">Loading…</div>
+          ) : (stages ?? []).map((s) => (
+            <div
+              key={s.stage}
+              className="flex items-center justify-between px-3 py-1.5"
+              data-testid={`screening-stage-row-${recCanUuid}-${s.stage}`}
+            >
+              <span className="text-xs text-gray-600">
+                <span className="font-medium">{s.stage}</span>
+                {' — '}
+                {s.label}
+              </span>
+              <span
+                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                  s.done
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}
+              >
+                {s.done ? 'Done' : 'Pending'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
 
 export const RecruitmentModuleV2 = (): JSX.Element => {
   const [selectedRecruitmentPage, setSelectedRecruitmentPage] = useState("in-progress");
@@ -399,11 +459,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
             sortable: true,
             resizable: true,
             enableRowGroup: false,
-            valueFormatter: (params: any) => {
-              // Return value as-is since status is now stored with proper capitalization
-              // matching legacy: Draft, Applied, Screening, For Approval, Recruited, Waitlisted, Rejected
-              return params.value || '';
-            }
+            cellRenderer: ScreeningStatusCellRenderer,
           } as ColDef]),
       {
         headerName: 'Actions',

@@ -96,6 +96,7 @@ import {
   screeningB6Controller,
   screeningB7Controller,
   screeningB8Controller,
+  screeningSummaryController,
 } from "../../v2/recruitment/controllers/screeningController";
 
 import {
@@ -191,6 +192,8 @@ router.delete("/additional-info/:id", deleteAdditionalInfo);
 router.get("/additional-info/:infoUuid/attachments", getAdditionalInfoAttachments);
 router.post("/additional-info/:infoUuid/attachments", createAdditionalInfoAttachment);
 router.delete("/additional-info/attachments/:id", deleteAdditionalInfoAttachment);
+
+router.get("/candidates/:recCanUuid/screening/summary", screeningSummaryController.get);
 
 router.get("/candidates/:recCanUuid/screening/b1", screeningB1Controller.get);
 router.put("/candidates/:recCanUuid/screening/b1", screeningB1Controller.upsert);

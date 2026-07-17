@@ -8,6 +8,7 @@ import {
   screeningB6Service,
   screeningB7Service,
   screeningB8Service,
+  screeningSummaryService,
 } from "../services/screeningService";
 import {
   fileStorageService,
@@ -76,6 +77,19 @@ async function buildAttachmentData(moduleName: string, body: any) {
   const persisted = await persistIncoming(moduleName, fileName, String(rawValue), body?.fileType);
   return { ...body, filePath: persisted.filePath, fileData: persisted.fileData };
 }
+
+export const screeningSummaryController = {
+  async get(req: Request, res: Response) {
+    try {
+      const { recCanUuid } = req.params;
+      const result = await screeningSummaryService.getByCandidate(recCanUuid);
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting screening summary:", error);
+      res.status(500).json({ error: "Failed to get screening summary" });
+    }
+  },
+};
 
 export const screeningB1Controller = {
   async get(req: Request, res: Response) {

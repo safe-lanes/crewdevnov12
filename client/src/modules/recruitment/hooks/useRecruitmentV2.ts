@@ -807,6 +807,22 @@ export function useV2DeleteAdditionalInfo() {
   });
 }
 
+export interface ScreeningStageSummary {
+  stage: string;
+  label: string;
+  done: boolean;
+}
+
+export function useV2ScreeningStagesSummary(recCanUuid: string | null) {
+  return useQuery<ScreeningStageSummary[]>({
+    queryKey: ["v2", "screening-summary", recCanUuid],
+    queryFn: () => fetchApi(`/candidates/${recCanUuid}/screening/summary`),
+    enabled: !!recCanUuid,
+    staleTime: QUERY_STALE_TIME,
+    gcTime: QUERY_GC_TIME,
+  });
+}
+
 export function useV2ScreeningB1(recCanUuid: string | null) {
   return useQuery<ScreeningB1>({
     queryKey: ["v2", "screening-b1", recCanUuid],

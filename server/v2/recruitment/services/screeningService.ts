@@ -129,6 +129,33 @@ async function resolveUserUuid(value: string): Promise<string | null> {
 
 
 
+export class ScreeningSummaryService {
+  async getByCandidate(recCanUuid: string): Promise<{ stage: string; label: string; done: boolean }[]> {
+    const [b1, b2, b3, b4, b5, b6, b7, b8] = await Promise.all([
+      screeningB1Repository.findByCandidateUuid(recCanUuid),
+      screeningB2Repository.findByCandidateUuid(recCanUuid),
+      screeningB3Repository.findByCandidateUuid(recCanUuid),
+      screeningB4Repository.findByCandidateUuid(recCanUuid),
+      screeningB5Repository.findByCandidateUuid(recCanUuid),
+      screeningB6Repository.findByCandidateUuid(recCanUuid),
+      screeningB7Repository.findByCandidateUuid(recCanUuid),
+      screeningB8Repository.findByCandidateUuid(recCanUuid),
+    ]);
+    return [
+      { stage: 'B1', label: 'Initial Screening',        done: !!b1?.submittedDate },
+      { stage: 'B2', label: 'Reference Checks',          done: !!b2?.submittedDate },
+      { stage: 'B3', label: 'Background / Security',     done: !!b3?.submittedDate },
+      { stage: 'B4', label: 'Certificate Authentication',done: !!b4?.submittedDate },
+      { stage: 'B5', label: 'Tests / Assessments',       done: !!b5?.submittedDate },
+      { stage: 'B6', label: 'Interviews',                done: !!b6?.submittedDate },
+      { stage: 'B7', label: 'Training Needs',            done: !!b7?.submittedDate },
+      { stage: 'B8', label: 'Final Shortlisting',        done: !!b8?.submittedDate },
+    ];
+  }
+}
+
+export const screeningSummaryService = new ScreeningSummaryService();
+
 export class ScreeningB1Service {
   async getByCandidate(recCanUuid: string): Promise<ScreeningB1Initial | undefined> {
     return screeningB1Repository.findByCandidateUuid(recCanUuid);
