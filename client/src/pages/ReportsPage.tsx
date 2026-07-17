@@ -123,7 +123,7 @@ const REPORT_TREE: ReportCategory[] = [
     children: [
       // Temporarily hidden from Reports sidebar (uncomment to restore)
       // { id: "promo-meeting-criteria", label: "Crew Meeting Promotion Criteria" },
-      { id: "promo-approved-ytd", label: "Executed Promotions" },
+      { id: "promo-approved-ytd", label: "Promotions Executed" },
     ],
   },
   {

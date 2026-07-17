@@ -55,7 +55,7 @@ const promotionTypeExpr = sql<string>`CASE LOWER(TRIM(COALESCE(${promotionReview
 
 export const promoExecutedReport: ReportHandler<z.infer<typeof promoFilters>> = {
   reportId: "promo-approved-ytd",
-  title: "Executed Promotions",
+  title: "Promotions Executed",
   columns: promoCols,
   filterSchema: promoFilters,
   async run(filters, ctx) {
