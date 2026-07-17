@@ -1085,26 +1085,24 @@ function ReportsContent(): JSX.Element {
                     onChange={(v) => setFilterValue(idx, v)}
                   />
                 ))}
-                <div className="ml-auto flex items-center gap-2">
-                  <Button
-                    type="button"
-                    onClick={handleGenerate}
-                    disabled={isRunningCurrent}
-                    className="h-8 bg-[#52baf3] hover:bg-[#16569e] text-white"
-                    data-testid="button-reports-generate"
-                  >
-                    {isRunningCurrent ? "Generating…" : "Generate"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleClearFilters}
-                    className="h-8 text-[#8798ad] border-[#e1e8ed]"
-                    data-testid="button-reports-clear"
-                  >
-                    Clear
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleClearFilters}
+                  className="h-8 text-[#8798ad] border-[#e1e8ed]"
+                  data-testid="button-reports-clear"
+                >
+                  Clear
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={isRunningCurrent}
+                  className="h-8 bg-[#52baf3] hover:bg-[#16569e] text-white ml-auto"
+                  data-testid="button-reports-generate"
+                >
+                  {isRunningCurrent ? "Generating…" : "Generate"}
+                </Button>
               </div>
 
               {/* Results area */}
