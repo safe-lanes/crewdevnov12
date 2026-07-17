@@ -246,7 +246,7 @@ export const crewTerminatedReport: ReportHandler<z.infer<typeof termFilters>> = 
     const db = getDb();
     const archivedDate = sql<string | null>`to_char(${crewMembersV2.archivedAt}, 'YYYY-MM-DD')`;
     const updatedDate = sql<string | null>`to_char(${crewMembersV2.updatedAt}, 'YYYY-MM-DD')`;
-    const terminatedAtExpr = sql<string | null>`COALESCE(${archivedDate}, ${updatedDate})`;
+    const terminatedAtExpr = sql<string | null>`COALESCE(NULLIF(TRIM(${crewMembersV2.lastTerminationDate}), ''), ${archivedDate}, ${updatedDate})`;
 
     const conds: SQL[] = [
       eq(crewMembersV2.isDeleted, false),
@@ -254,8 +254,8 @@ export const crewTerminatedReport: ReportHandler<z.infer<typeof termFilters>> = 
       sql`${crewMembersV2.status} ILIKE 'Terminated%'`,
     ];
     if (filters.rank) conds.push(eq(crewMembersV2.presentRank, filters.rank));
-    if (filters.dateFrom) conds.push(sql`COALESCE(${crewMembersV2.archivedAt}, ${crewMembersV2.updatedAt}) >= ${filters.dateFrom}::date`);
-    if (filters.dateTo) conds.push(sql`COALESCE(${crewMembersV2.archivedAt}, ${crewMembersV2.updatedAt}) <= (${filters.dateTo}::date + INTERVAL '1 day')`);
+    if (filters.dateFrom) conds.push(sql`COALESCE(NULLIF(TRIM(${crewMembersV2.lastTerminationDate}), '')::date, ${crewMembersV2.archivedAt}::date, ${crewMembersV2.updatedAt}::date) >= ${filters.dateFrom}::date`);
+    if (filters.dateTo) conds.push(sql`COALESCE(NULLIF(TRIM(${crewMembersV2.lastTerminationDate}), '')::date, ${crewMembersV2.archivedAt}::date, ${crewMembersV2.updatedAt}::date) <= ${filters.dateTo}::date`);
     const where = and(...conds);
 
     const totalRes = await db.select({ c: sql<number>`count(*)` }).from(crewMembersV2).where(where);
