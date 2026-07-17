@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation } from 'wouter';
 import { parseISO, format, isValid } from 'date-fns';
 import { usePermissions } from '@/contexts/PermissionsContext';
@@ -28,7 +29,6 @@ import { useNationalitiesV2, useVesselTypesV2, useManningAgentsV2 } from '@/hook
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import { useV2Candidates, useV2DeleteCandidate, useV2ScreeningStagesSummary } from './hooks/useRecruitmentV2';
 import type { V2CandidateListItem } from './types/formTypes';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { STATUS_MAPPING } from './statusBuckets';
 
 export { STATUS_MAPPING, RECRUITED_STATUSES } from './statusBuckets';
@@ -36,69 +36,89 @@ export { STATUS_MAPPING, RECRUITED_STATUSES } from './statusBuckets';
 function ScreeningStatusCellRenderer(params: ICellRendererParams) {
   const recCanUuid: string | null = params.data?.recCanUuid ?? null;
   const isScreening = params.value === 'Screening';
-  // Track whether the card has ever been opened so the query fires lazily
-  // on first hover, not at row render time.
+  const [open, setOpen] = useState(false);
   const [requested, setRequested] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const { data: stages, isLoading } = useV2ScreeningStagesSummary(
     requested && isScreening ? recCanUuid : null
   );
+
+  const handleMouseEnter = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    if (!requested) setRequested(true);
+    if (triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPos({ top: r.top, left: r.left - 228 });
+    }
+    setOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    closeTimer.current = setTimeout(() => setOpen(false), 120);
+  };
+
+  useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current); }, []);
 
   if (!isScreening) {
     return <span style={{ fontSize: 'inherit', color: 'inherit' }}>{params.value || ''}</span>;
   }
 
-  return (
-    <HoverCard
-      openDelay={200}
-      closeDelay={100}
-      onOpenChange={(open) => { if (open && !requested) setRequested(true); }}
+  const popup = open ? (
+    <div
+      style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 99999, width: 224 }}
+      className="rounded-md border bg-white shadow-lg overflow-hidden"
+      onMouseEnter={() => { if (closeTimer.current) clearTimeout(closeTimer.current); }}
+      onMouseLeave={handleMouseLeave}
     >
-      <HoverCardTrigger asChild>
-        <span
-          data-testid={`screening-status-trigger-${recCanUuid}`}
-          className="cursor-default underline decoration-dotted"
-          style={{ fontSize: 'inherit', color: 'inherit' }}
-        >
-          Screening
-        </span>
-      </HoverCardTrigger>
-      <HoverCardContent
-        className="w-56 p-0 shadow-md"
-        style={{ zIndex: 9999 }}
-        side="left"
-        align="start"
-      >
-        <div className="px-2 py-[3px] border-b bg-[#f0f4f8]">
-          <p className="text-[9px] font-bold text-[#16569e] uppercase tracking-widest leading-none">Screening Stages</p>
-        </div>
-        <div>
-          {isLoading ? (
-            <div className="px-2 py-[2px] text-[10px] text-gray-400">Loading…</div>
-          ) : (stages ?? []).map((s) => (
-            <div
-              key={s.stage}
-              className="flex items-center justify-between px-2 py-0 border-b last:border-b-0"
-              data-testid={`screening-stage-row-${recCanUuid}-${s.stage}`}
+      <div className="px-2 py-[3px] border-b bg-[#f0f4f8]">
+        <p className="text-[9px] font-bold text-[#16569e] uppercase tracking-widest leading-none">Screening Stages</p>
+      </div>
+      <div>
+        {isLoading ? (
+          <div className="px-2 py-[2px] text-[10px] text-gray-400">Loading…</div>
+        ) : (stages ?? []).map((s) => (
+          <div
+            key={s.stage}
+            className="flex items-center justify-between px-2 py-0 border-b last:border-b-0"
+            data-testid={`screening-stage-row-${recCanUuid}-${s.stage}`}
+          >
+            <span className="text-[10px] text-gray-600 leading-none">
+              <span className="font-semibold text-gray-700">{s.stage}</span>
+              <span className="text-gray-400 mx-0.5">—</span>
+              {s.label}
+            </span>
+            <span
+              className={`text-[8px] font-bold px-1 py-[1px] rounded ml-1 shrink-0 uppercase tracking-wide ${
+                s.done
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-amber-50 text-amber-600'
+              }`}
             >
-              <span className="text-[10px] text-gray-600 leading-none">
-                <span className="font-semibold text-gray-700">{s.stage}</span>
-                <span className="text-gray-400 mx-0.5">—</span>
-                {s.label}
-              </span>
-              <span
-                className={`text-[8px] font-bold px-1 py-[1px] rounded ml-1 shrink-0 uppercase tracking-wide ${
-                  s.done
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-amber-50 text-amber-600'
-                }`}
-              >
-                {s.done ? 'Done' : 'Pending'}
-              </span>
-            </div>
-          ))}
-        </div>
-      </HoverCardContent>
-    </HoverCard>
+              {s.done ? 'Done' : 'Pending'}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <>
+      <span
+        ref={triggerRef}
+        data-testid={`screening-status-trigger-${recCanUuid}`}
+        className="cursor-default underline decoration-dotted"
+        style={{ fontSize: 'inherit', color: 'inherit' }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        Screening
+      </span>
+      {open && createPortal(popup, document.body)}
+    </>
   );
 }
 
