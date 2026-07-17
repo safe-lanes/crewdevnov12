@@ -67,12 +67,12 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
         side="left"
         align="start"
       >
-        <div className="px-2 py-0.5 border-b bg-[#f0f4f8]">
-          <p className="text-[9px] font-bold text-[#16569e] uppercase tracking-widest leading-none py-0.5">Screening Stages</p>
+        <div className="px-2 py-[3px] border-b bg-[#f0f4f8]">
+          <p className="text-[9px] font-bold text-[#16569e] uppercase tracking-widest leading-none">Screening Stages</p>
         </div>
         <div>
           {isLoading ? (
-            <div className="px-2 py-1 text-[10px] text-gray-400">Loading…</div>
+            <div className="px-2 py-[2px] text-[10px] text-gray-400">Loading…</div>
           ) : (stages ?? []).map((s) => (
             <div
               key={s.stage}
