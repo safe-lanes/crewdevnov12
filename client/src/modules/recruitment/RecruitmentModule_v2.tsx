@@ -82,7 +82,7 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
       onMouseLeave={handleMouseLeave}
     >
       <div className="px-2 py-[4px] border-b bg-[#f0f4f8]">
-        <p className="text-[9px] font-bold text-[#16569e] uppercase tracking-widest leading-none">Screening Stages</p>
+        <p className="text-[12px] font-bold text-[#16569e] uppercase tracking-widest leading-none">Screening Stages</p>
       </div>
       <div>
         {isLoading ? (
