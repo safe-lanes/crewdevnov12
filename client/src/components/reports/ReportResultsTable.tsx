@@ -169,14 +169,14 @@ export function ReportResultsTable({
       </div>
 
       {/* Footer */}
-      <div className="flex-shrink-0 border-t border-gray-200 bg-white px-3 py-2 flex items-center gap-2">
+      <div className="flex-shrink-0 border-t border-gray-200 bg-white px-3 py-2 flex items-center justify-end gap-2">
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={handleExportCsv}
           disabled={isLoading || columns.length === 0}
-          className="h-8 text-[#8798ad] text-xs border-[#e1e8ed]"
+          className="h-8"
           data-testid="button-report-export-csv"
         >
           <Download size={14} className="mr-1" />
@@ -188,7 +188,7 @@ export function ReportResultsTable({
           size="sm"
           onClick={handleExportXlsx}
           disabled={isLoading || columns.length === 0}
-          className="h-8 text-[#8798ad] text-xs border-[#e1e8ed]"
+          className="h-8"
           data-testid="button-report-export-xlsx"
         >
           <Download size={14} className="mr-1" />
@@ -200,7 +200,7 @@ export function ReportResultsTable({
           size="sm"
           onClick={() => gridApiRef.current?.setFilterModel(null)}
           disabled={!gridReady}
-          className="h-8 text-[#8798ad] text-xs border-[#e1e8ed]"
+          className="h-8"
           data-testid="button-report-clear-grid-filters"
         >
           Clear Filters
