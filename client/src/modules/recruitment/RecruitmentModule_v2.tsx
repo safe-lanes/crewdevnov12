@@ -67,25 +67,25 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
         side="left"
         align="start"
       >
-        <div className="px-2.5 py-1 border-b bg-[#f0f4f8]">
-          <p className="text-[10px] font-semibold text-[#16569e] uppercase tracking-wide">Screening Stages</p>
+        <div className="px-2 py-0.5 border-b bg-[#f0f4f8]">
+          <p className="text-[9px] font-bold text-[#16569e] uppercase tracking-widest leading-none py-0.5">Screening Stages</p>
         </div>
         <div>
           {isLoading ? (
-            <div className="px-2.5 py-1.5 text-[10px] text-gray-400">Loading…</div>
+            <div className="px-2 py-1 text-[10px] text-gray-400">Loading…</div>
           ) : (stages ?? []).map((s) => (
             <div
               key={s.stage}
-              className="flex items-center justify-between px-2.5 py-[3px] border-b last:border-b-0"
+              className="flex items-center justify-between px-2 py-[2px] border-b last:border-b-0"
               data-testid={`screening-stage-row-${recCanUuid}-${s.stage}`}
             >
-              <span className="text-[11px] text-gray-600 leading-tight">
+              <span className="text-[10px] text-gray-600 leading-none">
                 <span className="font-semibold text-gray-700">{s.stage}</span>
                 <span className="text-gray-400 mx-0.5">—</span>
                 {s.label}
               </span>
               <span
-                className={`text-[9px] font-semibold px-1.5 py-px rounded ml-1 shrink-0 ${
+                className={`text-[8px] font-bold px-1 py-[1px] rounded ml-1 shrink-0 uppercase tracking-wide ${
                   s.done
                     ? 'bg-green-100 text-green-700'
                     : 'bg-amber-50 text-amber-600'
