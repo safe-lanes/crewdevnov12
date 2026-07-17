@@ -85,6 +85,16 @@ type ResolvedRecord = {
   config: EntityConfig;
 };
 
+export type SkipCategory =
+  | "Invalid Path"
+  | "No Match"
+  | "Ambiguous Ref"
+  | "Duplicate"
+  | "Read Error"
+  | "Oversized"
+  | "Invalid Extension"
+  | "Store Error";
+
 export interface AttachmentImportResult {
   success: boolean;
   imported: number;
@@ -92,7 +102,7 @@ export interface AttachmentImportResult {
   recordsCovered: number;
   crewCovered: number;
   skippedCount: number;
-  skipped: { path: string; reason: string }[];
+  skipped: { path: string; reason: string; category: SkipCategory }[];
 }
 
 /**
@@ -192,12 +202,12 @@ export async function importAttachmentsZip(
     // path or one containing ".." is rejected outright.
     const segments = rawPath.split("/").map((s) => s.trim());
     if (segments.some((s) => s === "..")) {
-      skipped.push({ path: rawPath, reason: "Unsafe path (contains '..')." });
+      skipped.push({ path: rawPath, reason: "Unsafe path (contains '..').", category: "Invalid Path" });
       continue;
     }
     const clean = segments.filter((s) => s.length > 0 && s !== ".");
     if (clean.length < 3) {
-      skipped.push({ path: rawPath, reason: "Expected <Employee ID>/<Attachment Ref>/<file> folder layout." });
+      skipped.push({ path: rawPath, reason: "Expected <Employee ID>/<Attachment Ref>/<file> folder layout.", category: "Invalid Path" });
       continue;
     }
 
@@ -209,25 +219,25 @@ export async function importAttachmentsZip(
 
     const crew = crewByEmpNo.get(normalizeKey(empNoRaw));
     if (!crew) {
-      skipped.push({ path: rawPath, reason: `No crew member found with Employee ID "${empNoRaw}".` });
+      skipped.push({ path: rawPath, reason: `No crew member found with Employee ID "${empNoRaw}".`, category: "No Match" });
       continue;
     }
 
     const refKey = `${crew.crewUuid}::${normalizeKey(refRaw)}`;
     if (ambiguousRefs.has(refKey)) {
-      skipped.push({ path: rawPath, reason: `Attachment Ref "${refRaw}" matches more than one record for Employee ID "${empNoRaw}"; resolve the duplicate before importing.` });
+      skipped.push({ path: rawPath, reason: `Attachment Ref "${refRaw}" matches more than one record for Employee ID "${empNoRaw}"; resolve the duplicate before importing.`, category: "Ambiguous Ref" });
       continue;
     }
     const record = recordByCrewAndRef.get(refKey);
     if (!record) {
-      skipped.push({ path: rawPath, reason: `No record found with Attachment Ref "${refRaw}" for Employee ID "${empNoRaw}".` });
+      skipped.push({ path: rawPath, reason: `No record found with Attachment Ref "${refRaw}" for Employee ID "${empNoRaw}".`, category: "No Match" });
       continue;
     }
 
     // ---- Duplicate check: skip if this (parentUuid, fileName) already exists ----
     const dupKey = `${record.parentUuid}::${normalizeKey(fileName)}`;
     if (existingAttachments.has(dupKey)) {
-      skipped.push({ path: rawPath, reason: `A file named "${fileName}" is already attached to this record (Attachment Ref: "${refRaw}").` });
+      skipped.push({ path: rawPath, reason: `A file named "${fileName}" is already attached to this record (Attachment Ref: "${refRaw}").`, category: "Duplicate" });
       duplicates++;
       continue;
     }
@@ -236,7 +246,7 @@ export async function importAttachmentsZip(
     try {
       buffer = await entry.async("nodebuffer");
     } catch {
-      skipped.push({ path: rawPath, reason: "File could not be read from the ZIP." });
+      skipped.push({ path: rawPath, reason: "File could not be read from the ZIP.", category: "Read Error" });
       continue;
     }
 
@@ -246,7 +256,8 @@ export async function importAttachmentsZip(
       fileType = fileStorageService.validateAttachmentBuffer(buffer);
     } catch (err) {
       const reason = err instanceof AttachmentValidationError ? err.message : "File failed validation.";
-      skipped.push({ path: rawPath, reason });
+      const category: SkipCategory = reason.includes("exceeds") ? "Oversized" : "Invalid Extension";
+      skipped.push({ path: rawPath, reason, category });
       continue;
     }
 
@@ -258,7 +269,7 @@ export async function importAttachmentsZip(
         buffer,
       );
     } catch (err: any) {
-      skipped.push({ path: rawPath, reason: err?.message || "Failed to store file." });
+      skipped.push({ path: rawPath, reason: err?.message || "Failed to store file.", category: "Store Error" });
       continue;
     }
 
@@ -276,7 +287,7 @@ export async function importAttachmentsZip(
       // Roll back the just-written file so a failed insert does not leave an
       // orphaned artifact on disk; keep processing the rest of the ZIP.
       await fileStorageService.deleteAttachment(filePath).catch(() => {});
-      skipped.push({ path: rawPath, reason: err?.message || "Failed to save attachment record." });
+      skipped.push({ path: rawPath, reason: err?.message || "Failed to save attachment record.", category: "Store Error" });
       continue;
     }
     // Mark this (parentUuid, fileName) as now existing so a second occurrence of

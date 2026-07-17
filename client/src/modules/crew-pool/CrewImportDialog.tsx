@@ -237,22 +237,35 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
   // Download skipped-attachments report as a CSV
   const handleDownloadSkippedReport = () => {
     if (!attachResult?.skipped?.length) return;
-    const rows: string[] = ["File Path,Reason"];
-    for (const s of attachResult.skipped as { path: string; reason: string }[]) {
+    const rows: string[] = ["Category,File Path,Reason"];
+    for (const s of attachResult.skipped as { path: string; reason: string; category?: string }[]) {
+      const escapedCategory = `"${(s.category ?? "").replace(/"/g, '""')}"`;
       const escapedPath = `"${s.path.replace(/"/g, '""')}"`;
       const escapedReason = `"${s.reason.replace(/"/g, '""')}"`;
-      rows.push(`${escapedPath},${escapedReason}`);
+      rows.push(`${escapedCategory},${escapedPath},${escapedReason}`);
     }
     const csv = rows.join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "SAIL_Skipped_Attachments.csv";
+    a.download = `attachment-skip-report-${Date.now()}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
+  };
+
+  // Badge colour per skip category for inline list
+  const skipCategoryStyle = (category?: string): string => {
+    switch (category) {
+      case "Duplicate": return "bg-blue-100 text-blue-700";
+      case "Oversized": return "bg-red-100 text-red-700";
+      case "Invalid Extension": return "bg-red-100 text-red-700";
+      case "No Match": return "bg-amber-100 text-amber-700";
+      case "Ambiguous Ref": return "bg-amber-100 text-amber-700";
+      default: return "bg-gray-100 text-gray-600";
+    }
   };
 
   // Download Excel error report returned in base64
@@ -631,12 +644,19 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                     </Button>
                   </div>
                   <div className="max-h-48 overflow-y-auto border border-amber-100 rounded-lg divide-y divide-amber-50">
-                    {attachResult.skipped.map((s: { path: string; reason: string }, i: number) => (
+                    {attachResult.skipped.map((s: { path: string; reason: string; category?: string }, i: number) => (
                       <div key={i} className="p-2.5 text-xs" data-testid={`row-skipped-${i}`}>
                         <div className="flex items-start space-x-2">
                           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
-                          <div>
-                            <p className="font-mono text-gray-700 break-all">{s.path}</p>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              {s.category && (
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium flex-shrink-0 ${skipCategoryStyle(s.category)}`}>
+                                  {s.category}
+                                </span>
+                              )}
+                              <p className="font-mono text-gray-700 break-all">{s.path}</p>
+                            </div>
                             <p className="text-gray-500">{s.reason}</p>
                           </div>
                         </div>
