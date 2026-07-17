@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Download, Printer, Lock } from "lucide-react";
 import { ACCOUNTS_BASE } from "../api/accountsApiV2";
 import { formatDate, formatMoney } from "../accountsFormat";
-import VesselPeriodBar, { currentPeriod, formatPeriod } from "./VesselPeriodBar";
+import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
+import { useVesselPeriod } from "../vesselPeriodStore";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -25,8 +26,7 @@ export default function PortageBillPage() {
   const { canView } = usePermissions();
   void canView; // page-level access handled by AccountsModule
 
-  const [vesselUuid, setVesselUuid] = useState("");
-  const [period, setPeriod] = useState(currentPeriod());
+  const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
   const hasFilter = !!vesselUuid && !!period;
   const { getVesselName } = useVesselLookup();
 

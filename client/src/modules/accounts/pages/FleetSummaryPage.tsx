@@ -15,7 +15,8 @@ import {
 import { Download } from "lucide-react";
 import { ACCOUNTS_BASE } from "../api/accountsApiV2";
 import { formatMoney } from "../accountsFormat";
-import { currentPeriod, formatPeriod } from "./VesselPeriodBar";
+import { formatPeriod } from "./VesselPeriodBar";
+import { useVesselPeriod } from "../vesselPeriodStore";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 
 const ALL_VESSELS = "__all__";
@@ -46,7 +47,7 @@ interface FleetSummary {
 
 export default function FleetSummaryPage() {
   const [vesselUuid, setVesselUuid] = useState(ALL_VESSELS);
-  const [period, setPeriod] = useState(currentPeriod());
+  const { period, setPeriod } = useVesselPeriod();
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
 
   const vesselParam = vesselUuid === ALL_VESSELS ? "" : vesselUuid;

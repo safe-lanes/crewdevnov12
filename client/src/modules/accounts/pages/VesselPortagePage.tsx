@@ -38,7 +38,8 @@ import {
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
 import { formatDate, formatMoney } from "../accountsFormat";
-import VesselPeriodBar, { currentPeriod, formatPeriod } from "./VesselPeriodBar";
+import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
+import { useVesselPeriod } from "../vesselPeriodStore";
 
 const MENU = "Account Vessel Portage";
 
@@ -145,8 +146,7 @@ export default function VesselPortagePage() {
   const isVessel = userType === "Ship";
   const fixedVesselUuid = isVessel ? (getVesselIds()[0] ?? "") : "";
 
-  const [vesselUuid, setVesselUuid] = useState("");
-  const [period, setPeriod] = useState(currentPeriod());
+  const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
   useEffect(() => {
     if (isVessel && fixedVesselUuid) setVesselUuid(fixedVesselUuid);
   }, [isVessel, fixedVesselUuid]);

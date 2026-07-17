@@ -49,7 +49,8 @@ import {
 } from "../api/accountsApiV2";
 import { formatMoney } from "../accountsFormat";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
-import VesselPeriodBar, { currentPeriod, formatPeriod } from "./VesselPeriodBar";
+import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
+import { useVesselPeriod } from "../vesselPeriodStore";
 
 const MENU = "Account Cash & Bond";
 
@@ -1260,8 +1261,7 @@ function BondTab({
 
 export default function CashBondPage() {
   useVesselLookup(); // warm the vessel cache for the period bar
-  const [vesselUuid, setVesselUuid] = useState("");
-  const [period, setPeriod] = useState(currentPeriod());
+  const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
 
   return (
     <div className="p-4 space-y-4" data-testid="cash-bond-page">

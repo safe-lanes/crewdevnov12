@@ -44,7 +44,8 @@ import {
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
 import { formatDate, formatMoney } from "../accountsFormat";
-import VesselPeriodBar, { currentPeriod, formatPeriod } from "./VesselPeriodBar";
+import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
+import { useVesselPeriod } from "../vesselPeriodStore";
 
 const MENU = "Account Payroll Run";
 
@@ -169,8 +170,7 @@ export default function PayrollRunPage() {
   const { canEdit } = usePermissions();
   const mayEdit = canEdit(MENU);
 
-  const [vesselUuid, setVesselUuid] = useState("");
-  const [period, setPeriod] = useState(currentPeriod());
+  const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
   const hasFilter = !!vesselUuid && !!period;
 
   const reviewKey = [

@@ -40,7 +40,8 @@ import {
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
 import { formatMoney } from "../accountsFormat";
-import VesselPeriodBar, { currentPeriod, formatPeriod } from "./VesselPeriodBar";
+import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
+import { useVesselPeriod } from "../vesselPeriodStore";
 
 const MENU = "Account Monthly Transactions";
 
@@ -71,8 +72,7 @@ export default function MonthlyTransactionsPage() {
   const mayEdit = canEdit(MENU);
   const mayDelete = canDelete(MENU);
 
-  const [vesselUuid, setVesselUuid] = useState("");
-  const [period, setPeriod] = useState(currentPeriod());
+  const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
   const [originFilter, setOriginFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const hasFilter = !!vesselUuid && !!period;

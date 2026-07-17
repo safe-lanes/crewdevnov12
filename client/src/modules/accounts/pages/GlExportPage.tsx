@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Download, Scale } from "lucide-react";
 import { ACCOUNTS_BASE } from "../api/accountsApiV2";
 import { formatMoney } from "../accountsFormat";
-import VesselPeriodBar, { currentPeriod, formatPeriod } from "./VesselPeriodBar";
+import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
+import { useVesselPeriod } from "../vesselPeriodStore";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 
 interface GlExportRow {
@@ -37,8 +38,7 @@ interface GlExport {
 
 export default function GlExportPage() {
   const [, setLocation] = useLocation();
-  const [vesselUuid, setVesselUuid] = useState("");
-  const [period, setPeriod] = useState(currentPeriod());
+  const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
   const hasFilter = !!vesselUuid && !!period;
   const { getVesselName } = useVesselLookup();
 
