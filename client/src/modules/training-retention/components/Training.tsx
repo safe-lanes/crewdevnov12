@@ -865,7 +865,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
                   <SelectValue placeholder="Select user" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
-                  <SelectItem value="__none">— None —</SelectItem>
+                  <SelectItem value="__none">Select Person</SelectItem>
                   {form.identifiedByUuid &&
                     !users.some((u) => u.userUuid === form.identifiedByUuid) && row?.identifiedBy && (
                       <SelectItem value={form.identifiedByUuid}>{row.identifiedBy}</SelectItem>

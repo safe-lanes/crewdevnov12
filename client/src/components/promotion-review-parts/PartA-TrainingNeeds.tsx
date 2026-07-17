@@ -166,7 +166,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                         <SelectValue placeholder="Select user" />
                       </SelectTrigger>
                       <SelectContent className="max-h-[280px]">
-                        <SelectItem value="__none">— None —</SelectItem>
+                        <SelectItem value="__none">Select Person</SelectItem>
                         {users.map((u) => (
                           <SelectItem key={u.userUuid} value={u.userUuid}>{u.displayName}</SelectItem>
                         ))}
