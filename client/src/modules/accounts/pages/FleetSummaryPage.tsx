@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import AgGridTable from "@/components/AgGrid/AgGridTable";
@@ -46,9 +46,19 @@ interface FleetSummary {
 }
 
 export default function FleetSummaryPage() {
-  const [vesselUuid, setVesselUuid] = useState(ALL_VESSELS);
-  const { period, setPeriod } = useVesselPeriod();
+  const {
+    vesselUuid: sharedVesselUuid,
+    setVesselUuid: setSharedVesselUuid,
+    period,
+    setPeriod,
+  } = useVesselPeriod();
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
+
+  // Shared store keeps "" for "no specific vessel"; this page shows that as
+  // "All vessels". Picking a vessel here syncs it to the other screens.
+  const vesselUuid = sharedVesselUuid || ALL_VESSELS;
+  const setVesselUuid = (uuid: string) =>
+    setSharedVesselUuid(uuid === ALL_VESSELS ? "" : uuid);
 
   const vesselParam = vesselUuid === ALL_VESSELS ? "" : vesselUuid;
   const { data, isLoading } = useQuery<FleetSummary>({
