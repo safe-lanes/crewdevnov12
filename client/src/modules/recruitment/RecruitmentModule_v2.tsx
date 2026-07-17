@@ -52,11 +52,12 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
     if (triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
       const popupW = 228;
-      const popupH = 185; // header ~17px + 8 rows × ~21px
+      const popupH = 240; // header + 8 rows × ~26px + borders + buffer
       const left = r.left - popupW >= 4 ? r.left - popupW : r.right + 4;
       const rawTop = r.top;
-      const top = rawTop + popupH > window.innerHeight - 8
-        ? Math.max(8, window.innerHeight - popupH - 8)
+      const vh = document.documentElement.clientHeight;
+      const top = rawTop + popupH > vh - 8
+        ? Math.max(8, vh - popupH - 8)
         : rawTop;
       setPos({ top, left });
     }
