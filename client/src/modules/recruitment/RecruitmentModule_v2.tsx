@@ -63,7 +63,7 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
         </span>
       </HoverCardTrigger>
       <HoverCardContent
-        className="w-56 p-0 shadow-md"
+        className="w-56 p-0 shadow-md z-[9999]"
         side="left"
         align="start"
       >
@@ -76,7 +76,7 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
           ) : (stages ?? []).map((s) => (
             <div
               key={s.stage}
-              className="flex items-center justify-between px-2 py-[2px] border-b last:border-b-0"
+              className="flex items-center justify-between px-2 py-0 border-b last:border-b-0"
               data-testid={`screening-stage-row-${recCanUuid}-${s.stage}`}
             >
               <span className="text-[10px] text-gray-600 leading-none">
