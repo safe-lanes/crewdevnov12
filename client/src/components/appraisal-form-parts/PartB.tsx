@@ -119,7 +119,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                         const lockDelete = lockB1Structural || isAutoRow;
                         return (
                         <Fragment key={training.id}>
-                          <tr className="border-b border-gray-200 bg-white hover:bg-gray-50" data-testid={`row-training-${training.id}`}>
+                          <tr className={`${training.id in trainingComments && trainingComments[training.id] !== null ? "" : "border-b border-gray-200"} bg-white hover:bg-gray-50`} data-testid={`row-training-${training.id}`}>
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                             <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                               <Input
@@ -162,7 +162,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                             </td>
                           </tr>
                           {training.id in trainingComments && trainingComments[training.id] !== null && (
-                            <tr>
+                            <tr className="border-b border-gray-200">
                               <td></td>
                               <td colSpan={showEvaluation ? 2 : 1} className="p-3">
                                 {editingTrainingComment === training.id && !lockB1Structural ? (
@@ -237,7 +237,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                   <tbody className="bg-white">
                     {form.watch("targets").map((target, index) => (
                       <Fragment key={target.id}>
-                        <tr className="border-b border-gray-200 bg-white hover:bg-gray-50">
+                        <tr className={`${target.id in targetComments && targetComments[target.id] !== null ? "" : "border-b border-gray-200"} bg-white hover:bg-gray-50`}>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">{index + 1}.</td>
                           <td className="text-[#4f5863] text-[13px] font-normal py-2 px-4">
                             <Input
@@ -279,7 +279,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                           </td>
                         </tr>
                         {target.id in targetComments && targetComments[target.id] !== null && (
-                          <tr>
+                          <tr className="border-b border-gray-200">
                             <td></td>
                             <td colSpan={showEvaluation ? 2 : 1} className="p-3">
                               {editingTargetComment === target.id && !lockB2Structural ? (
