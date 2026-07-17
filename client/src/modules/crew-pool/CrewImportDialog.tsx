@@ -287,7 +287,11 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[550px] p-6">
+      <DialogContent
+        className="sm:max-w-[550px] p-6"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-semibold text-[#2c3e50]">
