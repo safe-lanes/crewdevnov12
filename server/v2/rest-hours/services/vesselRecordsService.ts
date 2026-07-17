@@ -98,7 +98,7 @@ function applyAuditUser<T extends object>(
   return result;
 }
 
-async function enrichVesselRecordsWithLiveCounts(
+export async function enrichVesselRecordsWithLiveCounts(
   records: RhVesselRecordV2[],
   complianceMode: 'Rest' | 'Work' = 'Rest',
   opaMode: boolean = false

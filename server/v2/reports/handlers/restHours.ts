@@ -7,6 +7,8 @@ import { masterVessels } from "../../../../shared/schema";
 import type { ReportHandler } from "../types";
 import type { ReportColumn } from "../../../../shared/v2/reports/types";
 import { dateFilter } from "./_shared";
+import { calculateVesselReviewStatus, calculateOfficeReviewStatus } from "../../rest-hours/utils/reviewStatusUtils";
+import { enrichVesselRecordsWithLiveCounts } from "../../rest-hours/services/vesselRecordsService";
 
 // month_value is text "YYYY-MM"; cast to a date for range filtering.
 const monthAsDate = sql`to_date(${rhCrewRecordsV2.monthValue} || '-01', 'YYYY-MM-DD')`;
@@ -159,8 +161,10 @@ export const restHourComplianceReport: ReportHandler<z.infer<typeof compFilters>
         recordingStatusPercent: rhVesselRecordsV2.recordingStatusPercent,
         totalViolations: rhVesselRecordsV2.totalViolations,
         totalNCs: rhVesselRecordsV2.totalNCs,
-        vesselReviewStatus: rhVesselRecordsV2.vesselReviewStatus,
-        officeReviewStatus: rhVesselRecordsV2.officeReviewStatus,
+        vesselId: rhVesselRecordsV2.vesselId,
+        rawMonth: rhVesselRecordsV2.monthValue,
+        vesselReviewSubmittedDate: rhVesselRecordsV2.vesselReviewSubmittedDate,
+        officeReviewSubmittedDate: rhVesselRecordsV2.officeReviewSubmittedDate,
       })
       .from(rhVesselRecordsV2)
       .leftJoin(masterVessels, eq(masterVessels.vesselUuid, rhVesselRecordsV2.vesselId))
@@ -169,18 +173,37 @@ export const restHourComplianceReport: ReportHandler<z.infer<typeof compFilters>
       .limit(ctx.pageSize)
       .offset((ctx.page - 1) * ctx.pageSize);
 
-    return {
-      total,
-      rows: rows.map((r: (typeof rows)[number]) => ({
-        vesselName: r.vesselName ?? null,
-        monthValue: r.monthValue ?? null,
+    // Reuse the same live-count enrichment the RH Overview uses so the
+    // report numbers always match the RH module (default Rest mode).
+    const enriched = await enrichVesselRecordsWithLiveCounts(
+      rows.map((r: (typeof rows)[number]) => ({
+        vesselId: r.vesselId,
+        monthValue: r.rawMonth,
         totalCrew: Number(r.totalCrew ?? 0),
         recordingStatusPercent: Number(r.recordingStatusPercent ?? 0),
         totalViolations: Number(r.totalViolations ?? 0),
         totalNCs: Number(r.totalNCs ?? 0),
-        vesselReviewStatus: r.vesselReviewStatus ?? null,
-        officeReviewStatus: r.officeReviewStatus ?? null,
-      })),
+      })) as any
+    );
+    const enrichedMap = new Map(
+      enriched.map(e => [`${e.vesselId}|${e.monthValue}`, e])
+    );
+
+    return {
+      total,
+      rows: rows.map((r: (typeof rows)[number]) => {
+        const e = enrichedMap.get(`${r.vesselId}|${r.rawMonth}`);
+        return {
+          vesselName: r.vesselName ?? null,
+          monthValue: r.monthValue ?? null,
+          totalCrew: Number(e?.totalCrew ?? r.totalCrew ?? 0),
+          recordingStatusPercent: Number(e?.recordingStatusPercent ?? r.recordingStatusPercent ?? 0),
+          totalViolations: Number(e?.totalViolations ?? r.totalViolations ?? 0),
+          totalNCs: Number(e?.totalNCs ?? r.totalNCs ?? 0),
+          vesselReviewStatus: calculateVesselReviewStatus(r.rawMonth, r.vesselReviewSubmittedDate),
+          officeReviewStatus: calculateOfficeReviewStatus(r.rawMonth, r.vesselReviewSubmittedDate, r.officeReviewSubmittedDate),
+        };
+      }),
     };
   },
 };
