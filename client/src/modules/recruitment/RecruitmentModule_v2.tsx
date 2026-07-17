@@ -82,7 +82,7 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
         ) : (stages ?? []).map((s) => (
           <div
             key={s.stage}
-            className="flex items-center justify-between px-2 py-[3px] border-b last:border-b-0"
+            className="flex items-center justify-between px-2 py-[5px] border-b last:border-b-0"
             data-testid={`screening-stage-row-${recCanUuid}-${s.stage}`}
           >
             <span className="text-[10px] text-gray-600 leading-none">
