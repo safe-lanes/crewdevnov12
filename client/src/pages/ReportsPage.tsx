@@ -882,9 +882,9 @@ function ReportsContent(): JSX.Element {
     runReportMutation.variables?.reportId === selectedReportId;
 
   return (
-    <div data-testid="page-reports">
+    <div data-testid="page-reports" className="flex flex-col h-full overflow-hidden">
       {/* Page title */}
-      <div className="mb-4">
+      <div className="mb-4 flex-shrink-0">
         <h1
           className="font-bold text-black text-2xl"
           data-testid="text-reports-title"
@@ -894,7 +894,7 @@ function ReportsContent(): JSX.Element {
       </div>
 
       {/* Search bar */}
-      <div className="mb-3">
+      <div className="mb-3 flex-shrink-0">
         <div className="relative max-w-full">
           <Search
             size={16}
@@ -911,7 +911,7 @@ function ReportsContent(): JSX.Element {
       </div>
 
       {/* Two-column area */}
-      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4 items-stretch flex-1 min-h-0">
         {/* LEFT: Tree panel */}
         <div
           className="bg-white border border-gray-200 rounded shadow-sm overflow-hidden"
@@ -1029,12 +1029,12 @@ function ReportsContent(): JSX.Element {
 
         {/* RIGHT: Detail panel */}
         <div
-          className="bg-white border border-gray-200 rounded shadow-sm min-h-[60vh] p-4"
+          className="bg-white border border-gray-200 rounded shadow-sm flex flex-col overflow-hidden"
           data-testid="panel-reports-detail"
         >
           {!selected ? (
             <div
-              className="flex flex-col items-center text-center justify-center min-h-[55vh]"
+              className="flex flex-col items-center text-center justify-center flex-1"
               data-testid="empty-reports"
             >
               <div className="w-14 h-14 rounded-full bg-[#eaf4fb] flex items-center justify-center mb-4">
@@ -1049,7 +1049,7 @@ function ReportsContent(): JSX.Element {
             </div>
           ) : selected.leaf.comingSoon ? (
             <div
-              className="flex flex-col items-center text-center justify-center min-h-[55vh]"
+              className="flex flex-col items-center text-center justify-center flex-1"
               data-testid="text-reports-coming-soon"
             >
               <div className="w-14 h-14 rounded-full bg-[#eaf4fb] flex items-center justify-center mb-4">
@@ -1058,9 +1058,9 @@ function ReportsContent(): JSX.Element {
               <div className="text-base font-semibold text-gray-800">Coming Soon</div>
             </div>
           ) : (
-            <div className="flex flex-col gap-3" data-testid="detail-reports-selected">
+            <div className="flex flex-col gap-3 flex-1 min-h-0" data-testid="detail-reports-selected">
               {/* Heading */}
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-2 flex-shrink-0 px-4 pt-4">
                 <div
                   className="text-lg font-bold text-gray-800"
                   data-testid="text-reports-selected-label"
@@ -1073,7 +1073,7 @@ function ReportsContent(): JSX.Element {
               </div>
 
               {/* Filter row */}
-              <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded">
+              <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded flex-shrink-0 mx-4">
                 {selectedFilters.map((f, idx) => (
                   <FilterControl
                     key={`${selected.leaf.id}-${idx}-${clearCounter}`}
@@ -1108,32 +1108,34 @@ function ReportsContent(): JSX.Element {
               </div>
 
               {/* Results area */}
-              {currentResult ? (
-                <ReportResultsTable
-                  title={currentResult.title}
-                  columns={currentResult.columns}
-                  rows={currentResult.rows}
-                  total={currentResult.total}
-                  isLoading={isRunningCurrent && !currentResult}
-                  isFetching={isRunningCurrent}
-                  exportFilename={currentResult.title}
-                />
-              ) : isRunningCurrent ? (
-                <ReportResultsTable
-                  title={selected.leaf.label}
-                  columns={[]}
-                  rows={[]}
-                  total={0}
-                  isLoading
-                />
-              ) : (
-                <div
-                  className="text-sm text-gray-500 text-center py-12 border border-dashed border-gray-200 rounded"
-                  data-testid="text-reports-results-placeholder"
-                >
-                  Set the filters above and click Generate to view the report.
-                </div>
-              )}
+              <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-4 pb-0">
+                {currentResult ? (
+                  <ReportResultsTable
+                    title={currentResult.title}
+                    columns={currentResult.columns}
+                    rows={currentResult.rows}
+                    total={currentResult.total}
+                    isLoading={isRunningCurrent && !currentResult}
+                    isFetching={isRunningCurrent}
+                    exportFilename={currentResult.title}
+                  />
+                ) : isRunningCurrent ? (
+                  <ReportResultsTable
+                    title={selected.leaf.label}
+                    columns={[]}
+                    rows={[]}
+                    total={0}
+                    isLoading
+                  />
+                ) : (
+                  <div
+                    className="text-sm text-gray-500 text-center py-12 border border-dashed border-gray-200 rounded"
+                    data-testid="text-reports-results-placeholder"
+                  >
+                    Set the filters above and click Generate to view the report.
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Download } from "lucide-react";
-import type { ColDef } from "ag-grid-community";
+import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { Button } from "@/components/ui/button";
 import { AgGridTable } from "@/components/AgGrid/AgGridTable";
 import { downloadCsv, rowsToCsv } from "@/lib/csvExport";
@@ -47,6 +47,8 @@ export function ReportResultsTable({
   isFetching,
   exportFilename,
 }: ReportResultsTableProps): JSX.Element {
+  const gridApiRef = useRef<GridApi | null>(null);
+  const [gridReady, setGridReady] = useState(false);
   const exportColumns = columns.map((c) => ({ key: c.key, label: c.label }));
   const baseFilename = (exportFilename || title || "report")
     .toLowerCase()
@@ -107,7 +109,7 @@ export function ReportResultsTable({
   );
 
   return (
-    <div className="border border-gray-200 rounded bg-white" data-testid="report-results-table">
+    <div className="border border-gray-200 rounded bg-white flex flex-col h-full" data-testid="report-results-table">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-200 bg-gray-50">
         <div className="text-sm text-gray-700" data-testid="text-report-result-summary">
@@ -127,30 +129,6 @@ export function ReportResultsTable({
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleExportCsv}
-            disabled={isLoading || columns.length === 0}
-            className="h-8"
-            data-testid="button-report-export-csv"
-          >
-            <Download size={14} className="mr-1" />
-            Export CSV
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleExportXlsx}
-            disabled={isLoading || columns.length === 0}
-            className="h-8"
-            data-testid="button-report-export-xlsx"
-          >
-            <Download size={14} className="mr-1" />
-            Export Excel
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
             onClick={handleExportPdf}
             disabled={isLoading || columns.length === 0}
             className="h-8"
@@ -163,7 +141,10 @@ export function ReportResultsTable({
       </div>
 
       {/* Grid */}
-      <div className={isFetching ? "opacity-60" : ""} data-testid="table-report-results">
+      <div
+        className={`flex-1 min-h-0 overflow-hidden ${isFetching ? "opacity-60" : ""}`}
+        data-testid="table-report-results"
+      >
         <AgGridTable
           rowData={rows}
           columnDefs={columnDefs}
@@ -173,13 +154,57 @@ export function ReportResultsTable({
           enableStatusBar={false}
           enableSideBar={false}
           enablePivoting={false}
-          height="500px"
+          height="100%"
+          onGridReady={(event: GridReadyEvent) => {
+            gridApiRef.current = event.api;
+            setGridReady(true);
+          }}
           gridOptions={{
+            domLayout: "normal",
             overlayNoRowsTemplate:
               '<span class="text-gray-500">No data matches the selected filters.</span>',
             paginationPageSizeSelector: [25, 50, 100, 200],
           }}
         />
+      </div>
+
+      {/* Footer */}
+      <div className="flex-shrink-0 border-t border-gray-200 bg-white px-3 py-2 flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleExportCsv}
+          disabled={isLoading || columns.length === 0}
+          className="h-8 text-[#8798ad] text-xs border-[#e1e8ed]"
+          data-testid="button-report-export-csv"
+        >
+          <Download size={14} className="mr-1" />
+          Export CSV
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleExportXlsx}
+          disabled={isLoading || columns.length === 0}
+          className="h-8 text-[#8798ad] text-xs border-[#e1e8ed]"
+          data-testid="button-report-export-xlsx"
+        >
+          <Download size={14} className="mr-1" />
+          Export Excel
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => gridApiRef.current?.setFilterModel(null)}
+          disabled={!gridReady}
+          className="h-8 text-[#8798ad] text-xs border-[#e1e8ed]"
+          data-testid="button-report-clear-grid-filters"
+        >
+          Clear Filters
+        </Button>
       </div>
     </div>
   );
