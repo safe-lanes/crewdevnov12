@@ -590,6 +590,7 @@ export default function PayrollRunPage() {
                 size="icon"
                 variant="ghost"
                 className="h-7 w-7"
+                title="Edit engagement / wage scale"
                 onClick={() => openAnchor(p.data)}
                 data-testid={`button-edit-engagement-${p.data.crewUuid}`}
               >
@@ -599,6 +600,7 @@ export default function PayrollRunPage() {
                 size="icon"
                 variant="ghost"
                 className="h-7 w-7"
+                title="Payment timing overrides"
                 onClick={() => openTiming(p.data)}
                 data-testid={`button-timing-${p.data.crewUuid}`}
               >
@@ -730,6 +732,7 @@ export default function PayrollRunPage() {
             size="icon"
             variant="ghost"
             className="h-7 w-7"
+            title="View wage breakdown"
             onClick={() => setDrillCrewUuid(p.data.crewUuid)}
             data-testid={`button-drilldown-${p.data.crewUuid}`}
           >
