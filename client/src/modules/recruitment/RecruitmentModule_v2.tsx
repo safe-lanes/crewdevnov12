@@ -65,7 +65,7 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
       <HoverCardContent
         className="w-56 p-0 shadow-md"
         side="left"
-        align="center"
+        align="start"
       >
         <div className="px-2 py-[3px] border-b bg-[#f0f4f8]">
           <p className="text-[9px] font-bold text-[#16569e] uppercase tracking-widest leading-none">Screening Stages</p>
