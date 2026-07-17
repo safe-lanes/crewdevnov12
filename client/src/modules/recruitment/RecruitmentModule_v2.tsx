@@ -63,7 +63,8 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
         </span>
       </HoverCardTrigger>
       <HoverCardContent
-        className="w-56 p-0 shadow-md z-[9999]"
+        className="w-56 p-0 shadow-md"
+        style={{ zIndex: 9999 }}
         side="left"
         align="start"
       >
