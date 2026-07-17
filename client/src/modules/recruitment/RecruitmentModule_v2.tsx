@@ -36,14 +36,23 @@ export { STATUS_MAPPING, RECRUITED_STATUSES } from './statusBuckets';
 function ScreeningStatusCellRenderer(params: ICellRendererParams) {
   const recCanUuid: string | null = params.data?.recCanUuid ?? null;
   const isScreening = params.value === 'Screening';
-  const { data: stages, isLoading } = useV2ScreeningStagesSummary(isScreening ? recCanUuid : null);
+  // Track whether the card has ever been opened so the query fires lazily
+  // on first hover, not at row render time.
+  const [requested, setRequested] = useState(false);
+  const { data: stages, isLoading } = useV2ScreeningStagesSummary(
+    requested && isScreening ? recCanUuid : null
+  );
 
   if (!isScreening) {
     return <span style={{ fontSize: 'inherit', color: 'inherit' }}>{params.value || ''}</span>;
   }
 
   return (
-    <HoverCard openDelay={200} closeDelay={100}>
+    <HoverCard
+      openDelay={200}
+      closeDelay={100}
+      onOpenChange={(open) => { if (open && !requested) setRequested(true); }}
+    >
       <HoverCardTrigger asChild>
         <span
           data-testid={`screening-status-trigger-${recCanUuid}`}
