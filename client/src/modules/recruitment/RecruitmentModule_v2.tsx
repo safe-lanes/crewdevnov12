@@ -51,7 +51,14 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
     if (!requested) setRequested(true);
     if (triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
-      setPos({ top: r.top, left: r.left - 228 });
+      const popupW = 228;
+      const popupH = 185; // header ~17px + 8 rows × ~21px
+      const left = r.left - popupW >= 4 ? r.left - popupW : r.right + 4;
+      const rawTop = r.top;
+      const top = rawTop + popupH > window.innerHeight - 8
+        ? Math.max(8, window.innerHeight - popupH - 8)
+        : rawTop;
+      setPos({ top, left });
     }
     setOpen(true);
   };
@@ -73,7 +80,7 @@ function ScreeningStatusCellRenderer(params: ICellRendererParams) {
       onMouseEnter={() => { if (closeTimer.current) clearTimeout(closeTimer.current); }}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="px-2 py-[3px] border-b bg-[#f0f4f8]">
+      <div className="px-2 py-[4px] border-b bg-[#f0f4f8]">
         <p className="text-[9px] font-bold text-[#16569e] uppercase tracking-widest leading-none">Screening Stages</p>
       </div>
       <div>
