@@ -184,7 +184,7 @@ export async function importAttachmentsZip(
     }
   }
 
-  const skipped: { path: string; reason: string }[] = [];
+  const skipped: { path: string; reason: string; category: SkipCategory }[] = [];
   let imported = 0;
   let duplicates = 0;
   // Distinct parent records and crew that received at least one attachment.
