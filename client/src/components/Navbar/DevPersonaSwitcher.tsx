@@ -104,19 +104,19 @@ export default function DevPersonaSwitcher() {
   return (
     <div className="relative flex items-center" ref={ref}>
       <button
-        className="relative flex items-center gap-1.5 h-9 px-2.5 rounded-md border border-dashed border-amber-500 bg-amber-50 text-amber-800 text-xs font-medium hover:bg-amber-100 transition-colors"
+        className="relative p-2 text-gray-600 hover:text-gray-900 focus:outline-none rounded-full hover:bg-gray-200 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
         data-testid="button-dev-persona"
         aria-label="Dev persona switcher"
-        title="Dev-only persona switcher (VITE_AUTH_BYPASS)"
+        title={`Logged in as: ${triggerLabel} (dev)`}
       >
-        <UserCog size={16} />
-        <span className="hidden sm:inline max-w-[160px] truncate" data-testid="text-dev-persona-current">
-          {triggerLabel}
-        </span>
-        <span className="text-[9px] font-bold bg-amber-500 text-white rounded px-1 py-[1px] leading-none">
-          DEV
-        </span>
+        <UserCog size={22} />
+        {active && (
+          <span
+            className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full"
+            data-testid="indicator-dev-persona-active"
+          />
+        )}
       </button>
 
       {isOpen && (
