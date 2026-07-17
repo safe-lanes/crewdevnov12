@@ -164,7 +164,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                           {training.id in trainingComments && trainingComments[training.id] !== null && (
                             <tr>
                               <td></td>
-                              <td colSpan={3} className="p-3">
+                              <td colSpan={showEvaluation ? 3 : 2} className="p-3">
                                 {editingTrainingComment === training.id && !lockB1Structural ? (
                                   <Textarea
                                     value={trainingComments[training.id] ?? ""}
@@ -280,7 +280,7 @@ const PartBComponent: React.FC<PartBProps> = ({
                         {target.id in targetComments && targetComments[target.id] !== null && (
                           <tr>
                             <td></td>
-                            <td colSpan={3} className="p-3">
+                            <td colSpan={showEvaluation ? 3 : 2} className="p-3">
                               {editingTargetComment === target.id && !lockB2Structural ? (
                                 <Textarea
                                   value={targetComments[target.id] ?? ""}
