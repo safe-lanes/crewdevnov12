@@ -326,6 +326,7 @@ export const crewNotForRehireReport: ReportHandler<z.infer<typeof nfrFilters>> =
     const conds: SQL[] = [
       eq(crewMembersV2.isDeleted, false),
       eq(crewMembersV2.notForHire, true),
+      eq(crewMembersV2.status, "Terminated"),
     ];
     if (filters.rank) conds.push(eq(crewMembersV2.presentRank, filters.rank));
     if (filters.nationality) conds.push(eq(masterNationalities.nationality, filters.nationality));
