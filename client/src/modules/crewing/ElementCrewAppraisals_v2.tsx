@@ -62,6 +62,7 @@ interface CrewAppraisalData {
   appraisalType: string;
   appraisalDate: string;
   status: string;
+  isTerminated?: boolean;
   competenceRating: { value: string; color: string };
   behavioralRating: { value: string; color: string };
   overallRating: { value: string; color: string };
@@ -483,6 +484,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
         appraisalType: appraisal.appraisalType || appraisalData.appraisalType || "",
         appraisalDate: appraisal.appraisalDate || "",
         status: appraisal.status || "draft",
+        isTerminated: ((crew?.status as string) || '').startsWith('Terminated'),
         competenceRating: {
           value: appraisal.competenceRating || "N/A",
           color: appraisal.competenceRating ? getRatingColor(appraisal.competenceRating) : "bg-gray-400 text-white",
@@ -533,6 +535,12 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
       // Only show crew members who have at least Stage 1 submitted (status: Preliminary, Submitted, or Reviewed)
       const status = crew.status.toLowerCase();
       if (!['preliminary', 'submitted', 'reviewed'].includes(status)) {
+        return false;
+      }
+
+      // Terminated crew: only fully completed appraisals (Part G submitted,
+      // status 'reviewed') remain visible for history.
+      if (crew.isTerminated && status !== 'reviewed') {
         return false;
       }
       

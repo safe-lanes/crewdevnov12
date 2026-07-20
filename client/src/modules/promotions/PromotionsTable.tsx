@@ -586,6 +586,10 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       const normalizedRank = normalizeRank(currentRank);
       const crewId = crew.empNo || crew.id;
 
+      // Terminated crew: only their Completed promotion records stay visible
+      // (history); draft / in-progress / submitted / approved rows are hidden.
+      const isTerminated = (crew.status || '').startsWith('Terminated');
+
       const { nextRank } = findNextPromotionRank(normalizedRank, hierarchies);
 
       // 1. Active promotion row: the crew's current rank → next rank. Only
@@ -594,7 +598,9 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       if (shouldShowInPromotionsTable(normalizedRank, hierarchies)) {
         const activeReview = reviewLookup.get(`${crewId}__${nextRank}`);
         activeReviewUuid = activeReview?.reviewUuid ?? null;
-        rows.push(buildRow(crew, currentRank, nextRank, activeReview));
+        if (!isTerminated || normalizePromotionStatus(activeReview?.status) === 'Completed') {
+          rows.push(buildRow(crew, currentRank, nextRank, activeReview));
+        }
       }
 
       // 2. Historical rows: completed/executed promotions that are no longer

@@ -519,6 +519,7 @@ export class PromotionReviewsService {
         db.select({
           empNo: crewMembersV2.empNo,
           presentRank: crewMembersV2.presentRank,
+          status: crewMembersV2.status,
         })
         .from(crewMembersV2)
         .where(
@@ -545,6 +546,8 @@ export class PromotionReviewsService {
       const reviewsToCreate: { crewMemberId: string; promotionToRank: string }[] = [];
 
       for (const crew of v2CrewMembers) {
+        // Never auto-create promotion reviews for terminated crew.
+        if ((crew.status || '').startsWith('Terminated')) continue;
         const currentRank = crew.presentRank || '';
         if (!currentRank || !ranksInHierarchies.has(currentRank)) continue;
         const nextRank = findNextPromotionRank(currentRank, hierarchies);
