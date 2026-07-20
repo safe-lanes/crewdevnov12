@@ -108,6 +108,17 @@ export default function SettlementsPage() {
   const listKey = [`${ACCOUNTS_BASE}/settlements`];
   const detailKey = [`${ACCOUNTS_BASE}/settlements/${selectedUuid}`];
 
+  const { data: companyRanks = [] } = useQuery<any[]>({
+    queryKey: ["/api/v2/admin/company-ranks"],
+  });
+  const rankNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of companyRanks) m.set(r.rankId, r.rank);
+    return m;
+  }, [companyRanks]);
+  const rankLabel = (rankId: string | null | undefined) =>
+    rankId ? (rankNameById.get(rankId) ?? rankId) : "";
+
   const { data: listData, isLoading: listLoading } = useQuery<any>({
     queryKey: listKey,
   });
@@ -173,7 +184,10 @@ export default function SettlementsPage() {
       {
         headerName: "Rank",
         field: "rankIdAtStart",
-        width: 90,
+        width: 110,
+        valueFormatter: (p) =>
+          p.value ? (rankNameById.get(p.value) ?? p.value) : "",
+        tooltipValueGetter: (p) => p.data?.rankIdAtStart ?? "",
       },
       {
         headerName: "Vessel",
@@ -249,7 +263,7 @@ export default function SettlementsPage() {
         valueFormatter: (p) => (p.value ? formatDate(p.value) : ""),
       },
     ],
-    [getVesselName],
+    [getVesselName, rankNameById],
   );
 
   const refresh = (uuid?: string | null) => {
@@ -504,7 +518,7 @@ export default function SettlementsPage() {
                     <div className="font-medium">
                       {e.crewName ?? e.crewUuid}{" "}
                       <span className="text-muted-foreground font-normal">
-                        · {e.rankIdAtStart ?? ""}
+                        · {rankLabel(e.rankIdAtStart)}
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground">
@@ -667,7 +681,7 @@ export default function SettlementsPage() {
               <span className="font-medium text-foreground">
                 {detail?.crewName ?? s.crewUuid}
               </span>{" "}
-              · {engagement?.rankIdAtStart ?? ""} ·{" "}
+              · {rankLabel(engagement?.rankIdAtStart)} ·{" "}
               {engagement?.vesselUuid
                 ? getVesselName(engagement.vesselUuid) ?? engagement.vesselUuid
                 : ""}{" "}

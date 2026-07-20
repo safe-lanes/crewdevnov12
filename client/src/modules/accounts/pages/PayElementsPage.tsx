@@ -558,13 +558,36 @@ export default function PayElementsPage() {
               />
               <Label>Prorate for partial months</Label>
             </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={form.nationalityConditional}
-                onCheckedChange={(c) => set("nationalityConditional", c)}
-                data-testid="switch-element-nationality-conditional"
-              />
-              <Label>Nationality conditional</Label>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.nationalityConditional}
+                  onCheckedChange={(c) => set("nationalityConditional", c)}
+                  data-testid="switch-element-nationality-conditional"
+                />
+                <Label>Nationality conditional</Label>
+              </div>
+              <p
+                className="text-xs text-muted-foreground"
+                data-testid="text-nationality-conditional-help"
+              >
+                Use only for elements that legally apply to certain
+                nationalities (e.g. provident funds, SSS). Do NOT use this to
+                vary wage amounts by nationality — use nationality variants on
+                the wage scale for that.
+              </p>
+              {form.nationalityConditional &&
+                ["basic", "overtime_fixed", "overtime_variable"].includes(
+                  form.category,
+                ) && (
+                  <p
+                    className="text-xs text-amber-600"
+                    data-testid="text-nationality-conditional-caution"
+                  >
+                    Core wage elements are rarely nationality-conditional —
+                    most crew will earn nothing for this element.
+                  </p>
+                )}
             </div>
             <div className="flex items-center gap-2">
               <Switch

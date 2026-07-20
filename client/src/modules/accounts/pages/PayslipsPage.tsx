@@ -80,11 +80,13 @@ function SectionTable({
   note,
   lines,
   testId,
+  rankLabel,
 }: {
   title: string;
   note?: string;
   lines: PayslipLine[];
   testId: string;
+  rankLabel: (rankId: string | null) => string | null;
 }) {
   if (lines.length === 0) return null;
   const subtotal = lines.reduce((s, l) => s + Number(l.amount || 0), 0);
@@ -117,7 +119,10 @@ function SectionTable({
                   : ""}
                 {l.isAdjustment ? " — adjustment" : ""}
                 {l.rankId ? (
-                  <span className="text-slate-400"> · {l.rankId}</span>
+                  <span className="text-slate-400" title={l.rankId}>
+                    {" "}
+                    · {rankLabel(l.rankId)}
+                  </span>
                 ) : null}
               </td>
               <td>
@@ -147,7 +152,15 @@ function SectionTable({
   );
 }
 
-function PayslipStatement({ p, pageBreak }: { p: Payslip; pageBreak: boolean }) {
+function PayslipStatement({
+  p,
+  pageBreak,
+  rankLabel,
+}: {
+  p: Payslip;
+  pageBreak: boolean;
+  rankLabel: (rankId: string | null) => string | null;
+}) {
   return (
     <div
       className={`payslip-statement relative bg-white border rounded-md mb-6 ${
@@ -173,7 +186,9 @@ function PayslipStatement({ p, pageBreak }: { p: Payslip; pageBreak: boolean }) 
                 <div className="flex justify-between text-sm font-semibold text-[#0f172a]">
                   <span data-testid={`text-payslip-crew-${p.crewUuid}`}>
                     {p.crewName}
-                    {p.rankId ? ` · ${p.rankId}` : ""}
+                    {p.rankId ? (
+                      <span title={p.rankId}> · {rankLabel(p.rankId)}</span>
+                    ) : null}
                   </span>
                   <span>Monthly Wage Account — {formatPeriod(p.period)}</span>
                 </div>
@@ -233,23 +248,27 @@ function PayslipStatement({ p, pageBreak }: { p: Payslip; pageBreak: boolean }) 
                   title="Earnings (paid on board)"
                   lines={p.sections.earnings}
                   testId={`section-earnings-${p.crewUuid}`}
+                  rankLabel={rankLabel}
                 />
                 <SectionTable
                   title="Deductions"
                   lines={p.sections.deductions}
                   testId={`section-deductions-${p.crewUuid}`}
+                  rankLabel={rankLabel}
                 />
                 <SectionTable
                   title="Settlement accruals"
                   note="Accrued for final settlement — not payable on board this month"
                   lines={p.sections.settlementAccruals}
                   testId={`section-accruals-${p.crewUuid}`}
+                  rankLabel={rankLabel}
                 />
                 <SectionTable
                   title="Fund remittances"
                   note="Remitted by the employer — not payable to seafarer"
                   lines={p.sections.fundRemittances}
                   testId={`section-fund-${p.crewUuid}`}
+                  rankLabel={rankLabel}
                 />
 
                 <div className="grid grid-cols-3 gap-6 border-t pt-3 text-xs">
@@ -354,6 +373,17 @@ export default function PayslipsPage() {
   });
   const payslips = data?.payslips ?? [];
 
+  const { data: companyRanks = [] } = useQuery<any[]>({
+    queryKey: ["/api/v2/admin/company-ranks"],
+  });
+  const rankNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of companyRanks) m.set(r.rankId, r.rank);
+    return m;
+  }, [companyRanks]);
+  const rankLabel = (rankId: string | null) =>
+    rankId ? (rankNameById.get(rankId) ?? rankId) : null;
+
   // Isolate the statement area when the browser prints.
   useEffect(() => {
     if (view.mode === "list") return;
@@ -399,7 +429,14 @@ export default function PayslipsPage() {
     });
     return [
       { headerName: "Crew", field: "crewName", pinned: "left", width: 180 },
-      { headerName: "Rank", field: "rankId", width: 90 },
+      {
+        headerName: "Rank",
+        field: "rankId",
+        width: 110,
+        valueFormatter: (p) =>
+          p.value ? (rankNameById.get(p.value) ?? p.value) : "",
+        tooltipValueGetter: (p) => p.data?.rankId ?? "",
+      },
       {
         headerName: "Days",
         field: "daysServed",
@@ -441,7 +478,7 @@ export default function PayslipsPage() {
         ),
       },
     ];
-  }, []);
+  }, [rankNameById]);
 
   const rows = useMemo(
     () =>
@@ -589,7 +626,12 @@ export default function PayslipsPage() {
           </div>
           <div className="payslip-print-area max-w-4xl">
             {shown.map((p, i) => (
-              <PayslipStatement key={p.engagementUuid} p={p} pageBreak={i > 0} />
+              <PayslipStatement
+                key={p.engagementUuid}
+                p={p}
+                pageBreak={i > 0}
+                rankLabel={rankLabel}
+              />
             ))}
           </div>
         </>

@@ -194,6 +194,9 @@ export default function PayrollRunPage() {
   const { data: wageScales = [] } = useQuery<any[]>({
     queryKey: [`${ACCOUNTS_BASE}/wage-scales`],
   });
+  const { data: companyRanks = [] } = useQuery<any[]>({
+    queryKey: ["/api/v2/admin/company-ranks"],
+  });
   const auditKey = [`${ACCOUNTS_BASE}/engagements/audit`];
   const { data: auditGroups = [] } = useQuery<any[]>({
     queryKey: auditKey,
@@ -243,6 +246,12 @@ export default function PayrollRunPage() {
     for (const e of payElements) m.set(e.payElementUuid, e);
     return m;
   }, [payElements]);
+
+  const rankNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of companyRanks) m.set(r.rankId, r.rank);
+    return m;
+  }, [companyRanks]);
 
   // ---- last run warnings (session result, else persisted on the run row) ----
   // Session warnings are strings ("<engagementUuid>: <message>"); persisted
@@ -651,7 +660,14 @@ export default function PayrollRunPage() {
         valueGetter: (p) =>
           crewByUuid.get(p.data.crewUuid)?.crewName ?? p.data.crewUuid,
       },
-      { headerName: "Rank", field: "rankId", width: 90 },
+      {
+        headerName: "Rank",
+        field: "rankId",
+        width: 110,
+        valueFormatter: (p) =>
+          p.value ? (rankNameById.get(p.value) ?? p.value) : "",
+        tooltipValueGetter: (p) => p.data?.rankId ?? "",
+      },
       {
         headerName: "Balance B/F",
         field: "balanceBf",
@@ -741,7 +757,7 @@ export default function PayrollRunPage() {
         ),
       },
     ],
-    [crewByUuid],
+    [crewByUuid, rankNameById],
   );
 
   const visibleApprovals = approvals.filter((a) => !a.isDeleted);

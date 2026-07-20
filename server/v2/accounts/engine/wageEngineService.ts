@@ -1357,20 +1357,34 @@ function calcEngagement(
     });
   }
 
-  // Safety net (spec Prompt 04): an engagement in service that resolves to
-  // zero ledger lines must be surfaced as a skip reason, never a silent
-  // green run (e.g. rank has no lines on the assigned scale).
-  if (lines.length === 0 && errors.length === 0) {
+  // Safety net (spec Prompt 04, extended Task 144): a served period that
+  // resolves ZERO scale-sourced wage lines must be surfaced as a diagnostic,
+  // never a silent green run — even when transaction/allotment/advance
+  // deduction lines still post (e.g. every scale element fell to the
+  // nationality_conditional gate).
+  const hasWageLines = lines.some(
+    (l) => l.sourceType === "scale" || l.sourceType === "engagement_override",
+  );
+  if (!hasWageLines && errors.length === 0) {
+    // Diagnose against the effective segment context (rank/scale/year as of
+    // the last served segment), not the engagement start anchors — a mid-month
+    // promotion or scale supersession must name the rank/scale actually used.
+    const diagState = [...states].reverse().find((s) => s.days > 0) ?? lastState;
     const scaleLines = (
-      ctx.scaleLinesByScale.get(engagement.wageScaleUuid!) ?? []
-    ).filter((l) => l.rankId === engagement.rankIdAtStart);
-    warnings.push({
-      code: "engagement_skipped",
-      message:
-        scaleLines.length === 0
-          ? `skipped: no scale lines for rank ${engagement.rankIdAtStart} on the assigned wage scale`
-          : `skipped: ${diagnoseSkip(ctx, engagement, scaleLines)}`,
-    });
+      ctx.scaleLinesByScale.get(diagState.scaleUuid) ?? []
+    ).filter((l) => l.rankId === diagState.rankId);
+    const detail =
+      scaleLines.length === 0
+        ? `no scale lines for rank ${diagState.rankId} on the assigned wage scale`
+        : diagnoseSkip(ctx, engagement, scaleLines, diagState);
+    warnings.push(
+      lines.length === 0
+        ? { code: "engagement_skipped", message: `skipped: ${detail}` }
+        : {
+            code: "no_scale_wages",
+            message: `no scale wages posted (other lines posted): ${detail}`,
+          },
+    );
   }
 
   // Negative net (Prompt 07 follow-up): a crew-month whose deductions exceed the
@@ -1396,8 +1410,9 @@ function diagnoseSkip(
   ctx: CalcContext,
   engagement: AccEngagementV2,
   scaleLines: AccWageScaleLineV2[],
+  state?: { rankId: string | null; scaleYear: number },
 ): string {
-  const rank = engagement.rankIdAtStart;
+  const rank = state?.rankId ?? engagement.rankIdAtStart;
   const crewNat = ctx.nationalityByCrew.get(engagement.crewUuid) ?? null;
   const natName = (uuid: string | null) =>
     uuid == null ? "any" : (ctx.nationalityNames.get(uuid) ?? uuid);
@@ -1422,7 +1437,7 @@ function diagnoseSkip(
   }
 
   // Scale-year / experience-band dimension.
-  const scaleYear = engagement.scaleYearAtStart ?? 1;
+  const scaleYear = state?.scaleYear ?? engagement.scaleYearAtStart ?? 1;
   const months = (scaleYear - 1) * 12;
   const inBand = pool.filter(
     (l) =>
@@ -1439,6 +1454,28 @@ function diagnoseSkip(
       ? null
       : Math.max(...years.map((y) => y.max!));
     return `no scale line for rank ${rank} matching scale year ${scaleYear} (lines cover years ${minYear}–${maxYear ?? "open"})`;
+  }
+
+  // Nationality-conditional element gate (Task 144): scale lines matched the
+  // crew member on every line dimension, but every surviving element was
+  // removed by the nationality_conditional gate on the pay element itself.
+  const inBandElements = Array.from(
+    new Set(inBand.map((l) => l.payElementUuid)),
+  )
+    .map((uuid) => ctx.elements.get(uuid))
+    .filter((el): el is NonNullable<typeof el> => el != null);
+  const gatedElements = inBandElements.filter(
+    (el) =>
+      el.nationalityConditional &&
+      (!crewNat || !(el.applicableNationalityUuids ?? []).includes(crewNat)),
+  );
+  if (inBandElements.length > 0 && gatedElements.length === inBandElements.length) {
+    const allowed = Array.from(
+      new Set(
+        gatedElements.flatMap((el) => el.applicableNationalityUuids ?? []),
+      ),
+    ).map((uuid) => natName(uuid));
+    return `all scale elements for rank ${rank} excluded by nationality gate for nationality ${natName(crewNat)} (allowed: ${allowed.join(", ") || "none"})`;
   }
 
   return `no ledger lines produced for rank ${rank} (scale lines exist but none were applicable)`;

@@ -43,6 +43,14 @@ export default function PortageBillPage() {
   const { data: payElements = [] } = useQuery<any[]>({
     queryKey: [`${ACCOUNTS_BASE}/pay-elements`],
   });
+  const { data: companyRanks = [] } = useQuery<any[]>({
+    queryKey: ["/api/v2/admin/company-ranks"],
+  });
+  const rankNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of companyRanks) m.set(r.rankId, r.rank);
+    return m;
+  }, [companyRanks]);
 
   const portage = workspace?.portage ?? null;
   const crewTotals: any[] = workspace?.crewTotals ?? [];
@@ -156,7 +164,15 @@ export default function PortageBillPage() {
         pinned: "left",
         width: 170,
       },
-      { headerName: "Rank", field: "rank", pinned: "left", width: 80 },
+      {
+        headerName: "Rank",
+        field: "rank",
+        pinned: "left",
+        width: 110,
+        valueFormatter: (p) =>
+          p.value ? (rankNameById.get(p.value) ?? p.value) : "",
+        tooltipValueGetter: (p) => p.data?.rank ?? "",
+      },
       {
         headerName: "Sign On",
         field: "signOn",
@@ -179,7 +195,7 @@ export default function PortageBillPage() {
       money("balanceCf", "Balance C/F", 115),
       money("leaveCf", "Leave C/F", 105),
     ];
-  }, [portageElements]);
+  }, [portageElements, rankNameById]);
 
   const pinnedBottom = useMemo(
     () => [

@@ -1369,4 +1369,151 @@ describe("Wage Calculation Engine (H1–H5)", () => {
       [elSup],
     );
   });
+
+  // ---- Task 144: zero-scale-wage diagnostics ---------------------------------
+  it("Task 144: transaction posts but zero scale lines ⇒ run succeeds, txn posts, no_scale_wages warning persists on the run row", async () => {
+    const crewNs = u();
+    const engNs = u();
+    const scaleNs = u();
+    const vslNs = `VSL_NS_${S}`;
+    const RANK_NS = `NS_${S}`;
+
+    // Active scale whose lines cover a DIFFERENT rank than the engagement's.
+    await insert("acc_wage_scales_v2", {
+      scale_uuid: scaleNs,
+      scale_name: `Test Scale NS ${S}`,
+      currency: "USD",
+      effective_from: "2024-01-01",
+      status: "active",
+    });
+    await scaleLine(scaleNs, RANK_MST, el.BAS, "1000");
+    await engagement(engNs, crewNs, vslNs, scaleNs, RANK_NS, "2026-03-01", "2027-03-01");
+    // Accepted office transaction so the crew-month still posts lines.
+    const txnNs = u();
+    await insert("acc_monthly_transactions_v2", {
+      txn_uuid: txnNs,
+      engagement_uuid: engNs,
+      crew_uuid: crewNs,
+      vessel_uuid: vslNs,
+      period: "2026-03",
+      pay_element_uuid: el.CADJ,
+      qty: null,
+      amount: "75.00",
+      currency: "USD",
+      origin: "office",
+      status: "accepted",
+    });
+
+    try {
+      const { status, body } = await runEngagement(engNs, "2026-03");
+      expect(status).toBe(200);
+      expect(body.run.status).toBe("completed");
+
+      // Transaction line posted…
+      const lines = await ledgerLines(engNs, "2026-03");
+      const cadj = lineByCode(lines, el.CADJ);
+      expect(cadj.length).toBe(1);
+      expect(cadj[0].amount).toBe("75.00");
+      // …but zero scale-sourced lines.
+      expect(
+        lines.some(
+          (l) =>
+            l.sourceType === "scale" || l.sourceType === "engagement_override",
+        ),
+      ).toBe(false);
+
+      // Summary warning names what is missing.
+      const warnings = (body.warnings ?? []) as string[];
+      const expected = `no scale wages posted (other lines posted): no scale lines for rank ${RANK_NS} on the assigned wage scale`;
+      expect(
+        warnings.some((w) => w.includes(expected)),
+        `warnings: ${JSON.stringify(warnings)}`,
+      ).toBe(true);
+
+      // Warning persists on the run row (structured, 0159).
+      const runRow = await db.query(
+        "SELECT warnings FROM acc_calculation_runs_v2 WHERE calc_run_uuid = $1",
+        [body.run.calcRunUuid],
+      );
+      const persisted = runRow.rows[0]?.warnings ?? [];
+      const hit = (persisted as any[]).find(
+        (w) => w.engagementUuid === engNs && w.code === "no_scale_wages",
+      );
+      expect(hit, `run-row warnings: ${JSON.stringify(persisted)}`).toBeTruthy();
+      expect(hit.message).toContain(expected);
+    } finally {
+      await db.query("DELETE FROM acc_wage_ledger_v2 WHERE engagement_uuid = $1", [engNs]);
+      await db.query("DELETE FROM acc_calculation_runs_v2 WHERE engagement_uuid = $1", [engNs]);
+      await db.query("DELETE FROM acc_monthly_transactions_v2 WHERE txn_uuid = $1", [txnNs]);
+      await db.query("DELETE FROM acc_engagements_v2 WHERE engagement_uuid = $1", [engNs]);
+      await db.query("DELETE FROM acc_wage_scale_lines_v2 WHERE scale_uuid = $1", [scaleNs]);
+      await db.query("DELETE FROM acc_wage_scales_v2 WHERE scale_uuid = $1", [scaleNs]);
+    }
+  });
+
+  it("Task 144: all scale elements gated by nationality_conditional ⇒ gate warning naming crew nationality and allowed list", async () => {
+    const crewGate = u();
+    const engGate = u();
+    const scaleGate = u();
+    const vslGate = `VSL_GATE_${S}`;
+    const RANK_GATE = `GT_${S}`;
+    const NAT_RU = `NAT_RU_${S}`;
+    const elGate = u();
+
+    // Element legally restricted to Filipinos; crew is Russian.
+    await payElement(elGate, `ZGATE_${S}`, {
+      nationality_conditional: true,
+      applicable_nationality_uuids: [NAT_PH],
+    });
+    await insert("acc_wage_scales_v2", {
+      scale_uuid: scaleGate,
+      scale_name: `Test Scale GATE ${S}`,
+      currency: "USD",
+      effective_from: "2024-01-01",
+      status: "active",
+    });
+    // Nationality-agnostic scale line: matches the crew on every line
+    // dimension — only the element-level gate removes it.
+    await scaleLine(scaleGate, RANK_GATE, elGate, "500");
+    await insert("crew_members_v2", {
+      crew_uuid: crewGate,
+      emp_no: `TEST_${S}_GATE`,
+      first_name: "Gated",
+      nationality_uuid: NAT_RU,
+    });
+    await engagement(engGate, crewGate, vslGate, scaleGate, RANK_GATE, "2026-03-01", "2027-03-01");
+
+    try {
+      const { status, body } = await runEngagement(engGate, "2026-03");
+      expect(status).toBe(200);
+      expect(body.run.status).toBe("completed");
+
+      const warnings = (body.warnings ?? []) as string[];
+      const expected = `all scale elements for rank ${RANK_GATE} excluded by nationality gate for nationality ${NAT_RU} (allowed: ${NAT_PH})`;
+      expect(
+        warnings.some((w) => w.includes(expected)),
+        `warnings: ${JSON.stringify(warnings)}`,
+      ).toBe(true);
+
+      // Zero lines at all ⇒ classified as engagement_skipped, persisted on run row.
+      const runRow = await db.query(
+        "SELECT warnings FROM acc_calculation_runs_v2 WHERE calc_run_uuid = $1",
+        [body.run.calcRunUuid],
+      );
+      const persisted = runRow.rows[0]?.warnings ?? [];
+      const hit = (persisted as any[]).find(
+        (w) => w.engagementUuid === engGate && w.code === "engagement_skipped",
+      );
+      expect(hit, `run-row warnings: ${JSON.stringify(persisted)}`).toBeTruthy();
+      expect(hit.message).toContain(expected);
+    } finally {
+      await db.query("DELETE FROM acc_wage_ledger_v2 WHERE engagement_uuid = $1", [engGate]);
+      await db.query("DELETE FROM acc_calculation_runs_v2 WHERE engagement_uuid = $1", [engGate]);
+      await db.query("DELETE FROM acc_engagements_v2 WHERE engagement_uuid = $1", [engGate]);
+      await db.query("DELETE FROM crew_members_v2 WHERE crew_uuid = $1", [crewGate]);
+      await db.query("DELETE FROM acc_wage_scale_lines_v2 WHERE scale_uuid = $1", [scaleGate]);
+      await db.query("DELETE FROM acc_wage_scales_v2 WHERE scale_uuid = $1", [scaleGate]);
+      await db.query("DELETE FROM acc_pay_elements_v2 WHERE pay_element_uuid = $1", [elGate]);
+    }
+  });
 });
