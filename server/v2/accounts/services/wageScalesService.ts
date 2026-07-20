@@ -328,15 +328,33 @@ export const wageScalesService = {
   /** Clone an active scale into a new draft and mark the original superseded. */
   async supersede(
     scaleUuid: string,
-    opts: { effectiveTo?: string; auditUserUuid?: string },
+    opts: {
+      effectiveTo?: string;
+      effectiveFrom?: string;
+      auditUserUuid?: string;
+    },
   ): Promise<AccWageScaleV2> {
     const scale = await this.getByUuidOrThrow(scaleUuid);
     if (scale.status !== "active") {
       throw validationError("Only active scales can be superseded");
     }
+    // Task 148: a revision without an Effective From date can never be
+    // reached by the wage engine's supersession chain — require it up front.
+    if (!opts.effectiveFrom) {
+      throw validationError(
+        "Effective From is required for the new revision — without it, wage calculation can never switch to the revision.",
+      );
+    }
+    const effectiveTo = opts.effectiveTo ?? today();
+    if (opts.effectiveFrom < (scale.effectiveFrom ?? opts.effectiveFrom)) {
+      throw validationError(
+        "The revision's Effective From cannot be before the superseded scale's Effective From",
+      );
+    }
     return wageScalesRepository.supersedeInTransaction(
       scale,
-      opts.effectiveTo ?? today(),
+      effectiveTo,
+      opts.effectiveFrom,
       opts.auditUserUuid,
     );
   },

@@ -199,6 +199,7 @@ export class WageScalesRepository {
   async supersedeInTransaction(
     original: AccWageScaleV2,
     effectiveTo: string,
+    revisionEffectiveFrom: string,
     auditUserUuid?: string,
   ): Promise<AccWageScaleV2> {
     const db = getDb();
@@ -213,7 +214,7 @@ export class WageScalesRepository {
           vesselTypeUuid: original.vesselTypeUuid,
           vesselGroupUuid: original.vesselGroupUuid,
           currency: original.currency,
-          effectiveFrom: null,
+          effectiveFrom: revisionEffectiveFrom,
           effectiveTo: null,
           status: "draft",
           createdByUuid: auditUserUuid ?? null,

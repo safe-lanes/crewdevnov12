@@ -148,15 +148,35 @@ export default function WageScalesPage() {
     }
   };
 
-  const handleSupersede = async (row: any) => {
-    if (
-      !window.confirm(
-        `Supersede "${row.scaleName}"? This creates a new draft copy you can edit.`,
-      )
-    )
+  const [supersedeRow, setSupersedeRow] = useState<any | null>(null);
+  const [supersedeFrom, setSupersedeFrom] = useState("");
+  const [superseding, setSuperseding] = useState(false);
+
+  const handleSupersede = (row: any) => {
+    setSupersedeRow(row);
+    setSupersedeFrom(new Date().toISOString().slice(0, 10));
+  };
+
+  const confirmSupersede = async () => {
+    const row = supersedeRow;
+    if (!row) return;
+    if (!supersedeFrom) {
+      toast({
+        title: "Effective From required",
+        description:
+          "The revision needs an Effective From date — without it, wage calculation can never switch to it.",
+        variant: "destructive",
+      });
       return;
+    }
+    setSuperseding(true);
     try {
-      const created = await accountsApiV2.wageScales.supersede(row.scaleUuid);
+      const created = await accountsApiV2.wageScales.supersede(
+        row.scaleUuid,
+        undefined,
+        supersedeFrom,
+      );
+      setSupersedeRow(null);
       await queryClient.invalidateQueries({ queryKey: LIST_KEY });
       toast({ title: "New draft version created" });
       const uuid = created?.scaleUuid ?? created?.scale?.scaleUuid;
@@ -167,6 +187,8 @@ export default function WageScalesPage() {
         description: parseApiError(err).message,
         variant: "destructive",
       });
+    } finally {
+      setSuperseding(false);
     }
   };
 
@@ -426,6 +448,47 @@ export default function WageScalesPage() {
               data-testid="button-create-scale"
             >
               {saving ? "Creating…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!supersedeRow}
+        onOpenChange={(o) => !o && setSupersedeRow(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Supersede "{supersedeRow?.scaleName}"</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This creates a new draft revision you can edit. Wage calculation
+            switches to the revision from its Effective From date onward.
+          </p>
+          <div className="flex flex-col gap-1.5">
+            <Label>Revision effective from</Label>
+            <Input
+              type="date"
+              value={supersedeFrom}
+              onChange={(e) => setSupersedeFrom(e.target.value)}
+              data-testid="input-supersede-effective-from"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSupersedeRow(null)}
+              data-testid="button-cancel-supersede"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmSupersede}
+              disabled={superseding || !supersedeFrom}
+              className="bg-[#16569e] hover:bg-[#12467f]"
+              data-testid="button-confirm-supersede"
+            >
+              {superseding ? "Creating…" : "Create revision"}
             </Button>
           </DialogFooter>
         </DialogContent>

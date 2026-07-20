@@ -21,7 +21,10 @@ const lineInputSchema = z.object({
 
 const linesBodySchema = z.object({ lines: z.array(lineInputSchema) });
 const activateBodySchema = z.object({ acknowledge: z.boolean().optional() });
-const supersedeBodySchema = z.object({ effectiveTo: z.string().nullish() });
+const supersedeBodySchema = z.object({
+  effectiveTo: z.string().nullish(),
+  effectiveFrom: z.string().nullish(),
+});
 
 /** Map a service error to the correct HTTP response. */
 function handleError(error: any, res: Response, fallback: string) {
@@ -168,6 +171,7 @@ export const wageScalesController = {
       }
       const record = await wageScalesService.supersede(req.params.uuid, {
         effectiveTo: parsed.data.effectiveTo ?? undefined,
+        effectiveFrom: parsed.data.effectiveFrom ?? undefined,
         auditUserUuid: getAuditUserUuid(req),
       });
       res.status(201).json(record);

@@ -1606,6 +1606,65 @@ describe("Wage Calculation Engine (H1–H5)", () => {
     }
   });
 
+  it("Task 148: supersede endpoint requires effectiveFrom and stamps it on the new revision", async () => {
+    const scaleActive = u();
+    const VT_148B = u();
+    let createdRevUuid: string | null = null;
+
+    await insert("acc_wage_scales_v2", {
+      scale_uuid: scaleActive,
+      scale_name: `Test Scale ACT ${S}`,
+      currency: "USD",
+      vessel_type_uuid: VT_148B,
+      effective_from: "2025-01-01",
+      effective_to: null,
+      status: "active",
+    });
+
+    try {
+      // No effectiveFrom ⇒ 400.
+      let res = await fetch(`${V2_BASE}/wage-scales/${scaleActive}/supersede`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      let body = await res.json();
+      expect(res.status).toBe(400);
+      expect(body.error).toContain("Effective From");
+
+      // Original must still be active, no revision created.
+      let row = await db.query(
+        "SELECT status, superseded_by_scale_uuid FROM acc_wage_scales_v2 WHERE scale_uuid = $1",
+        [scaleActive],
+      );
+      expect(row.rows[0].status).toBe("active");
+      expect(row.rows[0].superseded_by_scale_uuid).toBeNull();
+
+      // With effectiveFrom ⇒ 201, revision carries the date.
+      res = await fetch(`${V2_BASE}/wage-scales/${scaleActive}/supersede`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ effectiveFrom: "2026-08-01" }),
+      });
+      body = await res.json();
+      expect(res.status, JSON.stringify(body)).toBe(201);
+      createdRevUuid = body.scaleUuid;
+      expect(body.effectiveFrom).toBe("2026-08-01");
+      expect(body.status).toBe("draft");
+
+      row = await db.query(
+        "SELECT status, superseded_by_scale_uuid FROM acc_wage_scales_v2 WHERE scale_uuid = $1",
+        [scaleActive],
+      );
+      expect(row.rows[0].status).toBe("superseded");
+      expect(row.rows[0].superseded_by_scale_uuid).toBe(createdRevUuid);
+    } finally {
+      const uuids = [scaleActive, createdRevUuid].filter(Boolean);
+      await db.query("DELETE FROM acc_wage_scale_lines_v2 WHERE scale_uuid = ANY($1)", [uuids]);
+      await db.query("DELETE FROM acc_wage_scales_v2 WHERE scale_uuid = ANY($1)", [uuids]);
+    }
+  });
+
   it("Task 148: skip diagnostic names an unreachable revision (superseding scale missing effective_from)", async () => {
     const crew148 = u();
     const eng148 = u();

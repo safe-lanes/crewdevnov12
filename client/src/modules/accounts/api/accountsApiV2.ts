@@ -62,9 +62,10 @@ export const accountsApiV2 = {
       req("POST", `${ACCOUNTS_BASE}/wage-scales/${uuid}/activate`, {
         acknowledge,
       }),
-    supersede: (uuid: string, effectiveTo?: string) =>
+    supersede: (uuid: string, effectiveTo?: string, effectiveFrom?: string) =>
       req("POST", `${ACCOUNTS_BASE}/wage-scales/${uuid}/supersede`, {
         effectiveTo,
+        effectiveFrom,
       }),
   },
   cbaReference: {
