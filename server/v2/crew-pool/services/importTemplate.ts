@@ -15,7 +15,7 @@ import {
   masterManningAgents,
   masterVessels,
 } from "../../../../shared/schema";
-import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
+import { admCompanyRanksV2, admVesselOrgChartV2 } from "../../../../shared/v2/admin/schema";
 import { and, eq } from "drizzle-orm";
 
 // Maximum number of data rows for the main data sheets (crew details, sea service, etc.).
@@ -209,12 +209,13 @@ export const DEBRIEFINGS_COLUMNS = [
 async function fetchReferenceData() {
   const db = getDb();
 
-  const [nationalities, vesselTypes, countries, languages, ranks, manningAgents, vessels] = await Promise.all([
+  const [nationalities, vesselTypes, countries, languages, ranks, orgChart, manningAgents, vessels] = await Promise.all([
     db.select({ name: masterNationalities.nationality }).from(masterNationalities).where(eq(masterNationalities.isDeleted, false)),
     db.select({ name: masterVesselTypes.vesselType }).from(masterVesselTypes).where(and(eq(masterVesselTypes.isDeleted, false), eq(masterVesselTypes.isActive, true))),
     db.select({ name: masterCountries.countryName }).from(masterCountries).where(eq(masterCountries.isDeleted, false)),
     db.select({ name: masterLanguages.languageName }).from(masterLanguages).where(eq(masterLanguages.isDeleted, false)),
-    db.select({ name: admCompanyRanksV2.rank }).from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false)).orderBy(admCompanyRanksV2.sortOrder),
+    db.select({ name: admCompanyRanksV2.rank, rankId: admCompanyRanksV2.rankId }).from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false)),
+    db.select({ rankId: admVesselOrgChartV2.rankId, sortOrder: admVesselOrgChartV2.sortOrder }).from(admVesselOrgChartV2).where(eq(admVesselOrgChartV2.isDeleted, false)),
     db.select({ name: masterManningAgents.name }).from(masterManningAgents).where(eq(masterManningAgents.isDeleted, false)),
     db.select({ name: masterVessels.vessel }).from(masterVessels),
   ]);
@@ -224,7 +225,17 @@ async function fetchReferenceData() {
     vesselTypes: Array.from(new Set(vesselTypes.map((v: { name: string | null }) => v.name).filter(Boolean))).sort() as string[],
     countries: Array.from(new Set(countries.map((c: { name: string | null }) => c.name).filter(Boolean))).sort() as string[],
     languages: Array.from(new Set(languages.map((l: { name: string | null }) => l.name).filter(Boolean))).sort() as string[],
-    ranks: Array.from(new Set(ranks.map((r: { name: string | null }) => r.name).filter(Boolean))) as string[],
+    ranks: (() => {
+      const sortMap = new Map(orgChart.map(o => [o.rankId, o.sortOrder ?? 0]));
+      return Array.from(
+        new Map(
+          ranks
+            .filter(r => r.name)
+            .sort((a, b) => (sortMap.get(a.rankId) ?? 9999) - (sortMap.get(b.rankId) ?? 9999))
+            .map(r => [r.name, r.name])
+        ).values()
+      ) as string[];
+    })(),
     manningAgents: Array.from(new Set(manningAgents.map((m: { name: string | null }) => m.name).filter(Boolean))).sort() as string[],
     vessels: Array.from(new Set(vessels.map((v: { name: string | null }) => v.name).filter(Boolean))).sort() as string[],
   };
