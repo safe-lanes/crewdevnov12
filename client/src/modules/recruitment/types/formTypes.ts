@@ -114,6 +114,7 @@ export interface CandidateVisa {
   issued: string;
   expiry: string;
   visaType: string;
+  source?: string;
   sortOrder: number;
   attachments?: Attachment[];
 }

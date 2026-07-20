@@ -261,6 +261,7 @@ interface LocalFormData {
     issued: string;
     expiry: string;
     visaType: string;
+    source?: 'manual' | 'database';
     attachments?: FileAttachment[];
   }>;
   education: Array<{
@@ -1191,6 +1192,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         serverId: visa.id,
         countryId: visa.countryUuid || '',
         issuingCountry: resolveCountryUuidToName(visa.countryUuid || '', masterDataEntries),
+        source: (visa.source === 'database' ? 'database' : 'manual') as 'manual' | 'database',
         serialNo: visa.serialNo || '',
         issued: visa.issued || '',
         expiry: visa.expiry || '',
@@ -1929,6 +1931,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       issued: '',
       expiry: '',
       visaType: '',
+      source: 'manual' as const,
       attachments: []
     };
     setFormData(prev => ({ ...prev, visas: [...prev.visas, newVisa] }));
@@ -2371,6 +2374,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       issued: '',
       expiry: '',
       visaType: '',
+      source: 'database' as const,
       attachments: []
     }));
     setFormData(prev => ({ ...prev, visas: [...existingVisas, ...newVisas] }));
@@ -2879,6 +2883,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       nonEmptyVisas.forEach((visa, index) => {
         const visaPayload = {
           countryUuid: visa.issuingCountry || visa.countryId || null,
+          source: visa.source || 'manual',
           serialNo: visa.serialNo || null,
           issued: visa.issued || null,
           expiry: visa.expiry || null,
@@ -5192,7 +5197,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.visas.map((visa) => (
               <TableRow key={visa.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  {visa.countryId ? (
+                  {visa.source === 'database' ? (
                     <Input value={visa.issuingCountry} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <>

@@ -155,6 +155,7 @@ export const candVisas = pgTable("cand_visas", {
   issued: text("issued"),
   expiry: text("expiry"),
   visaType: text("visa_type"),
+  source: text("source"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });
