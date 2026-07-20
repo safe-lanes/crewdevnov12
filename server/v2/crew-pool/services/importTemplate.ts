@@ -16,7 +16,7 @@ import {
   masterVessels,
 } from "../../../../shared/schema";
 import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
-import { eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 // Maximum number of data rows for the main data sheets (crew details, sea service, etc.).
 // Drives dropdown/validation ranges — range-based, so file size is unaffected by this value.
@@ -38,10 +38,10 @@ export const CREW_DETAILS_COLUMNS = [
   { header: "Last Name / Family Name", required: false, example: "Sharma", note: "" },
   { header: "Gender", required: false, example: "Male", note: "Male / Female" },
   { header: "Date of Birth", required: false, example: "15-Mar-1985", note: "DD-MMM-YYYY or DD/MM/YYYY" },
-  { header: "Nationality", required: false, example: "Indian", note: "Must match Reference Data sheet" },
+  { header: "Nationality", required: false, example: "India", note: "Must match Reference Data sheet" },
   { header: "Present Rank / Designation", required: false, example: "Master", note: "" },
   { header: "Rank Applied For", required: false, example: "Chief Officer", note: "" },
-  { header: "Vessel Type Experience", required: false, example: "Oil Tanker", note: "Must match Reference Data sheet" },
+  { header: "Vessel Type Experience", required: false, example: "Oil Tanker, LNG Tanker", note: "Comma-separated; each must match Reference Data sheet" },
   { header: "Current Status", required: false, example: "Active", note: "Active / Terminated" },
   { header: "Email Address", required: false, example: "rajesh@email.com", note: "" },
   { header: "Mobile Number", required: false, example: "+91-9876543210", note: "" },
@@ -211,10 +211,10 @@ async function fetchReferenceData() {
 
   const [nationalities, vesselTypes, countries, languages, ranks, manningAgents, vessels] = await Promise.all([
     db.select({ name: masterNationalities.nationality }).from(masterNationalities).where(eq(masterNationalities.isDeleted, false)),
-    db.select({ name: masterVesselTypes.vesselType }).from(masterVesselTypes).where(eq(masterVesselTypes.isDeleted, false)),
+    db.select({ name: masterVesselTypes.vesselType }).from(masterVesselTypes).where(and(eq(masterVesselTypes.isDeleted, false), eq(masterVesselTypes.isActive, true))),
     db.select({ name: masterCountries.countryName }).from(masterCountries).where(eq(masterCountries.isDeleted, false)),
     db.select({ name: masterLanguages.languageName }).from(masterLanguages).where(eq(masterLanguages.isDeleted, false)),
-    db.select({ name: admCompanyRanksV2.rank }).from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false)),
+    db.select({ name: admCompanyRanksV2.rank }).from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false)).orderBy(asc(admCompanyRanksV2.sortOrder)),
     db.select({ name: masterManningAgents.name }).from(masterManningAgents).where(eq(masterManningAgents.isDeleted, false)),
     db.select({ name: masterVessels.vessel }).from(masterVessels),
   ]);
@@ -224,7 +224,7 @@ async function fetchReferenceData() {
     vesselTypes: Array.from(new Set(vesselTypes.map((v: { name: string | null }) => v.name).filter(Boolean))).sort() as string[],
     countries: Array.from(new Set(countries.map((c: { name: string | null }) => c.name).filter(Boolean))).sort() as string[],
     languages: Array.from(new Set(languages.map((l: { name: string | null }) => l.name).filter(Boolean))).sort() as string[],
-    ranks: Array.from(new Set(ranks.map((r: { name: string | null }) => r.name).filter(Boolean))).sort() as string[],
+    ranks: Array.from(new Set(ranks.map((r: { name: string | null }) => r.name).filter(Boolean))) as string[],
     manningAgents: Array.from(new Set(manningAgents.map((m: { name: string | null }) => m.name).filter(Boolean))).sort() as string[],
     vessels: Array.from(new Set(vessels.map((v: { name: string | null }) => v.name).filter(Boolean))).sort() as string[],
   };
@@ -615,7 +615,32 @@ export async function generateImportTemplate(): Promise<Buffer> {
   applyDropdown(crewSheet, "Marital Status", CREW_DETAILS_COLUMNS, maritalFormula);
   applyDropdown(crewSheet, "Current Status", CREW_DETAILS_COLUMNS, statusFormula);
   applyDropdown(crewSheet, "Nationality", CREW_DETAILS_COLUMNS, natFormula);
-  applyDropdown(crewSheet, "Vessel Type Experience", CREW_DETAILS_COLUMNS, vtFormula);
+  // Vessel Type Experience: dropdown picks one type, but multiple comma-separated
+  // values may be typed manually. Only highlight single values not in the list
+  // (comma-separated combos are validated server-side on upload).
+  const vteColIdx = getColIndex(CREW_DETAILS_COLUMNS, "Vessel Type Experience");
+  if (vteColIdx > 0) {
+    const vteLetter = colLetter(vteColIdx);
+    const vteLastRow = TEMPLATE_MAX_ROWS + 2;
+    (crewSheet as any).dataValidations.add(`${vteLetter}3:${vteLetter}${vteLastRow}`, {
+      type: 'list',
+      allowBlank: true,
+      formulae: [vtFormula],
+      showErrorMessage: false,
+    });
+    const vtRange = vtFormula.replace(/^=/, "");
+    crewSheet.addConditionalFormatting({
+      ref: `${vteLetter}3:${vteLetter}${vteLastRow}`,
+      rules: [
+        {
+          type: "expression",
+          priority: 1,
+          formulae: [`AND($${vteLetter}3<>"",ISERROR(FIND(",",$${vteLetter}3)),COUNTIF(${vtRange},$${vteLetter}3)=0)`],
+          style: { fill: MANUAL_VALUE_FILL },
+        },
+      ],
+    });
+  }
   applyDropdown(crewSheet, "Country of Residence", CREW_DETAILS_COLUMNS, countryFormula);
   applyDropdown(crewSheet, "Place of Birth (Country)", CREW_DETAILS_COLUMNS, countryFormula);
   applyDropdown(crewSheet, "Native Language", CREW_DETAILS_COLUMNS, langFormula);
