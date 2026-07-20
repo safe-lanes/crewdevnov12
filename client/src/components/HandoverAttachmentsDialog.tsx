@@ -192,12 +192,34 @@ export function HandoverAttachmentsDialog({
     deleteMutation.mutate(attachment.id);
   };
 
-  const handlePreview = (attachment: HandoverAttachment) => {
+  const handlePreview = async (attachment: HandoverAttachment) => {
     // Prefer the authenticated /raw streaming endpoint when available (new
-    // filesystem-backed attachments). The route serves PDF/image inline with
-    // the correct Content-Type. Fall back to legacy base64 fileData rendering.
+    // filesystem-backed attachments). A direct window.open(viewUrl) sends no
+    // auth headers and the server rejects it with "Missing x-tenant-id header",
+    // so we fetch the file (window.fetch is patched in lib/tenantFetch to attach
+    // the tenant/auth headers), turn it into a local blob, and show that instead.
     if (attachment.viewUrl) {
-      window.open(attachment.viewUrl, '_blank');
+      // Open the tab synchronously (inside the click gesture) so popup blockers
+      // allow it, then point it at the fetched blob once it's ready.
+      const newTab = window.open('', '_blank');
+      if (newTab) newTab.opener = null;
+      try {
+        const res = await fetch(attachment.viewUrl, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error(`Request failed with status ${res.status}`);
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        if (newTab) {
+          newTab.location.href = objectUrl;
+        }
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+      } catch {
+        if (newTab) newTab.close();
+        toast({
+          title: 'Unable to open file',
+          description: 'Could not load the attachment from the server.',
+          variant: 'destructive',
+        });
+      }
       return;
     }
     const newWindow = window.open('', '_blank');
