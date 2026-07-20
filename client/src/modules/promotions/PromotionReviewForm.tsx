@@ -27,6 +27,7 @@ import { usePermissions } from '@/contexts/PermissionsContext';
 import { calculateChecklistProgressFromJson } from '@/modules/promotions/checklistProgressUtils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 import {
   CriteriaRow,
@@ -260,10 +261,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         setSavedReviewId(data.id);
       }
       if (variables.action === 'submit-b') {
-        toast({
-          title: "Part B Submitted",
-          description: "Approval submitted successfully.",
-        });
+        if (promotionTiming === 'prior-joining') {
+          setPriorJoiningSuccessOpen(true);
+        } else {
+          toast({
+            title: "Part B Submitted",
+            description: "Approval submitted successfully.",
+          });
+        }
       } else if (variables.action === 'submit-c') {
         toast({
           title: "Part C Submitted",
@@ -291,6 +296,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   });
 
   const [selectedVesselTypeForA2_3b, setSelectedVesselTypeForA2_3b] = useState<string>('');
+  const [priorJoiningSuccessOpen, setPriorJoiningSuccessOpen] = useState(false);
 
   const parseRanksArray = useCallback((ranks: unknown): string[] => {
     if (Array.isArray(ranks)) return ranks;
@@ -1641,11 +1647,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     const isLockForm = isSubmittedPlus
       ? !!(existingReviewData as any)?.isLockForm
       : promotionFormLockLive;
+    // A prior-joining promotion completes automatically on sign-on; until then
+    // Part C stays locked so no manual promotion date can be entered.
+    const timingNorm = ((existingReviewData as any)?.promotionTiming || '').toString().trim().toLowerCase();
+    const lockPartCPriorJoining = statusNorm === 'approved' && timingNorm === 'prior-joining';
     return {
       isLockForm,
       lockPartA: isLockForm && isSubmittedPlus,
       lockPartB: isLockForm && isApprovedPlus,
       lockPartC: isLockForm && isCompleted,
+      lockPartCPriorJoining,
     };
   }, [existingReviewData, promotionFormLockLive]);
 
@@ -1953,7 +1964,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
           )}
 
           {activeSection === 'c' && canViewSection('c') && (
-            <fieldset disabled={lockState.lockPartC || isShipUser} className="min-w-0 border-0 p-0 m-0">
+            <fieldset disabled={lockState.lockPartC || lockState.lockPartCPriorJoining || isShipUser} className="min-w-0 border-0 p-0 m-0">
             {isShipUser && (
               <div
                 className="mb-4 rounded-md border border-gray-300 bg-gray-100 px-4 py-3 text-center text-sm font-medium text-gray-600"
@@ -1962,14 +1973,22 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                 For Office use only
               </div>
             )}
-            <div className={isShipUser ? 'opacity-60 pointer-events-none' : undefined}>
+            {lockState.lockPartCPriorJoining && !isShipUser && (
+              <div
+                className="mb-4 rounded-md border border-gray-300 bg-gray-100 px-4 py-3 text-center text-sm font-medium text-gray-600"
+                data-testid="text-prior-joining-locked-c"
+              >
+                Part C is locked — the promotion will complete automatically when the crew signs on to the planned vessel.
+              </div>
+            )}
+            <div className={(isShipUser || lockState.lockPartCPriorJoining) ? 'opacity-60 pointer-events-none' : undefined}>
             <PartCExecution
               promotionDate={promotionDate}
               onSetPromotionDate={setPromotionDate}
               currentUserDisplay={currentUserDisplay}
               onSave={handleSaveDraftC}
               onSubmit={confirmSubmitC}
-              disabled={lockState.lockPartC}
+              disabled={lockState.lockPartC || lockState.lockPartCPriorJoining}
             />
             </div>
             </fieldset>
@@ -1996,6 +2015,26 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         onConfirm={addTrainingsFromDatabase}
         existingCourseIds={trainingNeeds.map(t => t.correspondingInDB).filter(Boolean)}
       />
+
+      <Dialog open={priorJoiningSuccessOpen} onOpenChange={setPriorJoiningSuccessOpen}>
+        <DialogContent className="max-w-sm" data-testid="dialog-prior-joining-success">
+          <DialogHeader>
+            <DialogTitle>Success</DialogTitle>
+            <DialogDescription className="space-y-2 pt-2">
+              <span className="block">Promotion review submitted successfully.</span>
+              <span className="block">For the next step, please proceed to: Rotation &gt; Plan and create the vessel planning for this crew.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setPriorJoiningSuccessOpen(false)}
+              data-testid="button-prior-joining-success-got-it"
+            >
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
