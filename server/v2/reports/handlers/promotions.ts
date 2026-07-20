@@ -28,7 +28,7 @@ const promoCols: ReportColumn[] = [
   { key: "presentRank", label: "Present Rank", type: "text" },
   { key: "promotedRank", label: "Promoted Rank", type: "text" },
   { key: "promotionDate", label: "Promotion Date", type: "date", width: 140 },
-  { key: "vesselName", label: "Vessel Name", type: "text" },
+  { key: "vesselName", label: "Promotion Vessel", type: "text" },
   { key: "promotionType", label: "Promotion Type", type: "text", width: 180 },
 ];
 
