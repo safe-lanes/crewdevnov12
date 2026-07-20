@@ -1576,6 +1576,28 @@ describe("Wage Calculation Engine (H1–H5)", () => {
       body = await res.json();
       expect(res.status, JSON.stringify(body)).toBe(200);
       expect(body.scale.status).toBe("active");
+
+      // Task 148: effective dates stay editable after activation (date-only
+      // PATCH), so an already-active revision missing them can be repaired…
+      res = await fetch(`${V2_BASE}/wage-scales/${scaleRev}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ effectiveFrom: "2026-07-02", effectiveTo: "2027-06-30" }),
+      });
+      body = await res.json();
+      expect(res.status, JSON.stringify(body)).toBe(200);
+      expect(body.effectiveFrom).toBe("2026-07-02");
+      expect(body.effectiveTo).toBe("2027-06-30");
+
+      // …but any non-date field on an active scale is still rejected.
+      res = await fetch(`${V2_BASE}/wage-scales/${scaleRev}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scaleName: "Renamed" }),
+      });
+      body = await res.json();
+      expect(res.status).toBe(400);
+      expect(body.error).toContain("effective dates");
     } finally {
       await db.query("DELETE FROM acc_wage_scale_lines_v2 WHERE scale_uuid = $1", [scaleRev]);
       await db.query("DELETE FROM acc_wage_scales_v2 WHERE scale_uuid = ANY($1)", [

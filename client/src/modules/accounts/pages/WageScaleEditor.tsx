@@ -606,7 +606,7 @@ export default function WageScaleEditor({
         </div>
       )}
 
-      {isDraft && (
+      {(isDraft || scale.status === "active") && (
         <div className="mb-3 flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <Label className="text-xs text-muted-foreground">

@@ -124,7 +124,18 @@ export const wageScalesService = {
   ): Promise<AccWageScaleV2> {
     const scale = await this.getByUuidOrThrow(scaleUuid);
     if (scale.status !== "draft") {
-      throw validationError("Only draft scales can be edited");
+      // Task 148: effective dates stay editable after activation so a
+      // revision activated without an Effective From can be repaired —
+      // everything else on a non-draft scale is immutable.
+      const DATE_ONLY = new Set(["effectiveFrom", "effectiveTo", "auditUserUuid"]);
+      const otherKeys = Object.keys(data).filter(
+        (k) => !DATE_ONLY.has(k) && (data as Record<string, unknown>)[k] !== undefined,
+      );
+      if (otherKeys.length > 0) {
+        throw validationError(
+          "Only the effective dates can be edited once a scale is no longer a draft",
+        );
+      }
     }
     const dataWithAudit = applyAuditUser(data, false);
     const updated = await wageScalesRepository.update(scaleUuid, dataWithAudit);
