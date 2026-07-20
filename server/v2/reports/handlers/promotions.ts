@@ -4,6 +4,7 @@ import type { PgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { promotionReviewsV2, promoExecutionLedgerV2 } from "../../../../shared/v2/promotions/schema";
+import { admPromotionHierarchiesV2 } from "../../../../shared/v2/admin/schema";
 import type { ReportHandler } from "../types";
 import type { ReportColumn } from "../../../../shared/v2/reports/types";
 import { dateExpr, dateFilter, fullNameExpr } from "./_shared";
@@ -52,6 +53,26 @@ const promotionTypeExpr = sql<string>`CASE LOWER(TRIM(COALESCE(${promotionReview
   WHEN 'on-board' THEN 'Promoted Onboard'
   WHEN 'prior-joining' THEN 'Promoted Prior Joining'
   ELSE '' END`;
+
+// Fallback for legacy executed promotions that predate the execution ledger:
+// derive the pre-promotion rank by walking the promotion hierarchy one step
+// below the promoted rank — identical to what the Promotions screen shows.
+function previousRankFromHierarchy(toRank: string, hierarchies: { rankPath: unknown }[]): string | null {
+  for (const h of hierarchies) {
+    let rankPath: string[];
+    try {
+      rankPath = typeof h.rankPath === "string"
+        ? JSON.parse(h.rankPath)
+        : (Array.isArray(h.rankPath) ? h.rankPath : []);
+    } catch {
+      rankPath = [];
+    }
+    const idx = rankPath.indexOf(toRank);
+    if (idx > 0) return rankPath[idx - 1];
+    if (idx === 0) return null; // most junior rank — nothing below it
+  }
+  return null;
+}
 
 export const promoExecutedReport: ReportHandler<z.infer<typeof promoFilters>> = {
   reportId: "promo-approved-ytd",
@@ -113,12 +134,28 @@ export const promoExecutedReport: ReportHandler<z.infer<typeof promoFilters>> = 
       .limit(ctx.pageSize)
       .offset((ctx.page - 1) * ctx.pageSize);
 
+    // Legacy records completed before the execution ledger existed have no
+    // ledger row, so from_rank is null. Fill those from the hierarchy.
+    const needsFallback = rows.some(
+      (r: (typeof rows)[number]) => !(r.presentRank ?? "").trim() && (r.promotedRank ?? "").trim(),
+    );
+    const hierarchies = needsFallback
+      ? await db
+          .select({ rankPath: admPromotionHierarchiesV2.rankPath })
+          .from(admPromotionHierarchiesV2)
+          .where(eq(admPromotionHierarchiesV2.isDeleted, false))
+      : [];
+
     return {
       total,
       rows: rows.map((r: (typeof rows)[number]) => ({
         empNo: r.empNo ?? null,
         name: r.name ?? null,
-        presentRank: r.presentRank ?? null,
+        presentRank:
+          (r.presentRank ?? "").trim() ||
+          (needsFallback && (r.promotedRank ?? "").trim()
+            ? previousRankFromHierarchy(r.promotedRank!.trim(), hierarchies)
+            : null),
         promotedRank: r.promotedRank ?? null,
         promotionDate: r.promotionDate ?? null,
         vesselName: r.vesselName ?? null,
