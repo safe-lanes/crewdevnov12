@@ -22,6 +22,7 @@ export interface DevPersonaState {
   role: string;
   roleId: string;
   userType: string;
+  designation?: string;
   vessel?: DevVessel;
 }
 
@@ -83,6 +84,7 @@ export function applyDevPersona(state: DevPersonaState): void {
     roleId: state.roleId,
     userId: "dev-persona",
     userType: state.userType,
+    ...(state.designation ? { designation: state.designation } : {}),
     myVessels: state.vessel ? [state.vessel] : [],
   };
   localStorage.setItem("userProfile", JSON.stringify(profile));

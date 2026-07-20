@@ -74,7 +74,6 @@ Reference policy (as applied on the dev tenant):
 | Admin, Super Admin, Sail Admin | Full (V/C/E/D) on `Account` + all 14 sub-menus |
 | User | View only on `Account` + all 14 sub-menus |
 | Vessel Admin, Vessel User, Vessel User 2–4 | View on `Account`; View/Create/Edit on `Account Vessel Portage`; nothing else |
-| Vessel Management | View only on `Account`, `Account Vessel Portage`, `Account Portage Bill` |
 | External 1–5 | No grants (no Accounts menus visible) |
 
 Note: a role needs **View on the top-level `Account` menu** for the Accounts
@@ -137,9 +136,11 @@ set `AUTH_BYPASS` or leave `JWT_SECRET` unset outside local development.
    `userProfile` (read by the UI) and an unsigned dev Bearer token (sent by
    API calls so the backend's bypass decode path sees the same identity),
    then reloads. Personas: Sail Admin (default — clears the override), Admin,
-   User, Vessel Management, and Vessel User (with a vessel sub-selector;
-   remembers the last-used vessel). Role ruids are resolved live from the
-   access-control roles master by name.
+   User, Vessel Admin, and Vessel User (the ship personas have a vessel
+   sub-selector; the last-used vessel is remembered). Role ruids are resolved
+   live from the access-control roles master by name; if a persona's role
+   name has no active row in the tenant, the persona is disabled with a
+   "role not found in this tenant" warning (never substituted).
 
    Expected for Vessel User: the Accounts sidebar shows **only Vessel
    Portage**, fixed to the selected vessel, and a vessel-portage API call for

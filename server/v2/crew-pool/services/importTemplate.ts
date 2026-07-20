@@ -228,13 +228,19 @@ async function fetchReferenceData() {
     countries: Array.from(new Set(countries.map((c: { name: string | null }) => c.name).filter(Boolean))).sort() as string[],
     languages: Array.from(new Set(languages.map((l: { name: string | null }) => l.name).filter(Boolean))).sort() as string[],
     ranks: (() => {
-      const sortMap = new Map(orgChart.map(o => [o.rankId, o.sortOrder ?? 0]));
+      const sortMap = new Map<number | null, number>(
+        orgChart.map((o: { rankId: number | null; sortOrder: number | null }) => [o.rankId, o.sortOrder ?? 0]),
+      );
+      type RankRow = { name: string | null; rankId: number | null };
       return Array.from(
         new Map(
           ranks
-            .filter(r => r.name)
-            .sort((a, b) => (sortMap.get(a.rankId) ?? 9999) - (sortMap.get(b.rankId) ?? 9999))
-            .map(r => [r.name, r.name])
+            .filter((r: RankRow) => r.name)
+            .sort(
+              (a: RankRow, b: RankRow) =>
+                (sortMap.get(a.rankId) ?? 9999) - (sortMap.get(b.rankId) ?? 9999),
+            )
+            .map((r: RankRow) => [r.name, r.name])
         ).values()
       ) as string[];
     })(),

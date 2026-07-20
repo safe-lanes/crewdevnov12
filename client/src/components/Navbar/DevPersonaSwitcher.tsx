@@ -25,14 +25,14 @@ interface VesselRecord {
 }
 
 // Persona definitions. `roleName` must match `assignedRole` in the
-// access-control roles master — ruids are resolved at runtime, never hardcoded.
-// "Vessel Management" maps to the "Vessel Admin" role (the vessel-side
-// management role in the roles master).
+// access-control roles master — ruids are resolved at runtime, never
+// hardcoded, and never substituted: if the role name is not found, the
+// persona is disabled with a warning (fail-loud).
 const PERSONAS: Array<{ key: string; label: string; roleName: string; ship: boolean }> = [
   { key: "sail-admin", label: "Sail Admin", roleName: "Sail Admin", ship: false },
   { key: "admin", label: "Admin", roleName: "Admin", ship: false },
   { key: "user", label: "User", roleName: "User", ship: false },
-  { key: "vessel-management", label: "Vessel Management", roleName: "Vessel Admin", ship: true },
+  { key: "vessel-admin", label: "Vessel Admin", roleName: "Vessel Admin", ship: true },
   { key: "vessel-user", label: "Vessel User", roleName: "Vessel User", ship: true },
 ];
 
@@ -142,7 +142,14 @@ export default function DevPersonaSwitcher() {
                   >
                     <span className="flex items-center gap-2">
                       {isActivePersona ? <Check size={14} className="text-green-600" /> : <span className="w-[14px]" />}
-                      {persona.label}
+                      <span className="flex flex-col items-start">
+                        {persona.label}
+                        {roleMissing && (
+                          <span className="text-[10px] text-red-600" data-testid={`warning-role-missing-${persona.key}`}>
+                            role not found in this tenant
+                          </span>
+                        )}
+                      </span>
                       {isActivePersona && active?.vessel && (
                         <span className="text-xs text-gray-500">({active.vessel.vessel})</span>
                       )}
@@ -188,7 +195,14 @@ export default function DevPersonaSwitcher() {
                 data-testid={`button-persona-${persona.key}`}
               >
                 {isActivePersona ? <Check size={14} className="text-green-600" /> : <span className="w-[14px]" />}
-                {persona.label}
+                <span className="flex flex-col items-start">
+                  {persona.label}
+                  {roleMissing && (
+                    <span className="text-[10px] text-red-600" data-testid={`warning-role-missing-${persona.key}`}>
+                      role not found in this tenant
+                    </span>
+                  )}
+                </span>
                 {persona.key === "sail-admin" && (
                   <span className="text-[10px] text-gray-400 ml-auto">default</span>
                 )}
