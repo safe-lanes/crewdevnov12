@@ -1373,10 +1373,17 @@ function calcEngagement(
     const scaleLines = (
       ctx.scaleLinesByScale.get(diagState.scaleUuid) ?? []
     ).filter((l) => l.rankId === diagState.rankId);
-    const detail =
+    let detail =
       scaleLines.length === 0
         ? `no scale lines for rank ${diagState.rankId} on the assigned wage scale`
         : diagnoseSkip(ctx, engagement, scaleLines, diagState);
+    // Task 148: if the served scale has a superseding revision that the
+    // supersession chain can never reach (missing effective_from), name it —
+    // that revision is almost always where the missing lines live.
+    const unreachable = unreachableRevision(ctx, diagState.scaleUuid);
+    if (unreachable) {
+      detail += `; note: scale "${ctx.scaleByUuid.get(diagState.scaleUuid)?.scaleName ?? diagState.scaleUuid}" is superseded by "${unreachable.scaleName}" which has no Effective From date, so the revision is never applied — set its Effective From to make it reachable`;
+    }
     warnings.push(
       lines.length === 0
         ? { code: "engagement_skipped", message: `skipped: ${detail}` }
@@ -1592,6 +1599,32 @@ function resolveScaleAt(
     }
   }
   return current.scaleUuid;
+}
+
+/**
+ * Walk the supersession chain from a scale and return the first superseding
+ * revision that the chain can never reach because it lacks effective_from
+ * (Task 148). Returns undefined when the chain is healthy.
+ */
+function unreachableRevision(
+  ctx: CalcContext,
+  scaleUuid: string,
+): AccWageScaleV2 | undefined {
+  let current = ctx.scaleByUuid.get(scaleUuid);
+  let guard = 0;
+  while (current?.supersededByScaleUuid && guard < 50) {
+    const next = ctx.scaleByUuid.get(current.supersededByScaleUuid);
+    if (!next) return undefined;
+    if (
+      next.effectiveFrom == null &&
+      (next.status === "active" || next.status === "superseded")
+    ) {
+      return next;
+    }
+    current = next;
+    guard++;
+  }
+  return undefined;
 }
 
 function scaleVersionBoundaries(

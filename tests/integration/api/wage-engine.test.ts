@@ -1516,4 +1516,124 @@ describe("Wage Calculation Engine (H1–H5)", () => {
       await db.query("DELETE FROM acc_pay_elements_v2 WHERE pay_element_uuid = $1", [elGate]);
     }
   });
+
+  // ---- Task 148: revision effective-date safeguards ---------------------------
+  it("Task 148: activating a superseding revision without effective_from is rejected; with it, activation succeeds", async () => {
+    const scaleOld = u();
+    const scaleRev = u();
+    const VT_148 = u(); // unique scope so no real active scale overlaps
+
+    await insert("acc_wage_scales_v2", {
+      scale_uuid: scaleOld,
+      scale_name: `Test Scale OLD ${S}`,
+      currency: "USD",
+      vessel_type_uuid: VT_148,
+      effective_from: "2025-01-01",
+      effective_to: "2026-06-30",
+      status: "superseded",
+      superseded_by_scale_uuid: scaleRev,
+    });
+    await insert("acc_wage_scales_v2", {
+      scale_uuid: scaleRev,
+      scale_name: `Test Scale REV ${S}`,
+      currency: "USD",
+      vessel_type_uuid: VT_148,
+      effective_from: null,
+      effective_to: null,
+      status: "draft",
+    });
+    await scaleLine(scaleRev, RANK_MST, el.BAS, "5000");
+
+    try {
+      // No effective_from ⇒ 400 with an actionable message.
+      let res = await fetch(`${V2_BASE}/wage-scales/${scaleRev}/activate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      let body = await res.json();
+      expect(res.status).toBe(400);
+      expect(body.error).toContain("Effective From");
+      expect(body.error).toContain(`Test Scale OLD ${S}`);
+
+      // Scale must still be a draft.
+      const row = await db.query(
+        "SELECT status FROM acc_wage_scales_v2 WHERE scale_uuid = $1",
+        [scaleRev],
+      );
+      expect(row.rows[0].status).toBe("draft");
+
+      // Set effective_from ⇒ activation succeeds.
+      await db.query(
+        "UPDATE acc_wage_scales_v2 SET effective_from = '2026-07-01' WHERE scale_uuid = $1",
+        [scaleRev],
+      );
+      res = await fetch(`${V2_BASE}/wage-scales/${scaleRev}/activate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      body = await res.json();
+      expect(res.status, JSON.stringify(body)).toBe(200);
+      expect(body.scale.status).toBe("active");
+    } finally {
+      await db.query("DELETE FROM acc_wage_scale_lines_v2 WHERE scale_uuid = $1", [scaleRev]);
+      await db.query("DELETE FROM acc_wage_scales_v2 WHERE scale_uuid = ANY($1)", [
+        [scaleOld, scaleRev],
+      ]);
+    }
+  });
+
+  it("Task 148: skip diagnostic names an unreachable revision (superseding scale missing effective_from)", async () => {
+    const crew148 = u();
+    const eng148 = u();
+    const scaleOld = u();
+    const scaleRev = u();
+    const vsl148 = `VSL_148_${S}`;
+    const RANK_148 = `R148_${S}`;
+
+    // Engagement's scale is superseded; the revision holds the rank's lines
+    // but is unreachable because effective_from is NULL.
+    await insert("acc_wage_scales_v2", {
+      scale_uuid: scaleOld,
+      scale_name: `Test Scale OLD2 ${S}`,
+      currency: "USD",
+      effective_from: "2025-01-01",
+      effective_to: "2026-06-30",
+      status: "superseded",
+      superseded_by_scale_uuid: scaleRev,
+    });
+    await insert("acc_wage_scales_v2", {
+      scale_uuid: scaleRev,
+      scale_name: `Test Scale REV2 ${S}`,
+      currency: "USD",
+      effective_from: null,
+      status: "active",
+    });
+    await scaleLine(scaleRev, RANK_148, el.BAS, "5000");
+    await engagement(eng148, crew148, vsl148, scaleOld, RANK_148, "2026-03-01", "2027-03-01");
+
+    try {
+      const { status, body } = await runEngagement(eng148, "2026-03");
+      expect(status).toBe(200);
+      expect(body.run.status).toBe("completed");
+
+      const warnings = (body.warnings ?? []) as string[];
+      const hit = warnings.find(
+        (w) =>
+          w.includes(`Test Scale REV2 ${S}`) &&
+          w.includes("no Effective From date"),
+      );
+      expect(hit, `warnings: ${JSON.stringify(warnings)}`).toBeTruthy();
+      expect(hit).toContain(`Test Scale OLD2 ${S}`);
+    } finally {
+      await db.query("DELETE FROM acc_wage_ledger_v2 WHERE engagement_uuid = $1", [eng148]);
+      await db.query("DELETE FROM acc_calculation_runs_v2 WHERE engagement_uuid = $1", [eng148]);
+      await db.query("DELETE FROM acc_engagements_v2 WHERE engagement_uuid = $1", [eng148]);
+      await db.query("DELETE FROM acc_wage_scale_lines_v2 WHERE scale_uuid = $1", [scaleRev]);
+      await db.query("DELETE FROM acc_wage_scales_v2 WHERE scale_uuid = ANY($1)", [
+        [scaleOld, scaleRev],
+      ]);
+    }
+  });
 });

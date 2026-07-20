@@ -89,6 +89,23 @@ export class WageScalesRepository {
       );
   }
 
+  /** The scale (if any) that this scale supersedes, i.e. its predecessor. */
+  async findPredecessor(
+    scaleUuid: string,
+  ): Promise<AccWageScaleV2 | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(accWageScalesV2)
+      .where(
+        and(
+          eq(accWageScalesV2.supersededByScaleUuid, scaleUuid),
+          eq(accWageScalesV2.isDeleted, false),
+        ),
+      );
+    return results[0];
+  }
+
   async create(
     data: Omit<InsertAccWageScaleV2, "scaleUuid">,
   ): Promise<AccWageScaleV2> {

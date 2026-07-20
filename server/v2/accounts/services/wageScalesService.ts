@@ -88,10 +88,25 @@ export const wageScalesService = {
   async getDetail(scaleUuid: string): Promise<{
     scale: AccWageScaleV2;
     lines: AccWageScaleLineV2[];
+    supersedes: { scaleUuid: string; scaleName: string; effectiveFrom: string | null; effectiveTo: string | null } | null;
   }> {
     const scale = await this.getByUuidOrThrow(scaleUuid);
-    const lines = await wageScalesRepository.findLinesByScale(scaleUuid);
-    return { scale, lines };
+    const [lines, predecessor] = await Promise.all([
+      wageScalesRepository.findLinesByScale(scaleUuid),
+      wageScalesRepository.findPredecessor(scaleUuid),
+    ]);
+    return {
+      scale,
+      lines,
+      supersedes: predecessor
+        ? {
+            scaleUuid: predecessor.scaleUuid,
+            scaleName: predecessor.scaleName,
+            effectiveFrom: predecessor.effectiveFrom,
+            effectiveTo: predecessor.effectiveTo,
+          }
+        : null,
+    };
   },
 
   async create(
@@ -229,6 +244,16 @@ export const wageScalesService = {
     const lines = await wageScalesRepository.findLinesByScale(scaleUuid);
     if (lines.length === 0) {
       throw validationError("Cannot activate a scale with no lines");
+    }
+
+    // A revision (a scale that supersedes another) is unreachable by the
+    // wage engine's supersession chain unless it carries an Effective From
+    // date — refuse to activate it in that state (Task 148).
+    const predecessor = await wageScalesRepository.findPredecessor(scaleUuid);
+    if (predecessor && !scale.effectiveFrom) {
+      throw validationError(
+        `This scale supersedes "${predecessor.scaleName}" and must have an Effective From date before it can be activated — without one, wage calculation can never switch to it. Set Effective From (typically the day after the superseded scale's Effective To, or matching its Effective From to replace it for all periods).`,
+      );
     }
 
     // NOTE: the DB partial-unique index guards one active scale per non-null

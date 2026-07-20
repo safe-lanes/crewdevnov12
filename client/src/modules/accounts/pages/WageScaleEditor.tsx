@@ -88,8 +88,45 @@ export default function WageScaleEditor({
   const { data: nationalities = [] } = useNationalitiesV2();
 
   const scale = detail?.scale;
+  const supersedes = detail?.supersedes ?? null;
   const isDraft = scale?.status === "draft";
   const editable = mayEdit && isDraft;
+
+  // --- effective dates (Task 148) ---
+  const [datesSaving, setDatesSaving] = useState(false);
+  const [effFrom, setEffFrom] = useState("");
+  const [effTo, setEffTo] = useState("");
+  useEffect(() => {
+    setEffFrom(scale?.effectiveFrom ?? "");
+    setEffTo(scale?.effectiveTo ?? "");
+  }, [scale?.effectiveFrom, scale?.effectiveTo]);
+  const datesDirty =
+    !!scale &&
+    (effFrom !== (scale.effectiveFrom ?? "") ||
+      effTo !== (scale.effectiveTo ?? ""));
+
+  const handleSaveDates = async () => {
+    setDatesSaving(true);
+    try {
+      await accountsApiV2.wageScales.update(scaleUuid, {
+        effectiveFrom: effFrom || null,
+        effectiveTo: effTo || null,
+      });
+      await queryClient.invalidateQueries({ queryKey: detailKey });
+      await queryClient.invalidateQueries({
+        queryKey: [`${ACCOUNTS_BASE}/wage-scales`],
+      });
+      toast({ title: "Effective dates saved" });
+    } catch (err) {
+      toast({
+        title: "Save failed",
+        description: parseApiError(err).message,
+        variant: "destructive",
+      });
+    } finally {
+      setDatesSaving(false);
+    }
+  };
 
   const rankName = useMemo(() => {
     const m = new Map<string, string>();
@@ -547,6 +584,68 @@ export default function WageScaleEditor({
           {scale.status === "active"
             ? " Use Supersede from the list to create a new draft version."
             : ""}
+        </div>
+      )}
+
+      {supersedes && !scale.effectiveFrom && (
+        <div
+          className="mb-3 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+          data-testid="banner-revision-missing-effective-from"
+        >
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <span>
+            This scale supersedes <b>{supersedes.scaleName}</b> but has no
+            Effective From date, so wage calculation will never switch to it.
+            Set Effective From below
+            {supersedes.effectiveTo
+              ? ` (typically the day after ${formatDate(supersedes.effectiveTo)},`
+              : " (typically the day after the superseded scale's Effective To,"}
+            {" "}or match the superseded scale's Effective From to replace it
+            for all periods).
+          </span>
+        </div>
+      )}
+
+      {isDraft && (
+        <div className="mb-3 flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs text-muted-foreground">
+              Effective from
+            </Label>
+            <Input
+              type="date"
+              value={effFrom}
+              onChange={(e) => setEffFrom(e.target.value)}
+              disabled={!mayEdit}
+              className="h-8 w-40 text-xs"
+              data-testid="input-editor-effective-from"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs text-muted-foreground">
+              Effective to
+            </Label>
+            <Input
+              type="date"
+              value={effTo}
+              onChange={(e) => setEffTo(e.target.value)}
+              disabled={!mayEdit}
+              className="h-8 w-40 text-xs"
+              data-testid="input-editor-effective-to"
+            />
+          </div>
+          {mayEdit && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8"
+              onClick={handleSaveDates}
+              disabled={datesSaving || !datesDirty}
+              data-testid="button-save-dates"
+            >
+              {datesSaving ? "Saving…" : "Save dates"}
+            </Button>
+          )}
         </div>
       )}
 
