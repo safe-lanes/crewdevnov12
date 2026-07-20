@@ -16,7 +16,7 @@ import {
   masterVessels,
 } from "../../../../shared/schema";
 import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
-import { and, asc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 // Maximum number of data rows for the main data sheets (crew details, sea service, etc.).
 // Drives dropdown/validation ranges — range-based, so file size is unaffected by this value.
@@ -214,7 +214,7 @@ async function fetchReferenceData() {
     db.select({ name: masterVesselTypes.vesselType }).from(masterVesselTypes).where(and(eq(masterVesselTypes.isDeleted, false), eq(masterVesselTypes.isActive, true))),
     db.select({ name: masterCountries.countryName }).from(masterCountries).where(eq(masterCountries.isDeleted, false)),
     db.select({ name: masterLanguages.languageName }).from(masterLanguages).where(eq(masterLanguages.isDeleted, false)),
-    db.select({ name: admCompanyRanksV2.rank }).from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false)).orderBy(asc(admCompanyRanksV2.sortOrder)),
+    db.select({ name: admCompanyRanksV2.rank }).from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false)).orderBy(admCompanyRanksV2.sortOrder),
     db.select({ name: masterManningAgents.name }).from(masterManningAgents).where(eq(masterManningAgents.isDeleted, false)),
     db.select({ name: masterVessels.vessel }).from(masterVessels),
   ]);
