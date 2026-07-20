@@ -53,6 +53,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Attachment ZIP upload (second step of the import flow)
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [attachStatus, setAttachStatus] = useState<"idle" | "uploading" | "done">("idle");
   const [attachResult, setAttachResult] = useState<any>(null);
@@ -153,6 +154,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
 
   // Download blank template from API
   const handleDownloadTemplate = async () => {
+    setIsDownloadingTemplate(true);
     try {
       const blob = await crewPoolApiV2.downloadTemplate();
       const url = window.URL.createObjectURL(blob);
@@ -163,7 +165,6 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      
       toast({
         title: "Template downloaded",
         description: "You can now fill the template with your crew data.",
@@ -174,6 +175,8 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
         title: "Download failed",
         description: err.message || "Failed to download import template",
       });
+    } finally {
+      setIsDownloadingTemplate(false);
     }
   };
 
@@ -357,9 +360,15 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                 size="sm"
                 className="text-xs border-[#cbd5e1] text-gray-700"
                 onClick={handleDownloadTemplate}
+                disabled={isDownloadingTemplate}
+                data-testid="button-download-template"
               >
-                <Download className="h-3.5 w-3.5 mr-1" />
-                Template
+                {isDownloadingTemplate ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                )}
+                {isDownloadingTemplate ? "Preparing…" : "Template"}
               </Button>
             </div>
           )}
