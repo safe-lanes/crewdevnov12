@@ -117,7 +117,13 @@ export function ReportResultsTable({
           valueFormatter: (params) => formatCell(params.value, col.type),
         };
         if (col.type === "number") {
-          def.filter = "agNumberColumnFilter";
+          def.filter = "agMultiColumnFilter";
+          def.filterParams = {
+            filters: [
+              { filter: "agNumberColumnFilter" },
+              { filter: "agSetColumnFilter" },
+            ],
+          };
         } else if (col.type === "date") {
           def.filter = "agDateColumnFilter";
           def.filterParams = {
