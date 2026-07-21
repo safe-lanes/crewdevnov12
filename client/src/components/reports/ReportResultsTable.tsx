@@ -1,7 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { Download } from "lucide-react";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
+import type { CustomDateProps } from "ag-grid-react";
 import { Button } from "@/components/ui/button";
+import { FormattedDateInput } from "@/components/ui/formatted-date-input";
 import { AgGridTable } from "@/components/AgGrid/AgGridTable";
 import { downloadCsv, rowsToCsv } from "@/lib/csvExport";
 import { downloadXlsx } from "@/lib/xlsxExport";
@@ -36,6 +38,28 @@ function formatCell(value: unknown, type?: ReportColumnType): string {
     return value.toLocaleString();
   }
   return String(value);
+}
+
+function dateFilterComparator(filterDate: Date, cellValue: unknown): number {
+  if (!cellValue) return -1;
+  const d = new Date(String(cellValue));
+  if (isNaN(d.getTime())) return -1;
+  const cell = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const flt = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate());
+  return cell < flt ? -1 : cell > flt ? 1 : 0;
+}
+
+function ReportGridDateInput({ date, onDateChange }: CustomDateProps): JSX.Element {
+  const value = date
+    ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+    : "";
+  return (
+    <FormattedDateInput
+      value={value}
+      placeholder="DD-MMM-YYYY"
+      onChange={(e) => onDateChange(e.target.value ? new Date(e.target.value + "T00:00:00") : null)}
+    />
+  );
 }
 
 export function ReportResultsTable({
@@ -94,8 +118,20 @@ export function ReportResultsTable({
         };
         if (col.type === "number") {
           def.filter = "agNumberColumnFilter";
+        } else if (col.type === "date") {
+          def.filter = "agDateColumnFilter";
+          def.filterParams = {
+            comparator: dateFilterComparator,
+            includeBlanksInEquals: false,
+            includeBlanksInLessThan: false,
+            includeBlanksInGreaterThan: false,
+            includeBlanksInRange: false,
+          };
         } else {
-          def.filter = "agTextColumnFilter";
+          def.filter = "agSetColumnFilter";
+          def.filterParams = {
+            valueFormatter: (p: { value: unknown }) => formatCell(p.value, col.type),
+          };
         }
         if (col.align === "right") {
           def.cellStyle = { textAlign: "right" };
@@ -160,6 +196,7 @@ export function ReportResultsTable({
             setGridReady(true);
           }}
           gridOptions={{
+            components: { agDateInput: ReportGridDateInput },
             domLayout: "normal",
             overlayNoRowsTemplate:
               '<span class="text-gray-500">No data matches the selected filters.</span>',
