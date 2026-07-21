@@ -278,7 +278,11 @@ export const vesselCrewChangesReport: ReportHandler<z.infer<typeof changesFilter
     // changeType label reuses the exact same checks that admit the row, so
     // the label can never disagree with the filtering. NULL (blank) when no
     // date filters are applied.
-    let changeTypeExpr: SQL<string | null> = sql<string | null>`NULL`;
+    let changeTypeExpr: SQL<string | null> = sql<string | null>`CASE
+      WHEN ${onDate} IS NOT NULL AND ${offDate} IS NOT NULL THEN 'Sign On / Sign Off'
+      WHEN ${onDate} IS NOT NULL THEN 'Sign On'
+      WHEN ${offDate} IS NOT NULL THEN 'Sign Off'
+    END`;
     const buildChangeType = (onIn: SQL, offIn: SQL) =>
       sql<string | null>`CASE
         WHEN ${onIn} AND ${offIn} THEN 'Sign On / Sign Off'
