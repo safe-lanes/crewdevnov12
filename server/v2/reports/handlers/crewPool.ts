@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq, isNull, isNotNull, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, isNotNull, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
@@ -500,10 +500,12 @@ export const crewContractExpiryReport: ReportHandler<z.infer<typeof expiryFilter
     const conds: SQL[] = [
       eq(vesselPlanningV2.isDeleted, false),
       eq(vesselPlanningV2.isArchived, false),
-      noSignOffExpr(vesselPlanningV2.signOffDate),
+      inArray(vesselPlanningV2.crewStatus, ["primary", "secondary"]),
+      isNotNull(vesselPlanningV2.vesselUuid),
+      isNotNull(vesselPlanningV2.signOnDate),
       isNotNull(vesselPlanningV2.crewUuid),
       sql`${reliefDueDate} IS NOT NULL`,
-      sql`${reliefDueDate} BETWEEN CURRENT_DATE AND CURRENT_DATE + (${n} || ' days')::interval`,
+      sql`${reliefDueDate} <= CURRENT_DATE + (${n} || ' days')::interval`,
       eq(crewMembersV2.isDeleted, false),
     ];
     if (filters.rank) conds.push(eq(vesselPlanningV2.rank, filters.rank));
