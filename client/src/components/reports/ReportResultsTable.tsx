@@ -101,7 +101,7 @@ export function ReportResultsTable({
   };
 
   const handleExportPdf = () => {
-    downloadPdf(baseFilename, title || "Report", exportColumns, exportRows);
+    downloadPdf(baseFilename, title || "Report", exportColumns, exportRows, total);
   };
 
   const columnDefs = useMemo<ColDef[]>(

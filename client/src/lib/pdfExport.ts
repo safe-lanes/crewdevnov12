@@ -16,6 +16,7 @@ export function downloadPdf(
   title: string,
   columns: PdfColumn[],
   rows: Array<Record<string, unknown>>,
+  totalRecords?: number,
 ): void {
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
 
@@ -29,6 +30,12 @@ export function downloadPdf(
   doc.setTextColor(110);
   const generatedAt = new Date().toLocaleString();
   doc.text(`Generated: ${generatedAt}`, marginX, 52);
+  if (totalRecords !== undefined) {
+    const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
+    doc.text(`Total Records: ${totalRecords.toLocaleString()}`, pageWidth - marginX, 52, {
+      align: "right",
+    });
+  }
   doc.setTextColor(0);
 
   const head = [columns.map((c) => c.label)];
