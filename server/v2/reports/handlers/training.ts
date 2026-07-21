@@ -18,7 +18,9 @@ const currentVesselNameExpr = sql<string | null>`(
   WHERE vessel_planning_v2.crew_uuid = crew_members_v2.crew_uuid
     AND vessel_planning_v2.is_deleted = FALSE
     AND vessel_planning_v2.is_archived = FALSE
-    AND vessel_planning_v2.sign_off_date IS NULL
+    AND vessel_planning_v2.crew_status IN ('primary', 'secondary')
+    AND vessel_planning_v2.vessel_uuid IS NOT NULL
+    AND vessel_planning_v2.sign_on_date IS NOT NULL
   LIMIT 1
 )`;
 
