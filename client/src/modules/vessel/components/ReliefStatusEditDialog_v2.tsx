@@ -359,11 +359,12 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             data.relieverSignOnDate = normalizeToIsoDate(data.relieverSignOnDate);
         }
 
+        if (data.relieverCrewName && data.relieverCrewName.trim() !== '' && !data.relieverSignOnDate) {
+            toast({ title: "Validation Error", description: "Sign On Date is required.", variant: "destructive" });
+            return;
+        }
+
         if (data.signOnStatus === "In Transit" || data.signOnStatus === "Signed On") {
-            if (!data.relieverSignOnDate) {
-                toast({ title: "Validation Error", description: "Sign On Date is required when Sign On Status is In Transit or Signed On.", variant: "destructive" });
-                return;
-            }
             const signOnParsed = parseDateString(data.relieverSignOnDate);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
