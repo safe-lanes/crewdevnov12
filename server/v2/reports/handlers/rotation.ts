@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq, isNotNull, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
@@ -114,10 +114,30 @@ const plannedFilters = z
   })
   .strict();
 
+const plannedSignOffDate = dateExpr(vesselPlanningV2.signOffDate);
+
+const plannedCols: ReportColumn[] = [
+  { key: "empNo", label: "Emp No", type: "text", width: 110 },
+  { key: "name", label: "Name", type: "text" },
+  { key: "presentRank", label: "Rank", type: "text" },
+  { key: "vesselName", label: "Vessel", type: "text" },
+  { key: "reliefStatus", label: "Relief Status", type: "text", width: 130 },
+  { key: "plannedSignOffDate", label: "Planned Sign off Date", type: "date", width: 160 },
+];
+
+const plannedSortMap: Record<string, PgColumn | SQL> = {
+  empNo: crewMembersV2.empNo,
+  name: crewMembersV2.firstName,
+  presentRank: vesselPlanningV2.rank,
+  vesselName: masterVessels.vessel,
+  reliefStatus: vesselPlanningV2.reliefStatus,
+  plannedSignOffDate: plannedSignOffDate,
+};
+
 export const rotationPlannedReliefsReport: ReportHandler<z.infer<typeof plannedFilters>> = {
   reportId: "rot-planned-reliefs",
   title: "Planned Reliefs Within N Days",
-  columns: baseCols,
+  columns: plannedCols,
   filterSchema: plannedFilters,
   async run(filters, ctx) {
     const db = getDb();
@@ -125,10 +145,10 @@ export const rotationPlannedReliefsReport: ReportHandler<z.infer<typeof plannedF
     const conds: SQL[] = [
       eq(vesselPlanningV2.isDeleted, false),
       eq(vesselPlanningV2.isArchived, false),
-      noSignOffExpr(vesselPlanningV2.signOffDate),
       isNotNull(vesselPlanningV2.crewUuid),
-      sql`${reliefDueDate} IS NOT NULL`,
-      sql`${reliefDueDate} BETWEEN CURRENT_DATE AND CURRENT_DATE + (${n} || ' days')::interval`,
+      inArray(vesselPlanningV2.reliefStatus, ["Planned", "Confirmed"]),
+      sql`${plannedSignOffDate} IS NOT NULL`,
+      sql`${plannedSignOffDate} <= CURRENT_DATE + (${n} || ' days')::interval`,
       eq(crewMembersV2.isDeleted, false),
     ];
     if (filters.vessel) conds.push(eq(masterVessels.vessel, filters.vessel));
@@ -142,8 +162,8 @@ export const rotationPlannedReliefsReport: ReportHandler<z.infer<typeof plannedF
       .where(where);
     const total = Number(totalRes[0]?.c ?? 0);
 
-    const sortKey = ctx.sort?.key ?? "reliefDue";
-    const order = (ctx.sort?.direction === "desc" ? desc : asc)(sortMap[sortKey] ?? sortMap.reliefDue);
+    const sortKey = ctx.sort?.key ?? "plannedSignOffDate";
+    const order = (ctx.sort?.direction === "desc" ? desc : asc)(plannedSortMap[sortKey] ?? plannedSortMap.plannedSignOffDate);
 
     const rows = await db
       .select({
@@ -151,7 +171,8 @@ export const rotationPlannedReliefsReport: ReportHandler<z.infer<typeof plannedF
         name: nameExpr,
         presentRank: vesselPlanningV2.rank,
         vesselName: masterVessels.vessel,
-        reliefDue: vesselPlanningV2.reliefDue,
+        reliefStatus: vesselPlanningV2.reliefStatus,
+        plannedSignOffDate: vesselPlanningV2.signOffDate,
       })
       .from(vesselPlanningV2)
       .innerJoin(crewMembersV2, eq(crewMembersV2.crewUuid, vesselPlanningV2.crewUuid))
@@ -168,7 +189,8 @@ export const rotationPlannedReliefsReport: ReportHandler<z.infer<typeof plannedF
         name: r.name ?? null,
         presentRank: r.presentRank ?? null,
         vesselName: r.vesselName ?? null,
-        reliefDue: r.reliefDue ?? null,
+        reliefStatus: r.reliefStatus ?? null,
+        plannedSignOffDate: r.plannedSignOffDate ?? null,
       })),
     };
   },
