@@ -116,6 +116,32 @@ export function ReportResultsTable({
           minWidth: 100,
           valueFormatter: (params) => formatCell(params.value, col.type),
         };
+        if (col.type === "status") {
+          // Red badge for Terminated statuses (matches Crew Pool styling);
+          // all other status values render as plain text exactly as before.
+          def.cellRenderer = (params: { value: unknown }) => {
+            const text = formatCell(params.value, col.type);
+            if (typeof params.value === "string" && params.value.startsWith("Terminated")) {
+              return (
+                <span
+                  style={{
+                    backgroundColor: "#ef4444",
+                    color: "#ffffff",
+                    borderRadius: "4px",
+                    padding: "2px 8px",
+                    fontSize: "12px",
+                    fontWeight: 500,
+                    display: "inline-block",
+                    lineHeight: "18px",
+                  }}
+                >
+                  {text}
+                </span>
+              );
+            }
+            return text;
+          };
+        }
         if (col.type === "number") {
           def.filter = "agMultiColumnFilter";
           def.filterParams = {

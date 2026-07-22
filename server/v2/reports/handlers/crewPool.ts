@@ -221,9 +221,22 @@ export const crewAvailableToJoinReport: ReportHandler<z.infer<typeof availFilter
 // ============================================================
 // cp-terminated : isActive = false (excluding deleted).
 // ============================================================
+// Mirrors Crew Pool's Terminated-tab status label:
+// lastTerminationCategory ("UT" | "BT" | "general") + "-NFR" suffix when notForHire.
+const terminatedStatusExpr = sql<string>`(
+  CASE lower(trim(coalesce(${crewMembersV2.lastTerminationCategory}, '')))
+    WHEN 'ut' THEN 'Terminated(UT)'
+    WHEN 'bt' THEN 'Terminated(BT)'
+    WHEN 'general' THEN 'Terminated(Gen)'
+    ELSE 'Terminated'
+  END
+  || CASE WHEN ${crewMembersV2.notForHire} = true THEN '-NFR' ELSE '' END
+)`;
+
 const termFilters = z
   .object({
     rank: z.string().trim().min(1).optional(),
+    nationality: z.string().trim().min(1).optional(),
     dateFrom: dateFilter,
     dateTo: dateFilter,
   })
@@ -233,6 +246,7 @@ const termCols: ReportColumn[] = [
   { key: "empNo", label: "Emp No", type: "text", width: 110 },
   { key: "name", label: "Name", type: "text" },
   { key: "presentRank", label: "Rank", type: "text" },
+  { key: "nationalityName", label: "Nationality", type: "text" },
   { key: "status", label: "Status", type: "status", width: 130 },
   { key: "terminatedAt", label: "Terminated", type: "date", width: 140 },
 ];
@@ -254,82 +268,9 @@ export const crewTerminatedReport: ReportHandler<z.infer<typeof termFilters>> = 
       sql`${crewMembersV2.status} ILIKE 'Terminated%'`,
     ];
     if (filters.rank) conds.push(eq(crewMembersV2.presentRank, filters.rank));
+    if (filters.nationality) conds.push(eq(masterNationalities.nationality, filters.nationality));
     if (filters.dateFrom) conds.push(sql`COALESCE(NULLIF(TRIM(${crewMembersV2.lastTerminationDate}), '')::date, ${crewMembersV2.archivedAt}::date, ${crewMembersV2.updatedAt}::date) >= ${filters.dateFrom}::date`);
     if (filters.dateTo) conds.push(sql`COALESCE(NULLIF(TRIM(${crewMembersV2.lastTerminationDate}), '')::date, ${crewMembersV2.archivedAt}::date, ${crewMembersV2.updatedAt}::date) <= ${filters.dateTo}::date`);
-    const where = and(...conds);
-
-    const totalRes = await db.select({ c: sql<number>`count(*)` }).from(crewMembersV2).where(where);
-    const total = Number(totalRes[0]?.c ?? 0);
-
-    const sortMap: Record<string, PgColumn | SQL> = {
-      empNo: crewMembersV2.empNo,
-      name: crewMembersV2.firstName,
-      presentRank: crewMembersV2.presentRank,
-      status: crewMembersV2.status,
-      terminatedAt: terminatedAtExpr,
-    };
-    const sortKey = ctx.sort?.key ?? "terminatedAt";
-    const order = (ctx.sort?.direction === "desc" ? desc : asc)(sortMap[sortKey] ?? sortMap.empNo);
-
-    const rows = await db
-      .select({
-        empNo: crewMembersV2.empNo,
-        name: nameExpr,
-        presentRank: crewMembersV2.presentRank,
-        status: crewMembersV2.status,
-        terminatedAt: terminatedAtExpr,
-      })
-      .from(crewMembersV2)
-      .where(where)
-      .orderBy(order, asc(crewMembersV2.crewUuid))
-      .limit(ctx.pageSize)
-      .offset((ctx.page - 1) * ctx.pageSize);
-
-    return {
-      total,
-      rows: rows.map((r: (typeof rows)[number]) => ({
-        empNo: r.empNo ?? null,
-        name: r.name ?? null,
-        presentRank: r.presentRank ?? null,
-        status: r.status ?? "Terminated",
-        terminatedAt: r.terminatedAt ?? null,
-      })),
-    };
-  },
-};
-
-// ============================================================
-// cp-not-for-rehire : status flagged as not-for-rehire/blacklist.
-// ============================================================
-const nfrFilters = z
-  .object({
-    rank: z.string().trim().min(1).optional(),
-    nationality: z.string().trim().min(1).optional(),
-  })
-  .strict();
-
-const nfrCols: ReportColumn[] = [
-  { key: "empNo", label: "Emp No", type: "text", width: 110 },
-  { key: "name", label: "Name", type: "text" },
-  { key: "presentRank", label: "Rank", type: "text" },
-  { key: "nationalityName", label: "Nationality", type: "text" },
-  { key: "status", label: "Status", type: "status", width: 160 },
-];
-
-export const crewNotForRehireReport: ReportHandler<z.infer<typeof nfrFilters>> = {
-  reportId: "cp-not-for-rehire",
-  title: "Not-for-Rehire List",
-  columns: nfrCols,
-  filterSchema: nfrFilters,
-  async run(filters, ctx) {
-    const db = getDb();
-    const conds: SQL[] = [
-      eq(crewMembersV2.isDeleted, false),
-      eq(crewMembersV2.notForHire, true),
-      eq(crewMembersV2.status, "Terminated"),
-    ];
-    if (filters.rank) conds.push(eq(crewMembersV2.presentRank, filters.rank));
-    if (filters.nationality) conds.push(eq(masterNationalities.nationality, filters.nationality));
     const where = and(...conds);
 
     const totalRes = await db
@@ -344,7 +285,99 @@ export const crewNotForRehireReport: ReportHandler<z.infer<typeof nfrFilters>> =
       name: crewMembersV2.firstName,
       presentRank: crewMembersV2.presentRank,
       nationalityName: masterNationalities.nationality,
-      status: crewMembersV2.status,
+      status: terminatedStatusExpr,
+      terminatedAt: terminatedAtExpr,
+    };
+    const sortKey = ctx.sort?.key ?? "terminatedAt";
+    const order = (ctx.sort?.direction === "desc" ? desc : asc)(sortMap[sortKey] ?? sortMap.empNo);
+
+    const rows = await db
+      .select({
+        empNo: crewMembersV2.empNo,
+        name: nameExpr,
+        presentRank: crewMembersV2.presentRank,
+        nationalityName: masterNationalities.nationality,
+        status: terminatedStatusExpr,
+        terminatedAt: terminatedAtExpr,
+      })
+      .from(crewMembersV2)
+      .leftJoin(masterNationalities, eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid))
+      .where(where)
+      .orderBy(order, asc(crewMembersV2.crewUuid))
+      .limit(ctx.pageSize)
+      .offset((ctx.page - 1) * ctx.pageSize);
+
+    return {
+      total,
+      rows: rows.map((r: (typeof rows)[number]) => ({
+        empNo: r.empNo ?? null,
+        name: r.name ?? null,
+        presentRank: r.presentRank ?? null,
+        nationalityName: r.nationalityName ?? null,
+        status: r.status ?? "Terminated",
+        terminatedAt: r.terminatedAt ?? null,
+      })),
+    };
+  },
+};
+
+// ============================================================
+// cp-not-for-rehire : status flagged as not-for-rehire/blacklist.
+// ============================================================
+const nfrFilters = z
+  .object({
+    rank: z.string().trim().min(1).optional(),
+    nationality: z.string().trim().min(1).optional(),
+    dateFrom: dateFilter,
+    dateTo: dateFilter,
+  })
+  .strict();
+
+const nfrCols: ReportColumn[] = [
+  { key: "empNo", label: "Emp No", type: "text", width: 110 },
+  { key: "name", label: "Name", type: "text" },
+  { key: "presentRank", label: "Rank", type: "text" },
+  { key: "nationalityName", label: "Nationality", type: "text" },
+  { key: "status", label: "Status", type: "status", width: 160 },
+  { key: "terminatedAt", label: "Terminated", type: "date", width: 140 },
+];
+
+export const crewNotForRehireReport: ReportHandler<z.infer<typeof nfrFilters>> = {
+  reportId: "cp-not-for-rehire",
+  title: "Not-for-Rehire List",
+  columns: nfrCols,
+  filterSchema: nfrFilters,
+  async run(filters, ctx) {
+    const db = getDb();
+    const archivedDate = sql<string | null>`to_char(${crewMembersV2.archivedAt}, 'YYYY-MM-DD')`;
+    const updatedDate = sql<string | null>`to_char(${crewMembersV2.updatedAt}, 'YYYY-MM-DD')`;
+    const terminatedAtExpr = sql<string | null>`COALESCE(NULLIF(TRIM(${crewMembersV2.lastTerminationDate}), ''), ${archivedDate}, ${updatedDate})`;
+
+    const conds: SQL[] = [
+      eq(crewMembersV2.isDeleted, false),
+      eq(crewMembersV2.notForHire, true),
+      eq(crewMembersV2.status, "Terminated"),
+    ];
+    if (filters.rank) conds.push(eq(crewMembersV2.presentRank, filters.rank));
+    if (filters.nationality) conds.push(eq(masterNationalities.nationality, filters.nationality));
+    if (filters.dateFrom) conds.push(sql`COALESCE(NULLIF(TRIM(${crewMembersV2.lastTerminationDate}), '')::date, ${crewMembersV2.archivedAt}::date, ${crewMembersV2.updatedAt}::date) >= ${filters.dateFrom}::date`);
+    if (filters.dateTo) conds.push(sql`COALESCE(NULLIF(TRIM(${crewMembersV2.lastTerminationDate}), '')::date, ${crewMembersV2.archivedAt}::date, ${crewMembersV2.updatedAt}::date) <= ${filters.dateTo}::date`);
+    const where = and(...conds);
+
+    const totalRes = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(crewMembersV2)
+      .leftJoin(masterNationalities, eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid))
+      .where(where);
+    const total = Number(totalRes[0]?.c ?? 0);
+
+    const sortMap: Record<string, PgColumn | SQL> = {
+      empNo: crewMembersV2.empNo,
+      name: crewMembersV2.firstName,
+      presentRank: crewMembersV2.presentRank,
+      nationalityName: masterNationalities.nationality,
+      status: terminatedStatusExpr,
+      terminatedAt: terminatedAtExpr,
     };
     const sortKey = ctx.sort?.key ?? "empNo";
     const order = (ctx.sort?.direction === "desc" ? desc : asc)(sortMap[sortKey] ?? sortMap.empNo);
@@ -355,7 +388,8 @@ export const crewNotForRehireReport: ReportHandler<z.infer<typeof nfrFilters>> =
         name: nameExpr,
         presentRank: crewMembersV2.presentRank,
         nationalityName: masterNationalities.nationality,
-        status: crewMembersV2.status,
+        status: terminatedStatusExpr,
+        terminatedAt: terminatedAtExpr,
       })
       .from(crewMembersV2)
       .leftJoin(masterNationalities, eq(crewMembersV2.nationalityUuid, masterNationalities.natUuid))
@@ -372,6 +406,7 @@ export const crewNotForRehireReport: ReportHandler<z.infer<typeof nfrFilters>> =
         presentRank: r.presentRank ?? null,
         nationalityName: r.nationalityName ?? null,
         status: r.status ?? null,
+        terminatedAt: r.terminatedAt ?? null,
       })),
     };
   },

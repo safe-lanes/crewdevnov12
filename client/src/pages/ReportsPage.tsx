@@ -275,11 +275,13 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
   ],
   "cp-terminated": [
     { kind: "rank", label: "Filter by Rank" },
+    { kind: "nationality", label: "Filter by Nationality" },
     { kind: "dateRange", label: "Termination Date Range" },
   ],
   "cp-not-for-rehire": [
     { kind: "rank", label: "Filter by Rank" },
     { kind: "nationality", label: "Filter by Nationality" },
+    { kind: "dateRange", label: "Termination Date Range" },
   ],
   "cp-by-rank": [
     { kind: "rank", label: "Filter by Rank" },
