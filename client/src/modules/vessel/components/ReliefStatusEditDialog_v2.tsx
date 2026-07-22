@@ -365,10 +365,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         }
 
         if (data.signOnStatus === "In Transit" || data.signOnStatus === "Signed On") {
-            const signOnParsed = parseDateString(data.relieverSignOnDate);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            if (signOnParsed && !isNaN(signOnParsed.getTime()) && signOnParsed > today) {
+            const todayStr = format(new Date(), 'yyyy-MM-dd');
+            if (data.relieverSignOnDate && data.relieverSignOnDate > todayStr) {
                 toast({ title: "Validation Error", description: "Sign On Date cannot be a future date when Sign On Status is In Transit or Signed On.", variant: "destructive" });
                 return;
             }
@@ -428,10 +426,9 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         if (watchedSignOnStatus === "In Transit" || watchedSignOnStatus === "Signed On") {
             const currentSignOn = form.getValues('relieverSignOnDate');
             if (currentSignOn) {
-                const parsed = parseDateString(currentSignOn);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                if (parsed && !isNaN(parsed.getTime()) && parsed > today) {
+                const isoDate = normalizeToIsoDate(currentSignOn);
+                const todayStr = format(new Date(), 'yyyy-MM-dd');
+                if (isoDate && isoDate.match(/^\d{4}-\d{2}-\d{2}$/) && isoDate > todayStr) {
                     form.setValue('relieverSignOnDate', '', { shouldValidate: true });
                 }
             }
