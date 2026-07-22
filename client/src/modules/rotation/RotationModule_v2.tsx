@@ -11,9 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Filter, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
-import { format, addMonths } from 'date-fns';
+import { format } from 'date-fns';
 import { DueCrewTable_v2 } from './DueCrewTable_v2';
 import { RotationPlanTable_v2 } from './RotationPlanTable_v2';
 import { ApprovalTable_v2 } from './ApprovalTable_v2';
@@ -63,6 +64,28 @@ function ApprovalScreenV2() {
     });
     const [dateRangeDialogOpen, setDateRangeDialogOpen] = useState(false);
 
+    const [draftRange, setDraftRange] = useState<ApprovalDateRange>({ start: undefined, end: undefined });
+
+    // 'yyyy-MM-dd' from a native date input -> local Date (no timezone shift; same as Dashboard)
+    const parseDateInput = (value: string): Date | undefined => {
+        if (!value) return undefined;
+        const [year, month, day] = value.split('-').map(Number);
+        if (!year || !month || !day) return undefined;
+        return new Date(year, month - 1, day);
+    };
+
+    const openDateRangeDialog = (open: boolean) => {
+        if (open) setDraftRange(dateRange);   // pre-fill draft with what's applied
+        setDateRangeDialogOpen(open);
+    };
+
+    const isDraftValid = !!draftRange.start && !!draftRange.end && draftRange.start <= draftRange.end;
+
+    const handleApplyDateRange = () => {
+        setDateRange(draftRange);             // commit — table filters NOW
+        setDateRangeDialogOpen(false);
+    };
+
     const { data: vessels = [] } = useVessels();
     const { data: companyRanks = [] } = useCompanyRanks();
 
@@ -74,6 +97,7 @@ function ApprovalScreenV2() {
             start: undefined,
             end: undefined
         });
+        setDraftRange({ start: undefined, end: undefined });
     };
 
     const toggleVessel = (vesselId: string) => {
@@ -95,6 +119,36 @@ function ApprovalScreenV2() {
     const dateRangeLabel = dateRange.start && dateRange.end
         ? `${format(dateRange.start, 'dd-MMM-yy')} - ${format(dateRange.end, 'dd-MMM-yy')}`
         : "Select a Date Range";
+
+    const dateRangePopoverContent = (
+        <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label className="text-xs text-gray-600 dark:text-gray-400">Date From</Label>
+                    <Input type="date"
+                        value={draftRange.start ? format(draftRange.start, 'yyyy-MM-dd') : ''}
+                        onChange={(e) => setDraftRange(prev => ({ ...prev, start: parseDateInput(e.target.value) }))}
+                        className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
+                        data-testid="date-from-approval-v2" />
+                </div>
+                <div className="space-y-2">
+                    <Label className="text-xs text-gray-600 dark:text-gray-400">Date To</Label>
+                    <Input type="date"
+                        value={draftRange.end ? format(draftRange.end, 'yyyy-MM-dd') : ''}
+                        onChange={(e) => setDraftRange(prev => ({ ...prev, end: parseDateInput(e.target.value) }))}
+                        className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
+                        data-testid="date-to-approval-v2" />
+                </div>
+            </div>
+            <div className="flex justify-end pt-2">
+                <Button onClick={handleApplyDateRange} disabled={!isDraftValid}
+                    className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-8"
+                    data-testid="button-apply-date-range-v2">
+                    Apply
+                </Button>
+            </div>
+        </div>
+    );
 
     return (
         <div className="flex flex-col h-full">
@@ -193,7 +247,7 @@ function ApprovalScreenV2() {
                             </div>
 
                             <div className="shrink-0">
-                                <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
+                                <Popover open={dateRangeDialogOpen} onOpenChange={openDateRangeDialog}>
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
@@ -207,23 +261,8 @@ function ApprovalScreenV2() {
                                             <ChevronDown className="h-4 w-4 opacity-50 ml-1" />
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] max-h-[min(85vh,700px)] overflow-y-auto p-4" align="start">
-                                        <div className="flex flex-col gap-4">
-                                            <div className="flex flex-col md:flex-row gap-4">
-                                                <div>
-                                                    <label className="text-sm font-medium mb-2 block">Start Date</label>
-                                                    <Calendar mode="single" selected={dateRange.start} onSelect={(date) => setDateRange(prev => ({ ...prev, start: date || undefined }))} disabled={(date) => !!dateRange.end && date > dateRange.end} data-testid="calendar-start-date-v2" />
-                                                </div>
-                                                <div>
-                                                    <label className="text-sm font-medium mb-2 block">End Date</label>
-                                                    <Calendar mode="single" selected={dateRange.end} onSelect={(date) => setDateRange(prev => ({ ...prev, end: date || undefined }))} disabled={(date) => !!dateRange.start && date < dateRange.start} data-testid="calendar-end-date-v2" />
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2 pt-2 border-t">
-                                                <Button variant="outline" size="sm" onClick={() => { const resetToday = new Date(); setDateRange({ start: addMonths(resetToday, -2), end: addMonths(resetToday, 5) }); }} data-testid="button-reset-date-range-v2">Reset</Button>
-                                                <Button size="sm" onClick={() => setDateRangeDialogOpen(false)} className="bg-blue-600 hover:bg-blue-700" data-testid="button-apply-date-range-v2">Apply</Button>
-                                            </div>
-                                        </div>
+                                    <PopoverContent className="w-auto p-4" align="start">
+                                        {dateRangePopoverContent}
                                     </PopoverContent>
                                 </Popover>
                             </div>
@@ -276,21 +315,15 @@ function ApprovalScreenV2() {
 
                             <input type="text" placeholder="Draft ID" value={draftIdFilter} onChange={(e) => setDraftIdFilter(e.target.value)} className="h-8 w-full px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]" data-testid="input-draft-id-v2" />
 
-                            <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
+                            <Popover open={dateRangeDialogOpen} onOpenChange={openDateRangeDialog}>
                                 <PopoverTrigger asChild>
                                     <Button variant="outline" className="h-8 w-full text-[11px] border-[#e1e8ed] justify-between" data-testid="select-date-range-v2">
                                         <span className="truncate flex items-center gap-2"><CalendarIcon className="h-4 w-4" />{dateRangeLabel}</span>
                                         <ChevronDown className="h-4 w-4 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto max-w-[calc(100vw-2rem)] max-h-[min(85vh,700px)] overflow-y-auto p-4" align="start">
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex flex-col md:flex-row gap-4">
-                                            <div><label className="text-sm font-medium mb-2 block">Start Date</label><Calendar mode="single" selected={dateRange.start} onSelect={(date) => setDateRange(prev => ({ ...prev, start: date || undefined }))} disabled={(date) => !!dateRange.end && date > dateRange.end} data-testid="calendar-start-date-v2" /></div>
-                                            <div><label className="text-sm font-medium mb-2 block">End Date</label><Calendar mode="single" selected={dateRange.end} onSelect={(date) => setDateRange(prev => ({ ...prev, end: date || undefined }))} disabled={(date) => !!dateRange.start && date < dateRange.start} data-testid="calendar-end-date-v2" /></div>
-                                        </div>
-                                        <div className="flex gap-2 pt-2 border-t"><Button variant="outline" size="sm" onClick={() => { const resetToday = new Date(); setDateRange({ start: addMonths(resetToday, -2), end: addMonths(resetToday, 5) }); }} data-testid="button-reset-date-range-v2">Reset</Button><Button size="sm" onClick={() => setDateRangeDialogOpen(false)} className="bg-blue-600 hover:bg-blue-700" data-testid="button-apply-date-range-v2">Apply</Button></div>
-                                    </div>
+                                <PopoverContent className="w-auto p-4" align="start">
+                                    {dateRangePopoverContent}
                                 </PopoverContent>
                             </Popover>
 
