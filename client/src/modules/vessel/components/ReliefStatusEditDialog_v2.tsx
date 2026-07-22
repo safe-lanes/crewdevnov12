@@ -358,6 +358,20 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         if (data.relieverSignOnDate) {
             data.relieverSignOnDate = normalizeToIsoDate(data.relieverSignOnDate);
         }
+
+        if (data.signOnStatus === "In Transit" || data.signOnStatus === "Signed On") {
+            if (!data.relieverSignOnDate) {
+                toast({ title: "Validation Error", description: "Sign On Date is required when Sign On Status is In Transit or Signed On.", variant: "destructive" });
+                return;
+            }
+            const signOnParsed = parseDateString(data.relieverSignOnDate);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (signOnParsed && !isNaN(signOnParsed.getTime()) && signOnParsed > today) {
+                toast({ title: "Validation Error", description: "Sign On Date cannot be a future date when Sign On Status is In Transit or Signed On.", variant: "destructive" });
+                return;
+            }
+        }
         
         if (!data.relieverCrewName || data.relieverCrewName.trim() === '') {
             const hasOtherData = data.signOnStatus || data.relieverSignOnPort || data.relieverSignOnDate || 
@@ -405,6 +419,23 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 
     const relieverName = form.watch('relieverCrewName');
     const isRelieverAssigned = relieverName && relieverName.trim() !== '';
+
+    const watchedSignOnStatus = form.watch('signOnStatus');
+
+    // Auto-clear stale future Sign On Date when status switches to "In Transit" or "Signed On"
+    React.useEffect(() => {
+        if (watchedSignOnStatus === "In Transit" || watchedSignOnStatus === "Signed On") {
+            const currentSignOn = form.getValues('relieverSignOnDate');
+            if (currentSignOn) {
+                const parsed = parseDateString(currentSignOn);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (parsed && !isNaN(parsed.getTime()) && parsed > today) {
+                    form.setValue('relieverSignOnDate', '', { shouldValidate: true });
+                }
+            }
+        }
+    }, [watchedSignOnStatus]);
 
     return (
         <>
@@ -610,6 +641,11 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                                             setJoiningDateOpen(false);
                                                         }
                                                     }}
+                                                    disabled={
+                                                        (watchedSignOnStatus === "In Transit" || watchedSignOnStatus === "Signed On")
+                                                            ? (() => { const today = new Date(); today.setHours(0, 0, 0, 0); return { after: today }; })()
+                                                            : undefined
+                                                    }
                                                     initialFocus
                                                 />
                                             </PopoverContent>
