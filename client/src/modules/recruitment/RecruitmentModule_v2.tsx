@@ -971,7 +971,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                   columnDefs={columnDefs}
                   onGridReady={onGridReady}
                   fillAvailableHeight={true}
-                  bottomPadding={isPhone ? 10 : 20}
+                  bottomPadding={isPhone ? 10 : 80}
                   width="100%"
                   enableExport={!isPhone}
                   enableSideBar={!isSmallScreen}
