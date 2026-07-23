@@ -225,6 +225,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     vesselType: "",
     nationality: "",
     appraisalType: "",
+    status: "",
     rating: ""
   });
 
@@ -576,6 +577,11 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
         return false;
       }
 
+      // Status filter
+      if (filters.status && crew.status.toLowerCase() !== filters.status.toLowerCase()) {
+        return false;
+      }
+
       // Rating filter
       if (filters.rating) {
         const rating = parseFloat(crew.overallRating.value);
@@ -883,6 +889,17 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                   </SelectContent>
                 </Select>
 
+                <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                  <SelectTrigger className="h-8 w-28 text-xs text-[#0f172a] shrink-0" data-testid="select-status">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="preliminary">Preliminary</SelectItem>
+                    <SelectItem value="submitted">Submitted</SelectItem>
+                    <SelectItem value="reviewed">Reviewed</SelectItem>
+                  </SelectContent>
+                </Select>
+
                 <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
                   <SelectTrigger className="h-8 w-28 text-xs text-[#0f172a] shrink-0" data-testid="select-rating">
                     <SelectValue placeholder="Rating" />
@@ -899,7 +916,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                 <Button
                   variant="outline"
                   className="h-8 w-20 text-[#8798ad] text-xs border-[#e1e8ed] shrink-0"
-                  onClick={() => setFilters(prev => ({ searchName: "", rank: "", vessel: isShipUser ? prev.vessel : "", vesselType: "", nationality: "", appraisalType: "", rating: "" }))}
+                  onClick={() => setFilters(prev => ({ searchName: "", rank: "", vessel: isShipUser ? prev.vessel : "", vesselType: "", nationality: "", appraisalType: "", status: "", rating: "" }))}
                   data-testid="button-clear-filters"
                 >
                   Clear
@@ -979,6 +996,17 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                       {renderAppraisalTypeOptions()}
                     </SelectContent>
                   </Select>
+
+                  <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-status">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="preliminary">Preliminary</SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="reviewed">Reviewed</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
@@ -998,7 +1026,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                   <Button
                     variant="outline"
                     className="h-8 w-full text-[#8798ad] text-xs border-[#e1e8ed]"
-                    onClick={() => setFilters(prev => ({ searchName: "", rank: "", vessel: isShipUser ? prev.vessel : "", vesselType: "", nationality: "", appraisalType: "", rating: "" }))}
+                    onClick={() => setFilters(prev => ({ searchName: "", rank: "", vessel: isShipUser ? prev.vessel : "", vesselType: "", nationality: "", appraisalType: "", status: "", rating: "" }))}
                     data-testid="button-clear-filters"
                   >
                     Clear
@@ -1082,6 +1110,17 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                     </SelectContent>
                   </Select>
 
+                  <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-status">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="preliminary">Preliminary</SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="reviewed">Reviewed</SelectItem>
+                    </SelectContent>
+                  </Select>
+
                   <Select value={filters.rating} onValueChange={(value) => setFilters(prev => ({ ...prev, rating: value }))}>
                     <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-rating">
                       <SelectValue placeholder="Rating" />
@@ -1099,7 +1138,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                   <Button
                     variant="outline"
                     className="h-8 flex-1 text-[#8798ad] text-xs border-[#e1e8ed]"
-                    onClick={() => setFilters(prev => ({ searchName: "", rank: "", vessel: isShipUser ? prev.vessel : "", vesselType: "", nationality: "", appraisalType: "", rating: "" }))}
+                    onClick={() => setFilters(prev => ({ searchName: "", rank: "", vessel: isShipUser ? prev.vessel : "", vesselType: "", nationality: "", appraisalType: "", status: "", rating: "" }))}
                     data-testid="button-clear-filters"
                   >
                     Clear
