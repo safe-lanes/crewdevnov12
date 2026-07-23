@@ -424,6 +424,7 @@ export function mapV2VisaToLegacy(v2: any): any {
 export function mapLegacyVisaToV2(legacy: any): any {
   return {
     visaUuid: legacy.visaUuid,
+    countryUuid: legacy.countryId || undefined,
     country: legacy.country ?? legacy.issuingCountry ?? undefined,
     serialNo: legacy.serialNo ?? legacy.serialNumber ?? undefined,
     issued: legacy.issuedDate ?? legacy.issued ?? undefined,

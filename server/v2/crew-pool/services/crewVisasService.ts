@@ -84,8 +84,6 @@ export const crewVisasService = {
     const cleanData: any = { ...data };
     if (countryInput) {
       cleanData.country = countryInput;
-      // Clear countryUuid since we're storing free text
-      cleanData.countryUuid = null;
     }
 
     const dataWithAudit = applyAuditUser(cleanData, true);
@@ -103,8 +101,6 @@ export const crewVisasService = {
     const cleanData: any = { ...data };
     if (countryInput) {
       cleanData.country = countryInput;
-      // Clear countryUuid since we're storing free text
-      cleanData.countryUuid = null;
     }
 
     const dataWithAudit = applyAuditUser(cleanData, false);

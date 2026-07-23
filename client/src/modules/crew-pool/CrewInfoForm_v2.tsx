@@ -4569,7 +4569,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             {formData.visas.map((visa) => (
               <TableRow key={visa.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  {(visa.countryId || visa.visaUuid) ? (
+                  {visa.countryId ? (
                     <span className="text-[#4f5863] text-[13px]">{visa.issuingCountry}</span>
                   ) : (
                     <Input
@@ -6757,7 +6757,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
               const docData = {
                 docUuid: doc.docUuid,
-                documentId: doc.documentId || doc.document || '',
+                documentId: doc.documentId || '',
                 documentName: doc.document || doc.documentId || '',
                 number: doc.number || '',
                 issued: doc.issued || '',
@@ -6800,6 +6800,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
               const visaData = {
                 visaUuid: visa.visaUuid,
+                countryId: visa.countryId || '',
                 country: visa.issuingCountry || visa.country || '',
                 serialNo: visa.serialNo ?? visa.serialNumber ?? '',
                 issued: visa.issued || '',
