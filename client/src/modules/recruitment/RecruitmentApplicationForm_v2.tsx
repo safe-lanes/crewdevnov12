@@ -4486,6 +4486,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   value={formData.heightCm}
                   onChange={(e) => updateFormData('heightCm', e.target.value.replace(/[^0-9]/g, ''))}
                   className="mt-1"
+                  placeholder="e.g. 175"
                   data-testid="input-height"
                 />
               ) : (
@@ -4499,6 +4500,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   value={formData.weightKg}
                   onChange={(e) => updateFormData('weightKg', e.target.value.replace(/[^0-9]/g, ''))}
                   className="mt-1"
+                  placeholder="e.g. 75"
                   data-testid="input-weight"
                 />
               ) : (
