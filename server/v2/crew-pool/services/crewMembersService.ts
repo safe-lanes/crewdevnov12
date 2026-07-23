@@ -223,7 +223,8 @@ export const crewMembersService = {
         .where(
           and(
             inArray(crewSeaService.crewUuid, crewUuids),
-            eq(crewSeaService.isDeleted, false)
+            eq(crewSeaService.isDeleted, false),
+            eq(crewSeaService.serviceType, "company")
           )
         );
 

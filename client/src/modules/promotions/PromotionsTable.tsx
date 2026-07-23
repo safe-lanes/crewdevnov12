@@ -636,7 +636,6 @@ export const PromotionsTable: React.FC<PromotionsTableProps> = ({
       const matchesStatus = !status || item.status === status;
       
       const matchesVesselType = !vesselType ||
-        item.vesselType === vesselType ||
         (Array.isArray(item.seaServiceVesselTypes) && item.seaServiceVesselTypes.includes(vesselType));
       
       const criteriaFields = [
