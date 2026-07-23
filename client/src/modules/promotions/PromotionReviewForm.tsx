@@ -1139,6 +1139,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   }, [collectFormData, saveMutation]);
 
   const handleSubmitPartB = useCallback(() => {
+    const partAStatusNorm = ((existingReviewData as any)?.status || 'draft').toString().trim().toLowerCase();
+    if (!['submitted', 'approved', 'completed'].includes(partAStatusNorm)) {
+      toast({
+        title: "Cannot Submit",
+        description: "Please submit Part A first before submitting Part B",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!promotionConfirmed) {
       toast({
         title: "Decision Required",
@@ -1155,6 +1164,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       });
       return;
     }
+    const vesselLeaveNorm = (promotionData?.vesselLeave || '').toString().trim().toLowerCase();
+    const isOnLeave = !vesselLeaveNorm || vesselLeaveNorm === 'on leave';
+    if (promotionTiming === 'on-board' && isOnLeave) {
+      toast({
+        title: "Cannot Submit",
+        description: "Seafarer is on leave. Select Promoted Prior Joining or assign to a vessel first.",
+        variant: "destructive",
+      });
+      return;
+    }
     const reviewData = collectFormData({
       partANotes: '',
       partBNotes: '',
@@ -1162,7 +1181,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }, 'b');
     reviewData.status = 'approved';
     saveMutation.mutate({ data: reviewData, action: 'submit-b' });
-  }, [collectFormData, saveMutation, promotionConfirmed, promotionTiming, toast]);
+  }, [collectFormData, saveMutation, promotionConfirmed, promotionTiming, toast, existingReviewData, promotionData]);
 
   const handleSubmitPartC = useCallback(() => {
     // A promotion can only be marked Completed when Part B recorded a "Yes"
