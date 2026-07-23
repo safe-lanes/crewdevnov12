@@ -36,6 +36,7 @@ INSERT INTO adm_roleaccess_ac (rauid, role_id, menu_id, canview, cancreate, cane
 SELECT gen_random_uuid(), src.role_id, m.muid, src.canview, src.cancreate, src.canedit, src.candelete
 FROM adm_roleaccess_ac src
 JOIN adm_menumaster_ac am ON am.muid = src.menu_id AND am.name = 'Account' AND am.parent_menu IS NULL
+JOIN adm_rolemaster_ac r ON r.ruid = src.role_id AND COALESCE(r.roletype, 'Office') <> 'Ship'
 CROSS JOIN adm_menumaster_ac m
 WHERE m.name IN ('Account Payslips', 'Account GL Export', 'Account Fleet Summary')
 AND NOT EXISTS (

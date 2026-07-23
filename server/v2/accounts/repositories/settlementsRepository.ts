@@ -226,6 +226,183 @@ export class SettlementsRepository {
   }
 
   /**
+   * Apply an approval decision atomically (mirrors PortageRepository.
+   * applyDecision). Locks the parent settlement row FOR UPDATE so concurrent
+   * decisions on the same settlement are serialized, then re-checks the
+   * approval row and the identity-binding invariants under the lock.
+   */
+  async applyDecision(params: {
+    stApprovalUuid: string;
+    decision: "Approved" | "Rejected";
+    comments: string | null;
+    auditUserUuid: string | null;
+    /**
+     * Server-derived identity of the caller (JWT principal id). When set,
+     * the decision is identity-bound: a pre-assigned approver slot may only
+     * be decided by that approver, an unassigned (free-text) slot is claimed
+     * by the decider, and one caller can never satisfy two slots on the
+     * same settlement. Null only when auth is bypassed in dev.
+     */
+    deciderId: string | null;
+  }): Promise<{ settlement: AccSettlementV2 }> {
+    const db = getDb();
+    const fail = (
+      code: "NOT_FOUND" | "CONFLICT" | "FORBIDDEN",
+      message: string,
+    ): never => {
+      const err = new Error(message) as Error & { code: string };
+      err.code = code;
+      throw err;
+    };
+    return db.transaction(async (tx: any) => {
+      const approvalRows = await tx
+        .select()
+        .from(accSettlementApprovalsV2)
+        .where(
+          and(
+            eq(accSettlementApprovalsV2.stApprovalUuid, params.stApprovalUuid),
+            eq(accSettlementApprovalsV2.isDeleted, false),
+          ),
+        );
+      const approval: AccSettlementApprovalV2 | undefined = approvalRows[0];
+      if (!approval) return fail("NOT_FOUND", "Approval row not found");
+
+      // Serialize concurrent decisions on the same settlement.
+      const settlementRows = await tx
+        .select()
+        .from(accSettlementsV2)
+        .where(
+          and(
+            eq(accSettlementsV2.settlementUuid, approval.settlementUuid),
+            eq(accSettlementsV2.isDeleted, false),
+          ),
+        )
+        .for("update");
+      const settlement: AccSettlementV2 | undefined = settlementRows[0];
+      if (!settlement) return fail("NOT_FOUND", "Settlement not found");
+      if (settlement.status !== "submitted") {
+        return fail(
+          "CONFLICT",
+          `Settlement is not awaiting approval (status '${settlement.status}')`,
+        );
+      }
+
+      // Re-check the approval row now that the settlement lock is held (a
+      // concurrent decision on the same row may have won the race).
+      const freshRows = await tx
+        .select()
+        .from(accSettlementApprovalsV2)
+        .where(
+          and(
+            eq(accSettlementApprovalsV2.stApprovalUuid, params.stApprovalUuid),
+            eq(accSettlementApprovalsV2.isDeleted, false),
+          ),
+        );
+      const fresh: AccSettlementApprovalV2 | undefined = freshRows[0];
+      if (!fresh) return fail("NOT_FOUND", "Approval row not found");
+      if (fresh.status !== "Pending") {
+        return fail("CONFLICT", `Approval already ${fresh.status}`);
+      }
+
+      // Identity binding (segregation of duties).
+      if (fresh.approverId) {
+        if (!params.deciderId || fresh.approverId !== params.deciderId) {
+          return fail(
+            "FORBIDDEN",
+            "This approval is assigned to a different approver",
+          );
+        }
+      }
+      if (params.deciderId) {
+        const held = await tx
+          .select()
+          .from(accSettlementApprovalsV2)
+          .where(
+            and(
+              eq(
+                accSettlementApprovalsV2.settlementUuid,
+                settlement.settlementUuid,
+              ),
+              eq(accSettlementApprovalsV2.approverId, params.deciderId),
+              eq(accSettlementApprovalsV2.isDeleted, false),
+            ),
+          );
+        const other = held.find(
+          (a: AccSettlementApprovalV2) =>
+            a.stApprovalUuid !== params.stApprovalUuid,
+        );
+        if (other) {
+          return fail(
+            "FORBIDDEN",
+            "You already hold another approver slot on this settlement",
+          );
+        }
+      }
+
+      await tx
+        .update(accSettlementApprovalsV2)
+        .set({
+          approverId: fresh.approverId ?? params.deciderId ?? null,
+          status: params.decision,
+          comments: params.comments,
+          date: new Date().toISOString().slice(0, 10),
+          updatedByUuid: params.auditUserUuid,
+          updatedAt: new Date(),
+        })
+        .where(
+          eq(accSettlementApprovalsV2.stApprovalUuid, params.stApprovalUuid),
+        );
+
+      let updatedSettlement: AccSettlementV2 = settlement;
+      if (params.decision === "Rejected") {
+        const rows = await tx
+          .update(accSettlementsV2)
+          .set({
+            status: "draft",
+            updatedByUuid: params.auditUserUuid,
+            updatedAt: new Date(),
+          })
+          .where(
+            eq(accSettlementsV2.settlementUuid, settlement.settlementUuid),
+          )
+          .returning();
+        updatedSettlement = rows[0];
+      } else {
+        const all: AccSettlementApprovalV2[] = await tx
+          .select()
+          .from(accSettlementApprovalsV2)
+          .where(
+            and(
+              eq(
+                accSettlementApprovalsV2.settlementUuid,
+                settlement.settlementUuid,
+              ),
+              eq(accSettlementApprovalsV2.isDeleted, false),
+            ),
+          );
+        const allApproved =
+          all.length > 0 &&
+          all.every((a: AccSettlementApprovalV2) => a.status === "Approved");
+        if (allApproved) {
+          const rows = await tx
+            .update(accSettlementsV2)
+            .set({
+              status: "approved",
+              updatedByUuid: params.auditUserUuid,
+              updatedAt: new Date(),
+            })
+            .where(
+              eq(accSettlementsV2.settlementUuid, settlement.settlementUuid),
+            )
+            .returning();
+          updatedSettlement = rows[0];
+        }
+      }
+      return { settlement: updatedSettlement };
+    });
+  }
+
+  /**
    * Audit-trail run row for a settlement compute (runType 'settlement').
    * Writes acc_calculation_runs_v2 only — never ledger lines (those stay
    * the engine's exclusive domain).

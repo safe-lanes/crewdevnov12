@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { getAuditUserUuid } from "./_auth";
+import { getActor, getAuditUserUuid } from "./_auth";
+import { assertOfficeUser } from "../services/vesselScope";
 import { settlementsService } from "../services";
 
 const computeSchema = z.object({
@@ -42,6 +43,9 @@ const markPaidSchema = z.object({
 function handleError(res: Response, error: any, fallback: string) {
   const code = (error as { code?: string })?.code;
   const details = (error as { details?: unknown })?.details;
+  if (code === "FORBIDDEN") {
+    return res.status(403).json({ error: error.message });
+  }
   if (code === "CONFLICT") {
     return res.status(409).json({ error: error.message, details });
   }
@@ -180,11 +184,14 @@ export const settlementsController = {
         .json({ error: "Invalid decision", details: parsed.error.issues });
     }
     try {
+      const actor = getActor(req);
+      assertOfficeUser(actor, "Approval decision");
       const detail = await settlementsService.decide(
         req.params.approvalUuid,
         parsed.data.decision,
         parsed.data.comments ?? null,
-        getAuditUserUuid(req),
+        actor.auditUserUuid,
+        actor.auditUserUuid ?? null,
       );
       res.json(detail);
     } catch (error: any) {

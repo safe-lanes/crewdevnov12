@@ -11,10 +11,17 @@ deltas are reported against the tsc baseline.
 
 | Metric | Value |
 |---|---|
-| Test files | 30 total — **19 passing / 11 known-stale failing** |
-| Tests | 524 total — **377 passing / 147 known-stale failing** |
+| Test files | 32 total — **21 passing / 11 known-stale failing** |
+| Tests | 536 total — **389 passing / 147 known-stale failing** |
 
-**Target for every task: 0 new failing tests in the 19 passing suites, and no
+(Updated 23-Jul-2026, after initial capture: added
+`tests/integration/api/portage-auto-lock.test.ts` (auto-lock on final
+approval) and `tests/integration/api/approval-identity.test.ts` — 8 tests for
+approval segregation of duties, portage + settlements, including a
+concurrency race test. Numbers above reflect a fresh measured run including
+both.)
+
+**Target for every task: 0 new failing tests in the passing suites, and no
 new failing suites.** The 11 known-stale suites below are expected failures;
 do NOT count them as regressions, and do NOT fix or delete them without a
 platform-team decision.

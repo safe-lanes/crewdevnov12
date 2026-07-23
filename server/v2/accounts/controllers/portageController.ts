@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { getAuditUserUuid } from "./_auth";
+import { getActor, getAuditUserUuid } from "./_auth";
+import { assertOfficeUser } from "../services/vesselScope";
 import { portageService } from "../services";
 
 const submitSchema = z.object({
@@ -21,6 +22,7 @@ const decisionSchema = z.object({
 
 function handleError(res: Response, error: any, fallback: string) {
   const code = (error as { code?: string })?.code;
+  if (code === "FORBIDDEN") return res.status(403).json({ error: error.message });
   if (code === "CONFLICT") return res.status(409).json({ error: error.message });
   if (code === "VALIDATION") return res.status(400).json({ error: error.message });
   if (code === "NOT_FOUND" || error.message?.includes("not found")) {
@@ -73,11 +75,14 @@ export const portageController = {
           .status(400)
           .json({ error: "Invalid decision", details: parsed.error.issues });
       }
+      const actor = getActor(req);
+      assertOfficeUser(actor, "Approval decision");
       const result = await portageService.decide(
         req.params.approvalUuid,
         parsed.data.decision,
         parsed.data.comments ?? null,
-        getAuditUserUuid(req),
+        actor.auditUserUuid,
+        actor.auditUserUuid ?? null,
       );
       res.json(result);
     } catch (error: any) {

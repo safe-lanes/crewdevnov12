@@ -167,8 +167,9 @@ interface AnchorForm {
 
 export default function PayrollRunPage() {
   const { toast } = useToast();
-  const { canEdit } = usePermissions();
+  const { canEdit, userId, userType } = usePermissions();
   const mayEdit = canEdit(MENU);
+  const isOfficeUser = (userType ?? "").toLowerCase() !== "ship";
 
   const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
   const hasFilter = !!vesselUuid && !!period;
@@ -1142,6 +1143,15 @@ export default function PayrollRunPage() {
                   )}
                   {a.status === "Pending" &&
                     mayEdit &&
+                    isOfficeUser &&
+                    (a.approverId
+                      ? a.approverId === userId
+                      : !visibleApprovals.some(
+                          (o: any) =>
+                            o.pbApprovalUuid !== a.pbApprovalUuid &&
+                            !!userId &&
+                            o.approverId === userId,
+                        )) &&
                     portageStatus === "office_review" && (
                       <div className="ml-auto flex gap-2">
                         <Button

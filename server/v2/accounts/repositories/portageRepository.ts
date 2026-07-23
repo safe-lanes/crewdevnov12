@@ -170,12 +170,23 @@ export class PortageRepository {
     comments: string | null;
     auditUserUuid: string | null;
     autoLockOnApproval: boolean;
+    /**
+     * Server-derived identity of the caller (JWT principal id). When set,
+     * the decision is identity-bound: a pre-assigned approver slot may only
+     * be decided by that approver, an unassigned (free-text) slot is claimed
+     * by the decider, and one caller can never satisfy two slots on the
+     * same portage bill. Null only when auth is bypassed in dev.
+     */
+    deciderId: string | null;
   }): Promise<{
     portage: AccPortageBillV2;
     approvals: AccPortageApprovalV2[];
   }> {
     const db = getDb();
-    const fail = (code: "NOT_FOUND" | "CONFLICT", message: string): never => {
+    const fail = (
+      code: "NOT_FOUND" | "CONFLICT" | "FORBIDDEN",
+      message: string,
+    ): never => {
       const err = new Error(message) as Error & { code: string };
       err.code = code;
       throw err;
@@ -230,9 +241,42 @@ export class PortageRepository {
         return fail("CONFLICT", `Approval already ${fresh.status}`);
       }
 
+      // Identity binding (segregation of duties).
+      if (fresh.approverId) {
+        if (!params.deciderId || fresh.approverId !== params.deciderId) {
+          return fail(
+            "FORBIDDEN",
+            "This approval is assigned to a different approver",
+          );
+        }
+      }
+      if (params.deciderId) {
+        const held = await tx
+          .select()
+          .from(accPortageApprovalsV2)
+          .where(
+            and(
+              eq(accPortageApprovalsV2.portageUuid, portage.portageUuid),
+              eq(accPortageApprovalsV2.approverId, params.deciderId),
+              eq(accPortageApprovalsV2.isDeleted, false),
+            ),
+          );
+        const other = held.find(
+          (a: AccPortageApprovalV2) =>
+            a.pbApprovalUuid !== params.pbApprovalUuid,
+        );
+        if (other) {
+          return fail(
+            "FORBIDDEN",
+            "You already hold another approver slot on this portage bill",
+          );
+        }
+      }
+
       await tx
         .update(accPortageApprovalsV2)
         .set({
+          approverId: fresh.approverId ?? params.deciderId ?? null,
           status: params.decision,
           comments: params.comments,
           date: new Date().toISOString().slice(0, 10),

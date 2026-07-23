@@ -21,7 +21,7 @@ const reads = new EngineReads();
 const balanceService = new BalanceService();
 
 function coded(
-  code: "CONFLICT" | "VALIDATION" | "NOT_FOUND",
+  code: "CONFLICT" | "VALIDATION" | "NOT_FOUND" | "FORBIDDEN",
   message: string,
   details?: unknown,
 ) {
@@ -614,41 +614,18 @@ export const settlementsService = {
     decision: "Approved" | "Rejected",
     comments: string | null,
     auditUserUuid?: string,
+    deciderId?: string | null,
   ): Promise<SettlementDetail> {
-    const approval = await repo.findApprovalByUuid(stApprovalUuid);
-    if (!approval) throw coded("NOT_FOUND", "Approval row not found");
-    if (approval.status !== "Pending") {
-      throw coded("CONFLICT", `Approval already ${approval.status}`);
-    }
-    const settlement = await requireSettlement(approval.settlementUuid);
-    if (settlement.status !== "submitted") {
-      throw coded(
-        "CONFLICT",
-        `Settlement is not awaiting approval (status '${settlement.status}')`,
-      );
-    }
-    await repo.updateApproval(stApprovalUuid, {
-      status: decision,
+    // All checks (status, identity binding / segregation of duties) and
+    // writes run in a single transaction with the settlement row locked
+    // FOR UPDATE, so concurrent decisions cannot double-fill slots.
+    const { settlement } = await repo.applyDecision({
+      stApprovalUuid,
+      decision,
       comments,
-      date: new Date().toISOString().slice(0, 10),
-      updatedByUuid: auditUserUuid ?? null,
+      auditUserUuid: auditUserUuid ?? null,
+      deciderId: deciderId ?? null,
     });
-    if (decision === "Rejected") {
-      await repo.update(settlement.settlementUuid, {
-        status: "draft",
-        updatedByUuid: auditUserUuid ?? null,
-      });
-    } else {
-      const approvals = await repo.findApprovalsBySettlement(
-        settlement.settlementUuid,
-      );
-      if (approvals.every((a) => a.status === "Approved")) {
-        await repo.update(settlement.settlementUuid, {
-          status: "approved",
-          updatedByUuid: auditUserUuid ?? null,
-        });
-      }
-    }
     return this.get(settlement.settlementUuid);
   },
 

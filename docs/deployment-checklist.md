@@ -46,7 +46,10 @@ Check the startup log for `Applied: 0161…` / `0162…` / `0163…` / `0164…`
 ### 3a. Client onboarding: grant Accounts menus via the Access Control UI
 
 The RBAC seed migrations (0141/0155/0158/0160/0162/0164/0166) copy each
-role's grant on the top-level `Account` menu. On a tenant where no role has
+role's grant on the top-level `Account` menu. **Ship-roletype roles are
+excluded from the office-menu seeds** (`adm_rolemaster_ac.roletype = 'Ship'`),
+so vessel roles can never inherit office payroll menus from a drifted
+`Account` grant. On a tenant where no role has
 that grant yet (e.g. a fresh tenant), **no Accounts rows are seeded at all**
 — every role sees no Accounts menus until grants are applied manually. Apply
 them through the Access Control admin UI as part of client onboarding:
@@ -78,6 +81,13 @@ Reference policy (as applied on the dev tenant):
 
 Note: a role needs **View on the top-level `Account` menu** for the Accounts
 module entry to appear at all, plus View on each sub-menu it should reach.
+
+Segregation of duties (server-enforced, independent of menu grants): the
+portage and settlement approval decision endpoints reject Ship-identity
+callers (403), a pre-assigned approver slot (`approver_id`) can only be
+decided by that approver, an unassigned (free-text) slot is claimed by the
+office user who decides it, and one user can never satisfy two approver
+slots on the same portage bill or settlement.
 
 ### 3b. Post-seed review
 

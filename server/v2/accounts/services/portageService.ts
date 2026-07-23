@@ -110,6 +110,7 @@ export const portageService = {
     decision: "Approved" | "Rejected",
     comments: string | null,
     auditUserUuid?: string,
+    deciderId?: string | null,
   ): Promise<{ portage: AccPortageBillV2; approvals: AccPortageApprovalV2[] }> {
     // Config is read up front; every write (approval row, portage status,
     // and — on auto-lock — the linked CTM lock) happens inside ONE
@@ -126,6 +127,7 @@ export const portageService = {
       comments,
       auditUserUuid: auditUserUuid ?? null,
       autoLockOnApproval: Boolean(config.autoLockOnApproval),
+      deciderId: deciderId ?? null,
     });
   },
 };

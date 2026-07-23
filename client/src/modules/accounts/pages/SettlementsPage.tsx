@@ -82,7 +82,8 @@ const EMPTY_ADJ = {
 
 export default function SettlementsPage() {
   const { toast } = useToast();
-  const { canCreate, canEdit, canDelete } = usePermissions();
+  const { canCreate, canEdit, canDelete, userId, userType } = usePermissions();
+  const isOfficeUser = (userType ?? "").toLowerCase() !== "ship";
   const mayCreate = canCreate(MENU);
   const mayEdit = canEdit(MENU);
   const mayDelete = canDelete(MENU);
@@ -942,7 +943,16 @@ export default function SettlementsPage() {
                     )}
                     {status === "submitted" &&
                       ap.status === "Pending" &&
-                      mayEdit && (
+                      mayEdit &&
+                      isOfficeUser &&
+                      (ap.approverId
+                        ? ap.approverId === userId
+                        : !approvals.some(
+                            (o) =>
+                              o.stApprovalUuid !== ap.stApprovalUuid &&
+                              !!userId &&
+                              o.approverId === userId,
+                          )) && (
                         <span className="flex items-center gap-1 ml-auto print:hidden">
                           <Input
                             className="h-8 w-44 text-xs"
