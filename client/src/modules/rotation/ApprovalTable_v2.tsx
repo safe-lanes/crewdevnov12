@@ -4,6 +4,7 @@ import { AgGridTable } from '@/components/AgGrid/AgGridTable';
 import { ColDef } from 'ag-grid-community';
 import { format, addMonths, startOfMonth, endOfMonth, differenceInDays } from 'date-fns';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
@@ -644,15 +645,28 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
         </div>
         
         <div className="flex items-center gap-4">
-          <Button
-            onClick={handleCheckCompliance}
-            disabled={!isOneVesselSelected}
-            variant="outline"
-            className={!isOneVesselSelected ? "opacity-50 cursor-not-allowed" : ""}
-            data-testid="button-check-compliance-v2"
-          >
-            Check Compliance
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={!isOneVesselSelected ? "cursor-not-allowed" : ""}>
+                  <Button
+                    onClick={handleCheckCompliance}
+                    disabled={!isOneVesselSelected}
+                    variant="outline"
+                    className={!isOneVesselSelected ? "opacity-50 pointer-events-none" : ""}
+                    data-testid="button-check-compliance-v2"
+                  >
+                    Check Compliance
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!isOneVesselSelected && (
+                <TooltipContent>
+                  <p>Please select a vessel first.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
           
           <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
             <Checkbox
