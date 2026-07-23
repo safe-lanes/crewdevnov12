@@ -965,21 +965,28 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
                 <div className="text-red-500">Error loading candidates</div>
               </div>
             ) : (
-              <AgGridTable
-                rowData={filteredData}
-                columnDefs={columnDefs}
-                onGridReady={onGridReady}
-                fillAvailableHeight={true}
-                bottomPadding={isPhone ? 10 : 20}
-                width="100%"
-                enableExport={!isPhone}
-                enableSideBar={!isSmallScreen}
-                enableStatusBar={false}
-                enableRowGrouping={!isSmallScreen}
-                enablePivoting={!isSmallScreen}
-                enableAdvancedFilter={false}
-                rowSelection={false}
-              />
+              <>
+                <AgGridTable
+                  rowData={filteredData}
+                  columnDefs={columnDefs}
+                  onGridReady={onGridReady}
+                  fillAvailableHeight={true}
+                  bottomPadding={isPhone ? 10 : 20}
+                  width="100%"
+                  enableExport={!isPhone}
+                  enableSideBar={!isSmallScreen}
+                  enableStatusBar={false}
+                  enableRowGrouping={!isSmallScreen}
+                  enablePivoting={!isSmallScreen}
+                  enableAdvancedFilter={false}
+                  rowSelection={false}
+                />
+                <div className="bg-white border-t border-gray-200 px-4 py-3 flex justify-between items-center" style={{ marginTop: '-1px' }}>
+                  <div className="text-xs font-normal font-['Mulish',Helvetica] text-black" data-testid="text-row-count">
+                    Rows: {filteredData.length > 0 ? filteredData.length : 0}
+                  </div>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
