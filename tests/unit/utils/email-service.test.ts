@@ -14,7 +14,7 @@ describe('B6 Interview Notification Email Template', () => {
 
     const result = buildInterviewAssignmentEmail(params);
 
-    expect(result.subject).toBe('Interview Assignment – Jane Smith (Chief Officer)');
+    expect(result.subject).toBe('Interview Assignment - Jane Smith (Chief Officer)');
     expect(result.html).toContain('Hello John Doe');
     expect(result.html).toContain('Jane Smith');
     expect(result.html).toContain('Chief Officer');
