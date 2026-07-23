@@ -6,6 +6,15 @@ import { appraisalResultsV2 } from "../../../../shared/v2/appraisals/schema";
 import type { ReportHandler } from "../types";
 import type { ReportColumn } from "../../../../shared/v2/reports/types";
 import { dateExpr, dateFilter } from "./_shared";
+import { getRankNameGroup } from "../../../../shared/crew-mapping";
+
+// Base-rank comparison: strips a trailing "_<number>" variant suffix and
+// matches case-insensitively against the selected rank + known synonyms.
+const baseRankExpr = sql`LOWER(TRIM(regexp_replace(COALESCE(${appraisalResultsV2.seafarersRank}, ''), '_[0-9]+$', '')))`;
+const rankGroupCond = (rank: string): SQL => {
+  const names = getRankNameGroup(rank);
+  return sql`${baseRankExpr} IN (${sql.join(names.map((n) => sql`${n}`), sql`, `)})`;
+};
 
 const apprDate = dateExpr(appraisalResultsV2.appraisalDate);
 
@@ -39,7 +48,7 @@ export const apprPendingReport: ReportHandler<z.infer<typeof pendingFilters>> = 
       sql`LOWER(COALESCE(${appraisalResultsV2.status}, '')) NOT IN ('completed', 'approved', 'closed', 'final')`,
     ];
     if (filters.vessel) conds.push(eq(appraisalResultsV2.vessel, filters.vessel));
-    if (filters.rank) conds.push(eq(appraisalResultsV2.seafarersRank, filters.rank));
+    if (filters.rank) conds.push(rankGroupCond(filters.rank));
     const where = and(...conds);
 
     const totalRes = await db.select({ c: sql<number>`count(*)` }).from(appraisalResultsV2).where(where);
@@ -116,7 +125,7 @@ export const apprScoresSummaryReport: ReportHandler<z.infer<typeof scoresFilters
   async run(filters, ctx) {
     const db = getDb();
     const conds: SQL[] = [eq(appraisalResultsV2.isDeleted, false)];
-    if (filters.rank) conds.push(eq(appraisalResultsV2.seafarersRank, filters.rank));
+    if (filters.rank) conds.push(rankGroupCond(filters.rank));
     if (filters.dateFrom) conds.push(sql`${apprDate} >= ${filters.dateFrom}::date`);
     if (filters.dateTo) conds.push(sql`${apprDate} <= ${filters.dateTo}::date`);
     const where = and(...conds);

@@ -45,7 +45,7 @@ import { useVesselLookup } from "@/hooks/useVesselLookup";
 import { useVesselsV2, useVesselTypesV2, useNationalitiesV2, useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
 import { useCompanyRanksV2 } from "@/modules/admin/hooks/useAdminV2";
 import { useRankScope } from "@/hooks/useRankScope";
-import { getBaseRank } from "@shared/crew-mapping";
+import { getBaseRank, getRankNameGroup } from "@shared/crew-mapping";
 
 
 // Interface for combined crew member and appraisal data
@@ -552,7 +552,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
       }
 
       // Rank filter
-      if (filters.rank && crew.rank.toLowerCase() !== filters.rank.toLowerCase()) {
+      if (filters.rank && !getRankNameGroup(filters.rank).includes(getBaseRank(crew.rank).trim().toLowerCase())) {
         return false;
       }
 

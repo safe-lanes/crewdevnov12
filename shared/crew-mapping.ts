@@ -320,6 +320,28 @@ export function getBaseRank(position: string | null | undefined): string {
   return position;
 }
 
+// Known legacy/synonym spellings of the same rank (lowercase).
+// Used so old data like "Second Officer" matches a "2nd Officer" filter.
+const RANK_SYNONYMS: string[][] = [
+  ['2nd officer', 'second officer'],
+  ['3rd officer', 'third officer'],
+  ['2nd engineer', 'second engineer'],
+  ['3rd engineer', 'third engineer'],
+  ['4th engineer', 'fourth engineer'],
+  ['ab', 'able bodied seaman'],
+  ['os', 'ordinary seaman'],
+];
+
+/**
+ * All lowercase base-rank names that should be treated as the given rank.
+ * e.g. "2nd Officer" → ["2nd officer", "second officer"]
+ */
+export function getRankNameGroup(rank: string): string[] {
+  const base = getBaseRank(rank).trim().toLowerCase();
+  const group = RANK_SYNONYMS.find(g => g.includes(base));
+  return group ? [...group] : [base];
+}
+
 /**
  * Check if a position has a numeric suffix
  * 
