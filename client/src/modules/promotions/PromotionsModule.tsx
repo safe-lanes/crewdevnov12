@@ -186,10 +186,10 @@ export function PromotionsModule() {
                 </SectionTitleComponents>
 
                 {showFilters && (
-                    <div className="flex flex-wrap gap-2 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
+                    <div className="flex flex-wrap gap-2 mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg" data-testid="filter-container">
                         <div className="relative w-[180px]">
                             <Input
-                                className="h-8 pl-10 text-[#8798ad] text-xs"
+                                className="h-8 pl-10 text-[#0f172a] text-xs placeholder:text-[#8899ae]"
                                 placeholder="Search Name"
                                 value={searchName}
                                 onChange={(e) => setSearchName(e.target.value)}
@@ -199,7 +199,7 @@ export function PromotionsModule() {
                         </div>
 
                         <Select value={promotionToRank} onValueChange={setPromotionToRank}>
-                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-promotion-rank">
+                            <SelectTrigger className="w-[150px] h-8 text-[#0f172a] text-xs placeholder:text-[#8899ae]" data-testid="select-promotion-rank">
                                 <SelectValue placeholder="Promotion to Rank" />
                             </SelectTrigger>
                             <SelectContent>
@@ -219,7 +219,7 @@ export function PromotionsModule() {
                             </div>
                         ) : (
                             <Select value={vessel} onValueChange={setVessel}>
-                                <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-vessel">
+                                <SelectTrigger className="w-[150px] h-8 text-[#0f172a] text-xs placeholder:text-[#8899ae]" data-testid="select-vessel">
                                     <SelectValue placeholder="Vessel" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -231,7 +231,7 @@ export function PromotionsModule() {
                         )}
 
                         <Select value={vesselType} onValueChange={setVesselType}>
-                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-vessel-type">
+                            <SelectTrigger className="w-[150px] h-8 text-[#0f172a] text-xs placeholder:text-[#8899ae]" data-testid="select-vessel-type">
                                 <SelectValue placeholder="Vessel Type" />
                             </SelectTrigger>
                             <SelectContent>
@@ -242,7 +242,7 @@ export function PromotionsModule() {
                         </Select>
 
                         <Select value={nationality} onValueChange={setNationality}>
-                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-nationality">
+                            <SelectTrigger className="w-[150px] h-8 text-[#0f172a] text-xs placeholder:text-[#8899ae]" data-testid="select-nationality">
                                 <SelectValue placeholder="Nationality" />
                             </SelectTrigger>
                             <SelectContent className="max-h-[200px]">
@@ -257,7 +257,7 @@ export function PromotionsModule() {
                         </Select>
 
                         <Select value={criteria} onValueChange={setCriteria}>
-                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-criteria">
+                            <SelectTrigger className="w-[150px] h-8 text-[#0f172a] text-xs placeholder:text-[#8899ae]" data-testid="select-criteria">
                                 <SelectValue placeholder="Criteria" />
                             </SelectTrigger>
                             <SelectContent>
@@ -268,7 +268,7 @@ export function PromotionsModule() {
                         </Select>
 
                         <Select value={status} onValueChange={setStatus}>
-                            <SelectTrigger className="w-[150px] h-8 text-[#8a8a8a] text-xs" data-testid="select-status">
+                            <SelectTrigger className="w-[150px] h-8 text-[#0f172a] text-xs placeholder:text-[#8899ae]" data-testid="select-status">
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>

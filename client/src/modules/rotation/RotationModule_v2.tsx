@@ -168,7 +168,7 @@ function ApprovalScreenV2() {
             </SectionTitleComponents>
 
             {showFilters && (
-                <div className="mb-4 p-3 md:p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container-v2">
+                <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg" data-testid="filter-container-v2">
                     {!isSmallScreen && (
                         <div className="flex flex-nowrap items-center gap-3">
                             <div className="shrink-0">
@@ -176,7 +176,7 @@ function ApprovalScreenV2() {
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
-                                            className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between w-[130px]"
+                                            className="h-8 text-[#0f172a] text-[11px] border-[#e1e8ed] justify-between w-[130px]"
                                             data-testid="filter-vessel-v2"
                                         >
                                             {selectedVessels.length === 0 ? "Vessel" : `${selectedVessels.length} selected`}
@@ -208,7 +208,7 @@ function ApprovalScreenV2() {
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
-                                            className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between w-[130px]"
+                                            className="h-8 text-[#0f172a] text-[11px] border-[#e1e8ed] justify-between w-[130px]"
                                             data-testid="filter-rank-v2"
                                         >
                                             {selectedRanks.length === 0 ? "Rank" : `${selectedRanks.length} selected`}
@@ -241,7 +241,7 @@ function ApprovalScreenV2() {
                                     placeholder="Draft ID"
                                     value={draftIdFilter}
                                     onChange={(e) => setDraftIdFilter(e.target.value)}
-                                    className="h-8 w-full px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]"
+                                    className="h-8 w-full px-3 text-[11px] text-[#0f172a] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]"
                                     data-testid="input-draft-id-v2"
                                 />
                             </div>
@@ -251,7 +251,7 @@ function ApprovalScreenV2() {
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
-                                            className="h-8 w-56 text-[11px] border-[#e1e8ed] justify-between"
+                                            className="h-8 w-56 text-[11px] text-[#0f172a] border-[#e1e8ed] justify-between"
                                             data-testid="select-date-range-v2"
                                         >
                                             <span className="truncate flex items-center gap-2">
@@ -276,7 +276,7 @@ function ApprovalScreenV2() {
                             <div className="grid grid-cols-2 gap-2">
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between w-full" data-testid="filter-vessel-v2">
+                                        <Button variant="outline" className="h-8 text-[#0f172a] text-[11px] border-[#e1e8ed] justify-between w-full" data-testid="filter-vessel-v2">
                                             {selectedVessels.length === 0 ? "Vessel" : `${selectedVessels.length} sel`}
                                             <ChevronDown className="ml-1 h-4 w-4" />
                                         </Button>
@@ -295,7 +295,7 @@ function ApprovalScreenV2() {
 
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] justify-between w-full" data-testid="filter-rank-v2">
+                                        <Button variant="outline" className="h-8 text-[#0f172a] text-[11px] border-[#e1e8ed] justify-between w-full" data-testid="filter-rank-v2">
                                             {selectedRanks.length === 0 ? "Rank" : `${selectedRanks.length} sel`}
                                             <ChevronDown className="ml-1 h-4 w-4" />
                                         </Button>
@@ -313,11 +313,11 @@ function ApprovalScreenV2() {
                                 </Popover>
                             </div>
 
-                            <input type="text" placeholder="Draft ID" value={draftIdFilter} onChange={(e) => setDraftIdFilter(e.target.value)} className="h-8 w-full px-3 text-[11px] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]" data-testid="input-draft-id-v2" />
+                            <input type="text" placeholder="Draft ID" value={draftIdFilter} onChange={(e) => setDraftIdFilter(e.target.value)} className="h-8 w-full px-3 text-[11px] text-[#0f172a] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]" data-testid="input-draft-id-v2" />
 
                             <Popover open={dateRangeDialogOpen} onOpenChange={openDateRangeDialog}>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" className="h-8 w-full text-[11px] border-[#e1e8ed] justify-between" data-testid="select-date-range-v2">
+                                    <Button variant="outline" className="h-8 w-full text-[11px] text-[#0f172a] border-[#e1e8ed] justify-between" data-testid="select-date-range-v2">
                                         <span className="truncate flex items-center gap-2"><CalendarIcon className="h-4 w-4" />{dateRangeLabel}</span>
                                         <ChevronDown className="h-4 w-4 opacity-50" />
                                     </Button>
