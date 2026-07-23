@@ -761,6 +761,9 @@ export default function PayrollRunPage() {
   );
 
   const visibleApprovals = approvals.filter((a) => !a.isDeleted);
+  const pendingApprovals = visibleApprovals.filter(
+    (a) => a.status === "Pending",
+  );
 
   return (
     <div className="p-4 space-y-4" data-testid="payroll-run-page">
@@ -1074,6 +1077,36 @@ export default function PayrollRunPage() {
                 <p className="text-sm text-muted-foreground">
                   Not yet submitted for approval.
                 </p>
+              )}
+              {portageStatus === "office_review" &&
+                pendingApprovals.length > 0 && (
+                  <div
+                    className="flex items-start gap-2 text-sm text-amber-900 bg-amber-50 border border-amber-300 rounded px-3 py-2"
+                    data-testid="banner-pending-approvals"
+                  >
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                    <div>
+                      <span className="font-semibold">
+                        Month NOT approved yet — {pendingApprovals.length} of{" "}
+                        {visibleApprovals.length} approval
+                        {visibleApprovals.length === 1 ? "" : "s"} pending:{" "}
+                        {pendingApprovals.map((a) => a.approver).join(", ")}.
+                      </span>{" "}
+                      Each approver must record their decision below before the
+                      month is approved. Settlement approvals are separate and
+                      do not approve the month.
+                    </div>
+                  </div>
+                )}
+              {portageStatus === "approved" && !isLocked && (
+                <div
+                  className="flex items-center gap-2 text-sm text-blue-900 bg-blue-50 border border-blue-300 rounded px-3 py-2"
+                  data-testid="banner-approved-unlocked"
+                >
+                  <CheckCircle2 size={14} />
+                  Portage bill approved. Auto-lock on approval is off, so the
+                  month remains unlocked until locked explicitly.
+                </div>
               )}
               {visibleApprovals.map((a) => (
                 <div

@@ -5,6 +5,7 @@ import {
   accPortageBillsV2,
   accPortageApprovalsV2,
   accCalculationRunsV2,
+  accCtmV2,
 } from "../../../../shared/v2/accounts/schema";
 import type {
   AccPortageBillV2,
@@ -144,6 +145,185 @@ export class PortageRepository {
       .where(eq(accPortageApprovalsV2.pbApprovalUuid, pbApprovalUuid))
       .returning();
     return rows[0];
+  }
+
+  /**
+   * Apply one approver's decision atomically. All writes — the approval row,
+   * the portage status transition, and (on auto-lock) the linked CTM lock —
+   * happen in ONE transaction. The portage row is locked FOR UPDATE first so
+   * concurrent decisions on the same portage serialize: the last approver's
+   * transaction always sees every earlier decision and fires the terminal
+   * transition exactly once.
+   *
+   * Terminal transition (every live approval Approved):
+   * - autoLockOnApproval=true  → status 'locked', is_locked, locked_by,
+   *   locked_date + linked CTM locked (single transaction).
+   * - autoLockOnApproval=false → status 'approved' only; the month stays
+   *   unlocked and editable until an explicit lock.
+   *
+   * Throws Error with .code = "NOT_FOUND" | "CONFLICT" on state violations
+   * (re-checked inside the transaction, after acquiring the row lock).
+   */
+  async applyDecision(params: {
+    pbApprovalUuid: string;
+    decision: "Approved" | "Rejected";
+    comments: string | null;
+    auditUserUuid: string | null;
+    autoLockOnApproval: boolean;
+  }): Promise<{
+    portage: AccPortageBillV2;
+    approvals: AccPortageApprovalV2[];
+  }> {
+    const db = getDb();
+    const fail = (code: "NOT_FOUND" | "CONFLICT", message: string): never => {
+      const err = new Error(message) as Error & { code: string };
+      err.code = code;
+      throw err;
+    };
+    return db.transaction(async (tx: any) => {
+      const approvalRows = await tx
+        .select()
+        .from(accPortageApprovalsV2)
+        .where(
+          and(
+            eq(accPortageApprovalsV2.pbApprovalUuid, params.pbApprovalUuid),
+            eq(accPortageApprovalsV2.isDeleted, false),
+          ),
+        );
+      const approval: AccPortageApprovalV2 | undefined = approvalRows[0];
+      if (!approval) return fail("NOT_FOUND", "Approval row not found");
+
+      // Serialize concurrent decisions on the same portage bill.
+      const portageRows = await tx
+        .select()
+        .from(accPortageBillsV2)
+        .where(
+          and(
+            eq(accPortageBillsV2.portageUuid, approval.portageUuid),
+            eq(accPortageBillsV2.isDeleted, false),
+          ),
+        )
+        .for("update");
+      const portage: AccPortageBillV2 | undefined = portageRows[0];
+      if (!portage) return fail("NOT_FOUND", "Portage bill not found");
+      if (portage.status !== "office_review") {
+        return fail(
+          "CONFLICT",
+          `Portage bill is not awaiting approval (status '${portage.status}')`,
+        );
+      }
+
+      // Re-check the approval row now that the portage lock is held (a
+      // concurrent decision on the same row may have won the race).
+      const freshRows = await tx
+        .select()
+        .from(accPortageApprovalsV2)
+        .where(
+          and(
+            eq(accPortageApprovalsV2.pbApprovalUuid, params.pbApprovalUuid),
+            eq(accPortageApprovalsV2.isDeleted, false),
+          ),
+        );
+      const fresh: AccPortageApprovalV2 | undefined = freshRows[0];
+      if (!fresh) return fail("NOT_FOUND", "Approval row not found");
+      if (fresh.status !== "Pending") {
+        return fail("CONFLICT", `Approval already ${fresh.status}`);
+      }
+
+      await tx
+        .update(accPortageApprovalsV2)
+        .set({
+          status: params.decision,
+          comments: params.comments,
+          date: new Date().toISOString().slice(0, 10),
+          updatedByUuid: params.auditUserUuid,
+          updatedAt: new Date(),
+        })
+        .where(eq(accPortageApprovalsV2.pbApprovalUuid, params.pbApprovalUuid));
+
+      let updatedPortage: AccPortageBillV2 = portage;
+      if (params.decision === "Rejected") {
+        const rows = await tx
+          .update(accPortageBillsV2)
+          .set({
+            status: "returned",
+            updatedByUuid: params.auditUserUuid,
+            updatedAt: new Date(),
+          })
+          .where(eq(accPortageBillsV2.portageUuid, portage.portageUuid))
+          .returning();
+        updatedPortage = rows[0];
+      } else {
+        const all: AccPortageApprovalV2[] = await tx
+          .select()
+          .from(accPortageApprovalsV2)
+          .where(
+            and(
+              eq(accPortageApprovalsV2.portageUuid, portage.portageUuid),
+              eq(accPortageApprovalsV2.isDeleted, false),
+            ),
+          );
+        const allApproved =
+          all.length > 0 &&
+          all.every((a: AccPortageApprovalV2) => a.status === "Approved");
+        if (allApproved) {
+          if (params.autoLockOnApproval) {
+            const rows = await tx
+              .update(accPortageBillsV2)
+              .set({
+                status: "locked",
+                isLocked: true,
+                lockedByUuid: params.auditUserUuid,
+                lockedDate: new Date().toISOString().slice(0, 10),
+                updatedByUuid: params.auditUserUuid,
+                updatedAt: new Date(),
+              })
+              .where(eq(accPortageBillsV2.portageUuid, portage.portageUuid))
+              .returning();
+            updatedPortage = rows[0];
+            // Prompt 06: when the portage locks, the linked CTM locks too —
+            // in the same transaction, so a failure rolls back everything.
+            await tx
+              .update(accCtmV2)
+              .set({
+                status: "locked",
+                updatedByUuid: params.auditUserUuid,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(accCtmV2.vesselUuid, portage.vesselUuid),
+                  eq(accCtmV2.period, portage.period),
+                  eq(accCtmV2.isDeleted, false),
+                ),
+              );
+          } else {
+            const rows = await tx
+              .update(accPortageBillsV2)
+              .set({
+                status: "approved",
+                updatedByUuid: params.auditUserUuid,
+                updatedAt: new Date(),
+              })
+              .where(eq(accPortageBillsV2.portageUuid, portage.portageUuid))
+              .returning();
+            updatedPortage = rows[0];
+          }
+        }
+      }
+
+      const approvals: AccPortageApprovalV2[] = await tx
+        .select()
+        .from(accPortageApprovalsV2)
+        .where(
+          and(
+            eq(accPortageApprovalsV2.portageUuid, portage.portageUuid),
+            eq(accPortageApprovalsV2.isDeleted, false),
+          ),
+        )
+        .orderBy(accPortageApprovalsV2.id);
+      return { portage: updatedPortage, approvals };
+    });
   }
 
   async findLatestRun(

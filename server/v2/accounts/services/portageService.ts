@@ -1,7 +1,6 @@
 import { PortageRepository, EngagementsRepository } from "../repositories";
 import { sortByRankOrder } from "./engagementsService";
 import { tenantConfigService } from "./tenantConfigService";
-import { ctmService } from "./ctmService";
 import { wageEngineService } from "../engine";
 import type { CrewTotals } from "../engine";
 import type {
@@ -112,60 +111,21 @@ export const portageService = {
     comments: string | null,
     auditUserUuid?: string,
   ): Promise<{ portage: AccPortageBillV2; approvals: AccPortageApprovalV2[] }> {
-    const approval = await repo.findApprovalByUuid(pbApprovalUuid);
-    if (!approval) throw coded("NOT_FOUND", "Approval row not found");
-    if (approval.status !== "Pending") {
-      throw coded("CONFLICT", `Approval already ${approval.status}`);
-    }
-    const portage = await repo.findByUuid(approval.portageUuid);
-    if (!portage) throw coded("NOT_FOUND", "Portage bill not found");
-    if (portage.status !== "office_review") {
-      throw coded(
-        "CONFLICT",
-        `Portage bill is not awaiting approval (status '${portage.status}')`,
-      );
-    }
-    await repo.updateApproval(pbApprovalUuid, {
-      status: decision,
+    // Config is read up front; every write (approval row, portage status,
+    // and — on auto-lock — the linked CTM lock) happens inside ONE
+    // transaction in the repository, with the portage row locked FOR UPDATE
+    // so concurrent approver decisions serialize and the terminal
+    // transition fires exactly once. With autoLockOnApproval=false the
+    // terminal transition sets status 'approved' only: the month remains
+    // unlocked (engine re-runs, transactions, bonds stay editable) until
+    // explicitly locked.
+    const config = await tenantConfigService.get();
+    return repo.applyDecision({
+      pbApprovalUuid,
+      decision,
       comments,
-      date: new Date().toISOString().slice(0, 10),
-      updatedByUuid: auditUserUuid ?? null,
+      auditUserUuid: auditUserUuid ?? null,
+      autoLockOnApproval: Boolean(config.autoLockOnApproval),
     });
-
-    let updatedPortage = portage;
-    if (decision === "Rejected") {
-      updatedPortage = (await repo.updatePortage(portage.portageUuid, {
-        status: "returned",
-        updatedByUuid: auditUserUuid ?? null,
-      }))!;
-    } else {
-      const all = await repo.findApprovalsByPortage(portage.portageUuid);
-      const allApproved = all.length > 0 && all.every((a) => a.status === "Approved");
-      if (allApproved) {
-        const config = await tenantConfigService.get();
-        if (config.autoLockOnApproval) {
-          updatedPortage = (await repo.updatePortage(portage.portageUuid, {
-            status: "locked",
-            isLocked: true,
-            lockedByUuid: auditUserUuid ?? null,
-            lockedDate: new Date().toISOString().slice(0, 10),
-            updatedByUuid: auditUserUuid ?? null,
-          }))!;
-          // Prompt 06: when the portage locks, the linked CTM locks too.
-          await ctmService.lockForPortage(
-            portage.vesselUuid,
-            portage.period,
-            auditUserUuid,
-          );
-        } else {
-          updatedPortage = (await repo.updatePortage(portage.portageUuid, {
-            status: "approved",
-            updatedByUuid: auditUserUuid ?? null,
-          }))!;
-        }
-      }
-    }
-    const approvals = await repo.findApprovalsByPortage(portage.portageUuid);
-    return { portage: updatedPortage, approvals };
   },
 };
