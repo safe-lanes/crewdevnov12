@@ -648,7 +648,7 @@ export function ApprovalTable_v2({ selectedVessels, selectedRanks, draftIdFilter
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className={!isOneVesselSelected ? "cursor-not-allowed" : ""}>
+                <span>
                   <Button
                     onClick={handleCheckCompliance}
                     disabled={!isOneVesselSelected}
