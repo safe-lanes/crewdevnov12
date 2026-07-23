@@ -253,26 +253,24 @@ describe("Portage auto-lock on final approval", () => {
         decision: "Approved",
       }),
     ]);
-    // Both decisions target distinct approval rows: each should either
-    // succeed or (if it lost the race after terminal lock) get a 409.
-    for (const r of [r1, r2]) expect([200, 409]).toContain(r.status);
+    // Both decisions target DISTINCT approval rows, so both must succeed:
+    // the FOR UPDATE lock serializes them, the second sees the first's
+    // decision and fires the terminal transition exactly once.
+    expect(r1.status).toBe(200);
+    expect(r2.status).toBe(200);
 
-    const row = await portageRow(fx.portageUuid);
     const approvals = await db.query(
       "SELECT status FROM acc_portage_approvals_v2 WHERE portage_uuid = $1 AND is_deleted = false",
       [fx.portageUuid],
     );
-    const allDecided = approvals.rows.every(
-      (a: { status: string }) => a.status === "Approved",
-    );
-    if (allDecided) {
-      expect(row.status).toBe("locked");
-      expect(row.is_locked).toBe(true);
-      expect(await ctmStatus(fx.ctmUuid)).toBe("locked");
-    } else {
-      // One decision lost the race entirely; the bill must not be locked.
-      expect(row.is_locked).toBe(false);
-    }
+    expect(
+      approvals.rows.every((a: { status: string }) => a.status === "Approved"),
+    ).toBe(true);
+
+    const row = await portageRow(fx.portageUuid);
+    expect(row.status).toBe("locked");
+    expect(row.is_locked).toBe(true);
+    expect(await ctmStatus(fx.ctmUuid)).toBe("locked");
   });
 
   it("auto-lock OFF: terminal approval marks approved but leaves the month unlocked", async () => {

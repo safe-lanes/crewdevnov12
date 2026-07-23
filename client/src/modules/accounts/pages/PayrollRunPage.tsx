@@ -216,7 +216,9 @@ export default function PayrollRunPage() {
   const latestRun = workspace?.latestRun ?? null;
   const portageStatus: string = portage?.status ?? "open";
   const isLocked = portageStatus === "locked" || !!portage?.isLocked;
-  const readOnly = isLocked || portageStatus === "approved" || !mayEdit;
+  // 'approved' (auto-lock OFF terminal state) intentionally stays editable:
+  // backend guards only refuse when the month is locked.
+  const readOnly = isLocked || !mayEdit;
   const submittable = ["open", "vessel_draft", "submitted", "returned"].includes(
     portageStatus,
   );
