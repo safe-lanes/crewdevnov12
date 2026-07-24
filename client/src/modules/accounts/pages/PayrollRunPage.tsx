@@ -261,6 +261,7 @@ export default function PayrollRunPage() {
   // run-row warnings (0159) are objects {crewUuid, engagementUuid, code,
   // message}. Normalize both to the string shape the renderer expects.
   const [runWarnings, setRunWarnings] = useState<string[] | null>(null);
+  const [runSkippedSettled, setRunSkippedSettled] = useState<any[]>([]);
   const warnings: string[] = (
     (runWarnings ?? (latestRun?.warnings as any[] | null) ?? []) as any[]
   ).map((w) =>
@@ -302,13 +303,15 @@ export default function PayrollRunPage() {
     try {
       const result = await accountsApiV2.calc.run(vesselUuid, period);
       setRunWarnings(result.warnings ?? []);
+      setRunSkippedSettled(result.skippedSettled ?? []);
       queryClient.invalidateQueries({ queryKey: wsKey });
       queryClient.invalidateQueries({
         queryKey: [`${ACCOUNTS_BASE}/ledger?portageUuid=${result.portage?.portageUuid}`],
       });
+      const skipped = result.skippedSettled?.length ?? 0;
       toast({
         title: "Calculation complete",
-        description: `${result.lineCount} ledger lines for ${result.crewTotals?.length ?? 0} crew (${result.warnings?.length ?? 0} warnings)`,
+        description: `${result.lineCount} ledger lines for ${result.crewTotals?.length ?? 0} crew (${result.warnings?.length ?? 0} warnings)${skipped > 0 ? `; ${skipped} crew excluded: already settled` : ""}`,
       });
     } catch (err) {
       toast({
@@ -1040,6 +1043,23 @@ export default function PayrollRunPage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+            {runSkippedSettled.length > 0 && (
+              <div className="px-4 py-2 border-b bg-blue-50 text-xs space-y-0.5 max-h-36 overflow-y-auto">
+                <div className="font-medium text-blue-800">
+                  {runSkippedSettled.length} crew excluded from recalculation
+                  (already settled — existing ledger lines preserved)
+                </div>
+                {runSkippedSettled.map((s: any, i: number) => (
+                  <div
+                    key={i}
+                    className="text-blue-800"
+                    data-testid={`text-skipped-settled-${i}`}
+                  >
+                    {s.crewName ?? s.crewUuid} — settlement {s.status}
+                  </div>
+                ))}
               </div>
             )}
             <div className="p-2">

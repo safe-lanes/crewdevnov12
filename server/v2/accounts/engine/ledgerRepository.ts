@@ -145,6 +145,24 @@ export class LedgerRepository {
     portageUuid: string,
     lines: InsertAccWageLedgerV2[],
     portagePatch: Partial<InsertAccPortageBillV2>,
+    opts?: {
+      /**
+       * Engagement-scoped replacement (settlement skip): when given, ONLY
+       * these engagements' non-adjustment lines are deleted before insert —
+       * other engagements' lines (e.g. frozen/settled) are preserved
+       * exactly as-is. When omitted, all non-adjustment lines are replaced
+       * (legacy full-replacement behavior).
+       */
+      replaceEngagementUuids?: string[];
+      /**
+       * Recompute cached portage totals from the FULL post-replacement
+       * ledger (preserved + fresh lines, adjustments included in the input;
+       * the callback decides what to count). Runs inside the transaction.
+       */
+      computeTotals?: (
+        fullLedgerLines: AccWageLedgerV2[],
+      ) => Partial<InsertAccPortageBillV2>;
+    },
   ): Promise<void> {
     const db = getDb();
     await db.transaction(async (tx: ReturnType<typeof getDb>) => {
@@ -162,24 +180,55 @@ export class LedgerRepository {
           `Portage bill ${portageUuid} was locked while the calculation was running; no lines were replaced`,
         );
       }
+      const replaceScope = opts?.replaceEngagementUuids;
       await assertNoFrozenSettlementsTx(
         tx,
-        Array.from(new Set(lines.map((l) => l.engagementUuid))),
+        Array.from(
+          new Set([
+            ...lines.map((l) => l.engagementUuid),
+            ...(replaceScope ?? []),
+          ]),
+        ),
       );
-      await tx
-        .delete(accWageLedgerV2)
-        .where(
-          and(
-            eq(accWageLedgerV2.portageUuid, portageUuid),
-            eq(accWageLedgerV2.isAdjustment, false),
-          ),
-        );
+      if (replaceScope === undefined) {
+        await tx
+          .delete(accWageLedgerV2)
+          .where(
+            and(
+              eq(accWageLedgerV2.portageUuid, portageUuid),
+              eq(accWageLedgerV2.isAdjustment, false),
+            ),
+          );
+      } else if (replaceScope.length > 0) {
+        await tx
+          .delete(accWageLedgerV2)
+          .where(
+            and(
+              eq(accWageLedgerV2.portageUuid, portageUuid),
+              eq(accWageLedgerV2.isAdjustment, false),
+              inArray(accWageLedgerV2.engagementUuid, replaceScope),
+            ),
+          );
+      }
       if (lines.length > 0) {
         await tx.insert(accWageLedgerV2).values(lines);
       }
+      let patch = portagePatch;
+      if (opts?.computeTotals) {
+        const fullLines = (await tx
+          .select()
+          .from(accWageLedgerV2)
+          .where(
+            and(
+              eq(accWageLedgerV2.portageUuid, portageUuid),
+              eq(accWageLedgerV2.isDeleted, false),
+            ),
+          )) as AccWageLedgerV2[];
+        patch = { ...portagePatch, ...opts.computeTotals(fullLines) };
+      }
       await tx
         .update(accPortageBillsV2)
-        .set({ ...portagePatch, updatedAt: new Date() })
+        .set({ ...patch, updatedAt: new Date() })
         .where(eq(accPortageBillsV2.portageUuid, portageUuid));
     });
   }

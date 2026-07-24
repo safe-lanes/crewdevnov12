@@ -36,6 +36,7 @@ import type {
   AccAdvanceV2,
   AccCalculationRunV2,
   AccPortageBillV2,
+  AccSettlementV2,
   InsertAccWageLedgerV2,
 } from "../../../../shared/v2/accounts/types";
 
@@ -112,12 +113,23 @@ type CrewBaseTotals = Omit<
   "balanceBf" | "balanceCf" | "leaveBf" | "leaveThisMonth" | "leaveCf"
 >;
 
+/** Engagement excluded from a vessel-period run because it is settled. */
+export interface SkippedSettled {
+  engagementUuid: string;
+  crewUuid: string;
+  crewName: string | null;
+  settlementUuid: string;
+  status: string;
+}
+
 export interface RunSummary {
   run: AccCalculationRunV2;
   portage?: AccPortageBillV2;
   lineCount: number;
   crewTotals: CrewTotals[];
   warnings: string[];
+  /** Informational: engagements skipped because a final settlement froze them. */
+  skippedSettled?: SkippedSettled[];
 }
 
 interface ResolvedEntry {
@@ -183,10 +195,12 @@ function rangesOverlap(
  * service window overlaps a run engagement's window also freezes the run —
  * pre-existing overlap data must not bypass the guard.
  */
-async function assertNoFrozenSettlements(
+async function findFrozenSettlementsFor(
   engagements: AccEngagementV2[],
-): Promise<void> {
-  if (engagements.length === 0) return;
+): Promise<{ frozen: AccSettlementV2[]; frozenEngagementUuids: Set<string> }> {
+  if (engagements.length === 0) {
+    return { frozen: [], frozenEngagementUuids: new Set() };
+  }
   const crewUuids = [...new Set(engagements.map((e) => e.crewUuid))];
   const crewEngagements = await reads.findEngagementsByCrewUuids(crewUuids);
   const candidateUuids = new Set(engagements.map((e) => e.engagementUuid));
@@ -209,6 +223,41 @@ async function assertNoFrozenSettlements(
     }
   }
   const frozen = await reads.findFrozenSettlements([...candidateUuids]);
+  const frozenEngagementUuids = new Set(frozen.map((s) => s.engagementUuid));
+  // A frozen settlement on a same-crew overlapping engagement also freezes
+  // the run engagement itself (overlap data must not bypass the guard).
+  for (const e of engagements) {
+    if (frozenEngagementUuids.has(e.engagementUuid)) continue;
+    if (!e.startDate) continue;
+    for (const other of crewEngagements) {
+      if (
+        other.crewUuid === e.crewUuid &&
+        other.engagementUuid !== e.engagementUuid &&
+        frozenEngagementUuids.has(other.engagementUuid) &&
+        other.startDate != null &&
+        rangesOverlap(
+          e.startDate,
+          e.endDate ?? null,
+          other.startDate,
+          other.endDate ?? null,
+        )
+      ) {
+        frozenEngagementUuids.add(e.engagementUuid);
+        break;
+      }
+    }
+  }
+  return { frozen, frozenEngagementUuids };
+}
+
+/**
+ * Hard guard for explicit single-engagement recompute: targeting a settled
+ * engagement directly is a genuine conflict and still refuses.
+ */
+async function assertNoFrozenSettlements(
+  engagements: AccEngagementV2[],
+): Promise<void> {
+  const { frozen } = await findFrozenSettlementsFor(engagements);
   if (frozen.length === 0) return;
   const names = await reads.findCrewNames(frozen.map((s) => s.crewUuid));
   const parts = frozen.map(
@@ -227,6 +276,51 @@ async function assertNoFrozenSettlements(
       })),
     },
   );
+}
+
+/**
+ * Vessel-period partition (per-engagement settlement skip): frozen
+ * engagements are excluded from recompute — their existing ledger lines are
+ * preserved exactly — while everyone else stays computable.
+ */
+async function partitionBySettlement(engagements: AccEngagementV2[]): Promise<{
+  computable: AccEngagementV2[];
+  frozenEngagements: AccEngagementV2[];
+  skippedSettled: SkippedSettled[];
+}> {
+  const { frozen, frozenEngagementUuids } =
+    await findFrozenSettlementsFor(engagements);
+  if (frozen.length === 0) {
+    return { computable: engagements, frozenEngagements: [], skippedSettled: [] };
+  }
+  const computable = engagements.filter(
+    (e) => !frozenEngagementUuids.has(e.engagementUuid),
+  );
+  const frozenEngagements = engagements.filter((e) =>
+    frozenEngagementUuids.has(e.engagementUuid),
+  );
+  const names = await reads.findCrewNames(
+    frozenEngagements.map((e) => e.crewUuid),
+  );
+  const settlementByEngagement = new Map(
+    frozen.map((s) => [s.engagementUuid, s]),
+  );
+  const skippedSettled: SkippedSettled[] = frozenEngagements.map((e) => {
+    // Direct settlement if present; otherwise the overlapping engagement's
+    // settlement that froze this one (same crew).
+    const s =
+      settlementByEngagement.get(e.engagementUuid) ??
+      frozen.find((f) => f.crewUuid === e.crewUuid) ??
+      frozen[0];
+    return {
+      engagementUuid: e.engagementUuid,
+      crewUuid: e.crewUuid,
+      crewName: names.get(e.crewUuid) ?? null,
+      settlementUuid: s.settlementUuid,
+      status: s.status,
+    };
+  });
+  return { computable, frozenEngagements, skippedSettled };
 }
 
 /** Statuses whose date ranges may not overlap for the same crew. */
@@ -322,12 +416,15 @@ export const wageEngineService = {
 
     const configRow = await reads.getConfig();
     const config = toEngineConfig(configRow);
-    const engagements = await reads.findEngagementsForVesselPeriod(
+    const allEngagements = await reads.findEngagementsForVesselPeriod(
       vesselUuid,
       month.monthStart,
       month.monthEnd,
     );
-    await assertNoFrozenSettlements(engagements);
+    // Per-engagement settlement skip: frozen (settled) engagements are
+    // excluded from recompute; their existing ledger lines are preserved.
+    const { computable: engagements, frozenEngagements, skippedSettled } =
+      await partitionBySettlement(allEngagements);
     await assertNoOverlappingEngagements(engagements);
     const ctx = await buildContext(config, month, engagements);
 
@@ -346,6 +443,9 @@ export const wageEngineService = {
     const inputSnapshot = buildInputSnapshot(config, period, {
       vesselUuid,
       engagementUuids: results.map((r) => r.engagement.engagementUuid),
+      skippedSettledEngagementUuids: frozenEngagements
+        .map((e) => e.engagementUuid)
+        .sort(),
       scaleUuids: Array.from(ctx.scaleByUuid.keys()).sort(),
     });
 
@@ -409,15 +509,34 @@ export const wageEngineService = {
       }
     }
 
-    const totals = portageTotals(allLines);
     try {
-      await ledgerRepo.replacePortageLines(portage.portageUuid, allLines, {
-        crewCount: new Set(allLines.map((l) => l.crewUuid)).size,
-        totalEarnings: totals.totalEarnings,
-        totalDeductions: totals.totalDeductions,
-        netTotal: totals.netTotal,
-        updatedByUuid: auditUserUuid ?? null,
-      });
+      await ledgerRepo.replacePortageLines(
+        portage.portageUuid,
+        allLines,
+        { updatedByUuid: auditUserUuid ?? null },
+        {
+          // Engagement-scoped replacement: only the computable engagements'
+          // lines are deleted/regenerated; frozen (settled) engagements'
+          // lines are preserved exactly as-is.
+          replaceEngagementUuids: engagements.map((e) => e.engagementUuid),
+          // Cached totals recompute from the FULL ledger (preserved frozen
+          // lines + fresh lines), so the portage bill still shows the
+          // settled crew's final figures alongside the recomputed rest.
+          computeTotals: (fullLedgerLines) => {
+            const totals = portageTotals(fullLedgerLines);
+            return {
+              crewCount: new Set(
+                fullLedgerLines
+                  .filter((l) => !l.isAdjustment)
+                  .map((l) => l.crewUuid),
+              ).size,
+              totalEarnings: totals.totalEarnings,
+              totalDeductions: totals.totalDeductions,
+              netTotal: totals.netTotal,
+            };
+          },
+        },
+      );
     } catch (error) {
       await ledgerRepo.updateRun(run.calcRunUuid, {
         status: "failed",
@@ -445,6 +564,7 @@ export const wageEngineService = {
       lineCount: allLines.length,
       crewTotals,
       warnings,
+      skippedSettled,
     };
   },
 
@@ -2072,7 +2192,14 @@ async function withBalances(
   return out;
 }
 
-function portageTotals(lines: InsertAccWageLedgerV2[]): {
+function portageTotals(
+  lines: Array<
+    Pick<
+      InsertAccWageLedgerV2,
+      "isAdjustment" | "amount" | "paymentTiming" | "elementType"
+    >
+  >,
+): {
   totalEarnings: string;
   totalDeductions: string;
   netTotal: string;
