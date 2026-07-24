@@ -43,7 +43,7 @@ import {
   parseApiError,
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
-import { formatDate, formatMoney } from "../accountsFormat";
+import { formatDate, formatMoney, unknownVesselLabel } from "../accountsFormat";
 import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
 
@@ -1514,7 +1514,7 @@ export default function PayrollRunPage() {
                     >
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-foreground">
-                          {e.vesselName ?? e.vesselUuid}
+                          {e.vesselName ?? unknownVesselLabel(e.vesselUuid)}
                         </span>
                         {e.status && (
                           <Badge variant="outline" className="text-[10px]">

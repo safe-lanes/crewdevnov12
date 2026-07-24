@@ -828,7 +828,7 @@ export const engagementsService = {
         engagementUuid: e.engagementUuid,
         vesselUuid: e.vesselUuid,
         vesselName: e.vesselUuid
-          ? (vesselNames.get(e.vesselUuid) ?? e.vesselUuid)
+          ? (vesselNames.get(e.vesselUuid) ?? null)
           : null,
         startDate: e.startDate,
         endDate: e.endDate,

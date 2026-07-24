@@ -38,7 +38,7 @@ import {
   X,
 } from "lucide-react";
 import { ACCOUNTS_BASE, accountsApiV2 } from "../api/accountsApiV2";
-import { formatDate, formatMoney } from "../accountsFormat";
+import { formatDate, formatMoney, unknownVesselLabel } from "../accountsFormat";
 import { formatPeriod } from "./VesselPeriodBar";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
 
@@ -149,8 +149,17 @@ export default function SettlementsPage() {
     const uuids = Array.from(
       new Set(settlements.map((s) => s.vesselUuid).filter(Boolean)),
     ) as string[];
+    const nameByUuid = new Map<string, string>();
+    for (const s of settlements) {
+      if (s.vesselUuid && !nameByUuid.has(s.vesselUuid)) {
+        const name = s.vesselName ?? getVesselName(s.vesselUuid);
+        if (name) nameByUuid.set(s.vesselUuid, name);
+      }
+    }
+    // Only offer vessels that resolve to a real name.
     return uuids
-      .map((u) => ({ uuid: u, name: getVesselName(u) ?? u }))
+      .filter((u) => nameByUuid.has(u))
+      .map((u) => ({ uuid: u, name: nameByUuid.get(u)! }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [settlements, getVesselName]);
 
@@ -195,7 +204,12 @@ export default function SettlementsPage() {
         field: "vesselUuid",
         flex: 1,
         minWidth: 120,
-        valueFormatter: (p) => (p.value ? getVesselName(p.value) ?? p.value : ""),
+        valueFormatter: (p) =>
+          p.value
+            ? p.data?.vesselName ??
+              getVesselName(p.value) ??
+              unknownVesselLabel(p.value)
+            : "",
       },
       {
         headerName: "Sign On",
@@ -523,7 +537,10 @@ export default function SettlementsPage() {
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {getVesselName(e.vesselUuid) ?? e.vesselUuid} ·{" "}
+                      {e.vesselName ??
+                        getVesselName(e.vesselUuid) ??
+                        unknownVesselLabel(e.vesselUuid)}{" "}
+                      ·{" "}
                       {formatDate(e.startDate)} → {formatDate(e.endDate)} ·
                       calculated through{" "}
                       {e.calculatedThrough
@@ -684,7 +701,9 @@ export default function SettlementsPage() {
               </span>{" "}
               · {rankLabel(engagement?.rankIdAtStart)} ·{" "}
               {engagement?.vesselUuid
-                ? getVesselName(engagement.vesselUuid) ?? engagement.vesselUuid
+                ? detail?.vesselName ??
+                  getVesselName(engagement.vesselUuid) ??
+                  unknownVesselLabel(engagement.vesselUuid)
                 : ""}{" "}
               · {engagement ? formatDate(engagement.startDate) : ""} →{" "}
               {engagement ? formatDate(engagement.endDate) : ""} · Currency{" "}

@@ -411,7 +411,7 @@ export default function PayslipsPage() {
   const exportExcel = () => {
     const api = gridApiRef.current;
     if (!api) return;
-    const fileName = `payslips-${getVesselName(vesselUuid) ?? vesselUuid}-${period}`;
+    const fileName = `payslips-${getVesselName(vesselUuid) ?? vesselUuid.slice(0, 8)}-${period}`;
     if (typeof (api as any).exportDataAsExcel === "function") {
       (api as any).exportDataAsExcel({ fileName: `${fileName}.xlsx` });
     } else {

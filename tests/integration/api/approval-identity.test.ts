@@ -86,7 +86,7 @@ async function makePortageFixture(
   approvers: Array<{ approver: string; approverId?: string }>,
 ) {
   const portageUuid = u();
-  const vessel = `VSL_SEG_${u()}`;
+  const vessel = `VSL_SEG_${S}_${u()}`;
   await insert("acc_portage_bills_v2", {
     portage_uuid: portageUuid,
     vessel_uuid: vessel,
@@ -122,7 +122,7 @@ async function makeSettlementFixture(
     engagement_uuid: engagementUuid,
     crew_uuid: crewUuid,
     engagement_type: "voyage_contract",
-    vessel_uuid: `VSL_SEG_${u()}`,
+    vessel_uuid: `VSL_SEG_${S}_${u()}`,
     start_date: "2026-05-01",
     currency: "USD",
     status: "active",
@@ -158,6 +158,29 @@ describe("Approval identity binding (segregation of duties)", () => {
   });
 
   afterAll(async () => {
+    // Remove this run's fixture rows (VSL_SEG_<run>_* vessels) so they don't
+    // pollute the dev DB's Accounts screens.
+    await db.query(`
+      DELETE FROM acc_settlement_approvals_v2 WHERE settlement_uuid IN (
+        SELECT s.settlement_uuid FROM acc_settlements_v2 s
+        JOIN acc_engagements_v2 e ON e.engagement_uuid = s.engagement_uuid
+        WHERE e.vessel_uuid LIKE 'VSL_SEG_' || $1 || '_%')`, [S]);
+    await db.query(`
+      DELETE FROM acc_settlements_v2 WHERE engagement_uuid IN (
+        SELECT engagement_uuid FROM acc_engagements_v2
+        WHERE vessel_uuid LIKE 'VSL_SEG_' || $1 || '_%')`, [S]);
+    await db.query(`
+      DELETE FROM acc_portage_approvals_v2 WHERE portage_uuid IN (
+        SELECT portage_uuid FROM acc_portage_bills_v2
+        WHERE vessel_uuid LIKE 'VSL_SEG_' || $1 || '_%')`, [S]);
+    await db.query(
+      "DELETE FROM acc_portage_bills_v2 WHERE vessel_uuid LIKE 'VSL_SEG_' || $1 || '_%'",
+      [S],
+    );
+    await db.query(
+      "DELETE FROM acc_engagements_v2 WHERE vessel_uuid LIKE 'VSL_SEG_' || $1 || '_%'",
+      [S],
+    );
     await db.end();
   });
 

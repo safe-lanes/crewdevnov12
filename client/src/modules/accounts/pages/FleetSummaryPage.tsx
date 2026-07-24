@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Download } from "lucide-react";
 import { ACCOUNTS_BASE } from "../api/accountsApiV2";
-import { formatMoney } from "../accountsFormat";
+import { formatMoney, unknownVesselLabel } from "../accountsFormat";
 import { formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
 import { useVesselLookup } from "@/hooks/useVesselLookup";
@@ -102,7 +102,7 @@ export default function FleetSummaryPage() {
         field: "vesselName",
         pinned: "left",
         width: 220,
-        valueFormatter: (p) => p.value ?? p.data?.vesselUuid ?? "",
+        valueFormatter: (p) => p.value ?? unknownVesselLabel(p.data?.vesselUuid),
       },
       {
         headerName: "Crew",

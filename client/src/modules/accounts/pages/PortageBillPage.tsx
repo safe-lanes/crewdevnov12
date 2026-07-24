@@ -217,7 +217,7 @@ export default function PortageBillPage() {
   const exportExcel = () => {
     const api = gridApiRef.current;
     if (!api) return;
-    const fileName = `portage-bill-${getVesselName(vesselUuid) ?? vesselUuid}-${period}`;
+    const fileName = `portage-bill-${getVesselName(vesselUuid) ?? vesselUuid.slice(0, 8)}-${period}`;
     if (typeof (api as any).exportDataAsExcel === "function") {
       (api as any).exportDataAsExcel({ fileName: `${fileName}.xlsx` });
     } else {

@@ -15,6 +15,11 @@ const MONTHS = [
   "Dec",
 ];
 
+/** Never render a raw vessel UUID; show a short unknown-vessel label instead. */
+export function unknownVesselLabel(vesselUuid: string | null | undefined): string {
+  return vesselUuid ? `Unknown vessel (${vesselUuid.slice(0, 8)})` : "";
+}
+
 /** Format an ISO date (or Date) as DD-MMM-YYYY; empty string when absent. */
 export function formatDate(value: string | Date | null | undefined): string {
   if (!value) return "";

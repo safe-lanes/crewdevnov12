@@ -99,6 +99,7 @@ export interface SettlementDetail {
   approvals: AccSettlementApprovalV2[];
   engagement: AccEngagementV2 | null;
   crewName: string | null;
+  vesselName: string | null;
 }
 
 async function adjustmentTotalsCents(
@@ -180,13 +181,18 @@ export const settlementsService = {
       AccSettlementV2 & {
         crewName: string | null;
         vesselUuid: string | null;
+        vesselName: string | null;
         engagementStartDate: string | null;
         engagementEndDate: string | null;
         rankIdAtStart: string | null;
       }
     >;
     eligibleEngagements: Array<
-      AccEngagementV2 & { crewName: string | null; calculatedThrough: string | null }
+      AccEngagementV2 & {
+        crewName: string | null;
+        vesselName: string | null;
+        calculatedThrough: string | null;
+      }
     >;
   }> {
     const [settlements, ended] = await Promise.all([
@@ -208,6 +214,15 @@ export const settlementsService = {
       ]),
     );
     const crewInfo = await engagementsRepo.findCrewInfo(crewUuids);
+    const vesselNames = await engagementsRepo.findVesselNames(
+      Array.from(
+        new Set(
+          [...settlementEngagements, ...eligible]
+            .map((e) => e.vesselUuid)
+            .filter((v): v is string => !!v),
+        ),
+      ),
+    );
     const eligibleEnriched = await Promise.all(
       eligible.map(async (e) => {
         const finalPeriod = periodOf(e.endDate!);
@@ -219,6 +234,9 @@ export const settlementsService = {
         return {
           ...e,
           crewName: crewInfo.get(e.crewUuid)?.name ?? null,
+          vesselName: e.vesselUuid
+            ? (vesselNames.get(e.vesselUuid) ?? null)
+            : null,
           calculatedThrough:
             periods.length > 0 ? periods.sort()[periods.length - 1] : null,
         };
@@ -231,6 +249,9 @@ export const settlementsService = {
           ...s,
           crewName: crewInfo.get(s.crewUuid)?.name ?? null,
           vesselUuid: eng?.vesselUuid ?? null,
+          vesselName: eng?.vesselUuid
+            ? (vesselNames.get(eng.vesselUuid) ?? null)
+            : null,
           engagementStartDate: eng?.startDate ?? null,
           engagementEndDate: eng?.endDate ?? null,
           rankIdAtStart: eng?.rankIdAtStart ?? null,
@@ -248,12 +269,18 @@ export const settlementsService = {
       engagementsRepo.findByUuid(settlement.engagementUuid),
       engagementsRepo.findCrewInfo([settlement.crewUuid]),
     ]);
+    const vesselNames = engagement?.vesselUuid
+      ? await engagementsRepo.findVesselNames([engagement.vesselUuid])
+      : new Map<string, string>();
     return {
       settlement,
       adjustments,
       approvals,
       engagement: engagement ?? null,
       crewName: crewInfo.get(settlement.crewUuid)?.name ?? null,
+      vesselName: engagement?.vesselUuid
+        ? (vesselNames.get(engagement.vesselUuid) ?? null)
+        : null,
     };
   },
 

@@ -169,6 +169,36 @@ describe("Portage auto-lock on final approval", () => {
 
   afterAll(async () => {
     await setAutoLock(true);
+    // Remove this run's fixture rows (VSL_PAL_*_<run> vessels) so they don't
+    // pollute the dev DB's Accounts screens.
+    await db.query(`
+      DELETE FROM acc_wage_ledger_v2 WHERE engagement_uuid IN (
+        SELECT engagement_uuid FROM acc_engagements_v2
+        WHERE vessel_uuid LIKE 'VSL_PAL_%' || $1)`, [S]);
+    await db.query(`
+      DELETE FROM acc_portage_approvals_v2 WHERE portage_uuid IN (
+        SELECT portage_uuid FROM acc_portage_bills_v2
+        WHERE vessel_uuid LIKE 'VSL_PAL_%' || $1)`, [S]);
+    await db.query(
+      "DELETE FROM acc_monthly_transactions_v2 WHERE vessel_uuid LIKE 'VSL_PAL_%' || $1",
+      [S],
+    );
+    await db.query(
+      "DELETE FROM acc_ctm_v2 WHERE vessel_uuid LIKE 'VSL_PAL_%' || $1",
+      [S],
+    );
+    await db.query(
+      "DELETE FROM acc_portage_bills_v2 WHERE vessel_uuid LIKE 'VSL_PAL_%' || $1",
+      [S],
+    );
+    await db.query(
+      "DELETE FROM acc_engagements_v2 WHERE vessel_uuid LIKE 'VSL_PAL_%' || $1",
+      [S],
+    );
+    await db.query(
+      "DELETE FROM acc_pay_elements_v2 WHERE code = 'PAL_MAN_' || $1",
+      [S],
+    );
     await db.end();
   });
 
