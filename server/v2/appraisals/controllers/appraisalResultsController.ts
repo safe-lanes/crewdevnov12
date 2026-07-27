@@ -30,6 +30,11 @@ const stage2SubmissionSchema = z.object({
     recommendations: z.array(z.any()).optional(),
     appraiserComments: z.array(z.any()).optional(),
     seafarerComments: z.array(z.any()).optional(),
+    reviewers: z.array(z.object({
+      userUuid: z.string().optional(),
+      reviewerName: z.string().optional(),
+      designation: z.string().optional(),
+    })).optional(),
   }),
   submittedBy: z.string().optional(),
   competenceRating: z.string().nullable().optional(),

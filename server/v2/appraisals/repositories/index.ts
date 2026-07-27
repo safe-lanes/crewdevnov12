@@ -9,3 +9,4 @@ export { ApprAppraiserCommentsRepository } from "./apprAppraiserCommentsReposito
 export { ApprSeafarerCommentsRepository } from "./apprSeafarerCommentsRepository";
 export { ApprOfficeReviewsRepository } from "./apprOfficeReviewsRepository";
 export { ApprTrainingFollowupsRepository } from "./apprTrainingFollowupsRepository";
+export { ApprReviewersRepository } from "./apprReviewersRepository";

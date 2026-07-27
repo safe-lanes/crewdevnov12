@@ -1,5 +1,7 @@
 import { pgTable, serial, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
 
+
+
 export const auditColumns = {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()),
@@ -163,6 +165,17 @@ export const apprTrainingFollowupsV2 = pgTable("appr_training_followups_v2", {
   status: text("status"),
   targetDate: text("target_date"),
   comment: text("comment"),
+  sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
+export const apprReviewersV2 = pgTable("appr_reviewers_v2", {
+  id: serial("id").primaryKey(),
+  reviewerUuid: text("reviewer_uuid").notNull().unique(),
+  appraisalUuid: text("appraisal_uuid").notNull(),
+  userUuid: text("user_uuid"),
+  reviewerName: text("reviewer_name"),
+  designation: text("designation"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });

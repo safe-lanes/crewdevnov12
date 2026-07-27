@@ -81,11 +81,15 @@ const StatusBadge = ({ status }: { status: string }) => {
     bgColor = 'bg-blue-100';
     textColor = 'text-blue-700';
     displayText = 'Preliminary';
-  } else if (status === 'submitted') {
+  } else if (status === 'submitted' || status === 'stage2_submitted') {
     bgColor = 'bg-amber-100';
     textColor = 'text-amber-700';
     displayText = 'Submitted';
-  } else if (status === 'reviewed') {
+  } else if (status === 'pending_review') {
+    bgColor = 'bg-purple-100';
+    textColor = 'text-purple-700';
+    displayText = 'Pending Review';
+  } else if (status === 'reviewed' || status === 'stage3_submitted') {
     bgColor = 'bg-green-100';
     textColor = 'text-green-700';
     displayText = 'Reviewed';
@@ -535,7 +539,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
     allCrewData.filter((crew) => {
       // Only show crew members who have at least Stage 1 submitted (status: Preliminary, Submitted, or Reviewed)
       const status = crew.status.toLowerCase();
-      if (!['preliminary', 'submitted', 'reviewed'].includes(status)) {
+      if (!['preliminary', 'submitted', 'stage2_submitted', 'pending_review', 'reviewed', 'stage3_submitted'].includes(status)) {
         return false;
       }
 
@@ -1193,7 +1197,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
           <AppraisalForm
             crewMember={selectedCrewMember}
             appraisalId={selectedCrewMember.appraisalId}
-            initialStatus={selectedCrewMember.status as 'draft' | 'preliminary' | 'submitted' | 'reviewed'}
+            initialStatus={selectedCrewMember.status as 'draft' | 'preliminary' | 'submitted' | 'stage2_submitted' | 'pending_review' | 'reviewed' | 'stage3_submitted'}
             onClose={handleCloseForm}
           />
         )}

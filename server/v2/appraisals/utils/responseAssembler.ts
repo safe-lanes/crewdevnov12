@@ -24,6 +24,7 @@ export function assembleV1Response(
   seafarerComments: ApprSeafarerCommentV2[],
   officeReviews: ApprOfficeReviewV2[],
   trainingFollowups: ApprTrainingFollowupV2[],
+  reviewers: { reviewerName?: string | null; designation?: string | null; userUuid?: string | null }[] = [],
 ) {
   const appraisalDataObj: Record<string, any> = {
     seafarersName: appraisal.seafarersName,
@@ -157,6 +158,12 @@ export function assembleV1Response(
       seafarerComments: appraisalDataObj.seafarerComments,
     };
   }
+  // reviewers is the flat array of assigned reviewers for this appraisal
+  const reviewerList = reviewers.map((r) => ({
+    userUuid: r.userUuid ?? null,
+    reviewerName: s(r.reviewerName),
+    designation: s(r.designation),
+  }));
   if (appraisal.stage3Status) {
     stagePayloads.stage3 = {
       officeReviews: appraisalDataObj.officeReviews,
@@ -183,5 +190,6 @@ export function assembleV1Response(
     isLockForm: (appraisal as any).isLockForm ?? false,
     stageStatuses: JSON.stringify(stageStatuses),
     stagePayloads: JSON.stringify(stagePayloads),
+    reviewers: reviewerList,
   };
 }

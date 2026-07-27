@@ -122,11 +122,13 @@ export type TrainingFollowup = z.infer<typeof trainingFollowupSchema>;
 
 // Task #500: accept new synonyms `stage2_submitted` and `stage3_submitted`
 // alongside the canonical `submitted` / `reviewed` values.
+// `pending_review` is the new post-Stage-2 status while office review is pending.
 export type AppraisalStatus =
   | 'draft'
   | 'preliminary'
   | 'submitted'
   | 'stage2_submitted'
+  | 'pending_review'
   | 'reviewed'
   | 'stage3_submitted';
 
@@ -229,6 +231,12 @@ export interface PartEProps extends AppraisalFormSectionBaseProps {
   handleTrainingNeedsSelect: (templates: any[]) => void;
 }
 
+export interface ReviewerItem {
+  userUuid: string;
+  reviewerName: string;
+  designation: string;
+}
+
 export interface PartFProps extends AppraisalFormSectionBaseProps {
   partRef: RefObject<HTMLDivElement>;
   recommendationComments: Record<string, string | null>;
@@ -254,6 +262,10 @@ export interface PartFProps extends AppraisalFormSectionBaseProps {
   stage1Mutation: { isPending: boolean };
   stage2Mutation: { isPending: boolean };
   saveAppraisalMutation: { isPending: boolean };
+  // Reviewer assignment props
+  selectedReviewers: ReviewerItem[];
+  setSelectedReviewers: React.Dispatch<React.SetStateAction<ReviewerItem[]>>;
+  officeUsers: { userUuid: string; displayName: string; designation: string }[];
 }
 
 export interface PartGProps extends AppraisalFormSectionBaseProps {
@@ -277,6 +289,8 @@ export interface PartGProps extends AppraisalFormSectionBaseProps {
   stage3Mutation: { isPending: boolean };
   saveAppraisalMutation: { isPending: boolean };
   users?: { userUuid: string; displayName: string }[];
+  // Assigned reviewers header (read-only, populated from stage 2)
+  assignedReviewers?: { reviewerName: string; designation: string }[];
 }
 
 export const getScoreColors = (score: number) => {

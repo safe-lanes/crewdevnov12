@@ -57,7 +57,7 @@ interface AppraisalDataShape {
 interface ExistingAppraisal {
   id: number;
   appraisalData: string | AppraisalDataShape;
-  status: 'draft' | 'preliminary' | 'submitted' | 'reviewed';
+  status: 'draft' | 'preliminary' | 'submitted' | 'stage2_submitted' | 'pending_review' | 'reviewed' | 'stage3_submitted';
   appraisalType?: string;
   appraisalDate?: string;
   formVersionId?: number | null;

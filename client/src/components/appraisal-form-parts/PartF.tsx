@@ -1,8 +1,14 @@
-import { memo, Fragment } from "react";
+import { memo, Fragment, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -10,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, MessageSquare } from "lucide-react";
+import { Plus, Pencil, Trash2, MessageSquare, ChevronDown, Users } from "lucide-react";
 import { PartFProps } from "./types";
 import { RequiredMark } from "./RequiredMark";
 
@@ -46,13 +52,17 @@ const PartFComponent: React.FC<PartFProps> = ({
   isPostStage1,
   isPostStage2: isPostStage2Prop,
   isPostStage3: isPostStage3Prop,
+  selectedReviewers,
+  setSelectedReviewers,
+  officeUsers,
 }) => {
+  const [reviewerPopoverOpen, setReviewerPopoverOpen] = useState(false);
   const overallScoreValue = parseFloat(overallScore) || 0;
   const { bgColor: overallBgColor, textColor: overallTextColor } = getScoreColors(overallScoreValue);
   // Task #500: when the form's lock-form flag is on, the F section locks
   // immediately after Stage 2 submit (along with the rest of A-F); without
   // the flag the legacy behavior still kicks in at 'submitted'/'reviewed'.
-  const isPostStage2 = isPostStage2Prop ?? (appraisalStatus === 'submitted' || appraisalStatus === 'reviewed' || appraisalStatus === ('stage2_submitted' as typeof appraisalStatus) || appraisalStatus === ('stage3_submitted' as typeof appraisalStatus));
+  const isPostStage2 = isPostStage2Prop ?? (appraisalStatus === 'submitted' || appraisalStatus === 'stage2_submitted' || appraisalStatus === 'pending_review' || appraisalStatus === 'reviewed' || appraisalStatus === 'stage3_submitted');
   const isPostStage3 = isPostStage3Prop ?? (appraisalStatus === 'reviewed' || appraisalStatus === ('stage3_submitted' as typeof appraisalStatus));
   const isF3Locked = isPostStage3 || isPostStage2;
   // Task #500: when `is_lock_form` is on, all of Part F locks after Stage 2
@@ -455,7 +465,82 @@ const PartFComponent: React.FC<PartFProps> = ({
               </div>
             </div>
 
-            {/* Action Buttons - Save Draft and Submit Stage 2 - Always visible like Section B */}
+            {/* Reviewer Assignment + Submit for Review */}
+            {!isPostStage2 && (
+              <div className="border border-[#EAEBEF] rounded-lg p-4">
+                <h4 className="text-base font-medium mb-3" style={{ color: '#16569e' }}>Submit for Review To</h4>
+                <p className="text-sm text-gray-500 mb-3">Select one or more reviewers who will review this appraisal in Part G.</p>
+                <Popover open={reviewerPopoverOpen} onOpenChange={setReviewerPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-between text-sm"
+                      data-testid="button-reviewer-select"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-gray-500" />
+                        {selectedReviewers.length === 0
+                          ? 'Select reviewers...'
+                          : `${selectedReviewers.length} reviewer${selectedReviewers.length > 1 ? 's' : ''} selected`}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-2 max-h-60 overflow-y-auto" align="start">
+                    {officeUsers.length === 0 && (
+                      <p className="text-sm text-gray-500 p-2">No users available.</p>
+                    )}
+                    {officeUsers.map((user) => {
+                      const isChecked = selectedReviewers.some(r => r.userUuid === user.userUuid);
+                      return (
+                        <div
+                          key={user.userUuid}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            setSelectedReviewers(prev =>
+                              isChecked
+                                ? prev.filter(r => r.userUuid !== user.userUuid)
+                                : [...prev, { userUuid: user.userUuid, reviewerName: user.displayName, designation: user.designation }]
+                            );
+                          }}
+                          data-testid={`reviewer-option-${user.userUuid}`}
+                        >
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={() => {}}
+                            className="pointer-events-none"
+                          />
+                          <span className="text-sm text-gray-700">{user.displayName}</span>
+                        </div>
+                      );
+                    })}
+                  </PopoverContent>
+                </Popover>
+                {selectedReviewers.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {selectedReviewers.map(r => (
+                      <span
+                        key={r.userUuid}
+                        className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full"
+                      >
+                        {r.reviewerName}
+                        <button
+                          type="button"
+                          className="hover:text-red-600 ml-1"
+                          onClick={() => setSelectedReviewers(prev => prev.filter(x => x.userUuid !== r.userUuid))}
+                          data-testid={`reviewer-remove-${r.userUuid}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons - Submit for Review */}
             <div className="flex justify-end gap-4 mt-6">
               <Button
                 type="button"
@@ -464,7 +549,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                 disabled={stage2Mutation.isPending || saveAppraisalMutation.isPending || isPostStage2}
                 data-testid="button-submit-stage-2"
               >
-                {stage2Mutation.isPending ? 'Submitting...' : 'Submit'}
+                {stage2Mutation.isPending ? 'Submitting...' : 'Submit for Review'}
               </Button>
             </div>
           </div>

@@ -10,12 +10,18 @@ import {
   ApprSeafarerCommentsRepository,
   ApprOfficeReviewsRepository,
   ApprTrainingFollowupsRepository,
+  ApprReviewersRepository,
 } from "../repositories";
 import { CrewMembersRepository } from "../../crew-pool/repositories";
 import { assembleV1Response } from "../utils/responseAssembler";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import { formsService } from "../../admin/services";
 import { v4 as uuidv4 } from "uuid";
+import { getDb } from "../../db";
+import { masterUsers } from "../../../../shared/schema";
+import { eq } from "drizzle-orm";
+import { sendEmail, logEmailEvent } from "../../shared/emailService";
+import { buildAppraisalReviewEmail } from "../templates/appraisalReviewNotificationTemplate";
 
 const appraisalResultsRepo = new AppraisalResultsRepository();
 const trainingsRepo = new ApprTrainingsRepository();
@@ -28,6 +34,7 @@ const appraiserCommentsRepo = new ApprAppraiserCommentsRepository();
 const seafarerCommentsRepo = new ApprSeafarerCommentsRepository();
 const officeReviewsRepo = new ApprOfficeReviewsRepository();
 const trainingFollowupsRepo = new ApprTrainingFollowupsRepository();
+const reviewersRepo = new ApprReviewersRepository();
 const crewMembersRepo = new CrewMembersRepository();
 
 async function fetchChildDataForUuids(appraisalUuids: string[]) {
@@ -38,11 +45,12 @@ async function fetchChildDataForUuids(appraisalUuids: string[]) {
       trainingNeeds: new Map(), recommendations: new Map(),
       appraiserComments: new Map(), seafarerComments: new Map(),
       officeReviews: new Map(), trainingFollowups: new Map(),
+      reviewers: new Map(),
     };
   }
   const [trainings, targets, competenceAssessments, behaviouralAssessments,
          trainingNeeds, recommendations, appraiserComments, seafarerComments,
-         officeReviews, trainingFollowups] = await Promise.all([
+         officeReviews, trainingFollowups, reviewers] = await Promise.all([
     trainingsRepo.findByAppraisalUuids(appraisalUuids),
     targetsRepo.findByAppraisalUuids(appraisalUuids),
     competenceAssessmentsRepo.findByAppraisalUuids(appraisalUuids),
@@ -53,10 +61,11 @@ async function fetchChildDataForUuids(appraisalUuids: string[]) {
     seafarerCommentsRepo.findByAppraisalUuids(appraisalUuids),
     officeReviewsRepo.findByAppraisalUuids(appraisalUuids),
     trainingFollowupsRepo.findByAppraisalUuids(appraisalUuids),
+    reviewersRepo.findByAppraisalUuids(appraisalUuids),
   ]);
   return { trainings, targets, competenceAssessments, behaviouralAssessments,
            trainingNeeds, recommendations, appraiserComments, seafarerComments,
-           officeReviews, trainingFollowups };
+           officeReviews, trainingFollowups, reviewers };
 }
 
 function assembleOne(appraisal: any, childData: any) {
@@ -73,7 +82,53 @@ function assembleOne(appraisal: any, childData: any) {
     childData.seafarerComments.get(uuid) || [],
     childData.officeReviews.get(uuid) || [],
     childData.trainingFollowups.get(uuid) || [],
+    childData.reviewers.get(uuid) || [],
   );
+}
+
+/**
+ * Fire-and-forget helper: looks up each reviewer's email from masterUsers
+ * and sends them an appraisal review assignment notification.
+ */
+async function triggerAppraisalReviewNotification(
+  reviewers: { userUuid?: string; reviewerName?: string; designation?: string }[],
+  seafarerName: string,
+  rank: string,
+  appraisalUuid: string,
+): Promise<void> {
+  const origin = process.env.VITE_API_CREWING_URL;
+  if (!origin) {
+    logEmailEvent('WARN', '[Appraisals V2] VITE_API_CREWING_URL not set — skipping review notification emails.');
+    return;
+  }
+  const appraisalLink = `${origin}/crewing?appraisal=${appraisalUuid}`;
+  const db = getDb();
+
+  for (const reviewer of reviewers) {
+    if (!reviewer.userUuid) continue;
+    try {
+      const userRows = await db
+        .select({ email: masterUsers.email, fullname: masterUsers.fullname })
+        .from(masterUsers)
+        .where(eq(masterUsers.userUuid, reviewer.userUuid))
+        .limit(1);
+      const user = userRows[0];
+      if (!user?.email) {
+        logEmailEvent('WARN', `[Appraisals V2] No email for reviewer UUID ${reviewer.userUuid}`);
+        continue;
+      }
+      const emailData = buildAppraisalReviewEmail({
+        reviewerName: reviewer.reviewerName || user.fullname || 'Reviewer',
+        seafarerName,
+        rank,
+        appraisalLink,
+      });
+      logEmailEvent('INFO', `[Appraisals V2] Sending review assignment email to ${user.email}`);
+      sendEmail([user.email], emailData.subject, emailData.html);
+    } catch (err: any) {
+      logEmailEvent('ERROR', `[Appraisals V2] Failed to send email to reviewer ${reviewer.userUuid}:`, err?.message || err);
+    }
+  }
 }
 
 export class AppraisalResultsService {
@@ -139,7 +194,8 @@ export class AppraisalResultsService {
     // compatibility and echoed back in the response.
     // Only count appraisals whose work is at least preliminary — draft
     // appraisals are explicitly excluded (confirmed business rule).
-    const ELIGIBLE_STATUSES = new Set(["preliminary", "submitted", "reviewed"]);
+    // `pending_review` (stage 2 submitted, awaiting office review) counts as eligible.
+    const ELIGIBLE_STATUSES = new Set(["preliminary", "submitted", "pending_review", "stage2_submitted", "reviewed", "stage3_submitted"]);
 
     const eligibleUuids: string[] = [];
     const seen = new Set<string>();
@@ -360,6 +416,7 @@ export class AppraisalResultsService {
       preliminary: 1,
       submitted: 2,
       stage2_submitted: 2,
+      pending_review: 2,
       reviewed: 3,
       stage3_submitted: 3,
     };
@@ -369,9 +426,11 @@ export class AppraisalResultsService {
       const key = normalize(s);
       return key in STATUS_ORDER ? STATUS_ORDER[key] : -1;
     };
+    // Stage 2 now advances to `pending_review` (awaiting office review)
+    // rather than `submitted`, so the form locks and reviewers get notified.
     const nominalForStage =
       stage === "stage1" ? "preliminary"
-      : stage === "stage2" ? "submitted"
+      : stage === "stage2" ? "pending_review"
       : "reviewed";
     const currentNormalized = normalize(appraisal.status);
     const newStatus = rank(nominalForStage) >= rank(currentNormalized)
@@ -440,6 +499,9 @@ export class AppraisalResultsService {
       // alongside the Stage-2 C-F writes. Only sync them when the payload
       // includes them so legacy callers that omit `trainings`/`targets`
       // leave existing persisted rows untouched.
+      const reviewerList: { userUuid?: string; reviewerName?: string; designation?: string }[] =
+        Array.isArray((data as any)?.reviewers) ? (data as any).reviewers : [];
+
       const stage2Writes: Promise<unknown>[] = [
         competenceAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.competenceAssessments || [], auditUserUuid),
         behaviouralAssessmentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.behaviouralAssessments || [], auditUserUuid),
@@ -447,6 +509,7 @@ export class AppraisalResultsService {
         recommendationsRepo.syncForAppraisal(appraisal.appraisalUuid, data.recommendations || [], auditUserUuid),
         appraiserCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.appraiserComments || [], auditUserUuid),
         seafarerCommentsRepo.syncForAppraisal(appraisal.appraisalUuid, data.seafarerComments || [], auditUserUuid),
+        reviewersRepo.syncForAppraisal(appraisal.appraisalUuid, reviewerList, auditUserUuid),
       ];
       if (Array.isArray((data as any)?.trainings)) {
         stage2Writes.push(trainingsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).trainings, auditUserUuid));
@@ -455,6 +518,16 @@ export class AppraisalResultsService {
         stage2Writes.push(targetsRepo.syncForAppraisal(appraisal.appraisalUuid, (data as any).targets, auditUserUuid));
       }
       await Promise.all(stage2Writes);
+
+      // Send review assignment notification emails to each assigned reviewer
+      if (reviewerList.length > 0) {
+        triggerAppraisalReviewNotification(
+          reviewerList,
+          appraisal.seafarersName || 'Seafarer',
+          appraisal.seafarersRank || 'N/A',
+          appraisal.appraisalUuid,
+        ).catch((e) => logEmailEvent('ERROR', '[Appraisals V2] Review notification error:', e?.message || e));
+      }
     } else if (stage === "stage3") {
       // Task #500: persist any post-Stage-2 B1 Evaluation edits alongside
       // Section G. If the client omits `trainings` we leave the existing

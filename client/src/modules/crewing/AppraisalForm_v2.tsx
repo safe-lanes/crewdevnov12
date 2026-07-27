@@ -310,10 +310,11 @@ type AppraisalStatusValue =
   | 'preliminary'
   | 'submitted'
   | 'stage2_submitted'
+  | 'pending_review'
   | 'reviewed'
   | 'stage3_submitted';
 const APPRAISAL_STATUS_VALUES: AppraisalStatusValue[] = [
-  'draft', 'preliminary', 'submitted', 'stage2_submitted', 'reviewed', 'stage3_submitted',
+  'draft', 'preliminary', 'submitted', 'stage2_submitted', 'pending_review', 'reviewed', 'stage3_submitted',
 ];
 interface ExistingAppraisal {
   id: number;
@@ -322,6 +323,7 @@ interface ExistingAppraisal {
   formVersionId?: number | null;
   formVersionUuid?: string | null;
   isLockForm?: boolean;
+  reviewers?: { userUuid: string | null; reviewerName: string; designation: string }[];
 }
 
 interface AppraisalFormProps {
@@ -392,8 +394,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
 
   // Task #500: stage-progression helpers. Synonyms `stage2_submitted` and
   // `stage3_submitted` count the same as `submitted` and `reviewed`.
+  // `pending_review` is the new stage-2 terminal status (submitted, awaiting office review).
   const isPostStage1 = appraisalStatus !== 'draft';
   const isPostStage2 = appraisalStatus === 'submitted' || appraisalStatus === 'stage2_submitted'
+    || appraisalStatus === 'pending_review'
     || appraisalStatus === 'reviewed' || appraisalStatus === 'stage3_submitted';
   const isPostStage3 = appraisalStatus === 'reviewed' || appraisalStatus === 'stage3_submitted';
 
@@ -422,7 +426,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const [editingTrainingNeedsComment, setEditingTrainingNeedsComment] = useState<string | null>(null);
   const [editingRecommendationComment, setEditingRecommendationComment] = useState<string | null>(null);
   const [editingTrainingFollowupComment, setEditingTrainingFollowupComment] = useState<string | null>(null);
-  
+
+  // Reviewer assignment state (selected at Stage 2 submit)
+  const [selectedReviewers, setSelectedReviewers] = useState<{ userUuid: string; reviewerName: string; designation: string }[]>([]);
+
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -475,7 +482,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
     }));
   }, [appraisalTypesRaw]);
 
-  // Users list for the G2 "Identified By" column.
+  // Users list for the G2 "Identified By" column and F reviewer multi-select.
   const { data: usersV2Data } = useUsersV2();
   const trainingIdentifiedByUsers = useMemo(() => {
     const users = usersV2Data || [];
@@ -486,6 +493,24 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         displayName: user.displayName || `${user.fullname || user.userName}, ${user.designation || ''}`,
       }))
       .filter((item: { userUuid: string; displayName: string }) => {
+        if (!item.userUuid || !item.displayName?.trim()) return false;
+        if (seen.has(item.userUuid)) return false;
+        seen.add(item.userUuid);
+        return true;
+      });
+  }, [usersV2Data]);
+
+  // Office users list for Part F reviewer multi-select (all users, includes designation)
+  const officeUsers = useMemo(() => {
+    const users = usersV2Data || [];
+    const seen = new Set<string>();
+    return users
+      .map((user: any) => ({
+        userUuid: user.userUuid || user.uuid,
+        displayName: user.displayName || `${user.fullname || user.userName}${user.designation ? `, ${user.designation}` : ''}`,
+        designation: user.designation || '',
+      }))
+      .filter((item: { userUuid: string; displayName: string; designation: string }) => {
         if (!item.userUuid || !item.displayName?.trim()) return false;
         if (seen.has(item.userUuid)) return false;
         seen.add(item.userUuid);
@@ -1181,6 +1206,8 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         recommendations: formData.recommendations,
         appraiserComments: formData.appraiserComments,
         seafarerComments: formData.seafarerComments,
+        // Reviewer assignment: persist selected reviewers and trigger email notifications
+        reviewers: selectedReviewers,
       };
       
       const response = await apiRequest('POST', `/api/v2/appraisals/${id}/submit-stage2`, {
@@ -1194,12 +1221,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
       return response.json();
     },
     onSuccess: (responseData) => {
-      if (appraisalStatus === 'draft' || appraisalStatus === 'preliminary') {
-        setAppraisalStatus('submitted');
-      }
+      // Stage 2 now sets status to `pending_review` (awaiting office review)
+      setAppraisalStatus('pending_review');
       queryClient.invalidateQueries({ queryKey: ['/api/v2/appraisals'] });
       if (appraisalId) queryClient.setQueryData([`/api/v2/appraisals/${appraisalId}`], responseData);
-      toast({ title: 'Stage 2 Submitted', description: 'Performance assessment (Parts C-F) saved successfully.' });
+      toast({ title: 'Submitted for Review', description: 'Performance assessment (Parts C-F) submitted. Reviewers have been notified.' });
       onClose();
     },
     onError: (error: any) => {
@@ -1288,6 +1314,19 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         // Update status from fetched data
         if (existingAppraisal.status && APPRAISAL_STATUS_VALUES.includes(existingAppraisal.status)) {
           setAppraisalStatus(existingAppraisal.status as AppraisalStatusValue);
+        }
+
+        // Restore assigned reviewers if they were set at Stage 2
+        if (Array.isArray(existingAppraisal.reviewers) && existingAppraisal.reviewers.length > 0) {
+          setSelectedReviewers(
+            existingAppraisal.reviewers
+              .filter((r: any) => r.userUuid)
+              .map((r: any) => ({
+                userUuid: r.userUuid,
+                reviewerName: r.reviewerName || '',
+                designation: r.designation || '',
+              }))
+          );
         }
 
         // Task #503: signal the B1 auto-merge effect to re-run now that
@@ -2639,6 +2678,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           isPostStage1={isPostStage1}
           isPostStage2={isPostStage2}
           isPostStage3={isPostStage3}
+          selectedReviewers={selectedReviewers}
+          setSelectedReviewers={setSelectedReviewers}
+          officeUsers={officeUsers}
         />
         )}
       </div>
@@ -2882,6 +2924,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                     isPostStage1={isPostStage1}
                     isPostStage2={isPostStage2}
                     isPostStage3={isPostStage3}
+                    assignedReviewers={selectedReviewers}
                   />
                 )}
                 

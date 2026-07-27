@@ -45,6 +45,7 @@ const PartGComponent: React.FC<PartGProps> = ({
   isPostStage2,
   isPostStage3,
   users = [],
+  assignedReviewers = [],
 }) => {
   const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
   const { statuses: statusOptions } = useTrainingStatusOptionsV2("Appraisal");
@@ -71,6 +72,22 @@ const PartGComponent: React.FC<PartGProps> = ({
   const lockSection = !!isPostStage3 || isShipUser;
   return (
     <fieldset disabled={lockSection} className="min-w-0 border-0 p-0 m-0" data-testid="fieldset-part-g-lock">
+    {/* Assigned Reviewer header - read-only, shown when reviewers were selected at Stage 2 */}
+    {assignedReviewers.length > 0 && (
+      <div
+        className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3"
+        data-testid="banner-assigned-reviewers"
+      >
+        <p className="text-sm font-semibold text-blue-800 mb-1">Assigned Reviewer{assignedReviewers.length > 1 ? 's' : ''}</p>
+        <div className="flex flex-wrap gap-2">
+          {assignedReviewers.map((r, i) => (
+            <span key={i} className="text-sm text-blue-700">
+              {r.reviewerName}{r.designation ? ` — ${r.designation}` : ''}
+            </span>
+          ))}
+        </div>
+      </div>
+    )}
     {isShipUser && (
       <div
         className="mb-4 rounded-md border border-gray-300 bg-gray-100 px-4 py-3 text-center text-sm font-medium text-gray-600"
