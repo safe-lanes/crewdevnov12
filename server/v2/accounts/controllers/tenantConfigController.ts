@@ -31,7 +31,10 @@ export const tenantConfigController = {
         auditUserUuid: getAuditUserUuid(req),
       });
       res.json(record);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === "VALIDATION") {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error updating tenant config:", error);
       res.status(500).json({ error: "Failed to update tenant config" });
     }

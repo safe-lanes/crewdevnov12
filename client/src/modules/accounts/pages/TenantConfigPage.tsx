@@ -30,6 +30,12 @@ import {
 
 const CONFIG_KEY = [`${ACCOUNTS_BASE}/config`];
 
+interface ExtraTabSlot {
+  enabled: boolean;
+  label: string;
+  payElementUuid: string;
+}
+
 interface ConfigForm {
   preparationMode: string;
   prorationBasis: string;
@@ -42,6 +48,8 @@ interface ConfigForm {
   allowManualSeniorityAnchor: boolean;
   autoLockOnApproval: boolean;
   glWagesPayableCode: string;
+  extraTab1: ExtraTabSlot;
+  extraTab2: ExtraTabSlot;
 }
 
 function Field({
@@ -121,8 +129,34 @@ export default function TenantConfigPage() {
       allowManualSeniorityAnchor: data.allowManualSeniorityAnchor ?? true,
       autoLockOnApproval: data.autoLockOnApproval ?? true,
       glWagesPayableCode: data.glWagesPayableCode ?? "",
+      extraTab1: {
+        enabled: data.extraTab1Enabled ?? false,
+        label: data.extraTab1Label ?? "",
+        payElementUuid: data.extraTab1PayElementUuid ?? "",
+      },
+      extraTab2: {
+        enabled: data.extraTab2Enabled ?? false,
+        label: data.extraTab2Label ?? "",
+        payElementUuid: data.extraTab2PayElementUuid ?? "",
+      },
     });
   }, [data]);
+
+  // Elements a configurable vessel-entry tab may bind to (0179 rule).
+  const { data: payElements = [] } = useQuery<any[]>({
+    queryKey: [`${ACCOUNTS_BASE}/pay-elements`],
+  });
+  const bindableElements = payElements.filter(
+    (e) =>
+      e.status === "active" &&
+      (e.calcMethod === "manual_entry" || e.calcMethod === "rate_times_qty"),
+  );
+
+  const setSlot = (
+    slot: "extraTab1" | "extraTab2",
+    patch: Partial<ExtraTabSlot>,
+  ) =>
+    setForm((f) => (f ? { ...f, [slot]: { ...f[slot], ...patch } } : f));
 
   const set = <K extends keyof ConfigForm>(key: K, value: ConfigForm[K]) =>
     setForm((f) => (f ? { ...f, [key]: value } : f));
@@ -140,10 +174,17 @@ export default function TenantConfigPage() {
     if (!form) return;
     setSaving(true);
     try {
+      const { extraTab1, extraTab2, ...rest } = form;
       await accountsApiV2.config.update({
-        ...form,
+        ...rest,
         glWagesPayableCode: form.glWagesPayableCode.trim() || null,
         maxAllotmentPercent: form.maxAllotmentPercent.trim() || null,
+        extraTab1Enabled: extraTab1.enabled,
+        extraTab1Label: extraTab1.label.trim() || null,
+        extraTab1PayElementUuid: extraTab1.payElementUuid || null,
+        extraTab2Enabled: extraTab2.enabled,
+        extraTab2Label: extraTab2.label.trim() || null,
+        extraTab2PayElementUuid: extraTab2.payElementUuid || null,
       });
       await queryClient.invalidateQueries({ queryKey: CONFIG_KEY });
       toast({
@@ -322,6 +363,86 @@ export default function TenantConfigPage() {
                 data-testid="switch-auto-lock"
               />
             </Field>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Vessel entry tabs</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-xs text-muted-foreground">
+              Adds an extra entry tab on the vessel's portage screen, bound to
+              this pay element. Use for client-specific deductions such as
+              radio/telephone or laundry.
+            </p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {([1, 2] as const).map((n) => {
+                const key = `extraTab${n}` as "extraTab1" | "extraTab2";
+                const slot = form[key];
+                return (
+                  <div
+                    key={n}
+                    className="border rounded-md p-3 flex flex-col gap-3"
+                    data-testid={`panel-extra-tab-${n}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium text-[#16569e]">
+                        Extra tab {n}
+                      </Label>
+                      <Switch
+                        checked={slot.enabled}
+                        onCheckedChange={(c) => setSlot(key, { enabled: c })}
+                        disabled={!editable}
+                        data-testid={`switch-extra-tab-${n}-enabled`}
+                      />
+                    </div>
+                    <Field
+                      label="Tab label"
+                      helper="Shown as the tab name on the vessel's portage screen."
+                    >
+                      <Input
+                        value={slot.label}
+                        onChange={(e) => setSlot(key, { label: e.target.value })}
+                        placeholder="e.g. Radio / Telephone"
+                        className="h-9"
+                        disabled={!editable}
+                        data-testid={`input-extra-tab-${n}-label`}
+                      />
+                    </Field>
+                    <Field
+                      label="Pay element"
+                      helper="Entries on this tab post to this element (manual entry or rate × qty elements only)."
+                    >
+                      <Select
+                        value={slot.payElementUuid || undefined}
+                        onValueChange={(v) =>
+                          setSlot(key, { payElementUuid: v })
+                        }
+                        disabled={!editable}
+                      >
+                        <SelectTrigger
+                          className="h-9"
+                          data-testid={`select-extra-tab-${n}-element`}
+                        >
+                          <SelectValue placeholder="Select pay element" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bindableElements.map((e) => (
+                            <SelectItem
+                              key={e.payElementUuid}
+                              value={e.payElementUuid}
+                            >
+                              {e.code} — {e.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       </div>

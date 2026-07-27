@@ -1,6 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+/**
+ * Vessel Portage — category-major monthly entry workspace.
+ *
+ * Restructured from crew-major + entry dialog to one tab per transaction
+ * type (matching the paper portage workbook): choosing the tab fixes the
+ * pay element, the row fixes the crew member, so an entry is just a number
+ * typed into a cell. Explicit Save per tab batches the whole grid into ONE
+ * request; auto-save runs on tab/period change and every 10 minutes while
+ * dirty; browser close shows the native unsaved-changes warning.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
@@ -28,6 +38,7 @@ import {
   Lock,
   Pencil,
   Plus,
+  Save,
   Send,
   Trash2,
   Undo2,
@@ -40,6 +51,10 @@ import {
 import { formatDate, formatMoney } from "../accountsFormat";
 import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
+import EntryGrid, {
+  type EntryColumn,
+  type EntryRow,
+} from "./VesselPortageGrids";
 
 const MENU = "Account Vessel Portage";
 
@@ -89,35 +104,19 @@ const CTM_LINE_TYPES = [
   { value: "adjustment", label: "Adjustment" },
 ];
 
-// Vessel-side entry categories (spec Prompt 06). Keep in sync with
-// VESSEL_ALLOWED_CATEGORIES in monthlyTransactionsService.ts.
-const VESSEL_ENTRY_CATEGORIES = new Set([
-  "overtime_variable",
-  "advance_recovery",
-  "bond_slop_chest",
-  "communication",
-  "allotment",
-  "one_off",
-  "other",
-]);
+// ---------------------------------------------------------------------------
+// Entry-tab model
+// ---------------------------------------------------------------------------
 
-interface EntryForm {
-  payElementUuid: string;
-  qty: string;
-  rate: string;
-  amount: string;
-  currency: string;
-  remarks: string;
+type TabKind = "overtime" | "dated" | "allotment" | "amountRemarks";
+
+interface EntryTabDef {
+  id: string;
+  label: string;
+  kind: TabKind;
+  element: any; // bound pay element (fixed per tab)
+  testId: string;
 }
-
-const emptyEntryForm: EntryForm = {
-  payElementUuid: "",
-  qty: "",
-  rate: "",
-  amount: "",
-  currency: "USD",
-  remarks: "",
-};
 
 interface CtmLineForm {
   lineDate: string;
@@ -134,6 +133,27 @@ const emptyLineForm: CtmLineForm = {
   amount: "",
   description: "",
 };
+
+/** Pick the bound pay element for a built-in tab. */
+function pickElement(
+  payElements: any[],
+  category: string,
+  preferredCode?: string,
+): any | null {
+  const candidates = payElements.filter(
+    (e) =>
+      e.status === "active" &&
+      e.category === category &&
+      e.calcMethod !== "scale_lookup",
+  );
+  if (preferredCode) {
+    const hit = candidates.find((c) => c.code === preferredCode);
+    if (hit) return hit;
+  }
+  return candidates[0] ?? null;
+}
+
+const UNDATED = "undated";
 
 export default function VesselPortagePage() {
   const { toast } = useToast();
@@ -188,6 +208,12 @@ export default function VesselPortagePage() {
   const { data: payElements = [] } = useQuery<any[]>({
     queryKey: [`${ACCOUNTS_BASE}/pay-elements`],
   });
+  const { data: tenantConfig } = useQuery<any>({
+    queryKey: [`${ACCOUNTS_BASE}/config`],
+  });
+  const { data: allotments = [] } = useQuery<any[]>({
+    queryKey: [`${ACCOUNTS_BASE}/allotments?status=active`],
+  });
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: statusKey });
@@ -202,8 +228,6 @@ export default function VesselPortagePage() {
   const isLocked = portageStatus === "locked" || !!portage?.isLocked;
   const counts: Record<string, number> = pkg?.counts ?? {};
 
-  // Vessel edits are allowed only while the month is with the vessel and
-  // unlocked; the backend enforces the same rules per actor.
   const packageEditable =
     hasFilter && !isLocked && VESSEL_EDITABLE_STATUSES.includes(portageStatus);
   const canSubmit = packageEditable && mayEdit;
@@ -213,6 +237,7 @@ export default function VesselPortagePage() {
     !isLocked &&
     !!portage &&
     RETURNABLE_STATUSES.includes(portageStatus);
+  const gridEditable = packageEditable && (mayEdit || mayCreate);
 
   const engagedRows = useMemo(
     () => reviewRows.filter((r) => r.engagement),
@@ -228,16 +253,6 @@ export default function VesselPortagePage() {
     for (const e of payElements) m.set(e.payElementUuid, e);
     return m;
   }, [payElements]);
-  const manualElements = useMemo(
-    () =>
-      payElements.filter(
-        (e) =>
-          e.status === "active" &&
-          e.calcMethod !== "scale_lookup" &&
-          VESSEL_ENTRY_CATEGORIES.has(e.category),
-      ),
-    [payElements],
-  );
   const netByEngagement = useMemo(() => {
     const m = new Map<string, string>();
     for (const t of workspace?.crewTotals ?? []) {
@@ -247,7 +262,7 @@ export default function VesselPortagePage() {
   }, [workspace]);
 
   const vesselTxns = useMemo(
-    () => txns.filter((t) => t.origin === "vessel"),
+    () => txns.filter((t) => t.origin === "vessel" && !t.isDeleted),
     [txns],
   );
   const txnsByCrew = useMemo(() => {
@@ -264,155 +279,752 @@ export default function VesselPortagePage() {
     for (const t of txns) if (t.ctmLineUuid) m.set(t.ctmLineUuid, t);
     return m;
   }, [txns]);
+  /** office bond rollup per crew (sourceType='bond') */
+  const bondRollupByCrew = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of txns) {
+      if (t.sourceType === "bond") m.set(t.crewUuid, t.amount);
+    }
+    return m;
+  }, [txns]);
 
   const ctm = ctmDetail?.ctm ?? null;
   const ctmLines: any[] = ctmDetail?.lines ?? [];
   const openingCarried = !!ctmDetail?.openingCarried;
   const imbalance = !!ctmDetail?.imbalance;
 
-  // ---- entry dialog ------------------------------------------------------
-  const [entryOpen, setEntryOpen] = useState(false);
-  const [entryCrewUuid, setEntryCrewUuid] = useState("");
-  const [entryEditing, setEntryEditing] = useState<any | null>(null);
-  const [entryReadOnly, setEntryReadOnly] = useState(false);
-  const [entryForm, setEntryForm] = useState<EntryForm>(emptyEntryForm);
-  const [entrySaving, setEntrySaving] = useState(false);
-
-  const setEf = <K extends keyof EntryForm>(key: K, value: EntryForm[K]) =>
-    setEntryForm((f) => ({ ...f, [key]: value }));
-
-  // Rate defaults from the crew's wage-scale line for rate×qty elements and
-  // is read-only when found (the vessel cannot override scale rates).
-  const entryEngagement = crewByUuid.get(entryCrewUuid)?.engagement;
-  const scaleUuid: string = entryEngagement?.wageScaleUuid ?? "";
-  const { data: scaleDetail } = useQuery<any>({
-    queryKey: [`${ACCOUNTS_BASE}/wage-scales/${scaleUuid}`],
-    enabled: entryOpen && !entryEditing && !!scaleUuid,
-  });
-  const entryElement = elementByUuid.get(entryForm.payElementUuid);
-  const scaleRateLine = useMemo(() => {
-    if (entryEditing || entryElement?.calcMethod !== "rate_times_qty") {
-      return null;
+  // ---- wage-scale lookups for the Overtime tab ---------------------------
+  const scaleUuids = useMemo(() => {
+    const s = new Set<string>();
+    for (const r of engagedRows) {
+      if (r.engagement?.wageScaleUuid) s.add(r.engagement.wageScaleUuid);
     }
-    const rankId = entryEngagement?.rankIdAtStart;
-    return (
-      (scaleDetail?.lines ?? []).find(
-        (l: any) =>
-          l.payElementUuid === entryForm.payElementUuid &&
+    return Array.from(s).sort();
+  }, [engagedRows]);
+  const { data: scaleDetails = {} } = useQuery<Record<string, any>>({
+    queryKey: [`vessel-portage-scales`, scaleUuids.join(",")],
+    enabled: scaleUuids.length > 0,
+    queryFn: async () => {
+      const out: Record<string, any> = {};
+      await Promise.all(
+        scaleUuids.map(async (uuid) => {
+          const res = await apiRequest(
+            "GET",
+            `${ACCOUNTS_BASE}/wage-scales/${uuid}`,
+          );
+          out[uuid] = await res.json();
+        }),
+      );
+      return out;
+    },
+  });
+
+  // ---- entry tab definitions ---------------------------------------------
+  const otElement = useMemo(
+    () => pickElement(payElements, "overtime_variable", "OT"),
+    [payElements],
+  );
+  const gotElement = useMemo(
+    () =>
+      payElements.find(
+        (e) => e.status === "active" && e.category === "overtime_fixed",
+      ) ?? null,
+    [payElements],
+  );
+  const advanceElement = useMemo(
+    () => pickElement(payElements, "advance_recovery", "ADVANCE"),
+    [payElements],
+  );
+  const allotElement = useMemo(
+    () => pickElement(payElements, "allotment", "ALLOT"),
+    [payElements],
+  );
+  const bondElement = useMemo(
+    () => pickElement(payElements, "bond_slop_chest", "BOND"),
+    [payElements],
+  );
+  const otherElement = useMemo(
+    () =>
+      pickElement(payElements, "one_off") ?? pickElement(payElements, "other"),
+    [payElements],
+  );
+
+  const entryTabs = useMemo<EntryTabDef[]>(() => {
+    const tabs: EntryTabDef[] = [];
+    if (otElement) {
+      tabs.push({
+        id: "overtime",
+        label: "Overtime",
+        kind: "overtime",
+        element: otElement,
+        testId: "tab-overtime",
+      });
+    }
+    if (advanceElement) {
+      tabs.push({
+        id: "advances",
+        label: "Cash advances",
+        kind: "dated",
+        element: advanceElement,
+        testId: "tab-advances",
+      });
+    }
+    if (allotElement) {
+      tabs.push({
+        id: "allotments",
+        label: "Allotments",
+        kind: "allotment",
+        element: allotElement,
+        testId: "tab-allotments",
+      });
+    }
+    if (bondElement) {
+      tabs.push({
+        id: "bond",
+        label: "Bond / slop chest",
+        kind: "dated",
+        element: bondElement,
+        testId: "tab-bond",
+      });
+    }
+    if (otherElement) {
+      tabs.push({
+        id: "other",
+        label: "Other deductions",
+        kind: "amountRemarks",
+        element: otherElement,
+        testId: "tab-other",
+      });
+    }
+    for (const n of [1, 2] as const) {
+      if (
+        tenantConfig?.[`extraTab${n}Enabled`] &&
+        tenantConfig?.[`extraTab${n}Label`] &&
+        tenantConfig?.[`extraTab${n}PayElementUuid`]
+      ) {
+        const el = elementByUuid.get(tenantConfig[`extraTab${n}PayElementUuid`]);
+        if (el) {
+          tabs.push({
+            id: `extra${n}`,
+            label: tenantConfig[`extraTab${n}Label`],
+            kind: "amountRemarks",
+            element: el,
+            testId: `tab-extra-${n}`,
+          });
+        }
+      }
+    }
+    return tabs;
+  }, [
+    otElement,
+    advanceElement,
+    allotElement,
+    bondElement,
+    otherElement,
+    tenantConfig,
+    elementByUuid,
+  ]);
+  const tabById = useMemo(() => {
+    const m = new Map<string, EntryTabDef>();
+    for (const t of entryTabs) m.set(t.id, t);
+    return m;
+  }, [entryTabs]);
+
+  // ---- unsaved-edit state --------------------------------------------------
+  // edits["tabId::crewUuid::colId"] = typed value ("" = clear the entry)
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  // user-added date columns per dated tab (YYYY-MM-DD)
+  const [addedDates, setAddedDates] = useState<Record<string, string[]>>({});
+  const [activeTab, setActiveTab] = useState("crew");
+  const [saving, setSaving] = useState(false);
+
+  // Reset unsaved state when the vessel-month context changes.
+  useEffect(() => {
+    setEdits({});
+    setAddedDates({});
+  }, [vesselUuid, period]);
+
+  /** Per-tab saved transactions bound to the tab's element. */
+  const tabTxns = useCallback(
+    (tab: EntryTabDef) =>
+      vesselTxns.filter(
+        (t) =>
+          t.payElementUuid === tab.element.payElementUuid &&
+          t.sourceType !== "bond",
+      ),
+    [vesselTxns],
+  );
+
+  /** Saved cell value + txn for (tab, crew, col). */
+  const savedCell = useCallback(
+    (tab: EntryTabDef, crewUuid: string, colId: string) => {
+      const list = tabTxns(tab).filter((t) => t.crewUuid === crewUuid);
+      let txn: any | undefined;
+      if (tab.kind === "dated") {
+        txn = list.find((t) => (t.txnDate ?? UNDATED) === colId);
+      } else {
+        // single entry cell: bind the most recent transaction
+        txn = list.sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0];
+      }
+      if (!txn) return { txn: undefined, value: "" };
+      const value =
+        tab.kind === "overtime" ? (txn.qty ?? "") : (txn.amount ?? "");
+      return { txn, value: value == null ? "" : String(value) };
+    },
+    [tabTxns],
+  );
+
+  /** Saved comparison value for a column — remarks columns compare remarks. */
+  const savedValueFor = useCallback(
+    (tab: EntryTabDef, crewUuid: string, colId: string): string => {
+      if (tab.kind === "amountRemarks" && colId === "remarks") {
+        return savedCell(tab, crewUuid, "amount").txn?.remarks ?? "";
+      }
+      return savedCell(tab, crewUuid, colId).value;
+    },
+    [savedCell],
+  );
+
+  /** Effective (edited or saved) value for a cell. */
+  const cellValue = useCallback(
+    (tab: EntryTabDef, crewUuid: string, colId: string) => {
+      const k = `${tab.id}::${crewUuid}::${colId}`;
+      if (k in edits) return edits[k];
+      return savedCell(tab, crewUuid, colId).value;
+    },
+    [edits, savedCell],
+  );
+
+  /** Count of unsaved (differing) edits per tab. */
+  const dirtyCount = useCallback(
+    (tabId: string) => {
+      const tab = tabById.get(tabId);
+      if (!tab) return 0;
+      let n = 0;
+      for (const [k, v] of Object.entries(edits)) {
+        const [tid, crewUuid, colId] = k.split("::");
+        if (tid !== tabId) continue;
+        if (savedValueFor(tab, crewUuid, colId) !== v) n++;
+      }
+      return n;
+    },
+    [edits, savedValueFor, tabById],
+  );
+  const totalDirty = useMemo(
+    () => entryTabs.reduce((s, t) => s + dirtyCount(t.id), 0),
+    [entryTabs, dirtyCount],
+  );
+
+  // ---- scale helpers (Overtime tab) ---------------------------------------
+  const otScaleInfo = useCallback(
+    (r: any): { rate: number | null; guaranteedHrs: number | null } => {
+      const scale = scaleDetails[r.engagement?.wageScaleUuid ?? ""];
+      const rankId = r.engagement?.rankIdAtStart;
+      if (!scale || !rankId || !otElement) {
+        return { rate: null, guaranteedHrs: null };
+      }
+      const lines: any[] = scale.lines ?? [];
+      const rateLine = lines.find(
+        (l) =>
+          l.payElementUuid === otElement.payElementUuid &&
           l.rankId === rankId &&
           !l.isDeleted &&
           l.rate != null,
-      ) ?? null
-    );
-  }, [scaleDetail, entryForm.payElementUuid, entryEngagement, entryEditing, entryElement]);
-  useEffect(() => {
-    if (!scaleRateLine) return;
-    setEntryForm((f) => {
-      const q = parseFloat(f.qty);
-      const r = parseFloat(scaleRateLine.rate);
+      );
+      const rate = rateLine ? parseFloat(rateLine.rate) : null;
+      let guaranteedHrs: number | null = null;
+      if (gotElement && rate) {
+        const gotLine = lines.find(
+          (l) =>
+            l.payElementUuid === gotElement.payElementUuid &&
+            l.rankId === rankId &&
+            !l.isDeleted &&
+            l.amount != null,
+        );
+        if (gotLine) {
+          // Fixed OT monthly amount ÷ OT hourly rate = implied guaranteed hours.
+          guaranteedHrs = Math.round((parseFloat(gotLine.amount) / rate) * 10) / 10;
+        }
+      }
+      return { rate: Number.isNaN(rate as number) ? null : rate, guaranteedHrs };
+    },
+    [scaleDetails, otElement, gotElement],
+  );
+
+  /** Standing (office register) allotment display for a crew member. */
+  const standingAllotment = useCallback(
+    (crewUuid: string): { display: string; fixedTotal: number | null } => {
+      const active = allotments.filter(
+        (a) => a.crewUuid === crewUuid && a.status === "active" && !a.isDeleted,
+      );
+      if (active.length === 0) return { display: "—", fixedTotal: null };
+      let fixed = 0;
+      let hasFixed = false;
+      const pct: string[] = [];
+      for (const a of active) {
+        if (a.allotmentType === "percentage") pct.push(`${a.value}%`);
+        else {
+          fixed += parseFloat(a.value ?? "0") || 0;
+          hasFixed = true;
+        }
+      }
+      const parts: string[] = [];
+      if (hasFixed) parts.push(fixed.toFixed(2));
+      if (pct.length) parts.push(pct.join(" + "));
       return {
-        ...f,
-        rate: scaleRateLine.rate,
-        amount:
-          !Number.isNaN(q) && !Number.isNaN(r) ? (q * r).toFixed(2) : f.amount,
+        display: parts.join(" + ") || "—",
+        fixedTotal: hasFixed ? fixed : null,
       };
-    });
-  }, [scaleRateLine]);
+    },
+    [allotments],
+  );
 
-  const setEntryQtyRate = (qty: string, rate: string) => {
-    const q = parseFloat(qty);
-    const r = parseFloat(rate);
-    setEntryForm((f) => ({
-      ...f,
-      qty,
-      rate,
-      amount:
-        !Number.isNaN(q) && !Number.isNaN(r) ? (q * r).toFixed(2) : f.amount,
-    }));
-  };
+  // ---- date columns for dated tabs -----------------------------------------
+  const datedColumns = useCallback(
+    (tab: EntryTabDef): string[] => {
+      const dates = new Set<string>(addedDates[tab.id] ?? []);
+      let hasUndated = false;
+      for (const t of tabTxns(tab)) {
+        if (t.txnDate) dates.add(t.txnDate);
+        else hasUndated = true;
+      }
+      const sorted = Array.from(dates).sort();
+      return hasUndated ? [UNDATED, ...sorted] : sorted;
+    },
+    [addedDates, tabTxns],
+  );
 
-  const openEntryCreate = (crewUuid: string) => {
-    setEntryCrewUuid(crewUuid);
-    setEntryEditing(null);
-    setEntryReadOnly(false);
-    setEntryForm(emptyEntryForm);
-    setEntryOpen(true);
-  };
+  // ---- grid rows/columns per tab -------------------------------------------
+  const buildColumns = useCallback(
+    (tab: EntryTabDef): EntryColumn[] => {
+      switch (tab.kind) {
+        case "overtime":
+          return [
+            { id: "guaranteedHrs", header: "Guaranteed hrs", editable: false, isInfo: true },
+            { id: "excessHrs", header: "Excess hrs", editable: true },
+            { id: "rateHr", header: "Rate/hr", editable: false, isInfo: true },
+            { id: "amount", header: "Amount", editable: false, isInfo: true },
+          ];
+        case "dated": {
+          const cols: EntryColumn[] = datedColumns(tab).map((d) => ({
+            id: d,
+            header: d === UNDATED ? "Undated" : formatDate(d),
+            editable: true,
+          }));
+          if (tab.id === "bond") {
+            cols.push({
+              id: "officeRollup",
+              header: "Office rollup",
+              editable: false,
+              isInfo: true,
+            });
+          }
+          cols.push({ id: "total", header: "Total", editable: false, isInfo: true });
+          return cols;
+        }
+        case "allotment":
+          return [
+            { id: "standing", header: "Standing", editable: false, isInfo: true },
+            { id: "extra", header: "This month extra", editable: true },
+            { id: "total", header: "Total", editable: false, isInfo: true },
+          ];
+        case "amountRemarks":
+          return [
+            { id: "amount", header: "Amount", editable: true },
+            { id: "remarks", header: "Remarks", editable: true, isText: true, width: 240 },
+          ];
+      }
+    },
+    [datedColumns],
+  );
 
-  const openEntryView = (txn: any) => {
-    setEntryCrewUuid(txn.crewUuid);
-    setEntryEditing(txn);
-    setEntryReadOnly(!(txn.status === "draft" && packageEditable && mayEdit));
-    setEntryForm({
-      payElementUuid: txn.payElementUuid ?? "",
-      qty: txn.qty ?? "",
-      rate: txn.rate ?? "",
-      amount: txn.amount ?? "",
-      currency: txn.currency ?? "USD",
-      remarks: txn.remarks ?? "",
-    });
-    setEntryOpen(true);
-  };
-
-  const saveEntry = async () => {
-    if (!entryForm.payElementUuid || !entryForm.amount) {
-      toast({
-        title: "Missing fields",
-        description: "Pay element and amount are required.",
-        variant: "destructive",
+  const buildRows = useCallback(
+    (tab: EntryTabDef): EntryRow[] => {
+      return engagedRows.map((r) => {
+        const row: EntryRow = {
+          crewUuid: r.crewUuid,
+          crewName: r.crewName,
+          rank: r.presentRank ?? "—",
+          engagementUuid: r.engagement.engagementUuid,
+          cells: {},
+          info: {},
+        };
+        const mkCell = (colId: string) => {
+          const saved = savedCell(tab, r.crewUuid, colId);
+          const k = `${tab.id}::${r.crewUuid}::${colId}`;
+          const value = k in edits ? edits[k] : saved.value;
+          row.cells[colId] = {
+            txn: saved.txn,
+            value,
+            dirty: k in edits && edits[k] !== saved.value,
+          };
+          return value;
+        };
+        switch (tab.kind) {
+          case "overtime": {
+            const { rate, guaranteedHrs } = otScaleInfo(r);
+            const excess = parseFloat(mkCell("excessHrs"));
+            if (rate == null) {
+              // No OT rate resolvable from the wage scale — block entry
+              // rather than persisting a zero-amount transaction.
+              row.cells.excessHrs = { ...row.cells.excessHrs, locked: true };
+            }
+            row.info.guaranteedHrs =
+              guaranteedHrs != null ? String(guaranteedHrs) : "—";
+            row.info.rateHr = rate != null ? rate.toFixed(2) : "—";
+            row.info.amount =
+              !Number.isNaN(excess) && rate != null
+                ? (excess * rate).toFixed(2)
+                : "";
+            break;
+          }
+          case "dated": {
+            let total = 0;
+            for (const d of datedColumns(tab)) {
+              const v = parseFloat(mkCell(d));
+              if (!Number.isNaN(v)) total += v;
+            }
+            if (tab.id === "bond") {
+              const rollup = bondRollupByCrew.get(r.crewUuid);
+              row.info.officeRollup = rollup != null ? formatMoney(rollup) : "—";
+            }
+            row.info.total = total ? total.toFixed(2) : "";
+            break;
+          }
+          case "allotment": {
+            const standing = standingAllotment(r.crewUuid);
+            const extra = parseFloat(mkCell("extra"));
+            row.info.standing = standing.display;
+            const total =
+              (standing.fixedTotal ?? 0) + (Number.isNaN(extra) ? 0 : extra);
+            row.info.total =
+              standing.fixedTotal != null || !Number.isNaN(extra)
+                ? total.toFixed(2)
+                : "";
+            break;
+          }
+          case "amountRemarks": {
+            mkCell("amount");
+            const saved = savedCell(tab, r.crewUuid, "amount");
+            const rk = `${tab.id}::${r.crewUuid}::remarks`;
+            row.cells.remarks = {
+              txn: saved.txn,
+              value: rk in edits ? edits[rk] : (saved.txn?.remarks ?? ""),
+              dirty:
+                rk in edits && edits[rk] !== (saved.txn?.remarks ?? ""),
+            };
+            break;
+          }
+        }
+        return row;
       });
-      return;
-    }
-    setEntrySaving(true);
-    try {
-      if (entryEditing) {
-        await accountsApiV2.monthlyTransactions.update(entryEditing.txnUuid, {
-          qty: entryForm.qty || null,
-          rate: entryForm.rate || null,
-          amount: entryForm.amount,
-          currency: entryForm.currency,
-          remarks: entryForm.remarks.trim() || null,
+    },
+    [
+      engagedRows,
+      savedCell,
+      edits,
+      otScaleInfo,
+      datedColumns,
+      bondRollupByCrew,
+      standingAllotment,
+    ],
+  );
+
+  const onCellEdited = useCallback(
+    (tabId: string) => (crewUuid: string, colId: string, value: string) => {
+      setEdits((e) => ({ ...e, [`${tabId}::${crewUuid}::${colId}`]: value }));
+    },
+    [],
+  );
+
+  // ---- rejected-cell comment dialog ---------------------------------------
+  const [rejectedTxn, setRejectedTxn] = useState<any | null>(null);
+
+  // ---- batch save -----------------------------------------------------------
+  /** Build the ONE batch request for a tab from its unsaved edits. */
+  const buildBatch = useCallback(
+    (tab: EntryTabDef) => {
+      const creates: Record<string, unknown>[] = [];
+      const updates: Record<string, unknown>[] = [];
+      const deletes: string[] = [];
+      // Collect remarks edits first so an amount create/update in the same
+      // batch picks up the remark typed alongside it.
+      const remarksEdits = new Map<string, string>(); // crewUuid -> remarks
+      if (tab.kind === "amountRemarks") {
+        for (const [k, v] of Object.entries(edits)) {
+          const [tid, crewUuid, colId] = k.split("::");
+          if (tid === tab.id && colId === "remarks") remarksEdits.set(crewUuid, v);
+        }
+      }
+      for (const [k, v] of Object.entries(edits)) {
+        const [tid, crewUuid, colId] = k.split("::");
+        if (tid !== tab.id) continue;
+        if (colId === "remarks") continue;
+        const saved = savedCell(tab, crewUuid, colId);
+        if (v === saved.value) continue;
+        const review = crewByUuid.get(crewUuid);
+        if (!review?.engagement) continue;
+        if (v === "") {
+          if (saved.txn && saved.txn.status === "draft") {
+            deletes.push(saved.txn.txnUuid);
+          }
+          continue;
+        }
+        const num = parseFloat(v);
+        if (Number.isNaN(num)) continue;
+        let fields: Record<string, unknown>;
+        if (tab.kind === "overtime") {
+          const { rate } = otScaleInfo(review);
+          if (rate == null) continue; // no scale rate — cell is locked in UI
+          fields = {
+            qty: v,
+            rate: String(rate),
+            amount: (num * rate).toFixed(2),
+          };
+        } else {
+          fields = { amount: num.toFixed(2) };
+          if (tab.kind === "dated" && colId !== UNDATED) {
+            fields.txnDate = colId;
+          }
+        }
+        if (tab.kind === "amountRemarks") {
+          fields.remarks =
+            remarksEdits.get(crewUuid) ?? saved.txn?.remarks ?? null;
+        }
+        if (saved.txn) {
+          updates.push({ txnUuid: saved.txn.txnUuid, ...fields });
+        } else {
+          creates.push({
+            engagementUuid: review.engagement.engagementUuid,
+            crewUuid,
+            vesselUuid,
+            period,
+            payElementUuid: tab.element.payElementUuid,
+            currency: tab.element.currency ?? "USD",
+            origin: "vessel",
+            status: "draft",
+            sourceType: "manual",
+            ...fields,
+          });
+        }
+      }
+      // remarks-only edits on existing rows
+      if (tab.kind === "amountRemarks") {
+        for (const [crewUuid, remarks] of remarksEdits) {
+          const saved = savedCell(tab, crewUuid, "amount");
+          if (remarks === (saved.txn?.remarks ?? "")) continue; // unchanged
+          const amountKey = `${tab.id}::${crewUuid}::amount`;
+          if (amountKey in edits && edits[amountKey] !== saved.value) continue; // handled above
+          if (saved.txn && saved.txn.status === "draft") {
+            updates.push({
+              txnUuid: saved.txn.txnUuid,
+              remarks: remarks.trim() || null,
+            });
+          }
+        }
+      }
+      return { creates, updates, deletes };
+    },
+    [edits, savedCell, crewByUuid, otScaleInfo, vesselUuid, period],
+  );
+
+  /** Save one tab as a single batch request. Failed save keeps typed values. */
+  const saveTab = useCallback(
+    async (tabId: string, opts?: { silent?: boolean }): Promise<boolean> => {
+      const tab = tabById.get(tabId);
+      if (!tab || dirtyCount(tabId) === 0) return true;
+      const batch = buildBatch(tab);
+      if (
+        batch.creates.length === 0 &&
+        batch.updates.length === 0 &&
+        batch.deletes.length === 0
+      ) {
+        // edits that net out to no-ops — just clear them
+        setEdits((e) => {
+          const next = { ...e };
+          for (const k of Object.keys(next)) {
+            if (k.startsWith(`${tabId}::`)) delete next[k];
+          }
+          return next;
         });
-      } else {
-        const review = crewByUuid.get(entryCrewUuid);
-        await accountsApiV2.monthlyTransactions.create({
-          engagementUuid: review.engagement.engagementUuid,
-          crewUuid: entryCrewUuid,
-          vesselUuid,
-          period,
-          payElementUuid: entryForm.payElementUuid,
-          qty: entryForm.qty || null,
-          rate: entryForm.rate || null,
-          amount: entryForm.amount,
-          currency: entryForm.currency,
-          origin: "vessel",
-          status: "draft",
-          sourceType: "manual",
-          remarks: entryForm.remarks.trim() || null,
+        return true;
+      }
+      setSaving(true);
+      try {
+        await accountsApiV2.monthlyTransactions.batchSave(batch);
+        setEdits((e) => {
+          const next = { ...e };
+          for (const k of Object.keys(next)) {
+            if (k.startsWith(`${tabId}::`)) delete next[k];
+          }
+          return next;
+        });
+        invalidateAll();
+        if (!opts?.silent) {
+          toast({ title: `${tab.label} saved` });
+        }
+        return true;
+      } catch (err) {
+        toast({
+          title: `Save failed — ${tab.label}`,
+          description: `${parseApiError(err).message}. Your entries are kept on screen; fix the issue and save again.`,
+          variant: "destructive",
+        });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [tabById, dirtyCount, buildBatch, toast],
+  );
+
+  const saveAllDirty = useCallback(
+    async (opts?: { silent?: boolean }): Promise<boolean> => {
+      let allOk = true;
+      for (const t of entryTabs) {
+        if (dirtyCount(t.id) > 0) {
+          const ok = await saveTab(t.id, opts);
+          if (!ok) allOk = false;
+        }
+      }
+      return allOk;
+    },
+    [entryTabs, dirtyCount, saveTab],
+  );
+
+  // Auto-save on tab switch (in-app navigation within the workspace).
+  const handleTabChange = (next: string) => {
+    if (activeTab !== next && dirtyCount(activeTab) > 0) {
+      void saveTab(activeTab).then((ok) => {
+        if (ok) toast({ title: "Changes auto-saved" });
+      });
+    }
+    setActiveTab(next);
+  };
+
+  // Auto-save on period/vessel change. The save is awaited and the switch is
+  // blocked on failure — the edits map is cleared when the context changes,
+  // so switching before a successful save would silently drop entries.
+  const handlePeriodChange = async (p: string) => {
+    if (totalDirty > 0) {
+      const ok = await saveAllDirty({ silent: true });
+      if (!ok) {
+        toast({
+          title: "Period not changed",
+          description:
+            "Unsaved entries could not be saved. Fix the issue (or clear the cells) before changing the period.",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Changes auto-saved" });
+    }
+    setPeriod(p);
+    setSubmitWarnings(null);
+  };
+  const handleVesselChange = async (v: string) => {
+    if (totalDirty > 0) {
+      const ok = await saveAllDirty({ silent: true });
+      if (!ok) {
+        toast({
+          title: "Vessel not changed",
+          description:
+            "Unsaved entries could not be saved. Fix the issue (or clear the cells) before switching vessel.",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "Changes auto-saved" });
+    }
+    setVesselUuid(v);
+  };
+
+  // Auto-save on in-app navigation away (component unmount).
+  const latestSaveAll = useRef(saveAllDirty);
+  const latestTotalDirty = useRef(totalDirty);
+  useEffect(() => {
+    latestSaveAll.current = saveAllDirty;
+    latestTotalDirty.current = totalDirty;
+  });
+  useEffect(
+    () => () => {
+      if (latestTotalDirty.current > 0) {
+        void latestSaveAll.current({ silent: true });
+      }
+    },
+    [],
+  );
+
+  // Native browser close/refresh warning while dirty (no save attempt).
+  useEffect(() => {
+    if (totalDirty === 0) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [totalDirty > 0]);
+
+  // Timed save every 10 minutes while dirty (crash/power-loss net).
+  useEffect(() => {
+    if (totalDirty === 0) return;
+    const id = setInterval(() => {
+      void latestSaveAll.current({ silent: true });
+    }, 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [totalDirty > 0]);
+
+  // ---- date-column management (dated tabs) ---------------------------------
+  const [addDateFor, setAddDateFor] = useState<string | null>(null);
+  const [newDate, setNewDate] = useState("");
+  const [deleteDateFor, setDeleteDateFor] = useState<{
+    tabId: string;
+    date: string;
+  } | null>(null);
+
+  const confirmAddDate = () => {
+    if (!addDateFor || !newDate) return;
+    setAddedDates((d) => ({
+      ...d,
+      [addDateFor]: Array.from(new Set([...(d[addDateFor] ?? []), newDate])),
+    }));
+    setAddDateFor(null);
+    setNewDate("");
+  };
+
+  const confirmDeleteDate = async () => {
+    if (!deleteDateFor) return;
+    const tab = tabById.get(deleteDateFor.tabId);
+    if (!tab) return;
+    const victims = tabTxns(tab).filter(
+      (t) => t.txnDate === deleteDateFor.date && t.status === "draft",
+    );
+    setSaving(true);
+    try {
+      if (victims.length > 0) {
+        await accountsApiV2.monthlyTransactions.batchSave({
+          deletes: victims.map((t) => t.txnUuid),
         });
       }
-      invalidateAll();
-      setEntryOpen(false);
-      toast({ title: entryEditing ? "Entry updated" : "Entry added" });
-    } catch (err) {
-      toast({
-        title: "Save failed",
-        description: parseApiError(err).message,
-        variant: "destructive",
+      setAddedDates((d) => ({
+        ...d,
+        [deleteDateFor.tabId]: (d[deleteDateFor.tabId] ?? []).filter(
+          (x) => x !== deleteDateFor.date,
+        ),
+      }));
+      setEdits((e) => {
+        const next = { ...e };
+        for (const k of Object.keys(next)) {
+          const [tid, , colId] = k.split("::");
+          if (tid === deleteDateFor.tabId && colId === deleteDateFor.date) {
+            delete next[k];
+          }
+        }
+        return next;
       });
-    } finally {
-      setEntrySaving(false);
-    }
-  };
-
-  const deleteEntry = async () => {
-    if (!entryEditing) return;
-    setEntrySaving(true);
-    try {
-      await accountsApiV2.monthlyTransactions.remove(entryEditing.txnUuid);
       invalidateAll();
-      setEntryOpen(false);
-      toast({ title: "Entry deleted" });
+      toast({ title: "Date column removed" });
     } catch (err) {
       toast({
         title: "Delete failed",
@@ -420,11 +1032,12 @@ export default function VesselPortagePage() {
         variant: "destructive",
       });
     } finally {
-      setEntrySaving(false);
+      setSaving(false);
+      setDeleteDateFor(null);
     }
   };
 
-  // ---- CTM header + line dialogs ----------------------------------------
+  // ---- CTM header + line dialogs (unchanged behaviour) ---------------------
   const [headerForm, setHeaderForm] = useState({ opening: "", received: "" });
   const [headerSaving, setHeaderSaving] = useState(false);
   useEffect(() => {
@@ -537,13 +1150,25 @@ export default function VesselPortagePage() {
     }
   };
 
-  // ---- submit / return ---------------------------------------------------
+  // ---- submit / return -----------------------------------------------------
   const [submitOpen, setSubmitOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitWarnings, setSubmitWarnings] = useState<string[] | null>(null);
   const [returnOpen, setReturnOpen] = useState(false);
   const [returnComment, setReturnComment] = useState("");
   const [returning, setReturning] = useState(false);
+
+  const tryOpenSubmit = () => {
+    if (totalDirty > 0) {
+      toast({
+        title: "Unsaved changes",
+        description: `You have ${totalDirty} unsaved change${totalDirty === 1 ? "" : "s"}. Save every tab before submitting the month.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setSubmitOpen(true);
+  };
 
   const doSubmit = async () => {
     setSubmitting(true);
@@ -600,9 +1225,107 @@ export default function VesselPortagePage() {
     }
   };
 
-  // ---- render ------------------------------------------------------------
+  // ---- render ---------------------------------------------------------------
   const entryStatusCounts = ["draft", "submitted", "accepted", "rejected"].map(
     (s) => ({ status: s, count: counts[s] ?? 0 }),
+  );
+
+  const renderSaveBar = (tab: EntryTabDef) => {
+    const n = dirtyCount(tab.id);
+    return (
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="text-xs text-muted-foreground">
+          Posts to{" "}
+          <span className="font-medium">
+            {tab.element.code} — {tab.element.name}
+          </span>
+          . Type into a cell and move on with Tab/Enter; blank means no entry.
+        </div>
+        <div className="flex items-center gap-2">
+          {n > 0 && (
+            <span
+              className="text-xs text-amber-700"
+              data-testid={`text-unsaved-${tab.id}`}
+            >
+              {n} unsaved change{n === 1 ? "" : "s"}
+            </span>
+          )}
+          {gridEditable && (
+            <Button
+              size="sm"
+              disabled={n === 0 || saving}
+              onClick={() => void saveTab(tab.id)}
+              data-testid={`button-save-${tab.id}`}
+            >
+              <Save size={13} className="mr-1" />
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderEntryTab = (tab: EntryTabDef) => (
+    <TabsContent key={tab.id} value={tab.id} className="space-y-2">
+      {isLocked && (
+        <div
+          className="border border-gray-300 bg-gray-50 rounded-md px-4 py-2 text-sm text-gray-700 flex items-center gap-1"
+          data-testid={`banner-locked-${tab.id}`}
+        >
+          <Lock size={13} /> This month is locked — all entries are read-only.
+        </div>
+      )}
+      {tab.id === "bond" && (
+        <div
+          className="border border-amber-300 bg-amber-50 rounded-md px-4 py-2 text-xs text-amber-800"
+          data-testid="banner-bond-double-entry"
+        >
+          The office also maintains itemized bond entries that roll up into one
+          monthly amount per crew (shown in the Office rollup column). Do not
+          enter amounts here for purchases the office already tracks — that
+          would double-post.
+        </div>
+      )}
+      {renderSaveBar(tab)}
+      {tab.kind === "dated" && gridEditable && (
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setAddDateFor(tab.id);
+              setNewDate("");
+            }}
+            data-testid={`button-add-date-${tab.id}`}
+          >
+            <Plus size={13} className="mr-1" /> Add date
+          </Button>
+          {datedColumns(tab)
+            .filter((d) => d !== UNDATED)
+            .map((d) => (
+              <Button
+                key={d}
+                size="sm"
+                variant="ghost"
+                className="text-red-600 h-8 px-2"
+                onClick={() => setDeleteDateFor({ tabId: tab.id, date: d })}
+                data-testid={`button-delete-date-${tab.id}-${d}`}
+              >
+                <Trash2 size={12} className="mr-1" /> {formatDate(d)}
+              </Button>
+            ))}
+        </div>
+      )}
+      <EntryGrid
+        columns={buildColumns(tab)}
+        rows={buildRows(tab)}
+        editable={gridEditable}
+        onCellEdited={onCellEdited(tab.id)}
+        onRejectedCellClicked={setRejectedTxn}
+        testId={`grid-${tab.id}`}
+      />
+    </TabsContent>
   );
 
   return (
@@ -613,17 +1336,27 @@ export default function VesselPortagePage() {
             Vessel Portage — Monthly Submission
           </h1>
           <p className="text-sm text-muted-foreground">
-            Crew variables, CTM cash account and month-end submission to office
+            Category entry sheets, CTM cash account and month-end submission to
+            office
           </p>
         </div>
         {hasFilter && (
           <div className="flex items-center gap-2">
-            <StatusBadge
-              status={portageStatus}
-              testId="badge-portage-status"
-            />
+            {totalDirty > 0 && (
+              <span
+                className="text-xs text-amber-700"
+                data-testid="text-total-unsaved"
+              >
+                {totalDirty} unsaved change{totalDirty === 1 ? "" : "s"}
+              </span>
+            )}
+            <StatusBadge status={portageStatus} testId="badge-portage-status" />
             {isLocked && (
-              <Badge variant="outline" className="gap-1" data-testid="badge-locked">
+              <Badge
+                variant="outline"
+                className="gap-1"
+                data-testid="badge-locked"
+              >
                 <Lock size={12} /> Locked
               </Badge>
             )}
@@ -641,7 +1374,7 @@ export default function VesselPortagePage() {
               <Button
                 size="sm"
                 className="bg-[#16569e] hover:bg-[#1e5fa8]"
-                onClick={() => setSubmitOpen(true)}
+                onClick={tryOpenSubmit}
                 data-testid="button-submit-month"
               >
                 <Send size={14} className="mr-1" /> Submit Month
@@ -654,11 +1387,8 @@ export default function VesselPortagePage() {
       <VesselPeriodBar
         vesselUuid={vesselUuid}
         period={period}
-        onVesselChange={isVessel ? () => {} : setVesselUuid}
-        onPeriodChange={(p) => {
-          setPeriod(p);
-          setSubmitWarnings(null);
-        }}
+        onVesselChange={isVessel ? () => {} : handleVesselChange}
+        onPeriodChange={handlePeriodChange}
       />
 
       {!hasFilter && (
@@ -694,20 +1424,28 @@ export default function VesselPortagePage() {
             </div>
           )}
 
-          <Tabs defaultValue="crew">
-            <TabsList data-testid="tabs-vessel-portage">
-              <TabsTrigger value="crew" data-testid="tab-crew-variables">
-                Crew &amp; Variables
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
+            <TabsList data-testid="tabs-vessel-portage" className="flex-wrap h-auto">
+              <TabsTrigger value="crew" data-testid="tab-crew-wages">
+                Crew &amp; wages
               </TabsTrigger>
+              {entryTabs.map((t) => (
+                <TabsTrigger key={t.id} value={t.id} data-testid={t.testId}>
+                  {t.label}
+                  {dirtyCount(t.id) > 0 && (
+                    <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  )}
+                </TabsTrigger>
+              ))}
               <TabsTrigger value="ctm" data-testid="tab-ctm">
-                CTM Cash Account
+                CTM cash account
               </TabsTrigger>
               <TabsTrigger value="submission" data-testid="tab-submission">
-                Submission
+                Submit month
               </TabsTrigger>
             </TabsList>
 
-            {/* ------------------- Tab 1: Crew & Variables ------------------- */}
+            {/* ------------- Tab 1: Crew & wages (read-only overview) ------------- */}
             <TabsContent value="crew">
               <div className="border rounded-md bg-white overflow-x-auto">
                 <table className="w-full text-sm">
@@ -719,17 +1457,14 @@ export default function VesselPortagePage() {
                       <th className="px-3 py-2 font-medium text-right">
                         Net On Board
                       </th>
-                      <th className="px-3 py-2 font-medium">
-                        Month Entries
-                      </th>
-                      <th className="px-3 py-2 w-24" />
+                      <th className="px-3 py-2 font-medium">Month Entries</th>
                     </tr>
                   </thead>
                   <tbody>
                     {engagedRows.length === 0 && (
                       <tr>
                         <td
-                          colSpan={6}
+                          colSpan={5}
                           className="px-3 py-8 text-center text-muted-foreground"
                           data-testid="text-no-crew"
                         >
@@ -779,7 +1514,10 @@ export default function VesselPortagePage() {
                                   <button
                                     key={t.txnUuid}
                                     type="button"
-                                    onClick={() => openEntryView(t)}
+                                    onClick={() =>
+                                      t.status === "rejected" &&
+                                      setRejectedTxn(t)
+                                    }
                                     title={
                                       t.status === "rejected" && t.reviewComment
                                         ? `Rejected: ${t.reviewComment}`
@@ -799,28 +1537,21 @@ export default function VesselPortagePage() {
                               })}
                             </div>
                           </td>
-                          <td className="px-3 py-2 text-right">
-                            {packageEditable && mayCreate && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 px-2"
-                                onClick={() => openEntryCreate(r.crewUuid)}
-                                data-testid={`button-add-entry-${r.crewUuid}`}
-                              >
-                                <Plus size={13} className="mr-1" /> Entry
-                              </Button>
-                            )}
-                          </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Read-only overview. Enter amounts on the category tabs above.
+              </p>
             </TabsContent>
 
-            {/* ------------------- Tab 2: CTM Cash Account ------------------- */}
+            {/* ------------- Category entry tabs ------------- */}
+            {entryTabs.map(renderEntryTab)}
+
+            {/* ------------- CTM Cash Account (unchanged) ------------- */}
             <TabsContent value="ctm" className="space-y-3">
               {imbalance && (
                 <div
@@ -958,9 +1689,8 @@ export default function VesselPortagePage() {
                             {l.lineDate ? formatDate(l.lineDate) : "—"}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">
-                            {CTM_LINE_TYPES.find(
-                              (t) => t.value === l.lineType,
-                            )?.label ?? l.lineType}
+                            {CTM_LINE_TYPES.find((t) => t.value === l.lineType)
+                              ?.label ?? l.lineType}
                             {isAuto && (
                               <Badge
                                 variant="outline"
@@ -1019,7 +1749,7 @@ export default function VesselPortagePage() {
               </div>
             </TabsContent>
 
-            {/* ------------------- Tab 3: Submission ------------------- */}
+            {/* ------------- Submit month (unchanged + unsaved block) ------------- */}
             <TabsContent value="submission" className="space-y-3">
               <div className="border rounded-md bg-white p-4 space-y-4">
                 <div>
@@ -1053,6 +1783,20 @@ export default function VesselPortagePage() {
                   </div>
                 </div>
 
+                {totalDirty > 0 && (
+                  <div
+                    className="border border-amber-300 bg-amber-50 rounded-md px-4 py-2 text-sm text-amber-800 flex items-start gap-1"
+                    data-testid="warning-unsaved-changes"
+                  >
+                    <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                    <span>
+                      {totalDirty} unsaved change
+                      {totalDirty === 1 ? "" : "s"} on the entry tabs — save
+                      them before submitting the month.
+                    </span>
+                  </div>
+                )}
+
                 {imbalance && (
                   <div
                     className="border border-amber-300 bg-amber-50 rounded-md px-4 py-2 text-sm text-amber-800 flex items-start gap-1"
@@ -1080,7 +1824,8 @@ export default function VesselPortagePage() {
                 {canSubmit && (
                   <Button
                     className="bg-[#16569e] hover:bg-[#1e5fa8]"
-                    onClick={() => setSubmitOpen(true)}
+                    onClick={tryOpenSubmit}
+                    disabled={totalDirty > 0}
                     data-testid="button-submit-month-tab"
                   >
                     <Send size={14} className="mr-1" /> Submit Month to Office
@@ -1092,137 +1837,96 @@ export default function VesselPortagePage() {
         </>
       )}
 
-      {/* ---------------- Entry add/edit/view dialog ---------------- */}
-      <Dialog open={entryOpen} onOpenChange={setEntryOpen}>
+      {/* ---------------- Rejected-cell comment dialog ---------------- */}
+      <Dialog
+        open={!!rejectedTxn}
+        onOpenChange={(o) => !o && setRejectedTxn(null)}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {entryEditing
-                ? entryReadOnly
-                  ? "Entry Details"
-                  : "Edit Entry"
-                : "Add Entry"}{" "}
-              — {crewByUuid.get(entryCrewUuid)?.crewName ?? ""}
-            </DialogTitle>
+            <DialogTitle>Rejected Entry</DialogTitle>
           </DialogHeader>
-          {entryEditing && (
-            <div className="flex items-center gap-2 text-sm">
-              <StatusBadge
-                status={entryEditing.status}
-                testId="badge-entry-status"
-              />
-              {entryEditing.status === "rejected" &&
-                entryEditing.reviewComment && (
-                  <span
-                    className="text-red-700 text-xs"
-                    data-testid="text-entry-reject-comment"
-                  >
-                    Office: {entryEditing.reviewComment}
-                  </span>
-                )}
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1 col-span-2">
-              <Label>Pay Element</Label>
-              <Select
-                value={entryForm.payElementUuid}
-                onValueChange={(v) => setEf("payElementUuid", v)}
-                disabled={!!entryEditing}
-              >
-                <SelectTrigger data-testid="select-entry-element">
-                  <SelectValue placeholder="Select pay element" />
-                </SelectTrigger>
-                <SelectContent>
-                  {manualElements.map((e) => (
-                    <SelectItem key={e.payElementUuid} value={e.payElementUuid}>
-                      {e.code} — {e.name} ({e.type})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Qty</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={entryForm.qty}
-                disabled={entryReadOnly}
-                onChange={(e) => setEntryQtyRate(e.target.value, entryForm.rate)}
-                data-testid="input-entry-qty"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Rate{scaleRateLine ? " (from scale)" : ""}</Label>
-              <Input
-                type="number"
-                step="0.0001"
-                value={entryForm.rate}
-                disabled={entryReadOnly || !!scaleRateLine}
-                onChange={(e) => setEntryQtyRate(entryForm.qty, e.target.value)}
-                data-testid="input-entry-rate"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Amount *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={entryForm.amount}
-                disabled={entryReadOnly}
-                onChange={(e) => setEf("amount", e.target.value)}
-                data-testid="input-entry-amount"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Currency</Label>
-              <Input
-                value={entryForm.currency}
-                maxLength={3}
-                disabled={entryReadOnly}
-                onChange={(e) => setEf("currency", e.target.value.toUpperCase())}
-                data-testid="input-entry-currency"
-              />
-            </div>
-            <div className="space-y-1 col-span-2">
-              <Label>Remarks</Label>
-              <Textarea
-                rows={2}
-                value={entryForm.remarks}
-                disabled={entryReadOnly}
-                onChange={(e) => setEf("remarks", e.target.value)}
-                data-testid="input-entry-remarks"
-              />
-            </div>
+          <div className="text-sm space-y-2">
+            <p>
+              <span className="font-medium">
+                {crewByUuid.get(rejectedTxn?.crewUuid)?.crewName ?? ""}
+              </span>{" "}
+              — {elementByUuid.get(rejectedTxn?.payElementUuid)?.code ?? ""}{" "}
+              {formatMoney(rejectedTxn?.amount)}
+            </p>
+            <p
+              className="text-red-700 border border-red-200 bg-red-50 rounded-md px-3 py-2"
+              data-testid="text-entry-reject-comment"
+            >
+              Office: {rejectedTxn?.reviewComment ?? "No comment provided."}
+            </p>
           </div>
           <DialogFooter>
-            {entryEditing &&
-              !entryReadOnly &&
-              mayDelete &&
-              entryEditing.status === "draft" && (
-                <Button
-                  variant="outline"
-                  className="mr-auto text-red-600"
-                  onClick={deleteEntry}
-                  disabled={entrySaving}
-                  data-testid="button-delete-entry"
-                >
-                  <Trash2 size={14} className="mr-1" /> Delete
-                </Button>
-              )}
-            <Button variant="outline" onClick={() => setEntryOpen(false)}>
-              {entryReadOnly ? "Close" : "Cancel"}
+            <Button variant="outline" onClick={() => setRejectedTxn(null)}>
+              Close
             </Button>
-            {!entryReadOnly && (
-              <Button
-                onClick={saveEntry}
-                disabled={entrySaving}
-                data-testid="button-save-entry"
-              >
-                {entrySaving ? "Saving…" : "Save"}
-              </Button>
-            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---------------- Add date column dialog ---------------- */}
+      <Dialog
+        open={!!addDateFor}
+        onOpenChange={(o) => !o && setAddDateFor(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Date Column</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1">
+            <Label>Date</Label>
+            <Input
+              type="date"
+              value={newDate}
+              onChange={(e) => setNewDate(e.target.value)}
+              data-testid="input-new-date-column"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDateFor(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmAddDate}
+              disabled={!newDate}
+              data-testid="button-confirm-add-date"
+            >
+              Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---------------- Delete date column confirm ---------------- */}
+      <Dialog
+        open={!!deleteDateFor}
+        onOpenChange={(o) => !o && setDeleteDateFor(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Date Column</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm">
+            Remove the {deleteDateFor ? formatDate(deleteDateFor.date) : ""}{" "}
+            column? All draft entries under this date will be deleted.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDateFor(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void confirmDeleteDate()}
+              disabled={saving}
+              className="bg-red-600 hover:bg-red-700"
+              data-testid="button-confirm-delete-date"
+            >
+              {saving ? "Deleting…" : "Delete"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1364,7 +2068,9 @@ export default function VesselPortagePage() {
               <li>{counts.draft ?? 0} draft entries will be submitted</li>
               <li>
                 CTM closing:{" "}
-                {ctm ? `${formatMoney(ctm.closingBalance)} ${ctm.currency ?? ""}` : "—"}
+                {ctm
+                  ? `${formatMoney(ctm.closingBalance)} ${ctm.currency ?? ""}`
+                  : "—"}
               </li>
               {imbalance && (
                 <li className="text-amber-700">

@@ -160,6 +160,10 @@ router.get("/reports/fleet-summary", reportsController.fleetSummary);
 // ============================================
 router.get("/monthly-transactions", monthlyTransactionsController.getAll);
 router.get("/monthly-transactions/:uuid", monthlyTransactionsController.getByUuid);
+router.post(
+  "/monthly-transactions/batch",
+  monthlyTransactionsController.batchSave,
+);
 router.post("/monthly-transactions", monthlyTransactionsController.create);
 router.put("/monthly-transactions/:uuid", monthlyTransactionsController.update);
 router.patch("/monthly-transactions/:uuid", monthlyTransactionsController.update);

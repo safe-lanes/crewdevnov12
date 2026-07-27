@@ -58,6 +58,13 @@ export const accTenantConfigV2 = pgTable("acc_tenant_config_v2", {
   }),
   // 0165: balancing GL account for net wages payable (GL export); null = UNMAPPED
   glWagesPayableCode: text("gl_wages_payable_code"),
+  // 0179: configurable extra vessel-entry tab slots (Vessel Portage)
+  extraTab1Enabled: boolean("extra_tab_1_enabled").notNull().default(false),
+  extraTab1Label: text("extra_tab_1_label"),
+  extraTab1PayElementUuid: text("extra_tab_1_pay_element_uuid"),
+  extraTab2Enabled: boolean("extra_tab_2_enabled").notNull().default(false),
+  extraTab2Label: text("extra_tab_2_label"),
+  extraTab2PayElementUuid: text("extra_tab_2_pay_element_uuid"),
   settings: jsonb("settings"),
   ...auditColumns,
 });
@@ -282,6 +289,8 @@ export const accMonthlyTransactionsV2 = pgTable(
     // 0161 vessel submission package
     reviewComment: text("review_comment"), // office comment on reject/return
     ctmLineUuid: text("ctm_line_uuid"), // linked CTM line for on-board cash advances
+    // 0179: optional day-level date for dated vessel entries (advances, bond)
+    txnDate: date("txn_date"),
     ...auditColumns,
   },
   (table) => ({

@@ -156,6 +156,11 @@ export const accountsApiV2 = {
       req("PATCH", `${ACCOUNTS_BASE}/monthly-transactions/${uuid}`, data),
     remove: (uuid: string) =>
       req("DELETE", `${ACCOUNTS_BASE}/monthly-transactions/${uuid}`),
+    batchSave: (data: {
+      creates?: Record<string, unknown>[];
+      updates?: Record<string, unknown>[];
+      deletes?: string[];
+    }) => req("POST", `${ACCOUNTS_BASE}/monthly-transactions/batch`, data),
     accept: (uuid: string) =>
       req("POST", `${ACCOUNTS_BASE}/monthly-transactions/${uuid}/accept`),
     reject: (uuid: string, reviewComment: string) =>

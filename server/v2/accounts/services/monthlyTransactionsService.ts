@@ -292,6 +292,99 @@ export const monthlyTransactionsService = {
     }
   },
 
+  /**
+   * 0179 batch save (Vessel Portage category grids): apply a whole grid's
+   * creates/updates/deletes in ONE request. Operations are applied
+   * sequentially through the existing create/update/delete paths so every
+   * guard (vessel scope, edit window, lock, element rules, CTM sync) runs
+   * unchanged. On the first failure the batch stops and reports which
+   * operations were applied — the client keeps unsaved values and retries.
+   */
+  async batchSave(
+    payload: {
+      creates?: Array<
+        Omit<InsertAccMonthlyTransactionV2, "txnUuid"> & {
+          auditUserUuid?: string;
+        }
+      >;
+      updates?: Array<
+        { txnUuid: string } & Partial<InsertAccMonthlyTransactionV2> & {
+            auditUserUuid?: string;
+          }
+      >;
+      deletes?: string[];
+      auditUserUuid?: string;
+    },
+    actor?: RequestActor,
+  ): Promise<{
+    created: AccMonthlyTransactionV2[];
+    updated: AccMonthlyTransactionV2[];
+    deleted: string[];
+    applied: number;
+    failed?: { op: string; ref: string; error: string; code?: string };
+  }> {
+    const created: AccMonthlyTransactionV2[] = [];
+    const updated: AccMonthlyTransactionV2[] = [];
+    const deleted: string[] = [];
+    const audit = payload.auditUserUuid;
+    try {
+      for (const del of payload.deletes ?? []) {
+        await this.delete(del, actor, audit);
+        deleted.push(del);
+      }
+      for (const upd of payload.updates ?? []) {
+        const { txnUuid, ...data } = upd;
+        updated.push(
+          await this.update(
+            txnUuid,
+            { ...data, auditUserUuid: data.auditUserUuid ?? audit },
+            actor,
+          ),
+        );
+      }
+      for (const cre of payload.creates ?? []) {
+        created.push(
+          await this.create(
+            { ...cre, auditUserUuid: cre.auditUserUuid ?? audit },
+            actor,
+          ),
+        );
+      }
+    } catch (error: any) {
+      const applied = created.length + updated.length + deleted.length;
+      const failed = {
+        op:
+          deleted.length < (payload.deletes?.length ?? 0)
+            ? "delete"
+            : updated.length < (payload.updates?.length ?? 0)
+              ? "update"
+              : "create",
+        ref: String(
+          deleted.length < (payload.deletes?.length ?? 0)
+            ? payload.deletes![deleted.length]
+            : updated.length < (payload.updates?.length ?? 0)
+              ? payload.updates![updated.length].txnUuid
+              : (payload.creates?.[created.length]?.payElementUuid ?? ""),
+        ),
+        error: error?.message ?? "Batch save failed",
+        code: error?.code,
+      };
+      const err = new Error(failed.error) as Error & {
+        code?: string;
+        batchResult?: unknown;
+      };
+      err.code = error?.code;
+      err.batchResult = { created, updated, deleted, applied, failed };
+      throw err;
+    }
+    return {
+      created,
+      updated,
+      deleted,
+      applied: created.length + updated.length + deleted.length,
+    };
+  },
+
   // ------------------------------------------------------------------
   // Per-transaction office review (spec 2a)
   // ------------------------------------------------------------------

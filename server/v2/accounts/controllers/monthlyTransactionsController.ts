@@ -10,6 +10,14 @@ const updateSchema = insertAccMonthlyTransactionV2Schema
   .partial()
   .omit({ txnUuid: true });
 
+const batchSchema = z.object({
+  creates: z.array(createSchema).optional(),
+  updates: z
+    .array(updateSchema.extend({ txnUuid: z.string().min(1) }))
+    .optional(),
+  deletes: z.array(z.string().min(1)).optional(),
+});
+
 const rejectSchema = z.object({
   reviewComment: z
     .string()
@@ -85,6 +93,47 @@ export const monthlyTransactionsController = {
       res.status(201).json(record);
     } catch (error: any) {
       handleError(res, error, "Failed to create monthly transaction");
+    }
+  },
+
+  /** 0179: whole-grid batch save (Vessel Portage category tabs). */
+  async batchSave(req: Request, res: Response) {
+    try {
+      const parsed = batchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid batch save payload",
+          details: parsed.error.issues,
+        });
+      }
+      const result = await monthlyTransactionsService.batchSave(
+        {
+          ...parsed.data,
+          auditUserUuid: getAuditUserUuid(req),
+        },
+        getActor(req),
+      );
+      res.json(result);
+    } catch (error: any) {
+      const batchResult = (error as { batchResult?: unknown })?.batchResult;
+      const code = (error as { code?: string })?.code;
+      const status =
+        code === "CONFLICT"
+          ? 409
+          : code === "VALIDATION"
+            ? 400
+            : code === "FORBIDDEN"
+              ? 403
+              : code === "NOT_FOUND" || error.message?.includes("not found")
+                ? 404
+                : 500;
+      if (status === 500) {
+        console.error("Failed to batch-save monthly transactions", error);
+      }
+      res.status(status).json({
+        error: error?.message ?? "Failed to batch-save monthly transactions",
+        ...(batchResult ? { batchResult } : {}),
+      });
     }
   },
 

@@ -236,6 +236,12 @@ Single-row per-tenant behaviour configuration.
 | `auto_lock_on_approval` | boolean | default true |
 | `max_allotment_percent` | numeric(10,4) | allotment soft cap (% of monthly gross); null = no check (added 0163) |
 | `gl_wages_payable_code` | text | balancing GL account for net wages payable in the GL export; null shows as UNMAPPED (added 0165) |
+| `extra_tab_1_enabled` | boolean NOT NULL default false | **0179** enable configurable vessel-entry tab slot 1 (Vessel Portage). Enabling requires both a label and a pay element (service rule) |
+| `extra_tab_1_label` | text | **0179** tab label shown on the vessel portage screen |
+| `extra_tab_1_pay_element_uuid` | text | **0179** bound pay element (manual_entry / rate_times_qty only) |
+| `extra_tab_2_enabled` | boolean NOT NULL default false | **0179** slot 2 enable flag (same rules as slot 1) |
+| `extra_tab_2_label` | text | **0179** slot 2 label |
+| `extra_tab_2_pay_element_uuid` | text | **0179** slot 2 bound pay element |
 | `settings` | jsonb | free-form extra config |
 
 ### B. Master tier
@@ -421,6 +427,7 @@ Variable per-period transactions (tier 3 of precedence).
 | `remarks` | text | |
 | `review_comment` | text | **0161** office comment on reject/return |
 | `ctm_line_uuid` | text | **0161** → `acc_ctm_lines_v2` (on-board cash advance dual record) |
+| `txn_date` | date | **0179** optional day-level date for dated vessel entries (cash advances, bond). Null = undated month-level entry |
 
 #### `acc_advances_v2` (retained / altered)
 Cash advances. Existing columns kept; `amount` & `recovery_amount` converted to
