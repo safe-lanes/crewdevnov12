@@ -62,14 +62,14 @@ const STATUS_DOT: Record<string, string> = {
 function CellRenderer(props: ICellRendererParams) {
   const colId = props.colDef?.field ?? "";
   const row: EntryRow | undefined = props.data;
-  if (!row) {
-    // pinned totals row
+  if (!row || !row.cells) {
+    // pinned totals row (its data is a plain totals record, not an EntryRow)
     const v = props.value;
     return <span className="font-semibold">{v == null || v === "" ? "" : v}</span>;
   }
   const cell = row.cells[colId];
   if (!cell) {
-    return <span>{row.info[colId] ?? ""}</span>;
+    return <span>{row.info?.[colId] ?? ""}</span>;
   }
   const status = cell.txn?.status;
   const dot = status && STATUS_DOT[status];
@@ -113,7 +113,7 @@ function cellEditable(
 ): boolean {
   if (!gridEditable || !col.editable) return false;
   const row: EntryRow | undefined = params.data;
-  if (!row) return false; // pinned totals row
+  if (!row || !row.cells) return false; // pinned totals row
   const cell = row.cells[col.id];
   if (cell?.locked) return false;
   const status = cell?.txn?.status;
@@ -155,12 +155,12 @@ export default function EntryGrid({
         editable: (p: EditableCallbackParams) => cellEditable(p, col, editable),
         valueGetter: (p) => {
           const row: EntryRow | undefined = p.data;
-          if (!row) return p.data?.[col.id] ?? ""; // totals row: plain values
-          return row.cells[col.id]?.value ?? row.info[col.id] ?? "";
+          if (!row || !row.cells) return p.data?.[col.id] ?? ""; // totals row: plain values
+          return row.cells[col.id]?.value ?? row.info?.[col.id] ?? "";
         },
         valueSetter: (p) => {
           const row: EntryRow | undefined = p.data;
-          if (!row || !row.cells[col.id]) return false;
+          if (!row?.cells?.[col.id]) return false;
           const raw = String(p.newValue ?? "").trim();
           if (!col.isText && raw !== "" && Number.isNaN(Number(raw))) {
             return false; // amount cells accept numbers only
@@ -199,7 +199,7 @@ export default function EntryGrid({
   const onCellValueChanged = (e: CellValueChangedEvent) => {
     const row: EntryRow | undefined = e.data;
     const colId = e.colDef.field ?? "";
-    if (!row || !row.cells[colId]) return;
+    if (!row?.cells?.[colId]) return;
     onCellEdited(row.crewUuid, colId, row.cells[colId].value);
   };
 
@@ -218,12 +218,12 @@ export default function EntryGrid({
           stopEditingWhenCellsLoseFocus: true,
           onCellValueChanged,
           pinnedBottomRowData,
-          getRowId: (p) => p.data.crewUuid,
+          getRowId: (p) => String(p.data?.crewUuid ?? p.data?.crewName ?? "totals"),
           suppressMovableColumns: true,
           onCellClicked: (e) => {
             const row: EntryRow | undefined = e.data;
             const colId = e.colDef.field ?? "";
-            const txn = row?.cells[colId]?.txn;
+            const txn = row?.cells?.[colId]?.txn;
             if (txn?.status === "rejected" && onRejectedCellClicked) {
               onRejectedCellClicked(txn);
             }
