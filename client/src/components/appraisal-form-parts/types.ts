@@ -294,8 +294,6 @@ export interface PartGProps extends AppraisalFormSectionBaseProps {
   saveAppraisalMutation: { isPending: boolean };
   users?: { userUuid: string; displayName: string }[];
   officeUsers?: { userUuid: string; displayName: string; designation: string }[];
-  // Assigned reviewers header (read-only, populated from stage 2)
-  assignedReviewers?: { reviewerName: string; designation: string }[];
 }
 
 export const getScoreColors = (score: number) => {

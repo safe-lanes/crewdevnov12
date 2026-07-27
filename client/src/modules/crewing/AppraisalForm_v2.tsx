@@ -2959,7 +2959,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                     isPostStage1={isPostStage1}
                     isPostStage2={isPostStage2}
                     isPostStage3={isPostStage3}
-                    assignedReviewers={selectedReviewers}
+ 
                   />
                 )}
                 

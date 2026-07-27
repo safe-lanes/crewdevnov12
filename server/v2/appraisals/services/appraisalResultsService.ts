@@ -19,9 +19,10 @@ import { formsService } from "../../admin/services";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { masterUsers } from "../../../../shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull, isNotNull } from "drizzle-orm";
 import { sendEmail, logEmailEvent } from "../../shared/emailService";
 import { buildAppraisalReviewEmail } from "../templates/appraisalReviewNotificationTemplate";
+import { apprOfficeReviewsV2 } from "../../../../shared/v2/appraisals/schema";
 
 const appraisalResultsRepo = new AppraisalResultsRepository();
 const trainingsRepo = new ApprTrainingsRepository();
@@ -84,6 +85,56 @@ function assembleOne(appraisal: any, childData: any) {
     childData.trainingFollowups.get(uuid) || [],
     childData.reviewers.get(uuid) || [],
   );
+}
+
+/**
+ * Fire-and-forget helper: after G1 rows are synced on Save Draft, finds any
+ * manually-added reviewer rows (isAssigned=false, userUuid set, emailSentAt null)
+ * and sends them a notification email, then stamps emailSentAt so repeat saves
+ * don't re-send.
+ */
+async function notifyNewManualG1Reviewers(
+  appraisalUuid: string,
+  seafarerName: string,
+  rank: string,
+): Promise<void> {
+  const db = getDb();
+  try {
+    const pendingRows = await db
+      .select()
+      .from(apprOfficeReviewsV2)
+      .where(and(
+        eq(apprOfficeReviewsV2.appraisalUuid, appraisalUuid),
+        eq(apprOfficeReviewsV2.isAssigned, false),
+        eq(apprOfficeReviewsV2.isDeleted, false),
+        isNull(apprOfficeReviewsV2.emailSentAt),
+        isNotNull(apprOfficeReviewsV2.userUuid),
+      ));
+
+    if (pendingRows.length === 0) return;
+
+    await triggerAppraisalReviewNotification(
+      pendingRows.map(r => ({
+        userUuid: r.userUuid!,
+        reviewerName: r.name || undefined,
+        designation: r.position || undefined,
+      })),
+      seafarerName,
+      rank,
+      appraisalUuid,
+    );
+
+    const now = new Date();
+    await Promise.all(
+      pendingRows.map(r =>
+        db.update(apprOfficeReviewsV2)
+          .set({ emailSentAt: now })
+          .where(eq(apprOfficeReviewsV2.id, r.id))
+      )
+    );
+  } catch (err: any) {
+    logEmailEvent('ERROR', `[Appraisals V2] notifyNewManualG1Reviewers failed for ${appraisalUuid}:`, err?.message || err);
+  }
 }
 
 /**
@@ -294,6 +345,13 @@ export class AppraisalResultsService {
       trainingFollowupsRepo.syncForAppraisal(appraisalUuid, appraisalData.trainingFollowups || [], auditUserUuid),
     ]);
 
+    // Fire-and-forget: email any newly-added manual G1 reviewers (not assigned, not yet notified).
+    void notifyNewManualG1Reviewers(
+      appraisalUuid,
+      appraisalData.seafarersName || '',
+      appraisalData.seafarersRank || '',
+    );
+
     return this.getById(created.id);
   }
 
@@ -358,6 +416,13 @@ export class AppraisalResultsService {
         officeReviewsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.officeReviews || [], auditUserUuid),
         trainingFollowupsRepo.syncForAppraisal(existing.appraisalUuid, appraisalData.trainingFollowups || [], auditUserUuid),
       ]);
+
+      // Fire-and-forget: email any newly-added manual G1 reviewers (not assigned, not yet notified).
+      void notifyNewManualG1Reviewers(
+        existing.appraisalUuid,
+        appraisalData.seafarersName || existing.seafarersName || '',
+        appraisalData.seafarersRank || existing.seafarersRank || '',
+      );
     }
 
     return this.getById(id);
