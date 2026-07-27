@@ -60,6 +60,7 @@ interface ElementForm {
   status: string;
   effectiveFrom: string;
   effectiveTo: string;
+  glCode: string;
 }
 
 const emptyForm: ElementForm = {
@@ -80,6 +81,7 @@ const emptyForm: ElementForm = {
   status: "active",
   effectiveFrom: "",
   effectiveTo: "",
+  glCode: "",
 };
 
 function natLabel(n: any): string {
@@ -148,6 +150,7 @@ export default function PayElementsPage() {
       status: row.status ?? "active",
       effectiveFrom: row.effectiveFrom ?? "",
       effectiveTo: row.effectiveTo ?? "",
+      glCode: row.glCode ?? "",
     });
     setDialogOpen(true);
   };
@@ -169,6 +172,7 @@ export default function PayElementsPage() {
       status: form.status,
       effectiveFrom: form.effectiveFrom || null,
       effectiveTo: form.effectiveTo || null,
+      glCode: form.glCode.trim() || null,
       percentageBaseElementUuid:
         form.calcMethod === "percentage_of_base"
           ? form.percentageBaseElementUuid || null
@@ -474,6 +478,15 @@ export default function PayElementsPage() {
               onChange={(v) => set("category", v)}
               testId="select-element-category"
             />
+            <div className="flex flex-col gap-1.5">
+              <Label>GL code (accounting)</Label>
+              <Input
+                value={form.glCode}
+                onChange={(e) => set("glCode", e.target.value)}
+                placeholder="e.g. 5100-WAGES (optional)"
+                data-testid="input-element-gl-code"
+              />
+            </div>
             <DialogSelect
               label="Calc method"
               value={form.calcMethod}
