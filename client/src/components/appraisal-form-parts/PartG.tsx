@@ -1,4 +1,4 @@
-import { memo, Fragment } from "react";
+import { memo, Fragment, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, MessageSquare, Trash2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, MessageSquare, Trash2, ChevronDown, Users } from "lucide-react";
 import { PartGProps } from "./types";
 import { DbTrainingCombobox } from "@/components/training/DbTrainingCombobox";
 import { useCompanyTrainings } from "@/hooks/useCompanyTrainings";
@@ -45,6 +47,7 @@ const PartGComponent: React.FC<PartGProps> = ({
   isPostStage2,
   isPostStage3,
   users = [],
+  officeUsers = [],
   assignedReviewers = [],
 }) => {
   const { options: dbTrainings, isLoading: isLoadingDbTrainings, isError: isErrorDbTrainings } = useCompanyTrainings();
@@ -54,6 +57,9 @@ const PartGComponent: React.FC<PartGProps> = ({
   const isShipUser = userType === 'Ship';
   // Task #500: post-Stage 3 fully locks G (legacy behavior).
   const isG1Locked = appraisalStatus === 'reviewed' || appraisalStatus === ('stage3_submitted' as typeof appraisalStatus);
+
+  // Local state for the G1 reviewer Popover picker
+  const [reviewerPickerOpen, setReviewerPickerOpen] = useState(false);
 
   const deleteTrainingFollowupComment = (id: string) => {
     showConfirmDialog(
@@ -111,43 +117,104 @@ const PartGComponent: React.FC<PartGProps> = ({
             <div className="border border-[#EAEBEF] rounded-lg p-4">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-base font-medium" style={{ color: '#16569e' }}>G1. Office Reviews</h4>
-                <Button type="button" onClick={addOfficeReview} variant="outline" size="sm" disabled={isG1Locked} data-testid="button-add-reviewer">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Reviewer
-                </Button>
+                {/* Popover user-picker — same pattern as Part F reviewer selector */}
+                <Popover open={reviewerPickerOpen} onOpenChange={setReviewerPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isG1Locked}
+                      data-testid="button-add-reviewer"
+                    >
+                      <Users className="h-3.5 w-3.5 mr-1" />
+                      Add Reviewer
+                      <ChevronDown className="h-3.5 w-3.5 ml-1 text-gray-400" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-2 max-h-60 overflow-y-auto" align="end">
+                    {officeUsers.length === 0 && (
+                      <p className="text-sm text-gray-500 p-2">No users available.</p>
+                    )}
+                    {officeUsers.map((user) => {
+                      const alreadyAdded = form.watch("officeReviews").some(
+                        r => r.userUuid === user.userUuid && !r.isAssigned
+                      );
+                      return (
+                        <div
+                          key={user.userUuid}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            addOfficeReview(user);
+                            setReviewerPickerOpen(false);
+                          }}
+                          data-testid={`reviewer-option-g1-${user.userUuid}`}
+                        >
+                          <Checkbox
+                            checked={alreadyAdded}
+                            onCheckedChange={() => {}}
+                            className="pointer-events-none"
+                          />
+                          <span className="text-sm text-gray-700 flex-1">{user.displayName}</span>
+                          {user.designation && (
+                            <span className="text-xs text-gray-400">{user.designation}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-4">
                 {form.watch("officeReviews").map((review, index) => {
                   // Rows seeded from assigned reviewers carry isAssigned:true (persists through JSON save/reload).
                   // Fallback: also match legacy rows that used the old 'assigned-<uuid>' id prefix.
                   const isAssignedRow = !!review.isAssigned || review.id.startsWith('assigned-');
-                  const isIdentityLocked = isG1Locked || isAssignedRow;
                   return (
                   <div key={review.id} className="border rounded-lg p-4">
                     <div className="flex gap-4 mb-3">
                       <div className="flex-1">
                         <label className="text-xs text-gray-500">Reviewer Name</label>
-                        {isIdentityLocked ? (
-                          <Input value={review.name} readOnly disabled className="bg-gray-100" data-testid={`input-reviewer-name-${review.id}`} />
-                        ) : (
-                          <Input value={review.name} onChange={(e) => updateOfficeReview(review.id, "name", e.target.value)} placeholder="Enter name" data-testid={`input-reviewer-name-${review.id}`} />
-                        )}
+                        {/* Always readOnly — name is auto-filled from the user picker */}
+                        <Input
+                          value={review.name}
+                          readOnly
+                          disabled
+                          className="bg-gray-100"
+                          data-testid={`input-reviewer-name-${review.id}`}
+                        />
                       </div>
                       <div className="flex-1">
                         <label className="text-xs text-gray-500">Position</label>
-                        {isIdentityLocked ? (
-                          <Input value={review.position} readOnly disabled className="bg-gray-100" data-testid={`input-reviewer-position-${review.id}`} />
-                        ) : (
-                          <Input value={review.position} onChange={(e) => updateOfficeReview(review.id, "position", e.target.value)} placeholder="Enter position" data-testid={`input-reviewer-position-${review.id}`} />
-                        )}
+                        {/* Always readOnly — position is auto-filled from the user picker */}
+                        <Input
+                          value={review.position}
+                          readOnly
+                          disabled
+                          className="bg-gray-100"
+                          data-testid={`input-reviewer-position-${review.id}`}
+                        />
                       </div>
+                      {/* Delete only for manually-picked rows; assigned rows are permanent */}
                       {!isG1Locked && !isAssignedRow && (
-                        <Button type="button" variant="ghost" size="icon" onClick={() => deleteOfficeReview(review.id)} data-testid={`button-delete-reviewer-${review.id}`}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteOfficeReview(review.id)}
+                          data-testid={`button-delete-reviewer-${review.id}`}
+                        >
                           <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                         </Button>
                       )}
                     </div>
-                    <Textarea value={review.feedback} onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)} placeholder="Enter feedback..." rows={3} />
+                    <Textarea
+                      value={review.feedback}
+                      onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)}
+                      placeholder="Enter feedback..."
+                      rows={3}
+                      disabled={isG1Locked}
+                    />
                   </div>
                   );
                 })}

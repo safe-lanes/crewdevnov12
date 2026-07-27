@@ -167,6 +167,9 @@ const officeReviewSchema = z.object({
   // Marks rows seeded from Stage-2 assigned reviewers. Persists through JSON
   // save/reload so PartG can keep them locked even after a draft save.
   isAssigned: z.boolean().optional(),
+  // Stored for all rows (assigned + manual picker) so emails can be triggered.
+  // nullable: server returns null for legacy rows that pre-date migration 0180.
+  userUuid: z.string().nullable().optional(),
 });
 
 const trainingFollowupSchema = z.object({
@@ -388,6 +391,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const [editingSeafarerComment, setEditingSeafarerComment] = useState<string | null>(null);
   const [nationalityOpen, setNationalityOpen] = useState(false);
   const [editingOfficeReview, setEditingOfficeReview] = useState<string | null>(null);
+  const [g1ReviewPickerOpen, setG1ReviewPickerOpen] = useState(false);
   const [appraisalId, setAppraisalId] = useState<number | null>(propAppraisalId || null);
   // Task #503: bumped by the hydration effect so the B1 auto-merge re-runs
   // after `form.reset` + `setValue('trainings', ...)` overwrites the auto
@@ -1311,10 +1315,23 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
           form.setValue('officeReviews', parsedData.officeReviews, { shouldDirty: false });
         }
 
-        // Seed G1 office review rows from assigned reviewers if no reviews exist yet.
-        // Sets isAssigned:true so PartG keeps name/position locked even after save+reload.
-        const existingOfficeReviews = parsedData.officeReviews || [];
+        // Re-derive isAssigned on hydration as a safety net. Since migration 0180 the assembler
+        // now stores and returns isAssigned from appr_office_reviews_v2, so most rows will
+        // already have the correct value. Name-matching against appr_reviewers_v2 handles
+        // legacy rows saved before migration 0180 that have isAssigned=false in the DB.
+        const existingOfficeReviews: any[] = parsedData.officeReviews || [];
         const assignedRevs = (existingAppraisal.reviewers || []).filter((r: any) => r.userUuid);
+        const assignedNames = new Set(assignedRevs.map((r: any) => r.reviewerName).filter(Boolean));
+        const reMarked = existingOfficeReviews.map((or: any) => ({
+          ...or,
+          isAssigned: or.isAssigned || assignedNames.has(or.name),
+        }));
+        if (reMarked.some((or: any, i: number) => !!or.isAssigned !== !!existingOfficeReviews[i].isAssigned)) {
+          form.setValue('officeReviews', reMarked, { shouldDirty: false });
+        }
+
+        // Seed G1 office review rows from assigned reviewers when no rows exist yet
+        // (first open of a pending_review appraisal before any draft save).
         if (existingOfficeReviews.length === 0 && assignedRevs.length > 0) {
           const seededReviews = assignedRevs.map((r: any) => ({
             id: crypto.randomUUID(),
@@ -1322,6 +1339,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             position: r.designation || '',
             feedback: '',
             isAssigned: true,
+            userUuid: r.userUuid || '',
           }));
           form.setValue('officeReviews', seededReviews, { shouldDirty: false });
         }
@@ -2186,25 +2204,23 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   };
 
   // Office Review management
-  const addOfficeReview = () => {
-    // Get current user info from sessionStorage with fallbacks (guard for SSR/test environments)
-    let currentUserName = 'Current User';
-    let currentUserPosition = 'Office Staff';
-    
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-      currentUserName = sessionStorage.getItem('crewUserName') || 'Current User';
-      currentUserPosition = sessionStorage.getItem('crewDesignation') || 'Office Staff';
-    }
-    
-    const newReview = {
-      id: Date.now().toString(),
-      name: currentUserName,
-      position: currentUserPosition,
-      feedback: "",
-    };
+  const addOfficeReview = (user: { userUuid: string; displayName: string; designation: string }) => {
     const currentReviews = form.getValues("officeReviews");
+    // Toggle: if this user already exists as a manual row, remove them.
+    const existing = currentReviews.find(r => r.userUuid === user.userUuid && !r.isAssigned);
+    if (existing) {
+      form.setValue("officeReviews", currentReviews.filter(r => r.id !== existing.id));
+      return;
+    }
+    const newReview = {
+      id: crypto.randomUUID(),
+      name: user.displayName,
+      position: user.designation,
+      feedback: "",
+      isAssigned: false,
+      userUuid: user.userUuid,
+    };
     form.setValue("officeReviews", [...currentReviews, newReview]);
-    setEditingOfficeReview(newReview.id);
   };
 
   const updateOfficeReview = (id: string, field: string, value: string) => {
@@ -2934,6 +2950,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                     updateTrainingFollowup={updateTrainingFollowup}
                     deleteTrainingFollowup={deleteTrainingFollowup}
                     users={trainingIdentifiedByUsers}
+                    officeUsers={officeUsers}
                     handleStageSubmission={handleStageSubmission}
                     handleSaveDraft={handleSaveDraft}
                     stage3Mutation={stage3Mutation}
@@ -4297,7 +4314,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                   </div>
                 )}
 
-                {/* Part G: Office Review & Followup */}
+                {/* Part G legacy branch — "officeReview" is never a valid activeSection value
+                    (canonical id is "G", type "stepper"). This block is unreachable dead code
+                    kept as a safety net; rendered by <PartG> above via the stepper path. */}
                 {activeSection === "officeReview" && (
                   <div className="space-y-6">
                     <Card className="bg-white">
@@ -4312,16 +4331,37 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                         <div className="space-y-4 mb-6">
                           <div className="flex justify-between items-center">
                             <h3 className="font-medium text-[16px] text-[#15569e]" style={{ color: '#16569e' }}>G1. Office Review</h3>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="text-gray-600 border-gray-300"
-                              onClick={addOfficeReview}
-                              disabled={appraisalStatus === 'reviewed'}
-                            >
-                              + Add Reviewer
-                            </Button>
+                            <Popover open={g1ReviewPickerOpen} onOpenChange={setG1ReviewPickerOpen}>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-gray-600 border-gray-300"
+                                  disabled={appraisalStatus === 'reviewed'}
+                                >
+                                  + Add Reviewer
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-72 p-2 max-h-60 overflow-y-auto" align="end">
+                                {officeUsers.length === 0 && (
+                                  <p className="text-sm text-gray-500 p-2">No users available.</p>
+                                )}
+                                {officeUsers.map((user) => {
+                                  const alreadyAdded = form.watch("officeReviews").some(r => r.userUuid === user.userUuid && !r.isAssigned);
+                                  return (
+                                    <div
+                                      key={user.userUuid}
+                                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer"
+                                      onClick={() => { addOfficeReview(user); setG1ReviewPickerOpen(false); }}
+                                    >
+                                      <span className="text-sm text-gray-700 flex-1">{user.displayName}</span>
+                                      {alreadyAdded && <Check className="h-3.5 w-3.5 text-blue-600" />}
+                                    </div>
+                                  );
+                                })}
+                              </PopoverContent>
+                            </Popover>
                           </div>
                           <div className="space-y-4">
                             {form.watch("officeReviews").map((review, index) => (

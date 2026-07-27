@@ -68,6 +68,10 @@ export const officeReviewSchema = z.object({
   name: z.string(),
   position: z.string(),
   feedback: z.string(),
+  // Marks rows seeded from Stage-2 assigned reviewers; persists through DB save/reload.
+  isAssigned: z.boolean().optional(),
+  // System user uuid — enables future email notifications for manually-added reviewers.
+  userUuid: z.string().nullable().optional(),
 });
 
 export const trainingFollowupSchema = z.object({
@@ -278,7 +282,7 @@ export interface PartGProps extends AppraisalFormSectionBaseProps {
   setEditingOfficeReview: (id: string | null) => void;
   isTrainingFollowupDialogOpen: boolean;
   setIsTrainingFollowupDialogOpen: (open: boolean) => void;
-  addOfficeReview: () => void;
+  addOfficeReview: (user: { userUuid: string; displayName: string; designation: string }) => void;
   updateOfficeReview: (id: string, field: string, value: string) => void;
   deleteOfficeReview: (id: string) => void;
   addTrainingFollowup: () => void;
@@ -289,6 +293,7 @@ export interface PartGProps extends AppraisalFormSectionBaseProps {
   stage3Mutation: { isPending: boolean };
   saveAppraisalMutation: { isPending: boolean };
   users?: { userUuid: string; displayName: string }[];
+  officeUsers?: { userUuid: string; displayName: string; designation: string }[];
   // Assigned reviewers header (read-only, populated from stage 2)
   assignedReviewers?: { reviewerName: string; designation: string }[];
 }

@@ -150,6 +150,8 @@ export const apprOfficeReviewsV2 = pgTable("appr_office_reviews_v2", {
   name: text("name"),
   position: text("position"),
   feedback: text("feedback"),
+  userUuid: text("user_uuid"),
+  isAssigned: boolean("is_assigned").default(false),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });

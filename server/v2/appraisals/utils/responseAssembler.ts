@@ -95,6 +95,8 @@ export function assembleV1Response(
       name: s(or.name),
       position: s(or.position),
       feedback: s(or.feedback),
+      userUuid: (or as any).userUuid ?? null,
+      isAssigned: (or as any).isAssigned ?? false,
     })),
     trainingFollowups: trainingFollowups.map((tf, i) => ({
       id: String(i + 1),
