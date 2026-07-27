@@ -11,6 +11,7 @@ const alertsService = new AlertsService();
 export class CrewingAlertEngine {
   private isRunning = false;
   private intervalId: NodeJS.Timeout | null = null;
+  private initialScanTimeoutId: NodeJS.Timeout | null = null;
   private scanIntervalMs = parseInt(process.env.ALERT_SCAN_INTERVAL_MS || "900000", 10); // 15 minutes default
 
   start(intervalMs?: number): void {
@@ -25,8 +26,10 @@ export class CrewingAlertEngine {
 
     console.log(`[CrewingAlertEngine] Starting scanner scheduler (interval: ${this.scanIntervalMs / 1000 / 60} minutes)`);
 
-    // Defer initial scan to allow database setup and migrations to complete
-    setTimeout(() => {
+    // Defer initial scan to allow database setup and migrations to complete.
+    // Store the timeout ID so stop() can cancel it before it fires.
+    this.initialScanTimeoutId = setTimeout(() => {
+      this.initialScanTimeoutId = null;
       alertsService.runScan().catch(err => {
         console.error('[CrewingAlertEngine] Error during initial scan:', err);
       });
@@ -42,6 +45,10 @@ export class CrewingAlertEngine {
   }
 
   stop(): void {
+    if (this.initialScanTimeoutId) {
+      clearTimeout(this.initialScanTimeoutId);
+      this.initialScanTimeoutId = null;
+    }
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;

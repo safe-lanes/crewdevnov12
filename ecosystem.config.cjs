@@ -17,6 +17,7 @@ module.exports = {
       out_file: "logs/pm2-out.log",
       merge_logs: true,
       restart_delay: 3000,
+      kill_timeout: 11000,
       max_restarts: 10,
     },
   ],

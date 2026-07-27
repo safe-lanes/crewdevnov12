@@ -132,11 +132,15 @@ app.use((req, res, next) => {
       await tenantConnectionManager.closeAll();
       process.exit(0);
     });
+    // Immediately destroy all open keep-alive connections so the port is
+    // released without waiting for clients to close their end.
+    httpServer.closeAllConnections();
 
-    // Force close after 10 seconds
+    // Force close after 10 seconds if connections still haven't drained.
+    // Exit 0 so PM2 treats this as a clean stop, not a crash.
     setTimeout(() => {
       log('Forcing server close after 10 seconds...');
-      process.exit(1);
+      process.exit(0);
     }, 10000);
   };
 
