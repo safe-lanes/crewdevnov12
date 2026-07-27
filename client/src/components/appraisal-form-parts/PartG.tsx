@@ -117,12 +117,17 @@ const PartGComponent: React.FC<PartGProps> = ({
                 </Button>
               </div>
               <div className="space-y-4">
-                {form.watch("officeReviews").map((review, index) => (
+                {form.watch("officeReviews").map((review, index) => {
+                  // Rows seeded from assigned reviewers carry isAssigned:true (persists through JSON save/reload).
+                  // Fallback: also match legacy rows that used the old 'assigned-<uuid>' id prefix.
+                  const isAssignedRow = !!review.isAssigned || review.id.startsWith('assigned-');
+                  const isIdentityLocked = isG1Locked || isAssignedRow;
+                  return (
                   <div key={review.id} className="border rounded-lg p-4">
                     <div className="flex gap-4 mb-3">
                       <div className="flex-1">
                         <label className="text-xs text-gray-500">Reviewer Name</label>
-                        {isG1Locked ? (
+                        {isIdentityLocked ? (
                           <Input value={review.name} readOnly disabled className="bg-gray-100" data-testid={`input-reviewer-name-${review.id}`} />
                         ) : (
                           <Input value={review.name} onChange={(e) => updateOfficeReview(review.id, "name", e.target.value)} placeholder="Enter name" data-testid={`input-reviewer-name-${review.id}`} />
@@ -130,13 +135,13 @@ const PartGComponent: React.FC<PartGProps> = ({
                       </div>
                       <div className="flex-1">
                         <label className="text-xs text-gray-500">Position</label>
-                        {isG1Locked ? (
+                        {isIdentityLocked ? (
                           <Input value={review.position} readOnly disabled className="bg-gray-100" data-testid={`input-reviewer-position-${review.id}`} />
                         ) : (
                           <Input value={review.position} onChange={(e) => updateOfficeReview(review.id, "position", e.target.value)} placeholder="Enter position" data-testid={`input-reviewer-position-${review.id}`} />
                         )}
                       </div>
-                      {!isG1Locked && (
+                      {!isG1Locked && !isAssignedRow && (
                         <Button type="button" variant="ghost" size="icon" onClick={() => deleteOfficeReview(review.id)} data-testid={`button-delete-reviewer-${review.id}`}>
                           <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
                         </Button>
@@ -144,7 +149,8 @@ const PartGComponent: React.FC<PartGProps> = ({
                     </div>
                     <Textarea value={review.feedback} onChange={(e) => updateOfficeReview(review.id, "feedback", e.target.value)} placeholder="Enter feedback..." rows={3} />
                   </div>
-                ))}
+                  );
+                })}
                 {form.watch("officeReviews").length === 0 && (
                   <div className="text-center text-gray-500 py-8 border rounded-lg">
                     No office reviews added yet. Click "Add Reviewer" to get started.

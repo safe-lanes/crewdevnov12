@@ -98,10 +98,9 @@ async function triggerAppraisalReviewNotification(
 ): Promise<void> {
   const origin = process.env.VITE_API_CREWING_URL;
   if (!origin) {
-    logEmailEvent('WARN', '[Appraisals V2] VITE_API_CREWING_URL not set — skipping review notification emails.');
-    return;
+    logEmailEvent('WARN', '[Appraisals V2] VITE_API_CREWING_URL not set — appraisal link will be omitted from email body.');
   }
-  const appraisalLink = `${origin}/crewing?appraisal=${appraisalUuid}`;
+  const appraisalLink = origin ? `${origin}/crewing?appraisal=${appraisalUuid}` : '';
   const db = getDb();
 
   for (const reviewer of reviewers) {

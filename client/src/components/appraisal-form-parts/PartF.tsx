@@ -466,79 +466,102 @@ const PartFComponent: React.FC<PartFProps> = ({
             </div>
 
             {/* Reviewer Assignment + Submit for Review */}
-            {!isPostStage2 && (
-              <div className="border border-[#EAEBEF] rounded-lg p-4">
-                <h4 className="text-base font-medium mb-3" style={{ color: '#16569e' }}>Submit for Review To</h4>
-                <p className="text-sm text-gray-500 mb-3">Select one or more reviewers who will review this appraisal in Part G.</p>
-                <Popover open={reviewerPopoverOpen} onOpenChange={setReviewerPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full justify-between text-sm"
-                      data-testid="button-reviewer-select"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-gray-500" />
-                        {selectedReviewers.length === 0
-                          ? 'Select reviewers...'
-                          : `${selectedReviewers.length} reviewer${selectedReviewers.length > 1 ? 's' : ''} selected`}
-                      </span>
-                      <ChevronDown className="h-4 w-4 text-gray-400" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-2 max-h-60 overflow-y-auto" align="start">
-                    {officeUsers.length === 0 && (
-                      <p className="text-sm text-gray-500 p-2">No users available.</p>
-                    )}
-                    {officeUsers.map((user) => {
-                      const isChecked = selectedReviewers.some(r => r.userUuid === user.userUuid);
-                      return (
-                        <div
-                          key={user.userUuid}
-                          className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer"
-                          onClick={() => {
-                            setSelectedReviewers(prev =>
-                              isChecked
-                                ? prev.filter(r => r.userUuid !== user.userUuid)
-                                : [...prev, { userUuid: user.userUuid, reviewerName: user.displayName, designation: user.designation }]
-                            );
-                          }}
-                          data-testid={`reviewer-option-${user.userUuid}`}
+            <div className="border border-[#EAEBEF] rounded-lg p-4">
+              {isPostStage2 ? (
+                /* Read-only view after Stage 2 submit */
+                <>
+                  <h4 className="text-base font-medium mb-2" style={{ color: '#16569e' }}>Assigned Reviewers</h4>
+                  {selectedReviewers.length === 0 ? (
+                    <p className="text-sm text-gray-400 italic">No reviewers were assigned.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedReviewers.map(r => (
+                        <span
+                          key={r.userUuid}
+                          className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full"
+                          data-testid={`reviewer-chip-${r.userUuid}`}
                         >
-                          <Checkbox
-                            checked={isChecked}
-                            onCheckedChange={() => {}}
-                            className="pointer-events-none"
-                          />
-                          <span className="text-sm text-gray-700">{user.displayName}</span>
-                        </div>
-                      );
-                    })}
-                  </PopoverContent>
-                </Popover>
-                {selectedReviewers.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {selectedReviewers.map(r => (
-                      <span
-                        key={r.userUuid}
-                        className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full"
+                          {r.reviewerName}{r.designation ? ` — ${r.designation}` : ''}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Interactive picker before Stage 2 submit */
+                <>
+                  <h4 className="text-base font-medium mb-3" style={{ color: '#16569e' }}>Submit for Review To</h4>
+                  <p className="text-sm text-gray-500 mb-3">Select one or more reviewers who will review this appraisal in Part G.</p>
+                  <Popover open={reviewerPopoverOpen} onOpenChange={setReviewerPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-between text-sm"
+                        data-testid="button-reviewer-select"
                       >
-                        {r.reviewerName}
-                        <button
-                          type="button"
-                          className="hover:text-red-600 ml-1"
-                          onClick={() => setSelectedReviewers(prev => prev.filter(x => x.userUuid !== r.userUuid))}
-                          data-testid={`reviewer-remove-${r.userUuid}`}
+                        <span className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-gray-500" />
+                          {selectedReviewers.length === 0
+                            ? 'Select reviewers...'
+                            : `${selectedReviewers.length} reviewer${selectedReviewers.length > 1 ? 's' : ''} selected`}
+                        </span>
+                        <ChevronDown className="h-4 w-4 text-gray-400" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-2 max-h-60 overflow-y-auto" align="start">
+                      {officeUsers.length === 0 && (
+                        <p className="text-sm text-gray-500 p-2">No users available.</p>
+                      )}
+                      {officeUsers.map((user) => {
+                        const isChecked = selectedReviewers.some(r => r.userUuid === user.userUuid);
+                        return (
+                          <div
+                            key={user.userUuid}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer"
+                            onClick={() => {
+                              setSelectedReviewers(prev =>
+                                isChecked
+                                  ? prev.filter(r => r.userUuid !== user.userUuid)
+                                  : [...prev, { userUuid: user.userUuid, reviewerName: user.displayName, designation: user.designation }]
+                              );
+                            }}
+                            data-testid={`reviewer-option-${user.userUuid}`}
+                          >
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={() => {}}
+                              className="pointer-events-none"
+                            />
+                            <span className="text-sm text-gray-700">{user.displayName}</span>
+                          </div>
+                        );
+                      })}
+                    </PopoverContent>
+                  </Popover>
+                  {selectedReviewers.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {selectedReviewers.map(r => (
+                        <span
+                          key={r.userUuid}
+                          className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full"
                         >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                          {r.reviewerName}
+                          <button
+                            type="button"
+                            className="hover:text-red-600 ml-1"
+                            onClick={() => setSelectedReviewers(prev => prev.filter(x => x.userUuid !== r.userUuid))}
+                            data-testid={`reviewer-remove-${r.userUuid}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* Action Buttons - Submit for Review */}
             <div className="flex justify-end gap-4 mt-6">

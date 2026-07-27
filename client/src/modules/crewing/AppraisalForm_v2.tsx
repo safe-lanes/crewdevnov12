@@ -164,6 +164,9 @@ const officeReviewSchema = z.object({
   name: z.string(),
   position: z.string(),
   feedback: z.string(),
+  // Marks rows seeded from Stage-2 assigned reviewers. Persists through JSON
+  // save/reload so PartG can keep them locked even after a draft save.
+  isAssigned: z.boolean().optional(),
 });
 
 const trainingFollowupSchema = z.object({
@@ -1307,7 +1310,22 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
         if (parsedData.officeReviews) {
           form.setValue('officeReviews', parsedData.officeReviews, { shouldDirty: false });
         }
-        
+
+        // Seed G1 office review rows from assigned reviewers if no reviews exist yet.
+        // Sets isAssigned:true so PartG keeps name/position locked even after save+reload.
+        const existingOfficeReviews = parsedData.officeReviews || [];
+        const assignedRevs = (existingAppraisal.reviewers || []).filter((r: any) => r.userUuid);
+        if (existingOfficeReviews.length === 0 && assignedRevs.length > 0) {
+          const seededReviews = assignedRevs.map((r: any) => ({
+            id: crypto.randomUUID(),
+            name: r.reviewerName || '',
+            position: r.designation || '',
+            feedback: '',
+            isAssigned: true,
+          }));
+          form.setValue('officeReviews', seededReviews, { shouldDirty: false });
+        }
+
         // Load comments from form data into useState hooks for persistence
         loadCommentsFromFormData(parsedData);
         
