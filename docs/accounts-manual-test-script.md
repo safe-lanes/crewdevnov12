@@ -3,13 +3,13 @@
 
 | | |
 |---|---|
-| **Purpose** | Verify the entire Accounts module end-to-end: tenant configuration, pay elements, wage scales, CBA floors, crew engagements, vessel-side monthly entry, office review, wage calculation, money screens, approvals & locking, portage bill, a second month with a mid-month wage step, final settlement, and reports. |
+| **Purpose** | Verify the entire Accounts module end-to-end: tenant configuration, pay elements, wage scales, CBA floors, crew engagements, vessel-side monthly entry, office review, office money screens, wage calculation, approvals & locking, portage bill, a second month with a mid-month wage step, allotment suspension, final settlement, settlement-skip re-run, and reports. |
 | **Build under test** | Development build served by the "Start application" workflow (port 5000). Record the git commit hash on the sign-off sheet before starting. |
 | **Script date** | 27 July 2026 |
-| **Estimated time** | 6–7 hours for one careful pass (phases A–O). Natural break points: after Phase H and after Phase K. |
+| **Estimated time** | 6–7 hours for one careful pass (phases A–O). Natural break points: after Phase J (approval/lock) and after Phase M (settlement). |
 | **Audience** | Manual testers. **No maritime or payroll knowledge is required.** Every term is defined in the Glossary; every value to type is given exactly; every expected figure is pre-computed in Appendix A. |
 | **Recording results** | Print or copy this document. For each step, tick Pass/Fail and note anything unexpected in the Notes column. Use the Defect Report Template at the end for every Fail. |
-| **Verification status** | Every money figure in this script was verified against the live calculation engine on 27 Jul 2026 (API-level walk-through). Steps whose exact on-screen wording could not be verified hands-on are marked ⚠ — treat small wording differences there as a Note, not a Fail, as long as the meaning and the figures match. |
+| **Verification status** | Every money figure in this script was verified against the live calculation engine (API-level walk-through). Steps whose exact on-screen wording could not be verified hands-on are marked ⚠ — treat small wording differences there as a Note, not a Fail, as long as the meaning and the figures match. The API permission behaviour in Appendix B.1 was verified on 27 Jul 2026 against real authentication (AUTH_BYPASS off). |
 
 ---
 
@@ -51,7 +51,7 @@
 |---|---|---|
 | P1 | Confirm the application is running: open the app preview URL (dev server, port 5000). | The login/landing page loads without errors. |
 | P2 | Confirm you are on a **development** environment with the developer persona switcher available (`AUTH_BYPASS=true`). Look for a round **user icon** at the right end of the top navigation bar. | Clicking it opens a persona menu with **Office** personas (Sail Admin, Admin, User) and **Ship** personas (Vessel Admin, Vessel User). |
-| P3 | **Clean state.** This script creates all of its own data with fresh, uniquely named records (vessel "MV CHECKMATE", scale "MTS SCALE 2026", and the five crew names listed in the dataset table below, e.g. "JOHN MASTERSON"). You do **not** need to wipe the database, but the vessel and crew names below must not already exist. If they do (a previous aborted run), either delete those records or append a suffix (e.g. "MV CHECKMATE 2") **consistently everywhere** in this script. | No records named "MV CHECKMATE" or "MTS SCALE 2026" exist. |
+| P3 | **Clean state.** This script creates all of its own data with fresh, uniquely named records (vessel "MV CHECKMATE", scale "MTS SCALE 2026", and the five crew names listed in the dataset table below, e.g. "JOHN MASTERSON"). You do **not** need to wipe the database, but the vessel and crew names below must not already exist. If they do (a previous aborted run), either delete those records or append a suffix (e.g. "MV CHECKMATE 2") **consistently everywhere** in this script. The Phase E seed script is idempotent, so re-running it is safe. | No records named "MV CHECKMATE" or "MTS SCALE 2026" exist. |
 | P4 | The Accounts module is reached via the **Module Navigator** (grid icon in the top bar) → **Accounts**. Open it once now. | Accounts sidebar appears with sections: Master Tables (Pay Elements, Wage Scales, CBA Reference), Payroll (Payroll Run, Portage Bill, Monthly Txns, Settlements, Vessel Portage), Crew Finance (Allotments, Cash & Bond), Reports (Payslips, GL Export, Fleet Summary), Admin (Tenant Config). |
 
 ### Persona-switch guide
@@ -79,6 +79,8 @@ One vessel (**MV CHECKMATE**), five crew in three ranks, two months (**March 202
 | C3 | ANDRES BODEGA | Able Seaman (AB) | 01-Mar-2026 | — |
 | C4 | BEN DECKER | Able Seaman (AB) | 01-Mar-2026 | — |
 | C5 | SAMUEL PARTIDA | Able Seaman (AB) | 15-Mar-2026 | 20-Apr-2026 |
+
+> The seed script (Phase E) stores each crew member's rank as the company **rank code** (Master = `R001`, Chief Officer = `R002`, Able Seaman = `R015`), not the rank name — the engagement sync resolves the code directly. If you create the crew by hand instead (Appendix C), pick those exact ranks from the rank list so the code is stored correctly.
 
 ---
 
@@ -137,18 +139,19 @@ Menu: **Accounts → Master Tables → CBA Reference**, then back to the scale.
 
 ## Phase E — Crew, engagements and seniority (Office / Sail Admin)
 
-The vessel and crew come from the wider system: create vessel **MV CHECKMATE** under **Admin module → Masters → Vessel**, the five crew (table above, names exactly as written) under **Admin → Crew Pool**, and assign them to MV CHECKMATE with the sign-on dates above via the **Rotation** module. Then sync them into Accounts.
+Phase E creates the vessel, five crew and their assignments in the wider system (Admin / Crew Pool / Rotation modules) and then syncs them into Accounts. This is the one phase that spans other modules, so it is scripted: **run the seed script, verify it, then sync and set C2's seniority anchor.** If you cannot run the script, use the manual fallback in **Appendix C** instead of steps E1–E2.
+
+**Seed script:** `scripts/seed-test-script-data.ts`. It idempotently creates vessel **MV CHECKMATE**, the five crew (exact names, rank codes `R001`/`R002`/`R015`, sign-on dates from the dataset table) and their assignments on MV CHECKMATE. Safe to re-run.
 
 | Step | Action | Expected result | P/F | Notes |
 |---|---|---|---|---|
-| E1 | ⚠ Module Navigator (grid icon) → **Admin** module → **Masters → Vessel** → create a vessel named exactly `MV CHECKMATE` (fill any other mandatory fields with sensible defaults and note what you chose). Save. | Vessel appears in the vessel list. | | |
-| E2 | ⚠ Admin module → **Crew Pool** ("All") → create the 5 crew, names **exactly** as in the dataset table (JOHN MASTERSON, CARLOS OFICIAL, ANDRES BODEGA, BEN DECKER, SAMUEL PARTIDA), with ranks Master / Chief Officer / Able Seaman ×3 respectively. Save each. | All 5 appear in the crew pool with the correct rank. | | |
-| E3 | ⚠ Module Navigator → **Rotation** module → assign each crew member to MV CHECKMATE with the exact sign-on dates from the dataset table (all 01-Mar-2026 except SAMUEL PARTIDA = 15-Mar-2026). | All 5 assignments exist with the correct dates. | | |
-| E4 | ⚠ Back in Accounts: **Payroll → Payroll Run** → select vessel MV CHECKMATE → Step 1 "Crew & Engagement Review" → run the engagement **sync**. | 5 engagements appear, one per crew member, each showing rank, the correct sign-on date, wage scale `MTS SCALE 2026`, scale year 1. | | |
-| E5 | ⚠ On C2 (CARLOS OFICIAL), set the seniority so his **next year-step falls on 16-Apr-2026** (manual seniority anchor: served in rank since 16-Apr-2025). | C2's engagement shows next step date 16-Apr-2026. **This date drives Phase L** — if it is wrong, L3 will fail. | | |
-| E6 | Confirm C5 (SAMUEL PARTIDA) shows sign-on 15-Mar-2026 and C1–C4 show 01-Mar-2026. | Correct dates shown. | | |
+| E1 | From a shell in the project, run: `npx tsx scripts/seed-test-script-data.ts` | The script prints each vessel/crew/assignment created (or "refreshed" on a re-run) and finishes with **"✓ Verification passed: 5 crew on MV CHECKMATE with rank codes R001/R002/R015×3."** | | |
+| E2 | Verify independently: `npx tsx scripts/seed-test-script-data.ts --verify` | Prints a 5-row table: JOHN MASTERSON (R001, 01-Mar-2026), CARLOS OFICIAL (R002, 01-Mar-2026), ANDRES BODEGA (R015, 01-Mar-2026), BEN DECKER (R015, 01-Mar-2026), SAMUEL PARTIDA (R015, sign-on 15-Mar-2026, sign-off 20-Apr-2026) — all on MV CHECKMATE. | | |
+| E3 | In Accounts: **Payroll → Payroll Run** → select vessel MV CHECKMATE → Step 1 "Crew & Engagement Review" → run the engagement **sync**. | 5 engagements appear, one per crew member, each showing rank, the correct sign-on date, wage scale `MTS SCALE 2026`, scale year 1. | | |
+| E4 | ⚠ On C2 (CARLOS OFICIAL), set the seniority so his **next year-step falls on 16-Apr-2026** (manual seniority anchor: served in rank since 16-Apr-2025). | C2's engagement shows next step date 16-Apr-2026. **This date drives Phase L** — if it is wrong, L3 will fail. | | |
+| E5 | Confirm C5 (SAMUEL PARTIDA) shows sign-on 15-Mar-2026 and C1–C4 show 01-Mar-2026. | Correct dates shown. | | |
 
-> ⚠ Phase E is the only phase whose exact screen flow was not machine-verified; if a step's location differs, note where you actually performed it. All later figures depend only on the resulting data (dates, ranks, scale), which later phases confirm.
+> ⚠ The engagement sync and the seniority-anchor screen (E3–E4) are the steps whose exact on-screen wording could not be machine-verified; if a step's location differs, note where you actually performed it. All later figures depend only on the resulting data (dates, ranks, scale), which later phases confirm.
 
 ## Phase F — Vessel monthly entry, March 2026 (Ship / Vessel Admin on MV CHECKMATE)
 
@@ -157,11 +160,11 @@ Menu (as ship user): **Accounts → Vessel Portage**, month **March 2026**. Tabs
 | Step | Action | Expected result | P/F | Notes |
 |---|---|---|---|---|
 | F1 | Open the **Overtime** tab. | One row per crew member. Read-only info columns show the OT **rate** and **Guaranteed hrs** from the scale: MST rate 15.00 / guaranteed **80** hrs; CO 10.00 / **80**; AB 7.50 / **80** (Appendix A.2). | | |
-| F2 | Enter overtime hours: C1 = `10`, C3 = `20`. | Amounts auto-compute: C1 **150.00**, C3 **150.00** (A.3). An unsaved-changes counter appears (e.g. "2 unsaved changes"). | | |
-| F3 | Click **Save** on the tab. | Toast "Overtime saved" (tab label + "saved"); counter clears. | | |
+| F2 | Enter overtime hours: C1 = `10`, C3 = `20`. Leave the cursor in C3's cell — **do not** press Tab/Enter or click elsewhere. | Amounts auto-compute: C1 **150.00**, C3 **150.00** (A.3). An unsaved-changes counter appears (e.g. "2 unsaved changes"). | | |
+| F3 | **Save-without-leaving-cell (data-loss regression):** with the cursor still in C3's cell, click **Save** immediately. Then **reload the page** and re-open the Overtime tab. | The in-progress value is included in the save: toast "Overtime saved", counter clears, and after reload C3 still shows `20` / **150.00** (and C1 `10` / 150.00). No entry is lost. | | |
 | F4 | **Cash advances** tab: add a dated column for `10-Mar-2026` ("+ Add date"), enter `300.00` for C3. Save. | Saved. | | |
-| F5 | Open the **CTM** tab. | A line of type "cash advance to crew", amount **300.00**, exists for C3's advance. **Known issue:** the line's date shows the *entry* date (today), not 10-Mar-2026 — see Appendix B.1; do not fail. | | |
-| F6 | **Allotments** tab: standing allotments column is read-only (empty for now — the office allotment is created in Phase I; ignore). In "This month extra" enter `500.00` for C2. Save. | Saved. | | |
+| F5 | Open the **CTM** tab. | A line of type "cash advance to crew", amount **300.00**, exists for C3's advance, **dated 10-Mar-2026** — the mirrored CTM line carries the advance's dated column, not the entry date. | | |
+| F6 | **Allotments** tab: standing allotments column is read-only (empty for now — the office allotment is created in Phase H; ignore). In "This month extra" enter `500.00` for C2. Save. | Saved. | | |
 | F7 | **Bond/slop chest** tab: add dated column `20-Mar-2026`, enter `60.00` for C1. Save. | Saved. | | |
 | F8 | **Other deductions** tab: for C4 enter amount `45.00`, remarks `Crew mess damage`. Save. | Saved. | | |
 | F9 | **Radio / Telephone** (extra) tab: enter `25.00` for C1. Save. | Saved — the extra tab accepts entries exactly like a built-in tab. | | |
@@ -179,38 +182,32 @@ As **Office / Sail Admin**: **Accounts → Payroll → Monthly Txns**, vessel MV
 | G2 | **Accept** (check icon) each of the remaining 6 entries. | All show status **Accepted**. | | |
 | G3 | Switch to Ship / Vessel Admin, open March, find the rejected entry. | The row shows Rejected with the exact comment from G1. Switch back to Office. | | |
 
-## Phase H — Calculation run & exact figures (Office / Sail Admin)
+## Phase H — Office money screens (Office / Sail Admin)
 
-> **STOP — do not run H1 yet.** First execute Phase I steps **I1–I5** (office money screens). The calculation reads the standing allotment (800), the office advance (500) and the bond rollup (50); if you run the calc before creating them, every figure from H2 onward will be wrong. Execution order for this part of the script: **G → I1–I5 → H → I6 → J**.
-
-Menu: **Accounts → Payroll → Payroll Run**, MV CHECKMATE, March 2026, Step 2 → **Run Calculation**.
-
-| Gate | Check before continuing |
-|---|---|
-| ☐ | I1 done — standing allotment 800.00 for C2 exists |
-| ☐ | I3 done — office advance 500.00 / recovery 200.00 for C4 exists |
-| ☐ | I4–I5 done — bond rollup 50.00 for C4 exists |
-
-| Step | Action | Expected result (all figures Appendix A.4–A.6) | P/F | Notes |
-|---|---|---|---|---|
-| H1 | Run the calculation for March 2026. | Run completes; per-crew rows appear. | | |
-| H2 | Check per-crew totals: | C1: deductions **85.00**, net on board **7,265.00** · C2: 1,300.00 / **3,500.00** · C3: 300.00 / **3,450.00** · C4: 250.00 / **3,350.00** · C5: 0.00 / **2,040.00**. | | |
-| H3 | Check vessel totals. | Earnings **21,540.00**, deductions **1,935.00**, net **19,605.00** (A.6). | | |
-| H4 | Drill into **C5** (partial month). | Lines: Basic Wage **1,700.00**, Fixed Overtime **340.00** (both 15–31 Mar, **17** days served), Leave Pay **170.00** marked as settlement accrual. Derivation shown like "Monthly 3,000 × 17/30 days". | | |
-| H5 | Drill into **C2**. | TWO allotment deduction lines: **800.00** (standing, from the register) and **500.00** (this-month extra) — never merged. Earnings 4,000 + 800; leave accrual 400. | | |
-| H6 | Drill into **C4**. | Deductions: advance recovery **200.00** (first instalment of the 500 advance) and bond **50.00** (the office rollup, I4–I5). The rejected 45.00 does **not** appear. | | |
-| H7 | Check leave/settlement accrual columns. | Leave this month: C1 600, C2 400, C3 300, C4 300, C5 170 → vessel accrual **1,770.00** (A.5). Balance B/F all **0.00**; Balance C/F equals each net (first month). | | |
-
-## Phase I — Office money screens (execute I1–I5 before H1)
+These office-side money entries must exist **before** the calculation is run (Phase I) — the calculation reads the standing allotment (800), the office advance (500) and the bond rollup (50).
 
 | Step | Action | Expected result | P/F | Notes |
 |---|---|---|---|---|
-| I1 | **Crew Finance → Allotments**: create for C2 — beneficiary `MARIA OFICIAL`, relationship Spouse, type Fixed, value `800.00`, USD, bank `BDO Unibank`, account `004512345678`, valid from `01-Mar-2026`, status Active. | Saved. | | |
-| I2 | Look at the allotments list, "Bank" column. | The account number is **masked**: shows as `•••• 5678` (only last 4 digits). | | |
-| I3 | **Crew Finance → Cash & Bond → Advances**: create for C4 — amount `500.00`, USD, date `05-Mar-2026`, **Recovery per month `200.00`**, remarks `Family emergency`. | Before saving, the form shows "Recovery schedule preview — **3 month(s)**" with the final month highlighted (amber badge): 200 / 200 / **100** — the last instalment is clamped to the remaining balance (A.7). | | |
-| I4 | **Cash & Bond → Bond**: create two items for C4 in March — `Cigarettes`, qty `2`, unit price `15.00`, total `30.00`, sale date 12-Mar-2026; and `Chocolate`, qty `1`, unit `20.00`, total `20.00`, sale date 18-Mar-2026 (auto-deduct ON). | Both saved. | | |
-| I5 | Check the "Monthly Transaction Rollup" section (Bond tab) and Monthly Txns for March. | Exactly **one** rollup transaction for C4, amount **50.00** (30 + 20) — itemized purchases roll into a single monthly deduction, never two. | | |
-| I6 | (After H1) Re-open the drill-downs of C2 and C4. | Each deduction appears **exactly once**: allotment 800 + 500 for C2; recovery 200 + bond 50 for C4. No doubling. | | |
+| H1 | **Crew Finance → Allotments**: create for C2 — beneficiary `MARIA OFICIAL`, relationship Spouse, type Fixed, value `800.00`, USD, bank `BDO Unibank`, account `004512345678`, valid from `01-Mar-2026`, status Active. | Saved. | | |
+| H2 | Look at the allotments list, "Bank" column. | The account number is **masked**: shows as `•••• 5678` (only last 4 digits). | | |
+| H3 | **Crew Finance → Cash & Bond → Advances**: create for C4 — amount `500.00`, USD, date `05-Mar-2026`, **Recovery per month `200.00`**, remarks `Family emergency`. | Before saving, the form shows "Recovery schedule preview — **3 month(s)**" with the final month highlighted (amber badge): 200 / 200 / **100** — the last instalment is clamped to the remaining balance (A.7). | | |
+| H4 | **Cash & Bond → Bond**: create two items for C4 in March — `Cigarettes`, qty `2`, unit price `15.00`, total `30.00`, sale date 12-Mar-2026; and `Chocolate`, qty `1`, unit `20.00`, total `20.00`, sale date 18-Mar-2026 (auto-deduct ON). | Both saved. | | |
+| H5 | Check the "Monthly Transaction Rollup" section (Bond tab) and Monthly Txns for March. | Exactly **one** rollup transaction for C4, amount **50.00** (30 + 20) — itemized purchases roll into a single monthly deduction, never two. | | |
+
+## Phase I — Calculation run & exact figures (Office / Sail Admin)
+
+Menu: **Accounts → Payroll → Payroll Run**, MV CHECKMATE, March 2026, Step 2 → **Run Calculation**. The office money screens (Phase H) are already in place, so the calculation will read the standing allotment (800), the office advance recovery (200) and the bond rollup (50).
+
+| Step | Action | Expected result (all figures Appendix A.4–A.6) | P/F | Notes |
+|---|---|---|---|---|
+| I1 | Run the calculation for March 2026. | Run completes; per-crew rows appear. | | |
+| I2 | Check per-crew totals: | C1: deductions **85.00**, net on board **7,265.00** · C2: 1,300.00 / **3,500.00** · C3: 300.00 / **3,450.00** · C4: 250.00 / **3,350.00** · C5: 0.00 / **2,040.00**. | | |
+| I3 | Check vessel totals. | Earnings **21,540.00**, deductions **1,935.00**, net **19,605.00** (A.6). | | |
+| I4 | Drill into **C5** (partial month). | Lines: Basic Wage **1,700.00**, Fixed Overtime **340.00** (both 15–31 Mar, **17** days served), Leave Pay **170.00** marked as settlement accrual. Derivation shown like "Monthly 3,000 × 17/30 days". | | |
+| I5 | Drill into **C2**. | TWO allotment deduction lines: **800.00** (standing, from the register) and **500.00** (this-month extra) — never merged. Earnings 4,000 + 800; leave accrual 400. | | |
+| I6 | Drill into **C4**. | Deductions: advance recovery **200.00** (first instalment of the 500 advance) and bond **50.00** (the office rollup, H4–H5). The rejected 45.00 does **not** appear. | | |
+| I7 | Check leave/settlement accrual columns. | Leave this month: C1 600, C2 400, C3 300, C4 300, C5 170 → vessel accrual **1,770.00** (A.5). Balance B/F all **0.00**; Balance C/F equals each net (first month). | | |
+| I8 | Post-calc re-check: re-open the drill-downs of C2 and C4. | Each deduction appears **exactly once**: allotment 800 + 500 for C2; recovery 200 + bond 50 for C4. No doubling. | | |
 
 ## Phase J — Approval & locking (two office personas)
 
@@ -237,7 +234,7 @@ Menu: **Payroll → Portage Bill**, MV CHECKMATE, March 2026.
 | K3 | Spot-check row C1. | Gross 7,350.00 (6,000 + 1,200 + 150 OT) · Deductions 85.00 · Net 7,265.00. | | |
 | K4 | Click **Print**. | A printable portage bill renders with the same figures. | | |
 
-## Phase L — Second month, April 2026 (mid-month step, carry-forward)
+## Phase L — Second month, April 2026 (mid-month step, carry-forward, allotment suspension)
 
 As **Ship / Vessel Admin**, month **April 2026**: enter overtime C1 = `8` hours (only entry this month). Save, Submit. As **Office**: accept it, then Run Calculation for April.
 
@@ -251,8 +248,10 @@ As **Ship / Vessel Admin**, month **April 2026**: enter overtime C1 = `8` hours 
 | L6 | C4 April drill-down. | Advance recovery **200.00** again (instalment 2 of 3). Net **3,400.00**; Balance C/F **6,750.00**. | | |
 | L7 | C5 April (partial, sign-off 20-Apr). | Basic **2,000.00**, FOT **400.00**, Leave **200.00** — 20 days served (1–20 Apr, both inclusive). Net 2,400.00; Balance C/F **4,440.00**; Leave C/F **370.00** (170 + 200). | | |
 | L8 | C1 April totals. | Net **7,320.00** (7,200 + 120 OT, no deductions); Balance C/F **14,585.00**. | | |
+| L9 | **Suspend allotment (regression).** Crew Finance → Allotments, open C2's standing **800.00** allotment (MARIA OFICIAL) and **Suspend** it. Re-run the April calculation. | The allotment deduction no longer appears on C2. C2's net rises by exactly **800.00**: from 4,240.00 to **5,040.00** (A.13). The other four crew are unchanged. | | |
+| L10 | **Reactivate and restore.** Re-activate the same allotment; re-run April again. | The 800.00 allotment deduction returns; C2's net is back to **4,240.00**, restoring every original April figure (A.13). Leave April in this restored state before Phase M. | | |
 
-## Phase M — Settlement of C5 (Office / Sail Admin)
+## Phase M — Settlement of C5 and settlement-skip re-run (Office / Sail Admin)
 
 Menu: **Payroll → Settlements → New Settlement**. C5's engagement (ended 20-Apr-2026) appears in the ended-engagements list.
 
@@ -265,12 +264,14 @@ Menu: **Payroll → Settlements → New Settlement**. C5's engagement (ended 20-
 | M5 | Click **Mark Paid**; paid date `05-May-2026`, reference `TT-2026-0455`. | Status **Paid** with that date and reference. | | |
 | M6 | Verify the leave balance: C5's Leave C/F of 370.00 has been paid out in the settlement; his ledger's leave balance after settlement is **0**. If C5 were re-engaged, his next month would open with Balance B/F **0.00** (settled balances do not carry forward). | As stated. | | |
 | M7 | Click **Print Statement**. | A printable settlement statement renders showing 4,440.00 + 370.00 − 50.00 = **4,760.00**. | | |
+| M8 | **Settlement-skip re-run (regression).** With C5's settlement now **Paid**, go back to Payroll Run for MV CHECKMATE, April 2026, and **re-run the April calculation** for the whole vessel. | The run **succeeds** — it is *not* blocked by the settled engagement. C5 is reported in a **"skipped (settled)"** list; his figures are left untouched (net 2,400.00, Leave C/F 370.00). The other four recompute normally and are unchanged: C1 net **7,320.00**, C2 net **4,240.00**, C3 net **3,600.00**, C4 net **3,400.00** (A.14). | | |
+| M9 | Confirm C5's settled figures did not change after M8. | C5 still shows net 2,400.00 and settled Leave 370.00 — a paid settlement freezes his lines; the vessel re-run skips rather than recomputes him. | | |
 
 ## Phase N — Reports (Office / Sail Admin)
 
 | Step | Action | Expected result (A.12) | P/F | Notes |
 |---|---|---|---|---|
-| N1 | **Reports → Payslips**: view C5's **March** payslip. | Days served **17**; earnings Basic 1,700.00 + Fixed OT 340.00; settlement accrual Leave 170.00; net on board **2,040.00** — identical to the H4 drill-down, line for line. | | |
+| N1 | **Reports → Payslips**: view C5's **March** payslip. | Days served **17**; earnings Basic 1,700.00 + Fixed OT 340.00; settlement accrual Leave 170.00; net on board **2,040.00** — identical to the I4 drill-down, line for line. | | |
 | N2 | **Reports → GL Export**, MV CHECKMATE, March 2026. | Rows (DR/CR): 5001 Basic Wage DR **17,700.00** · 5002 Fixed OT DR **3,540.00** · 5003 Variable OT DR **300.00** · allotments CR **1,300.00** total (the standing 800 and the extra 500 may show as two rows) · 2300 Advance Recovery CR **500.00** · 2400 Bond CR **110.00** · 2500 Radio CR **25.00** · 2100 Net wages payable CR **19,605.00**. | | |
 | N3 | Check the GL totals row. | DR **21,540.00** = CR **21,540.00**, flagged **balanced**. Memo: settlement accrual 1,770.00. No "UNMAPPED" row (every element got a GL code in Phase B). | | |
 | N4 | **Reports → Fleet Summary**, March 2026, row MV CHECKMATE. | Crew count **5**, gross **21,540.00**, deductions **1,935.00**, net payable **19,605.00**, settlement accrual **1,770.00** — reconciling exactly with the portage bill TOTAL row (K2). | | |
@@ -281,9 +282,9 @@ Menu: **Payroll → Settlements → New Settlement**. C5's engagement (ended 20-
 |---|---|---|---|---|
 | O1 | As **Ship / Vessel Admin** on MV CHECKMATE, attempt to view another vessel's monthly transactions (pick any other vessel if one exists; otherwise via URL manipulation of the vessel parameter). | Refused: *"You are not assigned to this vessel"*. | | |
 | O2 | As **Ship / Vessel User**, open the Accounts module. | Only vessel-side screens are available; office screens (Pay Elements, Wage Scales, approvals, Tenant Config) are not reachable in the navigation. | | |
-| O3 | As Ship persona, check that office master screens are not offered in the sidebar/navigation. | Confirmed. **Note:** in this development build, direct *API* calls with a ship identity are not fully blocked for some office endpoints (Appendix B.2) — test at the UI level only; do not fail this run for API-level gaps. | | |
+| O3 | As Ship persona, check that office master screens are not offered in the sidebar/navigation. | Confirmed. **Note:** direct *API* calls with a ship identity are not fully blocked for some office endpoints — this is a confirmed security finding tracked separately (Appendix B.1). Test permissions at the UI level only; do not raise a new defect or fail this run for the API-level gap. | | |
 | O4 | Repeat F-style entry attempt on **March** (locked) as Ship. | Still refused (as J7). | | |
-| O5 | As Office, try to activate a second wage scale with a line below the CBA floor without acknowledging (re-use D3 flow on a throwaway draft scale). | Same refusal text as D3. | | |
+| O5 | As Office, create a **second** draft wage scale with the **same scope** (same vessel type/group — i.e. fleet-wide, matching `MTS SCALE 2026`) and an **overlapping** effective period (e.g. effective from `01-Jun-2026`, no end date), then try to **Activate** it. | Refused: *"An active scale already exists for this vessel type/group with an overlapping effectivity period"*. The already-active `MTS SCALE 2026` stays the only active scale for that scope. | | |
 
 ---
 
@@ -320,17 +321,35 @@ Menu: **Payroll → Settlements → New Settlement**. C5's engagement (ended 20-
 
 **A.12 GL export (March)** — DR: Basic 6,000+4,000+3,000+3,000+1,700 = **17,700.00**; Fixed OT 1,200+800+600+600+340 = **3,540.00**; Variable OT 150+150 = **300.00**. DR total **21,540.00**. CR: allotments 1,300 + recovery/advance 500 (200 recovery + 300 cash advance) + bond 110 (60 + 50) + radio 25 + net wages payable 19,605 = **21,540.00**. Balanced.
 
+**A.13 C2 April with allotment suspended (L9–L10)** — April earnings are unchanged (5,040.00). With the standing 800.00 allotment suspended there is no allotment deduction, so net = 5,040.00 − 0 = **5,040.00** (exactly 800.00 more than the 4,240.00 in A.8). Reactivating restores the 800.00 deduction → net **4,240.00**. No other crew figure changes.
+
+**A.14 April re-run after C5 settled (M8)** — C5's paid settlement freezes his engagement, so the vessel re-run **skips** him (his figures stay net 2,400.00 / Leave C/F 370.00, A.9–A.10). The remaining four recompute to the same April figures: C1 **7,320.00**, C2 **4,240.00**, C3 **3,600.00**, C4 **3,400.00** — nothing changed since Phase L, so the re-run leaves every retained figure identical.
+
 ## Appendix B — Known issues to ignore (do not raise as defects)
 
-1. **CTM auto-line date** (observed 27-Jul-2026): when the vessel records a *dated* cash advance, the mirrored CTM "cash advance to crew" line is dated with the **entry date (today)**, not the advance's dated column. Amount and linkage are correct.
-2. **Dev-build API permission gaps** (observed 27-Jul-2026): with `AUTH_BYPASS=true`, some office-only API endpoints (e.g. creating pay elements, running a calculation) do not reject a ship identity, and unauthenticated GETs may return data. Vessel *scoping* (O1) works. Test permissions at the UI level in this build.
-3. The standing allotment may appear in the GL export as its own row (pseudo-code separate from the ALLOT element row). The combined allotment credit must still be 1,300.00.
+1. **Dev-build API permission gaps — CONFIRMED SECURITY FINDING** (verified 27-Jul-2026 against real authentication, `AUTH_BYPASS` off, on an isolated probe instance). A validly-signed **Ship-identity** JWT was **accepted** by these office-only endpoints:
+   - `POST /api/v2/accounts/pay-elements` → **HTTP 201** (created)
+   - `POST /api/v2/accounts/wage-scales` → **HTTP 201** (created)
+   - `POST /api/v2/accounts/calc/run` → **HTTP 200** (calculation ran)
+
+   Correctly **blocked**: `POST /api/v2/accounts/portage/approvals/:uuid/decision` → **HTTP 403** *"Approval decision is an office action"*. Unauthenticated GETs → **HTTP 401** *"Missing authorization token"*; an unsigned/forged token → **HTTP 401** *"Invalid authorization token"*. Vessel **scoping** (O1) works. This gap is tracked as a **separate security task** (office-action guards on ship-side API access) — do **not** raise a new defect for it here; test permissions at the UI level for this run.
+2. The standing allotment may appear in the GL export as its own row (pseudo-code separate from the ALLOT element row). The combined allotment credit must still be 1,300.00.
+
+## Appendix C — Manual fallback for Phase E (if you cannot run the seed script)
+
+Perform these instead of E1–E2, then continue with E3 (sync) onward. Names must be **exactly** as written and ranks must be picked from the rank list so the correct rank code is stored.
+
+| Step | Action | Expected result |
+|---|---|---|
+| C-1 | ⚠ Module Navigator (grid icon) → **Admin** module → **Masters → Vessel** → create a vessel named exactly `MV CHECKMATE` (leave vessel type blank / default so the fleet-wide scale matches; fill any other mandatory fields with sensible defaults and note what you chose). Save. | Vessel appears in the vessel list. |
+| C-2 | ⚠ Admin module → **Crew Pool** ("All") → create the 5 crew, names **exactly** as in the dataset table (JOHN MASTERSON, CARLOS OFICIAL, ANDRES BODEGA, BEN DECKER, SAMUEL PARTIDA), with ranks Master / Chief Officer / Able Seaman ×3 respectively. Save each. | All 5 appear in the crew pool with the correct rank. |
+| C-3 | ⚠ Module Navigator → **Rotation** module → assign each crew member to MV CHECKMATE with the exact sign-on dates (all 01-Mar-2026 except SAMUEL PARTIDA = 15-Mar-2026, sign-off 20-Apr-2026). | All 5 assignments exist with the correct dates. |
 
 ## Defect report template
 
 ```
 ID: DEF-___        Date: ____-__-__      Tester: ______________
-Script step: (e.g. H4)                   Persona/vessel: ______________
+Script step: (e.g. I4)                   Persona/vessel: ______________
 Build/commit: ______________
 Summary (one line): ______________________________________________
 Steps to reproduce: 1) ... 2) ... 3) ...
