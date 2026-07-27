@@ -377,13 +377,20 @@ describe("Vessel Portage category-major grids", () => {
       );
       expect(line).toBeTruthy();
       expect(line.amount).toBe("250.00");
+      // Regression: the mirrored CTM line carries the advance's dated
+      // column (txn_date), not the entry date (today).
+      expect(line.lineDate).toBe("2026-04-12");
     });
 
-    it("batch update syncs the CTM line amount", async () => {
+    it("batch update syncs the CTM line amount and date", async () => {
       const upd = await api(
         "POST",
         "/monthly-transactions/batch",
-        { updates: [{ txnUuid: advUuid, amount: "275.00" }] },
+        {
+          updates: [
+            { txnUuid: advUuid, amount: "275.00", txnDate: "2026-04-15" },
+          ],
+        },
         tokenA,
       );
       expect(upd.status).toBe(200);
@@ -393,6 +400,7 @@ describe("Vessel Portage category-major grids", () => {
         (l: any) => l.ctmLineUuid === ctmLineUuid,
       );
       expect(line.amount).toBe("275.00");
+      expect(line.lineDate).toBe("2026-04-15");
     });
 
     it("batch delete removes the CTM line too", async () => {

@@ -133,6 +133,9 @@ async function syncCtmLine(
           crewUuid: txn.crewUuid,
           amount: txn.amount ?? "0.00",
           currency: txn.currency ?? undefined,
+          // The CTM mirror carries the advance's dated column, not the
+          // entry date (falls back to today only when the txn is undated).
+          lineDate: txn.txnDate ?? undefined,
           description: txn.remarks ?? "On-board cash advance",
         },
         auditUserUuid,
@@ -146,6 +149,7 @@ async function syncCtmLine(
         crewUuid: txn.crewUuid,
         amount: txn.amount ?? "0.00",
         currency: txn.currency ?? undefined,
+        lineDate: txn.txnDate ?? undefined,
         description: txn.remarks ?? "On-board cash advance",
       },
       auditUserUuid,

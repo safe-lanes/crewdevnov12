@@ -284,6 +284,7 @@ export const ctmService = {
       crewUuid?: string | null;
       amount?: string;
       currency?: string;
+      lineDate?: string | null;
       description?: string | null;
     },
     auditUserUuid?: string,
