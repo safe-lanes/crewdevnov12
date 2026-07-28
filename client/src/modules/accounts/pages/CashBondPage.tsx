@@ -52,7 +52,9 @@ import { useVesselLookup } from "@/hooks/useVesselLookup";
 import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
 
-const MENU = "Account Cash & Bond";
+// Advances & Bond are governed by the combined "Allotments & Cash" screen's
+// menu row (Account Allotments) since the Cash & Bond menu row was retired.
+const MENU = "Account Allotments";
 
 /* ------------------------------------------------------------------ */
 /* Advances tab                                                        */
@@ -107,7 +109,7 @@ function statusBadgeClass(status: string): string {
   }
 }
 
-function AdvancesTab({
+export function AdvancesTab({
   vesselUuid,
   period,
 }: {
@@ -702,7 +704,7 @@ const emptyBondForm: BondForm = {
   saleDate: "",
 };
 
-function BondTab({
+export function BondTab({
   vesselUuid,
   period,
 }: {

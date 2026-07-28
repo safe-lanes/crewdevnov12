@@ -94,7 +94,12 @@ function maskAccount(acct: string | null | undefined): string {
   return acct.length <= 4 ? tail : `•••• ${tail}`;
 }
 
-export default function AllotmentsPage() {
+export default function AllotmentsPage({
+  embedded = false,
+}: {
+  /** When rendered inside the Allotments & Cash tabs, skip the page header/padding. */
+  embedded?: boolean;
+} = {}) {
   const { toast } = useToast();
   const { canCreate, canEdit } = usePermissions();
   const mayCreate = canCreate(MENU);
@@ -430,14 +435,19 @@ export default function AllotmentsPage() {
   );
 
   return (
-    <div className="p-4 space-y-4" data-testid="allotments-page">
-      <div>
-        <h1 className="text-xl font-semibold text-[#0f172a]">Allotments</h1>
-        <p className="text-sm text-muted-foreground">
-          Family remittance instructions with bank details and verification
-          flags
-        </p>
-      </div>
+    <div
+      className={embedded ? "space-y-4" : "p-4 space-y-4"}
+      data-testid="allotments-page"
+    >
+      {!embedded && (
+        <div>
+          <h1 className="text-xl font-semibold text-[#0f172a]">Allotments</h1>
+          <p className="text-sm text-muted-foreground">
+            Family remittance instructions with bank details and verification
+            flags
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">

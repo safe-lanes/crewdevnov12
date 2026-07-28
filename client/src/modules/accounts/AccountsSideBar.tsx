@@ -5,7 +5,6 @@ import {
   Settings,
   Calculator,
   FileSpreadsheet,
-  Send,
   Wallet,
   Repeat,
   Receipt,
@@ -29,35 +28,19 @@ type SideItem = {
 };
 
 type SideSection = {
-  label: string;
+  /** null = no heading (the top, most-used group) */
+  label: string | null;
   items: SideItem[];
 };
 
 const iconClass = "text-white";
 
+// Ordered by frequency of use: monthly screens on top, reports next,
+// onboarding/setup screens at the bottom. A "Contracts" entry will be
+// inserted after "Allotments & Cash" by a later task.
 const ACTIVE_SECTIONS: SideSection[] = [
   {
-    label: "Master Tables",
-    items: [
-      {
-        name: "Pay Elements",
-        icon: <Coins size={20} className={iconClass} />,
-        page: "pay-elements",
-      },
-      {
-        name: "Wage Scales",
-        icon: <Grid3x3 size={20} className={iconClass} />,
-        page: "wage-scales",
-      },
-      {
-        name: "CBA Reference",
-        icon: <ScrollText size={20} className={iconClass} />,
-        page: "cba-reference",
-      },
-    ],
-  },
-  {
-    label: "Payroll",
+    label: null,
     items: [
       {
         name: "Payroll Run",
@@ -65,9 +48,9 @@ const ACTIVE_SECTIONS: SideSection[] = [
         page: "payroll-run",
       },
       {
-        name: "Portage Bill",
-        icon: <FileSpreadsheet size={20} className={iconClass} />,
-        page: "portage-bill",
+        name: "Vessel Portage",
+        icon: <Ship size={20} className={iconClass} />,
+        page: "vessel-portage",
       },
       {
         name: "Monthly Txns",
@@ -75,29 +58,19 @@ const ACTIVE_SECTIONS: SideSection[] = [
         page: "monthly-transactions",
       },
       {
+        name: "Portage Bill",
+        icon: <FileSpreadsheet size={20} className={iconClass} />,
+        page: "portage-bill",
+      },
+      {
         name: "Settlements",
         icon: <Receipt size={20} className={iconClass} />,
         page: "settlements",
       },
       {
-        name: "Vessel Portage",
-        icon: <Ship size={20} className={iconClass} />,
-        page: "vessel-portage",
-      },
-    ],
-  },
-  {
-    label: "Crew Finance",
-    items: [
-      {
-        name: "Allotments",
-        icon: <Send size={20} className={iconClass} />,
-        page: "allotments",
-      },
-      {
-        name: "Cash & Bond",
+        name: "Allotments & Cash",
         icon: <Wallet size={20} className={iconClass} />,
-        page: "cash-bond",
+        page: "allotments-cash",
       },
     ],
   },
@@ -122,8 +95,23 @@ const ACTIVE_SECTIONS: SideSection[] = [
     ],
   },
   {
-    label: "Admin",
+    label: "Config",
     items: [
+      {
+        name: "Pay Elements",
+        icon: <Coins size={20} className={iconClass} />,
+        page: "pay-elements",
+      },
+      {
+        name: "Wage Scales",
+        icon: <Grid3x3 size={20} className={iconClass} />,
+        page: "wage-scales",
+      },
+      {
+        name: "CBA Ref",
+        icon: <ScrollText size={20} className={iconClass} />,
+        page: "cba-reference",
+      },
       {
         name: "Tenant Config",
         icon: <Settings size={20} className={iconClass} />,
@@ -148,7 +136,7 @@ export default function AccountsSideBar({
   const layoutConfig = getLayoutConfig(viewport);
   const isCompact = layoutConfig.sidebarMode === "compact";
   const sidebarWidth = layoutConfig.sidebarWidth;
-  const itemHeight = isCompact ? "56px" : "72px";
+  const itemHeight = isCompact ? "56px" : "79px";
 
   const sections = ACTIVE_SECTIONS.map((s) => ({
     ...s,
@@ -162,14 +150,25 @@ export default function AccountsSideBar({
         style={{ width: `${sidebarWidth}px` }}
         data-testid="accounts-sidebar"
       >
-        {sections.map((section) => (
-          <div key={section.label} className="w-full flex flex-col">
-            {!isCompact && (
-              <div
-                className="px-1 pt-2 pb-1 text-[9px] font-semibold uppercase tracking-wide text-white/60 text-center"
-                data-testid={`sidebar-section-${section.label.toLowerCase().replace(/\s+/g, "-")}`}
-              >
-                {section.label}
+        {sections.map((section, sectionIdx) => (
+          <div
+            key={section.label ?? "main"}
+            className="w-full flex flex-col"
+          >
+            {section.label !== null && !isCompact && (
+              <div className="w-full px-1 pt-2 pb-1">
+                <div className="border-t border-white/20 mb-1" />
+                <div
+                  className="text-[9px] font-semibold uppercase tracking-wide text-white/60 text-center"
+                  data-testid={`sidebar-section-${section.label.toLowerCase().replace(/\s+/g, "-")}`}
+                >
+                  {section.label}
+                </div>
+              </div>
+            )}
+            {section.label !== null && isCompact && sectionIdx > 0 && (
+              <div className="w-full px-2 py-1">
+                <div className="border-t border-white/20" />
               </div>
             )}
             {section.items.map((item) => (

@@ -60,24 +60,31 @@ them through the Access Control admin UI as part of client onboarding:
 3. In the **Roles** list (left panel) click the role to configure
    (e.g. `Admin`).
 4. In the menu tree (right panel) scroll to the **Account** parent row and
-   expand it with the chevron. All 14 Accounts child menus appear under it
-   (15 total including the `Account` parent):
-   Payroll Run, Portage Bill, Monthly Transactions, Settlements,
-   Vessel Portage, Allotments, Cash & Bond, Payslips, GL Export,
-   Fleet Summary, Pay Elements, Wage Scales, CBA Reference,
-   Tenant Configuration.
+   expand it with the chevron. All 13 active Accounts child menus appear
+   under it (14 total including the `Account` parent):
+   Payroll Run, Vessel Portage, Monthly Transactions, Portage Bill,
+   Settlements, Allotments & Cash, Payslips, GL Export, Fleet Summary,
+   Pay Elements, Wage Scales, CBA Reference, Tenant Configuration.
+   (Migration 0180 merged the former `Allotments` and `Cash & Bond` menus
+   into the single `Allotments & Cash` row — internally still named
+   `Account Allotments` — and deactivated `Account Cash & Bond`. The
+   combined screen has three tabs: Allotments, Advances, Bond.)
 5. Tick the permission checkboxes per menu (`View` / `Create` / `Edit` /
    `Delete`), or use the row's **Select All** checkbox.
 6. Click **Save Changes** (bottom-right). Repeat steps 3–6 for each role.
 
-Reference policy (as applied on the dev tenant):
+Reference policy:
 
 | Role | Grant |
 | --- | --- |
-| Admin, Super Admin, Sail Admin | Full (V/C/E/D) on `Account` + all 14 sub-menus |
-| User | View only on `Account` + all 14 sub-menus |
-| Vessel Admin, Vessel User, Vessel User 2–4 | View on `Account`; View/Create/Edit on `Account Vessel Portage`; nothing else |
+| Admin, Super Admin, Sail Admin | Full (V/C/E/D) on `Account` + all 13 sub-menus |
+| User | View only on `Account` + all 13 sub-menus |
+| Vessel Admin, Vessel User, Vessel User 2–4 | View on `Account`; **View/Create/Edit on `Account Vessel Portage`** (the master's working screen); **View only on `Account Portage Bill`**; **View only on `Account Payslips`**; **no access to anything else in Accounts** (including Payroll Run, Monthly Txns, Settlements, Allotments & Cash, GL Export, Fleet Summary, Pay Elements, Wage Scales, CBA Ref, Tenant Config) |
 | External 1–5 | No grants (no Accounts menus visible) |
+
+This table states the **intended policy** for vessel roles; the actual grants
+are applied by the administrator through the Access Control UI (grant data is
+not seeded to vessel roles by migrations — see below).
 
 Note: a role needs **View on the top-level `Account` menu** for the Accounts
 module entry to appear at all, plus View on each sub-menu it should reach.
@@ -98,10 +105,12 @@ slots on the same portage bill or settlement.
 - Office reviewers need **edit** on `Account Monthly Transactions`
   (accept / reject / re-open) and on `Account Vessel Portage`
   (return-to-vessel).
-- Crew-finance pages (migration 0164): `Account Allotments` and
-  `Account Cash & Bond` are seeded by copying each role's top-level `Account`
-  grant. Review after the seed and remove/trim rows for roles that should not
-  manage crew finance (office-only pages; ship roles normally need no access).
+- Crew finance (migrations 0173 + 0180): the former `Account Allotments` and
+  `Account Cash & Bond` rows were merged into the single `Account Allotments`
+  row (displayed as **Allotments & Cash**); each role's combined grant is the
+  more permissive of its two old grants. Review after the merge and
+  remove/trim rows for roles that should not manage crew finance (office-only
+  page; ship roles normally need no access).
 - `acc_tenant_config_v2.max_allotment_percent` (migration 0163) is NULL by
   default = **no cap** on percentage allotments. Set it per tenant (e.g.
   `80.0`) if the office wants allotment percentage caps enforced on

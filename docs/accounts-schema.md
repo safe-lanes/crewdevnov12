@@ -846,6 +846,14 @@ menu and copies each role's `Account` grant row to both new menus. Roles
 without an `Account` grant get no row (default no access). Idempotent via
 `NOT EXISTS`.
 
+> Superseded by migration `0180_allotments_cash_menu_merge.sql`: the two
+> menus were merged into a single combined screen. `Account Allotments` is
+> kept as the combined row (display name **Allotments & Cash**, route
+> `/accounts/crew-finance/allotments-cash`, tabs Allotments / Advances /
+> Bond); `Account Cash & Bond` is deactivated. Each role's grant on the
+> combined row is the more permissive (boolean OR per flag) of its two old
+> grants.
+
 ## Wage calculation engine rules
 
 The engine (`server/v2/accounts/engine/`) enforces these invariants on top of

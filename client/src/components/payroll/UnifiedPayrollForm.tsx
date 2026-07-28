@@ -187,9 +187,9 @@ export function UnifiedPayrollForm({ crewMemberId, isEditable = true }: UnifiedP
               // Navigate to source for editing
               const routes = {
                 contract: '/accounts/contract-data',
-                allotment: '/accounts/wage-accounts/allotments',
-                advance: '/accounts/wage-accounts/advances-bond',
-                bond: '/accounts/wage-accounts/advances-bond'
+                allotment: '/accounts/crew-finance/allotments-cash',
+                advance: '/accounts/crew-finance/allotments-cash',
+                bond: '/accounts/crew-finance/allotments-cash'
               };
               const route = routes[element.source as keyof typeof routes];
               if (route) {
@@ -331,9 +331,9 @@ export function UnifiedPayrollForm({ crewMemberId, isEditable = true }: UnifiedP
                           onClick={() => {
                             const routes = {
                               contract: '/accounts/contract-data',
-                              allotment: '/accounts/wage-accounts/allotments',
-                              advance: '/accounts/wage-accounts/advances-bond',
-                              bond: '/accounts/wage-accounts/advances-bond'
+                              allotment: '/accounts/crew-finance/allotments-cash',
+                              advance: '/accounts/crew-finance/allotments-cash',
+                              bond: '/accounts/crew-finance/allotments-cash'
                             };
                             const route = routes[element.source as keyof typeof routes];
                             if (route) {
@@ -403,9 +403,9 @@ export function UnifiedPayrollForm({ crewMemberId, isEditable = true }: UnifiedP
                           onClick={() => {
                             const routes = {
                               contract: '/accounts/contract-data',
-                              allotment: '/accounts/wage-accounts/allotments',
-                              advance: '/accounts/wage-accounts/advances-bond',
-                              bond: '/accounts/wage-accounts/advances-bond'
+                              allotment: '/accounts/crew-finance/allotments-cash',
+                              advance: '/accounts/crew-finance/allotments-cash',
+                              bond: '/accounts/crew-finance/allotments-cash'
                             };
                             const route = routes[element.source as keyof typeof routes];
                             if (route) {

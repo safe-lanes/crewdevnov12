@@ -175,9 +175,9 @@ export const ConsolidatedPortageBill: React.FC<ConsolidatedPortageBillProps> = (
     
     const routes = {
       contract: '/accounts/contract-data',
-      allotment: '/accounts/wage-accounts/allotments',
-      advance: '/accounts/wage-accounts/advances-bond',
-      bond: '/accounts/wage-accounts/advances-bond'
+      allotment: '/accounts/crew-finance/allotments-cash',
+      advance: '/accounts/crew-finance/allotments-cash',
+      bond: '/accounts/crew-finance/allotments-cash'
     };
 
     const route = routes[params.data.source as keyof typeof routes];

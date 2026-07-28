@@ -13,8 +13,7 @@ import PortageBillPage from "./pages/PortageBillPage";
 import MonthlyTransactionsPage from "./pages/MonthlyTransactionsPage";
 import SettlementsPage from "./pages/SettlementsPage";
 import VesselPortagePage from "./pages/VesselPortagePage";
-import AllotmentsPage from "./pages/AllotmentsPage";
-import CashBondPage from "./pages/CashBondPage";
+import AllotmentsCashPage from "./pages/AllotmentsCashPage";
 import PayslipsPage from "./pages/PayslipsPage";
 import GlExportPage from "./pages/GlExportPage";
 import FleetSummaryPage from "./pages/FleetSummaryPage";
@@ -67,14 +66,9 @@ const PAGE_META: PageMeta[] = [
     path: "/accounts/payroll/vessel-portage",
   },
   {
-    page: "allotments",
+    page: "allotments-cash",
     menu: "Account Allotments",
-    path: "/accounts/crew-finance/allotments",
-  },
-  {
-    page: "cash-bond",
-    menu: "Account Cash & Bond",
-    path: "/accounts/crew-finance/cash-bond",
+    path: "/accounts/crew-finance/allotments-cash",
   },
   {
     page: "payslips",
@@ -98,10 +92,17 @@ const PAGE_META: PageMeta[] = [
   },
 ];
 
+/** Legacy path segments that redirect to a current page. */
+const LEGACY_PAGE_ALIASES: Record<string, string> = {
+  allotments: "allotments-cash",
+  "cash-bond": "allotments-cash",
+};
+
 function pageFromPath(loc: string): string | undefined {
   const segs = loc.split("/").filter(Boolean);
   const last = segs[segs.length - 1];
-  return PAGE_META.find((m) => m.page === last)?.page;
+  const resolved = LEGACY_PAGE_ALIASES[last] ?? last;
+  return PAGE_META.find((m) => m.page === resolved)?.page;
 }
 
 export function AccountsModule() {
@@ -166,10 +167,8 @@ export function AccountsModule() {
         return <SettlementsPage />;
       case "vessel-portage":
         return <VesselPortagePage />;
-      case "allotments":
-        return <AllotmentsPage />;
-      case "cash-bond":
-        return <CashBondPage />;
+      case "allotments-cash":
+        return <AllotmentsCashPage />;
       case "payslips":
         return <PayslipsPage />;
       case "gl-export":
