@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import AgGridTable from "@/components/AgGrid/AgGridTable";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,8 +28,6 @@ import {
   RefreshCw,
   Play,
   Send,
-  Pencil,
-  Clock,
   Lock,
   CheckCircle2,
   XCircle,
@@ -64,14 +62,6 @@ const TIMING_LABEL: Record<string, string> = {
   payable_at_settlement: "Payable at settlement",
   remitted_to_fund: "Remitted to fund",
 };
-
-const ENGAGEMENT_STATUSES = [
-  "draft",
-  "active",
-  "completed",
-  "settled",
-  "cancelled",
-];
 
 function statusBadge(status: string | null | undefined) {
   const s = status ?? "open";
@@ -158,13 +148,6 @@ const DRILL_GROUPS: {
   },
 ];
 
-interface AnchorForm {
-  scaleYearAtStart: string;
-  nextStepDate: string;
-  wageScaleUuid: string;
-  status: string;
-}
-
 export default function PayrollRunPage() {
   const { toast } = useToast();
   const { canEdit, userId, userType } = usePermissions();
@@ -191,9 +174,6 @@ export default function PayrollRunPage() {
   });
   const { data: payElements = [] } = useQuery<any[]>({
     queryKey: [`${ACCOUNTS_BASE}/pay-elements`],
-  });
-  const { data: wageScales = [] } = useQuery<any[]>({
-    queryKey: [`${ACCOUNTS_BASE}/wage-scales`],
   });
   const { data: companyRanks = [] } = useQuery<any[]>({
     queryKey: ["/api/v2/admin/company-ranks"],
@@ -324,88 +304,14 @@ export default function PayrollRunPage() {
     }
   };
 
-  // ---- anchor edit dialog ----
-  const [anchorRow, setAnchorRow] = useState<any | null>(null);
-  const [anchorForm, setAnchorForm] = useState<AnchorForm>({
-    scaleYearAtStart: "",
-    nextStepDate: "",
-    wageScaleUuid: "",
-    status: "active",
-  });
-  const [savingAnchor, setSavingAnchor] = useState(false);
+  // ---- open contract detail (anchor / timing / end date live there now) ----
+  const [, setLocation] = useLocation();
+  const openContract = (engagementUuid: string) =>
+    setLocation(`/accounts/payroll/contracts/${engagementUuid}`);
 
-  const openAnchor = (row: any) => {
-    setAnchorRow(row);
-    setAnchorForm({
-      scaleYearAtStart: String(row.engagement?.scaleYearAtStart ?? 1),
-      nextStepDate: row.engagement?.nextStepDate ?? "",
-      wageScaleUuid: row.engagement?.wageScaleUuid ?? "",
-      status: row.engagement?.status ?? "active",
-    });
-  };
-
-  const saveAnchor = async () => {
-    if (!anchorRow?.engagement) return;
-    setSavingAnchor(true);
-    try {
-      const payload: Record<string, unknown> = {};
-      const yr = parseInt(anchorForm.scaleYearAtStart, 10);
-      if (!Number.isNaN(yr)) payload.scaleYearAtStart = yr;
-      if (anchorForm.nextStepDate) payload.nextStepDate = anchorForm.nextStepDate;
-      if (anchorForm.wageScaleUuid) payload.wageScaleUuid = anchorForm.wageScaleUuid;
-      if (anchorForm.status) payload.status = anchorForm.status;
-      await accountsApiV2.engagements.update(
-        anchorRow.engagement.engagementUuid,
-        payload,
-      );
-      queryClient.invalidateQueries({ queryKey: reviewKey });
-      setAnchorRow(null);
-      toast({ title: "Engagement updated" });
-    } catch (err) {
-      toast({
-        title: "Update failed",
-        description: parseApiError(err).message,
-        variant: "destructive",
-      });
-    } finally {
-      setSavingAnchor(false);
-    }
-  };
-
-  // ---- set end date / cancel engagement actions (RBAC: edit permission) ----
-  const [endDateRow, setEndDateRow] = useState<any | null>(null);
-  const [endDateValue, setEndDateValue] = useState("");
-  const [savingEndDate, setSavingEndDate] = useState(false);
+  // ---- cancel engagement action (RBAC: edit permission) ----
   const [cancelTarget, setCancelTarget] = useState<any | null>(null);
   const [cancelling, setCancelling] = useState(false);
-
-  const openEndDate = (engagement: any, crewName?: string) => {
-    setEndDateRow({ engagement, crewName });
-    setEndDateValue(engagement?.endDate ?? "");
-  };
-
-  const saveEndDate = async () => {
-    if (!endDateRow?.engagement || !endDateValue) return;
-    setSavingEndDate(true);
-    try {
-      await accountsApiV2.engagements.update(
-        endDateRow.engagement.engagementUuid,
-        { endDate: endDateValue },
-      );
-      queryClient.invalidateQueries({ queryKey: reviewKey });
-      queryClient.invalidateQueries({ queryKey: auditKey });
-      setEndDateRow(null);
-      toast({ title: "End date updated" });
-    } catch (err) {
-      toast({
-        title: "Update failed",
-        description: parseApiError(err).message,
-        variant: "destructive",
-      });
-    } finally {
-      setSavingEndDate(false);
-    }
-  };
 
   const doCancelEngagement = async () => {
     if (!cancelTarget?.engagement) return;
@@ -427,41 +333,6 @@ export default function PayrollRunPage() {
       });
     } finally {
       setCancelling(false);
-    }
-  };
-
-  // ---- timing override dialog ----
-  const [timingRow, setTimingRow] = useState<any | null>(null);
-  const [timingElementUuid, setTimingElementUuid] = useState("");
-  const [timingValue, setTimingValue] = useState("__none__");
-  const [savingTiming, setSavingTiming] = useState(false);
-
-  const openTiming = (row: any) => {
-    setTimingRow(row);
-    setTimingElementUuid("");
-    setTimingValue("__none__");
-  };
-
-  const saveTiming = async () => {
-    if (!timingRow?.engagement || !timingElementUuid) return;
-    setSavingTiming(true);
-    try {
-      await accountsApiV2.engagements.setTimingOverride(
-        timingRow.engagement.engagementUuid,
-        timingElementUuid,
-        timingValue === "__none__" ? null : timingValue,
-      );
-      queryClient.invalidateQueries({ queryKey: reviewKey });
-      setTimingRow(null);
-      toast({ title: "Payment timing updated" });
-    } catch (err) {
-      toast({
-        title: "Timing override failed",
-        description: parseApiError(err).message,
-        variant: "destructive",
-      });
-    } finally {
-      setSavingTiming(false);
     }
   };
 
@@ -605,30 +476,8 @@ export default function PayrollRunPage() {
                 size="icon"
                 variant="ghost"
                 className="h-7 w-7"
-                title="Edit engagement / wage scale"
-                onClick={() => openAnchor(p.data)}
-                data-testid={`button-edit-engagement-${p.data.crewUuid}`}
-              >
-                <Pencil size={14} />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                title="Payment timing overrides"
-                onClick={() => openTiming(p.data)}
-                data-testid={`button-timing-${p.data.crewUuid}`}
-              >
-                <Clock size={14} />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                title="Set end date"
-                onClick={() =>
-                  openEndDate(p.data.engagement, p.data.crewName)
-                }
+                title="Open contract detail (sign-off, seniority, timing, pay items)"
+                onClick={() => openContract(p.data.engagement.engagementUuid)}
                 data-testid={`button-end-date-${p.data.crewUuid}`}
               >
                 <CalendarX size={14} />
@@ -1009,6 +858,16 @@ export default function PayrollRunPage() {
                     {latestRun.runByUuid ? `by ${latestRun.runByUuid}` : ""}
                   </p>
                 )}
+                {workspace?.staleInputs && !isLocked && (
+                  <p
+                    className="flex items-center gap-1 text-xs text-amber-700"
+                    data-testid="banner-stale-calculation"
+                  >
+                    <AlertTriangle size={12} />
+                    Inputs changed since the last calculation — re-run to
+                    refresh.
+                  </p>
+                )}
               </div>
               {!readOnly && (
                 <Button
@@ -1333,175 +1192,6 @@ export default function PayrollRunPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ---- Anchor edit dialog ---- */}
-      <Dialog open={!!anchorRow} onOpenChange={(o) => !o && setAnchorRow(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Edit Engagement — {anchorRow?.crewName}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Scale Year at Start</Label>
-              <Input
-                type="number"
-                min={1}
-                value={anchorForm.scaleYearAtStart}
-                onChange={(e) =>
-                  setAnchorForm((f) => ({
-                    ...f,
-                    scaleYearAtStart: e.target.value,
-                  }))
-                }
-                data-testid="input-scale-year"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Next Step Date</Label>
-              <Input
-                type="date"
-                value={anchorForm.nextStepDate}
-                onChange={(e) =>
-                  setAnchorForm((f) => ({ ...f, nextStepDate: e.target.value }))
-                }
-                data-testid="input-next-step-date"
-              />
-            </div>
-            <div className="space-y-1 col-span-2">
-              <Label>Wage Scale</Label>
-              <Select
-                value={anchorForm.wageScaleUuid}
-                onValueChange={(v) =>
-                  setAnchorForm((f) => ({ ...f, wageScaleUuid: v }))
-                }
-              >
-                <SelectTrigger data-testid="select-wage-scale">
-                  <SelectValue placeholder="Select wage scale" />
-                </SelectTrigger>
-                <SelectContent>
-                  {wageScales
-                    .filter(
-                      (s) =>
-                        s.status === "active" ||
-                        s.scaleUuid === anchorForm.wageScaleUuid,
-                    )
-                    .map((s) => (
-                      <SelectItem key={s.scaleUuid} value={s.scaleUuid}>
-                        {s.scaleName} ({s.status})
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Status</Label>
-              <Select
-                value={anchorForm.status}
-                onValueChange={(v) =>
-                  setAnchorForm((f) => ({ ...f, status: v }))
-                }
-              >
-                <SelectTrigger data-testid="select-engagement-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ENGAGEMENT_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAnchorRow(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={saveAnchor}
-              disabled={savingAnchor}
-              data-testid="button-save-engagement"
-            >
-              {savingAnchor ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ---- Timing override dialog ---- */}
-      <Dialog open={!!timingRow} onOpenChange={(o) => !o && setTimingRow(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Payment Timing Override — {timingRow?.crewName}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Pay Element</Label>
-              <Select
-                value={timingElementUuid}
-                onValueChange={(v) => {
-                  setTimingElementUuid(v);
-                  const existing = (timingRow?.timingOverrides ?? []).find(
-                    (o: any) => o.payElementUuid === v,
-                  );
-                  setTimingValue(
-                    existing?.paymentTimingOverride ?? "__none__",
-                  );
-                }}
-              >
-                <SelectTrigger data-testid="select-timing-element">
-                  <SelectValue placeholder="Select element" />
-                </SelectTrigger>
-                <SelectContent>
-                  {payElements
-                    .filter((e) => e.status === "active")
-                    .map((e) => (
-                      <SelectItem key={e.payElementUuid} value={e.payElementUuid}>
-                        {e.code} — {e.name} (
-                        {TIMING_LABEL[e.paymentTiming] ?? e.paymentTiming})
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Override Timing</Label>
-              <Select value={timingValue} onValueChange={setTimingValue}>
-                <SelectTrigger data-testid="select-timing-value">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">
-                    No override (use element default)
-                  </SelectItem>
-                  {Object.entries(TIMING_LABEL).map(([v, label]) => (
-                    <SelectItem key={v} value={v}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTimingRow(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={saveTiming}
-              disabled={savingTiming || !timingElementUuid}
-              data-testid="button-save-timing"
-            >
-              {savingTiming ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* ---- Overlapping engagements dialog ---- */}
       <Dialog open={overlapOpen} onOpenChange={setOverlapOpen}>
         <DialogContent className="max-w-2xl">
@@ -1565,17 +1255,11 @@ export default function PayrollRunPage() {
                             size="sm"
                             variant="outline"
                             className="h-6 px-2 text-[11px]"
-                            onClick={() =>
-                              openEndDate(
-                                e,
-                                g.crewName ??
-                                  crewByUuid.get(g.crewUuid)?.crewName,
-                              )
-                            }
+                            onClick={() => openContract(e.engagementUuid)}
                             data-testid={`button-overlap-end-date-${e.engagementUuid}`}
                           >
                             <CalendarX size={12} className="mr-1" />
-                            Set end date
+                            Open contract
                           </Button>
                           {(e.ledgerLineCount ?? 0) === 0 && (
                             <Button
@@ -1611,45 +1295,6 @@ export default function PayrollRunPage() {
               data-testid="button-close-overlaps"
             >
               Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ---- Set end date dialog ---- */}
-      <Dialog
-        open={!!endDateRow}
-        onOpenChange={(o) => !o && setEndDateRow(null)}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>
-              Set End Date{endDateRow?.crewName ? ` — ${endDateRow.crewName}` : ""}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>End date</Label>
-            <Input
-              type="date"
-              value={endDateValue}
-              onChange={(e) => setEndDateValue(e.target.value)}
-              data-testid="input-end-date"
-            />
-            <p className="text-xs text-muted-foreground">
-              Ends the engagement on this date. Existing ledger lines are kept;
-              future periods will no longer include this engagement.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEndDateRow(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={saveEndDate}
-              disabled={savingEndDate || !endDateValue}
-              data-testid="button-save-end-date"
-            >
-              {savingEndDate ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>

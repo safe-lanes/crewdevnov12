@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { getAuditUserUuid } from "./_auth";
+import { getActor, getAuditUserUuid } from "./_auth";
+import { assertOfficeUser } from "../services/vesselScope";
 import { engagementsService } from "../services";
 
 const syncSchema = z.object({
@@ -22,6 +23,50 @@ const updateSchema = z
   })
   .partial();
 
+const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const moneyStr = z.string().regex(/^-?\d+(\.\d{1,2})?$/);
+const rateStr = z.string().regex(/^-?\d+(\.\d{1,4})?$/);
+
+const payItemCreateSchema = z.object({
+  payElementUuid: z.string().min(1),
+  overrideMode: z.enum([
+    "add_element",
+    "replace_scale_value",
+    "suppress_element",
+  ]),
+  amount: moneyStr.nullable().optional(),
+  rate: rateStr.nullable().optional(),
+  paymentTimingOverride: z
+    .enum(["paid_on_board", "payable_at_settlement", "remitted_to_fund"])
+    .nullable()
+    .optional(),
+  effectiveFrom: dateStr.nullable().optional(),
+  effectiveTo: dateStr.nullable().optional(),
+  remarks: z.string().max(2000).nullable().optional(),
+});
+
+const payItemUpdateSchema = payItemCreateSchema.partial();
+
+function sendCoded(res: Response, error: any): boolean {
+  if (error?.code === "FORBIDDEN") {
+    res.status(403).json({ error: error.message });
+    return true;
+  }
+  if (error?.code === "CONFLICT") {
+    res.status(409).json({ error: error.message, details: error.details });
+    return true;
+  }
+  if (error?.code === "VALIDATION") {
+    res.status(400).json({ error: error.message });
+    return true;
+  }
+  if (error?.code === "NOT_FOUND") {
+    res.status(404).json({ error: error.message });
+    return true;
+  }
+  return false;
+}
+
 const timingOverrideSchema = z.object({
   payElementUuid: z.string().min(1),
   paymentTimingOverride: z
@@ -30,6 +75,100 @@ const timingOverrideSchema = z.object({
 });
 
 export const engagementsController = {
+  async list(req: Request, res: Response) {
+    try {
+      // Contracts are an office-only screen (menu grants exclude Ship
+      // roles); enforce the same policy at the API.
+      assertOfficeUser(getActor(req), "Contracts list");
+      const { vesselUuid, status } = req.query;
+      const rows = await engagementsService.list({
+        vesselUuid: typeof vesselUuid === "string" ? vesselUuid : undefined,
+        status: typeof status === "string" ? status : undefined,
+      });
+      res.json(rows);
+    } catch (error: any) {
+      if (sendCoded(res, error)) return;
+      console.error("Error listing engagements:", error);
+      res.status(500).json({ error: "Failed to list engagements" });
+    }
+  },
+
+  async detail(req: Request, res: Response) {
+    try {
+      assertOfficeUser(getActor(req), "Contract detail");
+      const detail = await engagementsService.detail(req.params.uuid);
+      if (!detail) {
+        return res.status(404).json({ error: "Engagement not found" });
+      }
+      res.json(detail);
+    } catch (error: any) {
+      if (sendCoded(res, error)) return;
+      console.error("Error loading engagement detail:", error);
+      res.status(500).json({ error: "Failed to load engagement detail" });
+    }
+  },
+
+  async createPayItem(req: Request, res: Response) {
+    try {
+      assertOfficeUser(getActor(req), "Contract pay-item edit");
+      const parsed = payItemCreateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid contract pay item",
+          details: parsed.error.issues,
+        });
+      }
+      const row = await engagementsService.createPayItem(
+        req.params.uuid,
+        parsed.data,
+        getAuditUserUuid(req),
+      );
+      res.status(201).json(row);
+    } catch (error: any) {
+      if (sendCoded(res, error)) return;
+      console.error("Error creating contract pay item:", error);
+      res.status(500).json({ error: "Failed to create contract pay item" });
+    }
+  },
+
+  async updatePayItem(req: Request, res: Response) {
+    try {
+      assertOfficeUser(getActor(req), "Contract pay-item edit");
+      const parsed = payItemUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid contract pay item",
+          details: parsed.error.issues,
+        });
+      }
+      const row = await engagementsService.updatePayItem(
+        req.params.epeUuid,
+        parsed.data,
+        getAuditUserUuid(req),
+      );
+      res.json(row);
+    } catch (error: any) {
+      if (sendCoded(res, error)) return;
+      console.error("Error updating contract pay item:", error);
+      res.status(500).json({ error: "Failed to update contract pay item" });
+    }
+  },
+
+  async deletePayItem(req: Request, res: Response) {
+    try {
+      assertOfficeUser(getActor(req), "Contract pay-item edit");
+      await engagementsService.deletePayItem(
+        req.params.epeUuid,
+        getAuditUserUuid(req),
+      );
+      res.status(204).end();
+    } catch (error: any) {
+      if (sendCoded(res, error)) return;
+      console.error("Error deleting contract pay item:", error);
+      res.status(500).json({ error: "Failed to delete contract pay item" });
+    }
+  },
+
   async sync(req: Request, res: Response) {
     try {
       const parsed = syncSchema.safeParse(req.body);
@@ -72,6 +211,7 @@ export const engagementsController = {
 
   async setTimingOverride(req: Request, res: Response) {
     try {
+      assertOfficeUser(getActor(req), "Contract timing override");
       const parsed = timingOverrideSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({
@@ -87,6 +227,7 @@ export const engagementsController = {
       );
       res.json({ override: row ?? null });
     } catch (error: any) {
+      if (sendCoded(res, error)) return;
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
@@ -97,6 +238,9 @@ export const engagementsController = {
 
   async update(req: Request, res: Response) {
     try {
+      // Engagement/contract edits (dates, anchor, scale, status) are
+      // office-only, same policy as the Contracts menu grant.
+      assertOfficeUser(getActor(req), "Contract update");
       const parsed = updateSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({
@@ -113,6 +257,9 @@ export const engagementsController = {
       }
       res.json(record);
     } catch (error: any) {
+      if (error?.code === "FORBIDDEN") {
+        return res.status(403).json({ error: error.message });
+      }
       if (error?.code === "CONFLICT") {
         return res
           .status(409)

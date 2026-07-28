@@ -23,6 +23,8 @@ export interface PortageWorkspace {
   approvals: AccPortageApprovalV2[];
   crewTotals: CrewTotals[];
   latestRun: AccCalculationRunV2 | null;
+  /** True when engagement/override inputs changed after the last run. */
+  staleInputs: boolean;
 }
 
 /** Statuses from which a portage may be (re-)submitted for approval. */
@@ -36,15 +38,26 @@ export const portageService = {
   ): Promise<PortageWorkspace> {
     const portage = await repo.findByVesselPeriod(vesselUuid, period);
     if (!portage) {
-      return { portage: null, approvals: [], crewTotals: [], latestRun: null };
+      return {
+        portage: null,
+        approvals: [],
+        crewTotals: [],
+        latestRun: null,
+        staleInputs: false,
+      };
     }
-    const [approvals, crewTotals, latestRun, rankSortOrders] =
+    const [approvals, crewTotals, latestRun, rankSortOrders, latestChange] =
       await Promise.all([
         repo.findApprovalsByPortage(portage.portageUuid),
         wageEngineService.summaryForPortage(portage.portageUuid, period),
         repo.findLatestRun(portage.portageUuid),
         engagementsRepo.findRankSortOrders(),
+        engagementsRepo.findLatestInputChange(vesselUuid),
       ]);
+    const staleInputs =
+      !!latestRun?.createdAt &&
+      !!latestChange &&
+      latestChange.getTime() > new Date(latestRun.createdAt as any).getTime();
     const crewNames = await engagementsRepo.findCrewInfo(
       Array.from(new Set(crewTotals.map((t) => t.crewUuid))),
     );
@@ -59,6 +72,7 @@ export const portageService = {
       approvals,
       crewTotals: sortedTotals,
       latestRun: latestRun ?? null,
+      staleInputs,
     };
   },
 

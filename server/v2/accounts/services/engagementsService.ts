@@ -3,6 +3,7 @@ import type {
   AccEngagementV2,
   InsertAccEngagementV2,
   AccWageScaleV2,
+  AccEngagementPayElementV2,
 } from "../../../../shared/v2/accounts/types";
 import { applyAuditUser } from "./auditUtils";
 import { monthInfo, parseIsoDate, addMonths } from "../engine/periodMath";
@@ -280,7 +281,332 @@ export function resolveScaleOutcome(
   };
 }
 
+function codedError(
+  code: "CONFLICT" | "VALIDATION" | "NOT_FOUND",
+  message: string,
+): Error & { code: string } {
+  const err = new Error(message) as Error & { code: string };
+  err.code = code;
+  return err;
+}
+
+/** YYYY-MM periods covered by [from, to] (inclusive, ISO dates). */
+function periodsBetween(from: string, to: string): string[] {
+  const periods: string[] = [];
+  let [y, m] = [parseInt(from.slice(0, 4), 10), parseInt(from.slice(5, 7), 10)];
+  const [ey, em] = [parseInt(to.slice(0, 4), 10), parseInt(to.slice(5, 7), 10)];
+  let guard = 0;
+  while ((y < ey || (y === ey && m <= em)) && guard < 1200) {
+    periods.push(`${y}-${String(m).padStart(2, "0")}`);
+    m++;
+    if (m > 12) {
+      m = 1;
+      y++;
+    }
+    guard++;
+  }
+  return periods;
+}
+
+/**
+ * Freeze rule: refuse contract edits while the engagement has a settlement
+ * in submitted / approved / paid / locked status.
+ */
+async function assertNotFrozen(engagementUuid: string): Promise<void> {
+  const frozen = await engagementsRepository.findFrozenSettlementEngagements([
+    engagementUuid,
+  ]);
+  if (frozen.has(engagementUuid)) {
+    throw codedError(
+      "CONFLICT",
+      "This engagement has a settlement in submitted or later status — contract edits are refused. Revert the settlement to draft first.",
+    );
+  }
+}
+
+/**
+ * Locked-month rule: an override whose effective window falls entirely in
+ * locked vessel-months can never take effect (locked months are never
+ * recalculated), so the edit is refused with a clear message.
+ */
+async function assertWindowNotFullyLocked(
+  engagement: AccEngagementV2,
+  effectiveFrom: string | null,
+  effectiveTo: string | null,
+): Promise<void> {
+  if (!engagement.vesselUuid || !engagement.startDate) return;
+  const from = effectiveFrom ?? engagement.startDate;
+  const to = effectiveTo ?? engagement.endDate ?? null;
+  if (to == null) return; // open-ended window always reaches future open months
+  const periods = periodsBetween(from, to);
+  if (periods.length === 0) return;
+  const locked = await engagementsRepository.findLockedPeriods(
+    engagement.vesselUuid,
+    periods,
+  );
+  if (periods.every((p) => locked.has(p))) {
+    throw codedError(
+      "CONFLICT",
+      `Every month in the effective window (${periods.join(", ")}) is locked — the change could never take effect. Locked months are read-only.`,
+    );
+  }
+}
+
+const OVERRIDE_MODES = new Set([
+  "add_element",
+  "replace_scale_value",
+  "suppress_element",
+]);
+
+/** Shared validation for create/update of a contract pay item. */
+function validateOverridePayload(
+  engagement: AccEngagementV2,
+  data: {
+    overrideMode: string;
+    amount?: string | null;
+    rate?: string | null;
+    effectiveFrom?: string | null;
+    effectiveTo?: string | null;
+  },
+): void {
+  if (!OVERRIDE_MODES.has(data.overrideMode)) {
+    throw codedError("VALIDATION", `Unknown override mode '${data.overrideMode}'`);
+  }
+  if (
+    data.overrideMode !== "suppress_element" &&
+    data.amount == null &&
+    data.rate == null
+  ) {
+    throw codedError(
+      "VALIDATION",
+      "An amount (or rate) is required when adding an element or replacing the scale value",
+    );
+  }
+  const from = data.effectiveFrom ?? null;
+  const to = data.effectiveTo ?? null;
+  if (from && to && from > to) {
+    throw codedError("VALIDATION", "Effective from must be on or before effective to");
+  }
+  if (engagement.startDate) {
+    if (from && from < engagement.startDate) {
+      throw codedError(
+        "VALIDATION",
+        `Effective from (${from}) is before the engagement start (${engagement.startDate})`,
+      );
+    }
+    if (to && to < engagement.startDate) {
+      throw codedError(
+        "VALIDATION",
+        `Effective to (${to}) is before the engagement start (${engagement.startDate})`,
+      );
+    }
+  }
+  if (engagement.endDate) {
+    if (from && from > engagement.endDate) {
+      throw codedError(
+        "VALIDATION",
+        `Effective from (${from}) is after the engagement end (${engagement.endDate})`,
+      );
+    }
+    if (to && to > engagement.endDate) {
+      throw codedError(
+        "VALIDATION",
+        `Effective to (${to}) is after the engagement end (${engagement.endDate})`,
+      );
+    }
+  }
+}
+
 export const engagementsService = {
+  /**
+   * Contracts list rows: engagement + crew name/rank + vessel + scale name,
+   * filterable by vessel and status, newest start first.
+   */
+  async list(filters: { vesselUuid?: string; status?: string }) {
+    const engagements = await engagementsRepository.findEngagementList(filters);
+    const crewInfo = await engagementsRepository.findCrewInfo(
+      Array.from(new Set(engagements.map((e) => e.crewUuid))),
+    );
+    const vesselNames = await engagementsRepository.findVesselNames(
+      Array.from(
+        new Set(
+          engagements.map((e) => e.vesselUuid).filter((v): v is string => !!v),
+        ),
+      ),
+    );
+    const scaleNames = await engagementsRepository.findScaleNames(
+      Array.from(
+        new Set(
+          engagements
+            .map((e) => e.wageScaleUuid)
+            .filter((u): u is string => !!u),
+        ),
+      ),
+    );
+    return engagements.map((e) => ({
+      engagementUuid: e.engagementUuid,
+      crewUuid: e.crewUuid,
+      crewName: crewInfo.get(e.crewUuid)?.name || e.crewUuid,
+      rankIdAtStart: e.rankIdAtStart,
+      vesselUuid: e.vesselUuid,
+      vesselName: e.vesselUuid
+        ? (vesselNames.get(e.vesselUuid) ?? null)
+        : null,
+      startDate: e.startDate,
+      endDate: e.endDate,
+      endDateManual: e.endDateManual,
+      status: e.status,
+      scaleName: e.wageScaleUuid
+        ? (scaleNames.get(e.wageScaleUuid) ?? null)
+        : null,
+    }));
+  },
+
+  /**
+   * Contract detail: engagement + names + all live override rows + the
+   * settlement-freeze flag driving read-only mode in the UI.
+   */
+  async detail(engagementUuid: string) {
+    const engagement = await engagementsRepository.findByUuid(engagementUuid);
+    if (!engagement) return undefined;
+    const [crewInfo, overrides, frozen] = await Promise.all([
+      engagementsRepository.findCrewInfo([engagement.crewUuid]),
+      engagementsRepository.findOverridesByEngagement(engagementUuid),
+      engagementsRepository.findFrozenSettlementEngagements([engagementUuid]),
+    ]);
+    const vesselNames = engagement.vesselUuid
+      ? await engagementsRepository.findVesselNames([engagement.vesselUuid])
+      : new Map<string, string>();
+    const scaleNames = engagement.wageScaleUuid
+      ? await engagementsRepository.findScaleNames([engagement.wageScaleUuid])
+      : new Map<string, string>();
+    const info = crewInfo.get(engagement.crewUuid);
+    return {
+      engagement,
+      crewName: info?.name || engagement.crewUuid,
+      presentRank: info?.presentRank ?? null,
+      vesselName: engagement.vesselUuid
+        ? (vesselNames.get(engagement.vesselUuid) ?? null)
+        : null,
+      scaleName: engagement.wageScaleUuid
+        ? (scaleNames.get(engagement.wageScaleUuid) ?? null)
+        : null,
+      overrides,
+      frozen: frozen.has(engagementUuid),
+    };
+  },
+
+  // ---- Contract pay items (engagement pay-element overrides) -------------
+
+  async createPayItem(
+    engagementUuid: string,
+    data: {
+      payElementUuid: string;
+      overrideMode: string;
+      amount?: string | null;
+      rate?: string | null;
+      paymentTimingOverride?: string | null;
+      effectiveFrom?: string | null;
+      effectiveTo?: string | null;
+      remarks?: string | null;
+    },
+    auditUserUuid?: string,
+  ): Promise<AccEngagementPayElementV2> {
+    const engagement = await engagementsRepository.findByUuid(engagementUuid);
+    if (!engagement) throw codedError("NOT_FOUND", "Engagement not found");
+    await assertNotFrozen(engagementUuid);
+    validateOverridePayload(engagement, data);
+    await assertWindowNotFullyLocked(
+      engagement,
+      data.effectiveFrom ?? null,
+      data.effectiveTo ?? null,
+    );
+    return engagementsRepository.createOverride({
+      engagementUuid,
+      payElementUuid: data.payElementUuid,
+      overrideMode: data.overrideMode,
+      amount: data.overrideMode === "suppress_element" ? null : (data.amount ?? null),
+      rate: data.overrideMode === "suppress_element" ? null : (data.rate ?? null),
+      paymentTimingOverride: data.paymentTimingOverride ?? null,
+      effectiveFrom: data.effectiveFrom ?? null,
+      effectiveTo: data.effectiveTo ?? null,
+      remarks: data.remarks ?? null,
+      createdByUuid: auditUserUuid ?? null,
+    });
+  },
+
+  async updatePayItem(
+    epeUuid: string,
+    data: Partial<{
+      payElementUuid: string;
+      overrideMode: string;
+      amount: string | null;
+      rate: string | null;
+      paymentTimingOverride: string | null;
+      effectiveFrom: string | null;
+      effectiveTo: string | null;
+      remarks: string | null;
+    }>,
+    auditUserUuid?: string,
+  ): Promise<AccEngagementPayElementV2> {
+    const existing = await engagementsRepository.findOverrideByUuid(epeUuid);
+    if (!existing) throw codedError("NOT_FOUND", "Contract pay item not found");
+    const engagement = await engagementsRepository.findByUuid(
+      existing.engagementUuid,
+    );
+    if (!engagement) throw codedError("NOT_FOUND", "Engagement not found");
+    await assertNotFrozen(existing.engagementUuid);
+    const merged = {
+      overrideMode: data.overrideMode ?? existing.overrideMode,
+      amount: data.amount !== undefined ? data.amount : existing.amount,
+      rate: data.rate !== undefined ? data.rate : existing.rate,
+      effectiveFrom:
+        data.effectiveFrom !== undefined
+          ? data.effectiveFrom
+          : existing.effectiveFrom,
+      effectiveTo:
+        data.effectiveTo !== undefined ? data.effectiveTo : existing.effectiveTo,
+    };
+    validateOverridePayload(engagement, merged);
+    await assertWindowNotFullyLocked(
+      engagement,
+      merged.effectiveFrom,
+      merged.effectiveTo,
+    );
+    // Suppress overrides never carry a value — normalize like the create path.
+    const normalized =
+      merged.overrideMode === "suppress_element"
+        ? { ...data, amount: null, rate: null }
+        : data;
+    const updated = await engagementsRepository.updateOverride(epeUuid, {
+      ...normalized,
+      updatedByUuid: auditUserUuid ?? null,
+    });
+    return updated!;
+  },
+
+  async deletePayItem(epeUuid: string, auditUserUuid?: string): Promise<void> {
+    const existing = await engagementsRepository.findOverrideByUuid(epeUuid);
+    if (!existing) throw codedError("NOT_FOUND", "Contract pay item not found");
+    await assertNotFrozen(existing.engagementUuid);
+    // Same locked-month rule as create/update: removing an override whose
+    // window lies entirely in locked months could never take effect.
+    const engagement = await engagementsRepository.findByUuid(
+      existing.engagementUuid,
+    );
+    if (engagement) {
+      await assertWindowNotFullyLocked(
+        engagement,
+        existing.effectiveFrom ?? null,
+        existing.effectiveTo ?? null,
+      );
+    }
+    await engagementsRepository.updateOverride(epeUuid, {
+      isDeleted: true,
+      updatedByUuid: auditUserUuid ?? null,
+    });
+  },
+
   /**
    * Auto-create voyage_contract engagements for crew_assignments rows
    * overlapping the period that lack one (spec Prompt 03 section C).
@@ -429,7 +755,17 @@ export const engagementsService = {
           new: newStart,
         });
       }
-      if ((newEnd ?? null) !== (engagement.endDate ?? null)) {
+      if (
+        engagement.endDateManual &&
+        (newEnd ?? null) !== (engagement.endDate ?? null)
+      ) {
+        // Manually set sign-off: never overwritten by sync — report instead.
+        result.attention.push({
+          engagementUuid: engagement.engagementUuid,
+          crewUuid: engagement.crewUuid,
+          reason: `sign-off date was set manually to ${engagement.endDate ?? "open"} but the crewing assignment says ${newEnd ?? "open"} — review the contract`,
+        });
+      } else if ((newEnd ?? null) !== (engagement.endDate ?? null)) {
         patch.endDate = newEnd;
         result.updated.push({
           engagementUuid: engagement.engagementUuid,
@@ -670,6 +1006,10 @@ export const engagementsService = {
     if (!engagement) {
       throw new Error(`Engagement not found: ${engagementUuid}`);
     }
+    // Timing changes are contract edits: refuse when frozen by a settlement
+    // or when every month of the engagement window is locked.
+    await assertNotFrozen(engagementUuid);
+    await assertWindowNotFullyLocked(engagement, null, null);
     const existing = await engagementsRepository.findTimingOnlyRow(
       engagementUuid,
       payElementUuid,
@@ -712,6 +1052,15 @@ export const engagementsService = {
       >
     > & { auditUserUuid?: string },
   ): Promise<AccEngagementV2 | undefined> {
+    // Freeze rule: contract fields may not change once a settlement is in
+    // submitted or later status.
+    const touchesContractFields =
+      data.scaleYearAtStart !== undefined ||
+      data.nextStepDate !== undefined ||
+      data.wageScaleUuid !== undefined ||
+      data.startDate !== undefined ||
+      data.endDate !== undefined;
+    if (touchesContractFields) await assertNotFrozen(engagementUuid);
     // Overlap guard: whenever an overlap-relevant field changes (status or
     // service dates), validate the EFFECTIVE post-patch record — the patch
     // merged over persisted values — against the crew's other engagements.
@@ -758,7 +1107,12 @@ export const engagementsService = {
         if (conflict) throw overlapConflictError(conflict);
       }
     }
-    const dataWithAudit = applyAuditUser(data, false);
+    // Any end-date change through this API is a manual edit: mark it so
+    // sync reports (rather than overwrites) future differences.
+    const dataWithAudit = applyAuditUser(
+      data.endDate !== undefined ? { ...data, endDateManual: true } : data,
+      false,
+    );
     return engagementsRepository.update(engagementUuid, dataWithAudit);
   },
 

@@ -12,6 +12,7 @@ import {
   BookText,
   FileText,
   Ship,
+  FileSignature,
 } from "lucide-react";
 import { useViewport, getLayoutConfig } from "@/hooks/useViewport";
 import {
@@ -36,8 +37,7 @@ type SideSection = {
 const iconClass = "text-white";
 
 // Ordered by frequency of use: monthly screens on top, reports next,
-// onboarding/setup screens at the bottom. A "Contracts" entry will be
-// inserted after "Allotments & Cash" by a later task.
+// onboarding/setup screens at the bottom.
 const ACTIVE_SECTIONS: SideSection[] = [
   {
     label: null,
@@ -71,6 +71,11 @@ const ACTIVE_SECTIONS: SideSection[] = [
         name: "Allotments & Cash",
         icon: <Wallet size={20} className={iconClass} />,
         page: "allotments-cash",
+      },
+      {
+        name: "Contracts",
+        icon: <FileSignature size={20} className={iconClass} />,
+        page: "contracts",
       },
     ],
   },

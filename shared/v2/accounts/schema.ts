@@ -201,6 +201,9 @@ export const accEngagementsV2 = pgTable(
     vesselUuid: text("vessel_uuid"),
     startDate: date("start_date"),
     endDate: date("end_date"),
+    // 0181: true when a user set the end date by hand; sync must not
+    // overwrite it (differences are reported in the sync attention list).
+    endDateManual: boolean("end_date_manual").notNull().default(false),
     wageScaleUuid: text("wage_scale_uuid"),
     rankIdAtStart: text("rank_id_at_start"),
     scaleYearAtStart: integer("scale_year_at_start"), // 1-based seniority step in force at start

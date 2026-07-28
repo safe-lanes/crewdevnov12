@@ -1,4 +1,4 @@
-import { eq, and, inArray, isNotNull } from "drizzle-orm";
+import { eq, and, inArray, isNotNull, sql, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import {
@@ -7,6 +7,7 @@ import {
   accEngagementPayElementsV2,
   accWageLedgerV2,
   accSettlementsV2,
+  accPortageBillsV2,
 } from "../../../../shared/v2/accounts/schema";
 import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { admCompanyRanksV2, admAvailableRanksV2 } from "../../../../shared/v2/admin/schema";
@@ -415,6 +416,175 @@ export class EngagementsRepository {
       })
       .returning();
     return rows[0];
+  }
+
+  // ---- Contracts list / detail (0181) -------------------------------------
+
+  /**
+   * Engagement list rows for the Contracts screen, newest start date first.
+   * Optional vessel / status filters.
+   */
+  async findEngagementList(filters: {
+    vesselUuid?: string;
+    status?: string;
+  }): Promise<AccEngagementV2[]> {
+    const db = getDb();
+    const conds = [eq(accEngagementsV2.isDeleted, false)];
+    if (filters.vesselUuid) {
+      conds.push(eq(accEngagementsV2.vesselUuid, filters.vesselUuid));
+    }
+    if (filters.status) {
+      conds.push(eq(accEngagementsV2.status, filters.status));
+    }
+    return db
+      .select()
+      .from(accEngagementsV2)
+      .where(and(...conds))
+      .orderBy(desc(accEngagementsV2.startDate), desc(accEngagementsV2.id));
+  }
+
+  /** All live override rows (any mode, incl. timing-only) for one engagement. */
+  async findOverridesByEngagement(
+    engagementUuid: string,
+  ): Promise<AccEngagementPayElementV2[]> {
+    const db = getDb();
+    return db
+      .select()
+      .from(accEngagementPayElementsV2)
+      .where(
+        and(
+          eq(accEngagementPayElementsV2.engagementUuid, engagementUuid),
+          eq(accEngagementPayElementsV2.isDeleted, false),
+        ),
+      )
+      .orderBy(accEngagementPayElementsV2.id);
+  }
+
+  async findOverrideByUuid(
+    epeUuid: string,
+  ): Promise<AccEngagementPayElementV2 | undefined> {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(accEngagementPayElementsV2)
+      .where(
+        and(
+          eq(accEngagementPayElementsV2.epeUuid, epeUuid),
+          eq(accEngagementPayElementsV2.isDeleted, false),
+        ),
+      );
+    return rows[0];
+  }
+
+  async createOverride(data: {
+    engagementUuid: string;
+    payElementUuid: string;
+    overrideMode: string;
+    amount?: string | null;
+    rate?: string | null;
+    paymentTimingOverride?: string | null;
+    effectiveFrom?: string | null;
+    effectiveTo?: string | null;
+    remarks?: string | null;
+    createdByUuid?: string | null;
+  }): Promise<AccEngagementPayElementV2> {
+    const db = getDb();
+    const rows = await db
+      .insert(accEngagementPayElementsV2)
+      .values({
+        epeUuid: uuidv4(),
+        engagementUuid: data.engagementUuid,
+        payElementUuid: data.payElementUuid,
+        overrideMode: data.overrideMode,
+        amount: data.amount ?? null,
+        rate: data.rate ?? null,
+        paymentTimingOverride: data.paymentTimingOverride ?? null,
+        effectiveFrom: data.effectiveFrom ?? null,
+        effectiveTo: data.effectiveTo ?? null,
+        remarks: data.remarks ?? null,
+        createdByUuid: data.createdByUuid ?? null,
+      })
+      .returning();
+    return rows[0];
+  }
+
+  async updateOverride(
+    epeUuid: string,
+    data: Partial<{
+      payElementUuid: string;
+      overrideMode: string;
+      amount: string | null;
+      rate: string | null;
+      paymentTimingOverride: string | null;
+      effectiveFrom: string | null;
+      effectiveTo: string | null;
+      remarks: string | null;
+      isDeleted: boolean;
+      updatedByUuid: string | null;
+    }>,
+  ): Promise<AccEngagementPayElementV2 | undefined> {
+    const db = getDb();
+    const rows = await db
+      .update(accEngagementPayElementsV2)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(accEngagementPayElementsV2.epeUuid, epeUuid))
+      .returning();
+    return rows[0];
+  }
+
+  /** Periods (of the given set) whose portage bill for the vessel is locked. */
+  async findLockedPeriods(
+    vesselUuid: string,
+    periods: string[],
+  ): Promise<Set<string>> {
+    const set = new Set<string>();
+    if (periods.length === 0) return set;
+    const db = getDb();
+    const rows = await db
+      .select({
+        period: accPortageBillsV2.period,
+        status: accPortageBillsV2.status,
+        isLocked: accPortageBillsV2.isLocked,
+      })
+      .from(accPortageBillsV2)
+      .where(
+        and(
+          eq(accPortageBillsV2.vesselUuid, vesselUuid),
+          inArray(accPortageBillsV2.period, periods),
+          eq(accPortageBillsV2.isDeleted, false),
+        ),
+      );
+    for (const r of rows as Array<{
+      period: string;
+      status: string;
+      isLocked: boolean | null;
+    }>) {
+      if (r.isLocked || r.status === "locked") set.add(r.period);
+    }
+    return set;
+  }
+
+  /**
+   * Latest updated_at/created_at across the vessel's engagements and their
+   * override rows — used for the Step-2 stale-calculation indicator.
+   */
+  async findLatestInputChange(vesselUuid: string): Promise<Date | null> {
+    const db = getDb();
+    const rows = await db.execute(sql`
+      SELECT GREATEST(
+        (SELECT MAX(GREATEST(e.updated_at, e.created_at))
+           FROM acc_engagements_v2 e
+          WHERE e.vessel_uuid = ${vesselUuid}),
+        (SELECT MAX(GREATEST(o.updated_at, o.created_at))
+           FROM acc_engagement_pay_elements_v2 o
+           JOIN acc_engagements_v2 e2 ON e2.engagement_uuid = o.engagement_uuid
+          WHERE e2.vessel_uuid = ${vesselUuid})
+      ) AS latest
+    `);
+    const latest = (rows.rows?.[0] as { latest?: Date | string | null } | undefined)
+      ?.latest;
+    if (!latest) return null;
+    return latest instanceof Date ? latest : new Date(latest);
   }
 
   async updateTimingOverride(

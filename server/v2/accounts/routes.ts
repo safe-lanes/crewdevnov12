@@ -92,6 +92,17 @@ router.delete("/advances/:uuid", advancesController.delete);
 // ============================================
 // ENGAGEMENTS (sync + manual seniority anchor)
 // ============================================
+router.get("/engagements", engagementsController.list);
+router.get("/engagements/:uuid/detail", engagementsController.detail);
+router.post("/engagements/:uuid/pay-items", engagementsController.createPayItem);
+router.patch(
+  "/engagements/pay-items/:epeUuid",
+  engagementsController.updatePayItem,
+);
+router.delete(
+  "/engagements/pay-items/:epeUuid",
+  engagementsController.deletePayItem,
+);
 router.post("/engagements/sync", engagementsController.sync);
 router.get("/engagements/review", engagementsController.review);
 router.get("/engagements/audit", engagementsController.overlapAudit);

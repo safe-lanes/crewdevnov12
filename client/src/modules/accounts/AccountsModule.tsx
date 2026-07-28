@@ -14,6 +14,8 @@ import MonthlyTransactionsPage from "./pages/MonthlyTransactionsPage";
 import SettlementsPage from "./pages/SettlementsPage";
 import VesselPortagePage from "./pages/VesselPortagePage";
 import AllotmentsCashPage from "./pages/AllotmentsCashPage";
+import ContractsListPage from "./pages/ContractsListPage";
+import ContractDetailPage from "./pages/ContractDetailPage";
 import PayslipsPage from "./pages/PayslipsPage";
 import GlExportPage from "./pages/GlExportPage";
 import FleetSummaryPage from "./pages/FleetSummaryPage";
@@ -71,6 +73,11 @@ const PAGE_META: PageMeta[] = [
     path: "/accounts/crew-finance/allotments-cash",
   },
   {
+    page: "contracts",
+    menu: "Account Contracts",
+    path: "/accounts/payroll/contracts",
+  },
+  {
     page: "payslips",
     menu: "Account Payslips",
     path: "/accounts/reports/payslips",
@@ -98,7 +105,17 @@ const LEGACY_PAGE_ALIASES: Record<string, string> = {
   "cash-bond": "allotments-cash",
 };
 
+/** Contract detail URLs: /accounts/payroll/contracts/<engagementUuid>. */
+function contractUuidFromPath(loc: string): string | undefined {
+  const segs = loc.split("/").filter(Boolean);
+  if (segs.length >= 2 && segs[segs.length - 2] === "contracts") {
+    return segs[segs.length - 1];
+  }
+  return undefined;
+}
+
 function pageFromPath(loc: string): string | undefined {
+  if (contractUuidFromPath(loc)) return "contracts";
   const segs = loc.split("/").filter(Boolean);
   const last = segs[segs.length - 1];
   const resolved = LEGACY_PAGE_ALIASES[last] ?? last;
@@ -169,6 +186,14 @@ export function AccountsModule() {
         return <VesselPortagePage />;
       case "allotments-cash":
         return <AllotmentsCashPage />;
+      case "contracts": {
+        const uuid = contractUuidFromPath(location);
+        return uuid ? (
+          <ContractDetailPage engagementUuid={uuid} />
+        ) : (
+          <ContractsListPage />
+        );
+      }
       case "payslips":
         return <PayslipsPage />;
       case "gl-export":

@@ -77,6 +77,12 @@ export const accountsApiV2 = {
       req("DELETE", `${ACCOUNTS_BASE}/cba-reference/${uuid}`),
   },
   engagements: {
+    createPayItem: (uuid: string, data: Record<string, unknown>) =>
+      req("POST", `${ACCOUNTS_BASE}/engagements/${uuid}/pay-items`, data),
+    updatePayItem: (epeUuid: string, data: Record<string, unknown>) =>
+      req("PATCH", `${ACCOUNTS_BASE}/engagements/pay-items/${epeUuid}`, data),
+    deletePayItem: (epeUuid: string) =>
+      req("DELETE", `${ACCOUNTS_BASE}/engagements/pay-items/${epeUuid}`),
     sync: (vesselUuid: string, period: string) =>
       req("POST", `${ACCOUNTS_BASE}/engagements/sync`, { vesselUuid, period }),
     update: (uuid: string, data: Record<string, unknown>) =>
