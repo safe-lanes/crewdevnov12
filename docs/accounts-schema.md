@@ -913,3 +913,43 @@ the service-layer rules above:
    the migration `0155_accounts_engine_prep.sql`, but `0155` was already taken
    in this repository (sequential numbering), so the same content ships as
    `0156_accounts_engine_prep.sql`.
+
+## UI coverage audit outcome (Jul-2026)
+
+A screen-by-screen audit compared user-visible fields against the schema.
+Three gaps were closed (contract `notes` on the Contract detail page,
+settlement `remarks` on the Settlements detail + Mark Paid dialog, advance
+`approver` on the Advances create dialog). The remaining audit findings are
+deliberate, as recorded here.
+
+### Columns deferred (not exposed in the UI, by decision)
+
+| Column | Reason deferred |
+| --- | --- |
+| `acc_allotments_v2.payee_currency` | Pending bank/remittance support; exposing it would imply currency conversion the system does not perform. |
+| `acc_engagement_pay_elements_v2.proration_basis_override` | Rarely needed; add when a client requests per-item proration overrides. |
+| `acc_pay_elements_v2.rounding_precision` | Rarely needed; the backend default of 2 decimals is correct for all current tenants. |
+| `acc_bond_items_v2.category` | Bond category is inventory metadata, not payroll data. |
+| `acc_bond_items_v2.auto_deduct` | Redundant — bond purchases are always deducted; a toggle would only invite inconsistency. |
+
+### Columns intentionally not user-set
+
+These are system-managed and must never gain direct edit UI:
+
+- **Engagement sync-derived fields** (crew/vessel/assignment linkage, rank at
+  start, engagement type): owned by the crewing sync.
+- **Engine-managed phase/status fields** on ledger lines and portage records:
+  written only by the wage engine and lifecycle services.
+- **Calculated settlement figures** — `balance_paid`, `accruals_paid`,
+  `settlement_date`, `period`, gross/deduction/net totals: derived by
+  compute/recompute; user edits go through adjustments instead.
+- **Allotment `valid_to` / `status`**: managed by the suspend/close lifecycle
+  actions, not free edit.
+- **Advance system fields** — `status`, `recovery_pay_element_uuid`,
+  `ctm_reference`: driven by the recovery engine and CTM linkage.
+- **CTM system links** — `advance_uuid`, header currency: set when records
+  are mirrored from advances.
+- **FX/currency policy fields** (`fx_rate`, functional-currency mirrors):
+  engine snapshots, never hand-entered.
+- **Tenant config `settings` JSON**: administered via configuration, not
+  end-user screens.

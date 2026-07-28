@@ -176,6 +176,7 @@ router.delete(
   settlementsController.deleteAdjustment,
 );
 router.get("/settlements/:uuid", settlementsController.get);
+router.patch("/settlements/:uuid/remarks", settlementsController.updateRemarks);
 router.post("/settlements/:uuid/recompute", settlementsController.recompute);
 router.post("/settlements/:uuid/adjustments", settlementsController.addAdjustment);
 router.post("/settlements/:uuid/submit", settlementsController.submit);

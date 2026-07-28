@@ -143,6 +143,7 @@ describe("default-deny sample across office-only route groups (signed Ship JWT)"
     ["POST", "/portage/approvals/some-uuid/decision"],
     ["GET", "/settlements"],
     ["POST", "/settlements/compute"],
+    ["PATCH", "/settlements/some-uuid/remarks"],
     ["POST", "/calc/run-engagement"],
     ["POST", "/calc/adjustments"],
     ["GET", "/ledger"],

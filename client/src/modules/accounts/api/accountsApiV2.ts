@@ -155,11 +155,19 @@ export const accountsApiV2 = {
         `${ACCOUNTS_BASE}/settlements/approvals/${approvalUuid}/decision`,
         { decision, comments },
       ),
-    markPaid: (uuid: string, paidDate: string, paymentReference?: string | null) =>
+    markPaid: (
+      uuid: string,
+      paidDate: string,
+      paymentReference?: string | null,
+      remarks?: string | null,
+    ) =>
       req("POST", `${ACCOUNTS_BASE}/settlements/${uuid}/mark-paid`, {
         paidDate,
         paymentReference,
+        remarks,
       }),
+    updateRemarks: (uuid: string, remarks: string | null) =>
+      req("PATCH", `${ACCOUNTS_BASE}/settlements/${uuid}/remarks`, { remarks }),
     lock: (uuid: string) =>
       req("POST", `${ACCOUNTS_BASE}/settlements/${uuid}/lock`),
     revertToDraft: (uuid: string) =>

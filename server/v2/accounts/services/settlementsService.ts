@@ -659,7 +659,11 @@ export const settlementsService = {
   /** approved → paid; the engagement is closed out as 'settled'. */
   async markPaid(
     settlementUuid: string,
-    data: { paidDate: string; paymentReference?: string | null },
+    data: {
+      paidDate: string;
+      paymentReference?: string | null;
+      remarks?: string | null;
+    },
     auditUserUuid?: string,
   ): Promise<SettlementDetail> {
     const settlement = await requireSettlement(settlementUuid);
@@ -673,10 +677,33 @@ export const settlementsService = {
       status: "paid",
       paidDate: data.paidDate,
       paymentReference: data.paymentReference ?? null,
+      // Remarks are only overwritten when the dialog supplies a value —
+      // leaving the field blank preserves remarks captured earlier.
+      ...(data.remarks !== undefined ? { remarks: data.remarks } : {}),
       updatedByUuid: auditUserUuid ?? null,
     });
     await engagementsRepo.update(settlement.engagementUuid, {
       status: "settled",
+      updatedByUuid: auditUserUuid ?? null,
+    });
+    return this.get(settlementUuid);
+  },
+
+  /** Free-text remarks; editable only while draft or submitted. */
+  async updateRemarks(
+    settlementUuid: string,
+    remarks: string | null,
+    auditUserUuid?: string,
+  ): Promise<SettlementDetail> {
+    const settlement = await requireSettlement(settlementUuid);
+    if (settlement.status !== "draft" && settlement.status !== "submitted") {
+      throw coded(
+        "CONFLICT",
+        `Remarks can only be edited while draft or submitted (status '${settlement.status}')`,
+      );
+    }
+    await repo.update(settlementUuid, {
+      remarks,
       updatedByUuid: auditUserUuid ?? null,
     });
     return this.get(settlementUuid);

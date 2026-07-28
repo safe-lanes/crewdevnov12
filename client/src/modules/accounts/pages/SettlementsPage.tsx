@@ -100,6 +100,9 @@ export default function SettlementsPage() {
     new Date().toISOString().slice(0, 10),
   );
   const [paymentReference, setPaymentReference] = useState("");
+  const [paidRemarks, setPaidRemarks] = useState("");
+  const [remarksDraft, setRemarksDraft] = useState("");
+  const [remarksEditing, setRemarksEditing] = useState(false);
   const [adjOpen, setAdjOpen] = useState(false);
   const [adjForm, setAdjForm] = useState({ ...EMPTY_ADJ });
   const [decisionComments, setDecisionComments] = useState<
@@ -361,11 +364,26 @@ export default function SettlementsPage() {
         selectedUuid!,
         paidDate,
         paymentReference.trim() || null,
+        paidRemarks.trim() || undefined,
       ),
     onSuccess: () => {
       refresh();
       setPaidOpen(false);
       toast({ title: "Settlement marked paid" });
+    },
+    onError,
+  });
+
+  const remarksMut = useMutation({
+    mutationFn: () =>
+      accountsApiV2.settlements.updateRemarks(
+        selectedUuid!,
+        remarksDraft.trim() || null,
+      ),
+    onSuccess: () => {
+      refresh();
+      setRemarksEditing(false);
+      toast({ title: "Remarks saved" });
     },
     onError,
   });
@@ -710,6 +728,63 @@ export default function SettlementsPage() {
               {s.currency}
             </div>
           </div>
+
+          {/* Remarks */}
+          <section className="print:hidden" data-testid="section-remarks">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-sm font-semibold">Remarks</h3>
+              {mayEdit &&
+                (status === "draft" || status === "submitted") &&
+                !remarksEditing && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setRemarksDraft(s.remarks ?? "");
+                      setRemarksEditing(true);
+                    }}
+                    data-testid="button-edit-remarks"
+                  >
+                    Edit
+                  </Button>
+                )}
+            </div>
+            {remarksEditing ? (
+              <div className="space-y-2">
+                <Textarea
+                  rows={2}
+                  value={remarksDraft}
+                  onChange={(e) => setRemarksDraft(e.target.value)}
+                  data-testid="input-settlement-remarks"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => remarksMut.mutate()}
+                    disabled={remarksMut.isPending}
+                    data-testid="button-save-remarks"
+                  >
+                    {remarksMut.isPending ? "Saving…" : "Save"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setRemarksEditing(false)}
+                    data-testid="button-cancel-remarks"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div
+                className="text-sm text-muted-foreground whitespace-pre-wrap"
+                data-testid="text-settlement-remarks"
+              >
+                {s.remarks?.trim() ? s.remarks : "—"}
+              </div>
+            )}
+          </section>
 
           {/* A. Wage balance */}
           <section>
@@ -1094,6 +1169,16 @@ export default function SettlementsPage() {
                 onChange={(e) => setPaymentReference(e.target.value)}
                 placeholder="Bank ref / voucher no."
                 data-testid="input-payment-reference"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Remarks (optional)</Label>
+              <Textarea
+                rows={2}
+                value={paidRemarks}
+                onChange={(e) => setPaidRemarks(e.target.value)}
+                placeholder="Leave blank to keep existing remarks"
+                data-testid="input-paid-remarks"
               />
             </div>
           </div>

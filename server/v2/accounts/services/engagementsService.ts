@@ -1273,6 +1273,7 @@ export const engagementsService = {
         | "status"
         | "startDate"
         | "endDate"
+        | "notes"
       >
     > & { auditUserUuid?: string },
   ): Promise<AccEngagementV2 | undefined> {
@@ -1283,7 +1284,8 @@ export const engagementsService = {
       data.nextStepDate !== undefined ||
       data.wageScaleUuid !== undefined ||
       data.startDate !== undefined ||
-      data.endDate !== undefined;
+      data.endDate !== undefined ||
+      data.notes !== undefined;
     if (touchesContractFields) await assertNotFrozen(engagementUuid);
     // Overlap guard: whenever an overlap-relevant field changes (status or
     // service dates), validate the EFFECTIVE post-patch record — the patch

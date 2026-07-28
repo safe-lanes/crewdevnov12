@@ -166,6 +166,7 @@ export const OFFICE_ONLY_ROUTES: RoutePolicyEntry[] = [
   r("POST", "/settlements/:uuid/adjustments"),
   r("POST", "/settlements/:uuid/submit"),
   r("POST", "/settlements/:uuid/mark-paid"),
+  r("PATCH", "/settlements/:uuid/remarks"),
   r("POST", "/settlements/:uuid/lock"),
   r("POST", "/settlements/:uuid/revert-to-draft"),
 

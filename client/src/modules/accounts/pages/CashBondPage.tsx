@@ -67,6 +67,7 @@ interface AdvanceForm {
   requestDate: string;
   recoveryAmount: string;
   reason: string;
+  approver: string;
 }
 
 const emptyAdvanceForm: AdvanceForm = {
@@ -76,6 +77,7 @@ const emptyAdvanceForm: AdvanceForm = {
   requestDate: "",
   recoveryAmount: "",
   reason: "",
+  approver: "",
 };
 
 /** Client-side schedule preview: recovery/month with clamped final month. */
@@ -186,6 +188,7 @@ export function AdvancesTab({
         requestDate: form.requestDate || null,
         recoveryAmount: form.recoveryAmount,
         reason: form.reason.trim() || null,
+        approver: form.approver.trim() || null,
         period,
       });
       queryClient.invalidateQueries({ queryKey: listKey });
@@ -446,6 +449,15 @@ export function AdvancesTab({
                 value={form.recoveryAmount}
                 onChange={(e) => set("recoveryAmount", e.target.value)}
                 data-testid="input-advance-recovery"
+              />
+            </div>
+            <div className="space-y-1 col-span-2">
+              <Label>Approved by (optional)</Label>
+              <Input
+                value={form.approver}
+                onChange={(e) => set("approver", e.target.value)}
+                placeholder="Name of the approving officer"
+                data-testid="input-advance-approver"
               />
             </div>
             <div className="space-y-1 col-span-2">

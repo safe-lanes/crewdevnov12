@@ -38,6 +38,11 @@ const decisionSchema = z.object({
 const markPaidSchema = z.object({
   paidDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "paidDate must be YYYY-MM-DD"),
   paymentReference: z.string().nullish(),
+  remarks: z.string().max(2000).nullish(),
+});
+
+const remarksSchema = z.object({
+  remarks: z.string().max(2000).nullable(),
 });
 
 function handleError(res: Response, error: any, fallback: string) {
@@ -196,6 +201,25 @@ export const settlementsController = {
       res.json(detail);
     } catch (error: any) {
       handleError(res, error, "Failed to record decision");
+    }
+  },
+
+  async updateRemarks(req: Request, res: Response) {
+    const parsed = remarksSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ error: "Invalid remarks", details: parsed.error.issues });
+    }
+    try {
+      const detail = await settlementsService.updateRemarks(
+        req.params.uuid,
+        parsed.data.remarks,
+        getAuditUserUuid(req),
+      );
+      res.json(detail);
+    } catch (error: any) {
+      handleError(res, error, "Failed to update remarks");
     }
   },
 

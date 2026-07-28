@@ -7,6 +7,7 @@ import { usePermissions } from "@/contexts/PermissionsContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -194,6 +195,26 @@ export default function ContractDetailPage({
       fail("Update failed", err);
     } finally {
       setSavingAnchor(false);
+    }
+  };
+
+  // ---- F: notes ----
+  const [notesEditing, setNotesEditing] = useState(false);
+  const [notesValue, setNotesValue] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
+  const saveNotes = async () => {
+    setSavingNotes(true);
+    try {
+      await accountsApiV2.engagements.update(engagementUuid, {
+        notes: notesValue.trim() || null,
+      });
+      invalidate();
+      setNotesEditing(false);
+      toast({ title: "Notes saved" });
+    } catch (err) {
+      fail("Update failed", err);
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -749,6 +770,68 @@ export default function ContractDetailPage({
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+      </section>
+
+      {/* F — Notes */}
+      <section className="border rounded-md bg-white">
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <span className="font-medium text-sm">F · Notes</span>
+          {!readOnly && !notesEditing && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setNotesValue(engagement.notes ?? "");
+                setNotesEditing(true);
+              }}
+              data-testid="button-edit-notes"
+            >
+              <Pencil size={14} className="mr-1" /> Edit
+            </Button>
+          )}
+        </div>
+        <div className="p-4 text-sm">
+          {notesEditing ? (
+            <div className="space-y-2">
+              <Textarea
+                rows={3}
+                value={notesValue}
+                onChange={(e) => setNotesValue(e.target.value)}
+                placeholder="Optional free-text notes for this contract"
+                data-testid="input-contract-notes"
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={saveNotes}
+                  disabled={savingNotes}
+                  data-testid="button-save-notes"
+                >
+                  {savingNotes ? "Saving…" : "Save"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setNotesEditing(false)}
+                  data-testid="button-cancel-notes"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p
+              className={
+                engagement.notes?.trim()
+                  ? "whitespace-pre-wrap"
+                  : "text-muted-foreground"
+              }
+              data-testid="text-contract-notes"
+            >
+              {engagement.notes?.trim() ? engagement.notes : "No notes."}
+            </p>
           )}
         </div>
       </section>

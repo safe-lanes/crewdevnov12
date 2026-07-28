@@ -465,6 +465,56 @@ describe("Contract Detail — pay-item overrides & guards", () => {
       },
     );
     expect(timing.status).toBe(409);
+
+    // Notes edit refused too (frozen contract).
+    const notesPatch = await fetch(`${V2_BASE}/engagements/${engFrz}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: "should be refused" }),
+    });
+    expect(notesPatch.status).toBe(409);
+
+    // Settlement remarks ARE editable while submitted.
+    const remarksPatch = await fetch(
+      `${V2_BASE}/settlements/${frzSettlementUuid}/remarks`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ remarks: "final month, verified by office" }),
+      },
+    );
+    expect(remarksPatch.status).toBe(200);
+    const remarksBody = await remarksPatch.json();
+    expect(remarksBody.settlement.remarks).toBe(
+      "final month, verified by office",
+    );
+  });
+
+  it("T8b: contract notes round-trip on an unfrozen engagement", async () => {
+    const patch = await fetch(`${V2_BASE}/engagements/${engMain}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: "bridge watchkeeping bonus agreed" }),
+    });
+    expect(patch.status).toBe(200);
+    expect((await patch.json()).notes).toBe("bridge watchkeeping bonus agreed");
+
+    const detail = await fetch(
+      `${V2_BASE}/engagements/${engMain}/detail?t=${Date.now()}`,
+    );
+    expect(detail.status).toBe(200);
+    expect((await detail.json()).engagement.notes).toBe(
+      "bridge watchkeeping bonus agreed",
+    );
+
+    // Clearing notes works too.
+    const clear = await fetch(`${V2_BASE}/engagements/${engMain}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: null }),
+    });
+    expect(clear.status).toBe(200);
+    expect((await clear.json()).notes).toBeNull();
   });
 
   it("T7c: pay-item DELETE refused when every month in the window is locked", async () => {

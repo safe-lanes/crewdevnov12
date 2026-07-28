@@ -20,6 +20,7 @@ const updateSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .nullable(),
+    notes: z.string().max(2000).nullable(),
   })
   .partial();
 
