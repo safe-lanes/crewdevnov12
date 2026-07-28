@@ -195,3 +195,34 @@ v1 operates single-currency per tenant — all wage scales and engagements must 
 5. As office: Return the month to the vessel → status `returned`; rejected
    entry shows the office comment on the vessel page.
 6. Payroll Run Step 1 shows the vessel package status badge with counts.
+
+## 7. Known limitations
+
+Please make sure the client is aware of these three boundaries of the current
+system before go-live:
+
+1. **Vessel vs. office access is enforced by the server.** A vessel (ship)
+   login can only use the vessel-side functions — the working screen for its
+   own vessel, and read-only views of its portage bill and payslips. Even if
+   someone with a vessel login tries to reach office-only functions directly
+   (bypassing the screens), the server refuses the request. This protection
+   does not depend on menu settings and cannot be switched off by
+   misconfiguration.
+
+2. **Per-menu permissions for office users are enforced in the screens only,
+   not by the server.** When an office user is not granted a menu, that menu
+   is hidden from them — but a technically savvy office user could still
+   reach that menu's data by talking to the server directly. In other words,
+   menu grants for office roles are a usability and workflow control today,
+   not a hard security boundary between office users. Full server-side
+   enforcement is planned and is waiting on the login system (the parent app)
+   including the user's role in the login token. Until then, office logins
+   should only be given to staff trusted with the Accounts module as a whole.
+
+3. **One currency per company.** The system operates in a single currency per
+   tenant — the functional currency chosen in Tenant Configuration. All wage
+   scales and contracts must use that same currency. If mixed currencies are
+   entered anyway, the system does not convert between them: amounts are
+   combined as if the exchange rate were 1:1, which would misstate payroll
+   totals. Keep everything in the functional currency until multi-currency
+   support is delivered.
