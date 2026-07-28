@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { reportsService } from "../services/reportsService";
+import { getActor } from "./_auth";
+import { assertVesselScope } from "../services/vesselScope";
 
 const periodRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
 const periodSchema = z.string().regex(periodRegex, "period must be YYYY-MM");
@@ -29,6 +31,7 @@ function reportErrorStatus(error: unknown): number | null {
   const code = (error as { code?: string })?.code;
   if (code === "VALIDATION") return 400;
   if (code === "NOT_FOUND") return 404;
+  if (code === "FORBIDDEN") return 403;
   return null;
 }
 
@@ -55,6 +58,8 @@ export const reportsController = {
       const payslip = engagementUuid
         ? await reportsService.payslipForEngagement(engagementUuid, period)
         : await reportsService.payslipForCrew(crewUuid!, period);
+      // Ship users may only view payslips for their own vessel (§3a).
+      assertVesselScope(getActor(req), payslip.vesselUuid);
       res.json(payslip);
     } catch (error) {
       sendReportError(res, error, "Failed to build payslip");
@@ -70,6 +75,8 @@ export const reportsController = {
       });
     }
     try {
+      // Ship users may only view payslips for their own vessel (§3a).
+      assertVesselScope(getActor(req), parsed.data.vesselUuid);
       res.json(
         await reportsService.payslipBatch(
           parsed.data.vesselUuid,

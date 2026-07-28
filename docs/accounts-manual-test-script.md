@@ -282,7 +282,7 @@ Menu: **Accounts → Settlements → New Settlement**. C5's engagement (ended 20
 |---|---|---|---|---|
 | O1 | As **Ship / Vessel Admin** on MV CHECKMATE, attempt to view another vessel's monthly transactions (pick any other vessel if one exists; otherwise via URL manipulation of the vessel parameter). | Refused: *"You are not assigned to this vessel"*. | | |
 | O2 | As **Ship / Vessel User**, open the Accounts module. | Only vessel-side screens are available; office screens (Pay Elements, Wage Scales, approvals, Tenant Config) are not reachable in the navigation. | | |
-| O3 | As Ship persona, check that office master screens are not offered in the sidebar/navigation. | Confirmed. **Note:** direct *API* calls with a ship identity are not fully blocked for some office endpoints — this is a confirmed security finding tracked separately (Appendix B.1). Test permissions at the UI level only; do not raise a new defect or fail this run for the API-level gap. | | |
+| O3 | As Ship persona, check that office master screens are not offered in the sidebar/navigation. | Confirmed. **Note:** direct *API* calls with a ship identity are also blocked (403) for all office-only endpoints since 28-Jul-2026 — see Appendix B.1 (fixed). | | |
 | O4 | Repeat F-style entry attempt on **March** (locked) as Ship. | Still refused (as J7). | | |
 | O5 | As Office, create a **second** draft wage scale with the **same scope** (same vessel type/group — i.e. fleet-wide, matching `MTS SCALE 2026`) and an **overlapping** effective period (e.g. effective from `01-Jun-2026`, no end date), then try to **Activate** it. | Refused: *"An active scale already exists for this vessel type/group with an overlapping effectivity period"*. The already-active `MTS SCALE 2026` stays the only active scale for that scope. | | |
 
@@ -327,12 +327,7 @@ Menu: **Accounts → Settlements → New Settlement**. C5's engagement (ended 20
 
 ## Appendix B — Known issues to ignore (do not raise as defects)
 
-1. **Dev-build API permission gaps — CONFIRMED SECURITY FINDING** (verified 27-Jul-2026 against real authentication, `AUTH_BYPASS` off, on an isolated probe instance). A validly-signed **Ship-identity** JWT was **accepted** by these office-only endpoints:
-   - `POST /api/v2/accounts/pay-elements` → **HTTP 201** (created)
-   - `POST /api/v2/accounts/wage-scales` → **HTTP 201** (created)
-   - `POST /api/v2/accounts/calc/run` → **HTTP 200** (calculation ran)
-
-   Correctly **blocked**: `POST /api/v2/accounts/portage/approvals/:uuid/decision` → **HTTP 403** *"Approval decision is an office action"*. Unauthenticated GETs → **HTTP 401** *"Missing authorization token"*; an unsigned/forged token → **HTTP 401** *"Invalid authorization token"*. Vessel **scoping** (O1) works. This gap is tracked as a **separate security task** (office-action guards on ship-side API access) — do **not** raise a new defect for it here; test permissions at the UI level for this run.
+1. **~~Dev-build API permission gaps~~ — FIXED 28-Jul-2026.** The office-only endpoints that previously accepted a validly-signed **Ship-identity** JWT (`POST /pay-elements` → 201, `POST /wage-scales` → 201, `POST /calc/run` → 200) now return **HTTP 403** by default. The fix is a **router-level default-deny guard** on the accounts API: every route is classified in `server/v2/accounts/shipAccessPolicy.ts` — Ship identities can reach only the explicit vessel allowlist (vessel portage, CTM, own-vessel monthly transactions, read-only Portage Bill workspace and Payslips per the §3a policy in docs/deployment-checklist.md); everything else rejects Ship actors with 403 at the router. A route-inventory test (`tests/unit/accounts-ship-route-inventory.test.ts`) fails if a new accounts endpoint is added without classification, and regression tests with a real signed Ship JWT (`tests/integration/api/accounts-ship-access.test.ts`) cover the three originally-affected endpoints plus unauthenticated (401) and cross-vessel-scope (403) cases. No tester action needed; API permission behaviour may now be tested directly.
 2. The standing allotment may appear in the GL export as its own row (pseudo-code separate from the ALLOT element row). The combined allotment credit must still be 1,300.00.
 
 ## Appendix C — Manual fallback for Phase E (if you cannot run the seed script)

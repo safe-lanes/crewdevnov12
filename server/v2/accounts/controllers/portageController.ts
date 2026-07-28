@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { getActor, getAuditUserUuid } from "./_auth";
-import { assertOfficeUser } from "../services/vesselScope";
+import { assertOfficeUser, assertVesselScope } from "../services/vesselScope";
 import { portageService } from "../services";
 
 const submitSchema = z.object({
@@ -41,6 +41,8 @@ export const portageController = {
           .status(400)
           .json({ error: "vesselUuid and period are required" });
       }
+      // Ship users may only view their own vessel's portage workspace (§3a).
+      assertVesselScope(getActor(req), vesselUuid);
       const workspace = await portageService.getWorkspace(vesselUuid, period);
       res.json(workspace);
     } catch (error: any) {

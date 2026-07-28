@@ -1,4 +1,6 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
+import { getActor } from "./controllers/_auth";
+import { SHIP_ALLOWED_ROUTES } from "./shipAccessPolicy";
 import {
   payElementsController,
   allotmentsController,
@@ -18,6 +20,38 @@ import {
 } from "./controllers";
 
 const router = Router();
+
+// ============================================================
+// SHIP-SIDE DEFAULT-DENY GUARD (see shipAccessPolicy.ts)
+//
+// A marker sub-router re-registers every Ship-allowlisted route using
+// Express's own matching semantics; matched requests set a flag and fall
+// through. The guard middleware after it then rejects Ship actors on any
+// request that did not match the allowlist. Office actors are unaffected.
+// ============================================================
+const SHIP_ALLOWED_FLAG = Symbol("shipRouteAllowed");
+
+const shipAllowMarker = Router();
+for (const entry of SHIP_ALLOWED_ROUTES) {
+  const method = entry.method.toLowerCase() as "get" | "post" | "put" | "patch" | "delete";
+  shipAllowMarker[method](entry.path, (req: Request, _res: Response, next: NextFunction) => {
+    (req as Request & { [SHIP_ALLOWED_FLAG]?: boolean })[SHIP_ALLOWED_FLAG] = true;
+    next();
+  });
+}
+router.use(shipAllowMarker);
+router.use((req: Request, res: Response, next: NextFunction) => {
+  const actor = getActor(req);
+  if (
+    actor.vesselUser &&
+    !(req as Request & { [SHIP_ALLOWED_FLAG]?: boolean })[SHIP_ALLOWED_FLAG]
+  ) {
+    return res
+      .status(403)
+      .json({ error: "This action is available to office users only" });
+  }
+  next();
+});
 
 // ============================================
 // TENANT CONFIGURATION (single row per tenant)
