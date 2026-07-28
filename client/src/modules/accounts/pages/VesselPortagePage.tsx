@@ -1150,6 +1150,88 @@ export default function VesselPortagePage() {
     }
   };
 
+  // ---- on-load auto-create (task #179 part 1) ------------------------------
+  // Create-only: missing engagements are created from Crewing when the
+  // vessel-month loads. Updates/cancellations stay on the office's explicit
+  // "Sync from Crewing". Server skips approved/locked months.
+  const autoCreatedFor = useRef<string>("");
+  useEffect(() => {
+    if (!hasFilter || !gridEditable) return;
+    const key = `${vesselUuid}::${period}`;
+    if (autoCreatedFor.current === key) return;
+    autoCreatedFor.current = key;
+    accountsApiV2.engagements
+      .autoCreate(vesselUuid, period)
+      .then((result) => {
+        const created = result?.created?.length ?? 0;
+        const errors = result?.errors?.length ?? 0;
+        if (created > 0) {
+          queryClient.invalidateQueries({
+            queryKey: [
+              `${ACCOUNTS_BASE}/engagements/review?vesselUuid=${vesselUuid}&period=${period}`,
+            ],
+          });
+          toast({
+            title: `${created} engagement${created === 1 ? "" : "s"} created from Crewing`,
+          });
+        }
+        if (errors > 0) {
+          toast({
+            title: `${errors} crew member${errors === 1 ? "" : "s"} could not be engaged`,
+            description: (result.errors ?? [])
+              .slice(0, 3)
+              .map((e: any) => e.reason)
+              .join("; "),
+            variant: "destructive",
+          });
+        }
+      })
+      .catch(() => {
+        // Non-blocking background action.
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasFilter, gridEditable, vesselUuid, period]);
+
+  // ---- vessel-editable sign-off date (task #179 part 4) --------------------
+  const [signOffTarget, setSignOffTarget] = useState<any | null>(null);
+  const [signOffDate, setSignOffDate] = useState("");
+  const [signOffSaving, setSignOffSaving] = useState(false);
+
+  const openSignOff = (row: any) => {
+    setSignOffTarget(row);
+    setSignOffDate(row.engagement?.endDate ?? "");
+  };
+
+  const saveSignOff = async () => {
+    if (!signOffTarget?.engagement || !signOffDate) return;
+    setSignOffSaving(true);
+    try {
+      await accountsApiV2.engagements.setSignOff(
+        signOffTarget.engagement.engagementUuid,
+        period,
+        signOffDate,
+      );
+      queryClient.invalidateQueries({
+        queryKey: [
+          `${ACCOUNTS_BASE}/engagements/review?vesselUuid=${vesselUuid}&period=${period}`,
+        ],
+      });
+      setSignOffTarget(null);
+      toast({
+        title: "Sign-off date saved",
+        description: `Sign-off set to ${signOffDate}. This month's wages will be prorated to that date.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Could not save sign-off date",
+        description: parseApiError(err).message,
+        variant: "destructive",
+      });
+    } finally {
+      setSignOffSaving(false);
+    }
+  };
+
   // ---- submit / return -----------------------------------------------------
   const [submitOpen, setSubmitOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -1377,7 +1459,7 @@ export default function VesselPortagePage() {
                 onClick={tryOpenSubmit}
                 data-testid="button-submit-month"
               >
-                <Send size={14} className="mr-1" /> Submit Month
+                <Send size={14} className="mr-1" /> Submit to office
               </Button>
             )}
           </div>
@@ -1441,7 +1523,7 @@ export default function VesselPortagePage() {
                 CTM cash account
               </TabsTrigger>
               <TabsTrigger value="submission" data-testid="tab-submission">
-                Submit month
+                Submit to office
               </TabsTrigger>
             </TabsList>
 
@@ -1490,10 +1572,23 @@ export default function VesselPortagePage() {
                             {r.presentRank ?? "—"}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">
-                            {formatDate(r.engagement.startDate)} →{" "}
-                            {r.engagement.endDate
-                              ? formatDate(r.engagement.endDate)
-                              : "on board"}
+                            <span>
+                              {formatDate(r.engagement.startDate)} →{" "}
+                              {r.engagement.endDate
+                                ? formatDate(r.engagement.endDate)
+                                : "on board"}
+                            </span>
+                            {gridEditable && (
+                              <button
+                                type="button"
+                                className="ml-1 inline-flex items-center text-[#16569e] hover:text-[#1e5fa8] align-middle"
+                                title="Set sign-off date"
+                                onClick={() => openSignOff(r)}
+                                data-testid={`button-signoff-${r.crewUuid}`}
+                              >
+                                <Pencil size={12} />
+                              </button>
+                            )}
                           </td>
                           <td
                             className="px-3 py-2 text-right whitespace-nowrap"
@@ -1828,7 +1923,7 @@ export default function VesselPortagePage() {
                     disabled={totalDirty > 0}
                     data-testid="button-submit-month-tab"
                   >
-                    <Send size={14} className="mr-1" /> Submit Month to Office
+                    <Send size={14} className="mr-1" /> Submit to office
                   </Button>
                 )}
               </div>
@@ -2052,11 +2147,55 @@ export default function VesselPortagePage() {
         </DialogContent>
       </Dialog>
 
+      {/* ---------------- Sign-off date dialog ---------------- */}
+      <Dialog
+        open={!!signOffTarget}
+        onOpenChange={(o) => !o && setSignOffTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Set sign-off date — {signOffTarget?.crewName ?? ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <p>
+              Setting the sign-off date ends the engagement on that day. This
+              month&apos;s wages will be prorated up to and including the
+              sign-off date.
+            </p>
+            <Label htmlFor="signoff-date">Sign-off date</Label>
+            <Input
+              id="signoff-date"
+              type="date"
+              value={signOffDate}
+              onChange={(e) => setSignOffDate(e.target.value)}
+              data-testid="input-signoff-date"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSignOffTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={saveSignOff}
+              disabled={signOffSaving || !signOffDate}
+              className="bg-[#16569e] hover:bg-[#1e5fa8]"
+              data-testid="button-save-signoff"
+            >
+              {signOffSaving ? "Saving…" : "Save sign-off date"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* ---------------- Submit confirm dialog ---------------- */}
       <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Submit Month — {formatPeriod(period)}</DialogTitle>
+            <DialogTitle>
+              Submit to office — {formatPeriod(period)}
+            </DialogTitle>
           </DialogHeader>
           <div className="text-sm space-y-2">
             <p>

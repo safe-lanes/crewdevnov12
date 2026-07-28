@@ -138,6 +138,8 @@ router.delete(
   engagementsController.deletePayItem,
 );
 router.post("/engagements/sync", engagementsController.sync);
+router.post("/engagements/auto-create", engagementsController.autoCreate);
+router.post("/engagements/:uuid/sign-off", engagementsController.setSignOff);
 router.get("/engagements/review", engagementsController.review);
 router.get("/engagements/audit", engagementsController.overlapAudit);
 router.post(

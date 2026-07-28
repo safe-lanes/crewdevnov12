@@ -1,4 +1,6 @@
-import { EngagementsRepository } from "../repositories";
+import { EngagementsRepository, PortageRepository } from "../repositories";
+import { assertVesselScope } from "./vesselScope";
+import type { RequestActor } from "../controllers/_auth";
 import type {
   AccEngagementV2,
   InsertAccEngagementV2,
@@ -9,6 +11,7 @@ import { applyAuditUser } from "./auditUtils";
 import { monthInfo, parseIsoDate, addMonths } from "../engine/periodMath";
 
 const engagementsRepository = new EngagementsRepository();
+const portageRepository = new PortageRepository();
 
 export interface SyncError {
   assignUuid: string;
@@ -417,6 +420,173 @@ function validateOverridePayload(
   }
 }
 
+
+/**
+ * Shared create-only pass: create a voyage_contract engagement for every
+ * crewing assignment overlapping the month that lacks one. Used by both
+ * the explicit "Sync from Crewing" action and the on-load auto-create.
+ */
+async function createMissingEngagements(ctx: {
+  vesselUuid: string;
+  month: ReturnType<typeof monthInfo>;
+  assignments: Array<{
+    assignUuid: string;
+    crewUuid: string;
+    signOnDate: string | null;
+    signOffDate: string | null;
+  }>;
+  existingByAssignment: Set<string | null>;
+  crewEngagements: AccEngagementV2[];
+  crewInfo: Map<string, { name?: string | null; presentRank?: string | null }>;
+  crewLabel: (crewUuid: string) => string;
+  resolveRankCode: (raw: string) => string | null;
+  typeCtx: VesselTypeContext;
+  scales: AccWageScaleV2[];
+  result: SyncResult;
+  auditUserUuid?: string;
+}): Promise<void> {
+  const {
+    vesselUuid,
+    month,
+    assignments,
+    existingByAssignment,
+    crewEngagements,
+    crewInfo,
+    crewLabel,
+    resolveRankCode,
+    typeCtx,
+    scales,
+    result,
+    auditUserUuid,
+  } = ctx;
+  let warnedUnmatchedType = false;
+  for (const assignment of assignments) {
+    const startDate = parseTextDate(assignment.signOnDate);
+    const endDate = parseTextDate(assignment.signOffDate);
+    if (startDate === undefined) {
+      result.errors.push({
+        assignUuid: assignment.assignUuid,
+        crewUuid: assignment.crewUuid,
+        crewName: crewLabel(assignment.crewUuid),
+        reason: `unparseable sign_on_date '${assignment.signOnDate}'`,
+      });
+      continue;
+    }
+    if (endDate === undefined) {
+      result.errors.push({
+        assignUuid: assignment.assignUuid,
+        crewUuid: assignment.crewUuid,
+        crewName: crewLabel(assignment.crewUuid),
+        reason: `unparseable sign_off_date '${assignment.signOffDate}'`,
+      });
+      continue;
+    }
+    if (startDate == null) {
+      result.errors.push({
+        assignUuid: assignment.assignUuid,
+        crewUuid: assignment.crewUuid,
+        crewName: crewLabel(assignment.crewUuid),
+        reason: "missing sign_on_date",
+      });
+      continue;
+    }
+    const overlaps =
+      startDate <= month.monthEnd &&
+      (endDate == null || endDate >= month.monthStart);
+    if (!overlaps) {
+      result.skippedNoOverlap++;
+      continue;
+    }
+    if (existingByAssignment.has(assignment.assignUuid)) {
+      result.skippedExisting++;
+      continue;
+    }
+    const conflict = findOverlapConflict(
+      { crewUuid: assignment.crewUuid, startDate, endDate },
+      crewEngagements,
+    );
+    if (conflict) {
+      result.errors.push({
+        assignUuid: assignment.assignUuid,
+        crewUuid: assignment.crewUuid,
+        crewName: crewLabel(assignment.crewUuid),
+        reason: `overlapping engagement ${conflict.engagementUuid} (${conflict.startDate} – ${conflict.endDate ?? "open"}, ${conflict.status}) already exists for this crew member — resolve via the engagement overlap audit`,
+      });
+      continue;
+    }
+    const rawRank = crewInfo.get(assignment.crewUuid)?.presentRank ?? null;
+    if (!rawRank) {
+      result.errors.push({
+        assignUuid: assignment.assignUuid,
+        crewUuid: assignment.crewUuid,
+        crewName: crewLabel(assignment.crewUuid),
+        reason: "crew member has no present_rank",
+      });
+      continue;
+    }
+    const rankId = resolveRankCode(rawRank);
+    if (!rankId) {
+      result.errors.push({
+        assignUuid: assignment.assignUuid,
+        crewUuid: assignment.crewUuid,
+        crewName: crewLabel(assignment.crewUuid),
+        reason: `unmapped rank: ${rawRank}`,
+      });
+      continue;
+    }
+    const outcome = resolveScaleOutcome(scales, typeCtx, startDate);
+    if (!outcome.scale) {
+      result.errors.push({
+        assignUuid: assignment.assignUuid,
+        crewUuid: assignment.crewUuid,
+        crewName: crewLabel(assignment.crewUuid),
+        reason: outcome.errorReason!,
+      });
+      continue;
+    }
+    if (outcome.usedFleetWideForUnmatchedType && !warnedUnmatchedType) {
+      result.warnings.push(
+        `vessel type "${typeCtx.typeName}" not found in vessel-type master — using fleet-wide scale`,
+      );
+      warnedUnmatchedType = true;
+    }
+    const scale = outcome.scale;
+    const dataWithAudit = applyAuditUser(
+      {
+        auditUserUuid,
+        crewUuid: assignment.crewUuid,
+        engagementType: "voyage_contract",
+        assignmentUuid: assignment.assignUuid,
+        vesselUuid,
+        startDate,
+        endDate,
+        rankIdAtStart: rankId,
+        wageScaleUuid: scale.scaleUuid,
+        currency: scale.currency,
+        status: "active",
+        scaleYearAtStart: 1,
+        nextStepDate: addMonths(startDate, 12),
+      },
+      true,
+    );
+    try {
+      const created = await engagementsRepository.create(dataWithAudit);
+      result.created.push(created);
+      crewEngagements.push(created);
+    } catch (err: any) {
+      // Concurrent auto-create/sync race: the partial unique index
+      // uq_acc_engagements_v2_live_assignment (migration 0182) makes the
+      // duplicate insert fail — treat it as an idempotent skip.
+      const pgCode = err?.code ?? err?.cause?.code;
+      if (pgCode === "23505") {
+        result.skippedExisting += 1;
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 export const engagementsService = {
   /**
    * Contracts list rows: engagement + crew name/rank + vessel + scale name,
@@ -656,7 +826,6 @@ export const engagementsService = {
       errors: [],
       warnings: [],
     };
-    let warnedUnmatchedType = false;
 
     // ---- Reconciliation of existing assignment-derived engagements -----
     // Only start_date / end_date / status are ever touched; manual anchor
@@ -790,121 +959,176 @@ export const engagementsService = {
       }
     }
 
-    for (const assignment of assignments) {
-      const startDate = parseTextDate(assignment.signOnDate);
-      const endDate = parseTextDate(assignment.signOffDate);
-      if (startDate === undefined) {
-        result.errors.push({
-          assignUuid: assignment.assignUuid,
-          crewUuid: assignment.crewUuid,
-          crewName: crewLabel(assignment.crewUuid),
-          reason: `unparseable sign_on_date '${assignment.signOnDate}'`,
-        });
-        continue;
-      }
-      if (endDate === undefined) {
-        result.errors.push({
-          assignUuid: assignment.assignUuid,
-          crewUuid: assignment.crewUuid,
-          crewName: crewLabel(assignment.crewUuid),
-          reason: `unparseable sign_off_date '${assignment.signOffDate}'`,
-        });
-        continue;
-      }
-      if (startDate == null) {
-        result.errors.push({
-          assignUuid: assignment.assignUuid,
-          crewUuid: assignment.crewUuid,
-          crewName: crewLabel(assignment.crewUuid),
-          reason: "missing sign_on_date",
-        });
-        continue;
-      }
-      const overlaps =
-        startDate <= month.monthEnd &&
-        (endDate == null || endDate >= month.monthStart);
-      if (!overlaps) {
-        result.skippedNoOverlap++;
-        continue;
-      }
-      if (existingByAssignment.has(assignment.assignUuid)) {
-        result.skippedExisting++;
-        continue;
-      }
-      const conflict = findOverlapConflict(
-        { crewUuid: assignment.crewUuid, startDate, endDate },
-        crewEngagements,
-      );
-      if (conflict) {
-        result.errors.push({
-          assignUuid: assignment.assignUuid,
-          crewUuid: assignment.crewUuid,
-          crewName: crewLabel(assignment.crewUuid),
-          reason: `overlapping engagement ${conflict.engagementUuid} (${conflict.startDate} – ${conflict.endDate ?? "open"}, ${conflict.status}) already exists for this crew member — resolve via the engagement overlap audit`,
-        });
-        continue;
-      }
-      const rawRank = crewInfo.get(assignment.crewUuid)?.presentRank ?? null;
-      if (!rawRank) {
-        result.errors.push({
-          assignUuid: assignment.assignUuid,
-          crewUuid: assignment.crewUuid,
-          crewName: crewLabel(assignment.crewUuid),
-          reason: "crew member has no present_rank",
-        });
-        continue;
-      }
-      const rankId = resolveRankCode(rawRank);
-      if (!rankId) {
-        result.errors.push({
-          assignUuid: assignment.assignUuid,
-          crewUuid: assignment.crewUuid,
-          crewName: crewLabel(assignment.crewUuid),
-          reason: `unmapped rank: ${rawRank}`,
-        });
-        continue;
-      }
-      const outcome = resolveScaleOutcome(scales, typeCtx, startDate);
-      if (!outcome.scale) {
-        result.errors.push({
-          assignUuid: assignment.assignUuid,
-          crewUuid: assignment.crewUuid,
-          crewName: crewLabel(assignment.crewUuid),
-          reason: outcome.errorReason!,
-        });
-        continue;
-      }
-      if (outcome.usedFleetWideForUnmatchedType && !warnedUnmatchedType) {
-        result.warnings.push(
-          `vessel type "${typeCtx.typeName}" not found in vessel-type master — using fleet-wide scale`,
-        );
-        warnedUnmatchedType = true;
-      }
-      const scale = outcome.scale;
-      const dataWithAudit = applyAuditUser(
-        {
-          auditUserUuid,
-          crewUuid: assignment.crewUuid,
-          engagementType: "voyage_contract",
-          assignmentUuid: assignment.assignUuid,
-          vesselUuid,
-          startDate,
-          endDate,
-          rankIdAtStart: rankId,
-          wageScaleUuid: scale.scaleUuid,
-          currency: scale.currency,
-          status: "active",
-          scaleYearAtStart: 1,
-          nextStepDate: addMonths(startDate, 12),
-        },
-        true,
-      );
-      const created = await engagementsRepository.create(dataWithAudit);
-      result.created.push(created);
-      crewEngagements.push(created);
-    }
+    await createMissingEngagements({
+      vesselUuid,
+      month,
+      assignments,
+      existingByAssignment,
+      crewEngagements,
+      crewInfo,
+      crewLabel,
+      resolveRankCode,
+      typeCtx,
+      scales,
+      result,
+      auditUserUuid,
+    });
 
     return result;
+  },
+
+  /**
+   * Auto-create engagements when a vessel-period workspace loads (spec
+   * task #179 part 1): CREATE-ONLY — never updates or cancels existing
+   * engagements (that stays on the explicit "Sync from Crewing" action).
+   * Skips entirely when the month's portage bill is approved or locked.
+   */
+  async autoCreate(
+    vesselUuid: string,
+    period: string,
+    auditUserUuid?: string,
+  ): Promise<SyncResult & { skippedLockedMonth: boolean }> {
+    const result: SyncResult = {
+      created: [],
+      updated: [],
+      cancelled: [],
+      attention: [],
+      skippedExisting: 0,
+      skippedNoOverlap: 0,
+      errors: [],
+      warnings: [],
+    };
+    const portage = await portageRepository.findByVesselPeriod(
+      vesselUuid,
+      period,
+    );
+    if (
+      portage &&
+      (portage.isLocked ||
+        portage.status === "approved" ||
+        portage.status === "locked")
+    ) {
+      return { ...result, skippedLockedMonth: true };
+    }
+
+    const month = monthInfo(period);
+    const assignments =
+      await engagementsRepository.findAssignmentsForVessel(vesselUuid);
+    const existing = await engagementsRepository.findByAssignmentUuids(
+      assignments.map((a) => a.assignUuid),
+    );
+    const existingByAssignment = new Set(
+      existing.map((e) => e.assignmentUuid).filter(Boolean),
+    );
+    const crewUuids = Array.from(new Set(assignments.map((a) => a.crewUuid)));
+    const crewInfo = await engagementsRepository.findCrewInfo(crewUuids);
+    const crewEngagements =
+      await engagementsRepository.findByCrewUuids(crewUuids);
+    const vesselTypeName =
+      await engagementsRepository.findVesselType(vesselUuid);
+    const masterTypes = await engagementsRepository.findVesselTypeMaster();
+    const typeCtx = resolveVesselTypeContext(vesselTypeName, masterTypes);
+    const scales = await engagementsRepository.findActiveScales();
+    const resolveRankCode = buildRankResolver(
+      await engagementsRepository.findCompanyRanks(),
+    );
+    const crewLabel = (crewUuid: string): string => {
+      const info = crewInfo.get(crewUuid);
+      if (!info?.name) return crewUuid;
+      const rank = info.presentRank ? ` (${info.presentRank})` : "";
+      return `${info.name}${rank} (${crewUuid})`;
+    };
+
+    await createMissingEngagements({
+      vesselUuid,
+      month,
+      assignments,
+      existingByAssignment,
+      crewEngagements,
+      crewInfo,
+      crewLabel,
+      resolveRankCode,
+      typeCtx,
+      scales,
+      result,
+      auditUserUuid,
+    });
+
+    return { ...result, skippedLockedMonth: false };
+  },
+
+  /**
+   * Vessel-editable sign-off date (spec task #179 part 4): sets the
+   * engagement end date with the endDateManual flag so "Sync from
+   * Crewing" never overwrites it. Allowed only while the month's portage
+   * is open / vessel_draft / returned (or absent) and the engagement is
+   * not frozen by a submitted settlement. Vessel actors are scoped to
+   * their own vessels; office users may also use this path.
+   */
+  async setSignOffDate(
+    engagementUuid: string,
+    period: string,
+    endDate: string,
+    actor?: RequestActor,
+  ): Promise<AccEngagementV2> {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate) || !parseIsoDate(endDate)) {
+      throw codedError("VALIDATION", "endDate must be YYYY-MM-DD");
+    }
+    // The guarded month must be derived from the date being written, not
+    // trusted from the caller — otherwise a locked month could be modified
+    // by sending an open `period` alongside an endDate in the locked month.
+    if (endDate.slice(0, 7) !== period) {
+      throw codedError(
+        "VALIDATION",
+        `Sign-off date (${endDate}) must fall inside the requested month (${period})`,
+      );
+    }
+    const engagement = await engagementsRepository.findByUuid(engagementUuid);
+    if (!engagement) throw codedError("NOT_FOUND", "Engagement not found");
+    assertVesselScope(actor, engagement.vesselUuid);
+    if (engagement.status === "settled" || engagement.status === "cancelled") {
+      throw codedError(
+        "CONFLICT",
+        `Sign-off date cannot be changed on a ${engagement.status} engagement`,
+      );
+    }
+    if (engagement.startDate && endDate < engagement.startDate) {
+      throw codedError(
+        "VALIDATION",
+        `Sign-off date (${endDate}) is before the engagement start (${engagement.startDate})`,
+      );
+    }
+    await assertNotFrozen(engagementUuid);
+    if (engagement.vesselUuid) {
+      // Guard every affected month: the month the new date falls in
+      // (= period, enforced above) and, if the engagement already has an
+      // end date in a different month, that month too — moving a sign-off
+      // out of a closed month would silently change its figures.
+      const guardedPeriods = new Set([period]);
+      if (engagement.endDate) guardedPeriods.add(engagement.endDate.slice(0, 7));
+      for (const p of guardedPeriods) {
+        const portage = await portageRepository.findByVesselPeriod(
+          engagement.vesselUuid,
+          p,
+        );
+        if (
+          portage &&
+          (portage.isLocked ||
+            !["open", "vessel_draft", "returned"].includes(portage.status))
+        ) {
+          throw codedError(
+            "CONFLICT",
+            `Sign-off date cannot be changed while month ${p} is ${portage.status}`,
+          );
+        }
+      }
+    }
+    const updated = await engagementsRepository.update(engagementUuid, {
+      endDate,
+      endDateManual: true,
+      ...(actor?.auditUserUuid ? { updatedByUuid: actor.auditUserUuid } : {}),
+    });
+    return updated!;
   },
 
   /**

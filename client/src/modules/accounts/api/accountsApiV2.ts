@@ -85,6 +85,16 @@ export const accountsApiV2 = {
       req("DELETE", `${ACCOUNTS_BASE}/engagements/pay-items/${epeUuid}`),
     sync: (vesselUuid: string, period: string) =>
       req("POST", `${ACCOUNTS_BASE}/engagements/sync`, { vesselUuid, period }),
+    autoCreate: (vesselUuid: string, period: string) =>
+      req("POST", `${ACCOUNTS_BASE}/engagements/auto-create`, {
+        vesselUuid,
+        period,
+      }),
+    setSignOff: (uuid: string, period: string, endDate: string) =>
+      req("POST", `${ACCOUNTS_BASE}/engagements/${uuid}/sign-off`, {
+        period,
+        endDate,
+      }),
     update: (uuid: string, data: Record<string, unknown>) =>
       req("PATCH", `${ACCOUNTS_BASE}/engagements/${uuid}`, data),
     setTimingOverride: (

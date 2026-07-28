@@ -52,7 +52,7 @@ export const portageService = {
         wageEngineService.summaryForPortage(portage.portageUuid, period),
         repo.findLatestRun(portage.portageUuid),
         engagementsRepo.findRankSortOrders(),
-        engagementsRepo.findLatestInputChange(vesselUuid),
+        engagementsRepo.findLatestInputChange(vesselUuid, period),
       ]);
     const staleInputs =
       !!latestRun?.createdAt &&

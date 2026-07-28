@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import type { ColDef } from "ag-grid-community";
@@ -254,6 +254,35 @@ export default function PayrollRunPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<any | null>(null);
 
+  // ---- on-load auto-create (task #179 part 1) ----
+  // Create-only: silently creates missing engagements from Crewing when the
+  // workspace loads; never updates or cancels (that stays on "Sync from
+  // Crewing"). Server skips approved/locked months.
+  const [autoCreateResult, setAutoCreateResult] = useState<any | null>(null);
+  const autoCreatedFor = useRef<string>("");
+  useEffect(() => {
+    if (!hasFilter || !mayEdit) return;
+    const key = `${vesselUuid}::${period}`;
+    if (autoCreatedFor.current === key) return;
+    autoCreatedFor.current = key;
+    setAutoCreateResult(null);
+    accountsApiV2.engagements
+      .autoCreate(vesselUuid, period)
+      .then((result) => {
+        setAutoCreateResult(result);
+        if ((result?.created?.length ?? 0) > 0) {
+          queryClient.invalidateQueries({ queryKey: reviewKey });
+          toast({
+            title: `${result.created.length} engagement${result.created.length === 1 ? "" : "s"} created from Crewing`,
+          });
+        }
+      })
+      .catch(() => {
+        // Non-blocking background action — the explicit Sync button remains.
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasFilter, mayEdit, vesselUuid, period]);
+
   const doSync = async () => {
     setSyncing(true);
     try {
@@ -356,7 +385,7 @@ export default function PayrollRunPage() {
       queryClient.invalidateQueries({ queryKey: wsKey });
       setSubmitOpen(false);
       setApproverNames("");
-      toast({ title: "Portage bill submitted for office review" });
+      toast({ title: "Portage bill sent for approval" });
     } catch (err) {
       toast({
         title: "Submit failed",
@@ -715,6 +744,33 @@ export default function PayrollRunPage() {
                 </Button>
               )}
             </div>
+            {autoCreateResult &&
+              ((autoCreateResult.created?.length ?? 0) > 0 ||
+                (autoCreateResult.errors?.length ?? 0) > 0) && (
+                <div
+                  className="px-4 py-2 border-b text-xs space-y-1 bg-slate-50"
+                  data-testid="text-autocreate-summary"
+                >
+                  <div>
+                    Auto-created {autoCreateResult.created?.length ?? 0}{" "}
+                    engagement
+                    {(autoCreateResult.created?.length ?? 0) === 1 ? "" : "s"}{" "}
+                    from Crewing
+                    {(autoCreateResult.errors?.length ?? 0) > 0
+                      ? ` · ${autoCreateResult.errors.length} could not be created`
+                      : ""}
+                  </div>
+                  {(autoCreateResult.errors ?? []).map((e: any, i: number) => (
+                    <div
+                      key={i}
+                      className="text-red-700"
+                      data-testid={`text-autocreate-error-${i}`}
+                    >
+                      {e.crewName ?? e.crewUuid ?? e.assignUuid} — {e.reason}
+                    </div>
+                  ))}
+                </div>
+              )}
             {syncResult && (
               <div className="px-4 py-2 border-b text-xs space-y-1 bg-slate-50">
                 <div data-testid="text-sync-summary">
@@ -858,6 +914,19 @@ export default function PayrollRunPage() {
                     {latestRun.runByUuid ? `by ${latestRun.runByUuid}` : ""}
                   </p>
                 )}
+                {latestRun?.status === "failed" && !isLocked && (
+                  <p
+                    className="flex items-center gap-1 text-xs text-red-700"
+                    data-testid="banner-failed-run"
+                  >
+                    <AlertTriangle size={12} />
+                    Last calculation failed
+                    {latestRun.errorDetail
+                      ? `: ${latestRun.errorDetail}`
+                      : ""}{" "}
+                    — fix the inputs and run the calculation again.
+                  </p>
+                )}
                 {workspace?.staleInputs && !isLocked && (
                   <p
                     className="flex items-center gap-1 text-xs text-amber-700"
@@ -944,7 +1013,7 @@ export default function PayrollRunPage() {
                   className="bg-[#16569e] hover:bg-[#1e5fa8]"
                   data-testid="button-submit-portage"
                 >
-                  <Send size={14} className="mr-1" /> Submit for Approval
+                  <Send size={14} className="mr-1" /> Send for approval
                 </Button>
               )}
             </div>
@@ -1336,7 +1405,7 @@ export default function PayrollRunPage() {
       <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Submit Portage Bill for Approval</DialogTitle>
+            <DialogTitle>Send Portage Bill for Approval</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
             <Label>Approvers (one name per line)</Label>
@@ -1362,7 +1431,7 @@ export default function PayrollRunPage() {
               disabled={submitting || !approverNames.trim()}
               data-testid="button-confirm-submit"
             >
-              {submitting ? "Submitting…" : "Submit"}
+              {submitting ? "Sending…" : "Send"}
             </Button>
           </DialogFooter>
         </DialogContent>

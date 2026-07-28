@@ -53,6 +53,13 @@ export const SHIP_ALLOWED_ROUTES: RoutePolicyEntry[] = [
   r("PATCH", "/monthly-transactions/:uuid"),
   r("DELETE", "/monthly-transactions/:uuid"),
 
+  // Engagements — vessel-side workspace reads and vessel-safe actions
+  // (review is read-only and vessel-scoped in the controller; auto-create is
+  // create-only; sign-off writes the end date on the vessel's own crew)
+  r("GET", "/engagements/review"),
+  r("POST", "/engagements/auto-create"),
+  r("POST", "/engagements/:uuid/sign-off"),
+
   // Vessel portage — the vessel-side submission package
   // (return-to-vessel is an office action and is NOT allowlisted)
   r("GET", "/vessel-portage/:vesselUuid/:period/status"),
@@ -140,7 +147,6 @@ export const OFFICE_ONLY_ROUTES: RoutePolicyEntry[] = [
   r("PATCH", "/engagements/pay-items/:epeUuid"),
   r("DELETE", "/engagements/pay-items/:epeUuid"),
   r("POST", "/engagements/sync"),
-  r("GET", "/engagements/review"),
   r("GET", "/engagements/audit"),
   r("POST", "/engagements/:uuid/timing-override"),
   r("PATCH", "/engagements/:uuid"),

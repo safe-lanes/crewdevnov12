@@ -370,6 +370,34 @@ export class PortageRepository {
     });
   }
 
+  /**
+   * Record a failed calculation run so the office sees the failure on the
+   * Payroll Run screen (latestRun banner). Used by the vessel-submit
+   * auto-calc when the engine throws without persisting its own run row.
+   */
+  async createFailedRun(
+    portageUuid: string,
+    errorDetail: string,
+    auditUserUuid?: string,
+  ): Promise<AccCalculationRunV2> {
+    const db = getDb();
+    const rows = await db
+      .insert(accCalculationRunsV2)
+      .values({
+        calcRunUuid: uuidv4(),
+        portageUuid,
+        engagementUuid: null,
+        runType: "monthly",
+        runDate: new Date(),
+        runByUuid: auditUserUuid ?? null,
+        status: "failed",
+        errorDetail,
+        createdByUuid: auditUserUuid ?? null,
+      })
+      .returning();
+    return rows[0];
+  }
+
   async findLatestRun(
     portageUuid: string,
   ): Promise<AccCalculationRunV2 | undefined> {

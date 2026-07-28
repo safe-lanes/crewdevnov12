@@ -3,6 +3,7 @@ import {
   MonthlyTransactionsRepository,
 } from "../repositories";
 import { ctmService, computeClosing } from "./ctmService";
+import { wageEngineService } from "../engine";
 import { CtmRepository } from "../repositories/ctmRepository";
 import { assertVesselScope, assertOfficeUser } from "./vesselScope";
 import type { RequestActor } from "../controllers/_auth";
@@ -35,6 +36,13 @@ export interface VesselSubmitResult {
   ctm: AccCtmV2;
   transactionsSubmitted: number;
   warnings: string[];
+  /**
+   * Outcome of the automatic wage calculation triggered by the vessel
+   * submit (task #179 part 2). The submit itself succeeds even when the
+   * calculation fails — the failure is recorded on a failed calc run so
+   * the office sees it on the Payroll Run screen.
+   */
+  calc: { status: "completed" | "failed"; error?: string };
 }
 
 export interface OfficeReturnResult {
@@ -121,11 +129,49 @@ export const vesselPortageService = {
       );
     }
 
+    // Auto-calc after a successful vessel submit (task #179 part 2). The
+    // submit above has already committed — a calculation failure must NOT
+    // fail the submit. The engine records its own failed run row for
+    // per-crew validation failures; for any other throw we record one here
+    // so the office sees the error text on the Payroll Run screen.
+    let calc: VesselSubmitResult["calc"];
+    try {
+      await wageEngineService.runForVesselPeriod(
+        vesselUuid,
+        period,
+        auditUserUuid,
+      );
+      calc = { status: "completed" };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const details = (error as { details?: { errors?: string[]; calcRunUuid?: string } })
+        ?.details;
+      const errorText = details?.errors?.length
+        ? `${message}: ${details.errors.join("; ")}`
+        : message;
+      if (!details?.calcRunUuid) {
+        try {
+          await portageRepo.createFailedRun(
+            updatedPortage!.portageUuid,
+            `Automatic calculation after vessel submit failed: ${errorText}`,
+            auditUserUuid,
+          );
+        } catch (recordError) {
+          console.error(
+            "Failed to record failed auto-calc run:",
+            recordError,
+          );
+        }
+      }
+      calc = { status: "failed", error: errorText };
+    }
+
     return {
       portage: updatedPortage!,
       ctm: detail.ctm,
       transactionsSubmitted: flipped.length,
       warnings,
+      calc,
     };
   },
 

@@ -155,7 +155,7 @@ Phase E creates the vessel, five crew and their assignments in the wider system 
 
 ## Phase F — Vessel monthly entry, March 2026 (Ship / Vessel Admin on MV CHECKMATE)
 
-Menu (as ship user): **Accounts → Vessel Portage**, month **March 2026**. Tabs: Crew & wages, Overtime, Cash advances, Allotments, Bond/slop chest, Other deductions, **Radio / Telephone** (your extra tab), CTM, Submit month.
+Menu (as ship user): **Accounts → Vessel Portage**, month **March 2026**. Tabs: Crew & wages, Overtime, Cash advances, Allotments, Bond/slop chest, Other deductions, **Radio / Telephone** (your extra tab), CTM, Submit to office.
 
 | Step | Action | Expected result | P/F | Notes |
 |---|---|---|---|---|
@@ -168,7 +168,7 @@ Menu (as ship user): **Accounts → Vessel Portage**, month **March 2026**. Tabs
 | F7 | **Bond/slop chest** tab: add dated column `20-Mar-2026`, enter `60.00` for C1. Save. | Saved. | | |
 | F8 | **Other deductions** tab: for C4 enter amount `45.00`, remarks `Crew mess damage`. Save. | Saved. | | |
 | F9 | **Radio / Telephone** (extra) tab: enter `25.00` for C1. Save. | Saved — the extra tab accepts entries exactly like a built-in tab. | | |
-| F10 | Make any small edit on any tab (do **not** save), then open **Submit month** and click Submit. | Submission is blocked with a toast telling you there are unsaved changes ("You have N unsaved change(s). Save every tab before submitting the month."). | | |
+| F10 | Make any small edit on any tab (do **not** save), then open **Submit to office** and click Submit. | Submission is blocked with a toast telling you there are unsaved changes ("You have N unsaved change(s). Save every tab before submitting the month."). | | |
 | F11 | Switch to another tab with the edit still unsaved. | Toast "Changes auto-saved" — tab switching auto-saves. Undo the stray edit (set the value back) and save. | | |
 | F12 | Submit the month. | Status becomes **Submitted**; entry tabs become read-only for the vessel. | | |
 

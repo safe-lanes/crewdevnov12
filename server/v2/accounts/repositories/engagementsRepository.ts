@@ -568,8 +568,17 @@ export class EngagementsRepository {
    * Latest updated_at/created_at across the vessel's engagements and their
    * override rows — used for the Step-2 stale-calculation indicator.
    */
-  async findLatestInputChange(vesselUuid: string): Promise<Date | null> {
+  async findLatestInputChange(
+    vesselUuid: string,
+    period?: string,
+  ): Promise<Date | null> {
     const db = getDb();
+    // Broad stale-input detection (task #179 part 5): any change to an
+    // engagement, contract pay item, monthly transaction, bond item,
+    // allotment (incl. suspend/reactivate), cash advance, or the activation
+    // status of a wage scale used by the vessel's engagements counts as a
+    // calculation input change. Timestamp comparison only — updated_at is
+    // touched by every write path including status flips.
     const rows = await db.execute(sql`
       SELECT GREATEST(
         (SELECT MAX(GREATEST(e.updated_at, e.created_at))
@@ -578,7 +587,27 @@ export class EngagementsRepository {
         (SELECT MAX(GREATEST(o.updated_at, o.created_at))
            FROM acc_engagement_pay_elements_v2 o
            JOIN acc_engagements_v2 e2 ON e2.engagement_uuid = o.engagement_uuid
-          WHERE e2.vessel_uuid = ${vesselUuid})
+          WHERE e2.vessel_uuid = ${vesselUuid}),
+        (SELECT MAX(GREATEST(t.updated_at, t.created_at))
+           FROM acc_monthly_transactions_v2 t
+          WHERE t.vessel_uuid = ${vesselUuid}
+            AND (${period ?? null}::text IS NULL OR t.period = ${period ?? null})),
+        (SELECT MAX(GREATEST(b.updated_at, b.created_at))
+           FROM acc_bond_items_v2 b
+           JOIN acc_engagements_v2 eb ON eb.crew_uuid = b.crew_uuid
+          WHERE eb.vessel_uuid = ${vesselUuid}),
+        (SELECT MAX(GREATEST(a.updated_at, a.created_at))
+           FROM acc_allotments_v2 a
+           JOIN acc_engagements_v2 ea ON ea.crew_uuid = a.crew_uuid
+          WHERE ea.vessel_uuid = ${vesselUuid}),
+        (SELECT MAX(GREATEST(ad.updated_at, ad.created_at))
+           FROM acc_advances_v2 ad
+           JOIN acc_engagements_v2 ed ON ed.crew_uuid = ad.crew_uuid
+          WHERE ed.vessel_uuid = ${vesselUuid}),
+        (SELECT MAX(GREATEST(s.updated_at, s.created_at))
+           FROM acc_wage_scales_v2 s
+           JOIN acc_engagements_v2 es ON es.wage_scale_uuid = s.scale_uuid
+          WHERE es.vessel_uuid = ${vesselUuid})
       ) AS latest
     `);
     const latest = (rows.rows?.[0] as { latest?: Date | string | null } | undefined)

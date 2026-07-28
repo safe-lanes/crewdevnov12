@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { getActor, getAuditUserUuid } from "./_auth";
-import { assertOfficeUser } from "../services/vesselScope";
+import { assertOfficeUser, assertVesselScope } from "../services/vesselScope";
 import { engagementsService } from "../services";
 
 const syncSchema = z.object({
@@ -66,6 +66,11 @@ function sendCoded(res: Response, error: any): boolean {
   }
   return false;
 }
+
+const signOffSchema = z.object({
+  period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "period must be YYYY-MM"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "endDate must be YYYY-MM-DD"),
+});
 
 const timingOverrideSchema = z.object({
   payElementUuid: z.string().min(1),
@@ -201,11 +206,68 @@ export const engagementsController = {
           .status(400)
           .json({ error: "vesselUuid and period (YYYY-MM) are required" });
       }
+      // Ship users may read the review rows, but only for their own vessels.
+      assertVesselScope(getActor(req), vesselUuid);
       const rows = await engagementsService.review(vesselUuid, period);
       res.json(rows);
     } catch (error) {
+      if (sendCoded(res, error)) return;
       console.error("Error building engagement review:", error);
       res.status(500).json({ error: "Failed to load engagement review" });
+    }
+  },
+
+  /**
+   * On-load auto-create (task #179 part 1): create-only subset of sync,
+   * safe for vessel actors on their own vessels.
+   */
+  async autoCreate(req: Request, res: Response) {
+    try {
+      const parsed = syncSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid auto-create request",
+          details: parsed.error.issues,
+        });
+      }
+      assertVesselScope(getActor(req), parsed.data.vesselUuid);
+      const result = await engagementsService.autoCreate(
+        parsed.data.vesselUuid,
+        parsed.data.period,
+        getAuditUserUuid(req),
+      );
+      res.json(result);
+    } catch (error) {
+      if (sendCoded(res, error)) return;
+      console.error("Error auto-creating engagements:", error);
+      res.status(500).json({ error: "Failed to auto-create engagements" });
+    }
+  },
+
+  /**
+   * Vessel-editable sign-off date (task #179 part 4). Vessel-scoped;
+   * office users may also use it.
+   */
+  async setSignOff(req: Request, res: Response) {
+    try {
+      const parsed = signOffSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Invalid sign-off request",
+          details: parsed.error.issues,
+        });
+      }
+      const record = await engagementsService.setSignOffDate(
+        req.params.uuid,
+        parsed.data.period,
+        parsed.data.endDate,
+        getActor(req),
+      );
+      res.json(record);
+    } catch (error) {
+      if (sendCoded(res, error)) return;
+      console.error("Error setting sign-off date:", error);
+      res.status(500).json({ error: "Failed to set sign-off date" });
     }
   },
 

@@ -101,7 +101,8 @@ slots on the same portage bill or settlement.
 - Roles that should NOT see the vessel workspace: remove their
   `Account Vessel Portage` row in role access (Admin → Roles) after the seed.
 - Ship-role users need at least **view + create + edit** on
-  `Account Vessel Portage` to enter variables and submit the month.
+  `Account Vessel Portage` to enter variables and submit the month to the
+  office ("Submit to office").
 - Office reviewers need **edit** on `Account Monthly Transactions`
   (accept / reject / re-open) and on `Account Vessel Portage`
   (return-to-vessel).
@@ -186,8 +187,9 @@ v1 operates single-currency per tenant — all wage scales and engagements must 
    JWT vessel, period defaults to the current month.
 2. Add a crew variable entry (draft) and a CTM expense line; verify CTM
    closing recomputes.
-3. Submit the month → status `submitted`; package becomes read-only on the
-   vessel side.
+3. Submit the month ("Submit to office") → status `submitted`; package
+   becomes read-only on the vessel side, and the wage calculation runs
+   automatically (check Payroll Run Step 2 for the run or its error text).
 4. As office: Monthly Transactions → filter Origin = Vessel, Status =
    Submitted → Accept one entry, Reject one with a comment.
 5. As office: Return the month to the vessel → status `returned`; rejected
