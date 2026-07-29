@@ -79,8 +79,8 @@ Switch personas using the round user icon (P2). When you pick a **Ship** persona
 | H–J, J2 | Office — Sail Admin |
 | K | Office — Sail Admin (submit) + Office — **Admin** (approve); auto-lock fires on approval |
 | L | Office — Sail Admin |
-| M | Ship — Vessel Admin (April entry); then Office — Sail Admin |
-| N | Office — Sail Admin (+ Office — Admin for the settlement approval) |
+| M | Ship — Vessel Admin (April entry); then Office — Sail Admin (April stays **unlocked** until N6) |
+| N | Office — Sail Admin (+ Office — Admin for the settlement approval **and** the April portage approval in N6) |
 | O | Office — Sail Admin; permissions test as Ship — Vessel User |
 
 ### The working-set crew (the five crew members you will track closely)
@@ -446,23 +446,26 @@ Menu: **Accounts → Portage Bill** → vessel 04 → March 2026.
 | M4 | As Sail Admin: accept V1's OT entry, then Run Calculation for April. | Completes with **19 warnings** (all no-scale-line — two of the Appendix C crew left in March, see C2). | | |
 | M5 | Verify V2's year-step split: Apr 1–15 BASIC 2,500 + GOT 500 (Year 1); Apr 16–30 BASIC 2,750 + GOT 550 (Year 2). Gross **6,300.00**, deduction 800.00, net **5,500.00**, leave accrual **525.00**. | ✓ | | |
 | M6 | Verify the rest (full table in Appendix A §A3): V1 gross **8,540.00** / net **8,540.00**; V3 gross **3,600.00**; V4 gross **2,400.00** (20 days, Apr 1–20) net **2,400.00**; V5 gross **3,600.00**, ADVANCE 200.00 (instalment 2), net **3,400.00**. | ✓ | | |
-| M7 | Submit April for approval (one approver `MARIA FERNANDEZ`), approve as Office — Admin. | Approved → auto-locked. | | |
+
+> **April is deliberately NOT approved/locked yet.** The settlement in Phase N runs while April is still open — this lets you exercise the settlement-skip re-run (N4) hands-on. April is locked in N6, *after* the settlement.
 
 ---
 
-## Phase N — Settlement of V4 (DMITRIY SOKOLOV) (Office / Sail Admin)
+## Phase N — Settlement of V4 while April is open, skip re-run, then April lock (Office / Sail Admin)
 
-Menu: **Accounts → Settlements** → New Settlement → engagement of DMITRIY SOKOLOV.
+Menu: **Accounts → Settlements** → New Settlement → engagement of DMITRIY SOKOLOV. April 2026 must still be **open** (unlocked) — do not submit the April portage before N6.
 
 | Step | Action | Expected result | P/F | Notes |
 |---|---|---|---|---|
-| N1 | Compute the settlement. | Draft settlement: unpaid balance **5,050.00** (2,650 Mar + 2,400 Apr), accrued leave **450.00** (250 + 200), net payable **5,500.00**. Settlement date 2026-04-20, period 2026-04. | | |
+| N1 | Compute the settlement. | Draft settlement: unpaid balance **5,050.00** (2,650 Mar + 2,400 Apr), accrued leave **450.00** (250 + 200), net payable **5,500.00**. Settlement date 2026-04-20, period 2026-04. (Identical whether April is open or locked — the settlement reads the ledger, not the lock state.) | | |
 | N2 | Add an adjustment: element **OTHD**, type **Deduction**, amount `50.00`, description `Lost cabin key`. | Net payable becomes **5,450.00**. | | |
-| N3 | Submit the settlement with approver `MARIA FERNANDEZ`; approve as Office — Admin. | Status draft → submitted → **approved**. | | |
-| N4 | **Mark paid** with paid date `2026-04-25` and payment reference `WIRE-0425-V4` (both required). | Status **paid**. | | |
-| N5 | **Lock** the settlement. | Status **locked**; figures frozen (net 5,450.00 / balance 5,050.00 / accruals 450.00). | | |
-| N6 | [NEG] Try to re-run the April vessel calculation. | Refused (409): `…is locked; post an adjustment run into a later open period instead`. | | |
-| N7 | [NEG] Try to re-run the calculation for V4's single engagement in April. | Refused (409): the message ends `…the engine refuses to run against it`. (Settlement-freeze semantics inside *open* periods — settled engagements are skipped, their lines preserved — are covered by automated tests; they cannot be exercised here because April is locked.) | | |
+| N3 | Submit the settlement with approver `MARIA FERNANDEZ`; approve as Office — Admin. | Status draft → submitted → **approved**. From this point V4's engagement is **frozen** for the engine. | | |
+| N4 | **Settlement-skip re-run.** With the settlement approved and April still open, run the April calculation again (Payroll Run → vessel 04 → 2026-04 → Run Calculation). | The run **succeeds** but V4 is skipped. Toast: `18 ledger lines for 4 crew (19 warnings); 1 crew excluded: already settled`. A blue banner above the totals grid reads `1 crew excluded from recalculation (already settled — existing ledger lines preserved)` with the row `DMITRIY SOKOLOV — settlement approved`. | | |
+| N5 | Verify after the re-run: the Portage workspace still shows **5** crew. V4's April figures are **unchanged** (gross **2,400.00**, net **2,400.00** — his ledger lines were preserved, not recomputed), and the other four recomputed to the same values: V1 8,540.00; V2 6,300.00 / ded 800.00 / net 5,500.00 / accrual 525.00; V3 3,600.00; V5 3,600.00 / ADVANCE 200.00 / net 3,400.00. Vessel totals: gross **24,440.00**, net **23,440.00**. | ✓ All unchanged from M5/M6. | | |
+| N6 | **Mark paid** with paid date `2026-04-25` and payment reference `WIRE-0425-V4` (both required). Then submit April for approval (one approver `MARIA FERNANDEZ`) and approve as Office — Admin. | Settlement status **paid** (V4's engagement status becomes *settled*). April portage approved → auto-**locked**, still listing all 5 crew with V4's preserved 2,400.00. Note: a re-run attempted between mark-paid and the lock would also skip V4, but **silently** (no banner — the settled engagement simply drops out of the computed set; lines and totals still preserved). The banner in N4 only appears while the settlement is submitted/approved. | | |
+| N7 | **Lock** the settlement. | Status **locked**; figures frozen (net 5,450.00 / balance 5,050.00 / accruals 450.00). | | |
+| N8 | [NEG] Try to re-run the April vessel calculation. | Refused (409): `…is locked; post an adjustment run into a later open period instead`. | | |
+| N9 | [NEG] Try to re-run the calculation for V4's single engagement in April. | Refused (409): the message ends `…the engine refuses to run against it`. (Inside an *open* period the same freeze produces the skip you saw in N4; against a locked period the engine refuses outright.) | | |
 
 ---
 
@@ -592,8 +595,7 @@ ITF MINIMUM 2026 · Able Seaman (R015) · BASIC · scale 3,000.00 vs minimum 3,2
 | B-2 | The March sync reports **3 skipped (no period overlap)**. | Three vessel-04 assignments ended before March 2026 (incl. IRWAN SUBEKTI, signed off 28-Feb-2026). |
 | B-3 | The April sync raises an attention item for V4 (`…crewing assignment says open — review the contract`). | Deliberate: the sign-off was recorded in Accounts (G13) but not in the crewing module. |
 | B-4 | Separation-of-duties cannot be triggered manually. | Under `AUTH_BYPASS` all personas resolve to one technical user; SoD is covered by automated tests (K6). |
-| B-5 | The settlement-skip re-run (settled engagement skipped inside an open period) cannot be exercised. | April auto-locks on approval before the settlement; the behavior is covered by automated tests (N7). |
-| B-6 | 21 (March) / 19 (April) "no scale line" warnings. | The scale deliberately covers only 3 ranks; see Appendix C. |
+| B-5 | 21 (March) / 19 (April) "no scale line" warnings. | The scale deliberately covers only 3 ranks; see Appendix C. |
 
 ---
 
