@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Filter, Edit, ArrowLeft, Download, Eye } from 'lucide-react';
+import { Filter, Edit, ArrowLeft, Download, Eye, Users } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -65,6 +65,7 @@ import {
 import type { VesselPlanningV2, CreatePlanningInput, UpdatePlanningInput } from './api/vesselApiV2';
 import { OnBoardStatusEditDialog_v2 } from './components/OnBoardStatusEditDialog_v2';
 import { ReliefStatusEditDialog_v2 } from './components/ReliefStatusEditDialog_v2';
+import { GroupSignOnDialog_v2 } from './components/GroupSignOnDialog_v2';
 
 const hasValidGmdss = (licenses: LicenseRecord[]): boolean => {
     if (!licenses || licenses.length === 0) return false;
@@ -700,6 +701,7 @@ export function VesselModule_v2(): JSX.Element {
     const [onBoardDialogOpen, setOnBoardDialogOpen] = useState(false);
     const [onBoardDialogData, setOnBoardDialogData] = useState<{ rank: string; rankId: string; planningData: any } | null>(null);
     const [reliefDialogOpen, setReliefDialogOpen] = useState(false);
+    const [groupSignOnOpen, setGroupSignOnOpen] = useState(false);
     const [reliefDialogData, setReliefDialogData] = useState<{ rank: string; rankId: string; planningData: any } | null>(null);
 
     const showAppraisalColumnArchived = showAppraisalColumn && !isShipUser;
@@ -1548,8 +1550,18 @@ export function VesselModule_v2(): JSX.Element {
                         </div>
                     </div>
 
-                    {/* Right: Back Button (hidden for Ship users) */}
-                    <div className="flex-shrink-0">
+                    {/* Right: Group Sign On (Planning tab only) + Back Button (hidden for Ship users) */}
+                    <div className="flex-shrink-0 flex items-center gap-2">
+                        {activeTab === 'planning' && (
+                            <Button
+                                onClick={() => setGroupSignOnOpen(true)}
+                                className="h-8 bg-[#16569e] hover:bg-[#16569e]/90 text-white flex items-center gap-2"
+                                data-testid="button-group-sign-on"
+                            >
+                                <Users className="h-4 w-4" />
+                                <span className="text-xs">Group Sign On</span>
+                            </Button>
+                        )}
                         {!isShipUser && (
                             <Button
                                 variant="outline"
@@ -2705,6 +2717,13 @@ export function VesselModule_v2(): JSX.Element {
                     planningData={reliefDialogData.planningData}
                 />
             )}
+
+            <GroupSignOnDialog_v2
+                open={groupSignOnOpen}
+                onOpenChange={setGroupSignOnOpen}
+                planningRows={vesselPlanning}
+                vesselUuid={selectedVessel?.vesselId || ''}
+            />
         </div>
     );
 }
