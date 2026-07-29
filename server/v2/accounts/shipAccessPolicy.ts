@@ -159,6 +159,8 @@ export const OFFICE_ONLY_ROUTES: RoutePolicyEntry[] = [
   r("GET", "/engagements/audit"),
   r("POST", "/engagements/:uuid/timing-override"),
   r("PATCH", "/engagements/:uuid"),
+  // 0183: bulk-confirm seniority anchors (office only)
+  r("PATCH", "/engagements/confirm-seniority-anchors"),
 
   // Portage bill lifecycle (office submit + approvals)
   r("POST", "/portage/:uuid/submit"),

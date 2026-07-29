@@ -341,4 +341,33 @@ export const engagementsController = {
       res.status(500).json({ error: "Failed to run engagement overlap audit" });
     }
   },
+
+  /**
+   * Bulk-confirm seniority anchors for a list of engagement UUIDs.
+   * PATCH /v2/accounts/engagements/confirm-seniority-anchors
+   * Body: { engagementUuids: string[] }
+   */
+  async confirmSeniorityAnchors(req: Request, res: Response) {
+    try {
+      assertOfficeUser(getActor(req), "Seniority anchor confirmation");
+      const parsed = z
+        .object({ engagementUuids: z.array(z.string().min(1)).min(1) })
+        .safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "engagementUuids must be a non-empty array of strings",
+          details: parsed.error.issues,
+        });
+      }
+      const result = await engagementsService.bulkConfirmSeniorityAnchors(
+        parsed.data.engagementUuids,
+        getAuditUserUuid(req),
+      );
+      res.json(result);
+    } catch (error: any) {
+      if (sendCoded(res, error)) return;
+      console.error("Error confirming seniority anchors:", error);
+      res.status(500).json({ error: "Failed to confirm seniority anchors" });
+    }
+  },
 };

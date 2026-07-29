@@ -106,6 +106,10 @@ export const accountsApiV2 = {
         payElementUuid,
         paymentTimingOverride,
       }),
+    confirmSeniorityAnchors: (engagementUuids: string[]) =>
+      req("PATCH", `${ACCOUNTS_BASE}/engagements/confirm-seniority-anchors`, {
+        engagementUuids,
+      }),
   },
   calc: {
     run: (vesselUuid: string, period: string) =>

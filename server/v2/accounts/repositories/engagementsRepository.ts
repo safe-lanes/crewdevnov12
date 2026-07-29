@@ -628,4 +628,32 @@ export class EngagementsRepository {
       .returning();
     return rows[0];
   }
+
+  /**
+   * Bulk-confirm seniority anchors for a list of engagement UUIDs.
+   * Scoped to only rows that are not deleted (tenant isolation comes from the
+   * tenant-resolved DB connection). Returns the count of rows actually updated.
+   */
+  async bulkConfirmSeniorityAnchors(
+    engagementUuids: string[],
+    updatedByUuid?: string | null,
+  ): Promise<number> {
+    if (engagementUuids.length === 0) return 0;
+    const db = getDb();
+    const rows = await db
+      .update(accEngagementsV2)
+      .set({
+        seniorityAnchorConfirmed: true,
+        updatedAt: new Date(),
+        updatedByUuid: updatedByUuid ?? null,
+      })
+      .where(
+        and(
+          inArray(accEngagementsV2.engagementUuid, engagementUuids),
+          eq(accEngagementsV2.isDeleted, false),
+        ),
+      )
+      .returning();
+    return rows.length;
+  }
 }

@@ -208,6 +208,11 @@ export const accEngagementsV2 = pgTable(
     rankIdAtStart: text("rank_id_at_start"),
     scaleYearAtStart: integer("scale_year_at_start"), // 1-based seniority step in force at start
     nextStepDate: date("next_step_date"), // due date to advance to the next step
+    // 0183: true when a user has confirmed the seniority anchor; false when
+    // auto-created (engine emits an unconfirmed_seniority_anchor warning).
+    seniorityAnchorConfirmed: boolean("seniority_anchor_confirmed")
+      .notNull()
+      .default(false),
     currency: text("currency").notNull().default("USD"), // ISO 4217
     status: text("status").notNull().default("draft"), // draft | active | completed | settled | cancelled
     notes: text("notes"),

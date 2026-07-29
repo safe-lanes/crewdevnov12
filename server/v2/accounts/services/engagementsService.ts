@@ -566,6 +566,10 @@ async function createMissingEngagements(ctx: {
         status: "active",
         scaleYearAtStart: 1,
         nextStepDate: addMonths(startDate, 12),
+        // 0183: auto-created anchors are unconfirmed; a user must verify and
+        // save the seniority anchor via the contract detail form to clear the
+        // engine warning.
+        seniorityAnchorConfirmed: false,
       },
       true,
     );
@@ -629,6 +633,8 @@ export const engagementsService = {
       scaleName: e.wageScaleUuid
         ? (scaleNames.get(e.wageScaleUuid) ?? null)
         : null,
+      // 0183: badge/bulk-confirm needs this on every list row
+      seniorityAnchorConfirmed: e.seniorityAnchorConfirmed ?? false,
     }));
   },
 
@@ -1333,13 +1339,39 @@ export const engagementsService = {
         if (conflict) throw overlapConflictError(conflict);
       }
     }
+    // Saving the seniority anchor (scaleYearAtStart or nextStepDate) via
+    // this API is a human confirmation — set the flag so the engine warning
+    // is suppressed.
+    const seniorityTouched =
+      data.scaleYearAtStart !== undefined || data.nextStepDate !== undefined;
+
     // Any end-date change through this API is a manual edit: mark it so
     // sync reports (rather than overwrites) future differences.
-    const dataWithAudit = applyAuditUser(
-      data.endDate !== undefined ? { ...data, endDateManual: true } : data,
-      false,
-    );
+    const patchData: Record<string, unknown> = {
+      ...data,
+      ...(data.endDate !== undefined ? { endDateManual: true } : {}),
+      ...(seniorityTouched ? { seniorityAnchorConfirmed: true } : {}),
+    };
+    const dataWithAudit = applyAuditUser(patchData, false);
     return engagementsRepository.update(engagementUuid, dataWithAudit);
+  },
+
+  /**
+   * Bulk-confirm seniority anchors for a list of engagement UUIDs.
+   * Scoped to the caller's tenant via the tenant-resolved DB connection.
+   * Idempotent: already-confirmed rows count toward the confirmed total.
+   * Returns { confirmed: number }.
+   */
+  async bulkConfirmSeniorityAnchors(
+    engagementUuids: string[],
+    auditUserUuid?: string,
+  ): Promise<{ confirmed: number }> {
+    if (engagementUuids.length === 0) return { confirmed: 0 };
+    const confirmed = await engagementsRepository.bulkConfirmSeniorityAnchors(
+      engagementUuids,
+      auditUserUuid,
+    );
+    return { confirmed };
   },
 
   /**

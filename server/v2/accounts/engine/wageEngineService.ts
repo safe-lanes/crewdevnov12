@@ -54,25 +54,43 @@ interface EngineConfig {
 
 interface CalcContext {
   config: EngineConfig;
+
   month: MonthInfo;
+
   elements: Map<string, AccPayElementV2>;
+
   elementsByCategory: Map<string, AccPayElementV2[]>;
+
   scaleByUuid: Map<string, AccWageScaleV2>;
+
   scaleLinesByScale: Map<string, AccWageScaleLineV2[]>;
+
   overridesByEngagement: Map<string, AccEngagementPayElementV2[]>;
+
   phasesByEngagement: Map<string, AccEngagementPhaseV2[]>;
+
   promosByCrew: Map<string, PromotionEvent[]>;
+
   txnsByEngagement: Map<string, AccMonthlyTransactionV2[]>;
+
   allotmentsByCrew: Map<string, AccAllotmentV2[]>;
+
   advancesByCrew: Map<string, AccAdvanceV2[]>;
   /** advance_uuid -> cents recovered in periods strictly before this run. */
+
   advancePriorRecoveredCents: Map<string, number>;
+
   nationalityByCrew: Map<string, string | null>;
+
   nationalityNames: Map<string, string>;
   /** crew_uuid -> display name (for human-readable warning messages). */
+
   crewNamesByCrew: Map<string, string>;
   /** rankId (text) -> human-readable rank label (for human-readable warning messages). */
+
   rankNamesById: Map<string, string>;
+
+  crewNames: Map<string, string>;
 }
 
 /** Ledger line before run/portage identifiers are attached. */
@@ -1052,6 +1070,8 @@ async function buildContext(
     nationalityNames,
     crewNamesByCrew,
     rankNamesById,
+    // alias used by the seniority-anchor warning (task #189)
+    crewNames: crewNamesByCrew,
   };
 }
 
@@ -1126,6 +1146,17 @@ function calcEngagement(
       errors: ["engagement has no rank_id_at_start"],
       warnings,
     };
+  }
+
+  // 0183: warn when the seniority anchor has never been confirmed by a user
+  // (auto-created engagements default to false). Does not block calculation.
+  if (engagement.seniorityAnchorConfirmed === false) {
+    const crewLabel =
+      ctx.crewNames.get(engagement.crewUuid) ?? `crew ${engagement.crewUuid}`;
+    warnings.push({
+      code: "unconfirmed_seniority_anchor",
+      message: `Seniority anchor not confirmed for ${crewLabel} — engine ran on year ${engagement.scaleYearAtStart ?? 1} default. Open the contract and save the seniority anchor to confirm it.`,
+    });
   }
 
   // ---- Service window inside the month --------------------------------
