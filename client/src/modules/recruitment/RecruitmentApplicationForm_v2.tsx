@@ -4243,7 +4243,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     </SelectContent>
                   </Select>
                 ) : (
-                  <div className="mt-1 text-sm text-gray-900" data-testid="text-rank-applied-for">{formData.rankAppliedFor}</div>
+                  <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-rank-applied-for">{formData.rankAppliedFor}</div>
                 )}
               </div>
               
@@ -4289,7 +4289,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     </Select>
                   </div>
                 ) : (
-                  <div className="mt-1 text-sm text-gray-900">
+                  <div className="mt-1 text-sm text-gray-900 break-words">
                     {formData.vesselType.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
                         {formData.vesselType.map((vesselType) => (
@@ -4310,7 +4310,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               
               <div>
                 <Label className="text-xs text-gray-500 tracking-wide">File No</Label>
-                <div className="mt-1 text-sm text-gray-900">
+                <div className="mt-1 text-sm text-gray-900 break-words">
                   {formData.fileNo || (
                     <span className="text-gray-400 italic">Auto-generated on Submit for Screening</span>
                   )}
@@ -4331,11 +4331,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     onBlur={() => { if (!(formData.firstName || '').trim()) setFirstNameError('First name is required.'); }}
                     className={`mt-1 ${firstNameError ? 'border-red-500' : ''}`}
                     data-testid="input-first-name"
+                    maxLength={50}
                   />
                   {firstNameError && <p className="text-xs text-red-500 mt-1" data-testid="text-first-name-error">{firstNameError}</p>}
                 </>
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-first-name">{formData.firstName}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-first-name">{formData.firstName}</div>
               )}
             </div>
             <div>
@@ -4346,9 +4347,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   onChange={(e) => updateFormData('middleName', e.target.value)}
                   className="mt-1"
                   data-testid="input-middle-name"
+                  maxLength={50}
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-middle-name">{formData.middleName}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-middle-name">{formData.middleName}</div>
               )}
             </div>
             <div>
@@ -4359,9 +4361,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   onChange={(e) => updateFormData('familyName', e.target.value)}
                   className="mt-1"
                   data-testid="input-family-name"
+                  maxLength={50}
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-family-name">{formData.familyName}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-family-name">{formData.familyName}</div>
               )}
             </div>
             <div>
@@ -4377,7 +4380,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-gender">{formData.gender}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-gender">{formData.gender}</div>
               )}
             </div>
             <div>
@@ -4394,7 +4397,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-nationality">{formData.nationality}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-nationality">{formData.nationality}</div>
               )}
             </div>
             <div>
@@ -4415,7 +4418,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-present-rank">{formData.presentRank}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-present-rank">{formData.presentRank}</div>
               )}
             </div>
             <div>
@@ -4433,7 +4436,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {dobError && <p className="text-xs text-red-500 mt-1" data-testid="text-dob-error">{dobError}</p>}
                 </>
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-dob">{formData.dateOfBirth ? formatDate(formData.dateOfBirth) : ''}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-dob">{formData.dateOfBirth ? formatDate(formData.dateOfBirth) : ''}</div>
               )}
             </div>
             <div>
@@ -4446,7 +4449,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   data-testid="input-age"
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-age">{formData.ageInYears}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-age">{formData.ageInYears}</div>
               )}
             </div>
             <div>
@@ -4457,9 +4460,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   onChange={(e) => updateFormData('placeOfBirthCity', e.target.value)}
                   className="mt-1"
                   data-testid="input-pob-city"
+                  maxLength={50}
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-pob-city">{formData.placeOfBirthCity}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-pob-city">{formData.placeOfBirthCity}</div>
               )}
             </div>
             <div>
@@ -4476,7 +4480,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-pob-country">{formData.placeOfBirthCountry}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-pob-country">{formData.placeOfBirthCountry}</div>
               )}
             </div>
             <div>
@@ -4488,9 +4492,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   className="mt-1"
                   placeholder="e.g. 175"
                   data-testid="input-height"
+                  maxLength={3}
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-height">{formData.heightCm}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-height">{formData.heightCm}</div>
               )}
             </div>
             <div>
@@ -4502,9 +4507,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   className="mt-1"
                   placeholder="e.g. 75"
                   data-testid="input-weight"
+                  maxLength={3}
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-weight">{formData.weightKg}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-weight">{formData.weightKg}</div>
               )}
             </div>
             <div>
@@ -4521,7 +4527,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-native-language">{formData.nativeLanguage}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-native-language">{formData.nativeLanguage}</div>
               )}
             </div>
             <div>
@@ -4540,7 +4546,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-english-proficiency">{formData.englishProficiency}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-english-proficiency">{formData.englishProficiency}</div>
               )}
             </div>
             <div>
@@ -4602,7 +4608,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   )}
                 </div>
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-foreign-languages">{formData.foreignLanguages}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-foreign-languages">{formData.foreignLanguages}</div>
               )}
             </div>
             <div>
@@ -4621,7 +4627,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900" data-testid="text-manning-agent">{formData.manningAgent}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-manning-agent">{formData.manningAgent}</div>
               )}
             </div>
           </div>
@@ -4673,7 +4679,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </SelectContent>
               </Select>
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.countryOfResidence}</div>
+              <div className="mt-1 text-sm text-gray-900 break-words">{formData.countryOfResidence}</div>
             )}
           </div>
           <div>
@@ -4684,9 +4690,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 onChange={(e) => updateFormData('nearestAirport', e.target.value)}
                 className="mt-1"
                 data-testid="input-nearest-airport"
+                maxLength={50}
               />
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.nearestAirport}</div>
+              <div className="mt-1 text-sm text-gray-900 break-words">{formData.nearestAirport}</div>
             )}
           </div>
           <div>
@@ -4713,11 +4720,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   }}
                   className={`mt-1 ${mobileError ? 'border-red-500' : ''}`}
                   data-testid="input-mobile"
+                  maxLength={20}
                 />
                 {mobileError && <p className="text-xs text-red-500 mt-1" data-testid="text-mobile-error">{mobileError}</p>}
               </>
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.mobile}</div>
+              <div className="mt-1 text-sm text-gray-900 break-words">{formData.mobile}</div>
             )}
           </div>
           <div>
@@ -4731,11 +4739,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   onBlur={(e) => setEmailError(validateEmail(e.target.value.trim()))}
                   className={`mt-1 ${emailError ? 'border-red-500' : ''}`}
                   data-testid="input-email"
+                  maxLength={100}
                 />
                 {emailError && <p className="text-xs text-red-500 mt-1" data-testid="text-email-error">{emailError}</p>}
               </>
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.email}</div>
+              <div className="mt-1 text-sm text-gray-900 break-words">{formData.email}</div>
             )}
           </div>
 
@@ -4748,9 +4757,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 onChange={(e) => updateFormData('residentialAddressLine1', e.target.value)}
                 className="mt-1"
                 data-testid="input-address-line1"
+                maxLength={100}
               />
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.residentialAddressLine1}</div>
+              <div className="mt-1 text-sm text-gray-900 break-words">{formData.residentialAddressLine1}</div>
             )}
           </div>
           <div className="lg:col-span-2">
@@ -4762,9 +4772,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 className="mt-1"
                 placeholder="Enter city, state, PIN"
                 data-testid="input-address-line2"
+                maxLength={100}
               />
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.residentialAddressLine2}</div>
+              <div className="mt-1 text-sm text-gray-900 break-words">{formData.residentialAddressLine2}</div>
             )}
           </div>
 
@@ -4777,9 +4788,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 onChange={(e) => updateFormData('contactLandline', e.target.value)}
                 className="mt-1"
                 data-testid="input-landline"
+                maxLength={20}
               />
             ) : (
-              <div className="mt-1 text-sm text-gray-900">{formData.contactLandline}</div>
+              <div className="mt-1 text-sm text-gray-900 break-words">{formData.contactLandline}</div>
             )}
           </div>
         </div>
@@ -4822,7 +4834,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.maritalStatus}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.maritalStatus}</div>
               )}
             </div>
             <div>
@@ -4833,9 +4845,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   onChange={(e) => updateFormData('numberOfDependentChildren', e.target.value.replace(/[^0-9]/g, ''))}
                   className="mt-1"
                   data-testid="input-num-children"
+                  maxLength={2}
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.numberOfDependentChildren}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.numberOfDependentChildren}</div>
               )}
             </div>
             <div>
@@ -4846,9 +4859,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   onChange={(e) => updateFormData('fatherName', sanitizeName(e.target.value))}
                   className="mt-1"
                   data-testid="input-father-name"
+                  maxLength={50}
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.fatherName}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.fatherName}</div>
               )}
             </div>
             <div>
@@ -4859,9 +4873,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   onChange={(e) => updateFormData('motherName', sanitizeName(e.target.value))}
                   className="mt-1"
                   data-testid="input-mother-name"
+                  maxLength={50}
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.motherName}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.motherName}</div>
               )}
             </div>
           </div>
@@ -4877,11 +4892,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     onBlur={() => { if (formData.maritalStatus === 'Married' && !(formData.spouseFirstName || '').trim()) setSpouseErrors(prev => ({ ...prev, spouseFirstName: 'Spouse first name is required.' })); }}
                     className={`mt-1 ${spouseErrors.spouseFirstName ? 'border-red-500' : ''}`}
                     data-testid="input-spouse-first-name"
+                    maxLength={50}
                   />
                   {spouseErrors.spouseFirstName && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-first-name-error">{spouseErrors.spouseFirstName}</p>}
                 </>
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.spouseFirstName}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.spouseFirstName}</div>
               )}
             </div>
             <div>
@@ -4892,9 +4908,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   onChange={(e) => updateFormData('spouseMiddleName', sanitizeName(e.target.value))}
                   className="mt-1"
                   data-testid="input-spouse-middle-name"
+                  maxLength={50}
                 />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.spouseMiddleName}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.spouseMiddleName}</div>
               )}
             </div>
             <div>
@@ -4907,11 +4924,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     onBlur={() => { if (formData.maritalStatus === 'Married' && !(formData.spouseFamilyName || '').trim()) setSpouseErrors(prev => ({ ...prev, spouseFamilyName: 'Spouse family name is required.' })); }}
                     className={`mt-1 ${spouseErrors.spouseFamilyName ? 'border-red-500' : ''}`}
                     data-testid="input-spouse-family-name"
+                    maxLength={50}
                   />
                   {spouseErrors.spouseFamilyName && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-family-name-error">{spouseErrors.spouseFamilyName}</p>}
                 </>
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.spouseFamilyName}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.spouseFamilyName}</div>
               )}
             </div>
             <div>
@@ -4929,7 +4947,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {spouseErrors.spouseDateOfBirth && <p className="text-xs text-red-500 mt-1" data-testid="text-spouse-dob-error">{spouseErrors.spouseDateOfBirth}</p>}
                 </>
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.spouseDateOfBirth ? formatDate(formData.spouseDateOfBirth) : ''}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.spouseDateOfBirth ? formatDate(formData.spouseDateOfBirth) : ''}</div>
               )}
             </div>
           </div>
@@ -4969,21 +4987,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                       <TableCell className="p-3 text-[13px]">{index + 1}</TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <Input value={child.firstName} onChange={(e) => updateChild(child.id, 'firstName', sanitizeName(e.target.value))} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                          <Input value={child.firstName} onChange={(e) => updateChild(child.id, 'firstName', sanitizeName(e.target.value))} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={50} />
                         ) : (
                           <span className="text-[13px]">{child.firstName}</span>
                         )}
                       </TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <Input value={child.middleName} onChange={(e) => updateChild(child.id, 'middleName', sanitizeName(e.target.value))} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                          <Input value={child.middleName} onChange={(e) => updateChild(child.id, 'middleName', sanitizeName(e.target.value))} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={50} />
                         ) : (
                           <span className="text-[13px]">{child.middleName}</span>
                         )}
                       </TableCell>
                       <TableCell className="p-3">
                         {isEditing ? (
-                          <Input value={child.familyName} onChange={(e) => updateChild(child.id, 'familyName', sanitizeName(e.target.value))} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                          <Input value={child.familyName} onChange={(e) => updateChild(child.id, 'familyName', sanitizeName(e.target.value))} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={50} />
                         ) : (
                           <span className="text-[13px]">{child.familyName}</span>
                         )}
@@ -5030,61 +5048,61 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: First Name</Label>
               {isEditing ? (
-                <Input value={formData.nokFirstName} onChange={(e) => updateFormData('nokFirstName', sanitizeName(e.target.value))} className="mt-1" data-testid="input-nok-first-name" />
+                <Input value={formData.nokFirstName} onChange={(e) => updateFormData('nokFirstName', sanitizeName(e.target.value))} className="mt-1" data-testid="input-nok-first-name" maxLength={50} />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.nokFirstName}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.nokFirstName}</div>
               )}
             </div>
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: Middle Name</Label>
               {isEditing ? (
-                <Input value={formData.nokMiddleName} onChange={(e) => updateFormData('nokMiddleName', sanitizeName(e.target.value))} className="mt-1" data-testid="input-nok-middle-name" />
+                <Input value={formData.nokMiddleName} onChange={(e) => updateFormData('nokMiddleName', sanitizeName(e.target.value))} className="mt-1" data-testid="input-nok-middle-name" maxLength={50} />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.nokMiddleName}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.nokMiddleName}</div>
               )}
             </div>
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: Family Name</Label>
               {isEditing ? (
-                <Input value={formData.nokFamilyName} onChange={(e) => updateFormData('nokFamilyName', sanitizeName(e.target.value))} className="mt-1" data-testid="input-nok-family-name" />
+                <Input value={formData.nokFamilyName} onChange={(e) => updateFormData('nokFamilyName', sanitizeName(e.target.value))} className="mt-1" data-testid="input-nok-family-name" maxLength={50} />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.nokFamilyName}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.nokFamilyName}</div>
               )}
             </div>
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: Email</Label>
               {isEditing ? (
                 <>
-                  <Input type="email" value={formData.nokEmail} onChange={(e) => { updateFormData('nokEmail', e.target.value); if (nokEmailError) setNokEmailError(validateEmail(e.target.value)); }} onBlur={(e) => setNokEmailError(validateEmail(e.target.value.trim()))} className={`mt-1 ${nokEmailError ? 'border-red-500' : ''}`} data-testid="input-nok-email" />
+                  <Input type="email" value={formData.nokEmail} onChange={(e) => { updateFormData('nokEmail', e.target.value); if (nokEmailError) setNokEmailError(validateEmail(e.target.value)); }} onBlur={(e) => setNokEmailError(validateEmail(e.target.value.trim()))} className={`mt-1 ${nokEmailError ? 'border-red-500' : ''}`} data-testid="input-nok-email" maxLength={100} />
                   {nokEmailError && <p className="text-xs text-red-500 mt-1" data-testid="text-nok-email-error">{nokEmailError}</p>}
                 </>
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.nokEmail}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.nokEmail}</div>
               )}
             </div>
             {/* Row 2: NOK: Address, NOK: Relationship, NOK: Tel */}
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: Address</Label>
               {isEditing ? (
-                <Input value={formData.nokAddress} onChange={(e) => updateFormData('nokAddress', e.target.value)} className="mt-1" data-testid="input-nok-address" />
+                <Input value={formData.nokAddress} onChange={(e) => updateFormData('nokAddress', e.target.value)} className="mt-1" data-testid="input-nok-address" maxLength={100} />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.nokAddress}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.nokAddress}</div>
               )}
             </div>
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: Relationship</Label>
               {isEditing ? (
-                <Input value={formData.nokRelationship} onChange={(e) => updateFormData('nokRelationship', e.target.value)} className="mt-1" data-testid="input-nok-relationship" />
+                <Input value={formData.nokRelationship} onChange={(e) => updateFormData('nokRelationship', e.target.value)} className="mt-1" data-testid="input-nok-relationship" maxLength={30} />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.nokRelationship}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.nokRelationship}</div>
               )}
             </div>
             <div>
               <Label className="text-xs text-gray-500 tracking-wide">NOK: Tel</Label>
               {isEditing ? (
-                <Input value={formData.nokTelephone} onChange={(e) => updateFormData('nokTelephone', e.target.value)} className="mt-1" data-testid="input-nok-telephone" />
+                <Input value={formData.nokTelephone} onChange={(e) => updateFormData('nokTelephone', e.target.value)} className="mt-1" data-testid="input-nok-telephone" maxLength={20} />
               ) : (
-                <div className="mt-1 text-sm text-gray-900">{formData.nokTelephone}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words">{formData.nokTelephone}</div>
               )}
             </div>
           </div>
@@ -5129,13 +5147,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     <>
                       <Input value={doc.document} onChange={(e) => { updateDocument(doc.id, 'document', e.target.value); if (docDateErrors[doc.id]?.document && e.target.value.trim()) setDocDateErrors(prev => { const n = { ...prev }; if (n[doc.id]) { const { document: _, ...rest } = n[doc.id]; n[doc.id] = rest; } return n; }); }}
                         onBlur={() => { if (!(doc.document || '').trim()) setDocDateErrors(prev => ({ ...prev, [doc.id]: { ...prev[doc.id], document: 'Document type is required.' } })); }}
-                        className={`text-[13px] border ${docDateErrors[doc.id]?.document ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                        className={`text-[13px] border ${docDateErrors[doc.id]?.document ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} maxLength={100} />
                       {docDateErrors[doc.id]?.document && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].document}</p>}
                     </>
                   )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={doc.number} onChange={(e) => updateDocument(doc.id, 'number', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={doc.number} onChange={(e) => updateDocument(doc.id, 'number', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={30} />
                 </TableCell>
                 <TableCell className="p-3">
                   <FormattedDateInput value={doc.issued} onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, doc.expiry); setDocDateErrors(prev => ({ ...prev, [doc.id]: { ...prev[doc.id], ...(errs.issued ? { issued: errs.issued } : {}), ...(!errs.issued ? (() => { const n = { ...prev[doc.id] }; delete n.issued; return n; })() : {}) } })); }} onBlur={() => { const errs = validateRowDates(doc.issued, doc.expiry); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${docDateErrors[doc.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
@@ -5146,7 +5164,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {docDateErrors[doc.id]?.expiry && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={doc.issuingAuthority} onChange={(e) => updateDocument(doc.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={doc.issuingAuthority} onChange={(e) => updateDocument(doc.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={100} />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -5205,13 +5223,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     <>
                       <Input value={visa.issuingCountry} onChange={(e) => { updateVisa(visa.id, 'issuingCountry', e.target.value); if (visaDateErrors[visa.id]?.issuingCountry && e.target.value.trim()) setVisaDateErrors(prev => { const n = { ...prev }; if (n[visa.id]) { const { issuingCountry: _, ...rest } = n[visa.id]; n[visa.id] = rest; } return n; }); }}
                         onBlur={() => { if (!(visa.issuingCountry || '').trim()) setVisaDateErrors(prev => ({ ...prev, [visa.id]: { ...prev[visa.id], issuingCountry: 'Issuing country is required.' } })); }}
-                        className={`text-[13px] border ${visaDateErrors[visa.id]?.issuingCountry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                        className={`text-[13px] border ${visaDateErrors[visa.id]?.issuingCountry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} maxLength={50} />
                       {visaDateErrors[visa.id]?.issuingCountry && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issuingCountry}</p>}
                     </>
                   )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={visa.serialNo} onChange={(e) => updateVisa(visa.id, 'serialNo', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={visa.serialNo} onChange={(e) => updateVisa(visa.id, 'serialNo', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={30} />
                 </TableCell>
                 <TableCell className="p-3">
                   <FormattedDateInput value={visa.issued} onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(visa.issued, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${visaDateErrors[visa.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
@@ -5224,7 +5242,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <TableCell className="p-3">
                   <Input value={visa.visaType} onChange={(e) => { updateVisa(visa.id, 'visaType', e.target.value); if (visaDateErrors[visa.id]?.visaType && e.target.value.trim()) setVisaDateErrors(prev => { const n = { ...prev }; if (n[visa.id]) { const { visaType: _, ...rest } = n[visa.id]; n[visa.id] = rest; } return n; }); }}
                         onBlur={() => { if (!(visa.visaType || '').trim()) setVisaDateErrors(prev => ({ ...prev, [visa.id]: { ...prev[visa.id], visaType: 'Visa type is required.' } })); }}
-                        className={`text-[13px] border ${visaDateErrors[visa.id]?.visaType ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                        className={`text-[13px] border ${visaDateErrors[visa.id]?.visaType ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} maxLength={30} />
                       {visaDateErrors[visa.id]?.visaType && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].visaType}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -5274,14 +5292,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <TableCell className="p-3">
                   <Input value={edu.qualifications} onChange={(e) => { updateEducation(edu.id, 'qualifications', e.target.value); if (eduRequiredErrors[edu.id]?.qualifications && e.target.value.trim()) setEduRequiredErrors(prev => { const n = { ...prev }; if (n[edu.id]) { const { qualifications: _, ...rest } = n[edu.id]; n[edu.id] = rest; } return n; }); }}
                     onBlur={() => { if (!(edu.qualifications || '').trim()) setEduRequiredErrors(prev => ({ ...prev, [edu.id]: { ...prev[edu.id], qualifications: 'Qualification is required.' } })); }}
-                    className={`text-[13px] border ${eduRequiredErrors[edu.id]?.qualifications ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                    className={`text-[13px] border ${eduRequiredErrors[edu.id]?.qualifications ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} maxLength={100} />
                   {eduRequiredErrors[edu.id]?.qualifications && <p className="text-xs text-red-500 mt-1">{eduRequiredErrors[edu.id].qualifications}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={edu.subjectsField} onChange={(e) => updateEducation(edu.id, 'subjectsField', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={edu.subjectsField} onChange={(e) => updateEducation(edu.id, 'subjectsField', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={100} />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={edu.schoolCollegeUniversity} onChange={(e) => updateEducation(edu.id, 'schoolCollegeUniversity', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={edu.schoolCollegeUniversity} onChange={(e) => updateEducation(edu.id, 'schoolCollegeUniversity', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={100} />
                 </TableCell>
                 <TableCell className="p-3">
                   <FormattedDateInput value={edu.dateOfCompletion} onChange={(e) => updateEducation(edu.id, 'dateOfCompletion', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
@@ -5347,7 +5365,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     <>
                       <Input value={lic.certificateDocument} onChange={(e) => { updateLicense(lic.id, 'certificateDocument', e.target.value); if (licDateErrors[lic.id]?.certificateDocument && e.target.value.trim()) setLicDateErrors(prev => { const n = { ...prev }; if (n[lic.id]) { const { certificateDocument: _, ...rest } = n[lic.id]; n[lic.id] = rest; } return n; }); }}
                         onBlur={() => { if (!(lic.certificateDocument || '').trim()) setLicDateErrors(prev => ({ ...prev, [lic.id]: { ...prev[lic.id], certificateDocument: 'Certificate/Document is required.' } })); }}
-                        className={`text-[13px] border ${licDateErrors[lic.id]?.certificateDocument ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                        className={`text-[13px] border ${licDateErrors[lic.id]?.certificateDocument ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} maxLength={100} />
                       {licDateErrors[lic.id]?.certificateDocument && <p className="text-xs text-red-500 mt-1">{licDateErrors[lic.id].certificateDocument}</p>}
                     </>
                   )}
@@ -5356,21 +5374,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {lic.fromDatabase ? (
                     <Input value={lic.abbr} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
-                    <Input value={lic.abbr} onChange={(e) => updateLicense(lic.id, 'abbr', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                    <Input value={lic.abbr} onChange={(e) => updateLicense(lic.id, 'abbr', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={10} />
                   )}
                 </TableCell>
                 <TableCell className="p-3">
                   {lic.fromDatabase ? (
                     <Input value={lic.requirement} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
-                    <Input value={lic.requirement} onChange={(e) => updateLicense(lic.id, 'requirement', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                    <Input value={lic.requirement} onChange={(e) => updateLicense(lic.id, 'requirement', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={50} />
                   )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={lic.certificateNo} onChange={(e) => updateLicense(lic.id, 'certificateNo', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={lic.certificateNo} onChange={(e) => updateLicense(lic.id, 'certificateNo', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={30} />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={lic.issuingAuthority} onChange={(e) => updateLicense(lic.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={lic.issuingAuthority} onChange={(e) => updateLicense(lic.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={100} />
                 </TableCell>
                 <TableCell className="p-3">
                   <FormattedDateInput value={lic.issued} onChange={(e) => { updateLicense(lic.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(lic.issued, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${licDateErrors[lic.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
@@ -5441,7 +5459,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     <>
                       <Input value={course.trainingCourse} onChange={(e) => { updateTrainingCourse(course.id, 'trainingCourse', e.target.value); if (trainingDateErrors[course.id]?.trainingCourse && e.target.value.trim()) setTrainingDateErrors(prev => { const n = { ...prev }; if (n[course.id]) { const { trainingCourse: _, ...rest } = n[course.id]; n[course.id] = rest; } return n; }); }}
                         onBlur={() => { if (!(course.trainingCourse || '').trim()) setTrainingDateErrors(prev => ({ ...prev, [course.id]: { ...prev[course.id], trainingCourse: 'Training course is required.' } })); }}
-                        className={`text-[13px] border ${trainingDateErrors[course.id]?.trainingCourse ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                        className={`text-[13px] border ${trainingDateErrors[course.id]?.trainingCourse ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} maxLength={100} />
                       {trainingDateErrors[course.id]?.trainingCourse && <p className="text-xs text-red-500 mt-1">{trainingDateErrors[course.id].trainingCourse}</p>}
                     </>
                   )}
@@ -5450,21 +5468,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {course.fromDatabase ? (
                     <Input value={course.abbr} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
-                    <Input value={course.abbr} onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                    <Input value={course.abbr} onChange={(e) => updateTrainingCourse(course.id, 'abbr', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={10} />
                   )}
                 </TableCell>
                 <TableCell className="p-3">
                   {course.fromDatabase ? (
                     <Input value={course.requirement} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
-                    <Input value={course.requirement} onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                    <Input value={course.requirement} onChange={(e) => updateTrainingCourse(course.id, 'requirement', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={50} />
                   )}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={course.certificateNo} onChange={(e) => updateTrainingCourse(course.id, 'certificateNo', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={course.certificateNo} onChange={(e) => updateTrainingCourse(course.id, 'certificateNo', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={30} />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={course.issuingAuthority} onChange={(e) => updateTrainingCourse(course.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={course.issuingAuthority} onChange={(e) => updateTrainingCourse(course.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={100} />
                 </TableCell>
                 <TableCell className="p-3">
                   <FormattedDateInput value={course.issued} onChange={(e) => { updateTrainingCourse(course.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(course.issued, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${trainingDateErrors[course.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
@@ -5532,7 +5550,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 <TableCell className="p-3">
                   <Input value={service.vesselName} onChange={(e) => { updateSeaService(service.id, 'vesselName', e.target.value); if (seaRequiredErrors[service.id]?.vesselName && e.target.value.trim()) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselName: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
                     onBlur={() => { if (!(service.vesselName || '').trim()) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], vesselName: 'Vessel name is required.' } })); }}
-                    className={`text-[13px] border ${seaRequiredErrors[service.id]?.vesselName ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} placeholder="Enter vessel name" />
+                    className={`text-[13px] border ${seaRequiredErrors[service.id]?.vesselName ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} placeholder="Enter vessel name" maxLength={50} />
                   {seaRequiredErrors[service.id]?.vesselName && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].vesselName}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -5549,13 +5567,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   {seaRequiredErrors[service.id]?.vesselType && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].vesselType}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={service.deadweight} onChange={(e) => updateSeaService(service.id, 'deadweight', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={service.deadweight} onChange={(e) => updateSeaService(service.id, 'deadweight', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={7} />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={service.engineTypePower} onChange={(e) => updateSeaService(service.id, 'engineTypePower', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={service.engineTypePower} onChange={(e) => updateSeaService(service.id, 'engineTypePower', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={50} />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={service.ownerOperator} onChange={(e) => updateSeaService(service.id, 'ownerOperator', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" />
+                  <Input value={service.ownerOperator} onChange={(e) => updateSeaService(service.id, 'ownerOperator', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={100} />
                 </TableCell>
                 <TableCell className="p-3">
                   <Select value={service.rank} onValueChange={(value) => { updateSeaService(service.id, 'rank', value); if (seaRequiredErrors[service.id]?.rank) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}>
@@ -5633,10 +5651,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             {formData.additionalInfo.map((info) => (
               <TableRow key={info.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
-                  <Input value={info.information} onChange={(e) => updateAdditionalInfo(info.id, 'information', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" placeholder="Enter information requirement" />
+                  <Input value={info.information} onChange={(e) => updateAdditionalInfo(info.id, 'information', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" placeholder="Enter information requirement" maxLength={200} />
                 </TableCell>
                 <TableCell className="p-3">
-                  <Input value={info.response} onChange={(e) => updateAdditionalInfo(info.id, 'response', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" placeholder="Enter response" />
+                  <Input value={info.response} onChange={(e) => updateAdditionalInfo(info.id, 'response', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" placeholder="Enter response" maxLength={200} />
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
@@ -5883,6 +5901,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
+                                    maxLength={500}
                                   />
                                 ) : (
                                   <div 
@@ -5958,6 +5977,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 className="text-blue-600 italic border-blue-200 text-[13px]"
                                 rows={2}
                                 autoFocus
+                                maxLength={500}
                               />
                             </div>
                           )}
@@ -6112,6 +6132,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   }));
                                 }}
                                 data-testid={`input-b2-ref-name-${index}`}
+                                maxLength={100}
                               />
                             </div>
                             <div className="flex gap-2">
@@ -6131,6 +6152,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   }));
                                 }}
                                 data-testid={`input-b2-ref-contact-${index}`}
+                                maxLength={100}
                               />
                               {index === formData.b2References.length - 1 && (
                                 <Button
@@ -6208,6 +6230,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   }}
                                   autoFocus
                                   className="min-h-[80px] w-full"
+                                  maxLength={500}
                                 />
                               ) : (
                                 <div 
@@ -6275,6 +6298,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                               className="text-blue-600 italic border-blue-200 text-[13px]"
                               rows={2}
                               autoFocus
+                              maxLength={500}
                             />
                           </div>
                         )}
@@ -6358,6 +6382,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   }}
                                   autoFocus
                                   className="min-h-[80px] w-full"
+                                  maxLength={500}
                                 />
                               ) : (
                                 <div 
@@ -6425,6 +6450,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                               className="text-blue-600 italic border-blue-200 text-[13px]"
                               rows={2}
                               autoFocus
+                              maxLength={500}
                             />
                           </div>
                         )}
@@ -6579,6 +6605,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }));
                                   }}
                                   data-testid={`input-b3-auth-name-${index}`}
+                                  maxLength={100}
                                 />
                                 {index === formData.b3Authorities.length - 1 && (
                                   <Button
@@ -6655,6 +6682,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
+                                    maxLength={500}
                                   />
                                 ) : (
                                   <div 
@@ -6722,6 +6750,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 className="text-blue-600 italic border-blue-200 text-[13px]"
                                 rows={2}
                                 autoFocus
+                                maxLength={500}
                               />
                             </div>
                           )}
@@ -6805,6 +6834,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
+                                    maxLength={500}
                                   />
                                 ) : (
                                   <div 
@@ -6872,6 +6902,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 className="text-blue-600 italic border-blue-200 text-[13px]"
                                 rows={2}
                                 autoFocus
+                                maxLength={500}
                               />
                             </div>
                           )}
@@ -7027,6 +7058,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }));
                                   }}
                                   data-testid={`input-b4-cert-name-${index}`}
+                                  maxLength={100}
                                 />
                               </div>
                               <div className="flex gap-2">
@@ -7046,6 +7078,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }));
                                   }}
                                   data-testid={`input-b4-cert-auth-${index}`}
+                                  maxLength={100}
                                 />
                                 {index === formData.b4Certs.length - 1 && (
                                   <Button
@@ -7123,6 +7156,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
+                                    maxLength={500}
                                   />
                                 ) : (
                                   <div 
@@ -7190,6 +7224,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 className="text-blue-600 italic border-blue-200 text-[13px]"
                                 rows={2}
                                 autoFocus
+                                maxLength={500}
                               />
                             </div>
                           )}
@@ -7273,6 +7308,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
+                                    maxLength={500}
                                   />
                                 ) : (
                                   <div 
@@ -7340,6 +7376,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 className="text-blue-600 italic border-blue-200 text-[13px]"
                                 rows={2}
                                 autoFocus
+                                maxLength={500}
                               />
                             </div>
                           )}
@@ -7519,6 +7556,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }));
                                   }}
                                   data-testid={`input-b5-test-score-${index}`}
+                                  maxLength={5}
                                 />
                               </div>
                               <div className="flex gap-2">
@@ -7621,6 +7659,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
+                                    maxLength={500}
                                   />
                                 ) : (
                                   <div 
@@ -7688,6 +7727,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 className="text-blue-600 italic border-blue-200 text-[13px]"
                                 rows={2}
                                 autoFocus
+                                maxLength={500}
                               />
                             </div>
                           )}
@@ -7998,6 +8038,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     className="text-blue-600 italic border-blue-200 text-[13px] mb-2"
                                     rows={2}
                                     autoFocus
+                                    maxLength={500}
                                   />
                                 ) : (
                                   <div 
@@ -8045,6 +8086,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
+                                    maxLength={500}
                                   />
                                 ) : (
                                   <div 
@@ -8112,6 +8154,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 className="text-blue-600 italic border-blue-200 text-[13px]"
                                 rows={2}
                                 autoFocus
+                                maxLength={500}
                               />
                             </div>
                           )}
@@ -8351,6 +8394,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                                 placeholder="Enter comments"
                                 data-testid={`input-b7-training-comments-${idx}`}
+                                maxLength={500}
                               />
                             </TableCell>
                             <TableCell className="p-3">
@@ -8486,6 +8530,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     autoFocus
                                     className="min-h-[80px] w-full"
+                                    maxLength={500}
                                   />
                                 ) : (
                                   <div 
@@ -8553,6 +8598,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 className="text-blue-600 italic border-blue-200 text-[13px]"
                                 rows={2}
                                 autoFocus
+                                maxLength={500}
                               />
                             </div>
                           )}
@@ -8825,6 +8871,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 className="text-blue-600 italic border-blue-200 text-[13px] mb-2"
                                 rows={2}
                                 data-testid={`textarea-c1-approver-comment-${approver.id}`}
+                                maxLength={500}
                               />
                             </div>
                           )}
@@ -9085,7 +9132,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     >
       <div className="flex flex-col h-full overflow-hidden">
         <div className="sticky top-0 bg-white border-b p-2 sm:p-3 lg:p-4 flex items-center justify-between z-10">
-          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 min-w-0">
             <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
