@@ -176,7 +176,7 @@ function ApprovalScreenV2() {
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
-                                            className="h-8 text-[#0f172a] text-[11px] border-[#e1e8ed] justify-between w-[130px]"
+                                            className="h-8 text-[#0f172a] text-xs font-normal bg-transparent hover:bg-transparent hover:text-[#0f172a] border-input justify-between w-[130px]"
                                             data-testid="filter-vessel-v2"
                                         >
                                             {selectedVessels.length === 0 ? "Vessel" : `${selectedVessels.length} selected`}
@@ -208,7 +208,7 @@ function ApprovalScreenV2() {
                                     <PopoverTrigger asChild>
                                         <Button
                                             variant="outline"
-                                            className="h-8 text-[#0f172a] text-[11px] border-[#e1e8ed] justify-between w-[130px]"
+                                            className="h-8 text-[#0f172a] text-xs font-normal bg-transparent hover:bg-transparent hover:text-[#0f172a] border-input justify-between w-[130px]"
                                             data-testid="filter-rank-v2"
                                         >
                                             {selectedRanks.length === 0 ? "Rank" : `${selectedRanks.length} selected`}
