@@ -85,6 +85,36 @@ export const wageScalesService = {
     return record;
   },
 
+  /**
+   * True when the scale is referenced (wage_scale_uuid) by at least one
+   * non-cancelled engagement on one of the given vessels. Used to scope
+   * Ship-actor wage-scale detail reads to their own vessel's scales.
+   */
+  async isReferencedByVessels(
+    scaleUuid: string,
+    vesselUuids: string[],
+  ): Promise<boolean> {
+    if (vesselUuids.length === 0) return false;
+    const { getDb } = await import("../../db");
+    const { accEngagementsV2 } = await import(
+      "../../../../shared/v2/accounts/schema"
+    );
+    const { and, eq, ne, inArray } = await import("drizzle-orm");
+    const db = getDb();
+    const rows = await db
+      .select({ engagementUuid: accEngagementsV2.engagementUuid })
+      .from(accEngagementsV2)
+      .where(
+        and(
+          eq(accEngagementsV2.wageScaleUuid, scaleUuid),
+          inArray(accEngagementsV2.vesselUuid, vesselUuids),
+          ne(accEngagementsV2.status, "cancelled"),
+        ),
+      )
+      .limit(1);
+    return rows.length > 0;
+  },
+
   async getDetail(scaleUuid: string): Promise<{
     scale: AccWageScaleV2;
     lines: AccWageScaleLineV2[];

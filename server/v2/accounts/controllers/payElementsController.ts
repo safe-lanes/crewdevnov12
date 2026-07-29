@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getAuditUserUuid } from "./_auth";
+import { getActor, getAuditUserUuid } from "./_auth";
 import { payElementsService } from "../services";
 import { insertAccPayElementV2Schema } from "../../../../shared/v2/accounts/types";
 
@@ -36,6 +36,16 @@ export const payElementsController = {
         type: type as string | undefined,
         category: category as string | undefined,
       });
+      if (getActor(req).vesselUser) {
+        // Ship actors get the element reference list without GL account
+        // codes (office accounting detail the vessel screen never uses).
+        return res.json(
+          records.map((rec: Record<string, unknown>) => {
+            const { glCode: _glCode, ...rest } = rec;
+            return rest;
+          }),
+        );
+      }
       res.json(records);
     } catch (error) {
       handleError(error, res, "Failed to fetch pay elements");

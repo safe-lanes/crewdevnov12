@@ -127,14 +127,14 @@ describe("Appendix B.1 regression — real signed Ship JWT is 403 on office acti
 describe("default-deny sample across office-only route groups (signed Ship JWT)", () => {
   const ship = signShipToken();
   const cases: Array<[string, string]> = [
-    ["GET", "/config"],
+    // NOTE (Task #187): GET /config, GET /pay-elements, GET /allotments and
+    // GET /wage-scales/:uuid are now ship-allowed reference reads (narrowed
+    // in their controllers) — covered by ship-reference-reads.test.ts.
     ["PUT", "/config"],
-    ["GET", "/pay-elements"],
     ["DELETE", "/pay-elements/some-uuid"],
     ["GET", "/wage-scales"],
     ["POST", "/wage-scales/some-uuid/activate"],
     ["GET", "/cba-reference"],
-    ["GET", "/allotments"],
     ["POST", "/allotments"],
     ["GET", "/advances"],
     ["GET", "/engagements"],

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getAuditUserUuid } from "./_auth";
+import { getActor, getAuditUserUuid } from "./_auth";
 import { tenantConfigService } from "../services";
 import { insertAccTenantConfigV2Schema } from "../../../../shared/v2/accounts/types";
 
@@ -11,6 +11,20 @@ export const tenantConfigController = {
   async get(req: Request, res: Response) {
     try {
       const record = await tenantConfigService.get(getAuditUserUuid(req));
+      if (getActor(req).vesselUser) {
+        // Ship actors get ONLY the fields the Vessel Portage screen uses
+        // (configurable extra entry tabs). GL codes, allotment cap,
+        // preparation mode, and all other office settings are excluded.
+        const rec = record as Record<string, unknown>;
+        return res.json({
+          extraTab1Enabled: rec?.extraTab1Enabled ?? false,
+          extraTab1Label: rec?.extraTab1Label ?? null,
+          extraTab1PayElementUuid: rec?.extraTab1PayElementUuid ?? null,
+          extraTab2Enabled: rec?.extraTab2Enabled ?? false,
+          extraTab2Label: rec?.extraTab2Label ?? null,
+          extraTab2PayElementUuid: rec?.extraTab2PayElementUuid ?? null,
+        });
+      }
       res.json(record);
     } catch (error) {
       console.error("Error fetching tenant config:", error);

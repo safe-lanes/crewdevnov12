@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { getAuditUserUuid } from "./_auth";
+import { getActor, getAuditUserUuid } from "./_auth";
 import { wageScalesService } from "../services";
 import { insertAccWageScaleV2Schema } from "../../../../shared/v2/accounts/types";
 import { z } from "zod";
@@ -61,6 +61,20 @@ export const wageScalesController = {
 
   async getByUuid(req: Request, res: Response) {
     try {
+      const actor = getActor(req);
+      if (actor.vesselUser) {
+        // Ship actors may read ONLY scales referenced by an engagement on
+        // their own vessel(s) — never arbitrary scale-by-ID reads.
+        const ok = await wageScalesService.isReferencedByVessels(
+          req.params.uuid,
+          actor.vessels,
+        );
+        if (!ok) {
+          return res.status(403).json({
+            error: "This wage scale is not used on your vessel",
+          });
+        }
+      }
       const record = await wageScalesService.getDetail(req.params.uuid);
       res.json(record);
     } catch (error) {

@@ -74,6 +74,18 @@ export const SHIP_ALLOWED_ROUTES: RoutePolicyEntry[] = [
   r("PUT", "/ctm/:vesselUuid/:period"),
   r("PATCH", "/ctm/:vesselUuid/:period"),
   r("POST", "/ctm/:vesselUuid/:period/lines"),
+
+  // Reference data the Vessel Portage screen needs (read-only; the
+  // controllers apply ship-specific narrowing — see each controller):
+  // - pay elements: list only, glCode stripped for Ship actors
+  // - config: trimmed to the extra-tab settings only
+  // - allotments: filtered to the actor's own vessel(s)
+  // - wage-scale detail: only scales referenced by an engagement on the
+  //   actor's own vessel(s)
+  r("GET", "/pay-elements"),
+  r("GET", "/config"),
+  r("GET", "/allotments"),
+  r("GET", "/wage-scales/:uuid"),
 ];
 
 /**
@@ -82,13 +94,11 @@ export const SHIP_ALLOWED_ROUTES: RoutePolicyEntry[] = [
  * route was classified on purpose.
  */
 export const OFFICE_ONLY_ROUTES: RoutePolicyEntry[] = [
-  // Tenant configuration
-  r("GET", "/config"),
+  // Tenant configuration (GET is ship-allowed with a trimmed view)
   r("PUT", "/config"),
   r("PATCH", "/config"),
 
-  // Pay elements (masters)
-  r("GET", "/pay-elements"),
+  // Pay elements (masters; list GET is ship-allowed, glCode stripped)
   r("POST", "/pay-elements/seed-standard"),
   r("GET", "/pay-elements/:uuid"),
   r("POST", "/pay-elements"),
@@ -96,9 +106,9 @@ export const OFFICE_ONLY_ROUTES: RoutePolicyEntry[] = [
   r("PATCH", "/pay-elements/:uuid"),
   r("DELETE", "/pay-elements/:uuid"),
 
-  // Wage scales
+  // Wage scales (detail GET is ship-allowed only for scales referenced by
+  // the actor's own vessel's engagements — enforced in the controller)
   r("GET", "/wage-scales"),
-  r("GET", "/wage-scales/:uuid"),
   r("POST", "/wage-scales"),
   r("PUT", "/wage-scales/:uuid"),
   r("PATCH", "/wage-scales/:uuid"),
@@ -116,8 +126,7 @@ export const OFFICE_ONLY_ROUTES: RoutePolicyEntry[] = [
   r("PATCH", "/cba-reference/:uuid"),
   r("DELETE", "/cba-reference/:uuid"),
 
-  // Allotments
-  r("GET", "/allotments"),
+  // Allotments (list GET is ship-allowed, vessel-scoped in the controller)
   r("GET", "/allotments/crew/:crewUuid"),
   r("GET", "/allotments/:uuid"),
   r("POST", "/allotments"),

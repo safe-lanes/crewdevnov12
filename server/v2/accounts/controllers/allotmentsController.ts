@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { getAuditUserUuid } from "./_auth";
+import { getActor, getAuditUserUuid } from "./_auth";
 import { allotmentsService } from "../services";
+import { assertVesselScope } from "../services/vesselScope";
 import { insertAccAllotmentV2Schema } from "../../../../shared/v2/accounts/types";
 
 const updateSchema = insertAccAllotmentV2Schema.partial().omit({
@@ -20,13 +21,31 @@ export const allotmentsController = {
   async getAll(req: Request, res: Response) {
     try {
       const { crewUuid, status, vesselUuid } = req.query;
+      const actor = getActor(req);
+      if (actor.vesselUser && vesselUuid) {
+        // If a Ship actor names a vessel explicitly, it must be their own.
+        assertVesselScope(actor, vesselUuid as string);
+      }
       const records = await allotmentsService.getAll({
         crewUuid: crewUuid as string | undefined,
         status: status as string | undefined,
         vesselUuid: vesselUuid as string | undefined,
       });
+      if (actor.vesselUser) {
+        // Ship actors see only allotments of crew engaged on their own
+        // vessel(s) — fail-closed when the JWT carries no vessels claim.
+        return res.json(
+          records.filter(
+            (a: { vesselUuid: string | null }) =>
+              a.vesselUuid != null && actor.vessels.includes(a.vesselUuid),
+          ),
+        );
+      }
       res.json(records);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === "FORBIDDEN") {
+        return res.status(403).json({ error: error.message });
+      }
       console.error("Error fetching allotments:", error);
       res.status(500).json({ error: "Failed to fetch allotments" });
     }

@@ -208,7 +208,10 @@ describe('Rotation Planning Schema Validation', () => {
 
   describe('Crew Time on Board', () => {
     it('should calculate months on board from sign on date', () => {
-      const today = new Date();
+      // Fixed mid-month anchor: `setMonth(-5)` from day 29-31 can roll over
+      // (e.g. 29-Jul → 29-Feb → 1-Mar), making a `new Date()` version fail
+      // on those calendar days.
+      const today = new Date('2026-07-15T12:00:00Z');
       const signOnDate = new Date(today);
       signOnDate.setMonth(signOnDate.getMonth() - 5);
       
