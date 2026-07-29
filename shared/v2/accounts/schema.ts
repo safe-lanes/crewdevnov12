@@ -432,6 +432,8 @@ export const accCtmV2 = pgTable(
     submittedByUuid: text("submitted_by_uuid"),
     submittedDate: date("submitted_date"),
     portageUuid: text("portage_uuid"), // link to the vessel-month portage bill
+    // 0191 carry-forward provenance
+    openingCarriedFromPeriod: text("opening_carried_from_period"), // YYYY-MM of the source CTM; null = no prior found
     ...auditColumns,
   },
   (table) => ({

@@ -1,4 +1,4 @@
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, lt, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { accCtmV2, accCtmLinesV2 } from "../../../../shared/v2/accounts/schema";
@@ -26,6 +26,27 @@ export class CtmRepository {
           eq(accCtmV2.isDeleted, false),
         ),
       );
+    return rows[0];
+  }
+
+  /** Most-recent CTM for a vessel whose period is strictly before `beforePeriod`. */
+  async findMostRecentPriorCtm(
+    vesselUuid: string,
+    beforePeriod: string,
+  ): Promise<AccCtmV2 | undefined> {
+    const db = getDb();
+    const rows = await db
+      .select()
+      .from(accCtmV2)
+      .where(
+        and(
+          eq(accCtmV2.vesselUuid, vesselUuid),
+          lt(accCtmV2.period, beforePeriod),
+          eq(accCtmV2.isDeleted, false),
+        ),
+      )
+      .orderBy(desc(accCtmV2.period))
+      .limit(1);
     return rows[0];
   }
 

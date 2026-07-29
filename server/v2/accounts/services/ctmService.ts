@@ -52,6 +52,8 @@ export interface CtmDetail {
   imbalance: boolean;
   /** True when opening is carried from a prior month (read-only then). */
   openingCarried: boolean;
+  /** The YYYY-MM period of the source CTM, or null when no prior record exists. */
+  openingCarriedFromPeriod: string | null;
 }
 
 /** Statuses in which the vessel-facing CTM header/lines are mutable. */
@@ -90,8 +92,10 @@ export const ctmService = {
   computeClosing,
 
   /**
-   * Auto-create on first vessel entry: opening carried from the prior
-   * month's closing when a prior CTM exists (else 0, editable).
+   * Auto-create on first vessel entry: opening carried from the most-recent
+   * prior CTM's closing balance (any earlier period, most-recent-first). If
+   * no prior record exists the opening is 0.00 and openingCarriedFromPeriod
+   * stays null.
    */
   async getOrCreate(
     vesselUuid: string,
@@ -100,10 +104,7 @@ export const ctmService = {
   ): Promise<AccCtmV2> {
     const existing = await repo.findByVesselPeriod(vesselUuid, period);
     if (existing) return existing;
-    const prior = await repo.findByVesselPeriod(
-      vesselUuid,
-      priorPeriod(period),
-    );
+    const prior = await repo.findMostRecentPriorCtm(vesselUuid, period);
     const opening = prior ? Number(prior.closingBalance ?? 0).toFixed(2) : "0.00";
     const created = await repo.create({
       vesselUuid,
@@ -113,6 +114,7 @@ export const ctmService = {
       closingBalance: opening,
       currency: prior?.currency ?? "USD",
       status: "open",
+      openingCarriedFromPeriod: prior ? prior.period : null,
       createdByUuid: auditUserUuid ?? null,
       updatedByUuid: auditUserUuid ?? null,
     });
@@ -127,15 +129,13 @@ export const ctmService = {
     const ctm = await this.getOrCreate(vesselUuid, period, auditUserUuid);
     const lines = await repo.findLines(ctm.ctmUuid);
     const computed = computeClosing(ctm, lines);
-    const prior = await repo.findByVesselPeriod(
-      vesselUuid,
-      priorPeriod(period),
-    );
+    const openingCarriedFromPeriod = ctm.openingCarriedFromPeriod ?? null;
     return {
       ctm,
       lines,
       imbalance: Number(ctm.closingBalance ?? 0).toFixed(2) !== computed,
-      openingCarried: Boolean(prior),
+      openingCarried: openingCarriedFromPeriod !== null,
+      openingCarriedFromPeriod,
     };
   },
 
@@ -155,14 +155,11 @@ export const ctmService = {
       throw coded("CONFLICT", `CTM is ${ctm.status}; header is read-only`);
     }
     if (data.openingBalance !== undefined) {
-      const prior = await repo.findByVesselPeriod(
-        vesselUuid,
-        priorPeriod(period),
-      );
-      if (prior) {
+      // Block manual override whenever any prior CTM was found (adjacent or not)
+      if (ctm.openingCarriedFromPeriod !== null && ctm.openingCarriedFromPeriod !== undefined) {
         throw coded(
           "VALIDATION",
-          "Opening balance is carried from the previous month's closing and cannot be edited",
+          "Opening balance is carried from a prior month's closing and cannot be edited",
         );
       }
     }

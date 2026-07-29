@@ -291,6 +291,7 @@ export default function VesselPortagePage() {
   const ctm = ctmDetail?.ctm ?? null;
   const ctmLines: any[] = ctmDetail?.lines ?? [];
   const openingCarried = !!ctmDetail?.openingCarried;
+  const openingCarriedFromPeriod: string | null = ctmDetail?.openingCarriedFromPeriod ?? null;
   const imbalance = !!ctmDetail?.imbalance;
 
   // ---- wage-scale lookups for the Overtime tab ---------------------------
@@ -1680,6 +1681,29 @@ export default function VesselPortagePage() {
                       }
                       data-testid="input-ctm-opening"
                     />
+                    {openingCarriedFromPeriod ? (
+                      <p
+                        className="text-xs text-gray-500"
+                        data-testid="text-ctm-opening-provenance"
+                      >
+                        Opening balance carried from{" "}
+                        {(() => {
+                          const [y, m] = openingCarriedFromPeriod.split("-").map(Number);
+                          return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-GB", {
+                            month: "short",
+                            year: "numeric",
+                            timeZone: "UTC",
+                          });
+                        })()}
+                      </p>
+                    ) : ctmDetail ? (
+                      <p
+                        className="text-xs text-gray-400"
+                        data-testid="text-ctm-opening-no-prior"
+                      >
+                        No prior balance found — opening at 0.00
+                      </p>
+                    ) : null}
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-gray-600">
