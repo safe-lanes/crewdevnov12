@@ -152,7 +152,7 @@ Menu: **Accounts → Config → Wage Scales**.
 
 | Step | Action | Expected result | P/F | Notes |
 |---|---|---|---|---|
-| C1 | Click **New Wage Scale**. Enter name `VESSEL 04 SCALE 2026`, currency `USD`, effective from `2025-01-01`, scope fleet-wide (no specific vessel type/group). Save. | Scale is created in **Draft** status. **The 2025-01-01 effective date matters**: several vessel-04 crew signed on in mid-2025, and the sync refuses engagements whose sign-on predates every active scale. | | |
+| C1 | Click **New Wage Scale**. Enter name `VESSEL 04 SCALE 2026`, currency `USD`, effective from `2025-01-01`, scope fleet-wide (no specific vessel type/group). Save. | Scale is created in **Draft** status. **The 2025-01-01 effective date is now a choice, not a requirement**: several vessel-04 crew signed on in mid-2025, and the sync used to refuse engagements whose sign-on predates every active scale. Since 29-Jul-2026 the sync instead attaches the earliest applicable active scale and reports a warning per affected crew. If you use a later date (e.g. 2026-01-01), E1 additionally shows **5** "sign-on … predates every wage scale" sync warnings (re-verified: all engagement counts, run warning counts — 47/21 March, 19 April — and Appendix A figures are unchanged, since the scale still covers the 2026-03/04 test months). Keep 2025-01-01 to follow this script verbatim with no extra warnings — and note D1 still requires the CBA effective date to be on or before the scale's effective-from. | | |
 | C2 | Add all 16 lines from the table below (rank + element + experience year + amount; OT lines take an hourly *rate* instead of a monthly amount). | After each save the line appears. Scale stays **Draft**. Total lines: 16. | | |
 
 | Line | Rank | Rank code | Element | Year | Amount |
@@ -206,7 +206,7 @@ Menu: **Accounts → Payroll Run** → vessel 04 → period **2026-03** → Crew
 
 | Step | Action | Expected result | P/F | Notes |
 |---|---|---|---|---|
-| E1 | Click **Sync Engagements** for vessel 04, period 2026-03. | Result: **26 created, 0 errors, 3 skipped (no period overlap)**. The 3 skipped are assignments that ended before March 2026 (e.g. IRWAN SUBEKTI, signed off 28-Feb-2026) — correct behavior, see Appendix B. | | |
+| E1 | Click **Sync Engagements** for vessel 04, period 2026-03. | Result: **26 created, 0 errors, 3 skipped (no period overlap)**. The 3 skipped are assignments that ended before March 2026 (e.g. IRWAN SUBEKTI, signed off 28-Feb-2026) — correct behavior, see Appendix B. (With the recommended 2025-01-01 scale date there are **0** sync warnings; a later scale date adds pre-scale sign-on warnings, see C1.) | | |
 | E2 | Scroll the engagement list. Confirm the five working-set crew appear with correct start dates (V1/V2: 01-Mar; V3/V4/V5: 07-Mar). | All five listed. Total 26 engagements (Appendix D). | | |
 | E3 | Confirm engagements are linked to scale "VESSEL 04 SCALE 2026". | No "no scale" badge. (Some crew have ranks with no scale *lines* — that surfaces later as warnings, not as sync errors.) | | |
 | E4 | [NEG] Run the sync a second time. | **0 created, 26 skipped (already exist)**. | | |

@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { apiNotFound } from "./middleware/apiNotFound";
 import { runMigrations } from "./migrationRunner";
 import { tenantConnectionManager } from "./utils/tenantConnectionManager";
 import { tenantMiddleware } from "./middleware/tenantMiddleware";
@@ -77,6 +78,13 @@ app.use((req, res, next) => {
   app.use(authMiddleware);
   
   const server = await registerRoutes(app);
+
+  // Unmatched /api paths must fail loudly with 404 JSON instead of falling
+  // through to the SPA catch-all (which returns 200 + index.html and
+  // silently masks client calls to mistyped/renamed/removed endpoints —
+  // this previously made a group of legacy test suites fail in ways that
+  // took real effort to diagnose).
+  app.use("/api", apiNotFound);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
