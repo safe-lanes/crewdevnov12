@@ -1371,22 +1371,32 @@ describe("Wage Calculation Engine (H1–H5)", () => {
   });
 
   // ---- Task 144: zero-scale-wage diagnostics ---------------------------------
-  it("Task 144: transaction posts but zero scale lines ⇒ run succeeds, txn posts, no_scale_wages warning persists on the run row", async () => {
+  it("Task 190: scale exists but no line for crew's rank ⇒ no_scale_line_for_rank warning with crew name and scale name", async () => {
     const crewNs = u();
     const engNs = u();
     const scaleNs = u();
     const vslNs = `VSL_NS_${S}`;
     const RANK_NS = `NS_${S}`;
+    const CREW_FIRST = "NoLine";
+    const CREW_LAST = "TestCrew";
+    const SCALE_NAME = `Test Scale NS ${S}`;
 
     // Active scale whose lines cover a DIFFERENT rank than the engagement's.
     await insert("acc_wage_scales_v2", {
       scale_uuid: scaleNs,
-      scale_name: `Test Scale NS ${S}`,
+      scale_name: SCALE_NAME,
       currency: "USD",
       effective_from: "2024-01-01",
       status: "active",
     });
     await scaleLine(scaleNs, RANK_MST, el.BAS, "1000");
+    // Insert the crew member so the warning names them.
+    await insert("crew_members_v2", {
+      crew_uuid: crewNs,
+      emp_no: `TEST_${S}_NS`,
+      first_name: CREW_FIRST,
+      family_name: CREW_LAST,
+    });
     await engagement(engNs, crewNs, vslNs, scaleNs, RANK_NS, "2026-03-01", "2027-03-01");
     // Accepted office transaction so the crew-month still posts lines.
     const txnNs = u();
@@ -1422,32 +1432,86 @@ describe("Wage Calculation Engine (H1–H5)", () => {
         ),
       ).toBe(false);
 
-      // Summary warning names what is missing.
+      // Summary warning uses the new no_scale_line_for_rank message.
       const warnings = (body.warnings ?? []) as string[];
-      const expected = `no scale wages posted (other lines posted): no scale lines for rank ${RANK_NS} on the assigned wage scale`;
+      const crewDisplay = `${CREW_FIRST} ${CREW_LAST}`;
+      const expectedFragment = `No scale line for ${crewDisplay} (${RANK_NS}) on scale '${SCALE_NAME}' — the scale has no entry for this rank.`;
       expect(
-        warnings.some((w) => w.includes(expected)),
+        warnings.some((w) => w.includes(expectedFragment)),
         `warnings: ${JSON.stringify(warnings)}`,
       ).toBe(true);
 
-      // Warning persists on the run row (structured, 0159).
+      // Warning persists on the run row with code no_scale_line_for_rank.
       const runRow = await db.query(
         "SELECT warnings FROM acc_calculation_runs_v2 WHERE calc_run_uuid = $1",
         [body.run.calcRunUuid],
       );
       const persisted = runRow.rows[0]?.warnings ?? [];
       const hit = (persisted as any[]).find(
-        (w) => w.engagementUuid === engNs && w.code === "no_scale_wages",
+        (w) => w.engagementUuid === engNs && w.code === "no_scale_line_for_rank",
       );
       expect(hit, `run-row warnings: ${JSON.stringify(persisted)}`).toBeTruthy();
-      expect(hit.message).toContain(expected);
+      expect(hit.message).toContain(expectedFragment);
     } finally {
       await db.query("DELETE FROM acc_wage_ledger_v2 WHERE engagement_uuid = $1", [engNs]);
       await db.query("DELETE FROM acc_calculation_runs_v2 WHERE engagement_uuid = $1", [engNs]);
       await db.query("DELETE FROM acc_monthly_transactions_v2 WHERE txn_uuid = $1", [txnNs]);
       await db.query("DELETE FROM acc_engagements_v2 WHERE engagement_uuid = $1", [engNs]);
+      await db.query("DELETE FROM crew_members_v2 WHERE crew_uuid = $1", [crewNs]);
       await db.query("DELETE FROM acc_wage_scale_lines_v2 WHERE scale_uuid = $1", [scaleNs]);
       await db.query("DELETE FROM acc_wage_scales_v2 WHERE scale_uuid = $1", [scaleNs]);
+    }
+  });
+
+  it("Task 190: assigned scale UUID missing from DB ⇒ no_active_scale warning with crew name and rank", async () => {
+    const crewMiss190 = u();
+    const engMiss190 = u();
+    // Use a random UUID that is never inserted — simulates deleted/expired scale.
+    const scaleMissing = u();
+    const vslMiss190 = `VSL_M190_${S}`;
+    const RANK_M190 = `M190_${S}`;
+    const CREW_FIRST = "Missing";
+    const CREW_LAST = "Scale";
+
+    await insert("crew_members_v2", {
+      crew_uuid: crewMiss190,
+      emp_no: `TEST_${S}_M190`,
+      first_name: CREW_FIRST,
+      family_name: CREW_LAST,
+    });
+    // Engagement references a scale UUID that does not exist in acc_wage_scales_v2.
+    await engagement(engMiss190, crewMiss190, vslMiss190, scaleMissing, RANK_M190, "2026-03-01", "2027-03-01");
+
+    try {
+      const { status, body } = await runEngagement(engMiss190, "2026-03");
+      expect(status).toBe(200);
+      expect(body.run.status).toBe("completed");
+
+      // Summary warning uses the new no_active_scale message.
+      const warnings = (body.warnings ?? []) as string[];
+      const crewDisplay = `${CREW_FIRST} ${CREW_LAST}`;
+      const expectedFragment = `No active wage scale for ${crewDisplay} (${RANK_M190}) for this period — the assigned scale is missing or expired.`;
+      expect(
+        warnings.some((w) => w.includes(expectedFragment)),
+        `warnings: ${JSON.stringify(warnings)}`,
+      ).toBe(true);
+
+      // Warning persists on the run row with code no_active_scale.
+      const runRow = await db.query(
+        "SELECT warnings FROM acc_calculation_runs_v2 WHERE calc_run_uuid = $1",
+        [body.run.calcRunUuid],
+      );
+      const persisted = runRow.rows[0]?.warnings ?? [];
+      const hit = (persisted as any[]).find(
+        (w) => w.engagementUuid === engMiss190 && w.code === "no_active_scale",
+      );
+      expect(hit, `run-row warnings: ${JSON.stringify(persisted)}`).toBeTruthy();
+      expect(hit.message).toContain(expectedFragment);
+    } finally {
+      await db.query("DELETE FROM acc_wage_ledger_v2 WHERE engagement_uuid = $1", [engMiss190]);
+      await db.query("DELETE FROM acc_calculation_runs_v2 WHERE engagement_uuid = $1", [engMiss190]);
+      await db.query("DELETE FROM acc_engagements_v2 WHERE engagement_uuid = $1", [engMiss190]);
+      await db.query("DELETE FROM crew_members_v2 WHERE crew_uuid = $1", [crewMiss190]);
     }
   });
 

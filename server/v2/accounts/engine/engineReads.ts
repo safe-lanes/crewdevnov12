@@ -17,6 +17,7 @@ import {
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { masterNationalities } from "../../../../shared/schema";
 import { promoExecutionLedgerV2 } from "../../../../shared/v2/promotions/schema";
+import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
 import type {
   AccTenantConfigV2,
   AccEngagementV2,
@@ -388,6 +389,24 @@ export class EngineReads {
           eq(accSettlementsV2.isDeleted, false),
         ),
       );
+  }
+
+  /** rankId (text) -> human-readable rank label (for engine warning messages). */
+  async findRankNames(rankIds: string[]): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    if (rankIds.length === 0) return map;
+    const db = getDb();
+    const rows = await db
+      .select({
+        rankId: admCompanyRanksV2.rankId,
+        rank: admCompanyRanksV2.rank,
+      })
+      .from(admCompanyRanksV2)
+      .where(inArray(admCompanyRanksV2.rankId, rankIds));
+    for (const r of rows) {
+      if (r.rank) map.set(r.rankId, r.rank);
+    }
+    return map;
   }
 
   /** crew_uuid -> display name (for engine error messages). */

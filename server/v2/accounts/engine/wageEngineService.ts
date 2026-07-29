@@ -69,6 +69,10 @@ interface CalcContext {
   advancePriorRecoveredCents: Map<string, number>;
   nationalityByCrew: Map<string, string | null>;
   nationalityNames: Map<string, string>;
+  /** crew_uuid -> display name (for human-readable warning messages). */
+  crewNamesByCrew: Map<string, string>;
+  /** rankId (text) -> human-readable rank label (for human-readable warning messages). */
+  rankNamesById: Map<string, string>;
 }
 
 /** Ledger line before run/portage identifiers are attached. */
@@ -1002,13 +1006,26 @@ async function buildContext(
     }
   }
 
-  const nationalityNames = await reads.findNationalityNames([
-    ...Array.from(nationalityByCrew.values()).filter(
-      (v): v is string => v != null,
-    ),
-    ...scaleLines
-      .map((l) => l.nationalityUuid)
-      .filter((v): v is string => v != null),
+  // Collect all rank IDs referenced in engagements (current + promos) so
+  // warning messages can resolve them to human-readable labels.
+  const allRankIds = Array.from(
+    new Set([
+      ...engagements.map((e) => e.rankIdAtStart).filter((r): r is string => r != null),
+      ...promos.map((p) => p.toRank),
+    ]),
+  );
+
+  const [nationalityNames, crewNamesByCrew, rankNamesById] = await Promise.all([
+    reads.findNationalityNames([
+      ...Array.from(nationalityByCrew.values()).filter(
+        (v): v is string => v != null,
+      ),
+      ...scaleLines
+        .map((l) => l.nationalityUuid)
+        .filter((v): v is string => v != null),
+    ]),
+    reads.findCrewNames(crewUuids),
+    reads.findRankNames(allRankIds),
   ]);
 
   const elementsMap = new Map(elements.map((e) => [e.payElementUuid, e]));
@@ -1033,6 +1050,8 @@ async function buildContext(
     advancePriorRecoveredCents,
     nationalityByCrew,
     nationalityNames,
+    crewNamesByCrew,
+    rankNamesById,
   };
 }
 
@@ -1536,28 +1555,51 @@ function calcEngagement(
     // the last served segment), not the engagement start anchors — a mid-month
     // promotion or scale supersession must name the rank/scale actually used.
     const diagState = [...states].reverse().find((s) => s.days > 0) ?? lastState;
+    const crewName =
+      ctx.crewNamesByCrew.get(engagement.crewUuid) ?? engagement.crewUuid;
+    const rankName =
+      ctx.rankNamesById.get(diagState.rankId) ?? diagState.rankId;
+    const scaleRecord = ctx.scaleByUuid.get(diagState.scaleUuid);
     const scaleLines = (
       ctx.scaleLinesByScale.get(diagState.scaleUuid) ?? []
     ).filter((l) => l.rankId === diagState.rankId);
-    let detail =
-      scaleLines.length === 0
-        ? `no scale lines for rank ${diagState.rankId} on the assigned wage scale`
-        : diagnoseSkip(ctx, engagement, scaleLines, diagState);
-    // Task 148: if the served scale has a superseding revision that the
-    // supersession chain can never reach (missing effective_from), name it —
-    // that revision is almost always where the missing lines live.
-    const unreachable = unreachableRevision(ctx, diagState.scaleUuid);
-    if (unreachable) {
-      detail += `; note: scale "${ctx.scaleByUuid.get(diagState.scaleUuid)?.scaleName ?? diagState.scaleUuid}" is superseded by "${unreachable.scaleName}" which has no Effective From date, so the revision is never applied — set its Effective From to make it reachable`;
+
+    if (!scaleRecord) {
+      // Sub-case A: the assigned scale UUID cannot be resolved to an active
+      // record — the scale itself is missing or expired.
+      warnings.push({
+        code: "no_active_scale",
+        message: `No active wage scale for ${crewName} (${rankName}) for this period — the assigned scale is missing or expired.`,
+      });
+    } else if (scaleLines.length === 0) {
+      // Sub-case B: the scale resolves fine but has no line for this rank.
+      const scaleName = scaleRecord.scaleName ?? diagState.scaleUuid;
+      let msg = `No scale line for ${crewName} (${rankName}) on scale '${scaleName}' — the scale has no entry for this rank.`;
+      // Task 148: name an unreachable superseding revision when the chain
+      // cannot reach a newer revision (missing effective_from).
+      const unreachable = unreachableRevision(ctx, diagState.scaleUuid);
+      if (unreachable) {
+        msg += ` Note: scale "${scaleName}" is superseded by "${unreachable.scaleName}" which has no Effective From date, so the revision is never applied — set its Effective From to make it reachable.`;
+      }
+      warnings.push({ code: "no_scale_line_for_rank", message: msg });
+    } else {
+      // Sub-case C (fallback): scale and rank lines resolved, but some other
+      // dimension (nationality gate, experience band) eliminated every line.
+      let detail = diagnoseSkip(ctx, engagement, scaleLines, diagState);
+      // Task 148: unreachable revision note.
+      const unreachable = unreachableRevision(ctx, diagState.scaleUuid);
+      if (unreachable) {
+        detail += `; note: scale "${scaleRecord.scaleName ?? diagState.scaleUuid}" is superseded by "${unreachable.scaleName}" which has no Effective From date, so the revision is never applied — set its Effective From to make it reachable`;
+      }
+      warnings.push(
+        lines.length === 0
+          ? { code: "engagement_skipped", message: `skipped: ${detail}` }
+          : {
+              code: "no_scale_wages",
+              message: `no scale wages posted (other lines posted): ${detail}`,
+            },
+      );
     }
-    warnings.push(
-      lines.length === 0
-        ? { code: "engagement_skipped", message: `skipped: ${detail}` }
-        : {
-            code: "no_scale_wages",
-            message: `no scale wages posted (other lines posted): ${detail}`,
-          },
-    );
   }
 
   // Negative net (Prompt 07 follow-up): a crew-month whose deductions exceed the
