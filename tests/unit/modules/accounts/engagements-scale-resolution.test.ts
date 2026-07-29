@@ -119,6 +119,45 @@ describe("resolveScaleOutcome", () => {
     );
   });
 
+  // Task #207: a sign-on predating every scale must NOT error out of sync —
+  // the earliest applicable active scale is attached (the engine computes
+  // per period and splits on scale-version boundaries, so pre-scale history
+  // simply produces no scale wages).
+  describe("pre-scale sign-on fallback (task #207)", () => {
+    it("attaches the earliest future typed scale when sign-on predates every scale", () => {
+      const ctx = resolveVesselTypeContext("LPG Tanker", masterTypes);
+      const out = resolveScaleOutcome([lpgScale, fleetScale], ctx, "2024-06-10");
+      expect(out.scale?.scaleUuid).toBe("s-lpg");
+      expect(out.errorReason).toBeUndefined();
+      expect(out.preScaleSignOnNote).toContain("sign-on 2024-06-10 predates");
+      expect(out.preScaleSignOnNote).toContain("effective 2025-01-01");
+    });
+
+    it("prefers the EARLIEST future scale, not the newest", () => {
+      const later = scale({
+        scaleUuid: "s-lpg-later",
+        vesselTypeUuid: LPG_UUID,
+        effectiveFrom: "2026-01-01",
+      });
+      const ctx = resolveVesselTypeContext("LPG Tanker", masterTypes);
+      const out = resolveScaleOutcome([later, lpgScale], ctx, "2024-06-10");
+      expect(out.scale?.scaleUuid).toBe("s-lpg");
+    });
+
+    it("falls back to a future fleet-wide scale when no typed scale exists", () => {
+      const ctx = resolveVesselTypeContext("Bulk Carrier", masterTypes);
+      const out = resolveScaleOutcome([fleetScale], ctx, "2024-06-10");
+      expect(out.scale?.scaleUuid).toBe("s-fleet");
+      expect(out.preScaleSignOnNote).toBeDefined();
+    });
+
+    it("no note when a scale is already effective at sign-on", () => {
+      const ctx = resolveVesselTypeContext("LPG Tanker", masterTypes);
+      const out = resolveScaleOutcome([lpgScale, fleetScale], ctx, "2026-06-01");
+      expect(out.preScaleSignOnNote).toBeUndefined();
+    });
+  });
+
   it("ignores scales outside their effective window", () => {
     const expired = scale({
       scaleUuid: "s-old",

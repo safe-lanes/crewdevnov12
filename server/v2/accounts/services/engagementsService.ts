@@ -249,10 +249,44 @@ export function resolveVesselTypeContext(
 }
 
 /**
+ * Earliest active scale whose effectivity STARTS AFTER the given date
+ * (typed scales preferred, else fleet-wide). Used when a crew member's
+ * sign-on predates every scale: the engine splits on scale-version
+ * boundaries and only pays scale wages inside the scale's effectivity, so
+ * attaching the earliest applicable scale is safe — pre-scale service
+ * simply produces no scale wages for those (historical) months.
+ */
+function resolveEarliestFutureScale(
+  scales: AccWageScaleV2[],
+  vesselTypeUuid: string | null,
+  startDate: string,
+): AccWageScaleV2 | undefined {
+  const future = scales.filter(
+    (s) => s.effectiveFrom != null && s.effectiveFrom > startDate,
+  );
+  const byEarliest = (a: AccWageScaleV2, b: AccWageScaleV2) =>
+    (a.effectiveFrom ?? "").localeCompare(b.effectiveFrom ?? "") ||
+    a.scaleUuid.localeCompare(b.scaleUuid);
+  if (vesselTypeUuid) {
+    const typed = future
+      .filter((s) => s.vesselTypeUuid === vesselTypeUuid)
+      .sort(byEarliest);
+    if (typed.length > 0) return typed[0];
+  }
+  const fleetWide = future
+    .filter((s) => s.vesselTypeUuid == null && s.vesselGroupUuid == null)
+    .sort(byEarliest);
+  return fleetWide[0];
+}
+
+/**
  * Full scale-resolution outcome for one engagement start date, encoding the
  * unmatched-type fallback rules:
  *  - matched type → typed scale, else fleet-wide, else generic error
  *  - unmatched type name → fleet-wide with a warning, else explanatory error
+ *  - sign-on predates every scale → earliest applicable active scale with a
+ *    note (pre-scale service is fine: the engine computes per period and
+ *    splits on scale-version boundaries)
  * Never throws.
  */
 export function resolveScaleOutcome(
@@ -262,6 +296,8 @@ export function resolveScaleOutcome(
 ): {
   scale?: AccWageScaleV2;
   usedFleetWideForUnmatchedType: boolean;
+  /** Set when the sign-on predates the attached scale's effective-from. */
+  preScaleSignOnNote?: string;
   errorReason?: string;
 } {
   const scale = resolveScaleForStart(scales, ctx.vesselTypeUuid, startDate);
@@ -270,6 +306,19 @@ export function resolveScaleOutcome(
       scale,
       usedFleetWideForUnmatchedType:
         ctx.unmatched && scale.vesselTypeUuid == null,
+    };
+  }
+  const future = resolveEarliestFutureScale(
+    scales,
+    ctx.unmatched ? null : ctx.vesselTypeUuid,
+    startDate,
+  );
+  if (future) {
+    return {
+      scale: future,
+      usedFleetWideForUnmatchedType:
+        ctx.unmatched && future.vesselTypeUuid == null,
+      preScaleSignOnNote: `sign-on ${startDate} predates every wage scale — attached the earliest active scale '${future.scaleName ?? future.scaleUuid}' (effective ${future.effectiveFrom}); wages compute from the scale's effectivity onward`,
     };
   }
   if (ctx.unmatched) {
@@ -549,6 +598,11 @@ async function createMissingEngagements(ctx: {
         `vessel type "${typeCtx.typeName}" not found in vessel-type master — using fleet-wide scale`,
       );
       warnedUnmatchedType = true;
+    }
+    if (outcome.preScaleSignOnNote) {
+      result.warnings.push(
+        `${crewLabel(assignment.crewUuid)}: ${outcome.preScaleSignOnNote}`,
+      );
     }
     const scale = outcome.scale;
     const dataWithAudit = applyAuditUser(

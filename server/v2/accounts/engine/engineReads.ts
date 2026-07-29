@@ -14,7 +14,7 @@ import {
   accWageLedgerV2,
   accSettlementsV2,
 } from "../../../../shared/v2/accounts/schema";
-import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { crewAssignments, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { masterNationalities } from "../../../../shared/schema";
 import { promoExecutionLedgerV2 } from "../../../../shared/v2/promotions/schema";
 import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
@@ -32,6 +32,47 @@ import type {
   AccWageLedgerV2,
   AccSettlementV2,
 } from "../../../../shared/v2/accounts/types";
+
+/**
+ * Crew-assignment dates are free text in the source system; parse
+ * defensively (mirrors engagementsService.parseTextDate). Returns ISO
+ * YYYY-MM-DD, null for empty, undefined when unparseable.
+ */
+function parseAssignmentDate(
+  value: string | null,
+): string | null | undefined {
+  if (value == null || value.trim() === "") return null;
+  const trimmed = value.trim();
+  const isoCandidate = trimmed.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(isoCandidate)) return isoCandidate;
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+  return undefined;
+}
+
+/**
+ * Pure month-overlap check for a crewing assignment with free-text dates
+ * (missing-engagement safety net). Fail-loud semantics: an assignment whose
+ * sign-on cannot be parsed is treated as overlapping — the crew member is on
+ * the vessel per Crewing and sync cannot have created an engagement for
+ * them, so silently excluding them would defeat the safety net. An
+ * unparseable sign-off is treated as open-ended for the same reason.
+ */
+export function assignmentOverlapsMonth(
+  a: { signOnDate: string | null; signOffDate: string | null },
+  monthStart: string,
+  monthEnd: string,
+): boolean {
+  const signOn = parseAssignmentDate(a.signOnDate);
+  if (signOn === null) return false; // no sign-on at all: not on board
+  const signOff = parseAssignmentDate(a.signOffDate);
+  const onOk = signOn === undefined || signOn <= monthEnd;
+  const offOk =
+    signOff === undefined || signOff == null || signOff >= monthStart;
+  return onOk && offOk;
+}
 
 export interface PromotionEvent {
   crewUuid: string;
@@ -430,6 +471,90 @@ export class EngineReads {
       map.set(r.crewUuid, name || r.crewUuid);
     }
     return map;
+  }
+
+  /**
+   * Live crewing assignments on a vessel whose sign-on/sign-off range
+   * overlaps the month. Used by the missing-engagement safety net: any of
+   * these without an engagement covering the period means a crew member
+   * would silently receive no wages. Overlap filtering is delegated to the
+   * pure, defensively-parsing assignmentOverlapsMonth (assignment dates are
+   * free text in the source system).
+   */
+  async findAssignmentsOverlappingPeriod(
+    vesselUuid: string,
+    monthStart: string,
+    monthEnd: string,
+  ): Promise<
+    Array<{
+      assignUuid: string;
+      crewUuid: string;
+      signOnDate: string | null;
+      signOffDate: string | null;
+    }>
+  > {
+    const db = getDb();
+    const rows = await db
+      .select({
+        assignUuid: crewAssignments.assignUuid,
+        crewUuid: crewAssignments.crewUuid,
+        signOnDate: crewAssignments.signOnDate,
+        signOffDate: crewAssignments.signOffDate,
+      })
+      .from(crewAssignments)
+      .where(
+        and(
+          eq(crewAssignments.vesselUuid, vesselUuid),
+          eq(crewAssignments.isDeleted, false),
+        ),
+      );
+    return rows.filter(
+      (a: { signOnDate: string | null; signOffDate: string | null }) =>
+        assignmentOverlapsMonth(a, monthStart, monthEnd),
+    );
+  }
+
+  /**
+   * Crew with ANY non-deleted, non-cancelled engagement overlapping the
+   * month — regardless of calc eligibility. The missing-engagement safety
+   * net must count settled/draft engagements as coverage (a settled crew
+   * member is not "missing", they are just excluded from recompute).
+   */
+  async findEngagedCrewForVesselPeriod(
+    vesselUuid: string,
+    monthStart: string,
+    monthEnd: string,
+  ): Promise<Set<string>> {
+    const db = getDb();
+    const rows = await db
+      .select({
+        crewUuid: accEngagementsV2.crewUuid,
+        startDate: accEngagementsV2.startDate,
+        endDate: accEngagementsV2.endDate,
+        status: accEngagementsV2.status,
+      })
+      .from(accEngagementsV2)
+      .where(
+        and(
+          eq(accEngagementsV2.vesselUuid, vesselUuid),
+          eq(accEngagementsV2.isDeleted, false),
+        ),
+      );
+    return new Set(
+      rows
+        .filter(
+          (e: {
+            startDate: string | null;
+            endDate: string | null;
+            status: string;
+          }) =>
+            e.status !== "cancelled" &&
+            e.startDate != null &&
+            e.startDate <= monthEnd &&
+            (e.endDate == null || e.endDate >= monthStart),
+        )
+        .map((e: { crewUuid: string }) => e.crewUuid),
+    );
   }
 
   /**

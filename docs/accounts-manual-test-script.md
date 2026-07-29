@@ -277,7 +277,7 @@ Switch persona to **Ship — Vessel Admin (vessel 04)**. Navigate via **Accounts
 | Step | Action | Expected result | P/F | Notes |
 |---|---|---|---|---|
 | G10 | Allotments tab: for **IVAN JURIC (V2)** enter an extra one-off allotment of **600.00** for March only. | Saved. | | |
-| G11 | Bond / Slop Chest tab: for **SANJAY VERMA (V1)** add one purchase `Goods`, 1 × **80.00**, date 2026-03-20. | Saved. Note: bond purchases post automatically as an office-origin, already-accepted rollup line — they do **not** go through the office accept/reject queue in Phase H. | | |
+| G11 | Bond / Slop Chest tab: for **SANJAY VERMA (V1)** add one purchase `Goods`, 1 × **80.00**, date 2026-03-20. | Saved. Note: bond purchases post automatically as an office-origin, already-accepted rollup line — they do **not** go through the office accept/reject queue in Phase H. This is by design (single-posting-path): the office controls bond entries by editing, cancelling, or zeroing the bond **item** on this tab (which recomputes or removes the rollup) at any time until the month locks — not via transaction accept/reject. | | |
 | G12 | Radio / Telephone tab (extra tab from B6): **V1** = **25.00**, **MANOJ REDDY (V5)** = **40.00**. | Both saved. | | |
 
 ### G4 — Sign-off V4 and submit

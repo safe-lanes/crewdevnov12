@@ -198,7 +198,7 @@ v1 operates single-currency per tenant — all wage scales and engagements must 
 
 ## 7. Known limitations
 
-Please make sure the client is aware of these three boundaries of the current
+Please make sure the client is aware of these boundaries of the current
 system before go-live:
 
 1. **Vessel vs. office access is enforced by the server.** A vessel (ship)
@@ -226,3 +226,12 @@ system before go-live:
    combined as if the exchange rate were 1:1, which would misstate payroll
    totals. Keep everything in the functional currency until multi-currency
    support is delivered.
+
+4. **Bond / slop chest purchases skip the office accept/reject queue.** By
+   design (single-posting-path), vessel-entered bond purchases roll up into
+   one monthly transaction per crew member that posts directly as an
+   office-origin, already-accepted line — it never appears in the office's
+   accept/reject review queue, unlike every other vessel-entered item. The
+   office still controls bond entries: edit, cancel, or zero the individual
+   bond item on the Bond / Slop Chest tab (the rolled-up amount recomputes
+   automatically) at any time until the month is locked.

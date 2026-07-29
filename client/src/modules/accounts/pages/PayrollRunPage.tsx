@@ -244,11 +244,13 @@ export default function PayrollRunPage() {
   const [runSkippedSettled, setRunSkippedSettled] = useState<any[]>([]);
   const warnings: string[] = (
     (runWarnings ?? (latestRun?.warnings as any[] | null) ?? []) as any[]
-  ).map((w) =>
-    typeof w === "string"
-      ? w
-      : `${w?.engagementUuid ?? ""}: ${w?.message ?? w?.code ?? ""}`,
-  );
+  ).map((w) => {
+    if (typeof w === "string") return w;
+    const msg = w?.message ?? w?.code ?? "";
+    // missing_engagement warnings have no engagement — the message already
+    // names the crew member, so show it without a dangling "uuid:" prefix.
+    return w?.engagementUuid ? `${w.engagementUuid}: ${msg}` : msg;
+  });
 
   // ---- sync ----
   const [syncing, setSyncing] = useState(false);

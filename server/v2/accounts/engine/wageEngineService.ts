@@ -392,6 +392,19 @@ async function assertNoOverlappingEngagements(
   }
 }
 
+/**
+ * Assignments overlapping the period whose crew have NO engagement at all
+ * for the run (missing-engagement safety net, task #207). Pure so it can be
+ * unit-tested: every cause of a missing engagement (pre-scale sign-on,
+ * unmapped rank, unparseable dates, overlap conflicts …) funnels here.
+ */
+export function findUncoveredAssignments<
+  A extends { crewUuid: string },
+>(assignments: A[], engagements: Array<{ crewUuid: string }>): A[] {
+  const covered = new Set(engagements.map((e) => e.crewUuid));
+  return assignments.filter((a) => !covered.has(a.crewUuid));
+}
+
 /** Run-row warnings payload: structured, crew-attributed (0159). */
 function persistableWarnings(results: EngagementResult[]) {
   return results.flatMap((r) =>
@@ -461,6 +474,50 @@ export const wageEngineService = {
       r.warnings.map((w) => `${r.engagement.engagementUuid}: ${w.message}`),
     );
     const runWarnings = persistableWarnings(results);
+
+    // Missing-engagement safety net: any crewing assignment overlapping the
+    // period without an engagement covering it means a crew member would
+    // silently receive NO wages this month. Persist a crew-attributed warning
+    // on the run row (survives reload, unlike the transient sync panel) —
+    // this is the catch-all for every cause of a missing engagement.
+    // Coverage universe: ANY non-deleted, non-cancelled engagement counts
+    // (incl. settled/draft) — a settled crew member is excluded from
+    // recompute but is NOT missing.
+    const [assignmentsInPeriod, engagedCrew] = await Promise.all([
+      reads.findAssignmentsOverlappingPeriod(
+        vesselUuid,
+        month.monthStart,
+        month.monthEnd,
+      ),
+      reads.findEngagedCrewForVesselPeriod(
+        vesselUuid,
+        month.monthStart,
+        month.monthEnd,
+      ),
+    ]);
+    const uncovered = findUncoveredAssignments(
+      assignmentsInPeriod,
+      Array.from(engagedCrew, (crewUuid) => ({ crewUuid })),
+    );
+    if (uncovered.length > 0) {
+      const names = await reads.findCrewNames(
+        Array.from(new Set(uncovered.map((a) => a.crewUuid))),
+      );
+      for (const a of uncovered) {
+        runWarnings.push({
+          crewUuid: a.crewUuid,
+          engagementUuid: null as unknown as string,
+          code: "missing_engagement",
+          message: `${names.get(a.crewUuid) ?? a.crewUuid} has a crewing assignment overlapping ${period} (${a.signOnDate} – ${a.signOffDate ?? "open"}) but NO engagement — no wages were calculated for this crew member. Run "Sync from Crewing" and resolve any errors it reports.`,
+        });
+      }
+      warnings.push(
+        ...uncovered.map(
+          (a) =>
+            `${names.get(a.crewUuid) ?? a.crewUuid}: assignment overlaps ${period} but no engagement exists — no wages calculated`,
+        ),
+      );
+    }
 
     const inputSnapshot = buildInputSnapshot(config, period, {
       vesselUuid,
