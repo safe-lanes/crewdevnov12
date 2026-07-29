@@ -1,7 +1,15 @@
 # Certified Test Baseline
 
-**Captured:** 23-Jul-2026 (fresh full run: `npx vitest run`)
+**Captured:** 29-Jul-2026 (fresh full run: `npx vitest run`)
 **Companion to:** `docs/tsc-baseline.md` (220 errors / 40 files)
+
+## Certification rule
+
+> **A test may only be included in the certified baseline if it fails because
+> the test itself is stale or obsolete** (e.g. it targets a removed endpoint or
+> a deleted schema export).  A test that fails because the application behaves
+> incorrectly must **never** be baselined — it blocks the task that discovered
+> it, and baselined failures obscure new regressions.
 
 This document defines what "green" means for the test suite. Any task summary
 should report new test failures relative to this baseline, the same way tsc
@@ -11,22 +19,15 @@ deltas are reported against the tsc baseline.
 
 | Metric | Value |
 |---|---|
-| Test files | 32 total — **21 passing / 11 known-stale failing** |
-| Tests | 536 total — **389 passing / 147 known-stale failing** |
-
-(Updated 23-Jul-2026, after initial capture: added
-`tests/integration/api/portage-auto-lock.test.ts` (auto-lock on final
-approval) and `tests/integration/api/approval-identity.test.ts` — 8 tests for
-approval segregation of duties, portage + settlements, including a
-concurrency race test. Numbers above reflect a fresh measured run including
-both.)
+| Test files | 40 total — **29 passing / 11 known-stale failing** |
+| Tests | 654 total — **507 passing / 147 known-stale failing** |
 
 **Target for every task: 0 new failing tests in the passing suites, and no
-new failing suites.** The 11 known-stale suites below are expected failures;
+new failing suites.**  The 11 known-stale suites below are expected failures;
 do NOT count them as regressions, and do NOT fix or delete them without a
 platform-team decision.
 
-## Passing suites (19) — must stay green
+## Passing suites (29) — must stay green
 
 All unit suites not listed as stale, plus the live V2 integration suites,
 including:
@@ -35,6 +36,9 @@ including:
 - `tests/integration/api/accounts-reports.test.ts`
 - `tests/integration/api/crew-finance.test.ts`
 - `tests/integration/api/wage-engine.test.ts` (34 tests)
+- `tests/integration/api/vessel-portage-category-grids.test.ts` (15 tests) —
+  includes structural no-duplicate safeguard for both run orderings
+- `tests/integration/api/ship-reference-reads.test.ts` (19 tests)
 - `tests/unit/modules/accounts/accounts-tenant-scoping.test.ts` (12 tests) —
   tenant-isolation guard for the accounts V2 ledger, engagements, and portage
   repositories. **Pilot-blocking coverage — must never be skipped or deleted.**
@@ -70,12 +74,17 @@ Pending a platform-team decision (delete vs. rewrite against `/api/v2/*`):
     `payrunsService`) replaced by `accounts-tenant-scoping.test.ts`.
   - `email-service.test.ts` (test expected an en-dash in the subject; the
     template uses a hyphen — one-character test fix).
+- 29-Jul-2026: Re-certified after Task #185 (duplicate payroll lines fix) and
+  Task #187 (Ship reference-data reads). Added certification rule. New passing
+  suites: `ship-reference-reads.test.ts` (19 tests) and extended
+  `vessel-portage-category-grids.test.ts` (15 tests, up from 9 — structural
+  no-duplicate safeguard added). Counts updated to reflect all added suites.
 
 ## How to verify
 
 ```bash
 npx vitest run
-# Green means: Test Files 11 failed | 19 passed (30); Tests 147 failed | 377 passed (524)
+# Green means: Test Files 11 failed | 29 passed (40); Tests 147 failed | 507 passed (654)
 # Any failure count above these numbers, or any newly-failing suite, is a regression.
 ```
 

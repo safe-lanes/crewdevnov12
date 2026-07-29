@@ -59,6 +59,34 @@ function shipToken(vessels: string[]): string {
 const tokenA = shipToken([vslA]);
 
 let cacheBust = 0;
+
+/**
+ * Assert no two non-adjustment lines share (elementCode, periodFrom,
+ * sourceType) for a given engagement+period.  Returns the non-adjustment
+ * line count so callers can further assert on totals.
+ */
+async function assertNoDuplicateLines(
+  engUuid: string,
+  period: string,
+): Promise<number> {
+  const led = await api(
+    "GET",
+    `/ledger?engagementUuid=${engUuid}&period=${period}`,
+  );
+  expect(led.status, `ledger fetch failed for period ${period}`).toBe(200);
+  const lines = (led.body as any[]).filter((l) => !l.isAdjustment);
+  const seen = new Set<string>();
+  for (const l of lines) {
+    const key = `${l.elementCode}|${String(l.periodFrom)}|${l.sourceType}`;
+    expect(
+      seen.has(key),
+      `Duplicate ledger line: "${key}" in period ${period}`,
+    ).toBe(false);
+    seen.add(key);
+  }
+  return lines.length;
+}
+
 async function api(
   method: string,
   path: string,
@@ -481,6 +509,116 @@ describe("Vessel Portage category-major grids", () => {
       const total =
         Number(standing[0].amount) + Number(extra[0].amount);
       expect(total.toFixed(2)).toBe("1300.00");
+    });
+  });
+
+  // ==========================================================================
+  // Group 3b — structural safeguard: no duplicate lines across run orderings
+  //
+  // Covers the two root-cause directions for the duplicate-lines defect:
+  //  Order A: vessel-period run THEN single-engagement run
+  //  Order B: single-engagement run THEN vessel-period run
+  //
+  // Both orderings must leave exactly one line per (engagement, element,
+  // sub-period, sourceType) and the crew member must remain on the portage
+  // bill (crew_count > 0).
+  // ==========================================================================
+
+  // --- Order A: vessel-period run then single-engagement run ----------------
+  describe("order A — vessel-period then single-engagement: no duplicates, crew in portage", () => {
+    const PERIOD2 = "2026-05";
+
+    it("vessel-period run creates portage-attached lines without duplicates", async () => {
+      const run = await api("POST", "/calc/run", {
+        vesselUuid: vslA,
+        period: PERIOD2,
+      });
+      expect(run.status).toBe(200);
+      if (run.body?.run?.calcRunUuid) runUuids.push(run.body.run.calcRunUuid);
+
+      const count = await assertNoDuplicateLines(engA, PERIOD2);
+      expect(count).toBeGreaterThan(0);
+
+      const portage = await db.query(
+        `SELECT crew_count FROM acc_portage_bills_v2
+           WHERE vessel_uuid = $1 AND period = $2 AND is_deleted = false`,
+        [vslA, PERIOD2],
+      );
+      expect(
+        portage.rows[0]?.crew_count,
+        "crew_count must be > 0 after vessel-period run",
+      ).toBeGreaterThan(0);
+    });
+
+    it("single-engagement re-run keeps exactly one set of lines and crew stays in portage", async () => {
+      // Record pre-run line count to verify the re-run doesn't inflate it.
+      const beforeCount = await assertNoDuplicateLines(engA, PERIOD2);
+
+      const run = await api("POST", "/calc/run-engagement", {
+        engagementUuid: engA,
+        period: PERIOD2,
+      });
+      expect(run.status).toBe(200);
+      if (run.body?.run?.calcRunUuid) runUuids.push(run.body.run.calcRunUuid);
+
+      // No new lines should have been added — same line count, no duplicates.
+      const afterCount = await assertNoDuplicateLines(engA, PERIOD2);
+      expect(afterCount).toBe(beforeCount);
+
+      // Crew member must still be present in the portage bill totals.
+      const portage = await db.query(
+        `SELECT crew_count FROM acc_portage_bills_v2
+           WHERE vessel_uuid = $1 AND period = $2 AND is_deleted = false`,
+        [vslA, PERIOD2],
+      );
+      expect(
+        portage.rows[0]?.crew_count,
+        "crew_count must remain > 0 after single-engagement re-run",
+      ).toBeGreaterThan(0);
+    });
+  });
+
+  // --- Order B: single-engagement run then vessel-period run ----------------
+  describe("order B — single-engagement then vessel-period: no duplicates, crew in portage", () => {
+    const PERIOD3 = "2026-06";
+
+    it("single-engagement run before any portage creates preview lines without duplicates", async () => {
+      const run = await api("POST", "/calc/run-engagement", {
+        engagementUuid: engA,
+        period: PERIOD3,
+      });
+      expect(run.status).toBe(200);
+      if (run.body?.run?.calcRunUuid) runUuids.push(run.body.run.calcRunUuid);
+
+      const count = await assertNoDuplicateLines(engA, PERIOD3);
+      expect(count).toBeGreaterThan(0);
+    });
+
+    it("vessel-period run cleans up preview lines, leaves one set, crew in portage", async () => {
+      const beforeCount = await assertNoDuplicateLines(engA, PERIOD3);
+
+      const run = await api("POST", "/calc/run", {
+        vesselUuid: vslA,
+        period: PERIOD3,
+      });
+      expect(run.status).toBe(200);
+      if (run.body?.run?.calcRunUuid) runUuids.push(run.body.run.calcRunUuid);
+
+      // Preview lines must have been replaced by portage-attached lines —
+      // same element count, zero duplicates.
+      const afterCount = await assertNoDuplicateLines(engA, PERIOD3);
+      expect(afterCount).toBe(beforeCount);
+
+      // Crew member must now appear on the portage bill.
+      const portage = await db.query(
+        `SELECT crew_count FROM acc_portage_bills_v2
+           WHERE vessel_uuid = $1 AND period = $2 AND is_deleted = false`,
+        [vslA, PERIOD3],
+      );
+      expect(
+        portage.rows[0]?.crew_count,
+        "crew_count must be > 0 after vessel-period run",
+      ).toBeGreaterThan(0);
     });
   });
 

@@ -568,7 +568,15 @@ export const wageEngineService = {
     };
   },
 
-  /** Single-engagement preview run — no portage linkage. */
+  /**
+   * Single-engagement run.  When a portage bill already exists for the
+   * engagement's vessel + period the lines are attached to it (scoped
+   * replacePortageLines) so the crew member is never silently dropped from the
+   * bill.  When no portage exists yet the lines are stored as unattached
+   * preview lines (portage_uuid IS NULL); a later full vessel-period run will
+   * promote them and clean up the preview rows (replacePortageLines also
+   * deletes portage_uuid IS NULL rows for replaced engagements).
+   */
   async runForEngagement(
     engagementUuid: string,
     period: string,
@@ -579,12 +587,17 @@ export const wageEngineService = {
     if (!engagement) {
       throw new EngineError("NOT_FOUND", "Engagement not found");
     }
+    // Hoist the portage lookup so we can reuse the result when building lines.
+    let portageForEngagement: AccPortageBillV2 | undefined;
     if (engagement.vesselUuid) {
-      const portage = await ledgerRepo.findPortage(
+      portageForEngagement = await ledgerRepo.findPortage(
         engagement.vesselUuid,
         period,
       );
-      if (portage && (portage.isLocked || portage.status === "locked")) {
+      if (
+        portageForEngagement &&
+        (portageForEngagement.isLocked || portageForEngagement.status === "locked")
+      ) {
         throw new EngineError(
           "CONFLICT",
           `Portage bill for vessel ${engagement.vesselUuid} period ${period} is locked; the engine refuses to run against it`,
@@ -636,22 +649,55 @@ export const wageEngineService = {
       createdByUuid: auditUserUuid ?? null,
     });
 
+    // Attach lines to the portage when one exists, so the crew member stays on
+    // the portage bill and totals are refreshed.  Without a portage, fall back
+    // to unattached preview lines (portage_uuid IS NULL).
     const allLines: InsertAccWageLedgerV2[] = result.lines.map((line) => ({
       ...line,
       ledgerUuid: uuidv4(),
       calcRunUuid: run.calcRunUuid,
-      portageUuid: null,
+      portageUuid: portageForEngagement
+        ? portageForEngagement.portageUuid
+        : null,
       createdByUuid: auditUserUuid ?? null,
     }));
     try {
-      await ledgerRepo.replacePreviewLines(
-        engagementUuid,
-        period,
-        allLines,
-        engagement.vesselUuid
-          ? { vesselUuid: engagement.vesselUuid }
-          : undefined,
-      );
+      if (portageForEngagement) {
+        // Portage exists: scoped single-engagement replacement keeps the crew
+        // member on the portage bill.  replacePortageLines handles the lock
+        // re-check, settlement-freeze guard, preview-line cleanup, and totals
+        // refresh in a single transaction.
+        await ledgerRepo.replacePortageLines(
+          portageForEngagement.portageUuid,
+          allLines,
+          { updatedByUuid: auditUserUuid ?? null },
+          {
+            replaceEngagementUuids: [engagementUuid],
+            computeTotals: (fullLedgerLines) => {
+              const totals = portageTotals(fullLedgerLines);
+              return {
+                crewCount: new Set(
+                  fullLedgerLines
+                    .filter((l) => !l.isAdjustment)
+                    .map((l) => l.crewUuid),
+                ).size,
+                totalEarnings: totals.totalEarnings,
+                totalDeductions: totals.totalDeductions,
+                netTotal: totals.netTotal,
+              };
+            },
+          },
+        );
+      } else {
+        // No portage yet: preview mode — lines stored unattached.  A later full
+        // vessel-period run will promote them (replacePortageLines cleans up
+        // portage_uuid IS NULL rows for the replaced engagements).
+        await ledgerRepo.replacePreviewLines(
+          engagementUuid,
+          period,
+          allLines,
+        );
+      }
     } catch (error) {
       await ledgerRepo.updateRun(run.calcRunUuid, {
         status: "failed",

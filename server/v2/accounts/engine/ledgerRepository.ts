@@ -210,6 +210,30 @@ export class LedgerRepository {
             ),
           );
       }
+
+      // Also clean up any unattached preview lines (portage_uuid IS NULL) for
+      // the same engagements + period.  A prior single-engagement preview run
+      // (runForEngagement before a portage existed) may have left preview lines
+      // behind; without this cleanup, the fresh portage-attached lines we are
+      // about to insert would coexist with them — the reverse-order variant of
+      // the duplicate-lines defect.
+      const previewCleanupScope =
+        replaceScope !== undefined
+          ? replaceScope
+          : [...new Set(lines.map((l) => l.engagementUuid))];
+      if (previewCleanupScope.length > 0) {
+        await tx
+          .delete(accWageLedgerV2)
+          .where(
+            and(
+              isNull(accWageLedgerV2.portageUuid),
+              eq(accWageLedgerV2.isAdjustment, false),
+              inArray(accWageLedgerV2.engagementUuid, previewCleanupScope),
+              eq(accWageLedgerV2.period, portage.period),
+            ),
+          );
+      }
+
       if (lines.length > 0) {
         await tx.insert(accWageLedgerV2).values(lines);
       }
