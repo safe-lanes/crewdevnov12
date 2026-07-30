@@ -38,6 +38,8 @@ const reliefStatusFormSchema = z.object({
     relieverContractPeriodMonths: z.coerce.number().positive("Contract Period must be greater than 0").optional(),
     relieverContractEndRangeStartMonths: z.coerce.number().positive("Contract End - Range Start must be greater than 0").optional(),
     relieverContractEndRangeEndMonths: z.coerce.number().positive("Contract End - Range End must be greater than 0").optional(),
+    plannedConfirmedDate: z.string().optional(),
+    travelStartDate: z.string().optional(),
     relieverSignOnDate: z.string().optional(),
     relieverSignOnPort: z.string().optional(),
     deploymentChecklistCompleted: z.boolean().optional(),
@@ -102,6 +104,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [joiningDateOpen, setJoiningDateOpen] = useState(false);
+    const [plannedConfirmedDateOpen, setPlannedConfirmedDateOpen] = useState(false);
+    const [travelStartDateOpen, setTravelStartDateOpen] = useState(false);
     const [unassignChecked, setUnassignChecked] = useState(false);
     const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
     const [showSignOnConflict, setShowSignOnConflict] = useState(false);
@@ -120,6 +124,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             relieverContractPeriodMonths: undefined,
             relieverContractEndRangeStartMonths: undefined,
             relieverContractEndRangeEndMonths: undefined,
+            plannedConfirmedDate: '',
+            travelStartDate: '',
             relieverSignOnDate: '',
             relieverSignOnPort: '',
             deploymentChecklistCompleted: false,
@@ -136,6 +142,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 relieverContractPeriodMonths: planningData.relieverContractPeriodMonths ?? planningData.contractPeriodMonths,
                 relieverContractEndRangeStartMonths: planningData.relieverContractEndRangeStartMonths ?? planningData.contractEndRangeStartMonths,
                 relieverContractEndRangeEndMonths: planningData.relieverContractEndRangeEndMonths ?? planningData.contractEndRangeEndMonths,
+                plannedConfirmedDate: planningData.plannedConfirmedDate || '',
+                travelStartDate: planningData.travelStartDate || '',
                 relieverSignOnDate: planningData.relieverSignOnDate || planningData.joiningDate || '',
                 relieverSignOnPort: planningData.relieverSignOnPort || planningData.joiningPortUuid || '',
                 deploymentChecklistCompleted: planningData.deploymentChecklistCompleted || false,
@@ -150,6 +158,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                 relieverContractPeriodMonths: undefined,
                 relieverContractEndRangeStartMonths: undefined,
                 relieverContractEndRangeEndMonths: undefined,
+                plannedConfirmedDate: '',
+                travelStartDate: '',
                 relieverSignOnDate: '',
                 relieverSignOnPort: '',
                 deploymentChecklistCompleted: false,
@@ -220,6 +230,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     contractPeriodMonths,
                     contractEndRangeStartMonths: data.relieverContractEndRangeStartMonths ?? planningData.relieverContractEndRangeStartMonths,
                     contractEndRangeEndMonths: data.relieverContractEndRangeEndMonths ?? planningData.relieverContractEndRangeEndMonths,
+                    plannedConfirmedDate: data.plannedConfirmedDate || undefined,
+                    travelStartDate: data.travelStartDate || undefined,
                 });
             } else {
                 const payload = {
@@ -231,6 +243,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     joiningStatus: data.signOnStatus,
                     relieverSignOnDate: data.relieverSignOnDate,
                     joiningPortUuid: data.relieverSignOnPort,
+                    plannedConfirmedDate: data.plannedConfirmedDate || null,
+                    travelStartDate: data.travelStartDate || null,
                 };
                 
                 if (planningData?.planUuid) {
@@ -283,6 +297,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     joiningStatus: null,
                     relieverSignOnDate: null,
                     joiningPortUuid: null,
+                    plannedConfirmedDate: null,
+                    travelStartDate: null,
                     relieverContractPeriodMonths: null,
                     relieverContractEndRangeStartMonths: null,
                     relieverContractEndRangeEndMonths: null,
@@ -358,9 +374,20 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         if (data.relieverSignOnDate) {
             data.relieverSignOnDate = normalizeToIsoDate(data.relieverSignOnDate);
         }
+        if (data.plannedConfirmedDate) {
+            data.plannedConfirmedDate = normalizeToIsoDate(data.plannedConfirmedDate);
+        }
+        if (data.travelStartDate) {
+            data.travelStartDate = normalizeToIsoDate(data.travelStartDate);
+        }
 
         if (data.relieverCrewName && data.relieverCrewName.trim() !== '' && !data.relieverSignOnDate) {
             toast({ title: "Validation Error", description: "Sign On Date is required.", variant: "destructive" });
+            return;
+        }
+
+        if (data.signOnStatus === "In Transit" && !data.travelStartDate) {
+            toast({ title: "Validation Error", description: "Travel Start Date is required when Sign On Status is In Transit.", variant: "destructive" });
             return;
         }
 
@@ -604,6 +631,93 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                         </FormControl>
                                     </div>
                                     <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="plannedConfirmedDate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Planned / Confirmed Date:</FormLabel>
+                                        <Popover open={plannedConfirmedDateOpen} onOpenChange={setPlannedConfirmedDateOpen}>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        className={`col-span-2 justify-start text-left font-normal ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''} ${!field.value && 'text-muted-foreground'}`}
+                                                        data-testid="button-planned-confirmed-date"
+                                                        disabled={!isRelieverAssigned}
+                                                    >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {field.value ? formatDateOnly(field.value as string) : <span className="text-gray-400">Select date</span>}
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value ? parseDateString(field.value as string) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            field.onChange(format(date, 'yyyy-MM-dd'));
+                                                            setPlannedConfirmedDateOpen(false);
+                                                        }
+                                                    }}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="travelStartDate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Travel Start Date:</FormLabel>
+                                        <Popover open={travelStartDateOpen} onOpenChange={setTravelStartDateOpen}>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        className={`col-span-2 justify-start text-left font-normal ${!isRelieverAssigned ? 'bg-gray-100 cursor-not-allowed' : ''} ${!field.value && 'text-muted-foreground'}`}
+                                                        data-testid="button-travel-start-date"
+                                                        disabled={!isRelieverAssigned}
+                                                    >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {field.value ? formatDateOnly(field.value as string) : <span className="text-gray-400">Select date</span>}
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value ? parseDateString(field.value as string) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            field.onChange(format(date, 'yyyy-MM-dd'));
+                                                            setTravelStartDateOpen(false);
+                                                        }
+                                                    }}
+                                                    disabled={(() => {
+                                                        const signOnVal = form.getValues('relieverSignOnDate');
+                                                        if (!signOnVal) return undefined;
+                                                        const signOnParsed = parseDateString(signOnVal as string);
+                                                        if (!signOnParsed) return undefined;
+                                                        return { after: signOnParsed };
+                                                    })()}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
+                                    </div>
                                 </FormItem>
                             )}
                         />

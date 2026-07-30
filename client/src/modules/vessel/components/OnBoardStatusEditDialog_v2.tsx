@@ -38,6 +38,7 @@ const onBoardStatusFormSchema = z.object({
     signOffDate: z.string().optional(),
     signOffPort: z.string().optional(),
     signOffReason: z.string().optional(),
+    travelEndDate: z.string().optional(),
     reliefStatus: z.string().optional(),
     takeOverDate: z.string().optional(),
     takeOverConfirmation: z.boolean().optional(),
@@ -83,6 +84,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     const { getVesselName } = useVesselLookup();
     const [signOffDateOpen, setSignOffDateOpen] = useState(false);
     const [takeOverDateOpen, setTakeOverDateOpen] = useState(false);
+    const [travelEndDateOpen, setTravelEndDateOpen] = useState(false);
     
     const updatePlanningV2 = useUpdatePlanningV2();
     const createPlanningV2 = useCreatePlanningV2();
@@ -117,6 +119,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             signOffDate: '',
             signOffPort: '',
             signOffReason: '',
+            travelEndDate: '',
             reliefStatus: '',
             takeOverDate: '',
             takeOverConfirmation: false,
@@ -138,6 +141,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 signOffDate: planningData.signOffDate || '',
                 signOffPort: planningData.signOffPortUuid || '',
                 signOffReason: planningData.signOffReason || '',
+                travelEndDate: planningData.travelEndDate || '',
                 reliefStatus: planningData.reliefStatus || '',
                 takeOverDate: planningData.takeOverDate || '',
                 takeOverConfirmation: planningData.takeOverConfirmation || false,
@@ -156,6 +160,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 signOffDate: '',
                 signOffPort: '',
                 signOffReason: '',
+                travelEndDate: '',
                 reliefStatus: '',
                 takeOverDate: '',
                 takeOverConfirmation: false,
@@ -224,6 +229,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         'relieverContractPeriodMonths', 'relieverContractEndRangeStartMonths', 'relieverContractEndRangeEndMonths',
         'joiningStatus', 'deploymentChecklistCompleted', 'applicableDocsChecked',
         'joiningDate', 'joiningPort',
+        'travelEndDate',
         'createdAt', 'updatedAt'
     ];
     
@@ -251,6 +257,10 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 planningData?.crewStatus === "primary" && !!planningData?.takeOverConfirmation;
             const isTakeover =
                 !isPostHandoverRow && !isAlreadyConfirmedPrimary && data.takeOverConfirmation && data.takeOverDate;
+
+            if (data.travelEndDate && data.reliefStatus !== "Signed Off") {
+                throw new Error("Travel End date cannot be filled before Sign Off");
+            }
 
             if (data.reliefStatus === "Signed Off") {
                 const signedOffErrors: string[] = [];
@@ -310,6 +320,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     signOffDate: data.signOffDate,
                     signOffReason: data.signOffReason,
                     signOffPortUuid: cleanFormData.signOffPort,
+                    travelEndDate: data.travelEndDate || undefined,
                 });
             } else if (isTakeover && planningData?.crewStatus === "secondary") {
                 let primaryCrew = allPlanning.find((p: any) => 
@@ -888,6 +899,53 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                                                 disabled={!isOnboardCrewAssigned}
                                             />
                                         </FormControl>
+                                    </div>
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="travelEndDate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                                        <FormLabel className="text-sm text-gray-700">Travel End Date</FormLabel>
+                                        <Popover open={travelEndDateOpen} onOpenChange={setTravelEndDateOpen}>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="w-full justify-start text-left font-normal"
+                                                        data-testid="button-travel-end-date"
+                                                        disabled={!isOnboardCrewAssigned}
+                                                    >
+                                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                                        {field.value ? formatDisplayDate(field.value) : <span className="text-gray-400">dd-mm-yyyy</span>}
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value ? parseDate(field.value) : undefined}
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            field.onChange(format(date, 'yyyy-MM-dd'));
+                                                            setTravelEndDateOpen(false);
+                                                        }
+                                                    }}
+                                                    disabled={(() => {
+                                                        const signOffVal = form.getValues('signOffDate');
+                                                        if (!signOffVal) return undefined;
+                                                        const signOffParsed = parseDate(signOffVal);
+                                                        if (!signOffParsed) return undefined;
+                                                        return { before: signOffParsed };
+                                                    })()}
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                 </FormItem>
                             )}

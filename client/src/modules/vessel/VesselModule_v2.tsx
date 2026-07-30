@@ -442,6 +442,76 @@ const NO_RANKS_CONFIGURED_MESSAGE = "No positions configured for this vessel. Pl
 
 const V2_QUERY_KEY = '/api/v2/vessel';
 
+// Inline click-to-edit date cell for the archived crew list's Travel End Date column.
+// Adapted from the Drugs & Alcohol PlannedDateCellEditor pattern (native date input + showPicker).
+const TravelEndDateArchivedCell: React.FC<{ planning: any }> = ({ planning }) => {
+    const { toast } = useToast();
+    const [editing, setEditing] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (editing) {
+            inputRef.current?.focus();
+            try {
+                inputRef.current?.showPicker?.();
+            } catch {
+                /* showPicker needs a user gesture in some browsers; focus is enough fallback */
+            }
+        }
+    }, [editing]);
+
+    const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setEditing(false);
+        if (!value || value === planning.travelEndDate) return;
+        setSaving(true);
+        try {
+            const response = await apiRequest('PATCH', `/api/v2/vessel/planning/${planning.planUuid}`, { travelEndDate: value });
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error || 'Failed to save Travel End Date');
+            }
+            globalQueryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', planning.vesselId, 'planning'] });
+        } catch (error: any) {
+            toast({
+                title: "Error",
+                description: error.message || "Failed to save Travel End Date",
+                variant: "destructive",
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (editing) {
+        return (
+            <input
+                ref={inputRef}
+                type="date"
+                defaultValue={planning.travelEndDate || ''}
+                min={planning.signOffDate || undefined}
+                onChange={handleChange}
+                onBlur={() => setEditing(false)}
+                className="w-full h-6 px-1 text-xs border rounded outline-none"
+                data-testid="input-travel-end-date-archived"
+            />
+        );
+    }
+
+    return (
+        <button
+            type="button"
+            className="text-xs text-gray-700 hover:underline cursor-pointer text-left w-full"
+            onClick={() => setEditing(true)}
+            disabled={saving}
+            data-testid="button-travel-end-date-archived"
+        >
+            {saving ? 'Saving...' : (planning.travelEndDate ? formatDateOnly(planning.travelEndDate) : <span className="text-gray-400">Select date</span>)}
+        </button>
+    );
+};
+
 const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
     const planningAny = planning as any;
     const crewMemberName = planningAny.crewMemberName || planning.crewName;
@@ -476,6 +546,9 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         reliefDue: planning.reliefDue,
         signOffDate: planning.signOffDate,
         signOffPort: planning.signOffPortUuid,
+        plannedConfirmedDate: planning.plannedConfirmedDate,
+        travelStartDate: planning.travelStartDate,
+        travelEndDate: planning.travelEndDate,
         signOffPortName: planning.signOffPortName,
         signOffReason: planning.signOffReason,
         reliefStatus: planning.reliefStatus,
@@ -1638,6 +1711,7 @@ export function VesselModule_v2(): JSX.Element {
                                                     {showArchived ? (
                                                         <>
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Actual Sign Off Date</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Travel End Date</TableHead>
                                                             {showAppraisalColumnArchived && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
                                                             {showHandoverColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>}
                                                         </>
@@ -1675,7 +1749,7 @@ export function VesselModule_v2(): JSX.Element {
                                                     </TableRow>
                                                 ) : vesselCrew.length === 0 ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={showArchived ? 8 : 14} className="text-center text-xs text-gray-500 py-8">
+                                                        <TableCell colSpan={showArchived ? 9 : 14} className="text-center text-xs text-gray-500 py-8">
                                                             {showArchived 
                                                                 ? "No archived crew members for this vessel."
                                                                 : "No crew members assigned to this vessel."
@@ -1710,6 +1784,9 @@ export function VesselModule_v2(): JSX.Element {
                                                                 <>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-signoff-date-${index + 1}`}>
                                                                         {formatDateOnly(planning.signOffDate || planning.archivedDate)}
+                                                                    </TableCell>
+                                                                    <TableCell className="text-xs text-gray-700" data-testid={`cell-travel-end-date-${index + 1}`}>
+                                                                        <TravelEndDateArchivedCell planning={planning} />
                                                                     </TableCell>
                                                                     {showAppraisalColumnArchived && (
                                                                         <TableCell className="text-xs text-gray-700" data-testid={`cell-appraisal-${index + 1}`}>

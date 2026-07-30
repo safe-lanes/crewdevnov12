@@ -920,6 +920,14 @@ export const vesselPlanningService = {
 
   const auditedData = applyAuditUser(data, false);
 
+  const incomingTravelEndDate = (auditedData as any).travelEndDate;
+  if (typeof incomingTravelEndDate === 'string' && incomingTravelEndDate !== '') {
+    const effectiveReliefStatus = "reliefStatus" in auditedData ? (auditedData as any).reliefStatus : existing.reliefStatus;
+    if (effectiveReliefStatus !== 'Signed Off') {
+      throw new Error("Travel End date cannot be filled before Sign Off");
+    }
+  }
+
   const resolvedData = { ...auditedData };
   if (auditedData.joiningPortUuid) {
     resolvedData.joiningPortUuid = await resolvePortToUuid(auditedData.joiningPortUuid) || undefined;
@@ -989,6 +997,7 @@ export const vesselPlanningService = {
     signOffDate: string;
     signOffReason?: string;
     signOffPortUuid?: string;
+    travelEndDate?: string;
     auditUserUuid?: string;
   }) {
     const db = getDb();
@@ -1040,6 +1049,7 @@ export const vesselPlanningService = {
           signOffDate: data.signOffDate,
           signOffReason: data.signOffReason,
           signOffPortUuid: resolvedPortUuid,
+          ...(data.travelEndDate ? { travelEndDate: data.travelEndDate } : {}),
           reliefStatus: "Signed Off",
           takeOverDate: null,
           takeOverConfirmation: false,
@@ -1234,6 +1244,8 @@ export const vesselPlanningService = {
     contractPeriodMonths?: number;
     contractEndRangeStartMonths?: number;
     contractEndRangeEndMonths?: number;
+    plannedConfirmedDate?: string;
+    travelStartDate?: string;
     auditUserUuid?: string;
   }) {
     const db = getDb();
@@ -1273,6 +1285,8 @@ export const vesselPlanningService = {
     const effectiveContractRangeEnd = data.contractEndRangeEndMonths ?? planning.relieverContractEndRangeEndMonths;
     
     const resolvedPortUuid = await resolvePortToUuid(data.signOnPort) || planning.joiningPortUuid;
+    const effectivePlannedConfirmedDate = data.plannedConfirmedDate ?? planning.plannedConfirmedDate;
+    const effectiveTravelStartDate = data.travelStartDate ?? planning.travelStartDate;
     
     let calculatedReliefDue: string | null = null;
     if (signOnDate && effectiveContractPeriod) {
@@ -1323,6 +1337,8 @@ export const vesselPlanningService = {
             crewUuid: relieverCrewUuid,
             crewStatus: "secondary",
             signOnDate,
+            plannedConfirmedDate: effectivePlannedConfirmedDate,
+            travelStartDate: effectiveTravelStartDate,
             reliefDue: calculatedReliefDue,
             contractPeriodMonths: effectiveContractPeriod,
             contractEndRangeStartMonths: effectiveContractRangeStart,
@@ -1363,6 +1379,8 @@ export const vesselPlanningService = {
             relieverContractEndRangeEndMonths: null,
             joiningStatus: null,
             joiningPortUuid: null,
+            plannedConfirmedDate: null,
+            travelStartDate: null,
             deploymentChecklistCompleted: false,
             applicableDocsChecked: false,
             updatedAt: sql`NOW()`,
@@ -1400,6 +1418,8 @@ export const vesselPlanningService = {
             crewUuid: relieverCrewUuid,
             crewStatus: "primary",
             signOnDate,
+            plannedConfirmedDate: effectivePlannedConfirmedDate,
+            travelStartDate: effectiveTravelStartDate,
             contractPeriodMonths: effectiveContractPeriod,
             contractEndRangeStartMonths: effectiveContractRangeStart,
             contractEndRangeEndMonths: effectiveContractRangeEnd,

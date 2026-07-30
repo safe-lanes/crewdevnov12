@@ -28,6 +28,9 @@ export interface VesselPlanningV2 {
   joiningPortUuid: string | null;
   joiningPortName?: string;
   joiningStatus: string | null;
+  plannedConfirmedDate: string | null;
+  travelStartDate: string | null;
+  travelEndDate: string | null;
   contractPeriodMonths: number | null;
   contractEndRangeStartMonths: number | null;
   contractEndRangeEndMonths: number | null;
@@ -106,6 +109,9 @@ export interface UpdatePlanningInput {
   relieverSignOnDate?: string | null;
   joiningPortUuid?: string | null;
   joiningStatus?: string | null;
+  plannedConfirmedDate?: string | null;
+  travelStartDate?: string | null;
+  travelEndDate?: string | null;
   contractPeriodMonths?: number | null;
   contractEndRangeStartMonths?: number | null;
   contractEndRangeEndMonths?: number | null;
@@ -236,6 +242,8 @@ export const vesselApiV2 = {
     contractPeriodMonths?: number;
     contractEndRangeStartMonths?: number;
     contractEndRangeEndMonths?: number;
+    plannedConfirmedDate?: string;
+    travelStartDate?: string;
   }): Promise<VesselPlanningV2> {
     const response = await apiRequest('POST', `${V2_BASE}/planning/${planUuid}/sign-on`, data);
     if (!response.ok) {

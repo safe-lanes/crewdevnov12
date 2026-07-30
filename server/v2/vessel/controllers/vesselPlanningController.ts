@@ -138,6 +138,9 @@ export const vesselPlanningController = {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
+      if (error.message?.includes("Travel End date cannot be filled before Sign Off")) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error updating planning:", error);
       res.status(500).json({ error: "Failed to update planning record" });
     }
@@ -269,7 +272,7 @@ export const vesselPlanningController = {
   async signOnReliever(req: Request, res: Response) {
     try {
       const { planUuid } = req.params;
-      const { signOnDate, signOnPort, contractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths } = req.body;
+      const { signOnDate, signOnPort, contractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths, plannedConfirmedDate, travelStartDate } = req.body;
       const auditUserUuid = req.body?.auditUserUuid ?? undefined;
       
       const planning = await vesselPlanningService.signOnReliever(planUuid, {
@@ -278,6 +281,8 @@ export const vesselPlanningController = {
         contractPeriodMonths,
         contractEndRangeStartMonths,
         contractEndRangeEndMonths,
+        plannedConfirmedDate,
+        travelStartDate,
         auditUserUuid,
       });
       
@@ -349,7 +354,7 @@ export const vesselPlanningController = {
   async signOffCrew(req: Request, res: Response) {
     try {
       const { planUuid } = req.params;
-      const { signOffDate, signOffReason, signOffPortUuid } = req.body;
+      const { signOffDate, signOffReason, signOffPortUuid, travelEndDate } = req.body;
       
       if (!signOffDate) {
         return res.status(400).json({ error: "signOffDate is required" });
@@ -359,6 +364,7 @@ export const vesselPlanningController = {
         signOffDate,
         signOffReason,
         signOffPortUuid,
+        travelEndDate,
       });
       
       res.json(planning);

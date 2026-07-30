@@ -113,6 +113,8 @@ export const rotationDeployService = {
           relieverSignOnDate: entry.signOnDate,
           joiningPortUuid: entry.joiningPortUuid,
           joiningStatus: "Planned",
+          plannedConfirmedDate: entry.signOnDate,
+          travelStartDate: null,
           relieverContractPeriodMonths: entry.contractPeriod,
           updatedByUuid: effectiveAuditUser,
         });
@@ -129,6 +131,8 @@ export const rotationDeployService = {
             relieverSignOnDate: entry.signOnDate,
             joiningPortUuid: entry.joiningPortUuid,
             joiningStatus: "Planned",
+            plannedConfirmedDate: entry.signOnDate,
+            travelStartDate: null,
             relieverContractPeriodMonths: entry.contractPeriod,
             createdByUuid: effectiveAuditUser,
             updatedByUuid: effectiveAuditUser,
