@@ -900,6 +900,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                   <SelectContent>
                     <SelectItem value="preliminary">Preliminary</SelectItem>
                     <SelectItem value="submitted">Submitted</SelectItem>
+                    <SelectItem value="pending_review">Pending Review</SelectItem>
                     <SelectItem value="reviewed">Reviewed</SelectItem>
                   </SelectContent>
                 </Select>
@@ -1008,6 +1009,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                     <SelectContent>
                       <SelectItem value="preliminary">Preliminary</SelectItem>
                       <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="pending_review">Pending Review</SelectItem>
                       <SelectItem value="reviewed">Reviewed</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1121,6 +1123,7 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
                     <SelectContent>
                       <SelectItem value="preliminary">Preliminary</SelectItem>
                       <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="pending_review">Pending Review</SelectItem>
                       <SelectItem value="reviewed">Reviewed</SelectItem>
                     </SelectContent>
                   </Select>
