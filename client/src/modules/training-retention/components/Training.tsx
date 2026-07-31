@@ -307,7 +307,7 @@ export const Training = (): JSX.Element => {
         headerName: "Training (DB)",
         field: "correspondingInDbName",
         flex: 1.2,
-        valueFormatter: (p) => p.value || "-",
+        valueFormatter: (p) => p.value || (p.data?.source === "Recruitment" ? "N/A" : "-"),
         cellStyle: { fontSize: "13px", color: "#4f5863" },
         filter: "agTextColumnFilter",
         sortable: true,
