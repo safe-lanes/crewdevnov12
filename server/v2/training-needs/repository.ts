@@ -18,6 +18,7 @@ export type AggregatedTrainingNeed = {
   training: string | null;
   correspondingInDb: string | null;
   identifiedBy: string | null;
+  identifiedByUuid: string | null;
   category: string | null;
   status: string | null;
   targetDate: string | null;
@@ -175,6 +176,7 @@ export class TrainingNeedsRepository {
         training: r.training,
         correspondingInDb: r.overlay_corresponding_in_db,
         identifiedBy: r.identified_by,
+        identifiedByUuid: null,
         category: r.category,
         // status from source; overlay is fallback if source is null
         status: r.status ?? r.overlay_status,
@@ -196,6 +198,7 @@ export class TrainingNeedsRepository {
         training: r.training,
         correspondingInDb: r.corresponding_in_db,
         identifiedBy: r.identified_by,
+        identifiedByUuid: null,
         category: r.category,
         status: r.status,
         targetDate: r.target_date,
@@ -215,6 +218,7 @@ export class TrainingNeedsRepository {
         training: r.training,
         correspondingInDb: r.corresponding_in_db,
         identifiedBy: r.identified_by,
+        identifiedByUuid: null,
         category: r.category,
         // status from source; overlay is fallback if source is null
         status: r.status ?? r.overlay_status,
@@ -236,6 +240,7 @@ export class TrainingNeedsRepository {
         training: r.training,
         correspondingInDb: r.correspondingInDb,
         identifiedBy: r.resolvedIdentifiedBy,
+        identifiedByUuid: r.identifiedByUuid,
         category: r.category,
         status: r.status,
         targetDate: r.targetDate,
