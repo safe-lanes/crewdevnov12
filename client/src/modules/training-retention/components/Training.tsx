@@ -831,6 +831,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
               onChange={(v) => set("correspondingInDb", v)}
               options={trainingDbOptions}
               placeholder="Search trainings..."
+              disabled={isLimited}
               testId="combobox-training-db"
             />
           </div>
@@ -927,8 +928,8 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
 
         {isLimited && (
           <p className="text-xs text-amber-600 dark:text-amber-400">
-            This row is sourced from {row?.source}. Only Status, Target / Compl. Date,
-            Comments and Training (in DB) are editable here — they are written back to
+            This row is sourced from {row?.source}. Only Status, Target / Compl. Date
+            and Comments are editable here — they are written back to
             the source record. Other fields must be edited at the source.
           </p>
         )}
