@@ -77,6 +77,7 @@ type CrewLookup = {
   firstName: string | null;
   familyName: string | null;
   presentRank: string | null;
+  status: string | null;
 };
 
 type UserLookup = {
@@ -753,10 +754,16 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
                 }}
                 options={[
                   { value: "__manual", label: "— Enter manually —" },
-                  ...crew.map((c) => ({
-                    value: c.empNo,
-                    label: `${`${c.firstName || ""} ${c.familyName || ""}`.trim()} (${c.empNo})`,
-                  })),
+                  ...crew
+                    .filter(
+                      (c) =>
+                        (c.status || "").toLowerCase() !== "terminated" ||
+                        c.empNo === form.crewMemberId
+                    )
+                    .map((c) => ({
+                      value: c.empNo,
+                      label: `${`${c.firstName || ""} ${c.familyName || ""}`.trim()} (${c.empNo})`,
+                    })),
                 ]}
                 placeholder="Search crew..."
                 showNone={false}
