@@ -545,7 +545,7 @@ function SearchableCombobox({ value, onChange, options, placeholder, disabled, t
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className="w-full justify-between font-normal"
+          className="w-full justify-between font-normal disabled:pointer-events-auto disabled:cursor-not-allowed"
           data-testid={testId}
         >
           <span className={cn("truncate", !selected && "text-muted-foreground")}>
