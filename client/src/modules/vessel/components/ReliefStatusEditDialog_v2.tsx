@@ -391,10 +391,10 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             return;
         }
 
-        if (data.signOnStatus === "In Transit" || data.signOnStatus === "Signed On") {
+        if (data.signOnStatus === "Signed On") {
             const todayStr = format(new Date(), 'yyyy-MM-dd');
             if (data.relieverSignOnDate && data.relieverSignOnDate > todayStr) {
-                toast({ title: "Validation Error", description: "Sign On Date cannot be a future date when Sign On Status is In Transit or Signed On.", variant: "destructive" });
+                toast({ title: "Validation Error", description: "Sign On Date cannot be a future date when Sign On Status is Signed On.", variant: "destructive" });
                 return;
             }
         }
@@ -450,7 +450,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 
     // Auto-clear stale future Sign On Date when status switches to "In Transit" or "Signed On"
     React.useEffect(() => {
-        if (watchedSignOnStatus === "In Transit" || watchedSignOnStatus === "Signed On") {
+        if (watchedSignOnStatus === "Signed On") {
             const currentSignOn = form.getValues('relieverSignOnDate');
             if (currentSignOn) {
                 const isoDate = normalizeToIsoDate(currentSignOn);
@@ -754,7 +754,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                                         }
                                                     }}
                                                     disabled={
-                                                        (watchedSignOnStatus === "In Transit" || watchedSignOnStatus === "Signed On")
+                                                        (watchedSignOnStatus === "Signed On")
                                                             ? (() => { const today = new Date(); today.setHours(0, 0, 0, 0); return { after: today }; })()
                                                             : undefined
                                                     }
