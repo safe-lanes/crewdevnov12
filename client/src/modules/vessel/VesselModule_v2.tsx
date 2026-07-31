@@ -1892,7 +1892,7 @@ export function VesselModule_v2(): JSX.Element {
                                                             ) : (
                                                                 <>
                                                                     <TableCell className="text-xs text-gray-700">{formatDateOnly(planning.reliefDue)}</TableCell>
-                                                                    <TableCell className="text-xs text-gray-700">{formatDateOnly(planning.plannedSignOff)}</TableCell>
+                                                                    <TableCell className="text-xs text-gray-700">{formatDateOnly((planning.reliefStatus === 'Planned' || planning.reliefStatus === 'Confirmed') ? planning.signOffDate : null)}</TableCell>
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-doc-expiry-${planning.crewUuid}`}>
                                                                         {(() => {
                                                                             const docCount = planning.docExpiringCount || '0/0';
