@@ -826,14 +826,21 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
 
           <div>
             <Label className="text-xs">Training (in DB)</Label>
-            <SearchableCombobox
-              value={form.correspondingInDb}
-              onChange={(v) => set("correspondingInDb", v)}
-              options={trainingDbOptions}
-              placeholder="Search trainings..."
-              disabled={isLimited}
-              testId="combobox-training-db"
-            />
+            {isLimited ? (
+              <Input
+                value={(row as any)?.correspondingInDbName || row?.correspondingInDb || ""}
+                disabled
+                data-testid="input-training-db"
+              />
+            ) : (
+              <SearchableCombobox
+                value={form.correspondingInDb}
+                onChange={(v) => set("correspondingInDb", v)}
+                options={trainingDbOptions}
+                placeholder="Search trainings..."
+                testId="combobox-training-db"
+              />
+            )}
           </div>
 
           <div>
