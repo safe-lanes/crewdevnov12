@@ -5877,6 +5877,18 @@ const AdminModuleInner = (): JSX.Element => {
                 </SelectContent>
               </Select>
             </div>
+            <Button
+              variant="outline"
+              className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+              onClick={() => {
+                setTrainingSearchFilter("");
+                setTrainingCategoryFilter("all");
+                setTrainingGroupFilter("all");
+              }}
+              data-testid="button-training-filters-clear"
+            >
+              Clear
+            </Button>
           </div>
         </div>
       )}
