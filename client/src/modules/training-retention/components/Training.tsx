@@ -532,9 +532,10 @@ type ComboboxProps = {
   placeholder?: string;
   disabled?: boolean;
   testId?: string;
+  showNone?: boolean;
 };
 
-function SearchableCombobox({ value, onChange, options, placeholder, disabled, testId }: ComboboxProps) {
+function SearchableCombobox({ value, onChange, options, placeholder, disabled, testId, showNone = true }: ComboboxProps) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
   return (
@@ -560,16 +561,18 @@ function SearchableCombobox({ value, onChange, options, placeholder, disabled, t
           <CommandList>
             <CommandEmpty>No results.</CommandEmpty>
             <CommandGroup>
-              <CommandItem
-                value="__none"
-                onSelect={() => {
-                  onChange("");
-                  setOpen(false);
-                }}
-              >
-                <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
-                — None —
-              </CommandItem>
+              {showNone && (
+                <CommandItem
+                  value="__none"
+                  onSelect={() => {
+                    onChange("");
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={cn("mr-2 h-4 w-4", !value ? "opacity-100" : "opacity-0")} />
+                  — None —
+                </CommandItem>
+              )}
               {options.map((o) => (
                 <CommandItem
                   key={o.value}
@@ -733,9 +736,9 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
             {isLimited ? (
               <Input value={form.name} disabled data-testid="input-name" />
             ) : (
-              <Select
+              <SearchableCombobox
                 value={form.crewMemberId || "__manual"}
-                onValueChange={(v) => {
+                onChange={(v) => {
                   if (v === "__manual") {
                     set("crewMemberId", "");
                     set("name", "");
@@ -748,17 +751,17 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
                     set("rank", c.presentRank || "");
                   }
                 }}
-              >
-                <SelectTrigger data-testid="select-name"><SelectValue placeholder="Select crew" /></SelectTrigger>
-                <SelectContent className="max-h-[280px]">
-                  <SelectItem value="__manual">— Enter manually —</SelectItem>
-                  {crew.map((c) => (
-                    <SelectItem key={c.empNo} value={c.empNo}>
-                      {`${c.firstName || ""} ${c.familyName || ""}`.trim()} ({c.empNo})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "__manual", label: "— Enter manually —" },
+                  ...crew.map((c) => ({
+                    value: c.empNo,
+                    label: `${`${c.firstName || ""} ${c.familyName || ""}`.trim()} (${c.empNo})`,
+                  })),
+                ]}
+                placeholder="Search crew..."
+                showNone={false}
+                testId="select-name"
+              />
             )}
           </div>
 
