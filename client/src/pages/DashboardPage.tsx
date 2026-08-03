@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Filter } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import SectionTitleComponents from "@/components/Section/SectionTitleComponents";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { DashboardCard } from "@/modules/dashboard/DashboardCard";
@@ -17,6 +19,7 @@ const PLACEHOLDER_CARDS: { label: string; testId: string }[] = [];
 
 export const DashboardPage = () => {
   const [activeTab, setActiveTab] = useState<DashboardTab>("management");
+  const [showFilters, setShowFilters] = useState(true);
 
   const { period, filters, setPeriod, setFilters, clearFilters } = useDashboardFiltersStore();
 
@@ -39,7 +42,20 @@ export const DashboardPage = () => {
       >
         <div className="relative">
           <SectionTitleComponents title="Dashboard">
-            <span aria-hidden="true" />
+            {activeTab === "management" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
+                data-testid="button-toggle-filters"
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+              </Button>
+            ) : (
+              <span aria-hidden="true" />
+            )}
           </SectionTitleComponents>
           <div className="hidden absolute inset-x-0 top-0 flex justify-center pointer-events-none">
             <TabsList
@@ -69,13 +85,15 @@ export const DashboardPage = () => {
           data-testid="panel-management"
           className="mt-0 space-y-4"
         >
-          <ManagementFilterBar
-            period={period}
-            onPeriodChange={setPeriod}
-            filters={filters}
-            onFiltersChange={setFilters}
-            onClear={clearFilters}
-          />
+          {showFilters && (
+            <ManagementFilterBar
+              period={period}
+              onPeriodChange={setPeriod}
+              filters={filters}
+              onFiltersChange={setFilters}
+              onClear={clearFilters}
+            />
+          )}
           <div
             className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
             style={{ gridAutoRows: "minmax(300px, 1fr)" }}

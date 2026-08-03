@@ -1439,11 +1439,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
-                            className="h-8 w-32 text-[#8798ad] text-xs border-[#e1e8ed]"
+                            size="sm"
+                            className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
                             onClick={() => setShowFilters(!showFilters)}
                             data-testid="button-filters"
                         >
-                            <FilterIcon className="h-3 w-3 mr-1" />
+                            <FilterIcon className="h-4 w-4" />
                             Filters
                         </Button>
                         {selectedCrewPoolPage === "crew-database" && (permissions.length === 0 || canCreate("Crew Database")) && (

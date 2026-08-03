@@ -46,7 +46,7 @@ const MultiSelect = ({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-8 w-40 justify-between text-xs font-normal text-[#0f172a] dark:text-white bg-transparent"
+          className="h-8 w-40 justify-between px-3 text-xs font-normal text-[#0f172a] dark:text-white bg-transparent dark:bg-neutral-900 hover:bg-transparent dark:hover:bg-neutral-900 hover:text-[#0f172a] dark:hover:text-white"
           data-testid={`select-${testId}`}
         >
           <span className="truncate">

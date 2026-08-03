@@ -1021,11 +1021,12 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              className={`h-8 text-[#8798ad] text-xs border-[#e1e8ed] ${isPhone ? 'w-auto px-3' : 'w-32'}`}
+              size="sm"
+              className={`h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600 ${isPhone ? 'w-auto px-3' : ''}`}
               onClick={() => setShowFilters(!showFilters)}
               data-testid="button-toggle-filters-v2"
             >
-              <FilterIcon className={`h-3 w-3 ${isPhone ? '' : 'mr-1'}`} />
+              <FilterIcon className="h-4 w-4" />
               {!isPhone && 'Filters'}
             </Button>
             {(permissions.length === 0 || canCreate(currentMenuName)) && (
