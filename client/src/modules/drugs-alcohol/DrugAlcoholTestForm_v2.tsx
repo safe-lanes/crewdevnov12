@@ -262,7 +262,7 @@ export function DrugAlcoholTestForm_v2({
   });
 
   // Use useFieldArray for proper nested array management of personnelTested
-  const { fields: personnelFields, replace: replacePersonnel, append: appendPersonnel } = useFieldArray({
+  const { fields: personnelFields, replace: replacePersonnel, append: appendPersonnel, remove: removePersonnel } = useFieldArray({
     control: form.control,
     name: 'personnelTested',
     keyName: '_fieldId',
@@ -1687,6 +1687,7 @@ export function DrugAlcoholTestForm_v2({
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wide min-w-[150px]">
                             Witness
                           </th>
+                          <th className="px-3 py-2 w-10"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2001,6 +2002,23 @@ export function DrugAlcoholTestForm_v2({
                                   );
                                 }}
                               />
+                            </td>
+                            <td className="px-3 py-2">
+                              {isOtherRow ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600 disabled:opacity-50"
+                                  onClick={() => removePersonnel(index)}
+                                  disabled={isFormLocked}
+                                  data-testid={`button-delete-other-personnel-${index}`}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              ) : (
+                                <div className="h-6 w-6" aria-hidden="true" />
+                              )}
                             </td>
                           </tr>
                         )})}
