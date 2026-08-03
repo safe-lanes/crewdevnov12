@@ -235,7 +235,7 @@ function ApprovalScreenV2() {
                                 </Popover>
                             </div>
 
-                            <div className="relative shrink-0 w-[100px]">
+                            <div className="relative shrink-0 w-[130px]">
                                 <Input
                                     placeholder="Draft ID"
                                     value={draftIdFilter}
