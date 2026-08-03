@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter, Archive, RotateCcw, Network } from "lucide-react";
+import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter, Archive, RotateCcw, Network, Search as SearchIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarchyDialog";
@@ -5842,14 +5842,15 @@ const AdminModuleInner = (): JSX.Element => {
       {showTrainingFilters && selectedTrainingMatrixTab === "training-master" && (
         <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="shrink-0 w-48">
+            <div className="relative shrink-0 w-48">
               <Input
                 placeholder="Search Training"
-                className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                className="h-8 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
                 value={trainingSearchFilter}
                 onChange={(e) => setTrainingSearchFilter(e.target.value)}
                 data-testid="input-search-training"
               />
+              <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
             </div>
             <div className="shrink-0 w-36">
               <Select value={trainingCategoryFilter} onValueChange={setTrainingCategoryFilter}>
@@ -7056,13 +7057,16 @@ const AdminModuleInner = (): JSX.Element => {
             {/* Filters Bar */}
             <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'flex-wrap gap-4'} mb-4 p-4 pl-0 bg-[#f7fafc] rounded-lg`}>
               <div className={`flex ${currentBreakpoint === 'mobile' ? 'flex-col space-y-3' : 'gap-4 flex-wrap'}`}>
-                <Input
-                  placeholder="Search in selected Data Master"
-                  value={searchDataMaster}
-                  onChange={(e) => setSearchDataMaster(e.target.value)}
-                  className="h-8 w-80 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent"
-                  data-testid="input-search-data-master"
-                />
+                <div className="relative">
+                  <Input
+                    placeholder="Search in selected Data Master"
+                    value={searchDataMaster}
+                    onChange={(e) => setSearchDataMaster(e.target.value)}
+                    className="h-8 w-80 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] bg-transparent"
+                    data-testid="input-search-data-master"
+                  />
+                  <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
+                </div>
               </div>
             </div>
 

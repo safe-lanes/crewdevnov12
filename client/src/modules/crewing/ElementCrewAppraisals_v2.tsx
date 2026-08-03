@@ -3,6 +3,7 @@ import {
   EyeIcon,
   FilterIcon,
   Trash2Icon,
+  Search as SearchIcon,
 } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -826,13 +827,16 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
             {/* Desktop/Laptop: Horizontal flex layout */}
             {!isSmallScreen && (
               <div className="flex flex-nowrap items-center gap-3">
-                <Input
-                  placeholder="Search by name..."
-                  className="h-8 w-48 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] shrink-0"
-                  value={filters.searchName}
-                  onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-                  data-testid="input-search-name"
-                />
+                <div className="relative w-48 shrink-0">
+                  <Input
+                    placeholder="Search by name..."
+                    className="h-8 w-full pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                    value={filters.searchName}
+                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                    data-testid="input-search-name"
+                  />
+                  <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
+                </div>
 
                 <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
                   <SelectTrigger className="h-8 w-28 text-xs text-[#0f172a] shrink-0" data-testid="select-rank">
@@ -933,13 +937,16 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
             {isTablet && (
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-3">
-                  <Input
-                    placeholder="Search by name..."
-                    className="h-8 w-full text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
-                    value={filters.searchName}
-                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-                    data-testid="input-search-name"
-                  />
+                  <div className="relative w-full">
+                    <Input
+                      placeholder="Search by name..."
+                      className="h-8 w-full pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                      value={filters.searchName}
+                      onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                      data-testid="input-search-name"
+                    />
+                    <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
+                  </div>
 
                   <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>
                     <SelectTrigger className="h-8 w-full text-xs text-[#0f172a]" data-testid="select-rank">
@@ -1044,13 +1051,16 @@ export const ElementCrewAppraisals_v2 = (): JSX.Element => {
             {/* Phone: 2-column grid layout */}
             {isPhone && (
               <div className="space-y-2">
-                <Input
-                  placeholder="Search by name..."
-                  className="h-8 w-full text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
-                  value={filters.searchName}
-                  onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-                  data-testid="input-search-name"
-                />
+                <div className="relative w-full">
+                  <Input
+                    placeholder="Search by name..."
+                    className="h-8 w-full pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                    value={filters.searchName}
+                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                    data-testid="input-search-name"
+                  />
+                  <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
+                </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <Select value={filters.rank} onValueChange={(value) => setFilters(prev => ({ ...prev, rank: value }))}>

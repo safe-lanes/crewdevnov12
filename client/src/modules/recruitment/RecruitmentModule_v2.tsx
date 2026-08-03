@@ -4,7 +4,7 @@ import { useLocation } from 'wouter';
 import { parseISO, format, isValid } from 'date-fns';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
-import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon } from 'lucide-react';
+import { FilterIcon, PlusIcon, PaperclipIcon, EditIcon, Trash2Icon, Search as SearchIcon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useQueryClient } from '@tanstack/react-query';
 import MainLayout from '../../components/main/MainLayout';
@@ -690,14 +690,15 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
           <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
             {!isSmallScreen && (
               <div className="flex flex-nowrap items-center gap-2">
-                <div className="shrink-0 w-36">
+                <div className="relative shrink-0 w-36">
                   <Input
                     placeholder="Search Name..."
-                    className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                    className="h-8 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
                     value={filters.searchName}
                     onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
                     data-testid="input-search-name-v2"
                   />
+                  <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
                 </div>
 
                 <div className="shrink-0 w-[120px]">
@@ -889,13 +890,16 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
 
             {isPhone && (
               <div className="space-y-2">
-                <Input
-                  placeholder="Search Name..."
-                  className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
-                  value={filters.searchName}
-                  onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-                  data-testid="input-search-name-v2"
-                />
+                <div className="relative">
+                  <Input
+                    placeholder="Search Name..."
+                    className="h-8 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                    value={filters.searchName}
+                    onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                    data-testid="input-search-name-v2"
+                  />
+                  <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
+                </div>
                 
                 <div className="grid grid-cols-2 gap-2">
                   <Select value={filters.rankAppliedFor} onValueChange={(value) => setFilters(prev => ({ ...prev, rankAppliedFor: value }))}>

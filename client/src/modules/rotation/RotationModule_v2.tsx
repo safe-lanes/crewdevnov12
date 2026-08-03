@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Filter, ChevronDown, Calendar as CalendarIcon } from 'lucide-react';
+import { Filter, ChevronDown, Calendar as CalendarIcon, Search as SearchIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { DueCrewTable_v2 } from './DueCrewTable_v2';
 import { RotationPlanTable_v2 } from './RotationPlanTable_v2';
@@ -313,7 +313,16 @@ function ApprovalScreenV2() {
                                 </Popover>
                             </div>
 
-                            <input type="text" placeholder="Draft ID" value={draftIdFilter} onChange={(e) => setDraftIdFilter(e.target.value)} className="h-8 w-full px-3 text-[11px] text-[#0f172a] border border-[#e1e8ed] rounded-md focus:outline-none focus:ring-2 focus:ring-[#16569e]" data-testid="input-draft-id-v2" />
+                            <div className="relative w-full">
+                                <Input
+                                    placeholder="Draft ID"
+                                    value={draftIdFilter}
+                                    onChange={(e) => setDraftIdFilter(e.target.value)}
+                                    className="h-8 w-full pl-10 text-[#0f172a] text-xs placeholder:text-[#8899ae]"
+                                    data-testid="input-draft-id-v2"
+                                />
+                                <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
+                            </div>
 
                             <Popover open={dateRangeDialogOpen} onOpenChange={openDateRangeDialog}>
                                 <PopoverTrigger asChild>

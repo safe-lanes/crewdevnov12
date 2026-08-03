@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Pencil, Trash2, Check, ChevronsUpDown, FilterIcon, PlusIcon } from "lucide-react";
+import { Pencil, Trash2, Check, ChevronsUpDown, FilterIcon, PlusIcon, Search as SearchIcon } from "lucide-react";
 import type { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from "ag-grid-community";
 import AgGridTable from "@/components/AgGrid/AgGridTable";
 import AgGridTableActions from "@/components/AgGrid/AgGridTableActions";
@@ -399,14 +399,17 @@ export const Training = (): JSX.Element => {
       {filtersOpen && (
         <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg" data-testid="filter-bar">
           <div className="flex flex-wrap items-center gap-2">
-            <Input
-              placeholder="Search Name..."
-              className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] flex-1 min-w-[180px] max-w-[260px]"
-              value={draftFilters.searchName}
-              onChange={(e) => setDraft("searchName", e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleApply(); }}
-              data-testid="input-search-name"
-            />
+            <div className="relative flex-1 min-w-[180px] max-w-[260px]">
+              <Input
+                placeholder="Search Name..."
+                className="h-8 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                value={draftFilters.searchName}
+                onChange={(e) => setDraft("searchName", e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleApply(); }}
+                data-testid="input-search-name"
+              />
+              <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
+            </div>
 
             <div className="shrink-0 w-[140px]">
               <Select value={draftFilters.source} onValueChange={(v) => setDraft("source", v)}>

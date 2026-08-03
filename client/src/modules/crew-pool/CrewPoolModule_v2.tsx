@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { useQueryClient } from '@tanstack/react-query';
-import { FilterIcon, PlusIcon, EditIcon, Upload } from 'lucide-react';
+import { FilterIcon, PlusIcon, EditIcon, Upload, Search as SearchIcon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import { format, parseISO, isValid } from 'date-fns';
@@ -660,14 +660,15 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         {/* Desktop/Laptop: Single row flex layout with all filters and buttons inline */}
                         {!isSmallScreen && (
                             <div className="flex flex-nowrap items-center gap-2">
-                                <div className="shrink-0 w-40">
+                                <div className="relative shrink-0 w-40">
                                     <Input
                                         placeholder="Search Name..."
-                                        className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                                        className="h-8 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
                                         value={filters.searchName}
                                         onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
                                         data-testid="input-search-name"
                                     />
+                                    <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
                                 </div>
 
                                 <div className="shrink-0 w-[110px]">
@@ -799,13 +800,16 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         {isTablet && (
                             <div className="space-y-3">
                                 <div className="grid grid-cols-3 lg:grid-cols-4 gap-3">
-                                    <Input
-                                        placeholder="Search Name..."
-                                        className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
-                                        value={filters.searchName}
-                                        onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-                                        data-testid="input-search-name"
-                                    />
+                                    <div className="relative w-full">
+                                        <Input
+                                            placeholder="Search Name..."
+                                            className="h-8 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                                            value={filters.searchName}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                                            data-testid="input-search-name"
+                                        />
+                                        <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
+                                    </div>
 
                                     <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
                                         <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-vessel">
@@ -926,13 +930,16 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         {isPhone && (
                             <div className="space-y-3">
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Input
-                                        placeholder="Search Name..."
-                                        className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] col-span-2"
-                                        value={filters.searchName}
-                                        onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
-                                        data-testid="input-search-name"
-                                    />
+                                    <div className="relative col-span-2">
+                                        <Input
+                                            placeholder="Search Name..."
+                                            className="h-8 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
+                                            value={filters.searchName}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, searchName: e.target.value }))}
+                                            data-testid="input-search-name"
+                                        />
+                                        <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
+                                    </div>
 
                                     <Select value={filters.vessel} onValueChange={(value) => setFilters(prev => ({ ...prev, vessel: value }))}>
                                         <SelectTrigger className="h-8 text-xs text-[#0f172a] placeholder:text-[#8899ae] w-full" data-testid="select-vessel">
