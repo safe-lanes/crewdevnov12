@@ -58,3 +58,48 @@ export function isStage2Submitted(row: AppraisalRowLike): boolean {
     return false;
   }
 }
+
+/** "AB_2" → "AB", "3rd Officer_1" → "3rd Officer"; no suffix → unchanged. */
+export function baseRank(rank: string): string {
+  return rank.replace(/_\d+$/, "").trim();
+}
+
+const ORDINAL_WORDS: Record<string, string> = {
+  first: "1st", second: "2nd", third: "3rd", fourth: "4th", fifth: "5th",
+};
+
+/**
+ * Builds the lowercase(name or label) → label lookup from Rank Master rows.
+ * Identical to the map the rank chart already uses for its Ranks filter.
+ */
+export function buildRankLabelMap(
+  companyRanks: { rank?: string | null; label?: string | null }[],
+): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const r of companyRanks) {
+    const label = (r.label || "").trim();
+    if (!label) continue;
+    const name = (r.rank || "").trim();
+    if (name) m.set(name.toLowerCase(), label);
+    m.set(label.toLowerCase(), label);
+  }
+  return m;
+}
+
+/**
+ * Chart/drill-down rank normalization:
+ * 1. strip variant suffix ("AB_2" → "AB");
+ * 2. resolve via Rank Master (name or label, case-insensitive) → master LABEL
+ *    ("Third Engineer" → "3rd Engineer", "AB" → "AB");
+ * 3. failing that, convert spelled ordinals and retry the master;
+ * 4. otherwise return the base rank unchanged — rows are never skipped.
+ */
+export function canonicalRank(rank: string, labelMap: Map<string, string>): string {
+  const base = baseRank(rank);
+  if (!base) return base;
+  const exact = labelMap.get(base.toLowerCase());
+  if (exact) return exact;
+  const converted = base.toLowerCase()
+    .replace(/\b(first|second|third|fourth|fifth)\b/g, (w) => ORDINAL_WORDS[w]);
+  return labelMap.get(converted) ?? base;
+}

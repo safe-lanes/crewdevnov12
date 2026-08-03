@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { appraisalsApiV2 } from "@/modules/crewing/api/appraisalsApiV2";
-import { extractRank, isStage2Submitted, extractAppraisalPeriodTo } from "./appraisalRank";
+import { extractRank, isStage2Submitted, extractAppraisalPeriodTo, canonicalRank, buildRankLabelMap } from "./appraisalRank";
+import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
 interface AppraisalRow {
@@ -147,6 +148,9 @@ export const CrewAppraisalsDrilldownDialog = ({
 }: CrewAppraisalsDrilldownDialogProps) => {
   const [, setLocation] = useLocation();
 
+  const { data: companyRanks = [] } = useCompanyRanks();
+  const labelByRankName = useMemo(() => buildRankLabelMap(companyRanks), [companyRanks]);
+
   const { data: appraisals = [], isLoading } = useQuery<AppraisalRow[]>({
     queryKey: ["v2", "appraisals", "rank-chart"],
     queryFn: () => appraisalsApiV2.getAll() as unknown as Promise<AppraisalRow[]>,
@@ -249,7 +253,7 @@ export const CrewAppraisalsDrilldownDialog = ({
       if (!date) return false;
       if (date < range.from || date > range.to) return false;
 
-      const rowRank = extractRank(a);
+      const rowRank = canonicalRank(extractRank(a), labelByRankName);
       if (!rowRank || rowRank !== rank) return false;
 
       // Mirror the chart: rows without a numeric overall rating are excluded
@@ -275,7 +279,7 @@ export const CrewAppraisalsDrilldownDialog = ({
 
       return true;
     });
-  }, [appraisals, range, rank, crewPools, poolByCrewKey, manningAgents, agentByCrewKey, nationalities, nationalityByCrewKey]);
+  }, [appraisals, range, rank, crewPools, poolByCrewKey, manningAgents, agentByCrewKey, nationalities, nationalityByCrewKey, labelByRankName]);
 
   const sorted = useMemo(
     () =>

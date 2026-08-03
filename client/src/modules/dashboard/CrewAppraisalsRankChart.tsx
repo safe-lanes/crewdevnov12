@@ -5,7 +5,7 @@ import type { AgChartOptions, AgChartInstance } from "@/lib/agCharts";
 import { appraisalsApiV2 } from "@/modules/crewing/api/appraisalsApiV2";
 import { CrewAppraisalsDrilldownDialog } from "./CrewAppraisalsDrilldownDialog";
 import { useDrilldownParam } from "./useDrilldownParam";
-import { extractRank, isStage2Submitted, extractAppraisalPeriodTo } from "./appraisalRank";
+import { extractRank, isStage2Submitted, extractAppraisalPeriodTo, canonicalRank, buildRankLabelMap } from "./appraisalRank";
 import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import type { PeriodFilterValue } from "@/components/filters/PeriodFilter";
 
@@ -200,24 +200,7 @@ export const CrewAppraisalsRankChart = ({
 
   const { data: companyRanks = [] } = useCompanyRanks();
 
-  const labelByRankName = useMemo(() => {
-    const m = new Map<string, string>();
-
-    for (const r of companyRanks) {
-      const label = (r.label || "").trim();
-      if (!label) continue;
-
-      const name = (r.rank || "").trim();
-
-      if (name) {
-        m.set(name.toLowerCase(), label);
-      }
-
-      m.set(label.toLowerCase(), label);
-    }
-
-    return m;
-  }, [companyRanks]);
+  const labelByRankName = useMemo(() => buildRankLabelMap(companyRanks), [companyRanks]);
 
   const chartData = useMemo<RankAvg[]>(() => {
     if (!range) return [];
@@ -227,7 +210,7 @@ export const CrewAppraisalsRankChart = ({
       if (!date) continue;
       if (date < range.from || date > range.to) continue;
 
-      const rank = extractRank(a);
+      const rank = canonicalRank(extractRank(a), labelByRankName);
       if (!rank) continue;
 
       const rating = parseRating(a.overallRating);
