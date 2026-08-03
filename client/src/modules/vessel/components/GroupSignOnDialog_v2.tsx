@@ -1,12 +1,14 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { Users } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Users, Pencil } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { FormattedDateInput } from '@/components/ui/formatted-date-input';
 import { useToast } from '@/hooks/use-toast';
 import { vesselApiV2 } from '../api/vesselApiV2';
 
@@ -91,6 +93,9 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
     const [selectedGroupKey, setSelectedGroupKey] = useState<string>('');
     const [selectedCrewUuids, setSelectedCrewUuids] = useState<Set<string>>(new Set());
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [changeDateOpen, setChangeDateOpen] = useState(false);
+    const [newSignOnDate, setNewSignOnDate] = useState('');
+    const [isSavingDate, setIsSavingDate] = useState(false);
 
     const selectedGroup = groups.find(g => g.key === selectedGroupKey) || null;
 
@@ -154,6 +159,50 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
     };
 
     const selectedCrew = selectedGroup ? selectedGroup.members.filter(m => selectedCrewUuids.has(m.relieverCrewUuid)) : [];
+
+    const handleSaveNewDate = async () => {
+        if (!selectedGroup || selectedCrew.length === 0 || !newSignOnDate) return;
+        setIsSavingDate(true);
+        const succeeded: string[] = [];
+        const failed: { name: string; reason: string }[] = [];
+        const movedCrewUuids = selectedCrew.map(c => c.relieverCrewUuid);
+        const targetPortUuid = selectedGroup.portUuid;
+
+        for (const crew of selectedCrew) {
+            try {
+                await vesselApiV2.updatePlanning(crew.planUuid, {
+                    relieverSignOnDate: newSignOnDate,
+                });
+                succeeded.push(crew.relieverCrewName);
+            } catch (err: any) {
+                failed.push({ name: crew.relieverCrewName, reason: err?.message || 'Unknown error' });
+            }
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
+
+        if (succeeded.length > 0) {
+            // Follow the moved crews to their new date group and keep them checked
+            setSelectedGroupKey(`${newSignOnDate}__${targetPortUuid}`);
+            setSelectedCrewUuids(new Set(movedCrewUuids));
+            toast({
+                title: 'Success',
+                description: `Sign On date updated for: ${succeeded.join(', ')}`,
+            });
+        }
+        if (failed.length > 0) {
+            toast({
+                title: 'Some crew could not be updated',
+                description: failed.map(f => `${f.name} — ${f.reason}`).join('; '),
+                variant: 'destructive',
+            });
+        }
+
+        setIsSavingDate(false);
+        if (failed.length === 0) {
+            setChangeDateOpen(false);
+        }
+    };
 
     const handleSubmit = async () => {
         if (!selectedGroup || selectedCrew.length === 0) return;
@@ -251,18 +300,40 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
                                     <Label className="text-xs text-gray-700">
                                         Sign On Date <span className="text-red-500">*</span>
                                     </Label>
-                                    <Select value={selectedGroup?.date || ''} onValueChange={handleDatePick}>
-                                        <SelectTrigger className="mt-1 h-9 text-xs" data-testid="select-group-sign-on-date">
-                                            <SelectValue placeholder="Select date" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {uniqueDates.map(date => (
-                                                <SelectItem key={date} value={date} className="text-xs">
-                                                    {formatGroupDate(date)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <div className="flex items-center gap-1">
+                                        <Select value={selectedGroup?.date || ''} onValueChange={handleDatePick}>
+                                            <SelectTrigger className="mt-1 h-9 flex-1 text-xs" data-testid="select-group-sign-on-date">
+                                                <SelectValue placeholder="Select date" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {uniqueDates.map(date => (
+                                                    <SelectItem key={date} value={date} className="text-xs">
+                                                        {formatGroupDate(date)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="mt-1 h-6 w-6"
+                                                    onClick={() => {
+                                                        setNewSignOnDate(selectedGroup?.date || '');
+                                                        setChangeDateOpen(true);
+                                                    }}
+                                                    disabled={selectedCrew.length === 0 || isSubmitting}
+                                                    data-testid="button-change-sign-on-date"
+                                                >
+                                                    <Pencil className="h-3 w-3" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right" align="start" className="max-w-xs text-xs">
+                                                Change Sign On date of the selected crew members
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
                                 </div>
                                 <div>
                                     <Label className="text-xs text-gray-700">
@@ -307,6 +378,42 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
                         </Button>
                     )}
                 </div>
+
+                <Dialog open={changeDateOpen} onOpenChange={setChangeDateOpen}>
+                    <DialogContent className="sm:max-w-[350px]" data-testid="dialog-change-sign-on-date">
+                        <DialogHeader>
+                            <DialogTitle>Change Sign On Date</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <label className="text-sm font-medium text-gray-700">Sign On Date</label>
+                            <FormattedDateInput
+                                value={newSignOnDate}
+                                onChange={(e) => setNewSignOnDate(e.target.value)}
+                                className="mt-1"
+                                data-testid="input-change-sign-on-date"
+                            />
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                className="h-8 text-xs"
+                                onClick={() => setChangeDateOpen(false)}
+                                disabled={isSavingDate}
+                                data-testid="button-change-sign-on-date-cancel"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                className="h-8 bg-[#16569e] text-xs text-white hover:bg-[#16569e]/90"
+                                onClick={handleSaveNewDate}
+                                disabled={!newSignOnDate || isSavingDate}
+                                data-testid="button-change-sign-on-date-save"
+                            >
+                                {isSavingDate ? 'Saving...' : 'Save'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </DialogContent>
         </Dialog>
     );
