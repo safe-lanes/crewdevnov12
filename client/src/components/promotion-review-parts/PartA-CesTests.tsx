@@ -1,12 +1,22 @@
 import React, { memo } from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import type { CesTest } from './types';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { MessageSquare, Trash2 } from 'lucide-react';
+import type { CesTest, Comment } from './types';
 
 interface PartACesTestsProps {
   cesTests: CesTest[];
   onUpdateCesTest: (id: string, field: string, value: string) => void;
   onDeleteCesTest: (id: string) => void;
+  criteriaComments: Record<string, Comment[]>;
+  newCriteriaComment: Record<string, string>;
+  editingCriteriaComment: string | null;
+  onSetCriteriaComments: React.Dispatch<React.SetStateAction<Record<string, Comment[]>>>;
+  onSetNewCriteriaComment: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onSetEditingCriteriaComment: (id: string | null) => void;
+  currentUserDisplay: string;
 }
 
 const computePassFail = (score: string, minScore: string): 'pass' | 'fail' | null => {
@@ -21,6 +31,13 @@ export const PartACesTests = memo(function PartACesTests({
   cesTests,
   onUpdateCesTest,
   onDeleteCesTest,
+  criteriaComments,
+  newCriteriaComment,
+  editingCriteriaComment,
+  onSetCriteriaComments,
+  onSetNewCriteriaComment,
+  onSetEditingCriteriaComment,
+  currentUserDisplay,
 }: PartACesTestsProps) {
   const handleScoreChange = (testId: string, field: 'score' | 'minScore', value: string, test: CesTest) => {
     onUpdateCesTest(testId, field, value);
@@ -34,8 +51,10 @@ export const PartACesTests = memo(function PartACesTests({
     <>
       {cesTests.map((test, index) => {
         const result = computePassFail(test.score, test.minScore);
+        const rowKey = `a2.7-ces-${test.id}`;
         return (
-          <TableRow key={`ces-${test.id}`} className="bg-gray-50">
+          <React.Fragment key={`ces-${test.id}`}>
+          <TableRow className="bg-gray-50">
             <TableCell className="text-sm">
               <div className="flex items-center gap-2">
                 <span className="ml-8">
@@ -80,8 +99,124 @@ export const PartACesTests = memo(function PartACesTests({
             </TableCell>
             <TableCell>
             </TableCell>
-            <TableCell></TableCell>
+            <TableCell>
+              <div className="flex gap-1">
+                <Button 
+                  type="button"
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 w-7 p-0"
+                  onClick={() => onSetNewCriteriaComment(prev => ({
+                    ...prev,
+                    [rowKey]: ""
+                  }))}
+                  data-testid={`button-criteria-comment-${rowKey}`}
+                >
+                  <MessageSquare className="h-4 w-4 text-gray-400" />
+                </Button>
+              </div>
+            </TableCell>
           </TableRow>
+
+          {(criteriaComments[rowKey]?.length > 0 || newCriteriaComment[rowKey] !== undefined) && (
+            <TableRow key={`${rowKey}-comments`}>
+              <TableCell colSpan={6} className="py-2 px-4 bg-gray-50">
+                <div className="space-y-2">
+                  {criteriaComments[rowKey]?.map((comment) => (
+                    <div key={comment.id} className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="text-blue-600 italic text-[13px] mb-2">{comment.user}:</div>
+                        {editingCriteriaComment === comment.id ? (
+                          <Textarea
+                            value={comment.text}
+                            onChange={(e) => {
+                              onSetCriteriaComments(prev => ({
+                                ...prev,
+                                [rowKey]: prev[rowKey]?.map(c => 
+                                  c.id === comment.id ? { ...c, text: e.target.value } : c
+                                ) || []
+                              }));
+                            }}
+                            onBlur={() => onSetEditingCriteriaComment(null)}
+                            autoFocus
+                            className="min-h-[80px] w-full"
+                          />
+                        ) : (
+                          <div 
+                            className="text-blue-600 italic text-[13px] p-1 cursor-pointer min-h-[20px] border border-transparent hover:border-gray-200 rounded"
+                            onClick={() => onSetEditingCriteriaComment(comment.id)}
+                          >
+                            {comment.text}
+                          </div>
+                        )}
+                      </div>
+                      <div className="ml-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            onSetCriteriaComments(prev => ({
+                              ...prev,
+                              [rowKey]: prev[rowKey]?.filter(c => c.id !== comment.id) || []
+                            }));
+                            if (editingCriteriaComment === comment.id) {
+                              onSetEditingCriteriaComment(null);
+                            }
+                          }}
+                          data-testid={`button-delete-comment-${comment.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {newCriteriaComment[rowKey] !== undefined && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-600 mb-2">{currentUserDisplay}</div>
+                      <Textarea
+                        value={newCriteriaComment[rowKey]}
+                        onChange={(e) => {
+                          onSetNewCriteriaComment(prev => ({
+                            ...prev,
+                            [rowKey]: e.target.value
+                          }));
+                        }}
+                        onBlur={() => {
+                          if (newCriteriaComment[rowKey]?.trim()) {
+                            const commentId = Date.now().toString();
+                            onSetCriteriaComments(prev => ({
+                              ...prev,
+                              [rowKey]: [
+                                ...(prev[rowKey] || []),
+                                {
+                                  id: commentId,
+                                  user: currentUserDisplay,
+                                  text: newCriteriaComment[rowKey]
+                                }
+                              ]
+                            }));
+                          }
+                          onSetNewCriteriaComment(prev => {
+                            const newState = { ...prev };
+                            delete newState[rowKey];
+                            return newState;
+                          });
+                        }}
+                        placeholder="Comment: Add your observations here..."
+                        className="text-blue-600 italic border-blue-200 text-[13px]"
+                        rows={2}
+                        autoFocus
+                        data-testid={`textarea-new-comment-${rowKey}`}
+                      />
+                    </div>
+                  )}
+                </div>
+              </TableCell>
+            </TableRow>
+          )}
+          </React.Fragment>
         );
       })}
     </>

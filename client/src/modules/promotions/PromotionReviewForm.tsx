@@ -1645,8 +1645,15 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       cesTests={cesTests}
       onUpdateCesTest={updateCesTest}
       onDeleteCesTest={deleteCesTest}
+      criteriaComments={criteriaComments}
+      newCriteriaComment={newCriteriaComment}
+      editingCriteriaComment={editingCriteriaComment}
+      onSetCriteriaComments={setCriteriaComments}
+      onSetNewCriteriaComment={setNewCriteriaComment}
+      onSetEditingCriteriaComment={setEditingCriteriaComment}
+      currentUserDisplay={currentUserDisplay}
     />
-  ), [cesTests, updateCesTest, deleteCesTest]);
+  ), [cesTests, updateCesTest, deleteCesTest, criteriaComments, newCriteriaComment, editingCriteriaComment, currentUserDisplay]);
 
   // Task #569: stage-wise locking, mirroring the appraisal "Lock form" feature.
   // The admin lock flag lives on the "Promotion Review Form" admin form. While the
