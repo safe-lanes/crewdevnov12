@@ -1262,8 +1262,9 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     <div className="mb-4 p-3 md:p-4 pl-0 bg-[#f7fafc] rounded-lg">
                         {!isSmallScreen && (
                             <div className="flex flex-nowrap items-center gap-2">
-                                <div className="shrink-0 w-40">
-                                    <Input placeholder="Search Name..." className="h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full" value={terminatedFilters.searchName} onChange={(e) => setTerminatedFilters(p => ({ ...p, searchName: e.target.value }))} data-testid="input-terminated-search-name" />
+                                <div className="relative shrink-0 w-40">
+                                    <Input placeholder="Search Name..." className="h-8 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full" value={terminatedFilters.searchName} onChange={(e) => setTerminatedFilters(p => ({ ...p, searchName: e.target.value }))} data-testid="input-terminated-search-name" />
+                                    <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
                                 </div>
                                 <div className="shrink-0 w-[110px]">
                                     <Select value={terminatedFilters.vessel} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, vessel: v }))}>
@@ -1330,7 +1331,10 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         {isSmallScreen && (
                             <div className="space-y-3">
                                 <div className={isPhone ? "grid grid-cols-2 gap-2" : "grid grid-cols-3 lg:grid-cols-4 gap-3"}>
-                                    <Input placeholder="Search Name..." className={`h-8 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full ${isPhone ? 'col-span-2' : ''}`} value={terminatedFilters.searchName} onChange={(e) => setTerminatedFilters(p => ({ ...p, searchName: e.target.value }))} data-testid="input-terminated-search-name" />
+                                    <div className={`relative ${isPhone ? 'col-span-2' : ''}`}>
+                                        <Input placeholder="Search Name..." className="h-8 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full" value={terminatedFilters.searchName} onChange={(e) => setTerminatedFilters(p => ({ ...p, searchName: e.target.value }))} data-testid="input-terminated-search-name" />
+                                        <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
+                                    </div>
                                     <Select value={terminatedFilters.vessel} onValueChange={(v) => setTerminatedFilters(p => ({ ...p, vessel: v }))}>
                                         <SelectTrigger className="h-8 text-xs w-full"><SelectValue placeholder="Vessel" /></SelectTrigger>
                                         <SelectContent className="max-h-[200px]">{vesselMasterData.map(v => (<SelectItem key={v.id} value={v.name}>{v.name}</SelectItem>))}</SelectContent>
