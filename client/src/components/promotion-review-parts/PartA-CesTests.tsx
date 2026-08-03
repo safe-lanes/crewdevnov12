@@ -101,6 +101,7 @@ export const PartACesTests = memo(function PartACesTests({
             </TableCell>
             <TableCell>
               <div className="flex gap-1">
+                <div className="h-7 w-7" aria-hidden="true" />
                 <Button 
                   type="button"
                   variant="ghost" 
