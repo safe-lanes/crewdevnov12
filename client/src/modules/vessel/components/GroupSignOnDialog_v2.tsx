@@ -187,7 +187,9 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
             setSelectedCrewUuids(new Set(movedCrewUuids));
             toast({
                 title: 'Success',
-                description: `Sign On date updated for: ${succeeded.join(', ')}`,
+                description: failed.length === 0
+                    ? 'Sign On date updated for: All the selected crew members'
+                    : `Sign On date updated for: ${succeeded.join(', ')}`,
             });
         }
         if (failed.length > 0) {
