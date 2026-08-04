@@ -255,12 +255,12 @@ export function RotationPlanTable_v2() {
                       {(permissions.length === 0 || canDelete("Rotation Plan")) && (
                       <Button
                         variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                        size="sm"
+                        className="h-7 w-7 p-0 hover:bg-red-100"
                         onClick={() => handleDeleteClick(draft.draftUuid)}
                         data-testid={`button-delete-v2-${draft.draftUuid}`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 text-red-600" />
                       </Button>
                       )}
                     </div>

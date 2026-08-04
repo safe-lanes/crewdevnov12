@@ -2587,9 +2587,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => deleteAppraisalTypeOption(index)}
-                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                        className="h-6 w-6 text-gray-400 hover:text-red-600"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -2665,9 +2665,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => deletePiCategoryOption(index)}
-                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                        className="h-6 w-6 text-gray-400 hover:text-red-600"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -2742,9 +2742,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => deleteEffectivenessOption(index)}
-                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                        className="h-6 w-6 text-gray-400 hover:text-red-600"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -2818,9 +2818,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => deleteTrainingCategoryOption(index)}
-                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                        className="h-6 w-6 text-gray-400 hover:text-red-600"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
@@ -2894,9 +2894,9 @@ export const FormEditor: React.FC<FormEditorProps> = ({ form, rankGroupName, ran
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => deleteTrainingStatusOption(index)}
-                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                        className="h-6 w-6 text-gray-400 hover:text-red-600"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>

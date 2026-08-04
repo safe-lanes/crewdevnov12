@@ -1844,12 +1844,12 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
                               <Button 
                                 type="button"
                                 variant="ghost" 
-                                size="sm" 
-                                className="h-6 w-6 p-0" 
+                                size="icon" 
+                                className="h-6 w-6 text-gray-400 hover:text-red-600" 
                                 onClick={() => deleteComment(comment.id)}
                                 data-testid={`button-comment-delete-${comment.id}`}
                               >
-                                <Trash2 className="h-3 w-3 text-gray-600" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
                           </div>

@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Plus, Info, X } from 'lucide-react';
+import { Plus, Info, X, Trash2 } from 'lucide-react';
 import type { Approver } from './types';
 
 interface PartBApprovalProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -172,12 +172,12 @@ export const PartBApproval = memo(function PartBApproval({
                 <Button 
                   type="button"
                   variant="ghost" 
-                  size="sm" 
-                  className="h-8 w-8 p-0"
+                  size="icon" 
+                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                   onClick={() => onDeleteApprover(approver.id)}
                   data-testid={`button-delete-approver-${approver.id}`}
                 >
-                  <Plus className="h-4 w-4 text-gray-600 rotate-45" />
+                  <Trash2 className="h-3 w-3" />
                 </Button>
                 ) : (
                 <div className="h-8 w-8 flex-shrink-0" />

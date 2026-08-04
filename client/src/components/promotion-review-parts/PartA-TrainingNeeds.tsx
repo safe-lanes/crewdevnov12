@@ -210,13 +210,13 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                       <Button 
                         type="button"
                         variant="ghost" 
-                        size="sm" 
-                        className="h-7 w-7 p-0" 
+                        size="icon" 
+                        className="h-6 w-6 text-gray-400 hover:text-red-600" 
                         onClick={() => onDeleteTraining(training.id)}
                         disabled={disabled}
                         data-testid={`button-training-delete-${training.id}`}
                       >
-                        <Trash2 className="h-4 w-4 text-gray-600" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                       <Button 
                         type="button"
@@ -258,8 +258,8 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-red-600"
                                 onClick={() => {
                                   onSetTrainingComments(prev => ({
                                     ...prev,
@@ -273,7 +273,7 @@ export const PartATrainingNeeds = memo(function PartATrainingNeeds({
                                 }}
                                 data-testid={`button-delete-training-comment-${comment.id}`}
                               >
-                                <Trash2 className="h-3 w-3 text-gray-600" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
                           </div>

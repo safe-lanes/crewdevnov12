@@ -3340,10 +3340,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           type="button"
                                           variant="ghost"
                                           size="icon"
-                                          className="h-6 w-6"
+                                          className="h-6 w-6 text-gray-400 hover:text-red-600"
                                           onClick={() => deleteTraining(training.id)}
                                         >
-                                          <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                          <Trash2 className="h-3 w-3" />
                                         </Button>
                                       </div>
                                     </td>
@@ -3380,10 +3380,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                               <Button
                                                 type="button"
                                                 variant="ghost"
-                                                size="sm"
+                                                size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600"
                                                 onClick={(e) => { e.stopPropagation(); deleteTrainingComment(training.id); }}
                                               >
-                                                <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                                <Trash2 className="h-3 w-3" />
                                               </Button>
                                             </div>
                                           </div>
@@ -3485,10 +3485,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           type="button"
                                           variant="ghost"
                                           size="icon"
-                                          className="h-6 w-6"
+                                          className="h-6 w-6 text-gray-400 hover:text-red-600"
                                           onClick={() => deleteTarget(target.id)}
                                         >
-                                          <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                          <Trash2 className="h-3 w-3" />
                                         </Button>
                                       </div>
                                     </td>
@@ -3525,10 +3525,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                               <Button
                                                 type="button"
                                                 variant="ghost"
-                                                size="sm"
+                                                size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600"
                                                 onClick={(e) => { e.stopPropagation(); deleteTargetComment(target.id); }}
                                               >
-                                                <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                                <Trash2 className="h-3 w-3" />
                                               </Button>
                                             </div>
                                           </div>
@@ -3634,9 +3634,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                         type="button"
                                         variant="ghost"
                                         size="icon"
-                                        className="h-6 w-6"
+                                        className="h-6 w-6 text-gray-400 hover:text-red-600"
                                       >
-                                        <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                        <Trash2 className="h-3 w-3" />
                                       </Button>
                                     </div>
                                   </td>
@@ -3673,10 +3673,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                             <Button
                                               type="button"
                                               variant="ghost"
-                                              size="sm"
+                                              size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600"
                                               onClick={(e) => { e.stopPropagation(); deleteCompetenceComment(assessment.id); }}
                                             >
-                                              <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                              <Trash2 className="h-3 w-3" />
                                             </Button>
                                           </div>
                                         </div>
@@ -3770,9 +3770,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       type="button"
                                       variant="ghost"
                                       size="icon"
-                                      className="h-6 w-6"
+                                      className="h-6 w-6 text-gray-400 hover:text-red-600"
                                     >
-                                      <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                      <Trash2 className="h-3 w-3" />
                                     </Button>
                                   </div>
                                 </td>
@@ -3809,10 +3809,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           <Button
                                             type="button"
                                             variant="ghost"
-                                            size="sm"
+                                            size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600"
                                             onClick={(e) => { e.stopPropagation(); deleteBehaviouralComment(assessment.id); }}
                                           >
-                                            <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                            <Trash2 className="h-3 w-3" />
                                           </Button>
                                         </div>
                                       </div>
@@ -3921,10 +3921,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       type="button"
                                       variant="ghost"
                                       size="icon"
-                                      className="h-6 w-6"
+                                      className="h-6 w-6 text-gray-400 hover:text-red-600"
                                       onClick={() => deleteTrainingNeed(trainingNeed.id)}
                                     >
-                                      <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                      <Trash2 className="h-3 w-3" />
                                     </Button>
                                   </div>
                                 </td>
@@ -3961,10 +3961,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                           <Button
                                             type="button"
                                             variant="ghost"
-                                            size="sm"
+                                            size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600"
                                             onClick={(e) => { e.stopPropagation(); deleteTrainingNeedsComment(trainingNeed.id); }}
                                           >
-                                            <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                            <Trash2 className="h-3 w-3" />
                                           </Button>
                                         </div>
                                       </div>
@@ -4130,10 +4130,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                                 <Button
                                                   type="button"
                                                   variant="ghost"
-                                                  size="sm"
+                                                  size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600"
                                                   onClick={(e) => { e.stopPropagation(); deleteRecommendationComment(recommendation.id); }}
                                                 >
-                                                  <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                                  <Trash2 className="h-3 w-3" />
                                                 </Button>
                                               </div>
                                             </div>
@@ -4199,10 +4199,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       <Button
                                         type="button"
                                         variant="ghost"
-                                        size="sm"
+                                        size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600"
                                         onClick={(e) => { e.stopPropagation(); deleteAppraiserComment(appraiser.id); }}
                                       >
-                                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                        <Trash2 className="h-3 w-3" />
                                       </Button>
                                     )}
                                   </div>
@@ -4396,10 +4396,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                       <Button
                                         type="button"
                                         variant="ghost"
-                                        size="sm"
+                                        size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600"
                                         onClick={() => deleteOfficeReview(review.id)}
                                       >
-                                        <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                        <Trash2 className="h-3 w-3" />
                                       </Button>
                                     )}
                                   </div>
@@ -4540,10 +4540,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                             type="button"
                                             variant="ghost"
                                             size="icon"
-                                            className="h-6 w-6"
+                                            className="h-6 w-6 text-gray-400 hover:text-red-600"
                                             onClick={() => deleteTrainingFollowup(followup.id)}
                                           >
-                                            <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                            <Trash2 className="h-3 w-3" />
                                           </Button>
                                         </div>
                                       </td>
@@ -4580,10 +4580,10 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
                                                 <Button
                                                   type="button"
                                                   variant="ghost"
-                                                  size="sm"
+                                                  size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600"
                                                   onClick={(e) => { e.stopPropagation(); deleteTrainingFollowupComment(followup.id); }}
                                                 >
-                                                  <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                                  <Trash2 className="h-3 w-3" />
                                                 </Button>
                                               </div>
                                             </div>

@@ -828,12 +828,12 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                             <Button
                               type="button"
                               variant="ghost"
-                              size="sm"
+                              size="icon"
                               onClick={() => removeOtherCriteria(index)}
-                              className="h-8 w-8 p-0"
+                              className="h-6 w-6 text-gray-400 hover:text-red-600"
                               data-testid={`button-remove-criteria-${index}`}
                             >
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
                         )}
@@ -921,12 +921,12 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                             <Button
                               type="button"
                               variant="ghost"
-                              size="sm"
+                              size="icon"
                               onClick={() => removeCesTest(index)}
-                              className="h-8 w-8 p-0"
+                              className="h-6 w-6 text-gray-400 hover:text-red-600"
                               data-testid={`button-remove-ces-${index}`}
                             >
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
                         )}
@@ -1010,12 +1010,12 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                             <Button
                               type="button"
                               variant="ghost"
-                              size="sm"
+                              size="icon"
                               onClick={() => removeChecklistSection(sectionIndex)}
-                              className="h-8 w-8 p-0"
+                              className="h-6 w-6 text-gray-400 hover:text-red-600"
                               data-testid={`button-remove-section-${sectionIndex}`}
                             >
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </>
                         )}
@@ -1043,12 +1043,12 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
                                   onClick={() => removeAssessmentPoint(sectionIndex, pointIndex)}
-                                  className="h-8 w-8 p-0"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                                   data-testid={`button-remove-point-${sectionIndex}-${pointIndex}`}
                                 >
-                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </>
                             )}

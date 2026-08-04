@@ -1561,15 +1561,15 @@ export function DrugAlcoholTestForm_v2({
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
-                                className="h-10 w-10 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-red-600"
                                 onClick={() => {
                                   const current = form.getValues('testingEquipment') || [];
                                   form.setValue('testingEquipment', current.filter((_, i) => i !== index));
                                 }}
                                 data-testid={`button-remove-equipment-${index}`}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
                             <FormMessage />

@@ -155,7 +155,8 @@ export const PartACesTests = memo(function PartACesTests({
                         <Button
                           type="button"
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          className="h-6 w-6 text-gray-400 hover:text-red-600"
                           onClick={() => {
                             onSetCriteriaComments(prev => ({
                               ...prev,
@@ -167,7 +168,7 @@ export const PartACesTests = memo(function PartACesTests({
                           }}
                           data-testid={`button-delete-comment-${comment.id}`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
