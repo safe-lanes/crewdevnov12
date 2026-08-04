@@ -5861,7 +5861,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{info.attachments?.filter(a => !a.isDeleted)?.length}</span>
                       )}
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600" onClick={() => removeAdditionalInfo(info.id)}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => removeAdditionalInfo(info.id)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -8597,17 +8597,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                             <TableCell className="p-3">
                               <Button
                                 variant="ghost"
-                                size="sm"
+                                size="icon"
                                 onClick={() => {
                                   setFormData(prev => ({
                                     ...prev,
                                     b7TrainingNeeds: prev.b7TrainingNeeds.filter(t => t.id !== training.id)
                                   }));
                                 }}
-                                className="h-8 w-8 p-0"
+                                className="h-6 w-6 text-gray-400 hover:text-red-600"
                                 data-testid={`button-remove-b7-training-${idx}`}
                               >
-                                <Trash2 className="h-4 w-4 text-red-500" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -9046,12 +9046,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
-                                className="h-10 w-10 p-0"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-red-600"
                                 onClick={() => removeC1Approver(approver.id)}
                                 data-testid={`button-remove-c1-approver-${approver.id}`}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
                           </div>
