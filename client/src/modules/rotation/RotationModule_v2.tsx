@@ -235,12 +235,12 @@ function ApprovalScreenV2() {
                                 </Popover>
                             </div>
 
-                            <div className="relative shrink-0 w-[130px]">
+                            <div className="relative shrink-0 w-40">
                                 <Input
-                                    placeholder="Draft ID"
+                                    placeholder="Search Draft ID"
                                     value={draftIdFilter}
                                     onChange={(e) => setDraftIdFilter(e.target.value)}
-                                    className="h-8 w-full pl-10 text-[#0f172a] text-xs placeholder:text-[#8899ae]"
+                                    className="h-8 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
                                     data-testid="input-draft-id-v2"
                                 />
                                 <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
@@ -315,10 +315,10 @@ function ApprovalScreenV2() {
 
                             <div className="relative w-full">
                                 <Input
-                                    placeholder="Draft ID"
+                                    placeholder="Search Draft ID"
                                     value={draftIdFilter}
                                     onChange={(e) => setDraftIdFilter(e.target.value)}
-                                    className="h-8 w-full pl-10 text-[#0f172a] text-xs placeholder:text-[#8899ae]"
+                                    className="h-8 pl-10 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] w-full"
                                     data-testid="input-draft-id-v2"
                                 />
                                 <SearchIcon className="w-4 h-4 absolute left-3 top-2 text-[#8798ad]" />
