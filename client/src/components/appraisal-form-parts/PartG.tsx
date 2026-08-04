@@ -185,10 +185,11 @@ const PartGComponent: React.FC<PartGProps> = ({
                           type="button"
                           variant="ghost"
                           size="icon"
+                          className="h-6 w-6 text-gray-400 hover:text-red-600"
                           onClick={() => deleteOfficeReview(review.id)}
                           data-testid={`button-delete-reviewer-${review.id}`}
                         >
-                          <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       )}
                     </div>
@@ -336,8 +337,8 @@ const PartGComponent: React.FC<PartGProps> = ({
                               <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setTrainingFollowupComments(prev => ({ ...prev, [followup.id]: prev[followup.id] || "" }))}>
                                 <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                               </Button>
-                              <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTrainingFollowup(followup.id)}>
-                                <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                              <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => deleteTrainingFollowup(followup.id)}>
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
                           </td>
@@ -362,8 +363,8 @@ const PartGComponent: React.FC<PartGProps> = ({
                                     {trainingFollowupComments[followup.id] || "Click to add comment..."}
                                   </div>
                                   <div className="ml-2">
-                                    <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTrainingFollowupComment(followup.id); }}>
-                                      <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); deleteTrainingFollowupComment(followup.id); }}>
+                                      <Trash2 className="h-3 w-3" />
                                     </Button>
                                   </div>
                                 </div>

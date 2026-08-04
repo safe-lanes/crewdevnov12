@@ -218,7 +218,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                                     <Button
                                       type="button"
                                       variant="ghost"
-                                      size="sm"
+                                      size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         showConfirmDialog(
@@ -232,7 +232,7 @@ const PartFComponent: React.FC<PartFProps> = ({
                                         );
                                       }}
                                     >
-                                      <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                      <Trash2 className="h-3 w-3" />
                                     </Button>
                                   </div>
                                 </div>
@@ -344,11 +344,11 @@ const PartFComponent: React.FC<PartFProps> = ({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="h-9 w-9"
+                                className="h-6 w-6 text-gray-400 hover:text-red-600"
                                 onClick={() => deleteAppraiserComment(comment.id)}
                                 data-testid={`button-delete-appraiser-${comment.id}`}
                               >
-                                <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             )}
                           </div>
@@ -383,12 +383,12 @@ const PartFComponent: React.FC<PartFProps> = ({
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                                   onClick={() => deleteAppraiserComment(comment.id)}
                                   data-testid={`button-delete-appraiser-${comment.id}`}
                                 >
-                                  <Trash2 className="h-3.5 w-3.5 text-red-600 hover:text-red-700" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               )}
                             </div>

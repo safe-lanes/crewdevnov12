@@ -108,8 +108,8 @@ const PartEComponent: React.FC<PartEProps> = ({
                             <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => setTrainingNeedsComments(prev => ({ ...prev, [need.id]: prev[need.id] || "" }))}>
                               <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                             </Button>
-                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTrainingNeed(need.id)}>
-                              <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => deleteTrainingNeed(need.id)}>
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
                         </td>
@@ -134,8 +134,8 @@ const PartEComponent: React.FC<PartEProps> = ({
                                   {trainingNeedsComments[need.id] || "Click to add comment..."}
                                 </div>
                                 <div className="ml-2">
-                                  <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteTrainingNeedsComment(need.id); }}>
-                                    <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); deleteTrainingNeedsComment(need.id); }}>
+                                    <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </div>
                               </div>

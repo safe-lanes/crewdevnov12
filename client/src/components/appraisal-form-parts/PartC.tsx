@@ -117,8 +117,8 @@ const PartCComponent: React.FC<PartCProps> = ({
                                 {competenceComments[assessment.id] || "Click to add comment..."}
                               </div>
                               <div className="ml-2">
-                                <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteCompetenceComment(assessment.id); }}>
-                                  <Trash2 className="h-4 w-4 text-red-600 hover:text-red-700" />
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); deleteCompetenceComment(assessment.id); }}>
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
                             </div>

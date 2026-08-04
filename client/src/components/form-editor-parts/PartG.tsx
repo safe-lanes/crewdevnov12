@@ -197,9 +197,9 @@ const PartGComponent: React.FC<PartGProps> = ({
                           variant="ghost"
                           size="icon"
                           disabled
-                          className="text-gray-400 h-6 w-6"
+                          className="h-6 w-6 text-gray-400 hover:text-red-600"
                         >
-                          <Trash2 className="h-[18px] w-[18px]" />
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </td>
@@ -320,12 +320,12 @@ const PartGComponent: React.FC<PartGProps> = ({
                           <Button
                             type="button"
                             variant="ghost"
-                            size="sm"
+                            size="icon"
                             onClick={() => deleteTrainingFollowup(followup.id)}
-                            className="text-red-600 hover:text-red-700"
+                            className="h-6 w-6 text-gray-400 hover:text-red-600"
                             data-testid={`button-delete-followup-${index}`}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </td>

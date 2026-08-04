@@ -96,10 +96,10 @@ const PartEComponent: React.FC<PartEProps> = ({
                         variant="ghost"
                         size="icon"
                         onClick={() => deleteTrainingNeed(trainingNeed.id)}
-                        className="h-6 w-6"
+                        className="h-6 w-6 text-gray-400 hover:text-red-600"
                         data-testid={`button-delete-training-need-${index}`}
                       >
-                        <Trash2 className="h-[18px] w-[18px] text-gray-500" />
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </td>

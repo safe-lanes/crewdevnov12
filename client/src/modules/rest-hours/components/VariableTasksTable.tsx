@@ -441,7 +441,7 @@ export const VariableTasksTable = ({ vesselId, periodValue }: VariableTasksTable
                         {(permissions.length === 0 || canDelete("Rest Hours Plan")) && (
                         <button
                           onClick={() => handleDelete((task as any).variableTaskUuid || String(task.id))}
-                          className="text-red-600 hover:text-red-700 transition-colors"
+                          className="h-7 w-7 flex items-center justify-center rounded-md text-red-600 hover:bg-red-100 transition-colors"
                           data-testid={`button-delete-${task.id}`}
                         >
                           <Trash2 className="h-4 w-4" />

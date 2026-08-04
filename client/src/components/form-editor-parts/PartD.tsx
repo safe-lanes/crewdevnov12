@@ -164,10 +164,10 @@ const PartDComponent: React.FC<PartDProps> = ({
                               variant="ghost"
                               size="icon"
                               onClick={() => deleteBehaviouralAssessment(assessment.id)}
-                              className="text-red-600 hover:text-red-800 h-6 w-6"
+                              className="h-6 w-6 text-gray-400 hover:text-red-600"
                               data-testid={`button-delete-behavioural-${index}`}
                             >
-                              <Trash2 className="h-[18px] w-[18px]" />
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           )}
                         </div>

@@ -154,8 +154,8 @@ const PartBComponent: React.FC<PartBProps> = ({
                                   <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                                 </Button>
                                 {!lockDelete && (
-                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTraining(training.id)} data-testid={`button-delete-training-${training.id}`}>
-                                    <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => deleteTraining(training.id)} data-testid={`button-delete-training-${training.id}`}>
+                                    <Trash2 className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
@@ -188,8 +188,8 @@ const PartBComponent: React.FC<PartBProps> = ({
                                 {!lockB1Structural && (
                                   <div className="flex gap-2 justify-center">
                                     <div className="h-6 w-6" />
-                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); deleteTrainingComment(training.id); }} data-testid={`button-delete-training-comment-${training.id}`}>
-                                      <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); deleteTrainingComment(training.id); }} data-testid={`button-delete-training-comment-${training.id}`}>
+                                      <Trash2 className="h-3 w-3" />
                                     </Button>
                                   </div>
                                 )}
@@ -271,8 +271,8 @@ const PartBComponent: React.FC<PartBProps> = ({
                                 <MessageSquare className="h-[18px] w-[18px] text-gray-500" />
                               </Button>
                               {!lockB2 && (
-                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteTarget(target.id)} data-testid={`button-delete-target-${target.id}`}>
-                                  <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => deleteTarget(target.id)} data-testid={`button-delete-target-${target.id}`}>
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               )}
                             </div>
@@ -305,8 +305,8 @@ const PartBComponent: React.FC<PartBProps> = ({
                               {!lockB2Structural && (
                                 <div className="flex gap-2 justify-center">
                                   <div className="h-6 w-6" />
-                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); deleteTargetComment(target.id); }} data-testid={`button-delete-target-comment-${target.id}`}>
-                                    <Trash2 className="h-[18px] w-[18px] text-red-600 hover:text-red-700" />
+                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={(e) => { e.stopPropagation(); deleteTargetComment(target.id); }} data-testid={`button-delete-target-comment-${target.id}`}>
+                                    <Trash2 className="h-3 w-3" />
                                   </Button>
                                 </div>
                               )}
