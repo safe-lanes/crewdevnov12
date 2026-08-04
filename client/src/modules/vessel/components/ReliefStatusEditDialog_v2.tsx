@@ -706,13 +706,6 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                                             setTravelStartDateOpen(false);
                                                         }
                                                     }}
-                                                    disabled={(() => {
-                                                        const signOnVal = form.getValues('relieverSignOnDate');
-                                                        if (!signOnVal) return undefined;
-                                                        const signOnParsed = parseDateString(signOnVal as string);
-                                                        if (!signOnParsed) return undefined;
-                                                        return { after: signOnParsed };
-                                                    })()}
                                                     initialFocus
                                                 />
                                             </PopoverContent>
