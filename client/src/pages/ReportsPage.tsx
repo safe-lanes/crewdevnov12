@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { FormattedDateInput } from "@/components/ui/formatted-date-input";
+import { PeriodFilter, type PeriodFilterValue } from "@/components/filters/PeriodFilter";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -176,7 +177,9 @@ type FilterKind =
   | "byDays"
   | "onBoard"
   | "onLeave"
-  | "status";
+  | "status"
+  | "period"
+  | "periodMonth";
 
 interface FilterDescriptor {
   kind: FilterKind;
@@ -341,11 +344,11 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
   // Rest Hours
   "rh-violations": [
     { kind: "vessel", label: "Filter by Vessel" },
-    { kind: "dateRange", label: "Date Range" },
+    { kind: "period", label: "Period" },
   ],
   "rh-compliance-summary": [
     { kind: "vessel", label: "Filter by Vessel" },
-    { kind: "dateRange", label: "Date Range" },
+    { kind: "periodMonth", label: "Period" },
   ],
 
   // Training
@@ -480,6 +483,7 @@ export type FilterValue =
   | string
   | number
   | { from: string; to: string }
+  | PeriodFilterValue
   | undefined;
 
 interface FilterControlProps {
@@ -635,6 +639,21 @@ function FilterControl({
     }
     case "onLeave":
       return renderSelect(filter.label, ["All", "On Leave", "On Board"]);
+    case "period":
+    case "periodMonth": {
+      const current =
+        value && typeof value === "object" && "mode" in value
+          ? (value as PeriodFilterValue)
+          : undefined;
+      return (
+        <PeriodFilter
+          value={current}
+          onChange={(v) => onChange(v)}
+          rangeMode={filter.kind === "periodMonth" ? "month" : "date"}
+          placeholder={filter.kind === "periodMonth" ? "MMM-YYYY" : "DD-MMM-YYYY"}
+        />
+      );
+    }
     default:
       return renderSelect(filter.label, ["Option 1", "Option 2"]);
   }
@@ -656,6 +675,29 @@ function buildFiltersPayload(
         const range = v as { from: string; to: string };
         if (range.from) out.dateFrom = range.from;
         if (range.to) out.dateTo = range.to;
+        break;
+      }
+      case "period":
+      case "periodMonth": {
+        const toYMD = (dt: Date) =>
+          `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+        const p = v as PeriodFilterValue;
+        if (p.mode === "year" && p.year) {
+          out.dateFrom = `${p.year}-01-01`;
+          out.dateTo = `${p.year}-12-31`;
+        } else if (p.mode === "year-quarter" && p.year && p.quarter) {
+          const startMonth = (p.quarter - 1) * 3; // 0-based
+          out.dateFrom = toYMD(new Date(p.year, startMonth, 1));
+          out.dateTo = toYMD(new Date(p.year, startMonth + 3, 0));
+        } else if (p.mode === "year-month" && p.year && p.month) {
+          out.dateFrom = toYMD(new Date(p.year, p.month - 1, 1));
+          out.dateTo = toYMD(new Date(p.year, p.month, 0));
+        } else if (p.mode === "date-range") {
+          if (p.dateFrom) out.dateFrom = toYMD(p.dateFrom);
+          if (p.dateTo) out.dateTo = toYMD(p.dateTo);
+          // Date-accurate mode: only the rh-violations "period" filter sends this.
+          if (d.kind === "period" && p.dateFrom && p.dateTo) out.granularity = "date";
+        }
         break;
       }
       case "withinDays":

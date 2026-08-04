@@ -31,9 +31,11 @@ interface PeriodFilterProps {
   value?: PeriodFilterValue;
   onChange: (value: PeriodFilterValue) => void;
   className?: string;
+  rangeMode?: 'date' | 'month';
+  placeholder?: string;
 }
 
-export const PeriodFilter = ({ value, onChange, className }: PeriodFilterProps) => {
+export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', placeholder }: PeriodFilterProps) => {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'year-period' | 'date-range'>(
     value?.mode === 'date-range' ? 'date-range' : 'year-period'
@@ -142,6 +144,7 @@ export const PeriodFilter = ({ value, onChange, className }: PeriodFilterProps) 
   // Generate display text for the trigger button
   const getDisplayText = () => {
     if (!value) {
+      if (placeholder) return placeholder;
       return `${months[currentMonth - 1].label}-${currentYear}`;
     }
 
@@ -161,6 +164,7 @@ export const PeriodFilter = ({ value, onChange, className }: PeriodFilterProps) 
       return `${format(value.dateFrom, 'dd/MM/yy')} - ${format(value.dateTo, 'dd/MM/yy')}`;
     }
 
+    if (placeholder) return placeholder;
     return `${months[currentMonth - 1].label}-${currentYear}`;
   };
 
@@ -189,7 +193,7 @@ export const PeriodFilter = ({ value, onChange, className }: PeriodFilterProps) 
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="date-range" id="mode-date-range" data-testid="radio-date-range" />
               <Label htmlFor="mode-date-range" className="text-sm font-normal cursor-pointer">
-                Date Range
+                {rangeMode === 'month' ? 'Month Range' : 'Date Range'}
               </Label>
             </div>
           </RadioGroup>
@@ -254,7 +258,39 @@ export const PeriodFilter = ({ value, onChange, className }: PeriodFilterProps) 
           )}
 
           {/* Date Range Mode */}
-          {mode === 'date-range' && (
+          {mode === 'date-range' && rangeMode === 'month' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-600 dark:text-gray-400">From Month</Label>
+                <Input
+                  type="month"
+                  value={dateFrom ? format(dateFrom, 'yyyy-MM') : ''}
+                  onChange={(e) => {
+                    const [y, m] = e.target.value.split('-').map(Number);
+                    setDateFrom(y && m ? new Date(y, m - 1, 1) : undefined);
+                  }}
+                  className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
+                  data-testid="month-from-trigger"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-600 dark:text-gray-400">To Month</Label>
+                <Input
+                  type="month"
+                  value={dateTo ? format(dateTo, 'yyyy-MM') : ''}
+                  onChange={(e) => {
+                    const [y, m] = e.target.value.split('-').map(Number);
+                    setDateTo(y && m ? new Date(y, m, 0) : undefined);
+                  }}
+                  className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
+                  data-testid="month-to-trigger"
+                />
+              </div>
+            </div>
+          )}
+
+          {mode === 'date-range' && rangeMode === 'date' && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs text-gray-600 dark:text-gray-400">Date From</Label>
