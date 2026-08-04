@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Calendar, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +38,8 @@ interface PeriodFilterProps {
 
 export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', placeholder }: PeriodFilterProps) => {
   const [open, setOpen] = useState(false);
+  const monthFromRef = useRef<HTMLInputElement>(null);
+  const monthToRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<'year-period' | 'date-range'>(
     value?.mode === 'date-range' ? 'date-range' : 'year-period'
   );
@@ -174,7 +176,7 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className={`h-8 w-40 justify-between text-xs text-[#0f172a] bg-white dark:bg-neutral-900 border-gray-300 dark:border-gray-600 ${className}`}
+          className={`h-8 ${placeholder ? 'w-48' : 'w-40'} justify-between text-xs text-[#0f172a] bg-white dark:bg-neutral-900 border-gray-300 dark:border-gray-600 ${className}`}
           data-testid="period-filter-trigger"
         >
           <span>{getDisplayText()}</span>
@@ -263,12 +265,22 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs text-gray-600 dark:text-gray-400">From Month</Label>
-                <div className="relative flex items-center h-9 w-fit rounded-md border px-3 text-xs cursor-pointer bg-white dark:bg-neutral-900">
-                  <span className={dateFrom ? '' : 'text-muted-foreground'}>
+                <div
+                  className="relative flex items-center h-9 w-full rounded-md border px-3 text-xs cursor-pointer bg-white dark:bg-neutral-900"
+                  onClick={() => {
+                    try {
+                      monthFromRef.current?.showPicker?.();
+                    } catch {
+                      // showPicker() can throw inside cross-origin iframes (Replit preview) — safe to ignore
+                    }
+                  }}
+                >
+                  <span className={`flex-1 select-none ${dateFrom ? '' : 'text-muted-foreground'}`}>
                     {dateFrom ? format(dateFrom, 'MMM-yyyy') : 'MMM-YYYY'}
                   </span>
                   <CalendarDays className="h-3.5 w-3.5 text-muted-foreground ml-2" />
                   <Input
+                    ref={monthFromRef}
                     type="month"
                     value={dateFrom ? format(dateFrom, 'yyyy-MM') : ''}
                     onChange={(e) => {
@@ -283,12 +295,22 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
 
               <div className="space-y-2">
                 <Label className="text-xs text-gray-600 dark:text-gray-400">To Month</Label>
-                <div className="relative flex items-center h-9 w-fit rounded-md border px-3 text-xs cursor-pointer bg-white dark:bg-neutral-900">
-                  <span className={dateTo ? '' : 'text-muted-foreground'}>
+                <div
+                  className="relative flex items-center h-9 w-full rounded-md border px-3 text-xs cursor-pointer bg-white dark:bg-neutral-900"
+                  onClick={() => {
+                    try {
+                      monthToRef.current?.showPicker?.();
+                    } catch {
+                      // showPicker() can throw inside cross-origin iframes (Replit preview) — safe to ignore
+                    }
+                  }}
+                >
+                  <span className={`flex-1 select-none ${dateTo ? '' : 'text-muted-foreground'}`}>
                     {dateTo ? format(dateTo, 'MMM-yyyy') : 'MMM-YYYY'}
                   </span>
                   <CalendarDays className="h-3.5 w-3.5 text-muted-foreground ml-2" />
                   <Input
+                    ref={monthToRef}
                     type="month"
                     value={dateTo ? format(dateTo, 'yyyy-MM') : ''}
                     onChange={(e) => {
