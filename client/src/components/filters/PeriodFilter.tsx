@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Calendar } from 'lucide-react';
+import { Calendar, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { FormattedDateInput } from '@/components/ui/formatted-date-input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -262,30 +263,42 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs text-gray-600 dark:text-gray-400">From Month</Label>
-                <Input
-                  type="month"
-                  value={dateFrom ? format(dateFrom, 'yyyy-MM') : ''}
-                  onChange={(e) => {
-                    const [y, m] = e.target.value.split('-').map(Number);
-                    setDateFrom(y && m ? new Date(y, m - 1, 1) : undefined);
-                  }}
-                  className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
-                  data-testid="month-from-trigger"
-                />
+                <div className="relative flex items-center h-9 w-fit rounded-md border px-3 text-xs cursor-pointer bg-white dark:bg-neutral-900">
+                  <span className={dateFrom ? '' : 'text-muted-foreground'}>
+                    {dateFrom ? format(dateFrom, 'MMM-yyyy') : 'MMM-YYYY'}
+                  </span>
+                  <CalendarDays className="h-3.5 w-3.5 text-muted-foreground ml-2" />
+                  <Input
+                    type="month"
+                    value={dateFrom ? format(dateFrom, 'yyyy-MM') : ''}
+                    onChange={(e) => {
+                      const [y, m] = e.target.value.split('-').map(Number);
+                      setDateFrom(y && m ? new Date(y, m - 1, 1) : undefined);
+                    }}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    data-testid="month-from-trigger"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label className="text-xs text-gray-600 dark:text-gray-400">To Month</Label>
-                <Input
-                  type="month"
-                  value={dateTo ? format(dateTo, 'yyyy-MM') : ''}
-                  onChange={(e) => {
-                    const [y, m] = e.target.value.split('-').map(Number);
-                    setDateTo(y && m ? new Date(y, m, 0) : undefined);
-                  }}
-                  className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
-                  data-testid="month-to-trigger"
-                />
+                <div className="relative flex items-center h-9 w-fit rounded-md border px-3 text-xs cursor-pointer bg-white dark:bg-neutral-900">
+                  <span className={dateTo ? '' : 'text-muted-foreground'}>
+                    {dateTo ? format(dateTo, 'MMM-yyyy') : 'MMM-YYYY'}
+                  </span>
+                  <CalendarDays className="h-3.5 w-3.5 text-muted-foreground ml-2" />
+                  <Input
+                    type="month"
+                    value={dateTo ? format(dateTo, 'yyyy-MM') : ''}
+                    onChange={(e) => {
+                      const [y, m] = e.target.value.split('-').map(Number);
+                      setDateTo(y && m ? new Date(y, m, 0) : undefined);
+                    }}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    data-testid="month-to-trigger"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -294,24 +307,44 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs text-gray-600 dark:text-gray-400">Date From</Label>
-                <Input
-                  type="date"
-                  value={dateFrom ? format(dateFrom, 'yyyy-MM-dd') : ''}
-                  onChange={(e) => setDateFrom(parseDateInput(e.target.value))}
-                  className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
-                  data-testid="date-from-trigger"
-                />
+                {placeholder ? (
+                  <FormattedDateInput
+                    value={dateFrom ? format(dateFrom, 'yyyy-MM-dd') : ''}
+                    onChange={(e) => setDateFrom(parseDateInput(e.target.value))}
+                    placeholder="DD-MMM-YYYY"
+                    className="h-9 text-xs"
+                    data-testid="date-from-trigger"
+                  />
+                ) : (
+                  <Input
+                    type="date"
+                    value={dateFrom ? format(dateFrom, 'yyyy-MM-dd') : ''}
+                    onChange={(e) => setDateFrom(parseDateInput(e.target.value))}
+                    className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
+                    data-testid="date-from-trigger"
+                  />
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label className="text-xs text-gray-600 dark:text-gray-400">Date To</Label>
-                <Input
-                  type="date"
-                  value={dateTo ? format(dateTo, 'yyyy-MM-dd') : ''}
-                  onChange={(e) => setDateTo(parseDateInput(e.target.value))}
-                  className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
-                  data-testid="date-to-trigger"
-                />
+                {placeholder ? (
+                  <FormattedDateInput
+                    value={dateTo ? format(dateTo, 'yyyy-MM-dd') : ''}
+                    onChange={(e) => setDateTo(parseDateInput(e.target.value))}
+                    placeholder="DD-MMM-YYYY"
+                    className="h-9 text-xs"
+                    data-testid="date-to-trigger"
+                  />
+                ) : (
+                  <Input
+                    type="date"
+                    value={dateTo ? format(dateTo, 'yyyy-MM-dd') : ''}
+                    onChange={(e) => setDateTo(parseDateInput(e.target.value))}
+                    className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
+                    data-testid="date-to-trigger"
+                  />
+                )}
               </div>
             </div>
           )}
