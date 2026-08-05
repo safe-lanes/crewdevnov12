@@ -1420,18 +1420,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (!crewAssignmentsData || crewAssignmentsData.length === 0) return;
 
     // Build a set of "vesselUuid|signOnDate" keys from all on-board assignments
-    const assignmentKeys = new Set<string>();
+    const activeAssignments = new Map<string, string>();
     crewAssignmentsData.forEach((a: any) => {
       if (a.vesselUuid && a.signOnDate && !a.signOffDate) {
-        assignmentKeys.add(`${a.vesselUuid}|${a.signOnDate}`);
+        activeAssignments.set(a.vesselUuid, String(a.signOnDate).slice(0, 10));
       }
     });
 
     setFormData(prev => {
       const updated = (prev.currentCompanySeaService || []).map((sea: any) => {
         if (!sea.seaUuid) return sea; // manual (unsaved) rows are never synced
-        const key = `${sea.vesselCode || sea.vesselUuid || ''}|${sea.from || sea.fromDate || ''}`;
-        const isSynced = assignmentKeys.has(key);
+        const vesselKey = sea.vesselCode || sea.vesselUuid || '';
+        const signOn = activeAssignments.get(vesselKey);
+        const rowFrom = String(sea.from || sea.fromDate || '').slice(0, 10);
+        const rowOpen = !(sea.to || sea.toDate);
+        const isSynced = !!signOn && rowOpen && !!rowFrom && rowFrom >= signOn;
         if (isSynced === !!(sea.isVesselSynced)) return sea;
         return { ...sea, isVesselSynced: isSynced };
       });
@@ -5297,7 +5300,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
                           const isManualRow = !(service as any).seaUuid;
-                          const isActiveContract = !isManualRow && (!service.to || service.to === '' || (service as any).isActive === true);
+                          const isActiveContract = !isManualRow && isVesselSynced && (!service.to || service.to === '' || (service as any).isActive === true);
                           
                           // Use shared date utility for consistent date across frontend and backend
                           const todayDate = formatDateToISO(getReportingDate());
@@ -5341,7 +5344,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         {(() => {
                           const isManualRow2 = !(service as any).seaUuid;
-                          const isActiveContract = !isManualRow2 && (!service.to || service.to === '' || (service as any).isActive === true);
+                          const isActiveContract = !isManualRow2 && isVesselSynced && (!service.to || service.to === '' || (service as any).isActive === true);
                           
                           let displayPeriod = service.periodMonths;
                           
