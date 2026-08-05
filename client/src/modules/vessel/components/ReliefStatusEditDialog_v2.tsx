@@ -241,7 +241,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     deploymentChecklistCompleted: data.deploymentChecklistCompleted,
                     applicableDocsChecked: data.applicableDocsChecked,
                     joiningStatus: data.signOnStatus,
-                    relieverSignOnDate: data.relieverSignOnDate,
+                    relieverSignOnDate: data.relieverSignOnDate || null,
                     joiningPortUuid: data.relieverSignOnPort,
                     plannedConfirmedDate: data.plannedConfirmedDate || null,
                     travelStartDate: data.travelStartDate || null,
@@ -381,7 +381,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             data.travelStartDate = normalizeToIsoDate(data.travelStartDate);
         }
 
-        if (data.relieverCrewName && data.relieverCrewName.trim() !== '' && !data.relieverSignOnDate) {
+        if (data.signOnStatus === "Signed On" && !data.relieverSignOnDate) {
             toast({ title: "Validation Error", description: "Sign On Date is required.", variant: "destructive" });
             return;
         }
