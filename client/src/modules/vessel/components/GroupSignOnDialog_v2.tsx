@@ -162,6 +162,15 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
 
     const handleSaveNewDate = async () => {
         if (!selectedGroup || selectedCrew.length === 0 || !newSignOnDate) return;
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        if (newSignOnDate > todayStr) {
+            toast({
+                title: 'Invalid Sign On Date',
+                description: 'Sign On date cannot be in the future.',
+                variant: 'destructive',
+            });
+            return;
+        }
         setIsSavingDate(true);
         const succeeded: string[] = [];
         const failed: { name: string; reason: string }[] = [];
@@ -391,6 +400,7 @@ export function GroupSignOnDialog_v2({ open, onOpenChange, planningRows, vesselU
                             <FormattedDateInput
                                 value={newSignOnDate}
                                 onChange={(e) => setNewSignOnDate(e.target.value)}
+                                max={format(new Date(), 'yyyy-MM-dd')}
                                 className="mt-1"
                                 data-testid="input-change-sign-on-date"
                             />
