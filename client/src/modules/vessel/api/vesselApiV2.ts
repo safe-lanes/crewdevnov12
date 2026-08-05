@@ -85,7 +85,7 @@ export interface CreatePlanningInput {
   contractEndRangeStartMonths?: number;
   contractEndRangeEndMonths?: number;
   relieverCrewUuid?: string;
-  relieverSignOnDate?: string;
+  relieverSignOnDate?: string | null;
   joiningPortUuid?: string;
   joiningStatus?: string;
   relieverContractPeriodMonths?: number;
