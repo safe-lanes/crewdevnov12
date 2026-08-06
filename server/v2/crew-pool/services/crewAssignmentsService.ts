@@ -105,6 +105,7 @@ export const crewAssignmentsService = {
       vesselName?: string;
       rank?: string;
       notes?: string;
+      isCurrent?: boolean;
       auditUserUuid?: string | null;
     }
   ): Promise<CrewAssignment> {
@@ -153,7 +154,7 @@ export const crewAssignmentsService = {
                 : null,
               contractPeriod: data.contractPeriod ?? null,
               assignmentType,
-              isCurrent: true,
+              isCurrent: data.isCurrent !== undefined ? data.isCurrent : true,
               createdAt: now,
               auditUserUuid,
             },

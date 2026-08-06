@@ -1,10 +1,24 @@
 import { Router } from "express";
-import { vesselPlanningController, vesselCrewCountController, vesselListController, complianceController, trainingController, oilMajorRulesController } from "./controllers";
+import {
+  vesselPlanningController,
+  vesselCrewCountController,
+  vesselListController,
+  complianceController,
+  trainingController,
+  oilMajorRulesController,
+  vesselImportController,
+} from "./controllers";
 
 const router = Router();
 
 // Vessel list endpoint - get all vessels from master_vessels
 router.get("/list", vesselListController.getAll);
+
+// Vessel Rank Hierarchy & Crew Assignment Import endpoints
+router.post("/import/parse-zip", vesselImportController.parseZip);
+router.post("/import/generate-workbook", vesselImportController.generateWorkbook);
+router.post("/import/hierarchy", vesselImportController.importHierarchy);
+router.post("/import/assignments", vesselImportController.importAssignments);
 
 // Get all planning records for conflict detection (used by Rotation V2)
 router.get("/planning", vesselPlanningController.getAll);

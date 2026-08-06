@@ -4,3 +4,4 @@ export { vesselListController } from "./vesselListController";
 export { complianceController } from "./complianceController";
 export { trainingController } from "./trainingController";
 export { oilMajorRulesController } from "./oilMajorRulesController";
+export { vesselImportController } from "./vesselImportController";

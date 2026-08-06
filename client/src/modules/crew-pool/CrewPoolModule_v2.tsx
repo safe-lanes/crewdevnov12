@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { CrewInfoForm_v2 } from './CrewInfoForm_v2';
 import { CrewImportDialog } from './CrewImportDialog';
+import { VesselAssignmentImportDialog } from './VesselAssignmentImportDialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
@@ -79,6 +80,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     const [gridApi, setGridApi] = useState<GridApi | null>(null);
     const [isCrewInfoFormOpen, setIsCrewInfoFormOpen] = useState(false);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+    const [isVesselAssignmentImportOpen, setIsVesselAssignmentImportOpen] = useState(false);
     const [selectedCrewMember, setSelectedCrewMember] = useState<any | null>(null);
     const viewport = useViewport();
     const viewportConfig = getViewportConfig(viewport);
@@ -1462,22 +1464,33 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         <>
                         <Button
                             variant="outline"
-                            className="h-8 w-32 text-xs border-[#e1e8ed] text-gray-700 font-medium bg-white hover:bg-gray-50"
+                            size="sm"
+                            className="h-8 text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm font-medium"
                             onClick={() => setIsImportDialogOpen(true)}
-                            data-testid="button-import-crew"
                         >
-                            <Upload className="h-3 w-3 mr-1" />
+                            <Upload className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
                             Import Crew
                         </Button>
                         <Button
-                            className="h-8 w-32 bg-[#5dc86f] hover:bg-[#218838] text-xs text-white"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm font-medium"
+                            onClick={() => setIsVesselAssignmentImportOpen(true)}
+                        >
+                            <Upload className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
+                            Import Vessel Data
+                        </Button>
+                        <Button
+                            variant="default"
+                            size="sm"
+                            className="h-8 text-xs bg-[#5dc86f] hover:bg-[#218838] text-white font-medium shadow-sm"
                             onClick={() => {
                                 setSelectedCrewMember(null);
                                 setIsCrewInfoFormOpen(true);
                             }}
                             data-testid="button-new-crew"
                         >
-                            <PlusIcon className="h-3 w-3 mr-1" />
+                            <PlusIcon className="h-3.5 w-3.5 mr-1.5" />
                             New Crew
                         </Button>
                         </>
@@ -1500,6 +1513,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             <CrewImportDialog
                 isOpen={isImportDialogOpen}
                 onClose={() => setIsImportDialogOpen(false)}
+            />
+
+            {/* Vessel Rank Hierarchy & Crew Assignment Import Dialog */}
+            <VesselAssignmentImportDialog
+                isOpen={isVesselAssignmentImportOpen}
+                onClose={() => setIsVesselAssignmentImportOpen(false)}
             />
         </div>
     );
