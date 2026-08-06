@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useSearch } from "wouter";
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { useQueryClient } from '@tanstack/react-query';
@@ -616,6 +617,15 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     const [deepLinkSection, setDeepLinkSection] = useState<string | null>(null);
     const [deepLinkDoc, setDeepLinkDoc] = useState<string | null>(null);
     const [deepLinkVisa, setDeepLinkVisa] = useState<string | null>(null);
+
+    // Live listener: if a notification is clicked while we're ALREADY on this
+    // page, the URL changes without a page reload. useSearch() sees that change
+    // and hands the crew uuid to the existing deep-link effect below.
+    const searchString = useSearch();
+    useEffect(() => {
+        const crewParam = new URLSearchParams(searchString).get("crew");
+        if (crewParam) setPendingCrewUuid(crewParam);
+    }, [searchString]);
 
     useEffect(() => {
         if (!pendingCrewUuid) return;

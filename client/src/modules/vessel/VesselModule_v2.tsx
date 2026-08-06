@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { VesselSideBar_v2 } from './VesselSideBar_v2';
 import MainLayout from '@/components/main/MainLayout';
@@ -791,6 +791,14 @@ export function VesselModule_v2(): JSX.Element {
         return new URLSearchParams(window.location.search).get("vessel");
     });
     const [deepLinkCrewUuid, setDeepLinkCrewUuid] = useState<string | null>(null);
+
+    // Live listener: handles notification clicks made while already on the Vessel page.
+    const searchString = useSearch();
+    useEffect(() => {
+        const vesselParam = new URLSearchParams(searchString).get("vessel");
+        if (vesselParam) setPendingVesselUuid(vesselParam);
+    }, [searchString]);
+
     useEffect(() => {
         if (!pendingVesselUuid) return;
         if (vesselsLoading || vessels.length === 0) return;
