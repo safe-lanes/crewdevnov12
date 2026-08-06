@@ -11,7 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, Settings, Plus, Trash2, Info } from "lucide-react";
+import { ArrowLeft, Save, Settings, Plus, Trash2, Info, CalendarIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Form, promotionA2ConfigSchema, type PromotionA2Config, type PromotionChecklistSection, type PromotionChecklistAssessmentPoint } from "@shared/schema";
 import {
   Table,
@@ -28,7 +34,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Tooltip,
   TooltipContent,
@@ -36,7 +42,7 @@ import {
 } from "@/components/ui/tooltip";
 
 interface PromotionFormEditorProps {
-  form: Form;
+  form: Form & { isLockForm?: boolean };
   rankGroupName?: string;
   rankGroupConfig?: any;
   useV2?: boolean;
@@ -62,6 +68,15 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   onSave
 }) => {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const { toast } = useToast();
+  // Draft/release workflow state (mirrors the appraisal FormEditor).
+  const [isConfigMode, setIsConfigMode] = useState(false);
+  const [activeVersion, setActiveVersion] = useState<string>("");
+  const [selectedVersionNo, setSelectedVersionNo] = useState<string>("");
+  const [selectedVersionDate, setSelectedVersionDate] = useState<Date | undefined>(undefined);
+  const [hasSavedDraft, setHasSavedDraft] = useState(false);
+  const [versionExplicitlySelected, setVersionExplicitlySelected] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [showLicenseDialog, setShowLicenseDialog] = useState(false);
   const [selectedLicenseIds, setSelectedLicenseIds] = useState<string[]>([]);
   const [licenseSearchTerm, setLicenseSearchTerm] = useState("");
@@ -86,7 +101,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
     return rg?.id ?? null;
   }, [allRankGroups, rankGroupName, actualFormId]);
 
-  const { data: formVersions = [] } = useQuery<Array<{ id: number; rankGroupId: number | null; versionNo: string; status: string; configuration: string | null; releasedAt: string | null }>>({
+  const { data: formVersions = [] } = useQuery<Array<{ id: number; rankGroupId: number | null; versionNo: string; versionDate: string | null; status: string; configuration: string | null; releasedAt: string | null }>>({
     queryKey: [`/api/v2/admin/forms/${actualFormId}/versions`],
     enabled: !!actualFormId,
   });
@@ -109,6 +124,169 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
       return null;
     }
   }, [formVersions, editedRankGroupId]);
+
+  // ---- Draft/release workflow derivations (mirroring the appraisal FormEditor) ----
+  const rgVersions = React.useMemo(
+    () => formVersions.filter(v => v.rankGroupId === editedRankGroupId),
+    [formVersions, editedRankGroupId],
+  );
+  const draftVersion = React.useMemo(
+    () => rgVersions.find(v => v.status === 'draft') ?? null,
+    [rgVersions],
+  );
+  const hasDraftVersion = !!draftVersion;
+  const latestReleasedVersionRow = React.useMemo(() => {
+    const released = rgVersions.filter(v => v.status === 'released');
+    if (released.length === 0) return null;
+    return released.reduce((max, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      const maxNo = parseInt(max.versionNo, 10);
+      if (isNaN(vNo)) return max;
+      if (isNaN(maxNo)) return v;
+      return vNo > maxNo ? v : max;
+    }, released[0]);
+  }, [rgVersions]);
+  const nextVersionNo = React.useMemo(() => {
+    const maxVersionNo = rgVersions.reduce((max, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      return isNaN(vNo) ? max : Math.max(max, vNo);
+    }, 0);
+    return String(maxVersionNo + 1).padStart(2, '0');
+  }, [rgVersions]);
+
+  // Versions list for the "Viewing version" dropdown (Draft first, then Released, newest first).
+  const versions = React.useMemo(() => {
+    const result: { versionNo: string; versionDate: string; status: string; id?: number }[] = [];
+    if (draftVersion) {
+      result.push({
+        id: draftVersion.id,
+        versionNo: draftVersion.versionNo,
+        versionDate: draftVersion.versionDate || format(new Date(), "dd-MMM-yyyy"),
+        status: 'Draft',
+      });
+    }
+    rgVersions.filter(v => v.status === 'released').forEach(v => {
+      result.push({
+        id: v.id,
+        versionNo: v.versionNo,
+        versionDate: v.versionDate || '',
+        status: 'Released',
+      });
+    });
+    if (result.length === 0) {
+      result.push({
+        versionNo: "00",
+        versionDate: format(new Date(), "dd-MMM-yyyy"),
+        status: "Draft",
+      });
+    }
+    result.sort((a, b) => b.versionNo.localeCompare(a.versionNo));
+    return result;
+  }, [rgVersions, draftVersion]);
+
+  // Default the active version to the latest saved one (prefer the draft on ties).
+  useEffect(() => {
+    if (versionExplicitlySelected) return;
+    if (rgVersions.length === 0) return;
+    const latest = rgVersions.reduce((best, v) => {
+      const vNo = parseInt(v.versionNo, 10);
+      const bNo = parseInt(best.versionNo, 10);
+      if (isNaN(vNo)) return best;
+      if (isNaN(bNo)) return v;
+      if (vNo > bNo) return v;
+      if (vNo === bNo && v.status === 'draft' && best.status !== 'draft') return v;
+      return best;
+    }, rgVersions[0]);
+    if (activeVersion !== latest.versionNo) {
+      setActiveVersion(latest.versionNo);
+    }
+    if (latest.status === 'draft') {
+      setSelectedVersionNo(latest.versionNo);
+      setSelectedVersionDate(latest.versionDate ? new Date(latest.versionDate) : new Date());
+      setIsConfigMode(true);
+    }
+  }, [rgVersions, versionExplicitlySelected, activeVersion]);
+
+  // Outside config mode the form is always read-only (viewing released versions).
+  useEffect(() => {
+    setIsPreviewMode(!isConfigMode);
+  }, [isConfigMode]);
+
+  const versionsQueryKey = `/api/v2/admin/forms/${actualFormId}/versions`;
+  const invalidateVersionQueries = () => {
+    queryClient.invalidateQueries({ queryKey: [versionsQueryKey] });
+    queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/rank-groups'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
+    queryClient.invalidateQueries({ predicate: (query) => {
+      const key = query.queryKey[0];
+      return typeof key === 'string' && (
+        key.startsWith('/api/v2/admin/forms/for-rank') ||
+        key === '/api/v2/admin/form-versions-all' ||
+        key.startsWith('/api/v2/admin/form-versions/')
+      );
+    }});
+  };
+
+  const createDraftMutation = useMutation({
+    mutationFn: async (versionData: { versionNo: string; versionDate: string; configuration: string; silent?: boolean }) => {
+      const { silent, ...payload } = versionData;
+      const response = await apiRequest('POST', versionsQueryKey, {
+        ...payload,
+        status: 'draft',
+        rankGroupId: editedRankGroupId,
+      });
+      return response.json();
+    },
+    onSuccess: (_data, variables) => {
+      invalidateVersionQueries();
+      setHasSavedDraft(true);
+      if (!variables?.silent) {
+        toast({ title: "Draft saved", description: "Your changes have been saved as a draft." });
+      }
+    },
+    onError: (error: Error) => {
+      setHasSavedDraft(false);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const releaseVersionMutation = useMutation({
+    mutationFn: async (versionId: number) => {
+      const response = await apiRequest('POST', `/api/v2/admin/form-versions/${versionId}/release`);
+      return response.json();
+    },
+    onSuccess: () => {
+      invalidateVersionQueries();
+      setHasSavedDraft(false);
+      setIsConfigMode(false);
+      setVersionExplicitlySelected(false);
+      setActiveVersion("");
+      toast({ title: "Version released", description: "The version has been released successfully." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteDraftMutation = useMutation({
+    mutationFn: async (draftId: number) => {
+      const response = await apiRequest('DELETE', `/api/v2/admin/form-versions/${draftId}`);
+      return response;
+    },
+    onSuccess: () => {
+      invalidateVersionQueries();
+      setHasSavedDraft(false);
+      setIsConfigMode(false);
+      setSelectedVersionNo("");
+      setSelectedVersionDate(undefined);
+      setVersionExplicitlySelected(false);
+      setActiveVersion("");
+      toast({ title: "Draft discarded", description: "The draft has been deleted." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
 
   const formMethods = useForm<PromotionA2Config>({
     resolver: zodResolver(promotionA2ConfigSchema),
@@ -133,8 +311,23 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
 
   const { handleSubmit, watch, setValue, reset } = formMethods;
 
+  // Configuration of the currently selected (viewed/edited) version, if any.
+  const activeVersionConfig = React.useMemo<any>(() => {
+    if (!activeVersion) return null;
+    const row = rgVersions.find(v =>
+      v.versionNo === activeVersion && (isConfigMode ? v.status === 'draft' : v.status === 'released')
+    );
+    if (!row?.configuration) return null;
+    try {
+      return JSON.parse(row.configuration);
+    } catch {
+      return null;
+    }
+  }, [rgVersions, activeVersion, isConfigMode]);
+
   // Load saved configuration on mount.
   // Source-of-truth precedence:
+  //   0. Currently selected version (draft being edited / released being viewed)
   //   1. Latest released form-version for this rank group (preferred)
   //   2. rankGroupConfig prop (legacy adm_rank_groups_v2.configuration mirror)
   //   3. form.configuration (legacy shared form config)
@@ -150,6 +343,12 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
       },
       minChecklistCompletionPercent: config.minChecklistCompletionPercent ?? null,
     });
+
+    if (activeVersionConfig && activeVersionConfig.higherLicenseIds !== undefined) {
+      reset(normalizeConfig(activeVersionConfig));
+      setSelectedLicenseIds(activeVersionConfig.higherLicenseIds || []);
+      return;
+    }
 
     if (latestReleasedConfig && latestReleasedConfig.higherLicenseIds !== undefined) {
       console.log('[PromotionFormEditor] Loading from latest released form-version:', latestReleasedConfig);
@@ -177,14 +376,14 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
         console.error('Failed to parse form configuration:', error);
       }
     }
-  }, [latestReleasedConfig, rankGroupConfig, form.configuration, reset]);
+  }, [activeVersionConfig, latestReleasedConfig, rankGroupConfig, form.configuration, reset]);
 
   const otherCriteria = watch('otherCriteria') ?? [];
   const cesTests = watch('cesTests') ?? [];
   const experienceMonths = watch('experienceMonths') ?? { rankVessel: null, rankVesselType: null, companyService: null, tankerExperience: null };
   const checklistSections = watch('checklistSections') ?? [];
 
-  const onSubmit = (data: PromotionA2Config) => {
+  const buildConfigurationJson = (data: PromotionA2Config) => {
     const cleanedOtherCriteria = (data.otherCriteria ?? []).filter(
       (c) => (c.label?.trim() || c.requirement?.trim())
     );
@@ -206,20 +405,107 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
       checklistSections: cleanedChecklistSections,
     };
 
-    const configurationJson = JSON.stringify({
+    return JSON.stringify({
       ...cleanedData,
       higherLicenseIds: selectedLicenseIds,
       rankGroupName,
       savedAt: new Date().toISOString(),
     });
+  };
 
-    console.log('[PromotionFormEditor] Saving A2 config:', { formId: actualFormId, config: cleanedData });
-    
-    onSave({
-      formId: actualFormId,
-      configuration: configurationJson,
-    });
-    onClose();
+  const buildDraftPayload = (data: PromotionA2Config) => ({
+    versionNo: draftVersion?.versionNo ?? (selectedVersionNo || nextVersionNo),
+    versionDate: selectedVersionDate
+      ? format(selectedVersionDate, "dd-MMM-yyyy")
+      : format(new Date(), "dd-MMM-yyyy"),
+    configuration: buildConfigurationJson(data),
+  });
+
+  const handleSaveDraft = handleSubmit((data) => {
+    createDraftMutation.mutate(buildDraftPayload(data));
+  });
+
+  // Release the current draft. In config mode, first persist the in-memory
+  // form state to the draft — /release only flips status on what the server holds.
+  const handleReleaseVersion = handleSubmit(async (data) => {
+    if (isConfigMode) {
+      try {
+        const saved = await createDraftMutation.mutateAsync(buildDraftPayload(data));
+        const draftId = (saved && typeof saved.id === 'number') ? saved.id : draftVersion?.id;
+        if (draftId) {
+          releaseVersionMutation.mutate(draftId);
+        } else {
+          toast({ title: "No draft to release", description: "Save a draft first before releasing.", variant: "destructive" });
+        }
+      } catch {
+        // createDraftMutation.onError already surfaced a toast; abort release.
+      }
+      return;
+    }
+    if (draftVersion?.id) {
+      releaseVersionMutation.mutate(draftVersion.id);
+    } else {
+      toast({ title: "No draft to release", description: "Save a draft first before releasing.", variant: "destructive" });
+    }
+  });
+
+  // Enter config mode: reuse the existing draft, or start a new one seeded
+  // from the currently viewed released version.
+  const handleEnterEditMode = () => {
+    if (draftVersion) {
+      setSelectedVersionNo(draftVersion.versionNo);
+      setSelectedVersionDate(draftVersion.versionDate ? new Date(draftVersion.versionDate) : new Date());
+      setActiveVersion(draftVersion.versionNo);
+      setVersionExplicitlySelected(true);
+      setIsConfigMode(true);
+      return;
+    }
+    const seedSource = rgVersions.find(v => v.versionNo === activeVersion && v.status === 'released') ?? latestReleasedVersionRow;
+    setSelectedVersionNo(nextVersionNo);
+    setSelectedVersionDate(new Date());
+    setActiveVersion(nextVersionNo);
+    setVersionExplicitlySelected(true);
+    if (seedSource?.configuration) {
+      createDraftMutation.mutate({
+        versionNo: nextVersionNo,
+        versionDate: format(new Date(), "dd-MMM-yyyy"),
+        configuration: seedSource.configuration,
+        silent: true,
+      });
+    }
+    setIsConfigMode(true);
+  };
+
+  const handleExitConfig = () => {
+    setIsConfigMode(false);
+    setVersionExplicitlySelected(false);
+  };
+
+  const handleDiscardVersion = () => {
+    if (draftVersion?.id) {
+      setShowDiscardConfirm(true);
+      return;
+    }
+    // Nothing persisted yet — just exit config mode locally.
+    setIsConfigMode(false);
+    setHasSavedDraft(false);
+    setSelectedVersionNo("");
+    setSelectedVersionDate(undefined);
+    setVersionExplicitlySelected(false);
+    setActiveVersion("");
+  };
+
+  const handleViewVersionChange = (versionNo: string) => {
+    setVersionExplicitlySelected(true);
+    setActiveVersion(versionNo);
+    const row = versions.find(v => v.versionNo === versionNo);
+    if (row?.status === 'Draft') {
+      setSelectedVersionNo(row.versionNo);
+      setSelectedVersionDate(row.versionDate ? new Date(row.versionDate) : new Date());
+      setIsConfigMode(true);
+    } else {
+      setIsConfigMode(false);
+    }
   };
 
   // Add dynamic Other Criteria sub-item
@@ -393,26 +679,110 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                 <p className="text-sm text-gray-500 dark:text-gray-400">Rank Group: {rankGroupName}</p>
               )}
             </div>
+            <Badge
+              variant="outline"
+              className={`ml-2 text-xs hidden sm:inline-flex ${
+                form.isLockForm
+                  ? 'border-amber-300 bg-amber-50 text-amber-700'
+                  : 'border-gray-300 bg-gray-50 text-gray-600'
+              }`}
+              data-testid="badge-lock-form-indicator"
+            >
+              Lock Form Feature: {form.isLockForm ? 'ON' : 'OFF'}
+            </Badge>
           </div>
           <div className="flex items-center space-x-2">
             <Button
-              onClick={() => setIsPreviewMode(!isPreviewMode)}
+              onClick={handleReleaseVersion}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              size="sm"
+              disabled={!hasDraftVersion && !isConfigMode}
+              data-testid="button-release-version"
+            >
+              Release Ver
+            </Button>
+            {isConfigMode && (
+              <Button
+                onClick={handleDiscardVersion}
+                variant="destructive"
+                size="sm"
+                data-testid="button-discard-version"
+              >
+                Discard Ver
+              </Button>
+            )}
+            <Button
+              onClick={isConfigMode ? handleExitConfig : handleEnterEditMode}
               variant="outline"
               size="sm"
-              data-testid="button-toggle-preview"
+              data-testid="button-toggle-config"
             >
               <Settings className="h-4 w-4 mr-2" />
-              {isPreviewMode ? 'Edit Mode' : 'Preview Mode'}
+              {isConfigMode ? 'Exit Config' : 'Edit as new draft'}
             </Button>
-            <Button
-              onClick={handleSubmit(onSubmit)}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              data-testid="button-save-form"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Form
-            </Button>
+            {isConfigMode && (
+              <Button
+                onClick={handleSaveDraft}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                size="sm"
+                data-testid="button-save-form"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Draft
+              </Button>
+            )}
           </div>
+        </div>
+
+        {/* Version bar */}
+        <div className="flex items-center gap-4 px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          {isConfigMode ? (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-300">Version No:</span>
+                <span className="text-sm font-medium" data-testid="text-version-no">{selectedVersionNo || nextVersionNo}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-300">Version Date:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8" data-testid="button-version-date">
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {selectedVersionDate ? format(selectedVersionDate, "dd-MMM-yyyy") : format(new Date(), "dd-MMM-yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[300]" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedVersionDate}
+                      onSelect={(date) => setSelectedVersionDate(date ?? undefined)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600 dark:text-gray-300">Status:</span>
+                <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700 text-xs">Draft</Badge>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 dark:text-gray-300">Viewing version:</span>
+              <select
+                className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-900"
+                value={activeVersion}
+                onChange={(e) => handleViewVersionChange(e.target.value)}
+                data-testid="select-viewing-version"
+              >
+                {versions.map(v => (
+                  <option key={`${v.versionNo}-${v.status}`} value={v.versionNo}>
+                    v{v.versionNo.padStart(3, '0')} — {v.versionDate} ({v.status})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Content Area */}
@@ -1171,6 +1541,39 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                 Add Selected
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Discard draft confirmation */}
+      <Dialog open={showDiscardConfirm} onOpenChange={setShowDiscardConfirm}>
+        <DialogContent className="max-w-md z-[300]">
+          <DialogHeader>
+            <DialogTitle>Discard draft?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            This will permanently delete the draft version. This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowDiscardConfirm(false)}
+              data-testid="button-cancel-discard"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                setShowDiscardConfirm(false);
+                if (draftVersion?.id) deleteDraftMutation.mutate(draftVersion.id);
+              }}
+              data-testid="button-confirm-discard"
+            >
+              Discard
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

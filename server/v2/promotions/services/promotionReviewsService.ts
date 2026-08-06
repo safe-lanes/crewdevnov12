@@ -768,6 +768,24 @@ export class PromotionReviewsService {
     }
   }
 
+  // Task 334: resolve the current released form version for a promotion rank.
+  // Never throws / never blocks creation — a missing version just means no pin
+  // (render falls back to latest, same as today).
+  private async resolvePromotionFormVersion(promotionToRank: string | null | undefined):
+    Promise<{ formVersionId: number | null; formVersionUuid: string | null }> {
+    try {
+      if (!promotionToRank) return { formVersionId: null, formVersionUuid: null };
+      const formForRank = await formsService.getFormForRank(promotionToRank, "promotion");
+      return {
+        formVersionId: formForRank?.formVersionId ?? null,
+        formVersionUuid: formForRank?.formVersionUuid ?? null,
+      };
+    } catch (e) {
+      console.warn("[Promotions V2] Failed to resolve form version pin:", e);
+      return { formVersionId: null, formVersionUuid: null };
+    }
+  }
+
   // Enforce the promotion workflow rules before a write is persisted:
   //  1. A Date of Promotion may not be in the future.
   //  2. Only the next rank in the crew member's hierarchy may be promoted
@@ -1584,6 +1602,13 @@ export class PromotionReviewsService {
       coreFields.isLockForm = await this.resolvePromotionLockFlag();
     }
 
+    // Task 334: pin the current released form version at creation (server-controlled).
+    delete coreFields.formVersionId;
+    delete coreFields.formVersionUuid;
+    const pin = await this.resolvePromotionFormVersion(coreFields.promotionToRank);
+    coreFields.formVersionId = pin.formVersionId;
+    coreFields.formVersionUuid = pin.formVersionUuid;
+
     const review = await reviewsRepo.create(coreFields);
 
     await this.saveChildData(review.reviewUuid, {
@@ -1640,6 +1665,22 @@ export class PromotionReviewsService {
       if (!alreadyLocked) {
         coreFields.isLockForm = await this.resolvePromotionLockFlag();
       }
+    }
+
+    // Task 334: server-controlled pin. Re-pin ONLY when the promotion rank
+    // changes while the review has not yet been submitted.
+    delete coreFields.formVersionId;
+    delete coreFields.formVersionUuid;
+    const notYetSubmitted = statusRank(existingStatusRaw) < statusRank("submitted");
+    if (
+      notYetSubmitted &&
+      coreFields.promotionToRank &&
+      existing &&
+      coreFields.promotionToRank !== existing.promotionToRank
+    ) {
+      const pin = await this.resolvePromotionFormVersion(coreFields.promotionToRank);
+      coreFields.formVersionId = pin.formVersionId;
+      coreFields.formVersionUuid = pin.formVersionUuid;
     }
 
     const review = await reviewsRepo.update(reviewUuid, coreFields);

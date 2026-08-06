@@ -362,6 +362,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     enabled: !!matchingRankGroupForA2?.formId,
   });
 
+  // Task 334: if this review is pinned to a form version, load THAT version's
+  // config instead of the latest released one.
+  const pinnedVersionId = (existingReviewData as any)?.formVersionId ?? null;
+  const { data: pinnedVersionData, isLoading: isPinnedConfigLoading } = useQuery<{ configuration: string | null }>({
+    queryKey: [`/api/v2/admin/form-versions/${pinnedVersionId}/configuration`],
+    enabled: !!pinnedVersionId,
+  });
+
   const a2Config = useMemo<PromotionA2Config | null>(() => {
     if (!matchingRankGroupForA2) return null;
     const extractKnown = (parsed: any): any | null => {
@@ -374,6 +382,20 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       }
       return null;
     };
+
+    // 0. Pinned form version (frozen at creation) — highest priority.
+    if (pinnedVersionId) {
+      if (isPinnedConfigLoading) return null; // wait — never flash the latest config
+      if (pinnedVersionData?.configuration) {
+        try {
+          const parsed = typeof pinnedVersionData.configuration === 'string'
+            ? JSON.parse(pinnedVersionData.configuration)
+            : pinnedVersionData.configuration;
+          const known = extractKnown(parsed);
+          if (known) return known;
+        } catch { /* fall through to latest */ }
+      }
+    }
 
     // 1. Latest released form-version for this rank group (preferred).
     const released = a2FormVersions.filter(v =>
@@ -404,7 +426,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     } catch {
       return null;
     }
-  }, [matchingRankGroupForA2, a2FormVersions]);
+  }, [matchingRankGroupForA2, a2FormVersions, pinnedVersionId, pinnedVersionData, isPinnedConfigLoading]);
 
   const licenseDataByEntryId = useMemo(() => {
     if (!licenseEntriesData) return {};

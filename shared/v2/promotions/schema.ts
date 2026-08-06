@@ -35,6 +35,8 @@ export const promotionReviewsV2 = pgTable("promotion_reviews_v2", {
   partCNotes: text("part_c_notes"),
   status: text("status").notNull().default("draft"),
   isLockForm: boolean("is_lock_form").notNull().default(false),
+  formVersionId: integer("form_version_id"),
+  formVersionUuid: text("form_version_uuid"),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });
