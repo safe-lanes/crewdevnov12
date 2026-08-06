@@ -598,6 +598,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         setIsCrewInfoFormOpen(false);
         setSelectedCrewMember(null);
         setDeepLinkSection(null);
+        setDeepLinkDoc(null);
+        setDeepLinkVisa(null);
         if (wasDeepLink && typeof window !== "undefined") {
             window.history.back();
         }
@@ -612,6 +614,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         return new URLSearchParams(window.location.search).get("crew");
     });
     const [deepLinkSection, setDeepLinkSection] = useState<string | null>(null);
+    const [deepLinkDoc, setDeepLinkDoc] = useState<string | null>(null);
+    const [deepLinkVisa, setDeepLinkVisa] = useState<string | null>(null);
 
     useEffect(() => {
         if (!pendingCrewUuid) return;
@@ -627,14 +631,18 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             setIsCrewInfoFormOpen(true);
             if (typeof window !== "undefined") {
                 setDeepLinkSection(new URLSearchParams(window.location.search).get("section"));
+                setDeepLinkDoc(new URLSearchParams(window.location.search).get("doc"));
+                setDeepLinkVisa(new URLSearchParams(window.location.search).get("visa"));
             }
         }
         setPendingCrewUuid(null);
         if (typeof window !== "undefined") {
             const params = new URLSearchParams(window.location.search);
-            if (params.has("crew") || params.has("section")) {
+            if (params.has("crew") || params.has("section") || params.has("doc") || params.has("visa")) {
                 params.delete("crew");
                 params.delete("section");
+                params.delete("doc");
+                params.delete("visa");
                 const qs = params.toString();
                 const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
                 window.history.replaceState({}, "", newUrl);
@@ -1501,6 +1509,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 crewMember={selectedCrewMember}
                 onCrewMemberChange={(newCrewMember) => setSelectedCrewMember(newCrewMember)}
                 initialSection={deepLinkSection}
+                highlightDocUuid={deepLinkDoc}
+                highlightVisaUuid={deepLinkVisa}
             />
 
             {/* Crew Import Dialog */}

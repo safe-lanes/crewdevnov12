@@ -166,6 +166,8 @@ interface CrewInfoFormProps {
   crewMember: CrewMember | null;
   onCrewMemberChange?: (crewMember: CrewMember) => void;
   initialSection?: string | null;
+  highlightDocUuid?: string | null;
+  highlightVisaUuid?: string | null;
 }
 
 import {
@@ -420,7 +422,7 @@ interface Debriefing {
   attachments?: FileAttachment[];
 }
 
-export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange, initialSection }) => {
+export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange, initialSection, highlightDocUuid, highlightVisaUuid }) => {
   const { toast } = useToast();
   
   // Helper function to determine expiry date text color
@@ -4442,7 +4444,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </TableHeader>
           <TableBody>
             {formData.documents.map((doc) => (
-              <TableRow key={doc.id} className="border-b border-gray-200">
+              <TableRow key={doc.id} data-doc-uuid={(doc as any).docUuid || undefined} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   {doc.documentId ? (
                     <span className="text-[#4f5863] text-[13px]">{doc.document}</span>
@@ -4571,7 +4573,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </TableHeader>
           <TableBody>
             {formData.visas.map((visa) => (
-              <TableRow key={visa.id} className="border-b border-gray-200">
+              <TableRow key={visa.id} data-visa-uuid={(visa as any).visaUuid || undefined} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   {visa.countryId ? (
                     <span className="text-[#4f5863] text-[13px]">{visa.issuingCountry}</span>
@@ -8556,11 +8558,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   useEffect(() => {
-    if (isOpen && initialSection) {
-      const t = setTimeout(() => scrollToSection(initialSection), 500);
+    if (isOpen && (initialSection || highlightDocUuid || highlightVisaUuid)) {
+      const t = setTimeout(() => {
+        const selector = highlightDocUuid
+          ? `[data-doc-uuid="${highlightDocUuid}"]`
+          : highlightVisaUuid
+            ? `[data-visa-uuid="${highlightVisaUuid}"]`
+            : null;
+        const row = selector ? document.querySelector<HTMLElement>(selector) : null;
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          row.style.transition = 'background-color 0.4s ease';
+          row.style.backgroundColor = '#f3f4f6'; // same light grey as the hover effect
+          setTimeout(() => { row.style.backgroundColor = ''; }, 1400);
+        } else if (initialSection) {
+          scrollToSection(initialSection); // fallback: today's behavior
+        }
+      }, 500);
       return () => clearTimeout(t);
     }
-  }, [isOpen, initialSection]);
+  }, [isOpen, initialSection, highlightDocUuid, highlightVisaUuid]);
 
   if (!isOpen) return null;
 

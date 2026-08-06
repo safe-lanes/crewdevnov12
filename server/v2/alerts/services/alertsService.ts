@@ -135,7 +135,7 @@ export class AlertsService {
                       crewId: crew.crewUuid,
                       visaType: visa.visaType,
                       expiryDate: visa.expiry,
-                      link: `/crew-pool?crew=${crew.crewUuid}&section=C`
+                      link: `/crew-pool?crew=${crew.crewUuid}&section=C&visa=${visa.visaUuid}`
                     }),
                     createdByUuid: 'system',
                     isDeleted: false,
@@ -201,7 +201,7 @@ export class AlertsService {
                         crewId: crew.crewUuid,
                         documentName: doc.documentName,
                         expiryDate: doc.expiry,
-                        link: `/crew-pool?crew=${crew.crewUuid}&section=C`
+                        link: `/crew-pool?crew=${crew.crewUuid}&section=C&doc=${doc.docUuid}`
                       }),
                       createdByUuid: 'system',
                       isDeleted: false,
@@ -272,7 +272,7 @@ export class AlertsService {
                     vesselId: planning.vesselUuid,
                     vesselName: planning.vesselName,
                     reliefDue: planning.reliefDue,
-                    link: `/vessel?vessel=${planning.vesselUuid}&tab=planning`
+                    link: `/vessel?vessel=${planning.vesselUuid}&tab=planning&crew=${planning.crewUuid}`
                   }),
                   createdByUuid: 'system',
                   isDeleted: false,

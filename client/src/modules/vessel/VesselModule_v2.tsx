@@ -790,6 +790,7 @@ export function VesselModule_v2(): JSX.Element {
         if (typeof window === "undefined") return null;
         return new URLSearchParams(window.location.search).get("vessel");
     });
+    const [deepLinkCrewUuid, setDeepLinkCrewUuid] = useState<string | null>(null);
     useEffect(() => {
         if (!pendingVesselUuid) return;
         if (vesselsLoading || vessels.length === 0) return;
@@ -799,16 +800,39 @@ export function VesselModule_v2(): JSX.Element {
             if (new URLSearchParams(window.location.search).get("tab") === "planning") {
                 setActiveTab("planning");
             }
+            setDeepLinkCrewUuid(new URLSearchParams(window.location.search).get("crew"));
         }
         setPendingVesselUuid(null);
         const params = new URLSearchParams(window.location.search);
-        if (params.has("vessel") || params.has("tab")) {
+        if (params.has("vessel") || params.has("tab") || params.has("crew")) {
             params.delete("vessel");
             params.delete("tab");
+            params.delete("crew");
             const qs = params.toString();
             window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
         }
     }, [pendingVesselUuid, vesselsLoading, vessels]);
+
+    useEffect(() => {
+        if (!deepLinkCrewUuid || !selectedVessel || activeTab !== "planning") return;
+        let attempts = 0;
+        const timer = setInterval(() => {
+            attempts++;
+            const row = document.querySelector<HTMLElement>(`[data-crew-uuid="${deepLinkCrewUuid}"]`);
+            if (row) {
+                clearInterval(timer);
+                setDeepLinkCrewUuid(null);
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.style.transition = 'background-color 0.4s ease';
+                row.style.backgroundColor = '#f3f4f6';
+                setTimeout(() => { row.style.backgroundColor = ''; }, 1400);
+            } else if (attempts >= 20) {   // give up after ~10s (data never loaded / crew not in list)
+                clearInterval(timer);
+                setDeepLinkCrewUuid(null);
+            }
+        }, 500);
+        return () => clearInterval(timer);
+    }, [deepLinkCrewUuid, selectedVessel, activeTab]);
 
     useEffect(() => {
         if (isShipUser && myVessels.length > 0 && vessels.length > 0 && !selectedVessel) {
@@ -2606,7 +2630,7 @@ export function VesselModule_v2(): JSX.Element {
                                                     }
                                                     
                                                     return normalizedRows.map((row: any, index: number) => (
-                                                        <TableRow key={`${row.rank.id || index}-${row.crewLabel}`} className="hover:bg-gray-50 border-b border-gray-100">
+                                                        <TableRow key={`${row.rank.id || index}-${row.crewLabel}`} data-crew-uuid={row.onBoardCrew?.crewUuid || undefined} className="hover:bg-gray-50 border-b border-gray-100">
                                                             <TableCell className="text-xs text-gray-700">{row.serialNumber ? `${row.serialNumber}.` : ''}</TableCell>
                                                             <TableCell className="text-xs text-gray-700">
                                                                 {row.hasBothOnBoard ? `${row.rankName} ${row.crewLabel}` : row.rankName}
