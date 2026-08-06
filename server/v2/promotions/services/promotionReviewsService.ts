@@ -374,6 +374,8 @@ function assembleV1Response(
     b2FleetGroups: Array.isArray(suitability?.fleetGroups) ? suitability!.fleetGroups : [],
     status: review.status,
     isLockForm: (review as any).isLockForm ?? false,
+    formVersionId: (review as any).formVersionId ?? null,
+    formVersionUuid: (review as any).formVersionUuid ?? null,
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
   };
@@ -562,10 +564,14 @@ export class PromotionReviewsService {
 
       for (const reviewData of reviewsToCreate) {
         try {
+          // Task 334: auto-created reviews get the same server-side pin as manual ones.
+          const pin = await this.resolvePromotionFormVersion(reviewData.promotionToRank);
           await reviewsRepo.create({
             crewMemberId: reviewData.crewMemberId,
             promotionToRank: reviewData.promotionToRank,
             status: 'In Progress',
+            formVersionId: pin.formVersionId,
+            formVersionUuid: pin.formVersionUuid,
           });
           created++;
         } catch (error: any) {

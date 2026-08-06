@@ -696,7 +696,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
               onClick={handleReleaseVersion}
               className="bg-green-600 hover:bg-green-700 text-white"
               size="sm"
-              disabled={!hasDraftVersion && !isConfigMode}
+              disabled={(!hasDraftVersion && !isConfigMode) || createDraftMutation.isPending || releaseVersionMutation.isPending}
               data-testid="button-release-version"
             >
               Release Ver
@@ -725,6 +725,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
                 onClick={handleSaveDraft}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
                 size="sm"
+                disabled={createDraftMutation.isPending || releaseVersionMutation.isPending}
                 data-testid="button-save-form"
               >
                 <Save className="h-4 w-4 mr-2" />
