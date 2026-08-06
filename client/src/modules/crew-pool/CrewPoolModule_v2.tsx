@@ -597,6 +597,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         openedFromDeepLinkRef.current = false;
         setIsCrewInfoFormOpen(false);
         setSelectedCrewMember(null);
+        setDeepLinkSection(null);
         if (wasDeepLink && typeof window !== "undefined") {
             window.history.back();
         }
@@ -610,6 +611,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         if (typeof window === "undefined") return null;
         return new URLSearchParams(window.location.search).get("crew");
     });
+    const [deepLinkSection, setDeepLinkSection] = useState<string | null>(null);
 
     useEffect(() => {
         if (!pendingCrewUuid) return;
@@ -623,12 +625,16 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             openedFromDeepLinkRef.current = true;
             setSelectedCrewMember(found);
             setIsCrewInfoFormOpen(true);
+            if (typeof window !== "undefined") {
+                setDeepLinkSection(new URLSearchParams(window.location.search).get("section"));
+            }
         }
         setPendingCrewUuid(null);
         if (typeof window !== "undefined") {
             const params = new URLSearchParams(window.location.search);
-            if (params.has("crew")) {
+            if (params.has("crew") || params.has("section")) {
                 params.delete("crew");
+                params.delete("section");
                 const qs = params.toString();
                 const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
                 window.history.replaceState({}, "", newUrl);
@@ -1494,6 +1500,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 onClose={handleCloseCrewInfoForm}
                 crewMember={selectedCrewMember}
                 onCrewMemberChange={(newCrewMember) => setSelectedCrewMember(newCrewMember)}
+                initialSection={deepLinkSection}
             />
 
             {/* Crew Import Dialog */}

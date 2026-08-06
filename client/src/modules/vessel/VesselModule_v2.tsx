@@ -785,6 +785,31 @@ export function VesselModule_v2(): JSX.Element {
     const { data: vessels = [], isLoading: vesselsLoading } = useVessels();
     const { data: ports = [] } = usePorts();
 
+    // Deep-link entry: notifications link to /vessel?vessel=<uuid>&tab=planning.
+    const [pendingVesselUuid, setPendingVesselUuid] = useState<string | null>(() => {
+        if (typeof window === "undefined") return null;
+        return new URLSearchParams(window.location.search).get("vessel");
+    });
+    useEffect(() => {
+        if (!pendingVesselUuid) return;
+        if (vesselsLoading || vessels.length === 0) return;
+        const found = (vessels as any[]).find((v: any) => v.vesselId === pendingVesselUuid);
+        if (found) {
+            setSelectedVessel(found);
+            if (new URLSearchParams(window.location.search).get("tab") === "planning") {
+                setActiveTab("planning");
+            }
+        }
+        setPendingVesselUuid(null);
+        const params = new URLSearchParams(window.location.search);
+        if (params.has("vessel") || params.has("tab")) {
+            params.delete("vessel");
+            params.delete("tab");
+            const qs = params.toString();
+            window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
+        }
+    }, [pendingVesselUuid, vesselsLoading, vessels]);
+
     useEffect(() => {
         if (isShipUser && myVessels.length > 0 && vessels.length > 0 && !selectedVessel) {
             const norm = (val: any) => (val ?? '').toString().trim().toLowerCase();

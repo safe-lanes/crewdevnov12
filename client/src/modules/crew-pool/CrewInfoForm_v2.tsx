@@ -165,6 +165,7 @@ interface CrewInfoFormProps {
   onClose: () => void;
   crewMember: CrewMember | null;
   onCrewMemberChange?: (crewMember: CrewMember) => void;
+  initialSection?: string | null;
 }
 
 import {
@@ -419,7 +420,7 @@ interface Debriefing {
   attachments?: FileAttachment[];
 }
 
-export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange }) => {
+export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange, initialSection }) => {
   const { toast } = useToast();
   
   // Helper function to determine expiry date text color
@@ -8553,6 +8554,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       });
     }
   };
+
+  useEffect(() => {
+    if (isOpen && initialSection) {
+      const t = setTimeout(() => scrollToSection(initialSection), 500);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen, initialSection]);
 
   if (!isOpen) return null;
 
