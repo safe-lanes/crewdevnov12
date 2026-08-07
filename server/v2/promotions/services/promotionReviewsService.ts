@@ -564,14 +564,12 @@ export class PromotionReviewsService {
 
       for (const reviewData of reviewsToCreate) {
         try {
-          // Task 334: auto-created reviews get the same server-side pin as manual ones.
-          const pin = await this.resolvePromotionFormVersion(reviewData.promotionToRank);
+          // Pin-at-submission rule: auto-created reviews start UNPINNED so they
+          // live-follow the latest released version until Submit for Approval.
           await reviewsRepo.create({
             crewMemberId: reviewData.crewMemberId,
             promotionToRank: reviewData.promotionToRank,
             status: 'In Progress',
-            formVersionId: pin.formVersionId,
-            formVersionUuid: pin.formVersionUuid,
           });
           created++;
         } catch (error: any) {
@@ -1608,12 +1606,15 @@ export class PromotionReviewsService {
       coreFields.isLockForm = await this.resolvePromotionLockFlag();
     }
 
-    // Task 334: pin the current released form version at creation (server-controlled).
+    // Pin-at-submission rule: only a review born directly in "submitted" state
+    // gets pinned; drafts stay unpinned and live-follow the latest version.
     delete coreFields.formVersionId;
     delete coreFields.formVersionUuid;
-    const pin = await this.resolvePromotionFormVersion(coreFields.promotionToRank);
-    coreFields.formVersionId = pin.formVersionId;
-    coreFields.formVersionUuid = pin.formVersionUuid;
+    if (coreFields.status === "submitted") {
+      const pin = await this.resolvePromotionFormVersion(coreFields.promotionToRank);
+      coreFields.formVersionId = pin.formVersionId;
+      coreFields.formVersionUuid = pin.formVersionUuid;
+    }
 
     const review = await reviewsRepo.create(coreFields);
 
@@ -1673,18 +1674,16 @@ export class PromotionReviewsService {
       }
     }
 
-    // Task 334: server-controlled pin. Re-pin ONLY when the promotion rank
-    // changes while the review has not yet been submitted.
+    // Pin-at-submission rule: the pin is taken exactly once — at the FIRST
+    // transition into "submitted". Before that, no pin exists (form live-follows
+    // the latest release, including after a rank change). After that, the pin
+    // is never touched again.
     delete coreFields.formVersionId;
     delete coreFields.formVersionUuid;
     const notYetSubmitted = statusRank(existingStatusRaw) < statusRank("submitted");
-    if (
-      notYetSubmitted &&
-      coreFields.promotionToRank &&
-      existing &&
-      coreFields.promotionToRank !== existing.promotionToRank
-    ) {
-      const pin = await this.resolvePromotionFormVersion(coreFields.promotionToRank);
+    if (notYetSubmitted && coreFields.status === "submitted") {
+      const rankToPin = coreFields.promotionToRank ?? existing?.promotionToRank ?? null;
+      const pin = await this.resolvePromotionFormVersion(rankToPin);
       coreFields.formVersionId = pin.formVersionId;
       coreFields.formVersionUuid = pin.formVersionUuid;
     }
