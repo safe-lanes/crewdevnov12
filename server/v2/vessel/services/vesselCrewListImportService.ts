@@ -94,24 +94,8 @@ export async function importVesselRankHierarchy(xlsxBuffer: Buffer): Promise<Hie
       let matchedVessel: any = (cleanImo ? vesselByImoMap.get(cleanImo) : null) || vesselByNameMap.get(norm(vesselName));
 
       if (!matchedVessel) {
-        // Auto-create vessel in master_vessels if not found so import completes seamlessly
-        try {
-          const [newVessel] = await db
-            .insert(masterVessels)
-            .values({
-              vessel: vesselName || "Imported Vessel",
-              imo: imo || undefined,
-              isDeleted: false,
-            })
-            .returning();
-
-          matchedVessel = newVessel;
-          if (cleanImo) vesselByImoMap.set(cleanImo, matchedVessel);
-          if (vesselName) vesselByNameMap.set(norm(vesselName), matchedVessel);
-        } catch (err: any) {
-          result.errors.push(`Row ${rowNumber}: Could not create or resolve vessel "${vesselName}": ${err.message}`);
-          continue;
-        }
+        result.errors.push(`Row ${rowNumber}: Vessel "${vesselName || "Unknown"}" ${imo ? `(IMO: ${imo})` : ""} is not registered in Master Vessels. Please create the vessel in Master Vessels before uploading.`);
+        continue;
       }
 
       const key: string = matchedVessel.vesselUuid;
@@ -260,9 +244,11 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
     ]);
 
     const crewByEmpIdMap = new Map<string, any>();
+    const crewByPassportMap = new Map<string, any>();
     for (const c of allCrew) {
       if (c.employeeId) crewByEmpIdMap.set(norm(c.employeeId), c);
       if (c.empNo) crewByEmpIdMap.set(norm(c.empNo), c);
+      if (c.passportNo) crewByPassportMap.set(norm(c.passportNo), c);
     }
 
     const vesselByImoMap = new Map<string, any>();
@@ -333,9 +319,14 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
     for (const item of rowsToProcess) {
       result.totalRowsProcessed++;
 
-      const crew: any = crewByEmpIdMap.get(norm(item.employeeId));
+      // Multi-factor seafarer lookup: Employee ID -> Passport
+      let crew: any = crewByEmpIdMap.get(norm(item.employeeId));
       if (!crew) {
-        result.errors.push(`Row ${item.rowNumber}: Employee ID "${item.employeeId}" not found in system`);
+        crew = crewByPassportMap.get(norm(item.employeeId));
+      }
+
+      if (!crew) {
+        result.errors.push(`Row ${item.rowNumber}: Employee ID / Passport "${item.employeeId}" not found in system`);
         result.skippedCount++;
         continue;
       }
@@ -344,25 +335,9 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
       let vessel: any = (cleanImo ? vesselByImoMap.get(cleanImo) : null) || vesselByNameMap.get(norm(item.vesselName));
 
       if (!vessel) {
-        // Auto-create missing vessel in master_vessels if not found so Stage 2 can run independently!
-        try {
-          const [newVessel] = await db
-            .insert(masterVessels)
-            .values({
-              vessel: item.vesselName || "Imported Vessel",
-              imo: item.imo || undefined,
-              isDeleted: false,
-            })
-            .returning();
-
-          vessel = newVessel;
-          if (cleanImo) vesselByImoMap.set(cleanImo, vessel);
-          if (item.vesselName) vesselByNameMap.set(norm(item.vesselName), vessel);
-        } catch (err: any) {
-          result.errors.push(`Row ${item.rowNumber}: Could not resolve vessel "${item.vesselName}": ${err.message}`);
-          result.skippedCount++;
-          continue;
-        }
+        result.errors.push(`Row ${item.rowNumber}: Vessel "${item.vesselName || "Unknown"}" ${item.imo ? `(IMO: ${item.imo})` : ""} is not registered in Master Vessels. Assignment skipped.`);
+        result.skippedCount++;
+        continue;
       }
 
       const joiningPortUuid: string | undefined = item.portOfJoining ? portByNameMap.get(norm(item.portOfJoining)) || undefined : undefined;

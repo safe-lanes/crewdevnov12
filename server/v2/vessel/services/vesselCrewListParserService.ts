@@ -248,6 +248,7 @@ export async function parseSingleDocx(buffer: Buffer, fileName: string = "crew_l
 
 /**
  * Parse a ZIP file containing multiple .docx crew list files
+ * Optimized with chunked batching for 100+ vessel scale handling
  */
 export async function parseCrewListZip(zipBuffer: Buffer): Promise<VesselCrewListDoc[]> {
   const results: VesselCrewListDoc[] = [];
@@ -258,14 +259,24 @@ export async function parseCrewListZip(zipBuffer: Buffer): Promise<VesselCrewLis
       (path) => path.toLowerCase().endsWith(".docx") && !path.startsWith("__MACOSX") && !path.includes("/~$")
     );
 
-    for (const filePath of docxFiles) {
-      const fileObj = zip.file(filePath);
-      if (!fileObj) continue;
+    // Process files in chunked batches of 5 to optimize RAM and GC during 100+ vessel imports
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < docxFiles.length; i += BATCH_SIZE) {
+      const chunk = docxFiles.slice(i, i + BATCH_SIZE);
+      const chunkResults = await Promise.all(
+        chunk.map(async (filePath) => {
+          const fileObj = zip.file(filePath);
+          if (!fileObj) return null;
 
-      const fileBuffer = await fileObj.async("nodebuffer");
-      const docName = filePath.split("/").pop() || filePath;
-      const parsed = await parseSingleDocx(fileBuffer, docName);
-      results.push(parsed);
+          const fileBuffer = await fileObj.async("nodebuffer");
+          const docName = filePath.split("/").pop() || filePath;
+          return parseSingleDocx(fileBuffer, docName);
+        })
+      );
+
+      for (const res of chunkResults) {
+        if (res) results.push(res);
+      }
     }
   } catch (err: any) {
     results.push({
