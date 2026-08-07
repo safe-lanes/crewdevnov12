@@ -365,7 +365,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   // Task 334: if this review is pinned to a form version, load THAT version's
   // config instead of the latest released one.
   const pinnedVersionId = (existingReviewData as any)?.formVersionId ?? null;
-  const { data: pinnedVersionData, isLoading: isPinnedConfigLoading } = useQuery<{ configuration: string | null }>({
+  const { data: pinnedVersionData, isLoading: isPinnedConfigLoading } = useQuery<{ configuration?: string | null; rankGroupConfig?: any }>({
     queryKey: [`/api/v2/admin/form-versions/${pinnedVersionId}/configuration`],
     enabled: !!pinnedVersionId,
   });
@@ -386,11 +386,12 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     // 0. Pinned form version (frozen at creation) — highest priority.
     if (pinnedVersionId) {
       if (isPinnedConfigLoading) return null; // wait — never flash the latest config
-      if (pinnedVersionData?.configuration) {
+      const pinnedRaw = pinnedVersionData?.rankGroupConfig ?? pinnedVersionData?.configuration;
+      if (pinnedRaw) {
         try {
-          const parsed = typeof pinnedVersionData.configuration === 'string'
-            ? JSON.parse(pinnedVersionData.configuration)
-            : pinnedVersionData.configuration;
+          const parsed = typeof pinnedRaw === 'string'
+            ? JSON.parse(pinnedRaw)
+            : pinnedRaw;
           const known = extractKnown(parsed);
           if (known) return known;
         } catch { /* fall through to latest */ }

@@ -478,7 +478,10 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
 
   const handleExitConfig = () => {
     setIsConfigMode(false);
-    setVersionExplicitlySelected(false);
+    // Keep the explicit-selection flag ON and land on the latest released
+    // version, so the auto-select effect can't bounce us back into the draft.
+    setVersionExplicitlySelected(true);
+    setActiveVersion(latestReleasedVersionRow?.versionNo ?? "");
   };
 
   const handleDiscardVersion = () => {
@@ -661,7 +664,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg w-full max-w-5xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between gap-4 p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center space-x-4">
             <Button
               onClick={onClose}
@@ -681,7 +684,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
             </div>
             <Badge
               variant="outline"
-              className={`ml-2 text-xs hidden sm:inline-flex ${
+              className={`ml-2 text-xs hidden sm:inline-flex shrink-0 whitespace-nowrap ${
                 form.isLockForm
                   ? 'border-amber-300 bg-amber-50 text-amber-700'
                   : 'border-gray-300 bg-gray-50 text-gray-600'
