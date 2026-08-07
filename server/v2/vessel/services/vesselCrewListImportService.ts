@@ -30,11 +30,29 @@ function norm(str: string | null | undefined): string {
 
 function getCellValue(cell: ExcelJS.Cell | undefined): string {
   if (!cell) return "";
+  if (cell.value instanceof Date) {
+    const d = cell.value;
+    if (!isNaN(d.getTime())) {
+      const yr = d.getFullYear();
+      const mo = String(d.getMonth() + 1).padStart(2, "0");
+      const da = String(d.getDate()).padStart(2, "0");
+      return `${yr}-${mo}-${da}`;
+    }
+  }
   if (typeof cell.value === "string") return cell.value.trim();
   if (typeof cell.value === "number") return String(cell.value).trim();
   if (cell.value && typeof cell.value === "object") {
     if ("result" in cell.value && cell.value.result != null) {
-      return String(cell.value.result).trim();
+      const res = cell.value.result;
+      if (res instanceof Date) {
+        if (!isNaN(res.getTime())) {
+          const yr = res.getFullYear();
+          const mo = String(res.getMonth() + 1).padStart(2, "0");
+          const da = String(res.getDate()).padStart(2, "0");
+          return `${yr}-${mo}-${da}`;
+        }
+      }
+      return String(res).trim();
     }
     if ("text" in cell.value && cell.value.text != null) {
       return String(cell.value.text).trim();
@@ -217,6 +235,88 @@ export async function importVesselRankHierarchy(xlsxBuffer: Buffer): Promise<Hie
  * Stage 2: Import Assignments sheet ➔ updates vessel_planning_v2 & inserts crew_assignments (fully independent)
  * Restricts duplicate assignments if seafarer is already assigned to the exact vessel slot.
  */
+export interface AssignmentsImportResult {
+  totalRowsProcessed: number;
+  primaryAssignedCount: number;
+  secondaryAssignedCount: number;
+  skippedCount: number;
+  errors: string[];
+  errorExcelBuffer?: string;
+  success?: boolean;
+}
+
+function parseDateStringStrict(str: string | null | undefined): string | null {
+  if (!str) return null;
+  const trimmed = String(str).trim();
+  if (!trimmed) return null;
+
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  // DD/MM/YYYY or DD-MM-YYYY
+  const slashMatch = trimmed.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (slashMatch) {
+    const [, dd, mm, yyyy] = slashMatch;
+    return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+  }
+
+  // DD-MMM-YYYY or DD-MMM-YY (e.g. 15-Jan-1985 or 01-Jan-80)
+  const monthNames: Record<string, string> = {
+    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
+    jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
+  };
+  const textMatch = trimmed.match(/^(\d{1,2})[\/\s-]([a-zA-Z]{3})[\/\s-](\d{2,4})$/);
+  if (textMatch) {
+    const [, dd, mmm, yyyyStr] = textMatch;
+    const mm = monthNames[mmm.toLowerCase()];
+    let yyyy = yyyyStr;
+    if (yyyy.length === 2) {
+      const yrNum = parseInt(yyyy, 10);
+      yyyy = yrNum > 30 ? `19${yyyy}` : `20${yyyy}`;
+    }
+    if (mm) {
+      return `${yyyy}-${mm}-${dd.padStart(2, "0")}`;
+    }
+  }
+
+  // Excel serial number
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    const serialNum = parseFloat(trimmed);
+    if (serialNum > 20000 && serialNum < 90000) {
+      const dateObj = new Date((serialNum - (25567 + 2)) * 86400 * 1000);
+      if (!isNaN(dateObj.getTime())) {
+        const yr = dateObj.getUTCFullYear();
+        const mo = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
+        const da = String(dateObj.getUTCDate()).padStart(2, "0");
+        return `${yr}-${mo}-${da}`;
+      }
+    }
+  }
+
+  // Fallback for native JS Date string output or ISO string (e.g., "Sat Sep 05 2026 05:30:00 GMT+0530...")
+  const jsDate = new Date(trimmed);
+  if (!isNaN(jsDate.getTime())) {
+    const yr = jsDate.getFullYear();
+    const mo = String(jsDate.getMonth() + 1).padStart(2, "0");
+    const da = String(jsDate.getDate()).padStart(2, "0");
+    return `${yr}-${mo}-${da}`;
+  }
+
+  return null;
+}
+
+function computeReliefDueDate(signOnDateStr: string, contractMonths: number): string {
+  const dateObj = new Date(signOnDateStr);
+  dateObj.setMonth(dateObj.getMonth() + contractMonths);
+  return dateObj.toISOString().split("T")[0];
+}
+
+/**
+ * Stage 2: Import Assignments sheet ➔ updates vessel_planning_v2 & inserts crew_assignments
+ * Uses Strict All-or-Nothing Validation & Atomic Database Transactions.
+ */
 export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<AssignmentsImportResult> {
   const result: AssignmentsImportResult = {
     totalRowsProcessed: 0,
@@ -224,6 +324,7 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
     secondaryAssignedCount: 0,
     skippedCount: 0,
     errors: [],
+    success: false,
   };
 
   try {
@@ -261,6 +362,7 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
     const portByNameMap = new Map<string, string>();
     for (const p of allPorts) {
       if (p.portName) portByNameMap.set(norm(p.portName), p.portUuid);
+      if (p.name) portByNameMap.set(norm(p.name), p.portUuid);
     }
 
     // Build dynamic header map from Row 1 for robust column resolution
@@ -277,6 +379,8 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
     };
 
     const rowsToProcess: any[] = [];
+    const rowErrorsMap = new Map<number, string[]>(); // rowNumber -> array of validation errors
+
     for (let rowNumber = 2; rowNumber <= assignmentsSheet.rowCount; rowNumber++) {
       const row = assignmentsSheet.getRow(rowNumber);
 
@@ -288,16 +392,78 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
       const contractPeriod = getColVal(row, "Contract Period (Months)", 6);
       const reliefDue = getColVal(row, "Relief Due Date", 7);
       const portOfJoining = getColVal(row, "Port of Joining", 8);
-      const assignmentType = getColVal(row, "Assignment Type", 9) || "Primary";
-      const joiningStatus = getColVal(row, "Joining Status", 10) || "Signed On";
+      const rawAssignmentType = getColVal(row, "Assignment Type", 9);
+      const assignmentType = rawAssignmentType || "Primary";
+      const rawJoiningStatus = getColVal(row, "Joining Status", 10);
+      const joiningStatus = rawJoiningStatus || "Signed On";
       const relieverRank = getColVal(row, "Reliever Rank", 11);
 
-      if (!employeeId && !vesselName && !rank) continue;
+      if (!employeeId && !vesselName && !rank && !signOnDate) continue;
 
-      if (!employeeId) {
-        result.skippedCount++;
-        result.errors.push(`Row ${rowNumber} (${rank}): Employee ID is missing`);
-        continue;
+      const errors: string[] = [];
+
+      // Strict Mandatory Fields Validation
+      if (!employeeId) errors.push("Employee ID is missing");
+      if (!vesselName && !imo) errors.push("Vessel Name / IMO is missing");
+      if (!rank) errors.push("Rank is missing");
+      if (!signOnDate) errors.push("Sign On Date is missing");
+
+      // Validate Assignment Type Enum
+      const normAssignType = norm(assignmentType);
+      if (assignmentType && normAssignType !== "primary" && normAssignType !== "secondary") {
+        errors.push(`Assignment Type '${assignmentType}' is invalid (Must be Primary or Secondary)`);
+      }
+
+      // Validate Joining Status Enum
+      if (joiningStatus) {
+        const normStatus = norm(joiningStatus);
+        if (normStatus !== "signed on" && normStatus !== "planned" && normStatus !== "in transit") {
+          errors.push(`Joining Status '${joiningStatus}' is invalid (Must be Signed On, Planned, or In Transit)`);
+        }
+      }
+
+      // Validate Date Format
+      const parsedSignOn = parseDateStringStrict(signOnDate);
+      if (signOnDate && !parsedSignOn) {
+        errors.push(`Sign On Date '${signOnDate}' is invalid or unparseable`);
+      }
+
+      const parsedReliefDue = parseDateStringStrict(reliefDue);
+      if (reliefDue && !parsedReliefDue) {
+        errors.push(`Relief Due Date '${reliefDue}' is invalid or unparseable`);
+      }
+
+      // Validate Seafarer Existence
+      let crew: any = null;
+      if (employeeId) {
+        crew = crewByEmpIdMap.get(norm(employeeId)) || crewByPassportMap.get(norm(employeeId));
+        if (!crew) {
+          errors.push(`Seafarer with Employee ID / Passport '${employeeId}' is not registered in system`);
+        }
+      }
+
+      // Validate Vessel Existence
+      const cleanImo = (imo || "").replace(/\D/g, "");
+      let vessel: any = (cleanImo ? vesselByImoMap.get(cleanImo) : null) || vesselByNameMap.get(norm(vesselName));
+      if (vesselName || imo) {
+        if (!vessel) {
+          errors.push(`Vessel '${vesselName}' ${imo ? `(IMO: ${imo})` : ""} is not registered in Master Vessels`);
+        } else if (!vessel.vesselUuid) {
+          errors.push(`Vessel '${vesselName}' is missing a valid system identifier in Master Vessels`);
+        }
+      }
+
+      // Validate Port of Joining (if provided)
+      let joiningPortUuid: string | undefined = undefined;
+      if (portOfJoining) {
+        joiningPortUuid = portByNameMap.get(norm(portOfJoining));
+        if (!joiningPortUuid) {
+          errors.push(`Port of Joining '${portOfJoining}' is not registered in Master Ports`);
+        }
+      }
+
+      if (errors.length > 0) {
+        rowErrorsMap.set(rowNumber, errors);
       }
 
       rowsToProcess.push({
@@ -306,58 +472,76 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
         vesselName,
         imo,
         rank,
-        signOnDate,
-        contractPeriod,
-        reliefDue,
+        signOnDate: parsedSignOn,
+        contractPeriod: contractPeriod ? parseInt(contractPeriod, 10) || null : null,
+        reliefDue: parsedReliefDue,
         portOfJoining,
-        assignmentType,
-        joiningStatus,
+        joiningPortUuid,
+        assignmentType: normAssignType === "secondary" ? "secondary" : "primary",
+        joiningStatus: joiningStatus || "Signed On",
         relieverRank,
+        crew,
+        vessel,
       });
     }
 
-    for (const item of rowsToProcess) {
-      result.totalRowsProcessed++;
+    result.totalRowsProcessed = rowsToProcess.length;
 
-      // Multi-factor seafarer lookup: Employee ID -> Passport
-      let crew: any = crewByEmpIdMap.get(norm(item.employeeId));
-      if (!crew) {
-        crew = crewByPassportMap.get(norm(item.employeeId));
+    // Check for validation failures -> ALL-OR-NOTHING ROLLBACK & GENERATE ERROR EXCEL
+    if (rowErrorsMap.size > 0) {
+      for (const [rowNum, errList] of rowErrorsMap.entries()) {
+        result.errors.push(`Row ${rowNum}: ${errList.join("; ")}`);
+      }
+      result.skippedCount = rowsToProcess.length;
+
+      // Highlight failed cells and append "Validation Errors" column in Error Excel
+      const errColNum = (assignmentsSheet.columnCount || 13) + 1;
+      assignmentsSheet.getCell(1, errColNum).value = "Validation Errors";
+      assignmentsSheet.getCell(1, errColNum).font = { bold: true, color: { argb: "991B1B" } };
+      assignmentsSheet.getCell(1, errColNum).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FEE2E2" },
+      };
+
+      for (let r = 2; r <= assignmentsSheet.rowCount; r++) {
+        const rowErrs = rowErrorsMap.get(r);
+        if (rowErrs && rowErrs.length > 0) {
+          const errCell = assignmentsSheet.getCell(r, errColNum);
+          errCell.value = rowErrs.join("; ");
+          errCell.font = { color: { argb: "991B1B" } };
+          errCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FEF2F2" },
+          };
+        }
       }
 
-      if (!crew) {
-        result.errors.push(`Row ${item.rowNumber}: Employee ID / Passport "${item.employeeId}" not found in system`);
-        result.skippedCount++;
-        continue;
-      }
+      const errBuffer = Buffer.from(await workbook.xlsx.writeBuffer());
+      result.errorExcelBuffer = errBuffer.toString("base64");
+      result.success = false;
+      return result;
+    }
 
-      const cleanImo = (item.imo || "").replace(/\D/g, "");
-      let vessel: any = (cleanImo ? vesselByImoMap.get(cleanImo) : null) || vesselByNameMap.get(norm(item.vesselName));
+    // PHASE 2: ATOMIC DATABASE COMMIT (All-or-Nothing Transaction)
+    await db.transaction(async (tx: any) => {
+      for (const item of rowsToProcess) {
+        const crew = item.crew;
+        const vessel = item.vessel;
+        const isPrimary = item.assignmentType === "primary";
 
-      if (!vessel) {
-        result.errors.push(`Row ${item.rowNumber}: Vessel "${item.vesselName || "Unknown"}" ${item.imo ? `(IMO: ${item.imo})` : ""} is not registered in Master Vessels. Assignment skipped.`);
-        result.skippedCount++;
-        continue;
-      }
+        // Auto-compute reliefDue if missing but signOnDate and contractPeriod are present
+        let finalReliefDue = item.reliefDue;
+        if (!finalReliefDue && item.signOnDate && item.contractPeriod) {
+          finalReliefDue = computeReliefDueDate(item.signOnDate, item.contractPeriod);
+        }
 
-      const joiningPortUuid: string | undefined = item.portOfJoining ? portByNameMap.get(norm(item.portOfJoining)) || undefined : undefined;
-      const isPrimary = norm(item.assignmentType) === "primary";
-
-      try {
         if (isPrimary) {
-          // Primary Crew Assignment
           const planningRecords: any[] = await vesselPlanningService.getByVesselUuid(vessel.vesselUuid);
           let matchedSlot: any = planningRecords.find((p: any) => norm(p.rank) === norm(item.rank));
 
-          // DUPLICATE CHECK: Restrict duplicate assignment if seafarer is already assigned to this slot on the vessel
-          if (matchedSlot && matchedSlot.crewUuid === crew.crewUuid) {
-            result.skippedCount++;
-            result.errors.push(`Row ${item.rowNumber} (${item.employeeId}): Seafarer "${crew.firstName} ${crew.familyName}" is already assigned to ${item.rank} on ${vessel.vessel} (Duplicate upload skipped)`);
-            continue;
-          }
-
           if (!matchedSlot) {
-            // Auto-create position slot in vessel_planning_v2 if missing so Stage 2 can run independently
             matchedSlot = await vesselPlanningService.create({
               vesselUuid: vessel.vesselUuid,
               rankId: "R000",
@@ -373,16 +557,17 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
               crewUuid: crew.crewUuid,
               crewStatus: "primary",
               signOnDate: item.signOnDate || undefined,
-              joiningPortUuid: joiningPortUuid,
-              joiningStatus: item.joiningStatus || "Signed On",
+              reliefDue: finalReliefDue || undefined,
+              joiningPortUuid: item.joiningPortUuid,
+              joiningStatus: item.joiningStatus,
+              contractPeriodMonths: item.contractPeriod || undefined,
             });
           }
 
-          // Insert into crew_assignments
           await crewAssignmentsService.assignToVessel(crew.crewUuid, vessel.vesselUuid, {
             signOnDate: item.signOnDate || new Date(),
-            reliefDue: item.reliefDue || undefined,
-            contractPeriod: item.contractPeriod || undefined,
+            reliefDue: finalReliefDue || undefined,
+            contractPeriod: item.contractPeriod ? String(item.contractPeriod) : undefined,
             assignmentType: "primary",
             isCurrent: true,
             vesselName: vessel.vessel,
@@ -391,17 +576,9 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
 
           result.primaryAssignedCount++;
         } else {
-          // Secondary Reliever Assignment
           const targetRank = item.relieverRank || item.rank;
           const planningRecords: any[] = await vesselPlanningService.getByVesselUuid(vessel.vesselUuid);
           let matchedSlot: any = planningRecords.find((p: any) => norm(p.rank) === norm(targetRank));
-
-          // DUPLICATE CHECK: Restrict duplicate reliever assignment if reliever is already assigned to this slot
-          if (matchedSlot && matchedSlot.relieverCrewUuid === crew.crewUuid) {
-            result.skippedCount++;
-            result.errors.push(`Row ${item.rowNumber} (${item.employeeId}): Reliever "${crew.firstName} ${crew.familyName}" is already assigned to ${targetRank} on ${vessel.vessel} (Duplicate upload skipped)`);
-            continue;
-          }
 
           if (!matchedSlot) {
             matchedSlot = await vesselPlanningService.create({
@@ -418,16 +595,17 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
             await vesselPlanningService.updateReliever(matchedSlot.planUuid, {
               relieverCrewUuid: crew.crewUuid,
               relieverSignOnDate: item.signOnDate || undefined,
-              joiningPortUuid: joiningPortUuid,
-              joiningStatus: item.joiningStatus || "Planned",
+              reliefDue: finalReliefDue || undefined,
+              joiningPortUuid: item.joiningPortUuid,
+              joiningStatus: item.joiningStatus,
+              relieverContractPeriodMonths: item.contractPeriod || undefined,
             });
           }
 
-          // Insert into crew_assignments as secondary
           await crewAssignmentsService.assignToVessel(crew.crewUuid, vessel.vesselUuid, {
             signOnDate: item.signOnDate || new Date(),
-            reliefDue: item.reliefDue || undefined,
-            contractPeriod: item.contractPeriod || undefined,
+            reliefDue: finalReliefDue || undefined,
+            contractPeriod: item.contractPeriod ? String(item.contractPeriod) : undefined,
             assignmentType: "secondary",
             isCurrent: false,
             vesselName: vessel.vessel,
@@ -436,16 +614,28 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
 
           result.secondaryAssignedCount++;
         }
-      } catch (err: any) {
-        result.errors.push(`Row ${item.rowNumber} (${item.employeeId}): ${err.message || String(err)}`);
       }
+    });
+
+    result.success = true;
+  } catch (err: any) {
+    const rawMsg = err.message || String(err);
+    let userFriendlyMsg = rawMsg;
+
+    if (rawMsg.includes('null value in column "vessel_uuid"')) {
+      userFriendlyMsg = "One or more vessels in the uploaded sheet are missing a valid vessel identifier in Master Vessels.";
+    } else if (rawMsg.includes('null value in column')) {
+      userFriendlyMsg = "Required database information is missing from the uploaded record.";
+    } else if (rawMsg.includes("violates not-null constraint")) {
+      userFriendlyMsg = "Import aborted: A mandatory field was missing during database save.";
+    } else if (rawMsg.includes("violates foreign key constraint")) {
+      userFriendlyMsg = "Import aborted: Referenced seafarer, vessel, or port does not exist in master records.";
+    } else if (rawMsg.includes("violates unique constraint")) {
+      userFriendlyMsg = "Import aborted: A duplicate record already exists in the system.";
     }
 
-    if (result.totalRowsProcessed > 0 && result.skippedCount === result.totalRowsProcessed) {
-      result.errors.unshift("Duplicate upload restricted: All crew assignments in this sheet have already been imported into the system.");
-    }
-  } catch (err: any) {
-    result.errors.push(`Failed to process assignments import: ${err.message || String(err)}`);
+    result.errors.push(`Failed to process assignments import: ${userFriendlyMsg}`);
+    result.success = false;
   }
 
   return result;

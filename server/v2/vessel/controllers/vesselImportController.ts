@@ -128,9 +128,9 @@ export const vesselImportController = {
       }
 
       const result = await importCrewAssignments(buffer);
-      if (result.primaryAssignedCount === 0 && result.secondaryAssignedCount === 0 && result.skippedCount > 0 && result.errors.length > 0) {
+      if (result.success === false || (result.primaryAssignedCount === 0 && result.secondaryAssignedCount === 0 && result.errors.length > 0)) {
         return res.status(400).json({
-          error: result.errors[0],
+          error: result.errors[0] || "Validation failed for crew assignments import",
           ...result,
         });
       }

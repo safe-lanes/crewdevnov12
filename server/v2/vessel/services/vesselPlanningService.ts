@@ -1205,8 +1205,10 @@ export const vesselPlanningService = {
   async updateReliever(planUuid: string, relieverData: {
     relieverCrewUuid: string;
     relieverSignOnDate?: string;
+    reliefDue?: string;
     joiningPortUuid?: string;
     joiningStatus?: string;
+    relieverContractPeriodMonths?: number;
     auditUserUuid?: string;
   }) {
     // Resolve port value to UUID if provided

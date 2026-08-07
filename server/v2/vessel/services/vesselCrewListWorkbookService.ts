@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { getDb } from "../../db";
-import { masterVessels } from "../../../../shared/schema";
+import { masterVessels, masterPorts } from "../../../../shared/schema";
 import { admCompanyRanksV2, admAvailableRanksV2 } from "../../../../shared/v2/admin/schema";
 import { crewMembersV2, crewSeaService } from "../../../../shared/v2/crew-pool/schema";
 import { vesselDraftsService } from "../../admin/services/vesselDraftsService";
@@ -31,19 +31,33 @@ export interface GeneratedWorkbookResult {
 }
 
 /**
- * Ingest parsed crew list docs from ZIP and generate a downloadable 2-sheet Excel workbook:
+ * Ingest parsed crew list docs from ZIP and generate a downloadable Excel workbook:
  * 1. "Assignments": Employee ID, Vessel Name, IMO, Rank, Sign On Date, Lookup Status, Rank Match Status, etc.
  * 2. "VesselRankHierarchy": Unique Vessel Name, IMO, Rank, Status ("Active")
+ * 3. "MasterData": Reference dropdown list for Ports, Assignment Types, and Joining Statuses
  */
 export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): Promise<GeneratedWorkbookResult> {
   const db = getDb();
 
   // Load reference data dynamically from DB
-  const allVessels = await db.select().from(masterVessels);
-  const allCompanyRanks = await db.select().from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false));
-  const availableRanks = await db.select().from(admAvailableRanksV2).where(eq(admAvailableRanksV2.isDeleted, false));
-  const allCrew = await db.select().from(crewMembersV2).where(eq(crewMembersV2.isDeleted, false));
-  const openSeaServices = await db.select().from(crewSeaService).where(isNull(crewSeaService.toDate));
+  const [allVessels, allCompanyRanks, availableRanks, allCrew, openSeaServices, allPorts] = await Promise.all([
+    db.select().from(masterVessels),
+    db.select().from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false)),
+    db.select().from(admAvailableRanksV2).where(eq(admAvailableRanksV2.isDeleted, false)),
+    db.select().from(crewMembersV2).where(eq(crewMembersV2.isDeleted, false)),
+    db.select().from(crewSeaService).where(isNull(crewSeaService.toDate)),
+    db.select().from(masterPorts).where(eq(masterPorts.isDeleted, false)),
+  ]);
+
+  // Extract unique, sorted master port names (A-Z) for type-ahead search
+  const portNamesSet = new Set<string>();
+  for (const p of allPorts) {
+    const name = cleanString(p.name || p.portName);
+    if (name) portNamesSet.add(name);
+  }
+  const portNames = Array.from(portNamesSet).sort((a, b) => a.localeCompare(b));
+  const assignmentTypes = ["Primary", "Secondary"];
+  const joiningStatuses = ["Signed On", "Planned", "In Transit"];
 
   // Vessel lookup by IMO (digits only) or Name
   const vesselByImoMap = new Map<string, any>();
@@ -135,15 +149,16 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
 
   const assignmentsSheet = workbook.addWorksheet("Assignments");
   const hierarchySheet = workbook.addWorksheet("VesselRankHierarchy");
+  const masterDataSheet = workbook.addWorksheet("MasterData");
 
   assignmentsSheet.columns = [
     { header: "Employee ID", key: "employeeId", width: 16 },
     { header: "Vessel Name", key: "vesselName", width: 22 },
     { header: "IMO", key: "imo", width: 14 },
     { header: "Rank", key: "rank", width: 18 },
-    { header: "Sign On Date", key: "signOnDate", width: 14 },
+    { header: "Sign On Date", key: "signOnDate", width: 14, style: { numFmt: "yyyy-mm-dd" } },
     { header: "Contract Period (Months)", key: "contractPeriod", width: 22 },
-    { header: "Relief Due Date", key: "reliefDue", width: 16 },
+    { header: "Relief Due Date", key: "reliefDue", width: 16, style: { numFmt: "yyyy-mm-dd" } },
     { header: "Port of Joining", key: "portOfJoining", width: 18 },
     { header: "Assignment Type", key: "assignmentType", width: 16 },
     { header: "Joining Status", key: "joiningStatus", width: 16 },
@@ -158,6 +173,22 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
     { header: "Rank", key: "rank", width: 18 },
     { header: "Status", key: "status", width: 14 },
   ];
+
+  masterDataSheet.columns = [
+    { header: "Port Name", key: "portName", width: 26 },
+    { header: "Assignment Type", key: "assignmentType", width: 20 },
+    { header: "Joining Status", key: "joiningStatus", width: 20 },
+  ];
+
+  // Populate MasterData sheet values
+  const maxMasterRows = Math.max(portNames.length, assignmentTypes.length, joiningStatuses.length);
+  for (let r = 0; r < maxMasterRows; r++) {
+    masterDataSheet.addRow({
+      portName: portNames[r] || "",
+      assignmentType: assignmentTypes[r] || "",
+      joiningStatus: joiningStatuses[r] || "",
+    });
+  }
 
   const mandatoryAssignmentsKeys = new Set([
     "employeeId",
@@ -198,6 +229,20 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: isMandatory ? "FEF08A" : "E2E8F0" }, // Yellow for mandatory, Grey for optional
+    };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+  });
+
+  // Style MasterData Sheet Headers
+  const masterHeaderRow = masterDataSheet.getRow(1);
+  masterHeaderRow.height = 26;
+  masterDataSheet.columns.forEach((_, idx) => {
+    const cell = masterHeaderRow.getCell(idx + 1);
+    cell.font = { bold: true, color: { argb: "000000" } };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "E2E8F0" },
     };
     cell.alignment = { vertical: "middle", horizontal: "center" };
   });
@@ -336,7 +381,7 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
         }
       }
 
-      assignmentsSheet.addRow({
+      const addedRow = assignmentsSheet.addRow({
         employeeId,
         vesselName,
         imo,
@@ -352,6 +397,47 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
         lookupStatus,
         rankMatchStatus: isRankMatched ? "OK" : "UNMATCHED",
       });
+
+      const rNum = addedRow.number;
+      // Format Date Cells (Col 5: Sign On Date, Col 7: Relief Due Date)
+      addedRow.getCell(5).numFmt = "yyyy-mm-dd";
+      addedRow.getCell(7).numFmt = "yyyy-mm-dd";
+
+      // Col 7 (G): Relief Due Date formula EDATE(SignOnDate, ContractPeriod)
+      addedRow.getCell(7).value = {
+        formula: `IF(AND(E${rNum}<>"", F${rNum}<>""), EDATE(E${rNum}, F${rNum}), "")`,
+      };
+
+      const portCount = Math.max(1, portNames.length);
+      // Col 8 (H): Port of Joining dropdown pointing to MasterData!$A$2:$A${portCount+1}
+      addedRow.getCell(8).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: [`MasterData!$A$2:$A$${portCount + 1}`],
+        showErrorMessage: true,
+        errorTitle: "Invalid Port",
+        error: "Please select a port from the dropdown list",
+      };
+
+      // Col 9 (I): Assignment Type dropdown pointing to MasterData!$B$2:$B$3
+      addedRow.getCell(9).dataValidation = {
+        type: "list",
+        allowBlank: false,
+        formulae: ["MasterData!$B$2:$B$3"],
+        showErrorMessage: true,
+        errorTitle: "Invalid Assignment Type",
+        error: "Please select Primary or Secondary",
+      };
+
+      // Col 10 (J): Joining Status dropdown pointing to MasterData!$C$2:$C$4
+      addedRow.getCell(10).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: ["MasterData!$C$2:$C$4"],
+        showErrorMessage: true,
+        errorTitle: "Invalid Joining Status",
+        error: "Please select Signed On, Planned, or In Transit",
+      };
 
       if (shouldAddHierarchy) {
         hierarchySheet.addRow({
