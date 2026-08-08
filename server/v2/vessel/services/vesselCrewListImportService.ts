@@ -2,12 +2,14 @@ import ExcelJS from "exceljs";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { masterVessels, masterPorts } from "../../../../shared/schema";
-import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
+import { admCompanyRanksV2, admVesselRevisionsV2 } from "../../../../shared/v2/admin/schema";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { vesselRevisionsService } from "../../admin/services/vesselRevisionsService";
 import { vesselDraftsService } from "../../admin/services/vesselDraftsService";
 import { vesselPlanningService } from "./vesselPlanningService";
+import { vesselPlanningRepository } from "../repositories/vesselPlanningRepository";
 import { crewAssignmentsService } from "../../crew-pool/services/crewAssignmentsService";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull } from "drizzle-orm";
 
 export interface HierarchyImportResult {
   vesselsProcessed: number;
@@ -22,6 +24,8 @@ export interface AssignmentsImportResult {
   secondaryAssignedCount: number;
   skippedCount: number;
   errors: string[];
+  errorExcelBuffer?: string;
+  success?: boolean;
 }
 
 function norm(str: string | null | undefined): string {
@@ -64,11 +68,113 @@ function getCellValue(cell: ExcelJS.Cell | undefined): string {
   return (cell.text || "").trim();
 }
 
+// ── Stage 1 rollback ─────────────────────────────────────────────────────────
+// Called only when a parallel write batch fails after some vessels already
+// committed.
+//
+// Precision guarantees:
+//   1. Planning rows — only vacant slots (crewUuid IS NULL) created AFTER
+//      phase2StartTime are soft-deleted.  Pre-existing vacant slots (created
+//      before the import started) and all assigned rows are left untouched.
+//   2. Revisions — hard-deleted by exact ID, not by vessel UUID, so historical
+//      revisions for those vessels survive.
+//   3. Drafts — submit() hard-deletes drafts; we re-create them from the
+//      in-memory copy captured during Phase 1 validation.
+
+interface CommittedVessel {
+  vesselUuid: string;
+  revisionId: number;
+  /** All drafts that existed for this vessel before submit() hard-deleted them. */
+  savedDrafts: { vesselId: string; revision: string; draftData: string }[];
+  /**
+   * planUuids that were active BEFORE submit() ran.
+   * Used to restore rows that syncVesselPlanningV2's dedup step soft-deleted.
+   */
+  preSyncPlanUuids: string[];
+  /**
+   * planUuids created by syncVesselPlanningV2 during THIS submit() call.
+   * Rollback soft-deletes exactly these rows — no time-window predicate needed.
+   */
+  createdPlanUuids: string[];
+}
+
+async function rollbackHierarchyImport(
+  committed: CommittedVessel[],
+): Promise<void> {
+  if (committed.length === 0) return;
+  const db = getDb();
+  const revisionIds = committed.map((c) => c.revisionId);
+
+  try {
+    // Step 1 — Soft-delete the EXACT planning rows created by this import run.
+    // We use the planUuids returned by syncVesselPlanningV2 rather than a
+    // time-window predicate, so concurrent slots on the same vessel are safe.
+    const allCreatedUuids = committed.flatMap((c) => c.createdPlanUuids);
+    if (allCreatedUuids.length > 0) {
+      await db
+        .update(vesselPlanningV2)
+        .set({ isDeleted: true, updatedAt: new Date() })
+        .where(inArray(vesselPlanningV2.planUuid, allCreatedUuids));
+    }
+
+    // Step 2 — Restore pre-existing rows that syncVesselPlanningV2's dedup
+    // step may have soft-deleted.  We recorded every active planUuid that
+    // existed before submit() ran; any of those now marked isDeleted=true
+    // were deleted by the sync and must be reinstated.
+    const allPreSyncUuids = committed.flatMap((c) => c.preSyncPlanUuids);
+    if (allPreSyncUuids.length > 0) {
+      await db
+        .update(vesselPlanningV2)
+        .set({ isDeleted: false, updatedAt: new Date() })
+        .where(
+          and(
+            inArray(vesselPlanningV2.planUuid, allPreSyncUuids),
+            eq(vesselPlanningV2.isDeleted, true),
+          ),
+        );
+    }
+
+    // Step 3 — Hard-delete the exact revision rows created by this import (by ID).
+    await db
+      .delete(admVesselRevisionsV2)
+      .where(inArray(admVesselRevisionsV2.id, revisionIds));
+
+    // Step 4 — Restore ALL drafts hard-deleted by submit(), using the verbatim
+    // copies captured during Phase 1 validation (entire array per vessel).
+    for (const c of committed) {
+      for (const draft of c.savedDrafts) {
+        await vesselDraftsService.create({
+          vesselId: draft.vesselId,
+          revision: draft.revision,
+          draftData: draft.draftData,
+        });
+      }
+    }
+  } catch (rollbackErr) {
+    console.error(
+      "[VESSEL IMPORT] Rollback failed — manual intervention may be required:",
+      rollbackErr,
+    );
+  }
+}
+
 /**
- * Stage 1: Import VesselRankHierarchy sheet ➔ updates adm_vessel_revisions_v2 & syncs vessel_planning_v2 slots
- * Restricts duplicate re-uploads if the exact hierarchy is already imported.
+ * Stage 1: Import VesselRankHierarchy sheet → updates adm_vessel_revisions_v2
+ * and syncs vessel_planning_v2 slots.
+ *
+ * Two-phase design:
+ *   Phase 1 — validate ALL vessels (no DB writes).  If any vessel fails,
+ *              return the full error list immediately with zero writes.
+ *   Phase 2 — write in parallel batches of 10 via Promise.allSettled.
+ *              On any batch failure, compensating rollback undoes all committed
+ *              vessels from this run before returning.
+ *
+ * Optimisation: planning records for all vessels are loaded in ONE batch query
+ * before the loop, eliminating the per-vessel getByVesselUuid call (~400 ms × N).
  */
-export async function importVesselRankHierarchy(xlsxBuffer: Buffer): Promise<HierarchyImportResult> {
+export async function importVesselRankHierarchy(
+  xlsxBuffer: Buffer,
+): Promise<HierarchyImportResult> {
   const result: HierarchyImportResult = {
     vesselsProcessed: 0,
     activeRanksCount: 0,
@@ -82,7 +188,9 @@ export async function importVesselRankHierarchy(xlsxBuffer: Buffer): Promise<Hie
 
     const hierarchySheet = workbook.getWorksheet("VesselRankHierarchy");
     if (!hierarchySheet) {
-      result.errors.push("Missing 'VesselRankHierarchy' sheet in uploaded Excel workbook");
+      result.errors.push(
+        "Missing 'VesselRankHierarchy' sheet in uploaded Excel workbook",
+      );
       return result;
     }
 
@@ -90,14 +198,20 @@ export async function importVesselRankHierarchy(xlsxBuffer: Buffer): Promise<Hie
     const vessels: any[] = await db.select().from(masterVessels);
     const vesselByImoMap = new Map<string, any>();
     const vesselByNameMap = new Map<string, any>();
-
     for (const v of vessels) {
       if (v.imo) vesselByImoMap.set(v.imo.replace(/\D/g, ""), v);
       if (v.vessel) vesselByNameMap.set(norm(v.vessel), v);
     }
 
-    // Group rows by vessel IMO / Name
-    const vesselRowsMap = new Map<string, { vesselUuid: string; vesselName: string; rows: { rank: string; position: string; status: string }[] }>();
+    // Group rows by vessel UUID
+    const vesselRowsMap = new Map<
+      string,
+      {
+        vesselUuid: string;
+        vesselName: string;
+        rows: { rank: string; position: string; status: string }[];
+      }
+    >();
 
     for (let rowNumber = 2; rowNumber <= hierarchySheet.rowCount; rowNumber++) {
       const row = hierarchySheet.getRow(rowNumber);
@@ -105,149 +219,295 @@ export async function importVesselRankHierarchy(xlsxBuffer: Buffer): Promise<Hie
       const imo = getCellValue(row.getCell(2));
       const rank = getCellValue(row.getCell(3));
       const position = getCellValue(row.getCell(4));
-      const status = getCellValue(row.getCell(5)) || getCellValue(row.getCell(4)); // Fallback if 4-column sheet uploaded
+      const status =
+        getCellValue(row.getCell(5)) || getCellValue(row.getCell(4));
 
       if (!vesselName && !imo) continue;
 
       const cleanImo = (imo || "").replace(/\D/g, "");
-      let matchedVessel: any = (cleanImo ? vesselByImoMap.get(cleanImo) : null) || vesselByNameMap.get(norm(vesselName));
+      const matchedVessel: any =
+        (cleanImo ? vesselByImoMap.get(cleanImo) : null) ||
+        vesselByNameMap.get(norm(vesselName));
 
       if (!matchedVessel) {
-        result.errors.push(`Row ${rowNumber}: Vessel "${vesselName || "Unknown"}" ${imo ? `(IMO: ${imo})` : ""} is not registered in Master Vessels. Please create the vessel in Master Vessels before uploading.`);
+        result.errors.push(
+          `Row ${rowNumber}: Vessel "${vesselName || "Unknown"}" ${imo ? `(IMO: ${imo})` : ""} is not registered in Master Vessels. Please create the vessel in Master Vessels before uploading.`,
+        );
         continue;
       }
 
       const key: string = matchedVessel.vesselUuid;
       if (!vesselRowsMap.has(key)) {
-        vesselRowsMap.set(key, { vesselUuid: key, vesselName: matchedVessel.vessel || vesselName, rows: [] });
+        vesselRowsMap.set(key, {
+          vesselUuid: key,
+          vesselName: matchedVessel.vessel || vesselName,
+          rows: [],
+        });
       }
       vesselRowsMap.get(key)!.rows.push({ rank, position, status });
     }
 
+    // Early-exit: missing vessel errors surfaced above
+    if (result.errors.length > 0) return result;
+
+    // ── Pre-load all planning in ONE batch query ─────────────────────────────
+    const allVesselUuids = [...vesselRowsMap.keys()];
+    const batchPlanningFlat =
+      allVesselUuids.length > 0
+        ? await vesselPlanningRepository.findByVesselUuidBatch(allVesselUuids)
+        : [];
+
+    const planningByVessel = new Map<string, any[]>();
+    for (const p of batchPlanningFlat) {
+      if (!planningByVessel.has(p.vesselUuid))
+        planningByVessel.set(p.vesselUuid, []);
+      planningByVessel.get(p.vesselUuid)!.push(p);
+    }
+
     const todayStr = new Date().toLocaleDateString("en-GB"); // DD/MM/YYYY
+    const allCompanyRanks = await db
+      .select()
+      .from(admCompanyRanksV2)
+      .where(eq(admCompanyRanksV2.isDeleted, false));
 
-    // Load company ranks as fallback structure
-    const allCompanyRanks = await db.select().from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false));
+    // ── Phase 1: Validate & prepare revision data (zero DB writes) ───────────
+    interface ValidatedVessel {
+      vesselUuid: string;
+      vesselName: string;
+      updatedRevisionData: any[];
+      activeRanksCount: number;
+      deletedRanksCount: number;
+      /**
+       * ALL drafts captured verbatim before submit() hard-deletes them.
+       * submit() iterates and deletes every draft for a vessel, so capturing
+       * only drafts[0] would permanently lose any additional drafts on failure.
+       */
+      savedDrafts: { vesselId: string; revision: string; draftData: string }[];
+    }
 
-    // Submit revisions for each vessel
+    const validVessels: ValidatedVessel[] = [];
+
     for (const [vesselUuid, group] of vesselRowsMap.entries()) {
-      try {
-        // Fetch existing planning records for vessel to check for duplicate upload
-        const existingPlanning: any[] = await vesselPlanningService.getByVesselUuid(vesselUuid);
-        const existingRanksSet = new Set<string>(existingPlanning.map((p) => norm(p.rank)));
+      const existingPlanning = planningByVessel.get(vesselUuid) || [];
+      const existingRanksSet = new Set<string>(
+        existingPlanning.map((p) => norm(p.rank)),
+      );
 
-        // Build set of Active and Deleted rank roles from sheet
-        const activeRankRoles = new Set<string>();
-        const deletedRankRoles = new Set<string>();
+      const activeRankRoles = new Set<string>();
+      const deletedRankRoles = new Set<string>();
 
-        group.rows.forEach((r) => {
-          const posKey = norm(r.position || r.rank);
-          const st = norm(r.status);
-
-          if (st === "deleted" || st === "not required" || st === "inactive") {
-            deletedRankRoles.add(posKey);
-          } else {
-            activeRankRoles.add(posKey);
-          }
-        });
-
-        // Check if all active rank roles in sheet ALREADY exist in vessel planning and no ranks are deleted
-        let isIdenticalHierarchy = activeRankRoles.size > 0 && deletedRankRoles.size === 0;
-        if (isIdenticalHierarchy) {
-          for (const rankKey of activeRankRoles) {
-            if (!existingRanksSet.has(rankKey)) {
-              isIdenticalHierarchy = false;
-              break;
-            }
-          }
-        }
-
-        if (isIdenticalHierarchy) {
-          result.errors.push(`Duplicate upload restricted: Rank hierarchy for vessel "${group.vesselName}" has already been imported into the system.`);
-          continue;
-        }
-
-        group.rows.forEach((r) => {
-          const st = norm(r.status);
-          if (st === "deleted" || st === "not required" || st === "inactive") {
-            result.deletedRanksCount++;
-          } else {
-            result.activeRanksCount++;
-          }
-        });
-
-        // Load draft for vessel
-        const drafts = await vesselDraftsService.getByVesselId(vesselUuid);
-        let revisionDataList: any[] = [];
-
-        if (drafts.length > 0 && drafts[0].draftData) {
-          revisionDataList = JSON.parse(drafts[0].draftData);
+      for (const r of group.rows) {
+        const posKey = norm(r.position || r.rank);
+        const st = norm(r.status);
+        if (
+          st === "deleted" ||
+          st === "not required" ||
+          st === "inactive"
+        ) {
+          deletedRankRoles.add(posKey);
         } else {
-          // If no draft exists, load latest revision
-          const revisions = await vesselRevisionsService.getByVesselId(vesselUuid);
-          if (revisions.length > 0 && revisions[0].revisionData) {
-            revisionDataList = JSON.parse(revisions[0].revisionData);
+          activeRankRoles.add(posKey);
+        }
+      }
+
+      // Duplicate-upload guard (unchanged logic)
+      let isIdenticalHierarchy =
+        activeRankRoles.size > 0 && deletedRankRoles.size === 0;
+      if (isIdenticalHierarchy) {
+        for (const rankKey of activeRankRoles) {
+          if (!existingRanksSet.has(rankKey)) {
+            isIdenticalHierarchy = false;
+            break;
           }
         }
+      }
+      if (isIdenticalHierarchy) {
+        result.errors.push(
+          `Duplicate upload restricted: Rank hierarchy for vessel "${group.vesselName}" has already been imported into the system.`,
+        );
+        continue;
+      }
 
-        if (revisionDataList.length === 0) {
-          // Build default revision structure from company ranks
-          revisionDataList = allCompanyRanks.map((cr: any) => ({
-            ...cr,
-            actualManningFlag: false,
-            actualManning: [],
-            safeManning: false,
-            optimumManning: false,
-            highWorkloadManning: false,
-          }));
+      // Load draft / latest revision data (read-only, no writes).
+      // Capture EVERY draft verbatim — submit() hard-deletes all drafts for a
+      // vessel; only capturing drafts[0] would permanently lose any extras.
+      const drafts = await vesselDraftsService.getByVesselId(vesselUuid);
+      let revisionDataList: any[] = [];
+      const savedDrafts: { vesselId: string; revision: string; draftData: string }[] = [];
+      if (drafts.length > 0) {
+        if (drafts[0].draftData) {
+          revisionDataList = JSON.parse(drafts[0].draftData);
         }
-
-        // Update actualManningFlag in revision_data
-        const updatedRevisionData = revisionDataList.map((rankObj: any) => {
-          const roleName = rankObj.role || rankObj.rank;
-          const roleKey = norm(roleName);
-
-          if (deletedRankRoles.has(roleKey)) {
-            return { ...rankObj, actualManningFlag: false };
+        for (const d of drafts) {
+          if (d.draftData) {
+            savedDrafts.push({
+              vesselId: vesselUuid,
+              revision: d.revision,
+              draftData: d.draftData,
+            });
           }
-          if (activeRankRoles.has(roleKey)) {
-            return { ...rankObj, actualManningFlag: true };
+        }
+      } else {
+        const revisions = await vesselRevisionsService.getByVesselId(vesselUuid);
+        if (revisions.length > 0 && revisions[0].revisionData) {
+          revisionDataList = JSON.parse(revisions[0].revisionData);
+        }
+      }
+
+      if (revisionDataList.length === 0) {
+        revisionDataList = allCompanyRanks.map((cr: any) => ({
+          ...cr,
+          actualManningFlag: false,
+          actualManning: [],
+          safeManning: false,
+          optimumManning: false,
+          highWorkloadManning: false,
+        }));
+      }
+
+      const updatedRevisionData = revisionDataList.map((rankObj: any) => {
+        const roleName = rankObj.role || rankObj.rank;
+        const roleKey = norm(roleName);
+        if (deletedRankRoles.has(roleKey))
+          return { ...rankObj, actualManningFlag: false };
+        if (activeRankRoles.has(roleKey))
+          return { ...rankObj, actualManningFlag: true };
+        return rankObj;
+      });
+
+      validVessels.push({
+        vesselUuid,
+        vesselName: group.vesselName,
+        updatedRevisionData,
+        activeRanksCount: activeRankRoles.size,
+        deletedRanksCount: deletedRankRoles.size,
+        savedDrafts,
+      });
+    }
+
+    // If validation found any errors, stop before writing anything
+    if (result.errors.length > 0) return result;
+    if (validVessels.length === 0) return result;
+
+    // ── Phase 2: Parallel batch writes (10 vessels at a time) ───────────────
+    const BATCH_SIZE = 10;
+    const committed: CommittedVessel[] = [];
+
+    for (let i = 0; i < validVessels.length; i += BATCH_SIZE) {
+      const batch = validVessels.slice(i, i + BATCH_SIZE);
+
+      const batchResults = await Promise.allSettled(
+        batch.map(async (v) => {
+          // Snapshot the planUuids that are active BEFORE this submit() call.
+          // syncVesselPlanningV2's dedup step may soft-delete some of these;
+          // we record them so rollback can restore the exact pre-import state.
+          const preSyncPlanUuids = (planningByVessel.get(v.vesselUuid) || []).map(
+            (p: any) => p.planUuid as string,
+          );
+
+          const submitResult = await vesselRevisionsService.submit(
+            {
+              vesselId: v.vesselUuid,
+              revisionDate: todayStr,
+              revisionData: JSON.stringify(v.updatedRevisionData),
+            },
+            // throwOnSyncError=true causes submit() to:
+            //   (a) pass strictMode=true to syncVesselPlanningV2 so per-record
+            //       creation failures propagate instead of being swallowed
+            //   (b) attach partialRevisionId to the thrown error so the failure
+            //       handler below can include this vessel in the rollback set
+            //       even though allSettled carries no return value on rejection
+            { throwOnSyncError: true },
+          );
+          return {
+            vesselUuid: v.vesselUuid,
+            revisionId: submitResult.revision.id,
+            // Exact planUuids created by this submit's syncVesselPlanningV2 call.
+            // Rollback soft-deletes only these rows — no time-window predicate.
+            createdPlanUuids: submitResult.metadata.createdPlanUuids ?? [],
+            vessel: v,
+            preSyncPlanUuids,
+          };
+        }),
+      );
+
+      const failures = batchResults.filter(
+        (r) => r.status === "rejected",
+      ) as PromiseRejectedResult[];
+
+      if (failures.length > 0) {
+        // Collect ALL started vessels from THIS failing batch before rolling back:
+        //
+        // Fulfilled — committed successfully; must be reversed (all three artefacts:
+        //   revision, drafts, newly created planning rows).
+        // Rejected with partialRevisionId — submit() created the revision and
+        //   deleted ALL drafts before sync threw; rollback must undo those writes
+        //   too, even though allSettled returns no value for rejected items.
+        for (const r of batchResults) {
+          if (r.status === "fulfilled") {
+            committed.push({
+              vesselUuid: r.value.vesselUuid,
+              revisionId: r.value.revisionId,
+              savedDrafts: r.value.vessel.savedDrafts,
+              preSyncPlanUuids: r.value.preSyncPlanUuids,
+              createdPlanUuids: r.value.createdPlanUuids,
+            });
+          } else if (r.reason?.partialRevisionId) {
+            // Identify the corresponding ValidatedVessel to restore its drafts.
+            const partialVessel = batch.find(
+              (bv) => bv.vesselUuid === r.reason.partialSavedForVessel,
+            );
+            committed.push({
+              vesselUuid: r.reason.partialSavedForVessel,
+              revisionId: r.reason.partialRevisionId,
+              savedDrafts: partialVessel?.savedDrafts ?? [],
+              preSyncPlanUuids: partialVessel
+                ? (planningByVessel.get(partialVessel.vesselUuid) || []).map(
+                    (p: any) => p.planUuid as string,
+                  )
+                : [],
+              // Sync threw before returning, so no planUuids were captured.
+              createdPlanUuids: [],
+            });
           }
-          return rankObj;
-        });
+        }
+        await rollbackHierarchyImport(committed);
+        const firstMsg =
+          failures[0].reason?.message || String(failures[0].reason);
+        result.errors.push(
+          `Import failed after committing ${committed.length} vessel(s). All changes have been rolled back. Error: ${firstMsg}`,
+        );
+        result.vesselsProcessed = 0;
+        result.activeRanksCount = 0;
+        result.deletedRanksCount = 0;
+        return result;
+      }
 
-        // Submit revision -> INSERTS adm_vessel_revisions_v2, DELETES draft, calls syncVesselPlanningV2()
-        await vesselRevisionsService.submit({
-          vesselId: vesselUuid,
-          revisionDate: todayStr,
-          revisionData: JSON.stringify(updatedRevisionData),
-        });
-
-        result.vesselsProcessed++;
-      } catch (err: any) {
-        result.errors.push(`Vessel ${vesselUuid}: ${err.message || String(err)}`);
+      for (const r of batchResults) {
+        if (r.status === "fulfilled") {
+          committed.push({
+            vesselUuid: r.value.vesselUuid,
+            revisionId: r.value.revisionId,
+            savedDrafts: r.value.vessel.savedDrafts,
+            preSyncPlanUuids: r.value.preSyncPlanUuids,
+            createdPlanUuids: r.value.createdPlanUuids,
+          });
+          result.activeRanksCount += r.value.vessel.activeRanksCount;
+          result.deletedRanksCount += r.value.vessel.deletedRanksCount;
+          result.vesselsProcessed++;
+        }
       }
     }
   } catch (err: any) {
-    result.errors.push(`Failed to process hierarchy import: ${err.message || String(err)}`);
+    result.errors.push(
+      `Failed to process hierarchy import: ${err.message || String(err)}`,
+    );
   }
 
   return result;
 }
 
-/**
- * Stage 2: Import Assignments sheet ➔ updates vessel_planning_v2 & inserts crew_assignments (fully independent)
- * Restricts duplicate assignments if seafarer is already assigned to the exact vessel slot.
- */
-export interface AssignmentsImportResult {
-  totalRowsProcessed: number;
-  primaryAssignedCount: number;
-  secondaryAssignedCount: number;
-  skippedCount: number;
-  errors: string[];
-  errorExcelBuffer?: string;
-  success?: boolean;
-}
+// ── Helpers shared by Stage 2 ────────────────────────────────────────────────
 
 function parseDateStringStrict(str: string | null | undefined): string | null {
   if (!str) return null;
@@ -255,9 +515,7 @@ function parseDateStringStrict(str: string | null | undefined): string | null {
   if (!trimmed) return null;
 
   // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
-  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
 
   // DD/MM/YYYY or DD-MM-YYYY
   const slashMatch = trimmed.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
@@ -266,12 +524,14 @@ function parseDateStringStrict(str: string | null | undefined): string | null {
     return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
   }
 
-  // DD-MMM-YYYY or DD-MMM-YY (e.g. 15-Jan-1985 or 01-Jan-80)
+  // DD-MMM-YYYY or DD-MMM-YY
   const monthNames: Record<string, string> = {
     jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
-    jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
+    jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
   };
-  const textMatch = trimmed.match(/^(\d{1,2})[\/\s-]([a-zA-Z]{3})[\/\s-](\d{2,4})$/);
+  const textMatch = trimmed.match(
+    /^(\d{1,2})[\/\s-]([a-zA-Z]{3})[\/\s-](\d{2,4})$/,
+  );
   if (textMatch) {
     const [, dd, mmm, yyyyStr] = textMatch;
     const mm = monthNames[mmm.toLowerCase()];
@@ -280,9 +540,7 @@ function parseDateStringStrict(str: string | null | undefined): string | null {
       const yrNum = parseInt(yyyy, 10);
       yyyy = yrNum > 30 ? `19${yyyy}` : `20${yyyy}`;
     }
-    if (mm) {
-      return `${yyyy}-${mm}-${dd.padStart(2, "0")}`;
-    }
+    if (mm) return `${yyyy}-${mm}-${dd.padStart(2, "0")}`;
   }
 
   // Excel serial number
@@ -299,7 +557,7 @@ function parseDateStringStrict(str: string | null | undefined): string | null {
     }
   }
 
-  // Fallback for native JS Date string output or ISO string (e.g., "Sat Sep 05 2026 05:30:00 GMT+0530...")
+  // Fallback: native JS Date string / ISO string
   const jsDate = new Date(trimmed);
   if (!isNaN(jsDate.getTime())) {
     const yr = jsDate.getFullYear();
@@ -311,17 +569,26 @@ function parseDateStringStrict(str: string | null | undefined): string | null {
   return null;
 }
 
-function computeReliefDueDate(signOnDateStr: string, contractMonths: number): string {
+function computeReliefDueDate(
+  signOnDateStr: string,
+  contractMonths: number,
+): string {
   const dateObj = new Date(signOnDateStr);
   dateObj.setMonth(dateObj.getMonth() + contractMonths);
   return dateObj.toISOString().split("T")[0];
 }
 
 /**
- * Stage 2: Import Assignments sheet ➔ updates vessel_planning_v2 & inserts crew_assignments
- * Uses Strict All-or-Nothing Validation & Atomic Database Transactions.
+ * Stage 2: Import Assignments sheet → updates vessel_planning_v2 & inserts
+ * crew_assignments (fully independent of Stage 1).
+ *
+ * Optimisation: planning records for all referenced vessels are loaded in ONE
+ * batch query before the transaction loop, replacing the per-row
+ * vesselPlanningService.getByVesselUuid() call (was ~400 ms × N rows).
  */
-export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<AssignmentsImportResult> {
+export async function importCrewAssignments(
+  xlsxBuffer: Buffer,
+): Promise<AssignmentsImportResult> {
   const result: AssignmentsImportResult = {
     totalRowsProcessed: 0,
     primaryAssignedCount: 0,
@@ -342,11 +609,15 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
     }
 
     const db = getDb();
-    const [allCrew, allVessels, allPorts]: [any[], any[], any[]] = await Promise.all([
-      db.select().from(crewMembersV2).where(eq(crewMembersV2.isDeleted, false)),
-      db.select().from(masterVessels),
-      db.select().from(masterPorts).where(eq(masterPorts.isDeleted, false)),
-    ]);
+    const [allCrew, allVessels, allPorts]: [any[], any[], any[]] =
+      await Promise.all([
+        db
+          .select()
+          .from(crewMembersV2)
+          .where(eq(crewMembersV2.isDeleted, false)),
+        db.select().from(masterVessels),
+        db.select().from(masterPorts).where(eq(masterPorts.isDeleted, false)),
+      ]);
 
     const crewByEmpIdMap = new Map<string, any>();
     const crewByPassportMap = new Map<string, any>();
@@ -369,7 +640,7 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
       if (p.name) portByNameMap.set(norm(p.name), p.portUuid);
     }
 
-    // Build dynamic header map from Row 1 for robust column resolution
+    // Build dynamic header map from Row 1
     const headerRow = assignmentsSheet.getRow(1);
     const colMap = new Map<string, number>();
     headerRow.eachCell((cell, colNum) => {
@@ -377,15 +648,23 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
       if (headerText) colMap.set(headerText, colNum);
     });
 
-    const getColVal = (row: ExcelJS.Row, headerName: string, fallbackIdx: number): string => {
+    const getColVal = (
+      row: ExcelJS.Row,
+      headerName: string,
+      fallbackIdx: number,
+    ): string => {
       const colIdx = colMap.get(norm(headerName)) || fallbackIdx;
       return getCellValue(row.getCell(colIdx));
     };
 
     const rowsToProcess: any[] = [];
-    const rowErrorsMap = new Map<number, string[]>(); // rowNumber -> array of validation errors
+    const rowErrorsMap = new Map<number, string[]>();
 
-    for (let rowNumber = 2; rowNumber <= assignmentsSheet.rowCount; rowNumber++) {
+    for (
+      let rowNumber = 2;
+      rowNumber <= assignmentsSheet.rowCount;
+      rowNumber++
+    ) {
       const row = assignmentsSheet.getRow(rowNumber);
 
       const employeeId = getColVal(row, "Employee ID", 1);
@@ -407,70 +686,89 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
 
       const errors: string[] = [];
 
-      // Strict Mandatory Fields Validation
       if (!employeeId) errors.push("Employee ID is missing");
       if (!vesselName && !imo) errors.push("Vessel Name / IMO is missing");
       if (!rank) errors.push("Rank is missing");
       if (!position) errors.push("Position is missing");
       if (!signOnDate) errors.push("Sign On Date is missing");
 
-      // Validate Assignment Type Enum
       const normAssignType = norm(assignmentType);
-      if (assignmentType && normAssignType !== "primary" && normAssignType !== "secondary") {
-        errors.push(`Assignment Type '${assignmentType}' is invalid (Must be Primary or Secondary)`);
+      if (
+        assignmentType &&
+        normAssignType !== "primary" &&
+        normAssignType !== "secondary"
+      ) {
+        errors.push(
+          `Assignment Type '${assignmentType}' is invalid (Must be Primary or Secondary)`,
+        );
       }
 
-      // Validate Joining Status Enum
       if (joiningStatus) {
         const normStatus = norm(joiningStatus);
-        if (normStatus !== "signed on" && normStatus !== "planned" && normStatus !== "in transit") {
-          errors.push(`Joining Status '${joiningStatus}' is invalid (Must be Signed On, Planned, or In Transit)`);
+        if (
+          normStatus !== "signed on" &&
+          normStatus !== "planned" &&
+          normStatus !== "in transit"
+        ) {
+          errors.push(
+            `Joining Status '${joiningStatus}' is invalid (Must be Signed On, Planned, or In Transit)`,
+          );
         }
       }
 
-      // Validate Date Format
       const parsedSignOn = parseDateStringStrict(signOnDate);
       if (signOnDate && !parsedSignOn) {
-        errors.push(`Sign On Date '${signOnDate}' is invalid or unparseable`);
+        errors.push(
+          `Sign On Date '${signOnDate}' is invalid or unparseable`,
+        );
       }
 
       const parsedReliefDue = parseDateStringStrict(reliefDue);
       if (reliefDue && !parsedReliefDue) {
-        errors.push(`Relief Due Date '${reliefDue}' is invalid or unparseable`);
+        errors.push(
+          `Relief Due Date '${reliefDue}' is invalid or unparseable`,
+        );
       }
 
-      // Validate Seafarer Existence
       let crew: any = null;
       if (employeeId) {
-        crew = crewByEmpIdMap.get(norm(employeeId)) || crewByPassportMap.get(norm(employeeId));
+        crew =
+          crewByEmpIdMap.get(norm(employeeId)) ||
+          crewByPassportMap.get(norm(employeeId));
         if (!crew) {
-          errors.push(`Seafarer with Employee ID / Passport '${employeeId}' is not registered in system`);
+          errors.push(
+            `Seafarer with Employee ID / Passport '${employeeId}' is not registered in system`,
+          );
         }
       }
 
-      // Validate Vessel Existence
       const cleanImo = (imo || "").replace(/\D/g, "");
-      let vessel: any = (cleanImo ? vesselByImoMap.get(cleanImo) : null) || vesselByNameMap.get(norm(vesselName));
+      const vessel: any =
+        (cleanImo ? vesselByImoMap.get(cleanImo) : null) ||
+        vesselByNameMap.get(norm(vesselName));
       if (vesselName || imo) {
         if (!vessel) {
-          errors.push(`Vessel '${vesselName}' ${imo ? `(IMO: ${imo})` : ""} is not registered in Master Vessels`);
+          errors.push(
+            `Vessel '${vesselName}' ${imo ? `(IMO: ${imo})` : ""} is not registered in Master Vessels`,
+          );
         } else if (!vessel.vesselUuid) {
-          errors.push(`Vessel '${vesselName}' is missing a valid system identifier in Master Vessels`);
+          errors.push(
+            `Vessel '${vesselName}' is missing a valid system identifier in Master Vessels`,
+          );
         }
       }
 
-      // Validate Port of Joining (if provided)
       let joiningPortUuid: string | undefined = undefined;
       if (portOfJoining) {
         joiningPortUuid = portByNameMap.get(norm(portOfJoining));
         if (!joiningPortUuid) {
-          errors.push(`Port of Joining '${portOfJoining}' is not registered in Master Ports`);
+          errors.push(
+            `Port of Joining '${portOfJoining}' is not registered in Master Ports`,
+          );
         }
       }
 
-      if (errors.length > 0) {
-        rowErrorsMap.set(rowNumber, errors);
-      }
+      if (errors.length > 0) rowErrorsMap.set(rowNumber, errors);
 
       rowsToProcess.push({
         rowNumber,
@@ -494,23 +792,24 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
 
     result.totalRowsProcessed = rowsToProcess.length;
 
-    // Check for validation failures -> ALL-OR-NOTHING ROLLBACK & GENERATE ERROR EXCEL
+    // Validation errors → annotate error excel, return early
     if (rowErrorsMap.size > 0) {
       for (const [rowNum, errList] of rowErrorsMap.entries()) {
         result.errors.push(`Row ${rowNum}: ${errList.join("; ")}`);
       }
       result.skippedCount = rowsToProcess.length;
 
-      // Highlight failed cells and append "Validation Errors" column in Error Excel
       const errColNum = (assignmentsSheet.columnCount || 13) + 1;
       assignmentsSheet.getCell(1, errColNum).value = "Validation Errors";
-      assignmentsSheet.getCell(1, errColNum).font = { bold: true, color: { argb: "991B1B" } };
+      assignmentsSheet.getCell(1, errColNum).font = {
+        bold: true,
+        color: { argb: "991B1B" },
+      };
       assignmentsSheet.getCell(1, errColNum).fill = {
         type: "pattern",
         pattern: "solid",
         fgColor: { argb: "FEE2E2" },
       };
-
       for (let r = 2; r <= assignmentsSheet.rowCount; r++) {
         const rowErrs = rowErrorsMap.get(r);
         if (rowErrs && rowErrs.length > 0) {
@@ -531,27 +830,56 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
       return result;
     }
 
-    // PHASE 2: ATOMIC DATABASE COMMIT (All-or-Nothing Transaction)
+    // ── Pre-load ALL planning in ONE batch query ──────────────────────────────
+    // Replaces per-row vesselPlanningService.getByVesselUuid() calls
+    // (~400 ms × 2 000 rows → ~1–2 s total regardless of row count).
+    const uniqueVesselUuids = [
+      ...new Set(
+        rowsToProcess
+          .filter((r) => r.vessel?.vesselUuid)
+          .map((r) => r.vessel.vesselUuid as string),
+      ),
+    ];
+
+    const batchPlanning =
+      uniqueVesselUuids.length > 0
+        ? await vesselPlanningRepository.findByVesselUuidBatch(uniqueVesselUuids)
+        : [];
+
+    const planningByVessel = new Map<string, any[]>();
+    for (const p of batchPlanning) {
+      if (!planningByVessel.has(p.vesselUuid))
+        planningByVessel.set(p.vesselUuid, []);
+      planningByVessel.get(p.vesselUuid)!.push(p);
+    }
+
+    // ── Atomic DB transaction ─────────────────────────────────────────────────
     await db.transaction(async (tx: any) => {
       for (const item of rowsToProcess) {
         const crew = item.crew;
         const vessel = item.vessel;
         const isPrimary = item.assignmentType === "primary";
 
-        // Auto-compute reliefDue if missing but signOnDate and contractPeriod are present
         let finalReliefDue = item.reliefDue;
         if (!finalReliefDue && item.signOnDate && item.contractPeriod) {
-          finalReliefDue = computeReliefDueDate(item.signOnDate, item.contractPeriod);
+          finalReliefDue = computeReliefDueDate(
+            item.signOnDate,
+            item.contractPeriod,
+          );
         }
 
         const targetPos = item.position || item.rank;
+
+        // Use pre-loaded planning map — eliminates the N+1 per-row DB call
+        const planningRecords: any[] =
+          planningByVessel.get(vessel.vesselUuid) || [];
+
         if (isPrimary) {
-          const planningRecords: any[] = await vesselPlanningService.getByVesselUuid(vessel.vesselUuid);
           let matchedSlot: any = planningRecords.find(
             (p: any) =>
               (p.role && norm(p.role) === norm(targetPos)) ||
               norm(p.rank) === norm(targetPos) ||
-              norm(p.rank) === norm(item.rank)
+              norm(p.rank) === norm(item.rank),
           );
 
           if (!matchedSlot) {
@@ -563,6 +891,13 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
               isArchived: false,
               isDeleted: false,
             });
+            // Register the new slot in the pre-loaded map so subsequent rows
+            // for the same vessel find it rather than creating a duplicate.
+            if (matchedSlot) {
+              if (!planningByVessel.has(vessel.vesselUuid))
+                planningByVessel.set(vessel.vesselUuid, []);
+              planningByVessel.get(vessel.vesselUuid)!.push(matchedSlot);
+            }
           }
 
           if (matchedSlot) {
@@ -577,25 +912,30 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
             });
           }
 
-          await crewAssignmentsService.assignToVessel(crew.crewUuid, vessel.vesselUuid, {
-            signOnDate: item.signOnDate || new Date(),
-            reliefDue: finalReliefDue || undefined,
-            contractPeriod: item.contractPeriod ? String(item.contractPeriod) : undefined,
-            assignmentType: "primary",
-            isCurrent: true,
-            vesselName: vessel.vessel,
-            rank: item.rank,
-          });
+          await crewAssignmentsService.assignToVessel(
+            crew.crewUuid,
+            vessel.vesselUuid,
+            {
+              signOnDate: item.signOnDate || new Date(),
+              reliefDue: finalReliefDue || undefined,
+              contractPeriod: item.contractPeriod
+                ? String(item.contractPeriod)
+                : undefined,
+              assignmentType: "primary",
+              isCurrent: true,
+              vesselName: vessel.vessel,
+              rank: item.rank,
+            },
+          );
 
           result.primaryAssignedCount++;
         } else {
           const targetRank = item.relieverRank || item.position || item.rank;
-          const planningRecords: any[] = await vesselPlanningService.getByVesselUuid(vessel.vesselUuid);
           let matchedSlot: any = planningRecords.find(
             (p: any) =>
               (p.role && norm(p.role) === norm(targetRank)) ||
               norm(p.rank) === norm(targetRank) ||
-              norm(p.rank) === norm(item.rank)
+              norm(p.rank) === norm(item.rank),
           );
 
           if (!matchedSlot) {
@@ -607,6 +947,13 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
               isArchived: false,
               isDeleted: false,
             });
+            // Register the new slot in the pre-loaded map so subsequent rows
+            // for the same vessel find it rather than creating a duplicate.
+            if (matchedSlot) {
+              if (!planningByVessel.has(vessel.vesselUuid))
+                planningByVessel.set(vessel.vesselUuid, []);
+              planningByVessel.get(vessel.vesselUuid)!.push(matchedSlot);
+            }
           }
 
           if (matchedSlot) {
@@ -620,15 +967,21 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
             });
           }
 
-          await crewAssignmentsService.assignToVessel(crew.crewUuid, vessel.vesselUuid, {
-            signOnDate: item.signOnDate || new Date(),
-            reliefDue: finalReliefDue || undefined,
-            contractPeriod: item.contractPeriod ? String(item.contractPeriod) : undefined,
-            assignmentType: "secondary",
-            isCurrent: false,
-            vesselName: vessel.vessel,
-            rank: item.rank,
-          });
+          await crewAssignmentsService.assignToVessel(
+            crew.crewUuid,
+            vessel.vesselUuid,
+            {
+              signOnDate: item.signOnDate || new Date(),
+              reliefDue: finalReliefDue || undefined,
+              contractPeriod: item.contractPeriod
+                ? String(item.contractPeriod)
+                : undefined,
+              assignmentType: "secondary",
+              isCurrent: false,
+              vesselName: vessel.vessel,
+              rank: item.rank,
+            },
+          );
 
           result.secondaryAssignedCount++;
         }
@@ -641,18 +994,25 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
     let userFriendlyMsg = rawMsg;
 
     if (rawMsg.includes('null value in column "vessel_uuid"')) {
-      userFriendlyMsg = "One or more vessels in the uploaded sheet are missing a valid vessel identifier in Master Vessels.";
-    } else if (rawMsg.includes('null value in column')) {
-      userFriendlyMsg = "Required database information is missing from the uploaded record.";
+      userFriendlyMsg =
+        "One or more vessels in the uploaded sheet are missing a valid vessel identifier in Master Vessels.";
+    } else if (rawMsg.includes("null value in column")) {
+      userFriendlyMsg =
+        "Required database information is missing from the uploaded record.";
     } else if (rawMsg.includes("violates not-null constraint")) {
-      userFriendlyMsg = "Import aborted: A mandatory field was missing during database save.";
+      userFriendlyMsg =
+        "Import aborted: A mandatory field was missing during database save.";
     } else if (rawMsg.includes("violates foreign key constraint")) {
-      userFriendlyMsg = "Import aborted: Referenced seafarer, vessel, or port does not exist in master records.";
+      userFriendlyMsg =
+        "Import aborted: Referenced seafarer, vessel, or port does not exist in master records.";
     } else if (rawMsg.includes("violates unique constraint")) {
-      userFriendlyMsg = "Import aborted: A duplicate record already exists in the system.";
+      userFriendlyMsg =
+        "Import aborted: A duplicate record already exists in the system.";
     }
 
-    result.errors.push(`Failed to process assignments import: ${userFriendlyMsg}`);
+    result.errors.push(
+      `Failed to process assignments import: ${userFriendlyMsg}`,
+    );
     result.success = false;
   }
 

@@ -76,6 +76,28 @@ export class VesselPlanningRepository {
     return results;
   }
 
+  /**
+   * Batch variant of findByVesselUuid — returns planning records for multiple
+   * vessels in ONE query. Result is a flat array; callers group by vesselUuid.
+   *
+   * Intentionally lightweight: no attachment-count join, no dedup cleanup,
+   * no sorting — only the columns needed for import slot matching.
+   * The existing findByVesselUuid (singular) and all its callers are untouched.
+   */
+  async findByVesselUuidBatch(vesselUuids: string[]): Promise<any[]> {
+    if (vesselUuids.length === 0) return [];
+    const db = getDb();
+    return db
+      .select()
+      .from(vesselPlanningV2)
+      .where(
+        and(
+          inArray(vesselPlanningV2.vesselUuid, vesselUuids),
+          eq(vesselPlanningV2.isDeleted, false),
+        ),
+      );
+  }
+
   async findByVesselUuid(vesselUuid: string): Promise<any[]> {
     const db = getDb();
     const relieverCrew = alias(crewMembersV2, "reliever_crew");

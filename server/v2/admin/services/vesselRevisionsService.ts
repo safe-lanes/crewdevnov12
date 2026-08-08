@@ -4,6 +4,8 @@ import { VesselDraftsRepository } from "../repositories/vesselDraftsRepository";
 import { AvailableRanksRepository } from "../repositories/availableRanksRepository";
 import { CompanyRanksRepository } from "../repositories/companyRanksRepository";
 import { VesselPlanningRepository } from "../../vessel/repositories/vesselPlanningRepository";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
+import { eq } from "drizzle-orm";
 import { applyAuditUser } from "../utils/auditUser";
 import type { AdmVesselRevisionV2, InsertAdmVesselRevisionV2 } from "../../../../shared/v2/admin/types";
 
@@ -36,10 +38,22 @@ export const vesselRevisionsService = {
     return vesselRevisionsRepo.getNextRevision(vesselId);
   },
 
-  async submit(data: { vesselId: string; revisionData: string; revisionDate: string }): Promise<{
+  async submit(
+    data: { vesselId: string; revisionData: string; revisionDate: string },
+    options?: {
+      /**
+       * When true, a syncVesselPlanningV2 failure is re-thrown instead of only
+       * being logged.  Callers that need transactional guarantees (e.g. the bulk
+       * import service) set this so the calling batch handler can detect the
+       * failure and trigger compensating rollback.  Default: false (legacy
+       * swallow-and-log behaviour retained for all existing callers).
+       */
+      throwOnSyncError?: boolean;
+    },
+  ): Promise<{
     success: boolean;
     revision: AdmVesselRevisionV2;
-    metadata: { autoAssignedRevision: string; deletedDrafts: number; createdPlanningRecords: number };
+    metadata: { autoAssignedRevision: string; deletedDrafts: number; createdPlanningRecords: number; createdPlanUuids: string[] };
   }> {
     const autoAssignedRevision = await vesselRevisionsRepo.getNextRevision(data.vesselId);
 
@@ -58,16 +72,34 @@ export const vesselRevisionsService = {
     }
 
     let createdPlanningRecords = 0;
+    let createdPlanUuids: string[] = [];
     try {
-      createdPlanningRecords = await this.syncVesselPlanningV2(data.vesselId, data.revisionData);
-    } catch (syncError) {
+      const syncResult = await this.syncVesselPlanningV2(
+        data.vesselId,
+        data.revisionData,
+        // Strict mode propagates per-record creation failures so the caller
+        // can detect an incomplete sync and trigger compensating rollback.
+        options?.throwOnSyncError,
+      );
+      createdPlanningRecords = syncResult.count;
+      createdPlanUuids = syncResult.createdPlanUuids;
+    } catch (syncError: any) {
       console.error(`[VESSEL REVISION V2] Failed to sync vessel_planning_v2:`, syncError);
+      if (options?.throwOnSyncError) {
+        // Attach the already-created revision ID to the error so callers that
+        // catch this exception can include it in their rollback set, even
+        // though the allSettled result carries no return value on rejection.
+        const enriched = syncError instanceof Error ? syncError : new Error(String(syncError));
+        (enriched as any).partialRevisionId = revision.id;
+        (enriched as any).partialSavedForVessel = data.vesselId;
+        throw enriched;
+      }
     }
 
     return {
       success: true,
       revision,
-      metadata: { autoAssignedRevision, deletedDrafts, createdPlanningRecords },
+      metadata: { autoAssignedRevision, deletedDrafts, createdPlanningRecords, createdPlanUuids },
     };
   },
 
@@ -159,7 +191,11 @@ export const vesselRevisionsService = {
     return ranksWithDisplayRole;
   },
 
-  async syncVesselPlanningV2(vesselUuid: string, revisionData: string | any): Promise<number> {
+  async syncVesselPlanningV2(
+    vesselUuid: string,
+    revisionData: string | any,
+    strictMode?: boolean,
+  ): Promise<{ count: number; createdPlanUuids: string[] }> {
     console.log(`[VESSEL PLANNING V2 SYNC] Starting sync for vessel: ${vesselUuid}`);
 
     const db = getDb();
@@ -214,6 +250,7 @@ export const vesselRevisionsService = {
     const activeRanks = ranks.filter((r: any) => r.actualManningFlag === true);
 
     let createdCount = 0;
+    const createdPlanUuids: string[] = [];
     const processedRolesInThisSync = new Set<string>();
 
     for (const rankObj of activeRanks) {
@@ -241,7 +278,7 @@ export const vesselRevisionsService = {
       const targetRankId = mapped?.rankId || "R000";
 
       try {
-        await vesselPlanningRepo.create({
+        const newRow = await vesselPlanningRepo.create({
           vesselUuid: vesselUuid,
           rankId: targetRankId,
           rank: displayRole,
@@ -250,13 +287,18 @@ export const vesselRevisionsService = {
           isDeleted: false,
         });
         createdCount++;
+        // Track the exact planUuid so callers can reverse only these rows.
+        if (newRow?.planUuid) createdPlanUuids.push(newRow.planUuid);
         console.log(`[VESSEL PLANNING V2 SYNC] Created planning record for: ${displayRole} (${targetRankId})`);
       } catch (createError) {
         console.warn(`[VESSEL PLANNING V2 SYNC] Failed to create planning for ${displayRole}:`, createError);
+        // In strict mode (e.g. bulk import), propagate instead of swallowing so
+        // the caller's batch handler detects the failure and triggers rollback.
+        if (strictMode) throw createError;
       }
     }
 
     console.log(`[VESSEL PLANNING V2 SYNC] Completed: created ${createdCount} new planning record(s) for vessel ${vesselUuid}`);
-    return createdCount;
+    return { count: createdCount, createdPlanUuids };
   },
 };
