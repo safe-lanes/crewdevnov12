@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,99 @@ import {
   Layers,
   Users,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+
+// ── useImportProgress ─────────────────────────────────────────────────────────
+// Drives a time-estimated multi-phase progress bar while a single POST is
+// in flight.  Each phase specifies a display label, a target percentage (`end`),
+// and how long (ms) the phase should take to animate to that target.
+// The bar caps at the last phase's `end` value while the request is pending,
+// then snaps to 100 % the moment `active` flips false (success or error).
+// All timers are cancelled on `active → false` or component unmount so no
+// state updates fire after the component is gone.
+
+interface ImportPhase {
+  label: string;
+  /** Target percentage at which this phase finishes (0–100). */
+  end: number;
+  /** Wall-clock duration (ms) for animating from the previous phase's end to this one. */
+  durationMs: number;
+}
+
+function useImportProgress(active: boolean, phases: ImportPhase[]) {
+  const [progress, setProgress] = useState(0);
+  const [phaseLabel, setPhaseLabel] = useState("");
+  const cancelRef = useRef<() => void>(() => {});
+  const wasActiveRef = useRef(false);
+
+  useEffect(() => {
+    // Tear down any running animation first.
+    cancelRef.current();
+
+    if (!active) {
+      if (wasActiveRef.current) {
+        // Request returned (success or error) — snap the bar to 100 %.
+        setProgress(100);
+      }
+      wasActiveRef.current = false;
+      cancelRef.current = () => {};
+      return;
+    }
+
+    wasActiveRef.current = true;
+    setProgress(0);
+    setPhaseLabel(phases[0]?.label ?? "");
+
+    let cancelled = false;
+    const handles: ReturnType<typeof setTimeout>[] = [];
+    const TICK_MS = 80;
+
+    let cumulativeMs = 0;
+    phases.forEach((phase, idx) => {
+      const startPct = idx === 0 ? 0 : phases[idx - 1].end;
+      const endPct = phase.end;
+      const duration = phase.durationMs;
+      const phaseDelay = cumulativeMs;
+      cumulativeMs += duration;
+
+      // Schedule the label change and interval for this phase.
+      const t = setTimeout(() => {
+        if (cancelled) return;
+        setPhaseLabel(phase.label);
+        let elapsed = 0;
+        const iv = setInterval(() => {
+          if (cancelled) {
+            clearInterval(iv);
+            return;
+          }
+          elapsed += TICK_MS;
+          const frac = Math.min(elapsed / duration, 1);
+          setProgress(startPct + (endPct - startPct) * frac);
+          if (frac >= 1) clearInterval(iv);
+        }, TICK_MS);
+        handles.push(iv as unknown as ReturnType<typeof setTimeout>);
+      }, phaseDelay);
+      handles.push(t);
+    });
+
+    cancelRef.current = () => {
+      cancelled = true;
+      handles.forEach((h) => {
+        clearTimeout(h);
+        clearInterval(h as unknown as ReturnType<typeof setInterval>);
+      });
+    };
+
+    return () => {
+      cancelRef.current();
+    };
+    // phases is defined at module level per call site — intentionally omitted
+    // from deps to avoid restarting on re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
+  return { progress, phaseLabel };
+}
 
 interface VesselAssignmentImportDialogProps {
   isOpen: boolean;
@@ -44,6 +137,30 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // ── Phase definitions ──────────────────────────────────────────────────────
+  // Durations are time-estimates that fill the bar up to ~95 % while the
+  // request is in flight.  The bar snaps to 100 % on response arrival.
+  const STAGE1_PHASES: ImportPhase[] = [
+    { label: "Reading workbook…",        end: 15, durationMs: 1200 },
+    { label: "Processing vessel ranks…", end: 50, durationMs: 5000 },
+    { label: "Writing planning slots…",  end: 83, durationMs: 6000 },
+    { label: "Finalising…",              end: 95, durationMs: 2000 },
+  ];
+
+  const STAGE2_PHASES: ImportPhase[] = [
+    { label: "Reading workbook…",          end:  8, durationMs: 1000 },
+    { label: "Validating rows…",           end: 28, durationMs: 3000 },
+    { label: "Matching crew to vessels…",  end: 62, durationMs: 5000 },
+    { label: "Writing assignments…",       end: 90, durationMs: 7000 },
+    { label: "Finalising…",               end: 97, durationMs: 2000 },
+  ];
+
+  const { progress: stage1Progress, phaseLabel: stage1PhaseLabel } =
+    useImportProgress(stage1Status === "importing", STAGE1_PHASES);
+
+  const { progress: stage2Progress, phaseLabel: stage2PhaseLabel } =
+    useImportProgress(stage2Status === "importing", STAGE2_PHASES);
 
   const handleClose = () => {
     setActiveTab("hierarchy");
@@ -332,27 +449,34 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
                 </div>
               )}
 
-              <Button
-                disabled={!file || stage1Status === "importing"}
-                onClick={handleImportHierarchy}
-                className={
-                  stage1Status === "success"
-                    ? "border-[#cbd5e1] text-gray-700 bg-white hover:bg-gray-50"
-                    : "bg-[#3b82f6] hover:bg-blue-700 text-white font-medium"
-                }
-                variant={stage1Status === "success" ? "outline" : "default"}
-                size="sm"
-              >
-                {stage1Status === "importing" ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Importing Hierarchy...
-                  </>
-                ) : stage1Status === "success" ? (
-                  "Re-import Rank Hierarchy (Section 1)"
-                ) : (
-                  "Import Vessel Rank Hierarchy (Section 1)"
-                )}
-              </Button>
+              {stage1Status === "importing" ? (
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                    <span className="font-medium">{stage1PhaseLabel}</span>
+                    <span className="tabular-nums text-gray-400">{Math.round(stage1Progress)}%</span>
+                  </div>
+                  <Progress
+                    value={stage1Progress}
+                    className="h-2 bg-blue-100"
+                  />
+                </div>
+              ) : (
+                <Button
+                  disabled={!file}
+                  onClick={handleImportHierarchy}
+                  className={
+                    stage1Status === "success"
+                      ? "border-[#cbd5e1] text-gray-700 bg-white hover:bg-gray-50"
+                      : "bg-[#3b82f6] hover:bg-blue-700 text-white font-medium"
+                  }
+                  variant={stage1Status === "success" ? "outline" : "default"}
+                  size="sm"
+                >
+                  {stage1Status === "success"
+                    ? "Re-import Rank Hierarchy (Section 1)"
+                    : "Import Vessel Rank Hierarchy (Section 1)"}
+                </Button>
+              )}
             </div>
 
             {/* CHECKPOINT BANNER */}
@@ -414,22 +538,27 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
                 </div>
               )}
 
-              <Button
-                disabled={!file || stage2Status === "importing"}
-                onClick={handleImportAssignments}
-                className="bg-[#5dc86f] text-white hover:bg-[#218838] font-medium"
-                size="sm"
-              >
-                {stage2Status === "importing" ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Importing Assignments...
-                  </>
-                ) : (
-                  <>
-                    Import Crew Assignments (Section 2) <ArrowRight className="h-4 w-4 ml-1.5" />
-                  </>
-                )}
-              </Button>
+              {stage2Status === "importing" ? (
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                    <span className="font-medium">{stage2PhaseLabel}</span>
+                    <span className="tabular-nums text-gray-400">{Math.round(stage2Progress)}%</span>
+                  </div>
+                  <Progress
+                    value={stage2Progress}
+                    className="h-2 bg-emerald-100"
+                  />
+                </div>
+              ) : (
+                <Button
+                  disabled={!file}
+                  onClick={handleImportAssignments}
+                  className="bg-[#5dc86f] text-white hover:bg-[#218838] font-medium"
+                  size="sm"
+                >
+                  Import Crew Assignments (Section 2) <ArrowRight className="h-4 w-4 ml-1.5" />
+                </Button>
+              )}
             </div>
           </div>
         )}
