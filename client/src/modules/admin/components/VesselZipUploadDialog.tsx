@@ -212,7 +212,7 @@ export function VesselZipUploadDialog({ isOpen, onClose }: VesselZipUploadDialog
           <Button
             disabled={!file || isGenerating}
             onClick={handleGenerateWorkbook}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             {isGenerating ? (
               <>

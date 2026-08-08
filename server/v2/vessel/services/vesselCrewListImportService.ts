@@ -97,14 +97,15 @@ export async function importVesselRankHierarchy(xlsxBuffer: Buffer): Promise<Hie
     }
 
     // Group rows by vessel IMO / Name
-    const vesselRowsMap = new Map<string, { vesselUuid: string; vesselName: string; rows: { rank: string; status: string }[] }>();
+    const vesselRowsMap = new Map<string, { vesselUuid: string; vesselName: string; rows: { rank: string; position: string; status: string }[] }>();
 
     for (let rowNumber = 2; rowNumber <= hierarchySheet.rowCount; rowNumber++) {
       const row = hierarchySheet.getRow(rowNumber);
       const vesselName = getCellValue(row.getCell(1));
       const imo = getCellValue(row.getCell(2));
       const rank = getCellValue(row.getCell(3));
-      const status = getCellValue(row.getCell(4));
+      const position = getCellValue(row.getCell(4));
+      const status = getCellValue(row.getCell(5)) || getCellValue(row.getCell(4)); // Fallback if 4-column sheet uploaded
 
       if (!vesselName && !imo) continue;
 
@@ -120,7 +121,7 @@ export async function importVesselRankHierarchy(xlsxBuffer: Buffer): Promise<Hie
       if (!vesselRowsMap.has(key)) {
         vesselRowsMap.set(key, { vesselUuid: key, vesselName: matchedVessel.vessel || vesselName, rows: [] });
       }
-      vesselRowsMap.get(key)!.rows.push({ rank, status });
+      vesselRowsMap.get(key)!.rows.push({ rank, position, status });
     }
 
     const todayStr = new Date().toLocaleDateString("en-GB"); // DD/MM/YYYY
@@ -140,11 +141,13 @@ export async function importVesselRankHierarchy(xlsxBuffer: Buffer): Promise<Hie
         const deletedRankRoles = new Set<string>();
 
         group.rows.forEach((r) => {
-          const rankKey = norm(r.rank);
-          if (norm(r.status) === "deleted") {
-            deletedRankRoles.add(rankKey);
+          const posKey = norm(r.position || r.rank);
+          const st = norm(r.status);
+
+          if (st === "deleted" || st === "not required" || st === "inactive") {
+            deletedRankRoles.add(posKey);
           } else {
-            activeRankRoles.add(rankKey);
+            activeRankRoles.add(posKey);
           }
         });
 
@@ -165,7 +168,8 @@ export async function importVesselRankHierarchy(xlsxBuffer: Buffer): Promise<Hie
         }
 
         group.rows.forEach((r) => {
-          if (norm(r.status) === "deleted") {
+          const st = norm(r.status);
+          if (st === "deleted" || st === "not required" || st === "inactive") {
             result.deletedRanksCount++;
           } else {
             result.activeRanksCount++;
@@ -388,15 +392,16 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
       const vesselName = getColVal(row, "Vessel Name", 2);
       const imo = getColVal(row, "IMO", 3);
       const rank = getColVal(row, "Rank", 4);
-      const signOnDate = getColVal(row, "Sign On Date", 5);
-      const contractPeriod = getColVal(row, "Contract Period (Months)", 6);
-      const reliefDue = getColVal(row, "Relief Due Date", 7);
-      const portOfJoining = getColVal(row, "Port of Joining", 8);
-      const rawAssignmentType = getColVal(row, "Assignment Type", 9);
+      const position = getColVal(row, "Position", 5);
+      const signOnDate = getColVal(row, "Sign On Date", 6);
+      const contractPeriod = getColVal(row, "Contract Period (Months)", 7);
+      const reliefDue = getColVal(row, "Relief Due Date", 8);
+      const portOfJoining = getColVal(row, "Port of Joining", 9);
+      const rawAssignmentType = getColVal(row, "Assignment Type", 10);
       const assignmentType = rawAssignmentType || "Primary";
-      const rawJoiningStatus = getColVal(row, "Joining Status", 10);
+      const rawJoiningStatus = getColVal(row, "Joining Status", 11);
       const joiningStatus = rawJoiningStatus || "Signed On";
-      const relieverRank = getColVal(row, "Reliever Rank", 11);
+      const relieverRank = getColVal(row, "Reliever Rank", 12);
 
       if (!employeeId && !vesselName && !rank && !signOnDate) continue;
 
@@ -406,6 +411,7 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
       if (!employeeId) errors.push("Employee ID is missing");
       if (!vesselName && !imo) errors.push("Vessel Name / IMO is missing");
       if (!rank) errors.push("Rank is missing");
+      if (!position) errors.push("Position is missing");
       if (!signOnDate) errors.push("Sign On Date is missing");
 
       // Validate Assignment Type Enum
@@ -472,6 +478,7 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
         vesselName,
         imo,
         rank,
+        position,
         signOnDate: parsedSignOn,
         contractPeriod: contractPeriod ? parseInt(contractPeriod, 10) || null : null,
         reliefDue: parsedReliefDue,
@@ -537,15 +544,21 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
           finalReliefDue = computeReliefDueDate(item.signOnDate, item.contractPeriod);
         }
 
+        const targetPos = item.position || item.rank;
         if (isPrimary) {
           const planningRecords: any[] = await vesselPlanningService.getByVesselUuid(vessel.vesselUuid);
-          let matchedSlot: any = planningRecords.find((p: any) => norm(p.rank) === norm(item.rank));
+          let matchedSlot: any = planningRecords.find(
+            (p: any) =>
+              (p.role && norm(p.role) === norm(targetPos)) ||
+              norm(p.rank) === norm(targetPos) ||
+              norm(p.rank) === norm(item.rank)
+          );
 
           if (!matchedSlot) {
             matchedSlot = await vesselPlanningService.create({
               vesselUuid: vessel.vesselUuid,
               rankId: "R000",
-              rank: item.rank,
+              rank: item.position || item.rank,
               crewStatus: "primary",
               isArchived: false,
               isDeleted: false,
@@ -576,9 +589,14 @@ export async function importCrewAssignments(xlsxBuffer: Buffer): Promise<Assignm
 
           result.primaryAssignedCount++;
         } else {
-          const targetRank = item.relieverRank || item.rank;
+          const targetRank = item.relieverRank || item.position || item.rank;
           const planningRecords: any[] = await vesselPlanningService.getByVesselUuid(vessel.vesselUuid);
-          let matchedSlot: any = planningRecords.find((p: any) => norm(p.rank) === norm(targetRank));
+          let matchedSlot: any = planningRecords.find(
+            (p: any) =>
+              (p.role && norm(p.role) === norm(targetRank)) ||
+              norm(p.rank) === norm(targetRank) ||
+              norm(p.rank) === norm(item.rank)
+          );
 
           if (!matchedSlot) {
             matchedSlot = await vesselPlanningService.create({

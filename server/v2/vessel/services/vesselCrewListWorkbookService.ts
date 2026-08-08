@@ -56,16 +56,6 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
     if (name) portNamesSet.add(name);
   }
   const portNames = Array.from(portNamesSet).sort((a, b) => a.localeCompare(b));
-  const assignmentTypes = ["Primary", "Secondary"];
-  const joiningStatuses = ["Signed On", "Planned", "In Transit"];
-
-  // Vessel lookup by IMO (digits only) or Name
-  const vesselByImoMap = new Map<string, any>();
-  const vesselByNameMap = new Map<string, any>();
-  for (const v of allVessels) {
-    if (v.imo) vesselByImoMap.set(v.imo.replace(/\D/g, ""), v);
-    if (v.vessel) vesselByNameMap.set(norm(v.vessel), v);
-  }
 
   // Company ranks indexed by rankId
   const companyRankByRankIdMap = new Map<string, any>();
@@ -86,11 +76,75 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
     }
   }
 
+  // Build application rank hierarchy sort order map from adm_available_ranks_v2
+  const rankSortOrderMap = new Map<string, number>();
+  for (const ar of availableRanks) {
+    const order = typeof ar.sortOrder === "number" ? ar.sortOrder : 999;
+    if (ar.rankId) rankSortOrderMap.set(ar.rankId, order);
+    if (ar.name) rankSortOrderMap.set(norm(ar.name), order);
+    if (ar.label) rankSortOrderMap.set(norm(ar.label), order);
+  }
+
+  const getRankSortPriority = (rankOrRoleName: string): number => {
+    const clean = norm(rankOrRoleName);
+    const baseClean = clean.replace(/_\d+$/, "");
+    if (rankSortOrderMap.has(clean)) return rankSortOrderMap.get(clean)!;
+    if (rankSortOrderMap.has(baseClean)) return rankSortOrderMap.get(baseClean)!;
+    const companyRank = companyRankByNameMap.get(clean) || companyRankByNameMap.get(baseClean);
+    if (companyRank && rankSortOrderMap.has(companyRank.rankId)) {
+      return rankSortOrderMap.get(companyRank.rankId)!;
+    }
+    return 9999;
+  };
+
+  // Extract unique base company rank names and position role labels sorted per application hierarchy
+  const companyRankNamesSet = new Set<string>();
+  const companyRoleLabelsSet = new Set<string>();
+  for (const cr of allCompanyRanks) {
+    if (!cr.isRoleRow && cr.rank) {
+      companyRankNamesSet.add(cleanString(cr.rank));
+    } else if (cr.rank && !cr.role) {
+      companyRankNamesSet.add(cleanString(cr.rank));
+    }
+    if (cr.role) {
+      companyRoleLabelsSet.add(cleanString(cr.role));
+    }
+  }
+
+  const companyRankNames = Array.from(companyRankNamesSet).sort((a, b) => {
+    const orderA = getRankSortPriority(a);
+    const orderB = getRankSortPriority(b);
+    if (orderA !== orderB) return orderA - orderB;
+    return a.localeCompare(b);
+  });
+
+  const companyRoleLabels = Array.from(companyRoleLabelsSet).sort((a, b) => {
+    const orderA = getRankSortPriority(a);
+    const orderB = getRankSortPriority(b);
+    if (orderA !== orderB) return orderA - orderB;
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+  });
+
+  const assignmentTypes = ["Primary", "Secondary"];
+  const joiningStatuses = ["Signed On", "Planned", "In Transit"];
+  const hierarchyStatuses = ["Active", "Not Required"];
+
+  // Vessel lookup by IMO (digits only) or Name
+  const vesselByImoMap = new Map<string, any>();
+  const vesselByNameMap = new Map<string, any>();
+  for (const v of allVessels) {
+    if (v.imo) vesselByImoMap.set(v.imo.replace(/\D/g, ""), v);
+    if (v.vessel) vesselByNameMap.set(norm(v.vessel), v);
+  }
+
   // Multi-index crew lookup maps supporting First + Middle name variations
   const crewByFnLnDobMap = new Map<string, any[]>();
   const crewByLnFnDobMap = new Map<string, any[]>();
   const crewByFullNameMap = new Map<string, any[]>();
   const crewByFnLnMap = new Map<string, any[]>(); // Fallback without DOB constraint
+  const crewByEmpIdMap = new Map<string, any>();
+  const crewByPassportMap = new Map<string, any>();
+  const seaServiceMap = new Map<string, { vesselName: string; fromDate: string }>();
 
   const addMap = (map: Map<string, any[]>, key: string, c: any) => {
     if (!key) return;
@@ -102,38 +156,40 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
     const fn = norm(c.firstName);
     const mn = norm(c.middleName);
     const ln = norm(c.familyName);
-    const dob = c.dob || "";
+    const dob = c.dob ? String(c.dob).slice(0, 10) : "";
 
     const fnMn = [fn, mn].filter(Boolean).join(" ");
+    const empId = cleanString(c.employeeId || c.empNo);
+    const item = { ...c, dob, employeeId: empId };
 
-    addMap(crewByFnLnDobMap, `${fnMn}|${ln}|${dob}`, c);
-    if (fn !== fnMn) addMap(crewByFnLnDobMap, `${fn}|${ln}|${dob}`, c);
+    if (empId) crewByEmpIdMap.set(norm(empId), item);
 
-    addMap(crewByLnFnDobMap, `${ln}|${fnMn}|${dob}`, c);
-    if (fn !== fnMn) addMap(crewByLnFnDobMap, `${ln}|${fn}|${dob}`, c);
+    addMap(crewByFnLnDobMap, `${fnMn}|${ln}|${dob}`, item);
+    if (fn && fn !== fnMn) addMap(crewByFnLnDobMap, `${fn}|${ln}|${dob}`, item);
 
-    addMap(crewByFullNameMap, `${fnMn} ${ln}`, c);
-    addMap(crewByFullNameMap, `${ln} ${fnMn}`, c);
-    if (fn !== fnMn) {
-      addMap(crewByFullNameMap, `${fn} ${ln}`, c);
-      addMap(crewByFullNameMap, `${ln} ${fn}`, c);
+    addMap(crewByLnFnDobMap, `${ln}|${fnMn}|${dob}`, item);
+    if (fn && fn !== fnMn) addMap(crewByLnFnDobMap, `${ln}|${fn}|${dob}`, item);
+
+    addMap(crewByFullNameMap, `${fnMn} ${ln}`, item);
+    addMap(crewByFullNameMap, `${ln} ${fnMn}`, item);
+    if (fn && fn !== fnMn) {
+      addMap(crewByFullNameMap, `${fn} ${ln}`, item);
+      addMap(crewByFullNameMap, `${ln} ${fn}`, item);
     }
 
-    addMap(crewByFnLnMap, `${fnMn}|${ln}`, c);
-    addMap(crewByFnLnMap, `${ln}|${fnMn}`, c);
-    if (fn !== fnMn) {
-      addMap(crewByFnLnMap, `${fn}|${ln}`, c);
-      addMap(crewByFnLnMap, `${ln}|${fn}`, c);
+    addMap(crewByFnLnMap, `${fnMn}|${ln}`, item);
+    addMap(crewByFnLnMap, `${ln}|${fnMn}`, item);
+    if (fn && fn !== fnMn) {
+      addMap(crewByFnLnMap, `${fn}|${ln}`, item);
+      addMap(crewByFnLnMap, `${ln}|${fn}`, item);
     }
   }
 
-  // Open sea service map by crewUuid -> active sea service record
-  const seaServiceMap = new Map<string, { vesselName: string; fromDate: string }>();
-  for (const ss of openSeaServices) {
-    if (ss.crewUuid && !seaServiceMap.has(ss.crewUuid)) {
-      seaServiceMap.set(ss.crewUuid, {
-        vesselName: ss.vesselName || "",
-        fromDate: ss.fromDate || "",
+  for (const s of openSeaServices) {
+    if (s.crewUuid && !seaServiceMap.has(s.crewUuid)) {
+      seaServiceMap.set(s.crewUuid, {
+        vesselName: s.vesselName || "",
+        fromDate: s.fromDate || "",
       });
     }
   }
@@ -147,15 +203,170 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "SAIL Crewing Platform";
 
+  // Sheet 1: Comprehensive Client Instructions & Examples
+  const instructionsSheet = workbook.addWorksheet("Instructions", {
+    views: [{ showGridLines: true }],
+  });
   const assignmentsSheet = workbook.addWorksheet("Assignments");
   const hierarchySheet = workbook.addWorksheet("VesselRankHierarchy");
   const masterDataSheet = workbook.addWorksheet("MasterData");
+
+  instructionsSheet.columns = [
+    { key: "colA", width: 48 },
+    { key: "colB", width: 26 },
+    { key: "colC", width: 14 },
+    { key: "colD", width: 18 },
+    { key: "colE", width: 18 },
+    { key: "colF", width: 16 },
+    { key: "colG", width: 18 },
+    { key: "colH", width: 16 },
+    { key: "colI", width: 20 },
+    { key: "colJ", width: 18 },
+    { key: "colK", width: 16 },
+    { key: "colL", width: 18 },
+    { key: "colM", width: 38 },
+  ];
+
+  // Helper to add styled single-column A title / section header / instruction items
+  const addInstrTitle = (text: string) => {
+    const row = instructionsSheet.addRow([text]);
+    row.height = 32;
+    const cell = row.getCell(1);
+    cell.font = { bold: true, size: 14, color: { argb: "FFFFFF" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "1E3A8A" } };
+    cell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+  };
+
+  const addInstrSection = (text: string) => {
+    const row = instructionsSheet.addRow([text]);
+    row.height = 24;
+    const cell = row.getCell(1);
+    cell.font = { bold: true, size: 11, color: { argb: "1E293B" } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E2E8F0" } };
+    cell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+  };
+
+  const addInstrItem = (text: string) => {
+    const row = instructionsSheet.addRow([text]);
+    row.height = 20;
+    const cell = row.getCell(1);
+    cell.font = { size: 10, color: { argb: "0F172A" } };
+    cell.alignment = { vertical: "middle" };
+  };
+
+  addInstrTitle("SAIL CREW PLANNING & ASSIGNMENT IMPORT GUIDE");
+  addInstrItem("IMPORTANT: The system has automatically pre-populated and matched all existing crew assignments and vessel rank structures from SAIL records.");
+  addInstrItem("CLIENT ACTION: Review and verify the pre-filled data. ONLY update or add rows if a seafarer is missing, an unmatched rank/record needs correction, or a new reliever is assigned.");
+  instructionsSheet.addRow([]);
+
+  addInstrSection("1. OVERVIEW OF WORKSHEETS IN THIS WORKBOOK");
+  addInstrItem("• Sheet 1 (Instructions): User review guide, field definitions, and practical examples (Reference only).");
+  addInstrItem("• Sheet 2 (Assignments): Pre-populated crew list for primary on-board crew and secondary (reliever) assignments.");
+  addInstrItem("• Sheet 3 (VesselRankHierarchy): Pre-populated vessel position slot configuration (Active vs Not Required).");
+  addInstrItem("• Sheet 4 (MasterData): System reference lists (Company Ranks, Positions, Ports, Statuses). Do NOT modify.");
+  instructionsSheet.addRow([]);
+
+  addInstrSection("2. HOW TO REVIEW & CONFIGURE 'VesselRankHierarchy' (STAGE 1)");
+  addInstrItem("• Pre-Filled Data: All standard vessel positions are already populated based on company manning setup.");
+  addInstrItem("• Rank (Column C): Displays base company rank (e.g., Master, Chief Officer, Able Seaman).");
+  addInstrItem("• Position (Column D): Single rank uses base rank (Master); multi-slot ranks use position roles (e.g. AB_1, AB_2, OS_1).");
+  addInstrItem("• Status: Active (Col E): Keeps/creates the active planning slot in Vessel Planning.");
+  addInstrItem("• Status: Not Required (Col E): If a position is not carried on this vessel (e.g. vessel carries only 2 ABs and does NOT carry AB_3), select 'Not Required'. No empty slot will be created. Active crew on board are safely preserved.");
+  instructionsSheet.addRow([]);
+
+  addInstrSection("3. HOW TO REVIEW & UPDATE 'Assignments' (STAGE 2)");
+  addInstrItem("• Review Mode: Seafarers with 'OK' status are already matched. Only update rows marked as 'NOT FOUND' or 'UNMATCHED'.");
+  addInstrItem("• Employee ID (Column A): Seafarer Employee ID or Passport number registered in SAIL.");
+  addInstrItem("• Vessel Name & IMO (Col B/C): Target vessel name and IMO number.");
+  addInstrItem("• Rank & Position (Col D/E): Select Rank and Position role from dropdowns if corrections are needed.");
+  addInstrItem("• Sign On Date (Column F): Enter date in YYYY-MM-DD format (e.g., 2026-04-15).");
+  addInstrItem("• Contract Period (Column G): Contract duration in months (e.g. 6 or 9).");
+  addInstrItem("• Relief Due Date (Column H): Auto-calculated by Excel formula =IF(AND(F<>'', G<>''), EDATE(F, G), '').");
+  addInstrItem("• Port of Joining (Column I): Select from the alphabetical port dropdown list.");
+  addInstrItem("• Assignment Type: Primary: Current on-board incumbent crew or planned primary crew.");
+  addInstrItem("• Assignment Type: Secondary: Reliever crew member. The entire row will highlight YELLOW automatically.");
+  addInstrItem("• Reliever Rank (Column L): When Assignment Type is 'Secondary', select the specific position being relieved (e.g. AB_2, Master).");
+  instructionsSheet.addRow([]);
+
+  addInstrSection("4. PRACTICAL EXAMPLES (WITH DUMMY VESSELS)");
+
+  // Example header for Assignments (Shifted to Column B)
+  instructionsSheet.addRow(["", "EXAMPLE A: 'Assignments' Sheet Data Layout"]);
+  const exAssignHead = instructionsSheet.addRow([
+    "",
+    "Employee ID", "Vessel Name", "IMO", "Rank", "Position", "Sign On Date",
+    "Contract Period", "Relief Due Date", "Port of Joining", "Assignment Type",
+    "Joining Status", "Reliever Rank", "Remarks / Description"
+  ]);
+  exAssignHead.height = 22;
+  exAssignHead.eachCell((c, colNumber) => {
+    if (colNumber >= 2) {
+      c.font = { bold: true, size: 9 };
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "CBD5E1" } };
+      c.alignment = { vertical: "middle", horizontal: "center" };
+    }
+  });
+
+  const exRow1 = instructionsSheet.addRow([
+    "",
+    "EMP1001", "M/V Atlantic Pioneer", "9123456", "Master", "Master", "2026-01-10",
+    6, "2026-07-10", "Singapore", "Primary", "Signed On", "", "Primary Master currently on board"
+  ]);
+  const exRow2 = instructionsSheet.addRow([
+    "",
+    "EMP1002", "M/V Atlantic Pioneer", "9123456", "Able Seaman", "AB_1", "2026-02-01",
+    9, "2026-11-01", "Rotterdam", "Primary", "Signed On", "", "Primary AB occupying Slot 1"
+  ]);
+  const exRow3 = instructionsSheet.addRow([
+    "",
+    "EMP1003", "M/V Atlantic Pioneer", "9123456", "Able Seaman", "AB_2", "2026-03-15",
+    9, "2026-12-15", "Houston", "Primary", "Signed On", "", "Primary AB occupying Slot 2"
+  ]);
+  const exRow4 = instructionsSheet.addRow([
+    "",
+    "EMP1004", "M/V Atlantic Pioneer", "9123456", "Able Seaman", "AB_2", "2026-12-01",
+    9, "2027-09-01", "Houston", "Secondary", "Planned", "AB_2", "RELIEVER for AB_2 (Yellow row)"
+  ]);
+
+  // Highlight Secondary example row cells (from Column B onwards) in yellow
+  exRow4.eachCell((c, colNumber) => {
+    if (colNumber >= 2) {
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FEF08A" } };
+    }
+  });
+
+  instructionsSheet.addRow([]);
+  instructionsSheet.addRow(["", "EXAMPLE B: 'VesselRankHierarchy' Sheet Data Layout"]);
+  const exHierHead = instructionsSheet.addRow([
+    "",
+    "Vessel Name", "IMO", "Rank", "Position", "Status", "", "", "", "", "", "", "Description / Manning Rule"
+  ]);
+  exHierHead.height = 22;
+  exHierHead.eachCell((c, colNumber) => {
+    if (colNumber >= 2) {
+      c.font = { bold: true, size: 9 };
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "CBD5E1" } };
+      c.alignment = { vertical: "middle", horizontal: "center" };
+    }
+  });
+
+  instructionsSheet.addRow(["", "M/V Atlantic Pioneer", "9123456", "Master", "Master", "Active", "", "", "", "", "", "", "Active single-slot Master"]);
+  instructionsSheet.addRow(["", "M/V Atlantic Pioneer", "9123456", "Able Seaman", "AB_1", "Active", "", "", "", "", "", "", "Active Able Seaman Slot 1"]);
+  instructionsSheet.addRow(["", "M/V Atlantic Pioneer", "9123456", "Able Seaman", "AB_2", "Active", "", "", "", "", "", "", "Active Able Seaman Slot 2"]);
+  instructionsSheet.addRow(["", "M/V Atlantic Pioneer", "9123456", "Able Seaman", "AB_3", "Not Required", "", "", "", "", "", "", "NOT REQUIRED (Vessel carries only 2 ABs; no slot created)"]);
+
+  instructionsSheet.addRow([]);
+  addInstrSection("5. IMPORTANT RULES FOR CLEAN IMPORT");
+  addInstrItem("• Do Not Alter Headers: Keep column headers and worksheet tab names unchanged.");
+  addInstrItem("• Date Standard: Enter dates in YYYY-MM-DD format only.");
+  addInstrItem("• All-or-Nothing Validation: If any required value is invalid, an Error Excel will be returned highlighting issues in red.");
 
   assignmentsSheet.columns = [
     { header: "Employee ID", key: "employeeId", width: 16 },
     { header: "Vessel Name", key: "vesselName", width: 22 },
     { header: "IMO", key: "imo", width: 14 },
     { header: "Rank", key: "rank", width: 18 },
+    { header: "Position", key: "position", width: 18 },
     { header: "Sign On Date", key: "signOnDate", width: 14, style: { numFmt: "yyyy-mm-dd" } },
     { header: "Contract Period (Months)", key: "contractPeriod", width: 22 },
     { header: "Relief Due Date", key: "reliefDue", width: 16, style: { numFmt: "yyyy-mm-dd" } },
@@ -171,22 +382,36 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
     { header: "Vessel Name", key: "vesselName", width: 22 },
     { header: "IMO", key: "imo", width: 14 },
     { header: "Rank", key: "rank", width: 18 },
+    { header: "Position", key: "position", width: 18 },
     { header: "Status", key: "status", width: 14 },
   ];
 
   masterDataSheet.columns = [
+    { header: "Company Rank", key: "rankName", width: 24 },
+    { header: "Position Label", key: "positionLabel", width: 20 },
     { header: "Port Name", key: "portName", width: 26 },
     { header: "Assignment Type", key: "assignmentType", width: 20 },
     { header: "Joining Status", key: "joiningStatus", width: 20 },
+    { header: "Hierarchy Status", key: "hierarchyStatus", width: 20 },
   ];
 
   // Populate MasterData sheet values
-  const maxMasterRows = Math.max(portNames.length, assignmentTypes.length, joiningStatuses.length);
+  const maxMasterRows = Math.max(
+    companyRankNames.length,
+    companyRoleLabels.length,
+    portNames.length,
+    assignmentTypes.length,
+    joiningStatuses.length,
+    hierarchyStatuses.length
+  );
   for (let r = 0; r < maxMasterRows; r++) {
     masterDataSheet.addRow({
+      rankName: companyRankNames[r] || "",
+      positionLabel: companyRoleLabels[r] || "",
       portName: portNames[r] || "",
       assignmentType: assignmentTypes[r] || "",
       joiningStatus: joiningStatuses[r] || "",
+      hierarchyStatus: hierarchyStatuses[r] || "",
     });
   }
 
@@ -194,6 +419,7 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
     "employeeId",
     "vesselName",
     "rank",
+    "position",
     "signOnDate",
     "assignmentType",
   ]);
@@ -201,6 +427,7 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
   const mandatoryHierarchyKeys = new Set([
     "vesselName",
     "rank",
+    "position",
   ]);
 
   // Style Assignments Sheet Headers (Yellow for mandatory fields, Grey for optional fields)
@@ -249,6 +476,7 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
 
   const writtenHierarchyVessels = new Set<string>();
   const vesselRankCountsMap = new Map<string, Map<string, number>>();
+  const vesselRankSeqMap = new Map<string, number>();
 
   for (const doc of docs) {
     if (!doc.entries || doc.entries.length === 0) continue;
@@ -292,22 +520,27 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
     for (const entry of doc.entries) {
       totalCrewEntries++;
       const rawRank = cleanString(entry.rankOrRating);
-      const rankKey = norm(rawRank);
-      const baseRankKey = norm(rawRank.split("_")[0]);
+      const baseRank = rawRank.replace(/_\d+$/, "");
+      const rankKey = norm(baseRank);
       vesselActiveRanksSet.add(rankKey);
 
-      const count = rankCounts.get(rankKey) || 1;
-      let displayRank = rawRank;
-      if (count > 1) {
-        const nextNum = (rankInstanceCounters.get(rankKey) || 0) + 1;
-        rankInstanceCounters.set(rankKey, nextNum);
-        displayRank = `${rawRank}_${nextNum}`;
-      }
-
-      const companyRank = companyRankByNameMap.get(rankKey) || companyRankByNameMap.get(baseRankKey);
+      const companyRank = companyRankByNameMap.get(rankKey) || companyRankByNameMap.get(norm(rawRank));
       const isRankMatched = !!companyRank;
       if (!isRankMatched) {
         unmatchedRankCount++;
+      }
+
+      const displayRank = companyRank?.rank || baseRank; // Always base rank name (e.g. Master, AB, Deck Cadet)
+
+      const count = rankCounts.get(norm(rawRank)) || rankCounts.get(rankKey) || 1;
+      let positionValue = companyRank?.role || baseRank;
+      if (count > 1) {
+        const nextNum = (rankInstanceCounters.get(rankKey) || 0) + 1;
+        rankInstanceCounters.set(rankKey, nextNum);
+        const roleBase = (companyRank?.role || baseRank).replace(/_\d+$/, "");
+        positionValue = `${roleBase}_${nextNum}`;
+      } else {
+        positionValue = positionValue.replace(/_\d+$/, "");
       }
 
       // Multi-strategy candidate crew lookup
@@ -386,6 +619,7 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
         vesselName,
         imo,
         rank: displayRank,
+        position: positionValue,
         signOnDate,
         contractPeriod: "",
         reliefDue: "",
@@ -399,109 +633,142 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
       });
 
       const rNum = addedRow.number;
-      // Format Date Cells (Col 5: Sign On Date, Col 7: Relief Due Date)
-      addedRow.getCell(5).numFmt = "yyyy-mm-dd";
-      addedRow.getCell(7).numFmt = "yyyy-mm-dd";
+      // Format Date Cells (Col 6: Sign On Date, Col 8: Relief Due Date)
+      addedRow.getCell(6).numFmt = "yyyy-mm-dd";
+      addedRow.getCell(8).numFmt = "yyyy-mm-dd";
 
-      // Col 7 (G): Relief Due Date formula EDATE(SignOnDate, ContractPeriod)
-      addedRow.getCell(7).value = {
-        formula: `IF(AND(E${rNum}<>"", F${rNum}<>""), EDATE(E${rNum}, F${rNum}), "")`,
+      // Col 4 (D): Rank dropdown pointing to MasterData!$A$2:$A${rankCount+1}
+      const rankCount = Math.max(1, companyRankNames.length);
+      addedRow.getCell(4).dataValidation = {
+        type: "list",
+        allowBlank: false,
+        formulae: [`MasterData!$A$2:$A$${rankCount + 1}`],
+        showErrorMessage: true,
+        errorTitle: "Invalid Rank",
+        error: "Please select a rank from the company ranks list",
       };
 
-      const portCount = Math.max(1, portNames.length);
-      // Col 8 (H): Port of Joining dropdown pointing to MasterData!$A$2:$A${portCount+1}
-      addedRow.getCell(8).dataValidation = {
+      // Col 5 (E): Position dropdown pointing to MasterData!$B$2:$B${roleCount+1}
+      const roleCount = Math.max(1, companyRoleLabels.length);
+      addedRow.getCell(5).dataValidation = {
         type: "list",
         allowBlank: true,
-        formulae: [`MasterData!$A$2:$A$${portCount + 1}`],
+        formulae: [`MasterData!$B$2:$B$${roleCount + 1}`],
+        showErrorMessage: true,
+        errorTitle: "Invalid Position",
+        error: "Please select a position label from the list",
+      };
+
+      // Col 8 (H): Relief Due Date formula EDATE(SignOnDate Col F, ContractPeriod Col G)
+      addedRow.getCell(8).value = {
+        formula: `IF(AND(F${rNum}<>"", G${rNum}<>""), EDATE(F${rNum}, G${rNum}), "")`,
+      };
+
+      // Col 9 (I): Port of Joining dropdown pointing to MasterData!$C$2:$C${portCount+1}
+      const portCount = Math.max(1, portNames.length);
+      addedRow.getCell(9).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: [`MasterData!$C$2:$C$${portCount + 1}`],
         showErrorMessage: true,
         errorTitle: "Invalid Port",
         error: "Please select a port from the dropdown list",
       };
 
-      // Col 9 (I): Assignment Type dropdown pointing to MasterData!$B$2:$B$3
-      addedRow.getCell(9).dataValidation = {
+      // Col 10 (J): Assignment Type dropdown pointing to MasterData!$D$2:$D$3
+      addedRow.getCell(10).dataValidation = {
         type: "list",
         allowBlank: false,
-        formulae: ["MasterData!$B$2:$B$3"],
+        formulae: ["MasterData!$D$2:$D$3"],
         showErrorMessage: true,
         errorTitle: "Invalid Assignment Type",
         error: "Please select Primary or Secondary",
       };
 
-      // Col 10 (J): Joining Status dropdown pointing to MasterData!$C$2:$C$4
-      addedRow.getCell(10).dataValidation = {
+      // Col 11 (K): Joining Status dropdown pointing to MasterData!$E$2:$E$4
+      addedRow.getCell(11).dataValidation = {
         type: "list",
         allowBlank: true,
-        formulae: ["MasterData!$C$2:$C$4"],
+        formulae: ["MasterData!$E$2:$E$4"],
         showErrorMessage: true,
         errorTitle: "Invalid Joining Status",
         error: "Please select Signed On, Planned, or In Transit",
       };
 
+      // Col 12 (L): Reliever Rank Position dropdown pointing to MasterData!$B$2:$B${roleCount+1}
+      addedRow.getCell(12).dataValidation = {
+        type: "list",
+        allowBlank: true,
+        formulae: [`MasterData!$B$2:$B$${roleCount + 1}`],
+        showErrorMessage: true,
+        errorTitle: "Invalid Reliever Position",
+        error: "Please select a reliever position from the list",
+      };
+
       if (shouldAddHierarchy) {
-        hierarchySheet.addRow({
+        const addedHRow = hierarchySheet.addRow({
           vesselName,
           imo,
           rank: displayRank,
+          position: positionValue,
           status: "Active",
         });
+
+        // Col 3 (C): Rank dropdown pointing to MasterData!$A$2:$A${rankCount+1}
+        const rankCount = Math.max(1, companyRankNames.length);
+        addedHRow.getCell(3).dataValidation = {
+          type: "list",
+          allowBlank: false,
+          formulae: [`MasterData!$A$2:$A$${rankCount + 1}`],
+          showErrorMessage: true,
+          errorTitle: "Invalid Rank",
+          error: "Please select a rank from the company ranks list",
+        };
+
+        // Col 4 (D): Position dropdown pointing to MasterData!$B$2:$B${roleCount+1}
+        const roleCount = Math.max(1, companyRoleLabels.length);
+        addedHRow.getCell(4).dataValidation = {
+          type: "list",
+          allowBlank: true,
+          formulae: [`MasterData!$B$2:$B$${roleCount + 1}`],
+          showErrorMessage: true,
+          errorTitle: "Invalid Position",
+          error: "Please select a position label from the list",
+        };
+
+        // Col 5 (E): Status dropdown pointing to MasterData!$F$2:$F$3
+        addedHRow.getCell(5).dataValidation = {
+          type: "list",
+          allowBlank: false,
+          formulae: ["MasterData!$F$2:$F$3"],
+          showErrorMessage: true,
+          errorTitle: "Invalid Status",
+          error: "Please select Active or Not Required",
+        };
       }
     }
   }
 
-  // Build and save revision_data JSON ONCE PER VESSEL in adm_vessel_drafts_v2
-  const nowIso = new Date().toISOString();
-  for (const [vesselUuid, rankCounts] of vesselRankCountsMap.entries()) {
-    const revisionData: any[] = [];
-    for (const cr of allCompanyRanks) {
-      const crRankKey = norm(cr.rank);
-      const countInDoc = rankCounts.get(crRankKey) || 0;
-
-      if (countInDoc > 1) {
-        revisionData.push({
-          ...cr,
-          actualManningFlag: false,
-          actualManning: [],
-          safeManning: false,
-          optimumManning: false,
-          highWorkloadManning: false,
-        });
-
-        for (let i = 1; i <= countInDoc; i++) {
-          revisionData.push({
-            ...cr,
-            id: `${cr.id}_role_${i}_${Date.now()}`,
-            originalRankId: String(cr.id),
-            isRoleRow: true,
-            role: `${cr.rank}_${i}`,
-            actualManningFlag: true,
-            actualManning: [],
-            safeManning: false,
-            optimumManning: false,
-            highWorkloadManning: false,
-            createdAt: nowIso,
-            updatedAt: nowIso,
-          });
-        }
-      } else {
-        revisionData.push({
-          ...cr,
-          actualManningFlag: countInDoc === 1,
-          actualManning: [],
-          safeManning: false,
-          optimumManning: false,
-          highWorkloadManning: false,
-        });
-      }
-    }
-
-    await vesselDraftsService.upsert({
-      vesselId: vesselUuid,
-      revision: "R0",
-      draftData: JSON.stringify(revisionData),
-    });
-  }
+  // Add Conditional Formatting to dynamically highlight entire row with yellow when Assignment Type (Col J) is Secondary
+  const maxAssignmentRows = Math.max(100, assignmentsSheet.rowCount + 50);
+  assignmentsSheet.addConditionalFormatting({
+    ref: `A2:N${maxAssignmentRows}`,
+    rules: [
+      {
+        priority: 1,
+        type: "expression",
+        formulae: ['TRIM(UPPER($J2))="SECONDARY"'],
+        style: {
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            bgColor: { argb: "FEF08A" },
+            fgColor: { argb: "FEF08A" },
+          },
+        },
+      },
+    ],
+  });
 
   const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 
