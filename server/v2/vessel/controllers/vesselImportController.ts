@@ -128,20 +128,38 @@ export const vesselImportController = {
   /**
    * Ingest ZIP archive of .docx crew lists and generate downloadable 2-sheet Excel workbook.
    * Accepts multipart (field "file"), base64-JSON, or raw binary.
-   * When fileData is an empty string the workbook is returned with no rows (template mode).
+   *
+   * Template mode: when the JSON body contains `fileData: ""` (empty string) — i.e. the
+   * "Download Template" button — no ZIP is required.  The workbook is generated with no
+   * crew rows but with all dropdown lists populated from the DB (ports, ranks, etc.).
+   * This path skips `getBufferFromReq` entirely so the empty-string value never reaches
+   * the raw-stream fallback and no buffer-size or zip-parse errors can occur.
    */
   async generateWorkbook(req: Request, res: Response) {
     try {
-      const buffer = await getBufferFromReq(req as any);
-      if (!buffer) {
-        return res.status(400).json({
-          error: "No ZIP file provided",
-          message:
-            'Upload via multipart/form-data (field: "file"), or provide base64 "fileData" in JSON body.',
-        });
+      // ── Template-download shortcut ──────────────────────────────────────────
+      // Client sends { fileData: "" } when the user clicks "Download Template"
+      // (no ZIP to parse).  Generate the workbook with empty docs so headers
+      // and dropdown lists are still present, but no crew rows are pre-filled.
+      const isTemplateMode =
+        req.body &&
+        typeof req.body.fileData === "string" &&
+        req.body.fileData.trim() === "";
+
+      let docs: Awaited<ReturnType<typeof parseCrewListZip>> = [];
+
+      if (!isTemplateMode) {
+        const buffer = await getBufferFromReq(req as any);
+        if (!buffer) {
+          return res.status(400).json({
+            error: "No ZIP file provided",
+            message:
+              'Upload via multipart/form-data (field: "file"), or provide base64 "fileData" in JSON body.',
+          });
+        }
+        docs = await parseCrewListZip(buffer);
       }
 
-      const docs = await parseCrewListZip(buffer);
       const result = await generateVesselImportWorkbook(docs);
 
       res.setHeader(
