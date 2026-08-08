@@ -58,32 +58,34 @@ export function VesselZipUploadDialog({ isOpen, onClose }: VesselZipUploadDialog
     setErrorMessage(null);
   };
 
-  const fileToBase64 = (fileToConvert: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(fileToConvert);
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = (err) => reject(err);
-    });
-  };
+  const MAX_ZIP_BYTES = 200 * 1024 * 1024; // 200 MB — mirrors server MAX_IMPORT_BYTES
 
   const handleGenerateWorkbook = async () => {
     if (!file) return;
+
+    // Client-side size guard — avoids a large upload that will be rejected anyway
+    if (file.size > MAX_ZIP_BYTES) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: `The selected ZIP is ${(file.size / 1024 / 1024).toFixed(0)} MB. Maximum allowed size is 200 MB.`,
+      });
+      return;
+    }
+
     setIsGenerating(true);
     setErrorMessage(null);
 
     try {
-      const base64 = await fileToBase64(file);
+      // Send as multipart/form-data — eliminates base64 inflation (~33% overhead)
+      // and bypasses the global express.json({ limit: '10mb' }) gate.
+      const formData = new FormData();
+      formData.append("file", file);
 
-      // Call API to parse ZIP and generate 2-sheet workbook
       const res = await fetch("/api/v2/vessel/import/generate-workbook", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileData: base64 }),
+        // No Content-Type header — browser sets multipart boundary automatically
+        body: formData,
       });
 
       if (!res.ok) {
@@ -91,7 +93,8 @@ export function VesselZipUploadDialog({ isOpen, onClose }: VesselZipUploadDialog
         throw new Error(errData.error || "Failed to generate vessel import workbook");
       }
 
-      // Download file stream
+      // Fetch the blob through window.fetch (auth-patched; carries Authorization header)
+      // then trigger the download via an object URL.
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -104,7 +107,7 @@ export function VesselZipUploadDialog({ isOpen, onClose }: VesselZipUploadDialog
 
       toast({
         title: "Workbook Generated Successfully",
-        description: "Downloaded 'vessel_crew_import.xlsx'. Staged drafts saved in database.",
+        description: "Downloaded 'vessel_crew_import.xlsx'. Review the 2 sheets and re-upload in Crew Pool › Import Vessel Data.",
       });
 
       setSummary({ success: true });

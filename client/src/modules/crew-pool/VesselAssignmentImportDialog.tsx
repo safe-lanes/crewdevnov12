@@ -119,11 +119,11 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
     setErrorMessage(null);
 
     try {
-      const buffer = await file.arrayBuffer();
+      const formData = new FormData();
+      formData.append("file", file);
       const res = await fetch("/api/v2/vessel/import/hierarchy", {
         method: "POST",
-        headers: { "Content-Type": "application/octet-stream" },
-        body: buffer,
+        body: formData,
       });
 
       const data = await res.json();
@@ -159,11 +159,11 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
     setErrorMessage(null);
 
     try {
-      const buffer = await file.arrayBuffer();
+      const formData = new FormData();
+      formData.append("file", file);
       const res = await fetch("/api/v2/vessel/import/assignments", {
         method: "POST",
-        headers: { "Content-Type": "application/octet-stream" },
-        body: buffer,
+        body: formData,
       });
 
       const data = await res.json();
