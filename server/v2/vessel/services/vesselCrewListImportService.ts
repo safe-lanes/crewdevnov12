@@ -9,7 +9,8 @@ import { vesselDraftsService } from "../../admin/services/vesselDraftsService";
 import { vesselPlanningService } from "./vesselPlanningService";
 import { vesselPlanningRepository } from "../repositories/vesselPlanningRepository";
 import { crewAssignmentsService } from "../../crew-pool/services/crewAssignmentsService";
-import { and, eq, gte, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
+import { parseDateString } from "../utils/dateUtils";
 
 export interface HierarchyImportResult {
   vesselsProcessed: number;
@@ -509,66 +510,6 @@ export async function importVesselRankHierarchy(
 
 // ── Helpers shared by Stage 2 ────────────────────────────────────────────────
 
-function parseDateStringStrict(str: string | null | undefined): string | null {
-  if (!str) return null;
-  const trimmed = String(str).trim();
-  if (!trimmed) return null;
-
-  // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-
-  // DD/MM/YYYY or DD-MM-YYYY
-  const slashMatch = trimmed.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-  if (slashMatch) {
-    const [, dd, mm, yyyy] = slashMatch;
-    return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
-  }
-
-  // DD-MMM-YYYY or DD-MMM-YY
-  const monthNames: Record<string, string> = {
-    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
-    jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
-  };
-  const textMatch = trimmed.match(
-    /^(\d{1,2})[\/\s-]([a-zA-Z]{3})[\/\s-](\d{2,4})$/,
-  );
-  if (textMatch) {
-    const [, dd, mmm, yyyyStr] = textMatch;
-    const mm = monthNames[mmm.toLowerCase()];
-    let yyyy = yyyyStr;
-    if (yyyy.length === 2) {
-      const yrNum = parseInt(yyyy, 10);
-      yyyy = yrNum > 30 ? `19${yyyy}` : `20${yyyy}`;
-    }
-    if (mm) return `${yyyy}-${mm}-${dd.padStart(2, "0")}`;
-  }
-
-  // Excel serial number
-  if (/^\d+(\.\d+)?$/.test(trimmed)) {
-    const serialNum = parseFloat(trimmed);
-    if (serialNum > 20000 && serialNum < 90000) {
-      const dateObj = new Date((serialNum - (25567 + 2)) * 86400 * 1000);
-      if (!isNaN(dateObj.getTime())) {
-        const yr = dateObj.getUTCFullYear();
-        const mo = String(dateObj.getUTCMonth() + 1).padStart(2, "0");
-        const da = String(dateObj.getUTCDate()).padStart(2, "0");
-        return `${yr}-${mo}-${da}`;
-      }
-    }
-  }
-
-  // Fallback: native JS Date string / ISO string
-  const jsDate = new Date(trimmed);
-  if (!isNaN(jsDate.getTime())) {
-    const yr = jsDate.getFullYear();
-    const mo = String(jsDate.getMonth() + 1).padStart(2, "0");
-    const da = String(jsDate.getDate()).padStart(2, "0");
-    return `${yr}-${mo}-${da}`;
-  }
-
-  return null;
-}
-
 function computeReliefDueDate(
   signOnDateStr: string,
   contractMonths: number,
@@ -619,12 +560,19 @@ export async function importCrewAssignments(
         db.select().from(masterPorts).where(eq(masterPorts.isDeleted, false)),
       ]);
 
-    const crewByEmpIdMap = new Map<string, any>();
-    const crewByPassportMap = new Map<string, any>();
+    // Store arrays so duplicate-key crew members surface as AMBIGUOUS rather
+    // than silently overwriting each other (last-write-wins).
+    const crewByEmpIdMap = new Map<string, any[]>();
+    const crewByPassportMap = new Map<string, any[]>();
+    const addCrewToMap = (map: Map<string, any[]>, key: string, c: any) => {
+      if (!key) return;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(c);
+    };
     for (const c of allCrew) {
-      if (c.employeeId) crewByEmpIdMap.set(norm(c.employeeId), c);
-      if (c.empNo) crewByEmpIdMap.set(norm(c.empNo), c);
-      if (c.passportNo) crewByPassportMap.set(norm(c.passportNo), c);
+      if (c.employeeId) addCrewToMap(crewByEmpIdMap, norm(c.employeeId), c);
+      if (c.empNo) addCrewToMap(crewByEmpIdMap, norm(c.empNo), c);
+      if (c.passportNo) addCrewToMap(crewByPassportMap, norm(c.passportNo), c);
     }
 
     const vesselByImoMap = new Map<string, any>();
@@ -716,14 +664,14 @@ export async function importCrewAssignments(
         }
       }
 
-      const parsedSignOn = parseDateStringStrict(signOnDate);
+      const parsedSignOn = parseDateString(signOnDate);
       if (signOnDate && !parsedSignOn) {
         errors.push(
           `Sign On Date '${signOnDate}' is invalid or unparseable`,
         );
       }
 
-      const parsedReliefDue = parseDateStringStrict(reliefDue);
+      const parsedReliefDue = parseDateString(reliefDue);
       if (reliefDue && !parsedReliefDue) {
         errors.push(
           `Relief Due Date '${reliefDue}' is invalid or unparseable`,
@@ -732,10 +680,30 @@ export async function importCrewAssignments(
 
       let crew: any = null;
       if (employeeId) {
-        crew =
-          crewByEmpIdMap.get(norm(employeeId)) ||
-          crewByPassportMap.get(norm(employeeId));
-        if (!crew) {
+        const rawCandidates =
+          crewByEmpIdMap.get(norm(employeeId)) ??
+          crewByPassportMap.get(norm(employeeId)) ??
+          [];
+        // A single crew member can appear more than once in the raw list when
+        // their employeeId and empNo normalise to the same key (both fields are
+        // indexed into the same map).  Deduplicate by crewUuid so we only count
+        // distinct individuals, not field-level duplicates on one person.
+        const seenUuids = new Set<string>();
+        const empCandidates = rawCandidates.filter((c: any) => {
+          if (seenUuids.has(c.crewUuid)) return false;
+          seenUuids.add(c.crewUuid);
+          return true;
+        });
+        if (empCandidates.length > 1) {
+          // Multiple DISTINCT crew members share the same employee ID / passport
+          // — the importer cannot safely pick one; surface this as a row error
+          // so the user can resolve the duplicate records before importing.
+          errors.push(
+            `AMBIGUOUS (${empCandidates.length} matches) for Employee ID / Passport '${employeeId}' — please resolve duplicate records before importing`,
+          );
+        } else if (empCandidates.length === 1) {
+          crew = empCandidates[0];
+        } else {
           errors.push(
             `Seafarer with Employee ID / Passport '${employeeId}' is not registered in system`,
           );

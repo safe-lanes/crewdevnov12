@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { parseDateString } from "../utils/dateUtils";
 
 export interface VesselCrewEntry {
   familyName: string;
@@ -43,47 +44,6 @@ function extractImoDigits(str: string | null | undefined): string {
   return "";
 }
 
-/**
- * Parse date string from various formats (e.g. DD/MM/YYYY, YYYY-MM-DD, DD-MMM-YYYY)
- */
-function parseDateString(str: string | null | undefined): string | null {
-  if (!str) return null;
-  const trimmed = sanitizeXmlText(str);
-  if (!trimmed) return null;
-
-  // YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
-  }
-
-  // DD/MM/YYYY or DD-MM-YYYY
-  const slashMatch = trimmed.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
-  if (slashMatch) {
-    const [, dd, mm, yyyy] = slashMatch;
-    return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
-  }
-
-  // DD-MMM-YYYY or DD-MMM-YY (e.g. 15-Jan-1985 or 01-Jan-80 or 10-Apr-26)
-  const monthNames: Record<string, string> = {
-    jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06",
-    jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12"
-  };
-  const textMatch = trimmed.match(/^(\d{1,2})[\/\s-]([a-zA-Z]{3})[\/\s-](\d{2,4})$/);
-  if (textMatch) {
-    const [, dd, mmm, yyyyStr] = textMatch;
-    const mm = monthNames[mmm.toLowerCase()];
-    let yyyy = yyyyStr;
-    if (yyyy.length === 2) {
-      const yrNum = parseInt(yyyy, 10);
-      yyyy = yrNum > 30 ? `19${yyyy}` : `20${yyyy}`;
-    }
-    if (mm) {
-      return `${yyyy}-${mm}-${dd.padStart(2, "0")}`;
-    }
-  }
-
-  return trimmed;
-}
 
 /**
  * Parse a single .docx buffer (IMO FAL Form 5 structured table)
@@ -178,7 +138,8 @@ export async function parseSingleDocx(buffer: Buffer, fileName: string = "crew_l
         // 3. Date of arrival/departure label
         if (!result.arrivalDepartureDate && (cellText.includes("3.") || /date of arrival/i.test(cellText))) {
           if (c + 1 < row.length && row[c + 1]) {
-            result.arrivalDepartureDate = parseDateString(row[c + 1]) || sanitizeXmlText(row[c + 1]);
+            // sanitizeXmlText first — the shared parseDateString does not strip XML tags
+            result.arrivalDepartureDate = parseDateString(sanitizeXmlText(row[c + 1])) || sanitizeXmlText(row[c + 1]);
           }
         }
       }
@@ -234,7 +195,8 @@ export async function parseSingleDocx(buffer: Buffer, fileName: string = "crew_l
           familyName: val1,
           givenNames: val2,
           rankOrRating,
-          dob: parseDateString(dobRaw),
+          // sanitizeXmlText strips any residual XML tags before date parsing
+          dob: parseDateString(sanitizeXmlText(dobRaw)),
           nationality: nationality || null,
         });
       }

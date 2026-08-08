@@ -4,7 +4,7 @@ import { masterVessels, masterPorts } from "../../../../shared/schema";
 import { admCompanyRanksV2, admAvailableRanksV2 } from "../../../../shared/v2/admin/schema";
 import { crewMembersV2, crewSeaService } from "../../../../shared/v2/crew-pool/schema";
 import { vesselDraftsService } from "../../admin/services/vesselDraftsService";
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, ilike, isNull, or } from "drizzle-orm";
 import type { VesselCrewListDoc } from "./vesselCrewListParserService";
 
 function norm(str?: string | null): string {
@@ -39,12 +39,56 @@ export interface GeneratedWorkbookResult {
 export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): Promise<GeneratedWorkbookResult> {
   const db = getDb();
 
+  // ── Scope the crew query to names that appear in the parsed documents ───────
+  // Loading the full crew table is expensive when thousands of seafarers are
+  // registered but only a few dozen appear in the import ZIP.  Instead we
+  // collect unique name tokens from the parsed entries and issue one ILIKE
+  // query per token pair (firstName OR familyName), which typically reduces
+  // the result set by an order of magnitude.
+  const docNameTokens = new Set<string>();
+  for (const doc of docs) {
+    for (const entry of doc.entries || []) {
+      const fn = (entry.familyName || "").trim();
+      // Use only the first given name token — middle names add noise without
+      // improving filter selectivity.
+      const gn = (entry.givenNames || "").trim().split(/\s+/)[0];
+      if (fn) docNameTokens.add(fn.toLowerCase());
+      if (gn) docNameTokens.add(gn.toLowerCase());
+    }
+  }
+
+  /**
+   * Escape LIKE metacharacters so a seafarer name like "O'Brien_Jr" or
+   * "Smith%100" is treated as a literal substring, not a wildcard pattern.
+   * Uses backslash as the escape character (standard SQL / PostgreSQL default).
+   */
+  const escapeLikeToken = (token: string): string =>
+    token.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+
+  const nameTokenArray = [...docNameTokens].map(escapeLikeToken);
+
   // Load reference data dynamically from DB
   const [allVessels, allCompanyRanks, availableRanks, allCrew, openSeaServices, allPorts] = await Promise.all([
     db.select().from(masterVessels),
     db.select().from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false)),
     db.select().from(admAvailableRanksV2).where(eq(admAvailableRanksV2.isDeleted, false)),
-    db.select().from(crewMembersV2).where(eq(crewMembersV2.isDeleted, false)),
+    // Scoped crew query: fetch only crew whose firstName or familyName
+    // contains at least one name token from the parsed documents.
+    // Falls back to an empty result (not the full table) if docs are empty,
+    // so the workbook can still be generated with "NOT FOUND" status for all.
+    nameTokenArray.length > 0
+      ? db.select().from(crewMembersV2).where(
+          and(
+            eq(crewMembersV2.isDeleted, false),
+            or(
+              ...nameTokenArray.flatMap((token) => [
+                ilike(crewMembersV2.firstName, `%${token}%`),
+                ilike(crewMembersV2.familyName, `%${token}%`),
+              ]),
+            ),
+          ),
+        )
+      : Promise.resolve([]),
     db.select().from(crewSeaService).where(isNull(crewSeaService.toDate)),
     db.select().from(masterPorts).where(eq(masterPorts.isDeleted, false)),
   ]);
