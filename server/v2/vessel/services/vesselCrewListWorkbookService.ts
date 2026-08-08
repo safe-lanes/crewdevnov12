@@ -615,18 +615,9 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
         lookupStatus = "OK";
         matchedCrewCount++;
       } else if (unassignedCandidates.length > 1) {
-        // Tie-breaker 1: Check if one candidate's rank matches entry rank (e.g., AB)
-        const rankMatchedCandidates = unassignedCandidates.filter((c: any) => norm(c.rank) === rankKey || norm(c.rankId) === rankKey);
-        if (rankMatchedCandidates.length === 1) {
-          selectedCrew = rankMatchedCandidates[0];
-          lookupStatus = "OK";
-          matchedCrewCount++;
-        } else {
-          // Tie-breaker 2: Pick the first unassigned candidate
-          selectedCrew = unassignedCandidates[0];
-          lookupStatus = "OK";
-          matchedCrewCount++;
-        }
+        // Multiple unassigned candidates — cannot safely auto-select; flag for manual review
+        lookupStatus = `AMBIGUOUS (${unassignedCandidates.length} matches)`;
+        duplicateCount++;
       } else if (candidates.length > 0) {
         // All candidate matches were already assigned in this document
         lookupStatus = "DUPLICATE";
@@ -677,6 +668,18 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
       });
 
       const rNum = addedRow.number;
+
+      // Highlight AMBIGUOUS rows in light orange to draw attention for manual review
+      if (lookupStatus.startsWith("AMBIGUOUS")) {
+        for (let col = 1; col <= 14; col++) {
+          addedRow.getCell(col).fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FED7AA" }, // Light orange (Tailwind orange-200)
+          };
+        }
+      }
+
       // Format Date Cells (Col 6: Sign On Date, Col 8: Relief Due Date)
       addedRow.getCell(6).numFmt = "yyyy-mm-dd";
       addedRow.getCell(8).numFmt = "yyyy-mm-dd";
