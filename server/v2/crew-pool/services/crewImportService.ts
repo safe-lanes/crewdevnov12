@@ -719,7 +719,7 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
   validateSubSheet(data.documentRows, "Travel Documents", ["Document Name"], ["Date of Issue", "Date of Expiry"], true);
   validateSubSheet(data.visaRows, "Travel Visas", ["Country", "Visa Type"], ["Date of Issue", "Date of Expiry"], true);
   validateSubSheet(data.licenseRows, "Licenses & Certificates", ["Certificate / Document Name"], ["Date of Issue", "Date of Expiry"], true);
-  validateSubSheet(data.seaServiceRows, "Sea Service History", ["Vessel Name", "Vessel Type", "Rank Served", "Sign On Date", "Sign Off Date"], ["Sign On Date", "Sign Off Date"], true);
+  validateSubSheet(data.seaServiceRows, "Sea Service History", ["Vessel Name", "Vessel Type", "Rank Served", "Sign On Date"], ["Sign On Date", "Sign Off Date"], true);
   validateSubSheet(data.trainingRows, "Training Courses", ["Course Name"], ["Date of Issue", "Date of Expiry"], true);
   validateSubSheet(data.educationRows, "Education Details", ["Qualifications / Degree"], ["Date of Completion"], true);
   validateSubSheet(data.medicalRows, "Pre-Joining Medicals", [], ["Examination Date", "Expiry Date"], true);

@@ -115,7 +115,7 @@ export const SEA_SERVICE_COLUMNS = [
   { header: "Vessel Type", required: true, example: "Oil Tanker", note: "Must match Reference Data sheet" },
   { header: "Rank Served", required: true, example: "Chief Officer", note: "" },
   { header: "Sign On Date", required: true, example: "15-Jan-2022", note: "DD-MMM-YYYY or DD/MM/YYYY" },
-  { header: "Sign Off Date", required: true, example: "15-Jul-2022", note: "DD-MMM-YYYY or DD/MM/YYYY" },
+  { header: "Sign Off Date", required: false, example: "15-Jul-2022", note: "DD-MMM-YYYY or DD/MM/YYYY" },
   { header: "Owner / Operator", required: false, example: "Pacific Shipping", note: "" },
   { header: "Deadweight", required: false, example: "50000", note: "DWT (Number)" },
   { header: "Engine Type / Power", required: false, example: "MAN B&W 6S60MC", note: "" },
