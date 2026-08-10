@@ -102,9 +102,8 @@ export const crewAssignmentsService = {
       reliefDue?: Date | string;
       contractPeriod?: string;
       assignmentType?: "primary" | "secondary";
-      vesselName?: string;
-      rank?: string;
       notes?: string;
+      isCurrent?: boolean;
       auditUserUuid?: string | null;
     }
   ): Promise<CrewAssignment> {
@@ -143,8 +142,6 @@ export const crewAssignmentsService = {
               assignUuid: uuidv4(),
               crewUuid,
               vesselUuid,
-              vesselName: data.vesselName ?? null,
-              rank: data.rank ?? null,
               signOnDate: signOnDateStr,
               reliefDue: data.reliefDue
                 ? typeof data.reliefDue === "string"
@@ -153,7 +150,7 @@ export const crewAssignmentsService = {
                 : null,
               contractPeriod: data.contractPeriod ?? null,
               assignmentType,
-              isCurrent: true,
+              isCurrent: data.isCurrent !== undefined ? data.isCurrent : true,
               createdAt: now,
               auditUserUuid,
             },

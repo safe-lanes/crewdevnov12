@@ -7,11 +7,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter, Archive, RotateCcw, Network, Search as SearchIcon } from "lucide-react";
+import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter, Archive, RotateCcw, Network, Search as SearchIcon, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarchyDialog";
 import { VesselOrgChartDialog } from "@/components/dialogs/VesselOrgChartDialog";
+import { VesselZipUploadDialog } from "./components/VesselZipUploadDialog";
 import {
   Table,
   TableBody,
@@ -549,6 +550,7 @@ const AdminModuleInner = (): JSX.Element => {
   }, [permissions, canView]);
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
+  const [isVesselZipUploadOpen, setIsVesselZipUploadOpen] = useState(false);
   const [selectedTrainingMatrixTab, setSelectedTrainingMatrixTab] = useState("training-master");
   const [isTrainingMasterEditing, setIsTrainingMasterEditing] = useState(false);
   const [showTrainingFilters, setShowTrainingFilters] = useState(true);
@@ -4841,6 +4843,7 @@ const AdminModuleInner = (): JSX.Element => {
                       className="h-8 w-8 p-0 text-[#0f172a] hover:bg-gray-50"
                       onClick={() => setIsVesselGroupModalOpen(true)}
                       data-testid="vessel-group-settings"
+                      title="Vessel Group Settings"
                     >
                       <Settings className="h-4 w-4" />
                     </Button>
@@ -4859,6 +4862,17 @@ const AdminModuleInner = (): JSX.Element => {
                       disabled={!revisionMode}
                       data-testid="flex-date-input"
                     />
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm font-medium"
+                      onClick={() => setIsVesselZipUploadOpen(true)}
+                      title="Upload ZIP archive of .docx crew list files to generate intermediate Excel workbook"
+                    >
+                      <Upload className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
+                      Generate Workbook (ZIP)
+                    </Button>
                   </div>
                 </div>
 
@@ -5171,6 +5185,10 @@ const AdminModuleInner = (): JSX.Element => {
                 </div>
               </div>
             )}
+            <VesselZipUploadDialog
+              isOpen={isVesselZipUploadOpen}
+              onClose={() => setIsVesselZipUploadOpen(false)}
+            />
           </CardContent>
         </Card>
       </div>

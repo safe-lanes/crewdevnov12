@@ -1,10 +1,27 @@
 import { Router } from "express";
-import { vesselPlanningController, vesselCrewCountController, vesselListController, complianceController, trainingController, oilMajorRulesController } from "./controllers";
+import {
+  vesselPlanningController,
+  vesselCrewCountController,
+  vesselListController,
+  complianceController,
+  trainingController,
+  oilMajorRulesController,
+  vesselImportController,
+} from "./controllers";
+import { importUploadMiddleware, tenantContextGuard } from "./middleware/importUpload";
 
 const router = Router();
 
 // Vessel list endpoint - get all vessels from master_vessels
 router.get("/list", vesselListController.getAll);
+
+// Vessel Rank Hierarchy & Crew Assignment Import endpoints
+// importUploadMiddleware intercepts multipart/form-data (field: "file") on these
+// four routes only — all planning/attachment routes below are completely unaffected.
+router.post("/import/parse-zip",         importUploadMiddleware, tenantContextGuard, vesselImportController.parseZip);
+router.post("/import/generate-workbook", importUploadMiddleware, tenantContextGuard, vesselImportController.generateWorkbook);
+router.post("/import/hierarchy",         importUploadMiddleware, tenantContextGuard, vesselImportController.importHierarchy);
+router.post("/import/assignments",       importUploadMiddleware, tenantContextGuard, vesselImportController.importAssignments);
 
 // Get all planning records for conflict detection (used by Rotation V2)
 router.get("/planning", vesselPlanningController.getAll);
