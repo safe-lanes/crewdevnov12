@@ -80,12 +80,6 @@ export const crewAssignments = pgTable("crew_assignments", {
   assignUuid: text("assign_uuid").notNull().unique(),
   crewUuid: text("crew_uuid").notNull(),
   vesselUuid: text("vessel_uuid"),
-  /**
-   * Snapshot of the vessel's display name at the time of assignment.
-   * Preserved as a historical record so crew history remains readable
-   * even if the vessel is later renamed or archived.
-   */
-  vesselName: text("vessel_name"),
   lastVesselUuid: text("last_vessel_uuid"),
   isCurrent: boolean("is_current").default(false),
   signOnDate: text("sign_on_date"),
@@ -93,11 +87,6 @@ export const crewAssignments = pgTable("crew_assignments", {
   contractPeriod: text("contract_period"),
   reliefDue: text("relief_due"),
   reason: text("reason"),
-  /**
-   * Rank / position held during this assignment — snapshot at time of
-   * assignment so history is preserved regardless of later rank renames.
-   */
-  rank: text("rank"),
   portOfJoiningUuid: text("port_of_joining_uuid"),
   portOfLeavingUuid: text("port_of_leaving_uuid"),
   assignmentType: text("assignment_type"),
