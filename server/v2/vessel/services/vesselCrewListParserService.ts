@@ -136,30 +136,64 @@ export async function parseSingleDocx(buffer: Buffer, fileName: string = "crew_l
     // Extract text per cell for each row with vertically merged cell propagation.
     // A cell containing <w:vMerge/> without w:val="restart" is a continuation
     // row of a vertically merged block — the cell holds no text of its own.
-    // We propagate the value from the same column in the previous row so that
-    // vessel name / IMO values spanning merged header cells are not silently
+    // We propagate the value from the same GRID column in the previous row so
+    // that vessel name / IMO values spanning merged header cells are not silently
     // dropped on continuation rows.
+    //
+    // Grid columns vs array index: Word tables track column positions by grid
+    // index, not by cell array index.  A cell with <w:gridSpan w:val="N"/>
+    // occupies N grid columns, so subsequent cells shift their array index
+    // relative to their grid column.  Using array index for propagation would
+    // map continuation cells to the wrong value whenever any cell in the row
+    // spans multiple columns.  We therefore track a running gridCol offset and
+    // store the previous row as a Map<gridCol, text> for correct lookup.
     const extractedRows: string[][] = [];
+    // Maps grid column → extracted text for the most recently processed row.
+    let prevRowByGridCol: Map<number, string> = new Map();
+
     for (let i = 1; i < rowParts.length; i++) {
       const rowXml = rowParts[i];
       const cellParts = rowXml.split(/<w:tc[\s>]/).slice(1);
-      const prevRow = extractedRows.length > 0 ? extractedRows[extractedRows.length - 1] : null;
-      const rowTexts: string[] = cellParts.map((cellXml, cellIdx) => {
+
+      const rowTexts: string[] = [];
+      const currentRowByGridCol: Map<number, string> = new Map();
+      let gridCol = 0; // running grid-column offset for this row
+
+      for (const cellXml of cellParts) {
+        // <w:gridSpan w:val="N"/> — how many grid columns this cell occupies.
+        // Absent means 1 (the common case of a single-column cell).
+        const gridSpanMatch = cellXml.match(/<w:gridSpan\s+w:val\s*=\s*["']?(\d+)["']?\s*\/?>/i);
+        const gridSpan = gridSpanMatch ? Math.max(1, parseInt(gridSpanMatch[1], 10)) : 1;
+
         // Detect vMerge: self-closing <w:vMerge/> OR paired <w:vMerge ...>
         // A restart merge (<w:vMerge w:val="restart"/>) starts the block and
         // HAS content; a bare <w:vMerge/> is a continuation and should inherit.
         const vMergeTag = cellXml.match(/<w:vMerge([^/>\s][^>]*)?\s*\/?>/i)?.[0] || "";
         const hasVMerge = vMergeTag.length > 0;
         const isRestart = /w:val\s*=\s*["']restart["']/i.test(vMergeTag);
-        if (hasVMerge && !isRestart && prevRow && cellIdx < prevRow.length) {
-          return prevRow[cellIdx]; // propagate value from the merged row above
+
+        let text: string;
+        if (hasVMerge && !isRestart && prevRowByGridCol.has(gridCol)) {
+          // Propagate from the same grid column in the previous row — correct
+          // regardless of how many cells span how many columns in either row.
+          text = prevRowByGridCol.get(gridCol)!;
+        } else {
+          const cellBody = cellXml.replace(/<w:tcPr[\s\S]*?<\/w:tcPr>/gi, "");
+          const textMatches = [...cellBody.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)];
+          text = sanitizeXmlText(textMatches.map((m) => m[1]).join("").trim());
         }
-        const cellBody = cellXml.replace(/<w:tcPr[\s\S]*?<\/w:tcPr>/gi, "");
-        const textMatches = [...cellBody.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)];
-        const text = textMatches.map((m) => m[1]).join("").trim();
-        return sanitizeXmlText(text);
-      });
+
+        rowTexts.push(text);
+        // Register this value at every grid column the cell spans so that
+        // continuation cells in subsequent rows find it at any spanned position.
+        for (let span = 0; span < gridSpan; span++) {
+          currentRowByGridCol.set(gridCol + span, text);
+        }
+        gridCol += gridSpan;
+      }
+
       extractedRows.push(rowTexts);
+      prevRowByGridCol = currentRowByGridCol;
     }
 
     let headerRowIdx = -1;
