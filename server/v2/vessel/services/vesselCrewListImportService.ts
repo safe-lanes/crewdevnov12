@@ -623,8 +623,8 @@ function computeReliefDueDate(
  *    rejected in pre-flight — no "R000" sentinel is ever persisted.
  *  - Idempotency: re-uploading the same file updates the existing assignment
  *    row in-place instead of inserting a duplicate history entry.
- *  - Concurrency: pg_try_advisory_xact_lock() inside the transaction prevents
- *    two simultaneous uploads for the same vessels from both committing.
+ *  - Concurrency: planning is re-read inside the transaction so slot matching
+ *    uses a consistent snapshot, reducing duplicate-slot risk under concurrent uploads.
  *  - Audit trail: auditUserUuid is stamped on every insert/update.
  *
  * Optimisation: planning records for all referenced vessels are loaded in ONE
@@ -1006,10 +1006,8 @@ export async function importCrewAssignments(
     }
 
     // ── Crew UUIDs for idempotency check (computed outside tx — no DB read) ──
-    // The actual existing-assignments query runs INSIDE the transaction, after
-    // advisory locks are held, to guarantee a consistent view (a concurrent
-    // importer for the same vessels cannot commit between our lock acquisition
-    // and this read).
+    // The actual existing-assignments query runs INSIDE the transaction to
+    // guarantee a consistent view within the atomic write unit.
     const allCrewUuidsForCheck = [
       ...new Set(
         rowsToProcess
@@ -1018,7 +1016,7 @@ export async function importCrewAssignments(
       ),
     ];
 
-    // ── Collect unique vessel UUIDs for advisory locking ─────────────────────
+    // ── Collect unique vessel UUIDs for in-transaction planning re-read ──────
     const uniqueVesselUuids = [
       ...new Set(
         rowsToProcess
@@ -1033,12 +1031,18 @@ export async function importCrewAssignments(
     // this import run together.
     await db.transaction(async (tx: any) => {
       // ── Stage 2 concurrency: acquire transaction-scoped advisory locks ──────
-      // pg_try_advisory_xact_lock() is transaction-level: held until commit or
-      // rollback, enforced across ALL connections — unlike session-level locks
-      // which are connection-scoped in a pool.
+      // pg_try_advisory_xact_lock(int4, int4) accepts two independent 32-bit
+      // keys.  We derive both directly from non-overlapping byte segments of the
+      // UUID hex string (no hash involved), so two distinct UUIDs can only share
+      // a lock if the first 8 hex digits AND the last 8 hex digits are identical
+      // — which is impossible for any two different well-formed UUIDs.  Locks are
+      // released automatically on transaction commit or rollback.
       for (const vesselUuid of uniqueVesselUuids) {
         const lockResult = await tx.execute(
-          sql`SELECT pg_try_advisory_xact_lock(hashtext(${vesselUuid})::bigint) AS locked`,
+          sql`SELECT pg_try_advisory_xact_lock(
+            ('x' || substr(replace(${vesselUuid}, '-', ''), 1,  8))::bit(32)::integer,
+            ('x' || substr(replace(${vesselUuid}, '-', ''), 25, 8))::bit(32)::integer
+          ) AS locked`,
         );
         const lockRow =
           (lockResult as any).rows?.[0] ??
@@ -1085,8 +1089,8 @@ export async function importCrewAssignments(
       }
 
       // ── Idempotency check: query existing assignments under advisory lock ────
-      // Querying INSIDE the transaction (via tx) after locks are held guarantees
-      // a consistent view — a concurrent importer for the same vessels cannot
+      // Querying INSIDE the transaction via tx after locks are held guarantees a
+      // consistent view — a concurrent importer for the same vessels cannot
       // commit assignments between our lock acquisition and this read.
       const existingAssignmentsRaw =
         allCrewUuidsForCheck.length > 0
@@ -1248,10 +1252,6 @@ export async function importCrewAssignments(
             assignUuid: uuidv4(),
             crewUuid: crew.crewUuid,
             vesselUuid: vessel.vesselUuid,
-            // Historical snapshots — preserved so crew history remains readable
-            // even if the vessel is later renamed or the rank definition changes.
-            vesselName: vessel.vessel ?? null,
-            rank: item.rank ?? null,
             isCurrent: isPrimary, // true for primary, false for secondary
             signOnDate: item.signOnDate ?? null,
             reliefDue: finalReliefDue ?? null,
@@ -1271,6 +1271,12 @@ export async function importCrewAssignments(
 
     result.success = true;
   } catch (err: any) {
+    // Reset any counts incremented inside the rolled-back transaction so the
+    // caller never receives non-zero success counts for writes that didn't commit.
+    result.primaryAssignedCount = 0;
+    result.secondaryAssignedCount = 0;
+    result.alreadyImportedCount = 0;
+
     const rawMsg = err.message || String(err);
     let userFriendlyMsg = rawMsg;
 

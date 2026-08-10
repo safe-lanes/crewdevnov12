@@ -102,8 +102,6 @@ export const crewAssignmentsService = {
       reliefDue?: Date | string;
       contractPeriod?: string;
       assignmentType?: "primary" | "secondary";
-      vesselName?: string;
-      rank?: string;
       notes?: string;
       isCurrent?: boolean;
       auditUserUuid?: string | null;
@@ -144,8 +142,6 @@ export const crewAssignmentsService = {
               assignUuid: uuidv4(),
               crewUuid,
               vesselUuid,
-              vesselName: data.vesselName ?? null,
-              rank: data.rank ?? null,
               signOnDate: signOnDateStr,
               reliefDue: data.reliefDue
                 ? typeof data.reliefDue === "string"
