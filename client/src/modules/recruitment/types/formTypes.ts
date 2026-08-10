@@ -180,6 +180,14 @@ export interface CandidateSeaService {
   toDate: string;
   periodMonths: string;
   sortOrder: number;
+  // Vessel API fields
+  imoNumber?: string;
+  flag?: string;
+  yearBuilt?: string;
+  grossTonnage?: string;
+  mmsi?: string;
+  fromApi?: boolean;
+  apiVerifiedAt?: string;
   attachments?: Attachment[];
 }
 

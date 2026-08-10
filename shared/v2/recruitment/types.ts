@@ -57,6 +57,8 @@ import {
   candSuitabilityFleetGroups,
   candRecruitmentDecision,
   candAssignedGroups,
+  masterVesselsApi,
+  vesselSearchMisses,
 } from "./schema";
 
 // ============================================================================
@@ -510,6 +512,9 @@ export type CandSuitabilityFleetGroup = typeof candSuitabilityFleetGroups.$infer
 export type CandRecruitmentDecision = typeof candRecruitmentDecision.$inferSelect;
 export type CandAssignedGroup = typeof candAssignedGroups.$inferSelect;
 
+export type MasterVesselApi = typeof masterVesselsApi.$inferSelect;
+export type VesselSearchMiss = typeof vesselSearchMisses.$inferSelect;
+
 // ============================================================================
 // INSERT TYPES
 // ============================================================================
@@ -580,6 +585,18 @@ export type InsertSuitabilityVesselType = z.infer<typeof insertSuitabilityVessel
 export type InsertSuitabilityFleetGroup = z.infer<typeof insertSuitabilityFleetGroupSchema>;
 export type InsertRecruitmentDecision = z.infer<typeof insertRecruitmentDecisionSchema>;
 export type InsertAssignedGroup = z.infer<typeof insertAssignedGroupSchema>;
+
+// Vessel API cache insert schemas
+export const insertMasterVesselApiSchema = createInsertSchema(masterVesselsApi).omit({
+  id: true,
+});
+
+export const insertVesselSearchMissSchema = createInsertSchema(vesselSearchMisses).omit({
+  id: true,
+});
+
+export type InsertMasterVesselApi = z.infer<typeof insertMasterVesselApiSchema>;
+export type InsertVesselSearchMiss = z.infer<typeof insertVesselSearchMissSchema>;
 
 // ============================================================================
 // REQUEST SCHEMAS (for API validation)

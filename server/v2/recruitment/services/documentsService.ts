@@ -530,17 +530,25 @@ export class DocumentsService {
   }
 
   async createSeaService(recCanUuid: string, data: Partial<InsertSeaService>, createdByUuid?: string): Promise<CandSeaService> {
+    const sanitizedData = { ...data };
+    if (sanitizedData.apiVerifiedAt && typeof (sanitizedData.apiVerifiedAt as any) === "string") {
+      sanitizedData.apiVerifiedAt = new Date(sanitizedData.apiVerifiedAt as any) as any;
+    }
     return seaServiceRepository.create({
       seaUuid: uuidv4(),
       recCanUuid,
-      ...data,
+      ...sanitizedData,
       createdByUuid,
       updatedByUuid: createdByUuid,
     } as InsertSeaService);
   }
 
   async updateSeaService(id: number, data: Partial<InsertSeaService>, updatedByUuid?: string): Promise<CandSeaService | undefined> {
-    return seaServiceRepository.update(id, { ...data, updatedByUuid });
+    const sanitizedData = { ...data };
+    if (sanitizedData.apiVerifiedAt && typeof (sanitizedData.apiVerifiedAt as any) === "string") {
+      sanitizedData.apiVerifiedAt = new Date(sanitizedData.apiVerifiedAt as any) as any;
+    }
+    return seaServiceRepository.update(id, { ...sanitizedData, updatedByUuid });
   }
 
   async deleteSeaService(id: number): Promise<boolean> {

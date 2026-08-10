@@ -1,4 +1,5 @@
-import { pgTable, serial, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean, integer, numeric, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // Common audit columns for all tables
 export const auditColumns = {
@@ -276,6 +277,14 @@ export const candSeaService = pgTable("cand_sea_service", {
   fromDate: text("from_date"),
   toDate: text("to_date"),
   periodMonths: text("period_months"),
+  // Vessel API fields (added by migration 0183)
+  imoNumber: text("imo_number"),
+  flag: text("flag"),
+  yearBuilt: text("year_built"),
+  grossTonnage: text("gross_tonnage"),
+  mmsi: text("mmsi"),
+  fromApi: boolean("from_api").default(false),
+  apiVerifiedAt: timestamp("api_verified_at", { withTimezone: true }),
   sortOrder: integer("sort_order").default(0),
   ...auditColumns,
 });
@@ -751,5 +760,55 @@ export const candAssignedGroups = pgTable("cand_assigned_groups", {
   decisionUuid: text("decision_uuid").notNull(),
   groupUuid: text("group_uuid"),
   sortOrder: integer("sort_order").default(0),
+  ...auditColumns,
+});
+
+// ============================================================================
+// VESSEL API CACHE TABLES (2 tables, added by migration 0183)
+// ============================================================================
+
+export const masterVesselsApi = pgTable("master_vessels_api", {
+  id: serial("id").primaryKey(),
+  vesselApiUuid: text("vessel_api_uuid").unique(),
+  imo: text("imo"),
+  mmsi: text("mmsi"),
+  callSign: text("call_sign"),
+  name: text("name").notNull(),
+  nameAis: text("name_ais"),
+  vesselType: text("vessel_type"),
+  country: text("country"),
+  countryCode: text("country_code"),
+  yearBuilt: text("year_built"),
+  operatingStatus: text("operating_status"),
+  length: numeric("length"),
+  lengthUnit: text("length_unit"),
+  breadth: numeric("breadth"),
+  breadthUnit: text("breadth_unit"),
+  grossTonnage: text("gross_tonnage"),
+  deadweightTonnage: text("deadweight_tonnage"),
+  speedCalculatedAvg: numeric("speed_calculated_avg"),
+  speedObservedMax: numeric("speed_observed_max"),
+  draughtCalculatedAvg: numeric("draught_calculated_avg"),
+  draughtObservedMax: numeric("draught_observed_max"),
+  classSociety: text("class_society"),
+  ownerName: text("owner_name"),
+  managerName: text("manager_name"),
+  engineTypePower: text("engine_type_power"),
+  refreshLockedAt: timestamp("refresh_locked_at", { withTimezone: true }),
+  apiVerifiedAt: timestamp("api_verified_at", { withTimezone: true }).defaultNow(),
+  ...auditColumns,
+}, (table) => ({
+  uqImo: uniqueIndex("uq_master_vessels_api_imo").on(table.imo).where(sql`imo IS NOT NULL`),
+  uqNameNoImo: uniqueIndex("uq_master_vessels_api_name_no_imo").on(table.name).where(sql`imo IS NULL`),
+}));
+
+export const vesselSearchMisses = pgTable("vessel_search_misses", {
+  id: serial("id").primaryKey(),
+  missUuid: text("miss_uuid").unique(),
+  searchKey: text("search_key").notNull(),
+  searchBy: text("search_by").notNull(), // 'imo' | 'name'
+  reason: text("reason"), // 'not_found' | 'rate_limited' | 'provider_error'
+  searchedAt: timestamp("searched_at", { withTimezone: true }).defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   ...auditColumns,
 });

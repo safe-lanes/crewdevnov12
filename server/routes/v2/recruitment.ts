@@ -105,7 +105,12 @@ import {
   recruitmentDecisionController,
 } from "../../v2/recruitment/controllers/approvalsController";
 
+import { searchVessels } from "../../v2/recruitment/controllers/vesselSearchController";
+
 const router = Router();
+
+// Vessel search (no role middleware beyond standard recruitment-module auth)
+router.get("/vessel-search", searchVessels);
 
 router.get("/candidates", getAllCandidates);
 router.post("/candidates", createCandidate);

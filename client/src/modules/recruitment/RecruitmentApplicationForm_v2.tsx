@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, FileText, Info, MessageSquare, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, FileText, Info, MessageSquare, ChevronDown, Lock, Database, Ship } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -183,6 +183,7 @@ import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplate
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 import { resolveCountryUuidToName } from '@/utils/data/visaCountryTemplates';
+import { VesselSearchDialog, type VesselSearchResult } from './VesselSearchDialog';
 
 interface RecruitmentApplicationFormV2Props {
   candidate: V2CandidateListItem | null;
@@ -314,6 +315,13 @@ interface LocalFormData {
     from: string;
     to: string;
     periodMonths: string;
+    imoNumber?: string;
+    flag?: string;
+    yearBuilt?: string;
+    grossTonnage?: string;
+    mmsi?: string;
+    fromApi?: boolean;
+    apiVerifiedAt?: string;
     attachments?: FileAttachment[];
   }>;
   additionalInfo: Array<{
@@ -688,6 +696,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [isB7TrainingDialogOpen, setIsB7TrainingDialogOpen] = useState(false);
   const [isTravelDocDialogOpen, setIsTravelDocDialogOpen] = useState(false);
   const [isVisaDialogOpen, setIsVisaDialogOpen] = useState(false);
+  const [isVesselSearchDialogOpen, setIsVesselSearchDialogOpen] = useState(false);
 
   const { data: candidateData, isLoading: candidateLoading } = useV2Candidate(recCanUuid);
   const { data: personalDetails, isLoading: personalDetailsLoading } = useV2PersonalDetails(recCanUuid);
@@ -1291,6 +1300,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           from: service.fromDate || '',
           to: service.toDate || '',
           periodMonths: service.periodMonths || '',
+          imoNumber: service.imoNumber || '',
+          flag: service.flag || '',
+          yearBuilt: service.yearBuilt || '',
+          grossTonnage: service.grossTonnage || '',
+          mmsi: service.mmsi || '',
+          fromApi: !!service.fromApi,
+          apiVerifiedAt: service.apiVerifiedAt ? new Date(service.apiVerifiedAt).toISOString() : undefined,
           attachments: mapApiAttachments(service.attachments, '/api/v2/recruitment/sea-service/attachments'),
         })),
       }));
@@ -2039,6 +2055,36 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       from: '',
       to: '',
       periodMonths: '',
+      imoNumber: '',
+      flag: '',
+      yearBuilt: '',
+      grossTonnage: '',
+      mmsi: '',
+      fromApi: false,
+      attachments: []
+    };
+    setFormData(prev => ({ ...prev, seaService: [...prev.seaService, newService] }));
+  };
+
+  const addSeaServiceFromVessel = (vessel: VesselSearchResult) => {
+    const newService = {
+      id: getNextId(formData.seaService, 'SEA'),
+      vesselName: vessel.name || '',
+      vesselType: vessel.vesselType || '',
+      deadweight: vessel.deadweightTonnage || '',
+      engineTypePower: vessel.engineTypePower || '',
+      ownerOperator: vessel.ownerName || vessel.managerName || '',
+      rank: '',
+      from: '',
+      to: '',
+      periodMonths: '',
+      imoNumber: vessel.imo || '',
+      flag: vessel.country || '',
+      yearBuilt: vessel.yearBuilt || '',
+      grossTonnage: vessel.grossTonnage || '',
+      mmsi: vessel.mmsi || '',
+      fromApi: true,
+      apiVerifiedAt: vessel.apiVerifiedAt || new Date().toISOString(),
       attachments: []
     };
     setFormData(prev => ({ ...prev, seaService: [...prev.seaService, newService] }));
@@ -2794,7 +2840,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const isEduBlank = (edu: typeof formData.education[0]) => !(edu.qualifications || '').trim() && !(edu.subjectsField || '').trim() && !(edu.schoolCollegeUniversity || '').trim() && !(edu.dateOfCompletion || '').trim() && !hasAttachments(edu.attachments);
       const isLicBlank = (lic: typeof formData.licenses[0]) => !(lic.certificateDocument || '').trim() && !(lic.abbr || '').trim() && !(lic.requirement || '').trim() && !(lic.certificateNo || '').trim() && !(lic.issuingAuthority || '').trim() && !(lic.issued || '').trim() && !(lic.expiry || '').trim() && !hasAttachments(lic.attachments);
       const isTrainBlank = (t: typeof formData.trainingCourses[0]) => !(t.trainingCourse || '').trim() && !(t.abbr || '').trim() && !(t.requirement || '').trim() && !(t.certificateNo || '').trim() && !(t.issuingAuthority || '').trim() && !(t.issued || '').trim() && !(t.expiry || '').trim() && !hasAttachments(t.attachments);
-      const isSeaBlank = (s: typeof formData.seaService[0]) => !(s.vesselName || '').trim() && !(s.vesselType || '').trim() && !(s.deadweight || '').trim() && !(s.engineTypePower || '').trim() && !(s.ownerOperator || '').trim() && !(s.rank || '').trim() && !(s.from || '').trim() && !(s.to || '').trim() && !(s.periodMonths || '').trim() && !hasAttachments(s.attachments);
+      const isSeaBlank = (s: typeof formData.seaService[0]) => !(s.vesselName || '').trim() && !(s.vesselType || '').trim() && !(s.deadweight || '').trim() && !(s.engineTypePower || '').trim() && !(s.ownerOperator || '').trim() && !(s.rank || '').trim() && !(s.from || '').trim() && !(s.to || '').trim() && !(s.periodMonths || '').trim() && !(s.imoNumber || '').trim() && !hasAttachments(s.attachments);
 
       const nonEmptyDocuments = formData.documents.filter(doc => !isDocBlank(doc));
       const nonEmptyVisas = formData.visas.filter(visa => !isVisaBlank(visa));
@@ -3049,6 +3095,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           fromDate: sea.from || null,
           toDate: sea.to || null,
           periodMonths: sea.periodMonths || null,
+          imoNumber: sea.imoNumber || null,
+          flag: sea.flag || null,
+          yearBuilt: sea.yearBuilt || null,
+          grossTonnage: sea.grossTonnage || null,
+          mmsi: sea.mmsi || null,
+          fromApi: sea.fromApi || false,
+          apiVerifiedAt: sea.apiVerifiedAt || null,
           sortOrder: index,
         };
         const serverNumericId = serverSeaMap.get(sea.id);
@@ -5518,15 +5571,27 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>A4.1 Details of Sea Service</h3>
-          <Button variant="outline" size="sm" onClick={addSeaService} className="text-gray-600 border-gray-300 hover:bg-gray-50" data-testid="button-add-sea-service">
-            <Plus className="h-4 w-4 mr-2" /> ADD
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsVesselSearchDialogOpen(true)}
+              className="text-[#16569e] border-[#16569e] hover:bg-blue-50"
+              data-testid="button-add-from-database"
+            >
+              <Database className="h-4 w-4 mr-2" /> ADD FROM DATABASE
+            </Button>
+            <Button variant="outline" size="sm" onClick={addSeaService} className="text-gray-600 border-gray-300 hover:bg-gray-50" data-testid="button-add-sea-service">
+              <Plus className="h-4 w-4 mr-2" /> ADD
+            </Button>
+          </div>
         </div>
 
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-40">Vessel Name <span className="text-red-500">*</span></TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-36">Vessel Name <span className="text-red-500">*</span></TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">IMO Number</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-28">Vessel Type <span className="text-red-500">*</span></TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-20">Deadweight</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Engine Type/Power</TableHead>
@@ -5545,86 +5610,218 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 const bDate = b.to || b.from || '';
                 return bDate.localeCompare(aDate);
               })
-              .map((service) => (
-              <TableRow key={service.id} className="border-b border-gray-200">
-                <TableCell className="p-3">
-                  <Input value={service.vesselName} onChange={(e) => { updateSeaService(service.id, 'vesselName', e.target.value); if (seaRequiredErrors[service.id]?.vesselName && e.target.value.trim()) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselName: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
-                    onBlur={() => { if (!(service.vesselName || '').trim()) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], vesselName: 'Vessel name is required.' } })); }}
-                    className={`text-[13px] border ${seaRequiredErrors[service.id]?.vesselName ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} placeholder="Enter vessel name" maxLength={50} />
-                  {seaRequiredErrors[service.id]?.vesselName && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].vesselName}</p>}
-                </TableCell>
-                <TableCell className="p-3">
-                  <Select value={service.vesselType} onValueChange={(value) => { updateSeaService(service.id, 'vesselType', value); if (seaRequiredErrors[service.id]?.vesselType) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselType: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}>
-                    <SelectTrigger className={`text-[13px] border ${seaRequiredErrors[service.id]?.vesselType ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vesselTypeMasterData.map((vt: string) => (
-                        <SelectItem key={vt} value={vt}>{vt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {seaRequiredErrors[service.id]?.vesselType && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].vesselType}</p>}
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input value={service.deadweight} onChange={(e) => updateSeaService(service.id, 'deadweight', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={7} />
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input value={service.engineTypePower} onChange={(e) => updateSeaService(service.id, 'engineTypePower', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={50} />
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input value={service.ownerOperator} onChange={(e) => updateSeaService(service.id, 'ownerOperator', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={100} />
-                </TableCell>
-                <TableCell className="p-3">
-                  <Select value={service.rank} onValueChange={(value) => { updateSeaService(service.id, 'rank', value); if (seaRequiredErrors[service.id]?.rank) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}>
-                    <SelectTrigger className={`text-[13px] border ${seaRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}>
-                      <SelectValue placeholder="Select rank" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ranksLoading ? (
-                        <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
-                      ) : (
-                        rankOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {seaRequiredErrors[service.id]?.rank && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].rank}</p>}
-                </TableCell>
-                <TableCell className="p-3">
-                  <FormattedDateInput value={service.from} onChange={(e) => { updateSeaService(service.id, 'from', e.target.value); if (seaRequiredErrors[service.id]?.from && e.target.value) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
-                    onBlur={() => { if (!(service.from || '').trim()) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], from: 'From date is required.' } })); setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
-                    className={`text-[13px] border ${(seaRequiredErrors[service.id]?.from || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
-                  {seaRequiredErrors[service.id]?.from && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].from}</p>}
-                  {!seaRequiredErrors[service.id]?.from && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1">{seaServiceDateErrors[service.id]}</p>}
-                </TableCell>
-                <TableCell className="p-3">
-                  <FormattedDateInput value={service.to} onChange={(e) => { updateSeaService(service.id, 'to', e.target.value); if (e.target.value) { const errs = { ...seaRequiredErrors[service.id] }; delete errs.to; if (service.from && e.target.value < service.from) errs.to = 'To date cannot be earlier than from date.'; setSeaRequiredErrors(prev => ({ ...prev, [service.id]: errs })); } }} onBlur={() => { if (!(service.to || '').trim()) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date is required.' } })); } else if (service.from && service.to < service.from) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date cannot be earlier than from date.' } })); } setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
-                    className={`text-[13px] border ${(seaRequiredErrors[service.id]?.to || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
-                  {seaRequiredErrors[service.id]?.to && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-${service.id}`}>{seaRequiredErrors[service.id].to}</p>}
-                  {!seaRequiredErrors[service.id]?.to && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-legacy-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
-                </TableCell>
-                <TableCell className="p-3">
-                  <Input value={service.periodMonths} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-gray-50 cursor-not-allowed" title="Auto-calculated" />
-                </TableCell>
-                <TableCell className="p-3">
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('seaService', service.id, service.vesselName || 'Sea Service', service.serverId)} data-testid={`button-attach-seaservice-${service.id}`}>
-                      <Paperclip className="h-3 w-3" />
-                      {(service.attachments?.filter(a => !a.isDeleted)?.length || 0) > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{service.attachments?.filter(a => !a.isDeleted)?.length}</span>
-                      )}
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => removeSeaService(service.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+              .map((service) => {
+                // Lock rule: 🔒 icon on a field ONLY if fromApi === true AND that specific field has a non-empty value
+                const isFieldLocked = (val?: string) => !!(service.fromApi && (val || '').trim());
+
+                return (
+                  <TableRow key={service.id} className="border-b border-gray-200">
+                    {/* Vessel Name */}
+                    <TableCell className="p-3">
+                      <div className="relative flex items-center">
+                        <Input
+                          value={service.vesselName}
+                          readOnly={isFieldLocked(service.vesselName)}
+                          onChange={(e) => {
+                            updateSeaService(service.id, 'vesselName', e.target.value);
+                            if (seaRequiredErrors[service.id]?.vesselName && e.target.value.trim()) {
+                              setSeaRequiredErrors(prev => {
+                                const n = { ...prev };
+                                if (n[service.id]) {
+                                  const { vesselName: _, ...rest } = n[service.id];
+                                  n[service.id] = rest;
+                                }
+                                return n;
+                              });
+                            }
+                          }}
+                          onBlur={() => {
+                            if (!(service.vesselName || '').trim()) {
+                              setSeaRequiredErrors(prev => ({
+                                ...prev,
+                                [service.id]: { ...prev[service.id], vesselName: 'Vessel name is required.' }
+                              }));
+                            }
+                          }}
+                          className={`text-[13px] border ${seaRequiredErrors[service.id]?.vesselName ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto ${isFieldLocked(service.vesselName) ? 'bg-gray-50 cursor-not-allowed pr-6' : ''}`}
+                          placeholder="Enter vessel name"
+                          maxLength={50}
+                        />
+                        {isFieldLocked(service.vesselName) && (
+                          <Lock className="h-3 w-3 text-gray-400 absolute right-1 pointer-events-none" title="API Verified Field" />
+                        )}
+                      </div>
+                      {seaRequiredErrors[service.id]?.vesselName && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].vesselName}</p>}
+                    </TableCell>
+
+                    {/* IMO Number */}
+                    <TableCell className="p-3">
+                      <div className="relative flex items-center">
+                        <Input
+                          value={service.imoNumber || ''}
+                          readOnly={isFieldLocked(service.imoNumber)}
+                          onChange={(e) => updateSeaService(service.id, 'imoNumber', e.target.value)}
+                          className={`text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto ${isFieldLocked(service.imoNumber) ? 'bg-gray-50 cursor-not-allowed pr-6' : ''}`}
+                          placeholder="IMO..."
+                          maxLength={10}
+                        />
+                        {isFieldLocked(service.imoNumber) && (
+                          <Lock className="h-3 w-3 text-gray-400 absolute right-1 pointer-events-none" title="API Verified Field" />
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Vessel Type — SPECIAL CASE: NEVER LOCKED */}
+                    <TableCell className="p-3">
+                      <Select
+                        value={service.vesselType}
+                        onValueChange={(value) => {
+                          updateSeaService(service.id, 'vesselType', value);
+                          if (seaRequiredErrors[service.id]?.vesselType) {
+                            setSeaRequiredErrors(prev => {
+                              const n = { ...prev };
+                              if (n[service.id]) {
+                                const { vesselType: _, ...rest } = n[service.id];
+                                n[service.id] = rest;
+                              }
+                              return n;
+                            });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className={`text-[13px] border ${seaRequiredErrors[service.id]?.vesselType ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/* Render returned API vesselType even if not in master list */}
+                          {service.vesselType && !vesselTypeMasterData.includes(service.vesselType) && (
+                            <SelectItem key={service.vesselType} value={service.vesselType}>
+                              {service.vesselType}
+                            </SelectItem>
+                          )}
+                          {vesselTypeMasterData.map((vt: string) => (
+                            <SelectItem key={vt} value={vt}>{vt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {seaRequiredErrors[service.id]?.vesselType && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].vesselType}</p>}
+                    </TableCell>
+
+                    {/* Deadweight */}
+                    <TableCell className="p-3">
+                      <div className="relative flex items-center">
+                        <Input
+                          value={service.deadweight}
+                          readOnly={isFieldLocked(service.deadweight)}
+                          onChange={(e) => updateSeaService(service.id, 'deadweight', e.target.value)}
+                          className={`text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto ${isFieldLocked(service.deadweight) ? 'bg-gray-50 cursor-not-allowed pr-6' : ''}`}
+                          maxLength={7}
+                        />
+                        {isFieldLocked(service.deadweight) && (
+                          <Lock className="h-3 w-3 text-gray-400 absolute right-1 pointer-events-none" title="API Verified Field" />
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Engine Type/Power */}
+                    <TableCell className="p-3">
+                      <div className="relative flex items-center">
+                        <Input
+                          value={service.engineTypePower}
+                          readOnly={isFieldLocked(service.engineTypePower)}
+                          onChange={(e) => updateSeaService(service.id, 'engineTypePower', e.target.value)}
+                          className={`text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto ${isFieldLocked(service.engineTypePower) ? 'bg-gray-50 cursor-not-allowed pr-6' : ''}`}
+                          maxLength={50}
+                        />
+                        {isFieldLocked(service.engineTypePower) && (
+                          <Lock className="h-3 w-3 text-gray-400 absolute right-1 pointer-events-none" title="API Verified Field" />
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Owner/Operator */}
+                    <TableCell className="p-3">
+                      <div className="relative flex items-center">
+                        <Input
+                          value={service.ownerOperator}
+                          readOnly={isFieldLocked(service.ownerOperator)}
+                          onChange={(e) => updateSeaService(service.id, 'ownerOperator', e.target.value)}
+                          className={`text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto ${isFieldLocked(service.ownerOperator) ? 'bg-gray-50 cursor-not-allowed pr-6' : ''}`}
+                          maxLength={100}
+                        />
+                        {isFieldLocked(service.ownerOperator) && (
+                          <Lock className="h-3 w-3 text-gray-400 absolute right-1 pointer-events-none" title="API Verified Field" />
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Rank */}
+                    <TableCell className="p-3">
+                      <Select value={service.rank} onValueChange={(value) => { updateSeaService(service.id, 'rank', value); if (seaRequiredErrors[service.id]?.rank) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { rank: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}>
+                        <SelectTrigger className={`text-[13px] border ${seaRequiredErrors[service.id]?.rank ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}>
+                          <SelectValue placeholder="Select rank" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ranksLoading ? (
+                            <SelectItem value="loading" disabled>Loading ranks...</SelectItem>
+                          ) : (
+                            rankOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {seaRequiredErrors[service.id]?.rank && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].rank}</p>}
+                    </TableCell>
+
+                    {/* From Date */}
+                    <TableCell className="p-3">
+                      <FormattedDateInput value={service.from} onChange={(e) => { updateSeaService(service.id, 'from', e.target.value); if (seaRequiredErrors[service.id]?.from && e.target.value) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
+                        onBlur={() => { if (!(service.from || '').trim()) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], from: 'From date is required.' } })); setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
+                        className={`text-[13px] border ${(seaRequiredErrors[service.id]?.from || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                      {seaRequiredErrors[service.id]?.from && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].from}</p>}
+                      {!seaRequiredErrors[service.id]?.from && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1">{seaServiceDateErrors[service.id]}</p>}
+                    </TableCell>
+
+                    {/* To Date */}
+                    <TableCell className="p-3">
+                      <FormattedDateInput value={service.to} onChange={(e) => { updateSeaService(service.id, 'to', e.target.value); if (e.target.value) { const errs = { ...seaRequiredErrors[service.id] }; delete errs.to; if (service.from && e.target.value < service.from) errs.to = 'To date cannot be earlier than from date.'; setSeaRequiredErrors(prev => ({ ...prev, [service.id]: errs })); } }} onBlur={() => { if (!(service.to || '').trim()) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date is required.' } })); } else if (service.from && service.to < service.from) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date cannot be earlier than from date.' } })); } setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
+                        className={`text-[13px] border ${(seaRequiredErrors[service.id]?.to || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                      {seaRequiredErrors[service.id]?.to && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-${service.id}`}>{seaRequiredErrors[service.id].to}</p>}
+                      {!seaRequiredErrors[service.id]?.to && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-legacy-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
+                    </TableCell>
+
+                    {/* Period (Months) */}
+                    <TableCell className="p-3">
+                      <Input value={service.periodMonths} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-gray-50 cursor-not-allowed" title="Auto-calculated" />
+                    </TableCell>
+
+                    {/* Actions */}
+                    <TableCell className="p-3">
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('seaService', service.id, service.vesselName || 'Sea Service', service.serverId)} data-testid={`button-attach-seaservice-${service.id}`}>
+                          <Paperclip className="h-3 w-3" />
+                          {(service.attachments?.filter(a => !a.isDeleted)?.length || 0) > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{service.attachments?.filter(a => !a.isDeleted)?.length}</span>
+                          )}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-600" onClick={() => removeSeaService(service.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
           </TableBody>
         </Table>
+
+        {/* Vessel Search Dialog */}
+        <VesselSearchDialog
+          open={isVesselSearchDialogOpen}
+          onOpenChange={setIsVesselSearchDialogOpen}
+          onSelectVessel={addSeaServiceFromVessel}
+        />
       </div>
     );
   };
