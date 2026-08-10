@@ -53,8 +53,8 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
       // Use only the first given name token — middle names add noise without
       // improving filter selectivity.
       const gn = (entry.givenNames || "").trim().split(/\s+/)[0];
-      if (fn) docNameTokens.add(fn.toLowerCase());
-      if (gn) docNameTokens.add(gn.toLowerCase());
+      if (fn) docNameTokens.add(fn.normalize("NFC").toLowerCase());
+      if (gn) docNameTokens.add(gn.normalize("NFC").toLowerCase());
     }
   }
 
