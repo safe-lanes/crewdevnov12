@@ -5,6 +5,7 @@ import {
   importVesselRankHierarchy,
   importCrewAssignments,
 } from "../services";
+import { getAuditUserUuid } from "../../accounts/controllers/_auth";
 import { MAX_IMPORT_BYTES } from "../middleware/importUpload";
 
 // ── Size-limit error for the raw-stream fallback path ────────────────────────
@@ -195,7 +196,10 @@ export const vesselImportController = {
         });
       }
 
-      const result = await importVesselRankHierarchy(buffer);
+      // Derive audit actor from the authenticated JWT principal (req.user?.id).
+      // Never read this from req.body — it must be server-derived and non-spoofable.
+      const auditUserUuid = getAuditUserUuid(req);
+      const result = await importVesselRankHierarchy(buffer, auditUserUuid);
       if (result.vesselsProcessed === 0 && result.errors.length > 0) {
         return res.status(400).json({
           error: result.errors[0],
@@ -227,7 +231,10 @@ export const vesselImportController = {
         });
       }
 
-      const result = await importCrewAssignments(buffer);
+      // Derive audit actor from the authenticated JWT principal (req.user?.id).
+      // Never read this from req.body — it must be server-derived and non-spoofable.
+      const auditUserUuid = getAuditUserUuid(req);
+      const result = await importCrewAssignments(buffer, auditUserUuid);
       if (
         result.success === false ||
         (result.primaryAssignedCount === 0 &&

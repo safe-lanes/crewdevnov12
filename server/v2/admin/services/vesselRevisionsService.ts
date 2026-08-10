@@ -49,6 +49,13 @@ export const vesselRevisionsService = {
        * swallow-and-log behaviour retained for all existing callers).
        */
       throwOnSyncError?: boolean;
+      /**
+       * Authenticated actor UUID to stamp on the new revision record.
+       * Must be derived from the server-side session/JWT — never from the
+       * request body.  Passed through applyAuditUser to set createdByUuid and
+       * updatedByUuid on the adm_vessel_revisions_v2 row.
+       */
+      auditUserUuid?: string;
     },
   ): Promise<{
     success: boolean;
@@ -62,6 +69,7 @@ export const vesselRevisionsService = {
       revision: autoAssignedRevision,
       revisionDate: data.revisionDate,
       revisionData: data.revisionData,
+      auditUserUuid: options?.auditUserUuid,
     }, true));
 
     const existingDrafts = await vesselDraftsRepo.findByVesselId(data.vesselId);
@@ -80,6 +88,8 @@ export const vesselRevisionsService = {
         // Strict mode propagates per-record creation failures so the caller
         // can detect an incomplete sync and trigger compensating rollback.
         options?.throwOnSyncError,
+        // Thread the authenticated actor so planning slots get stamped too.
+        options?.auditUserUuid,
       );
       createdPlanningRecords = syncResult.count;
       createdPlanUuids = syncResult.createdPlanUuids;
@@ -195,6 +205,7 @@ export const vesselRevisionsService = {
     vesselUuid: string,
     revisionData: string | any,
     strictMode?: boolean,
+    auditUserUuid?: string,
   ): Promise<{ count: number; createdPlanUuids: string[] }> {
     console.log(`[VESSEL PLANNING V2 SYNC] Starting sync for vessel: ${vesselUuid}`);
 
@@ -285,6 +296,9 @@ export const vesselRevisionsService = {
           crewStatus: "primary",
           isArchived: false,
           isDeleted: false,
+          // Stamp the authenticated actor on every slot created during this sync.
+          createdByUuid: auditUserUuid ?? null,
+          updatedByUuid: auditUserUuid ?? null,
         });
         createdCount++;
         // Track the exact planUuid so callers can reverse only these rows.

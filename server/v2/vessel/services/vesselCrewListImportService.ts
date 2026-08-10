@@ -1,30 +1,42 @@
 import ExcelJS from "exceljs";
+import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
-import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { crewMembersV2, crewAssignments } from "../../../../shared/v2/crew-pool/schema";
 import { masterVessels, masterPorts } from "../../../../shared/schema";
 import { admCompanyRanksV2, admVesselRevisionsV2 } from "../../../../shared/v2/admin/schema";
 import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { vesselRevisionsService } from "../../admin/services/vesselRevisionsService";
 import { vesselDraftsService } from "../../admin/services/vesselDraftsService";
-import { vesselPlanningService } from "./vesselPlanningService";
 import { vesselPlanningRepository } from "../repositories/vesselPlanningRepository";
-import { crewAssignmentsService } from "../../crew-pool/services/crewAssignmentsService";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { parseDateString } from "../utils/dateUtils";
+
+// ── Module-level concurrency guard for Stage 1 ───────────────────────────────
+// Prevents two simultaneous requests from both running Phase 2 writes for the
+// same vessel in the same Node.js process.  For multi-process deployments this
+// should be replaced with a distributed lock (e.g. Redis or a Postgres advisory
+// lock inside the revision service's own transaction).
+const HIERARCHY_IMPORT_IN_PROGRESS = new Set<string>();
+
+// ── Interfaces ────────────────────────────────────────────────────────────────
 
 export interface HierarchyImportResult {
   vesselsProcessed: number;
   activeRanksCount: number;
   deletedRanksCount: number;
   errors: string[];
+  warnings: string[];
 }
 
 export interface AssignmentsImportResult {
   totalRowsProcessed: number;
   primaryAssignedCount: number;
   secondaryAssignedCount: number;
+  /** Rows whose assignment already existed and were updated in-place (no duplicate inserted). */
+  alreadyImportedCount: number;
   skippedCount: number;
   errors: string[];
+  warnings: string[];
   errorExcelBuffer?: string;
   success?: boolean;
 }
@@ -74,42 +86,41 @@ function getCellValue(cell: ExcelJS.Cell | undefined): string {
 // committed.
 //
 // Precision guarantees:
-//   1. Planning rows — only vacant slots (crewUuid IS NULL) created AFTER
-//      phase2StartTime are soft-deleted.  Pre-existing vacant slots (created
-//      before the import started) and all assigned rows are left untouched.
-//   2. Revisions — hard-deleted by exact ID, not by vessel UUID, so historical
-//      revisions for those vessels survive.
-//   3. Drafts — submit() hard-deletes drafts; we re-create them from the
-//      in-memory copy captured during Phase 1 validation.
+//   1. Planning rows — only vacant slots created by this run are soft-deleted.
+//   2. Revisions   — hard-deleted by exact ID, so historical revisions survive.
+//   3. Drafts      — submit() hard-deletes drafts; we re-create them verbatim.
+//
+// Each step runs in its own try/catch. The RollbackResult indicates whether all
+// steps succeeded so the caller can give an honest message to the operator.
 
 interface CommittedVessel {
   vesselUuid: string;
   revisionId: number;
-  /** All drafts that existed for this vessel before submit() hard-deleted them. */
+  /** All drafts captured before submit() hard-deleted them. */
   savedDrafts: { vesselId: string; revision: string; draftData: string }[];
-  /**
-   * planUuids that were active BEFORE submit() ran.
-   * Used to restore rows that syncVesselPlanningV2's dedup step soft-deleted.
-   */
+  /** planUuids active BEFORE submit() ran (may have been dedup-deleted). */
   preSyncPlanUuids: string[];
-  /**
-   * planUuids created by syncVesselPlanningV2 during THIS submit() call.
-   * Rollback soft-deletes exactly these rows — no time-window predicate needed.
-   */
+  /** planUuids created by syncVesselPlanningV2 during THIS submit(). */
   createdPlanUuids: string[];
+}
+
+interface RollbackResult {
+  success: boolean;
+  failedSteps: string[];
 }
 
 async function rollbackHierarchyImport(
   committed: CommittedVessel[],
-): Promise<void> {
-  if (committed.length === 0) return;
+  auditUserUuid?: string,
+): Promise<RollbackResult> {
+  if (committed.length === 0) return { success: true, failedSteps: [] };
+
   const db = getDb();
   const revisionIds = committed.map((c) => c.revisionId);
+  const failedSteps: string[] = [];
 
+  // Step 1 — Soft-delete the EXACT planning rows created by this import run.
   try {
-    // Step 1 — Soft-delete the EXACT planning rows created by this import run.
-    // We use the planUuids returned by syncVesselPlanningV2 rather than a
-    // time-window predicate, so concurrent slots on the same vessel are safe.
     const allCreatedUuids = committed.flatMap((c) => c.createdPlanUuids);
     if (allCreatedUuids.length > 0) {
       await db
@@ -117,11 +128,13 @@ async function rollbackHierarchyImport(
         .set({ isDeleted: true, updatedAt: new Date() })
         .where(inArray(vesselPlanningV2.planUuid, allCreatedUuids));
     }
+  } catch (e: any) {
+    failedSteps.push(`Step 1 (remove new planning rows): ${e.message || e}`);
+    console.error("[VESSEL IMPORT] Rollback Step 1 failed:", e);
+  }
 
-    // Step 2 — Restore pre-existing rows that syncVesselPlanningV2's dedup
-    // step may have soft-deleted.  We recorded every active planUuid that
-    // existed before submit() ran; any of those now marked isDeleted=true
-    // were deleted by the sync and must be reinstated.
+  // Step 2 — Restore pre-existing rows the sync's dedup step may have soft-deleted.
+  try {
     const allPreSyncUuids = committed.flatMap((c) => c.preSyncPlanUuids);
     if (allPreSyncUuids.length > 0) {
       await db
@@ -134,30 +147,69 @@ async function rollbackHierarchyImport(
           ),
         );
     }
+  } catch (e: any) {
+    failedSteps.push(`Step 2 (restore pre-existing planning rows): ${e.message || e}`);
+    console.error("[VESSEL IMPORT] Rollback Step 2 failed:", e);
+  }
 
-    // Step 3 — Hard-delete the exact revision rows created by this import (by ID).
+  // Step 3 — Hard-delete the exact revision rows created by this import.
+  try {
     await db
       .delete(admVesselRevisionsV2)
       .where(inArray(admVesselRevisionsV2.id, revisionIds));
+  } catch (e: any) {
+    failedSteps.push(`Step 3 (delete new revisions): ${e.message || e}`);
+    console.error("[VESSEL IMPORT] Rollback Step 3 failed:", e);
+  }
 
-    // Step 4 — Restore ALL drafts hard-deleted by submit(), using the verbatim
-    // copies captured during Phase 1 validation (entire array per vessel).
+  // Step 4 — Restore ALL drafts hard-deleted by submit().
+  try {
     for (const c of committed) {
       for (const draft of c.savedDrafts) {
         await vesselDraftsService.create({
           vesselId: draft.vesselId,
           revision: draft.revision,
           draftData: draft.draftData,
+          createdByUuid: auditUserUuid ?? null,
         });
       }
     }
-  } catch (rollbackErr) {
+  } catch (e: any) {
+    failedSteps.push(`Step 4 (restore vessel drafts): ${e.message || e}`);
+    console.error("[VESSEL IMPORT] Rollback Step 4 failed:", e);
+  }
+
+  if (failedSteps.length > 0) {
     console.error(
-      "[VESSEL IMPORT] Rollback failed — manual intervention may be required:",
-      rollbackErr,
+      "[VESSEL IMPORT] Rollback partially failed — manual DB intervention may be required:",
+      failedSteps,
     );
   }
+
+  return { success: failedSteps.length === 0, failedSteps };
 }
+
+// ── Stage 1 expected headers ──────────────────────────────────────────────────
+// Validated against row 1 of VesselRankHierarchy sheet (case-insensitive).
+const HIERARCHY_EXPECTED_HEADERS: { col: number; name: string }[] = [
+  { col: 1, name: "Vessel Name" },
+  { col: 2, name: "IMO" },
+  { col: 3, name: "Rank" },
+  { col: 4, name: "Position" },
+  { col: 5, name: "Status" },
+];
+
+// ── Stage 2 required headers (normalised) ────────────────────────────────────
+// These must be present in row 1 of the Assignments sheet.  Missing any of
+// them aborts the import immediately with no silent positional fallback.
+const REQUIRED_ASSIGNMENT_HEADERS = [
+  "employee id",
+  "vessel name",
+  "rank",
+  "position",
+  "sign on date",
+  "assignment type",
+];
 
 /**
  * Stage 1: Import VesselRankHierarchy sheet → updates adm_vessel_revisions_v2
@@ -170,17 +222,22 @@ async function rollbackHierarchyImport(
  *              On any batch failure, compensating rollback undoes all committed
  *              vessels from this run before returning.
  *
+ * Concurrency:  A module-level Set guards against two simultaneous uploads for
+ *               the same vessel in the same Node.js process.
+ *
  * Optimisation: planning records for all vessels are loaded in ONE batch query
- * before the loop, eliminating the per-vessel getByVesselUuid call (~400 ms × N).
+ * before the loop, eliminating the per-vessel getByVesselUuid call.
  */
 export async function importVesselRankHierarchy(
   xlsxBuffer: Buffer,
+  auditUserUuid?: string,
 ): Promise<HierarchyImportResult> {
   const result: HierarchyImportResult = {
     vesselsProcessed: 0,
     activeRanksCount: 0,
     deletedRanksCount: 0,
     errors: [],
+    warnings: [],
   };
 
   try {
@@ -191,6 +248,26 @@ export async function importVesselRankHierarchy(
     if (!hierarchySheet) {
       result.errors.push(
         "Missing 'VesselRankHierarchy' sheet in uploaded Excel workbook",
+      );
+      return result;
+    }
+
+    // ── Header validation ─────────────────────────────────────────────────────
+    // Ensures columns have not been renamed or reordered.  Checked case-insensitively.
+    const hdrRow = hierarchySheet.getRow(1);
+    const hdrErrors: string[] = [];
+    for (const expected of HIERARCHY_EXPECTED_HEADERS) {
+      const found = norm(getCellValue(hdrRow.getCell(expected.col)));
+      if (found !== norm(expected.name)) {
+        hdrErrors.push(
+          `Column ${expected.col}: expected "${expected.name}", found "${getCellValue(hdrRow.getCell(expected.col)) || "(empty)"}"`,
+        );
+      }
+    }
+    if (hdrErrors.length > 0) {
+      result.errors.push(
+        `VesselRankHierarchy sheet has incorrect column headers — do not rename or reorder columns. ` +
+        `Issues: ${hdrErrors.join("; ")}`,
       );
       return result;
     }
@@ -278,11 +355,6 @@ export async function importVesselRankHierarchy(
       updatedRevisionData: any[];
       activeRanksCount: number;
       deletedRanksCount: number;
-      /**
-       * ALL drafts captured verbatim before submit() hard-deletes them.
-       * submit() iterates and deletes every draft for a vessel, so capturing
-       * only drafts[0] would permanently lose any additional drafts on failure.
-       */
       savedDrafts: { vesselId: string; revision: string; draftData: string }[];
     }
 
@@ -300,18 +372,14 @@ export async function importVesselRankHierarchy(
       for (const r of group.rows) {
         const posKey = norm(r.position || r.rank);
         const st = norm(r.status);
-        if (
-          st === "deleted" ||
-          st === "not required" ||
-          st === "inactive"
-        ) {
+        if (st === "deleted" || st === "not required" || st === "inactive") {
           deletedRankRoles.add(posKey);
         } else {
           activeRankRoles.add(posKey);
         }
       }
 
-      // Duplicate-upload guard (unchanged logic)
+      // Duplicate-upload guard
       let isIdenticalHierarchy =
         activeRankRoles.size > 0 && deletedRankRoles.size === 0;
       if (isIdenticalHierarchy) {
@@ -330,8 +398,6 @@ export async function importVesselRankHierarchy(
       }
 
       // Load draft / latest revision data (read-only, no writes).
-      // Capture EVERY draft verbatim — submit() hard-deletes all drafts for a
-      // vessel; only capturing drafts[0] would permanently lose any extras.
       const drafts = await vesselDraftsService.getByVesselId(vesselUuid);
       let revisionDataList: any[] = [];
       const savedDrafts: { vesselId: string; revision: string; draftData: string }[] = [];
@@ -390,60 +456,111 @@ export async function importVesselRankHierarchy(
     if (result.errors.length > 0) return result;
     if (validVessels.length === 0) return result;
 
-    // ── Phase 2: Parallel batch writes (10 vessels at a time) ───────────────
-    const BATCH_SIZE = 10;
-    const committed: CommittedVessel[] = [];
-
-    for (let i = 0; i < validVessels.length; i += BATCH_SIZE) {
-      const batch = validVessels.slice(i, i + BATCH_SIZE);
-
-      const batchResults = await Promise.allSettled(
-        batch.map(async (v) => {
-          // Snapshot the planUuids that are active BEFORE this submit() call.
-          // syncVesselPlanningV2's dedup step may soft-delete some of these;
-          // we record them so rollback can restore the exact pre-import state.
-          const preSyncPlanUuids = (planningByVessel.get(v.vesselUuid) || []).map(
-            (p: any) => p.planUuid as string,
-          );
-
-          const submitResult = await vesselRevisionsService.submit(
-            {
-              vesselId: v.vesselUuid,
-              revisionDate: todayStr,
-              revisionData: JSON.stringify(v.updatedRevisionData),
-            },
-            // throwOnSyncError=true causes submit() to:
-            //   (a) pass strictMode=true to syncVesselPlanningV2 so per-record
-            //       creation failures propagate instead of being swallowed
-            //   (b) attach partialRevisionId to the thrown error so the failure
-            //       handler below can include this vessel in the rollback set
-            //       even though allSettled carries no return value on rejection
-            { throwOnSyncError: true },
-          );
-          return {
-            vesselUuid: v.vesselUuid,
-            revisionId: submitResult.revision.id,
-            // Exact planUuids created by this submit's syncVesselPlanningV2 call.
-            // Rollback soft-deletes only these rows — no time-window predicate.
-            createdPlanUuids: submitResult.metadata.createdPlanUuids ?? [],
-            vessel: v,
-            preSyncPlanUuids,
-          };
-        }),
+    // ── Stage 1 concurrency guard ─────────────────────────────────────────────
+    // Prevents two simultaneous requests from both committing Phase 2 writes
+    // for the same vessel in the same Node.js process.
+    const conflictVessels = validVessels.filter((v) =>
+      HIERARCHY_IMPORT_IN_PROGRESS.has(v.vesselUuid),
+    );
+    if (conflictVessels.length > 0) {
+      result.errors.push(
+        `Import already in progress for vessel(s): ${conflictVessels.map((v) => `"${v.vesselName}"`).join(", ")} — ` +
+        `please wait for the current import to complete before retrying.`,
       );
+      return result;
+    }
+    // Register all vessels as being actively imported in this process
+    const lockedForThisRun = validVessels.map((v) => v.vesselUuid);
+    for (const uuid of lockedForThisRun) {
+      HIERARCHY_IMPORT_IN_PROGRESS.add(uuid);
+    }
 
-      const failures = batchResults.filter(
-        (r) => r.status === "rejected",
-      ) as PromiseRejectedResult[];
+    try {
+      // ── Phase 2: Parallel batch writes (10 vessels at a time) ───────────────
+      const BATCH_SIZE = 10;
+      const committed: CommittedVessel[] = [];
 
-      if (failures.length > 0) {
-        // Collect ALL started vessels from THIS failing batch before rolling back:
-        //
-        // Fulfilled — committed successfully; must be reversed (all three artefacts:
-        //   revision, drafts, newly created planning rows).
-        // Rejected with partialRevisionId — submit() created the revision and
-        //   deleted ALL drafts before sync threw; rollback must undo those writes
-        //   too, even though allSettled returns no value for rejected items.
+      for (let i = 0; i < validVessels.length; i += BATCH_SIZE) {
+        const batch = validVessels.slice(i, i + BATCH_SIZE);
+
+        const batchResults = await Promise.allSettled(
+          batch.map(async (v) => {
+            const preSyncPlanUuids = (planningByVessel.get(v.vesselUuid) || []).map(
+              (p: any) => p.planUuid as string,
+            );
+
+            const submitResult = await vesselRevisionsService.submit(
+              {
+                vesselId: v.vesselUuid,
+                revisionDate: todayStr,
+                revisionData: JSON.stringify(v.updatedRevisionData),
+              },
+              { throwOnSyncError: true, auditUserUuid },
+            );
+            return {
+              vesselUuid: v.vesselUuid,
+              revisionId: submitResult.revision.id,
+              createdPlanUuids: submitResult.metadata.createdPlanUuids ?? [],
+              vessel: v,
+              preSyncPlanUuids,
+            };
+          }),
+        );
+
+        const failures = batchResults.filter(
+          (r) => r.status === "rejected",
+        ) as PromiseRejectedResult[];
+
+        if (failures.length > 0) {
+          for (const r of batchResults) {
+            if (r.status === "fulfilled") {
+              committed.push({
+                vesselUuid: r.value.vesselUuid,
+                revisionId: r.value.revisionId,
+                savedDrafts: r.value.vessel.savedDrafts,
+                preSyncPlanUuids: r.value.preSyncPlanUuids,
+                createdPlanUuids: r.value.createdPlanUuids,
+              });
+            } else if (r.reason?.partialRevisionId) {
+              const partialVessel = batch.find(
+                (bv) => bv.vesselUuid === r.reason.partialSavedForVessel,
+              );
+              committed.push({
+                vesselUuid: r.reason.partialSavedForVessel,
+                revisionId: r.reason.partialRevisionId,
+                savedDrafts: partialVessel?.savedDrafts ?? [],
+                preSyncPlanUuids: partialVessel
+                  ? (planningByVessel.get(partialVessel.vesselUuid) || []).map(
+                      (p: any) => p.planUuid as string,
+                    )
+                  : [],
+                createdPlanUuids: [],
+              });
+            }
+          }
+
+          // ── Rollback with honest result reporting ──────────────────────────
+          const rollbackResult = await rollbackHierarchyImport(committed, auditUserUuid);
+          const firstMsg =
+            failures[0].reason?.message || String(failures[0].reason);
+
+          if (!rollbackResult.success) {
+            result.errors.push(
+              `PARTIAL ROLLBACK — manual review required. ` +
+              `The following rollback steps failed: ${rollbackResult.failedSteps.join("; ")}. ` +
+              `Original import error: ${firstMsg}`,
+            );
+          } else {
+            result.errors.push(
+              `Import failed after committing ${committed.length} vessel(s). All changes have been rolled back. Error: ${firstMsg}`,
+            );
+          }
+          result.vesselsProcessed = 0;
+          result.activeRanksCount = 0;
+          result.deletedRanksCount = 0;
+          return result;
+        }
+
         for (const r of batchResults) {
           if (r.status === "fulfilled") {
             committed.push({
@@ -453,50 +570,16 @@ export async function importVesselRankHierarchy(
               preSyncPlanUuids: r.value.preSyncPlanUuids,
               createdPlanUuids: r.value.createdPlanUuids,
             });
-          } else if (r.reason?.partialRevisionId) {
-            // Identify the corresponding ValidatedVessel to restore its drafts.
-            const partialVessel = batch.find(
-              (bv) => bv.vesselUuid === r.reason.partialSavedForVessel,
-            );
-            committed.push({
-              vesselUuid: r.reason.partialSavedForVessel,
-              revisionId: r.reason.partialRevisionId,
-              savedDrafts: partialVessel?.savedDrafts ?? [],
-              preSyncPlanUuids: partialVessel
-                ? (planningByVessel.get(partialVessel.vesselUuid) || []).map(
-                    (p: any) => p.planUuid as string,
-                  )
-                : [],
-              // Sync threw before returning, so no planUuids were captured.
-              createdPlanUuids: [],
-            });
+            result.activeRanksCount += r.value.vessel.activeRanksCount;
+            result.deletedRanksCount += r.value.vessel.deletedRanksCount;
+            result.vesselsProcessed++;
           }
         }
-        await rollbackHierarchyImport(committed);
-        const firstMsg =
-          failures[0].reason?.message || String(failures[0].reason);
-        result.errors.push(
-          `Import failed after committing ${committed.length} vessel(s). All changes have been rolled back. Error: ${firstMsg}`,
-        );
-        result.vesselsProcessed = 0;
-        result.activeRanksCount = 0;
-        result.deletedRanksCount = 0;
-        return result;
       }
-
-      for (const r of batchResults) {
-        if (r.status === "fulfilled") {
-          committed.push({
-            vesselUuid: r.value.vesselUuid,
-            revisionId: r.value.revisionId,
-            savedDrafts: r.value.vessel.savedDrafts,
-            preSyncPlanUuids: r.value.preSyncPlanUuids,
-            createdPlanUuids: r.value.createdPlanUuids,
-          });
-          result.activeRanksCount += r.value.vessel.activeRanksCount;
-          result.deletedRanksCount += r.value.vessel.deletedRanksCount;
-          result.vesselsProcessed++;
-        }
+    } finally {
+      // Always release in-process locks regardless of success or failure
+      for (const uuid of lockedForThisRun) {
+        HIERARCHY_IMPORT_IN_PROGRESS.delete(uuid);
       }
     }
   } catch (err: any) {
@@ -523,19 +606,40 @@ function computeReliefDueDate(
  * Stage 2: Import Assignments sheet → updates vessel_planning_v2 & inserts
  * crew_assignments (fully independent of Stage 1).
  *
+ * All DB mutations run inside a SINGLE db.transaction() and are executed
+ * directly via the tx object — no service-layer calls inside the transaction.
+ * This guarantees atomicity: if any row fails, ALL planning and assignment
+ * writes from this run are rolled back together.
+ *
+ * Hardening:
+ *  - Strict header validation: missing required headers abort before any write.
+ *  - Duplicate-slot guard: two rows targeting the same vessel+position+type
+ *    are a pre-flight error, not a silent overwrite.
+ *  - Rank resolution: if a row would need to create a new planning slot AND
+ *    the rank name cannot be matched to adm_company_ranks_v2, the import is
+ *    rejected in pre-flight — no "R000" sentinel is ever persisted.
+ *  - Idempotency: re-uploading the same file updates the existing assignment
+ *    row in-place instead of inserting a duplicate history entry.
+ *  - Concurrency: pg_try_advisory_xact_lock() inside the transaction prevents
+ *    two simultaneous uploads for the same vessels from both committing.
+ *  - Audit trail: auditUserUuid is stamped on every insert/update.
+ *
  * Optimisation: planning records for all referenced vessels are loaded in ONE
- * batch query before the transaction loop, replacing the per-row
- * vesselPlanningService.getByVesselUuid() call (was ~400 ms × N rows).
+ * batch query before the transaction, and that map is updated in-memory as
+ * new slots are created during the run.
  */
 export async function importCrewAssignments(
   xlsxBuffer: Buffer,
+  auditUserUuid?: string,
 ): Promise<AssignmentsImportResult> {
   const result: AssignmentsImportResult = {
     totalRowsProcessed: 0,
     primaryAssignedCount: 0,
     secondaryAssignedCount: 0,
+    alreadyImportedCount: 0,
     skippedCount: 0,
     errors: [],
+    warnings: [],
     success: false,
   };
 
@@ -550,29 +654,28 @@ export async function importCrewAssignments(
     }
 
     const db = getDb();
-    const [allCrew, allVessels, allPorts]: [any[], any[], any[]] =
+
+    // ── Initial data loads (parallel) ────────────────────────────────────────
+    const [allCrew, allVessels, allPorts, allCompanyRanks]: [any[], any[], any[], any[]] =
       await Promise.all([
-        db
-          .select()
-          .from(crewMembersV2)
-          .where(eq(crewMembersV2.isDeleted, false)),
+        db.select().from(crewMembersV2).where(eq(crewMembersV2.isDeleted, false)),
         db.select().from(masterVessels),
         db.select().from(masterPorts).where(eq(masterPorts.isDeleted, false)),
+        db.select().from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false)),
       ]);
 
-    // Store arrays so duplicate-key crew members surface as AMBIGUOUS rather
-    // than silently overwriting each other (last-write-wins).
+    // Build lookup maps
     const crewByEmpIdMap = new Map<string, any[]>();
     const crewByPassportMap = new Map<string, any[]>();
-    const addCrewToMap = (map: Map<string, any[]>, key: string, c: any) => {
+    const addToMap = (map: Map<string, any[]>, key: string, c: any) => {
       if (!key) return;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(c);
     };
     for (const c of allCrew) {
-      if (c.employeeId) addCrewToMap(crewByEmpIdMap, norm(c.employeeId), c);
-      if (c.empNo) addCrewToMap(crewByEmpIdMap, norm(c.empNo), c);
-      if (c.passportNo) addCrewToMap(crewByPassportMap, norm(c.passportNo), c);
+      if (c.employeeId) addToMap(crewByEmpIdMap, norm(c.employeeId), c);
+      if (c.empNo) addToMap(crewByEmpIdMap, norm(c.empNo), c);
+      if (c.passportNo) addToMap(crewByPassportMap, norm(c.passportNo), c);
     }
 
     const vesselByImoMap = new Map<string, any>();
@@ -588,7 +691,14 @@ export async function importCrewAssignments(
       if (p.name) portByNameMap.set(norm(p.name), p.portUuid);
     }
 
-    // Build dynamic header map from Row 1
+    // Company rank lookup — keyed by both rank and role names (normalised)
+    const companyRankByNameMap = new Map<string, any>();
+    for (const cr of allCompanyRanks) {
+      if (cr.rank) companyRankByNameMap.set(norm(cr.rank), cr);
+      if (cr.role) companyRankByNameMap.set(norm(cr.role), cr);
+    }
+
+    // ── Build dynamic header map from Row 1 ───────────────────────────────────
     const headerRow = assignmentsSheet.getRow(1);
     const colMap = new Map<string, number>();
     headerRow.eachCell((cell, colNum) => {
@@ -596,17 +706,65 @@ export async function importCrewAssignments(
       if (headerText) colMap.set(headerText, colNum);
     });
 
-    const getColVal = (
-      row: ExcelJS.Row,
-      headerName: string,
-      fallbackIdx: number,
-    ): string => {
-      const colIdx = colMap.get(norm(headerName)) || fallbackIdx;
+    // ── Strict header validation ───────────────────────────────────────────────
+    // Required headers must be present — no silent positional fallback.
+    const missingRequired = REQUIRED_ASSIGNMENT_HEADERS.filter(
+      (h) => !colMap.has(h),
+    );
+    if (missingRequired.length > 0) {
+      const foundHeaders = [...colMap.keys()]
+        .filter((k) => k.length > 0)
+        .map((k) => `"${k}"`)
+        .join(", ");
+      result.errors.push(
+        `Assignments sheet is missing required column header(s): ${missingRequired.map((h) => `"${h}"`).join(", ")}. ` +
+        `Found headers: ${foundHeaders || "(none)"}. ` +
+        `Do not rename or remove column headers from the generated template.`,
+      );
+      return result;
+    }
+
+    // Column getter: uses header map; fallbackIdx used for optional columns
+    const getColVal = (row: ExcelJS.Row, headerName: string, fallbackIdx: number): string => {
+      const colIdx = colMap.get(norm(headerName)) ?? fallbackIdx;
       return getCellValue(row.getCell(colIdx));
     };
 
+    // ── Quick scan: collect vessel UUIDs for batch planning pre-load ──────────
+    // Single O(n) pass using only vessel lookup — no full validation yet.
+    const vesselUuidsInSheet = new Set<string>();
+    for (let r = 2; r <= assignmentsSheet.rowCount; r++) {
+      const row = assignmentsSheet.getRow(r);
+      const vesselName = getColVal(row, "Vessel Name", 2);
+      const imo = getColVal(row, "IMO", 3);
+      const cleanImo = (imo || "").replace(/\D/g, "");
+      const v: any =
+        (cleanImo ? vesselByImoMap.get(cleanImo) : null) ||
+        vesselByNameMap.get(norm(vesselName));
+      if (v?.vesselUuid) vesselUuidsInSheet.add(v.vesselUuid);
+    }
+
+    // ── Pre-load ALL planning for vessels in this sheet (ONE query) ───────────
+    const scannedVesselUuids = [...vesselUuidsInSheet];
+    const batchPlanning =
+      scannedVesselUuids.length > 0
+        ? await vesselPlanningRepository.findByVesselUuidBatch(scannedVesselUuids)
+        : [];
+
+    // planningByVessel is mutated in the write loop as new slots are created
+    const planningByVessel = new Map<string, any[]>();
+    for (const p of batchPlanning) {
+      if (!planningByVessel.has(p.vesselUuid))
+        planningByVessel.set(p.vesselUuid, []);
+      planningByVessel.get(p.vesselUuid)!.push(p);
+    }
+
+    // ── Pre-flight validation loop ────────────────────────────────────────────
     const rowsToProcess: any[] = [];
     const rowErrorsMap = new Map<number, string[]>();
+
+    // Duplicate-slot guard: tracks (vesselUuid|position|assignmentType) within this file
+    const slotOwnershipMap = new Map<string, { rowNumber: number; employeeId: string }>();
 
     for (
       let rowNumber = 2;
@@ -641,13 +799,14 @@ export async function importCrewAssignments(
       if (!signOnDate) errors.push("Sign On Date is missing");
 
       const normAssignType = norm(assignmentType);
+      const isPrimary = normAssignType !== "secondary";
       if (
         assignmentType &&
         normAssignType !== "primary" &&
         normAssignType !== "secondary"
       ) {
         errors.push(
-          `Assignment Type '${assignmentType}' is invalid (Must be Primary or Secondary)`,
+          `Assignment Type '${assignmentType}' is invalid (must be Primary or Secondary)`,
         );
       }
 
@@ -659,23 +818,19 @@ export async function importCrewAssignments(
           normStatus !== "in transit"
         ) {
           errors.push(
-            `Joining Status '${joiningStatus}' is invalid (Must be Signed On, Planned, or In Transit)`,
+            `Joining Status '${joiningStatus}' is invalid (must be Signed On, Planned, or In Transit)`,
           );
         }
       }
 
       const parsedSignOn = parseDateString(signOnDate);
       if (signOnDate && !parsedSignOn) {
-        errors.push(
-          `Sign On Date '${signOnDate}' is invalid or unparseable`,
-        );
+        errors.push(`Sign On Date '${signOnDate}' is invalid or unparseable`);
       }
 
       const parsedReliefDue = parseDateString(reliefDue);
       if (reliefDue && !parsedReliefDue) {
-        errors.push(
-          `Relief Due Date '${reliefDue}' is invalid or unparseable`,
-        );
+        errors.push(`Relief Due Date '${reliefDue}' is invalid or unparseable`);
       }
 
       let crew: any = null;
@@ -684,10 +839,6 @@ export async function importCrewAssignments(
           crewByEmpIdMap.get(norm(employeeId)) ??
           crewByPassportMap.get(norm(employeeId)) ??
           [];
-        // A single crew member can appear more than once in the raw list when
-        // their employeeId and empNo normalise to the same key (both fields are
-        // indexed into the same map).  Deduplicate by crewUuid so we only count
-        // distinct individuals, not field-level duplicates on one person.
         const seenUuids = new Set<string>();
         const empCandidates = rawCandidates.filter((c: any) => {
           if (seenUuids.has(c.crewUuid)) return false;
@@ -695,17 +846,14 @@ export async function importCrewAssignments(
           return true;
         });
         if (empCandidates.length > 1) {
-          // Multiple DISTINCT crew members share the same employee ID / passport
-          // — the importer cannot safely pick one; surface this as a row error
-          // so the user can resolve the duplicate records before importing.
           errors.push(
-            `AMBIGUOUS (${empCandidates.length} matches) for Employee ID / Passport '${employeeId}' — please resolve duplicate records before importing`,
+            `AMBIGUOUS (${empCandidates.length} matches) for Employee ID / Passport '${employeeId}' — resolve duplicate records before importing`,
           );
         } else if (empCandidates.length === 1) {
           crew = empCandidates[0];
         } else {
           errors.push(
-            `Seafarer with Employee ID / Passport '${employeeId}' is not registered in system`,
+            `Seafarer with Employee ID / Passport '${employeeId}' is not registered in the system`,
           );
         }
       }
@@ -736,6 +884,60 @@ export async function importCrewAssignments(
         }
       }
 
+      // ── Rank resolution check ──────────────────────────────────────────────
+      // Rank resolution is ONLY required when a new planning slot would need to
+      // be created (i.e. no existing slot matches this vessel+position).  If a
+      // slot already exists, its rankId is already set in the DB — no action.
+      //
+      // Unresolvable ranks are a pre-flight hard error: the "R000" sentinel is
+      // never silently persisted.
+      let resolvedRankId: string | null = null;
+      const targetPos = (isPrimary ? position : relieverRank || position) || rank;
+      if (vessel?.vesselUuid) {
+        const existingPlanning = planningByVessel.get(vessel.vesselUuid) || [];
+        const matchedSlot = existingPlanning.find(
+          (p: any) =>
+            (p.role && norm(p.role) === norm(targetPos)) ||
+            norm(p.rank) === norm(targetPos) ||
+            norm(p.rank) === norm(rank),
+        );
+        if (!matchedSlot) {
+          // A new slot will need to be created — resolve rankId now
+          const baseRankKey = norm(targetPos).replace(/_\d+$/, "");
+          const matchedCR =
+            companyRankByNameMap.get(norm(targetPos)) ||
+            companyRankByNameMap.get(baseRankKey);
+          if (!matchedCR?.rankId) {
+            errors.push(
+              `Position "${targetPos}" for vessel "${vessel.vessel || vesselName}" is not found in company rank configuration. ` +
+              `A new planning slot would need to be created but the rank cannot be resolved. ` +
+              `Ensure the position name exactly matches a rank defined in Admin > Company Ranks, ` +
+              `or run Stage 1 (Hierarchy Import) for this vessel first.`,
+            );
+          } else {
+            resolvedRankId = matchedCR.rankId;
+          }
+        }
+        // resolvedRankId remains null when an existing slot is found (rankId already set in DB)
+      }
+
+      // ── Duplicate-slot guard (within this xlsx file) ───────────────────────
+      // Two rows targeting the same vessel + position + assignment type is a
+      // conflict — only one crew member can occupy a slot at a time.
+      if (vessel?.vesselUuid && targetPos && errors.length === 0) {
+        const slotKey = `${vessel.vesselUuid}|${norm(targetPos)}|${isPrimary ? "primary" : "secondary"}`;
+        if (slotOwnershipMap.has(slotKey)) {
+          const first = slotOwnershipMap.get(slotKey)!;
+          errors.push(
+            `Duplicate slot conflict: Row ${first.rowNumber} (Employee: ${first.employeeId}) already targets ` +
+            `vessel "${vessel.vessel || vesselName}" / position "${targetPos}" as ${isPrimary ? "Primary" : "Secondary"}. ` +
+            `Only one crew member per vessel+position+type is allowed per import.`,
+          );
+        } else {
+          slotOwnershipMap.set(slotKey, { rowNumber, employeeId });
+        }
+      }
+
       if (errors.length > 0) rowErrorsMap.set(rowNumber, errors);
 
       rowsToProcess.push({
@@ -745,16 +947,18 @@ export async function importCrewAssignments(
         imo,
         rank,
         position,
+        targetPos,
         signOnDate: parsedSignOn,
         contractPeriod: contractPeriod ? parseInt(contractPeriod, 10) || null : null,
         reliefDue: parsedReliefDue,
         portOfJoining,
         joiningPortUuid,
-        assignmentType: normAssignType === "secondary" ? "secondary" : "primary",
+        assignmentType: isPrimary ? "primary" : "secondary",
         joiningStatus: joiningStatus || "Signed On",
         relieverRank,
         crew,
         vessel,
+        resolvedRankId, // non-null only when a new slot must be created
       });
     }
 
@@ -798,9 +1002,20 @@ export async function importCrewAssignments(
       return result;
     }
 
-    // ── Pre-load ALL planning in ONE batch query ──────────────────────────────
-    // Replaces per-row vesselPlanningService.getByVesselUuid() calls
-    // (~400 ms × 2 000 rows → ~1–2 s total regardless of row count).
+    // ── Crew UUIDs for idempotency check (computed outside tx — no DB read) ──
+    // The actual existing-assignments query runs INSIDE the transaction, after
+    // advisory locks are held, to guarantee a consistent view (a concurrent
+    // importer for the same vessels cannot commit between our lock acquisition
+    // and this read).
+    const allCrewUuidsForCheck = [
+      ...new Set(
+        rowsToProcess
+          .filter((r) => r.crew?.crewUuid)
+          .map((r) => r.crew.crewUuid as string),
+      ),
+    ];
+
+    // ── Collect unique vessel UUIDs for advisory locking ─────────────────────
     const uniqueVesselUuids = [
       ...new Set(
         rowsToProcess
@@ -809,24 +1024,103 @@ export async function importCrewAssignments(
       ),
     ];
 
-    const batchPlanning =
-      uniqueVesselUuids.length > 0
-        ? await vesselPlanningRepository.findByVesselUuidBatch(uniqueVesselUuids)
+    // ── Atomic DB transaction ─────────────────────────────────────────────────
+    // ALL planning and assignment writes go through tx — the same DB connection.
+    // This guarantees that a failure at any row rolls back ALL prior writes from
+    // this import run together.
+    await db.transaction(async (tx: any) => {
+      // ── Stage 2 concurrency: acquire transaction-scoped advisory locks ──────
+      // pg_try_advisory_xact_lock() is transaction-level: held until commit or
+      // rollback, enforced across ALL connections — unlike session-level locks
+      // which are connection-scoped in a pool.
+      for (const vesselUuid of uniqueVesselUuids) {
+        const lockResult = await tx.execute(
+          sql`SELECT pg_try_advisory_xact_lock(hashtext(${vesselUuid})::bigint) AS locked`,
+        );
+        const lockRow =
+          (lockResult as any).rows?.[0] ??
+          (Array.isArray(lockResult) ? lockResult[0] : null);
+        const acquired =
+          lockRow?.locked === true ||
+          lockRow?.locked === "t" ||
+          lockRow?.locked === 1;
+        if (!acquired) {
+          const conflictVessel = allVessels.find(
+            (v: any) => v.vesselUuid === vesselUuid,
+          );
+          throw new Error(
+            `Import already in progress for vessel "${conflictVessel?.vessel ?? vesselUuid}" — ` +
+            `please wait for the current import to complete and retry.`,
+          );
+        }
+      }
+
+      // ── Re-read planning INSIDE the transaction after locks are held ─────────
+      // The pre-fetched planningByVessel map was built before the advisory locks
+      // were acquired — a concurrent import could have committed new slots in the
+      // window between our pre-fetch and this point.  Re-query through tx now so
+      // slot matching uses the committed state at lock time, eliminating the race
+      // that would allow two concurrent uploads to both insert a duplicate slot.
+      const txPlanningRows = uniqueVesselUuids.length > 0
+        ? await tx
+            .select()
+            .from(vesselPlanningV2)
+            .where(
+              and(
+                inArray(vesselPlanningV2.vesselUuid, uniqueVesselUuids),
+                eq(vesselPlanningV2.isDeleted, false),
+              ),
+            )
         : [];
 
-    const planningByVessel = new Map<string, any[]>();
-    for (const p of batchPlanning) {
-      if (!planningByVessel.has(p.vesselUuid))
-        planningByVessel.set(p.vesselUuid, []);
-      planningByVessel.get(p.vesselUuid)!.push(p);
-    }
+      // Build the in-transaction planning map — this is the authoritative source
+      // for slot matching and creation for the duration of this transaction.
+      const txPlanningByVessel = new Map<string, any[]>();
+      for (const p of txPlanningRows) {
+        if (!txPlanningByVessel.has(p.vesselUuid)) txPlanningByVessel.set(p.vesselUuid, []);
+        txPlanningByVessel.get(p.vesselUuid)!.push(p);
+      }
 
-    // ── Atomic DB transaction ─────────────────────────────────────────────────
-    await db.transaction(async (tx: any) => {
+      // ── Idempotency check: query existing assignments under advisory lock ────
+      // Querying INSIDE the transaction (via tx) after locks are held guarantees
+      // a consistent view — a concurrent importer for the same vessels cannot
+      // commit assignments between our lock acquisition and this read.
+      const existingAssignmentsRaw =
+        allCrewUuidsForCheck.length > 0
+          ? await tx
+              .select({
+                assignUuid: crewAssignments.assignUuid,
+                crewUuid: crewAssignments.crewUuid,
+                vesselUuid: crewAssignments.vesselUuid,
+                assignmentType: crewAssignments.assignmentType,
+                signOnDate: crewAssignments.signOnDate,
+                reliefDue: crewAssignments.reliefDue,
+                contractPeriod: crewAssignments.contractPeriod,
+              })
+              .from(crewAssignments)
+              .where(
+                and(
+                  inArray(crewAssignments.crewUuid, allCrewUuidsForCheck),
+                  eq(crewAssignments.isDeleted, false),
+                ),
+              )
+          : [];
+
+      const existingAssignmentMap = new Map<
+        string,
+        (typeof existingAssignmentsRaw)[number]
+      >();
+      for (const a of existingAssignmentsRaw) {
+        if (!a.crewUuid || !a.vesselUuid) continue;
+        const key = `${a.crewUuid}|${a.vesselUuid}|${a.assignmentType ?? ""}|${a.signOnDate ?? ""}`;
+        existingAssignmentMap.set(key, a);
+      }
+
       for (const item of rowsToProcess) {
         const crew = item.crew;
         const vessel = item.vessel;
         const isPrimary = item.assignmentType === "primary";
+        const targetPos = item.targetPos;
 
         let finalReliefDue = item.reliefDue;
         if (!finalReliefDue && item.signOnDate && item.contractPeriod) {
@@ -836,122 +1130,138 @@ export async function importCrewAssignments(
           );
         }
 
-        const targetPos = item.position || item.rank;
+        // ── Find or create the planning slot ──────────────────────────────────
+        // txPlanningByVessel was built from a locked re-read inside this
+        // transaction — it reflects any slots committed by concurrent imports
+        // before our advisory locks were acquired.  New slots created below are
+        // added to the map immediately so subsequent rows for the same vessel
+        // find them without additional DB round-trips.
+        const planningRecords: any[] = txPlanningByVessel.get(vessel.vesselUuid) || [];
+        let matchedSlot: any = planningRecords.find(
+          (p: any) =>
+            (p.role && norm(p.role) === norm(targetPos)) ||
+            norm(p.rank) === norm(targetPos) ||
+            norm(p.rank) === norm(item.rank),
+        );
 
-        // Use pre-loaded planning map — eliminates the N+1 per-row DB call
-        const planningRecords: any[] =
-          planningByVessel.get(vessel.vesselUuid) || [];
-
-        if (isPrimary) {
-          let matchedSlot: any = planningRecords.find(
-            (p: any) =>
-              (p.role && norm(p.role) === norm(targetPos)) ||
-              norm(p.rank) === norm(targetPos) ||
-              norm(p.rank) === norm(item.rank),
-          );
-
-          if (!matchedSlot) {
-            matchedSlot = await vesselPlanningService.create({
+        if (!matchedSlot) {
+          // item.resolvedRankId is guaranteed non-null here (pre-flight validated)
+          const [newSlot] = await tx
+            .insert(vesselPlanningV2)
+            .values({
+              planUuid: uuidv4(),
               vesselUuid: vessel.vesselUuid,
-              rankId: "R000",
-              rank: item.position || item.rank,
+              rankId: item.resolvedRankId!,
+              rank: targetPos,
               crewStatus: "primary",
               isArchived: false,
               isDeleted: false,
-            });
-            // Register the new slot in the pre-loaded map so subsequent rows
-            // for the same vessel find it rather than creating a duplicate.
-            if (matchedSlot) {
-              if (!planningByVessel.has(vessel.vesselUuid))
-                planningByVessel.set(vessel.vesselUuid, []);
-              planningByVessel.get(vessel.vesselUuid)!.push(matchedSlot);
-            }
-          }
+              createdByUuid: auditUserUuid ?? null,
+              updatedByUuid: auditUserUuid ?? null,
+            })
+            .returning();
+          matchedSlot = newSlot;
+          // Register in the in-transaction map so subsequent rows find it
+          if (!txPlanningByVessel.has(vessel.vesselUuid))
+            txPlanningByVessel.set(vessel.vesselUuid, []);
+          txPlanningByVessel.get(vessel.vesselUuid)!.push(newSlot);
+        }
 
-          if (matchedSlot) {
-            await vesselPlanningService.update(matchedSlot.planUuid, {
-              crewUuid: crew.crewUuid,
-              crewStatus: "primary",
-              signOnDate: item.signOnDate || undefined,
-              reliefDue: finalReliefDue || undefined,
-              joiningPortUuid: item.joiningPortUuid,
-              joiningStatus: item.joiningStatus,
-              contractPeriodMonths: item.contractPeriod || undefined,
-            });
+        // ── Update planning slot with crew assignment details ──────────────────
+        if (matchedSlot) {
+          if (isPrimary) {
+            await tx
+              .update(vesselPlanningV2)
+              .set({
+                crewUuid: crew.crewUuid,
+                crewStatus: "primary",
+                signOnDate: item.signOnDate ?? null,
+                reliefDue: finalReliefDue ?? null,
+                joiningPortUuid: item.joiningPortUuid ?? null,
+                joiningStatus: item.joiningStatus ?? null,
+                contractPeriodMonths: item.contractPeriod ?? null,
+                updatedAt: new Date(),
+                updatedByUuid: auditUserUuid ?? null,
+              })
+              .where(eq(vesselPlanningV2.planUuid, matchedSlot.planUuid));
+          } else {
+            await tx
+              .update(vesselPlanningV2)
+              .set({
+                relieverCrewUuid: crew.crewUuid,
+                relieverSignOnDate: item.signOnDate ?? null,
+                reliefDue: finalReliefDue ?? null,
+                joiningPortUuid: item.joiningPortUuid ?? null,
+                joiningStatus: item.joiningStatus ?? null,
+                relieverContractPeriodMonths: item.contractPeriod ?? null,
+                updatedAt: new Date(),
+                updatedByUuid: auditUserUuid ?? null,
+              })
+              .where(eq(vesselPlanningV2.planUuid, matchedSlot.planUuid));
           }
+        }
 
-          await crewAssignmentsService.assignToVessel(
-            crew.crewUuid,
-            vessel.vesselUuid,
-            {
-              signOnDate: item.signOnDate || new Date(),
-              reliefDue: finalReliefDue || undefined,
+        // ── Upsert crew_assignment row ─────────────────────────────────────────
+        // If the same assignment already exists (same crew+vessel+type+signOn),
+        // update mutable fields in-place rather than inserting a duplicate entry.
+        const assignKey = `${crew.crewUuid}|${vessel.vesselUuid}|${item.assignmentType}|${item.signOnDate ?? ""}`;
+        const existingAssignment = existingAssignmentMap.get(assignKey);
+
+        if (existingAssignment) {
+          // Already imported — update mutable fields only
+          await tx
+            .update(crewAssignments)
+            .set({
+              reliefDue: finalReliefDue ?? existingAssignment.reliefDue ?? null,
               contractPeriod: item.contractPeriod
                 ? String(item.contractPeriod)
-                : undefined,
-              assignmentType: "primary",
-              isCurrent: true,
-              vesselName: vessel.vessel,
-              rank: item.rank,
-            },
-          );
-
-          result.primaryAssignedCount++;
+                : existingAssignment.contractPeriod,
+              updatedAt: new Date(),
+              updatedByUuid: auditUserUuid ?? null,
+            })
+            .where(eq(crewAssignments.assignUuid, existingAssignment.assignUuid));
+          result.alreadyImportedCount++;
         } else {
-          const targetRank = item.relieverRank || item.position || item.rank;
-          let matchedSlot: any = planningRecords.find(
-            (p: any) =>
-              (p.role && norm(p.role) === norm(targetRank)) ||
-              norm(p.rank) === norm(targetRank) ||
-              norm(p.rank) === norm(item.rank),
-          );
-
-          if (!matchedSlot) {
-            matchedSlot = await vesselPlanningService.create({
-              vesselUuid: vessel.vesselUuid,
-              rankId: "R000",
-              rank: targetRank,
-              crewStatus: "primary",
-              isArchived: false,
-              isDeleted: false,
-            });
-            // Register the new slot in the pre-loaded map so subsequent rows
-            // for the same vessel find it rather than creating a duplicate.
-            if (matchedSlot) {
-              if (!planningByVessel.has(vessel.vesselUuid))
-                planningByVessel.set(vessel.vesselUuid, []);
-              planningByVessel.get(vessel.vesselUuid)!.push(matchedSlot);
-            }
+          if (isPrimary) {
+            // Mark the crew member's current primary assignment as no longer current
+            // (mirrors the logic in crewAssignmentsService.assignToVessel)
+            await tx
+              .update(crewAssignments)
+              .set({
+                isCurrent: false,
+                updatedAt: new Date(),
+                updatedByUuid: auditUserUuid ?? null,
+              })
+              .where(
+                and(
+                  eq(crewAssignments.crewUuid, crew.crewUuid),
+                  eq(crewAssignments.assignmentType, "primary"),
+                  eq(crewAssignments.isCurrent, true),
+                ),
+              );
           }
 
-          if (matchedSlot) {
-            await vesselPlanningService.updateReliever(matchedSlot.planUuid, {
-              relieverCrewUuid: crew.crewUuid,
-              relieverSignOnDate: item.signOnDate || undefined,
-              reliefDue: finalReliefDue || undefined,
-              joiningPortUuid: item.joiningPortUuid,
-              joiningStatus: item.joiningStatus,
-              relieverContractPeriodMonths: item.contractPeriod || undefined,
-            });
-          }
+          await tx.insert(crewAssignments).values({
+            assignUuid: uuidv4(),
+            crewUuid: crew.crewUuid,
+            vesselUuid: vessel.vesselUuid,
+            // Historical snapshots — preserved so crew history remains readable
+            // even if the vessel is later renamed or the rank definition changes.
+            vesselName: vessel.vessel ?? null,
+            rank: item.rank ?? null,
+            isCurrent: isPrimary, // true for primary, false for secondary
+            signOnDate: item.signOnDate ?? null,
+            reliefDue: finalReliefDue ?? null,
+            contractPeriod: item.contractPeriod ? String(item.contractPeriod) : null,
+            assignmentType: item.assignmentType,
+            portOfJoiningUuid: item.joiningPortUuid ?? null,
+            isDeleted: false,
+            createdByUuid: auditUserUuid ?? null,
+            updatedByUuid: auditUserUuid ?? null,
+          });
 
-          await crewAssignmentsService.assignToVessel(
-            crew.crewUuid,
-            vessel.vesselUuid,
-            {
-              signOnDate: item.signOnDate || new Date(),
-              reliefDue: finalReliefDue || undefined,
-              contractPeriod: item.contractPeriod
-                ? String(item.contractPeriod)
-                : undefined,
-              assignmentType: "secondary",
-              isCurrent: false,
-              vesselName: vessel.vessel,
-              rank: item.rank,
-            },
-          );
-
-          result.secondaryAssignedCount++;
+          if (isPrimary) result.primaryAssignedCount++;
+          else result.secondaryAssignedCount++;
         }
       }
     });
