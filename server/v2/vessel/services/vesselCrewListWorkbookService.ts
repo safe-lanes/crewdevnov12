@@ -9,6 +9,7 @@ import type { VesselCrewListDoc } from "./vesselCrewListParserService";
 
 function norm(str?: string | null): string {
   return (str || "")
+    .normalize("NFC")   // unify precomposed vs decomposed Unicode forms (e.g. é vs e+combining)
     .toLowerCase()
     .trim()
     .replace(/[\s\-_]+/g, " ");
@@ -528,12 +529,15 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
     // Track assigned crew UUIDs within this document to prevent multi-instance role collisions (AB_1 vs AB_2)
     const assignedCrewUuidsInDoc = new Set<string>();
 
-    // Match Vessel in system by IMO digits or Name
+    // Match Vessel in system by IMO digits or Name.
+    // If the parser detected an IMO checksum failure, note it so every crew row
+    // from this document carries the CHECKSUM_FAIL suffix in Lookup Status.
     const cleanDocImo = (doc.imo || "").replace(/\D/g, "");
     const matchedVessel = (cleanDocImo ? vesselByImoMap.get(cleanDocImo) : null) || vesselByNameMap.get(norm(doc.vesselName));
     const vesselUuid = matchedVessel?.vesselUuid || null;
     const vesselName = cleanString(matchedVessel?.vessel || doc.vesselName || "Unknown Vessel");
     const imo = doc.imo || matchedVessel?.imo || "";
+    const docImoChecksumFailed = doc.imoChecksumFailed === true;
 
     const vesselKey = cleanDocImo || norm(vesselName);
     const shouldAddHierarchy = !writtenHierarchyVessels.has(vesselKey);
@@ -647,6 +651,15 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
             signOnDate = activeService.fromDate || "";
           }
         }
+      }
+
+      // Append supplementary data-quality flags AFTER all base status decisions
+      // (including the active-service override above) so they are never lost.
+      if (docImoChecksumFailed) {
+        lookupStatus += " / IMO_CHECKSUM_FAIL";
+      }
+      if ((entry as any).dobStatus === "DOB_AMBIGUOUS") {
+        lookupStatus += " / DOB_AMBIGUOUS";
       }
 
       const addedRow = assignmentsSheet.addRow({

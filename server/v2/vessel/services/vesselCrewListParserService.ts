@@ -5,8 +5,15 @@ export interface VesselCrewEntry {
   familyName: string;
   givenNames: string;
   rankOrRating: string;
-  dob: string | null; // Formatted YYYY-MM-DD or raw string
+  dob: string | null; // Formatted YYYY-MM-DD or raw string (when dobStatus is set)
   nationality?: string | null;
+  /**
+   * Set to "DOB_AMBIGUOUS" when the raw date string is ambiguous (both day and
+   * month parts ≤ 12 so DD/MM vs MM/DD cannot be determined without locale
+   * context).  In this case `dob` holds the original raw string so the admin
+   * can correct it before re-uploading.
+   */
+  dobStatus?: string;
 }
 
 export interface VesselCrewListDoc {
@@ -17,6 +24,12 @@ export interface VesselCrewListDoc {
   arrivalDepartureDate?: string;
   entries: VesselCrewEntry[];
   errors: string[];
+  /**
+   * Set to true when a 7-digit candidate was found in the header area but
+   * failed the IMO Luhn checksum.  The workbook generator surfaces this as
+   * `imoMatchStatus: "CHECKSUM_FAIL"` so the admin knows to verify manually.
+   */
+  imoChecksumFailed?: boolean;
 }
 
 /**
@@ -32,16 +45,60 @@ function sanitizeXmlText(str: string | null | undefined): string {
 }
 
 /**
- * Extract clean 6 to 8 digit IMO number from a string, stripping label prefixes ("1.2", "IMO", etc.)
+ * Validate an IMO number using the standard Luhn-like checksum:
+ * multiply each of the first 6 digits by 7, 6, 5, 4, 3, 2 respectively,
+ * sum the products, take the last digit, compare to the 7th digit.
  */
-function extractImoDigits(str: string | null | undefined): string {
-  if (!str) return "";
+function validateImoChecksum(sevenDigits: string): boolean {
+  if (sevenDigits.length !== 7) return false;
+  const weights = [7, 6, 5, 4, 3, 2];
+  let sum = 0;
+  for (let i = 0; i < 6; i++) {
+    sum += parseInt(sevenDigits[i], 10) * weights[i];
+  }
+  return (sum % 10) === parseInt(sevenDigits[6], 10);
+}
+
+/**
+ * Extract a valid 7-digit IMO number from a string, stripping label prefixes.
+ * Returns the 7-digit string if it passes the IMO checksum, or an empty string
+ * if the candidate is not exactly 7 digits or fails the checksum.
+ * `checksumFailed` is set true only when a 7-digit candidate was found but
+ * the checksum was wrong — callers can propagate this as a warning.
+ */
+function extractImoDigits(str: string | null | undefined): { imo: string; checksumFailed: boolean } {
+  if (!str) return { imo: "", checksumFailed: false };
   const cleaned = str.replace(/1\.2|imo\s*number|imo\s*no\.?|imo/gi, "");
   const digits = cleaned.replace(/\D/g, "");
-  if (digits.length >= 6 && digits.length <= 8) {
-    return digits;
+  if (digits.length === 7) {
+    if (validateImoChecksum(digits)) {
+      return { imo: digits, checksumFailed: false };
+    }
+    // 7-digit candidate present but checksum failed
+    return { imo: "", checksumFailed: true };
   }
-  return "";
+  // Not exactly 7 digits — not a valid IMO candidate at all
+  return { imo: "", checksumFailed: false };
+}
+
+/**
+ * Classify the day/month ordering of an ambiguous DD/MM/YYYY or MM/DD/YYYY date string.
+ * Returns:
+ *  "YYYY-FIRST"  — year-first format, unambiguous (YYYY-MM-DD or YYYY/MM/DD)
+ *  "DD-FIRST"    — first part > 12 → must be the day; parse as DD/MM/YYYY
+ *  "MM-FIRST"    — second part > 12 → must be the day; parse as MM/DD/YYYY
+ *  "AMBIGUOUS"   — both parts ≤ 12; cannot determine ordering without locale knowledge
+ *  "OTHER"       — not a two-part numeric date (e.g. text month, Excel serial, ISO)
+ */
+function classifyDobFormat(raw: string): "YYYY-FIRST" | "DD-FIRST" | "MM-FIRST" | "AMBIGUOUS" | "OTHER" {
+  if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/.test(raw)) return "YYYY-FIRST";
+  const m = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (!m) return "OTHER";
+  const a = parseInt(m[1], 10);
+  const b = parseInt(m[2], 10);
+  if (a > 12) return "DD-FIRST";   // first part can't be a month number
+  if (b > 12) return "MM-FIRST";   // second part can't be a month number → month is first
+  return "AMBIGUOUS";
 }
 
 
@@ -76,12 +133,27 @@ export async function parseSingleDocx(buffer: Buffer, fileName: string = "crew_l
       return result;
     }
 
-    // Extract text per cell for each row (strictly stripping <w:tcPr> cell properties first)
+    // Extract text per cell for each row with vertically merged cell propagation.
+    // A cell containing <w:vMerge/> without w:val="restart" is a continuation
+    // row of a vertically merged block — the cell holds no text of its own.
+    // We propagate the value from the same column in the previous row so that
+    // vessel name / IMO values spanning merged header cells are not silently
+    // dropped on continuation rows.
     const extractedRows: string[][] = [];
     for (let i = 1; i < rowParts.length; i++) {
       const rowXml = rowParts[i];
       const cellParts = rowXml.split(/<w:tc[\s>]/).slice(1);
-      const rowTexts: string[] = cellParts.map((cellXml) => {
+      const prevRow = extractedRows.length > 0 ? extractedRows[extractedRows.length - 1] : null;
+      const rowTexts: string[] = cellParts.map((cellXml, cellIdx) => {
+        // Detect vMerge: self-closing <w:vMerge/> OR paired <w:vMerge ...>
+        // A restart merge (<w:vMerge w:val="restart"/>) starts the block and
+        // HAS content; a bare <w:vMerge/> is a continuation and should inherit.
+        const vMergeTag = cellXml.match(/<w:vMerge([^/>\s][^>]*)?\s*\/?>/i)?.[0] || "";
+        const hasVMerge = vMergeTag.length > 0;
+        const isRestart = /w:val\s*=\s*["']restart["']/i.test(vMergeTag);
+        if (hasVMerge && !isRestart && prevRow && cellIdx < prevRow.length) {
+          return prevRow[cellIdx]; // propagate value from the merged row above
+        }
         const cellBody = cellXml.replace(/<w:tcPr[\s\S]*?<\/w:tcPr>/gi, "");
         const textMatches = [...cellBody.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)];
         const text = textMatches.map((m) => m[1]).join("").trim();
@@ -116,15 +188,17 @@ export async function parseSingleDocx(buffer: Buffer, fileName: string = "crew_l
 
         // 1.2 IMO number label
         if (!result.imo && (cellText.includes("1.2") || /imo number/i.test(cellText))) {
-          // Check next cell
+          // Check next cell first
           if (c + 1 < row.length && row[c + 1]) {
-            const parsedImo = extractImoDigits(row[c + 1]);
+            const { imo: parsedImo, checksumFailed } = extractImoDigits(row[c + 1]);
             if (parsedImo) result.imo = parsedImo;
+            if (checksumFailed) result.imoChecksumFailed = true;
           }
-          // Check current cell if next cell didn't have valid IMO
+          // Check current cell if next cell didn't have a valid IMO
           if (!result.imo) {
-            const parsedImo = extractImoDigits(cellText);
+            const { imo: parsedImo, checksumFailed } = extractImoDigits(cellText);
             if (parsedImo) result.imo = parsedImo;
+            if (checksumFailed) result.imoChecksumFailed = true;
           }
         }
 
@@ -159,20 +233,28 @@ export async function parseSingleDocx(buffer: Buffer, fileName: string = "crew_l
       }
     }
 
-    // Fallback IMO extraction (scan top header rows for IMO label or 6-8 digit IMO number)
+    // Fallback IMO extraction (scan top header rows for a valid 7-digit IMO)
     if (!result.imo) {
       const maxHeaderRow = headerRowIdx !== -1 ? headerRowIdx : Math.min(extractedRows.length, 5);
+      outer:
       for (let r = 0; r < maxHeaderRow; r++) {
-        const row = extractedRows[r];
-        for (let c = 0; c < row.length; c++) {
-          const cellText = row[c] || "";
-          const parsedImo = extractImoDigits(cellText);
+        for (const cellText of extractedRows[r]) {
+          const { imo: parsedImo, checksumFailed } = extractImoDigits(cellText || "");
           if (parsedImo) {
             result.imo = parsedImo;
-            break;
+            break outer;
           }
+          if (checksumFailed) result.imoChecksumFailed = true;
         }
-        if (result.imo) break;
+      }
+      // If a 7-digit candidate was found but failed the checksum, emit a non-fatal
+      // warning so the workbook can surface CHECKSUM_FAIL status for this vessel.
+      if (!result.imo && result.imoChecksumFailed) {
+        result.errors.push(
+          "IMO checksum failed: a 7-digit number was found in the header area but " +
+          "did not pass the IMO Luhn checksum. The vessel will be matched by name only; " +
+          "verify and correct the IMO manually before re-importing."
+        );
       }
     }
 
@@ -191,13 +273,49 @@ export async function parseSingleDocx(buffer: Buffer, fileName: string = "crew_l
       const nationality = sanitizeXmlText(row[colNationality]);
 
       if ((isNumericRow || (val1 && rankOrRating)) && rankOrRating && !rankOrRating.toLowerCase().includes("signature")) {
+        // ── DOB format detection ──────────────────────────────────────────────
+        // Explicitly classify day/month ordering before calling parseDateString.
+        // When both parts are ≤ 12 the format is ambiguous; we keep the raw
+        // string and set dobStatus so the workbook can flag the cell for manual
+        // review instead of silently picking the wrong date.
+        const sanitizedDob = sanitizeXmlText(dobRaw);
+        let parsedDob: string | null = null;
+        let dobStatus: string | undefined;
+
+        if (sanitizedDob) {
+          const fmt = classifyDobFormat(sanitizedDob);
+          if (fmt === "AMBIGUOUS") {
+            dobStatus = "DOB_AMBIGUOUS";
+            result.errors.push(
+              `DOB "${sanitizedDob}" is ambiguous (both day and month parts are ≤ 12; ` +
+              `DD/MM vs MM/DD cannot be determined). Kept as raw value — correct it in ` +
+              `the workbook before re-uploading.`
+            );
+          } else if (fmt === "YYYY-FIRST") {
+            // parseDateString only recognises the padded hyphen form (YYYY-MM-DD).
+            // Slash-separated or unpadded year-first variants (e.g. 1990/01/02 or
+            // 1990-1-2) fall through to its DD/MM matcher and produce a wrong value.
+            // Normalise directly: split on the separator and zero-pad each part.
+            const parts = sanitizedDob.split(/[-\/]/);
+            parsedDob = `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
+          } else if (fmt === "MM-FIRST") {
+            // Second part > 12 means it can't be a month, so first part IS the month.
+            // parseDateString always assumes DD-first, so we must invert the parts.
+            const parts = sanitizedDob.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/)!;
+            parsedDob = `${parts[3]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
+          } else {
+            // DD-FIRST or OTHER — parseDateString handles these correctly
+            parsedDob = parseDateString(sanitizedDob);
+          }
+        }
+
         result.entries.push({
           familyName: val1,
           givenNames: val2,
           rankOrRating,
-          // sanitizeXmlText strips any residual XML tags before date parsing
-          dob: parseDateString(sanitizeXmlText(dobRaw)),
+          dob: parsedDob ?? (dobStatus ? sanitizedDob : null),
           nationality: nationality || null,
+          ...(dobStatus ? { dobStatus } : {}),
         });
       }
     }

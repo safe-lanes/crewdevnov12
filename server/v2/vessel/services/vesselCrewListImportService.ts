@@ -42,7 +42,10 @@ export interface AssignmentsImportResult {
 }
 
 function norm(str: string | null | undefined): string {
-  return (str || "").toLowerCase().replace(/\s+/g, " ").trim();
+  // NFC normalization unifies precomposed vs. combining-character forms so that
+  // names stored with one encoding (e.g. é as U+00E9) match those extracted
+  // from DOCX files that use the decomposed form (e + U+0301).
+  return (str || "").normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function getCellValue(cell: ExcelJS.Cell | undefined): string {
