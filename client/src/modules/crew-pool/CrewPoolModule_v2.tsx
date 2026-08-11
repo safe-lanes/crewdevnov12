@@ -3,7 +3,7 @@ import { useSearch } from "wouter";
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { useQueryClient } from '@tanstack/react-query';
-import { FilterIcon, PlusIcon, EditIcon, Upload, Search as SearchIcon } from 'lucide-react';
+import { FilterIcon, PlusIcon, EditIcon, Search as SearchIcon } from 'lucide-react';
 import { ColDef, GridReadyEvent, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { useViewport, getViewportConfig } from '@/hooks/useViewport';
 import { format, parseISO, isValid } from 'date-fns';
@@ -23,7 +23,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CrewInfoForm_v2 } from './CrewInfoForm_v2';
-import { CrewImportDialog } from './CrewImportDialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
@@ -79,7 +78,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     const [showFilters, setShowFilters] = useState(true);
     const [gridApi, setGridApi] = useState<GridApi | null>(null);
     const [isCrewInfoFormOpen, setIsCrewInfoFormOpen] = useState(false);
-    const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
     const [selectedCrewMember, setSelectedCrewMember] = useState<any | null>(null);
     const viewport = useViewport();
     const viewportConfig = getViewportConfig(viewport);
@@ -1485,15 +1483,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                         {selectedCrewPoolPage === "crew-database" && (permissions.length === 0 || canCreate("Crew Database")) && (
                         <>
                         <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm font-medium"
-                            onClick={() => setIsImportDialogOpen(true)}
-                        >
-                            <Upload className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
-                            Import Crew
-                        </Button>
-                        <Button
                             variant="default"
                             size="sm"
                             className="h-8 text-xs bg-[#5dc86f] hover:bg-[#218838] text-white font-medium shadow-sm"
@@ -1525,11 +1514,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 highlightVisaUuid={deepLinkVisa}
             />
 
-            {/* Crew Import Dialog */}
-            <CrewImportDialog
-                isOpen={isImportDialogOpen}
-                onClose={() => setIsImportDialogOpen(false)}
-            />
 
         </div>
     );

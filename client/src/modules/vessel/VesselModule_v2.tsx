@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Filter, Edit, ArrowLeft, Download, Eye, Users, Upload } from 'lucide-react';
+import { Filter, Edit, ArrowLeft, Download, Eye, Users } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -48,7 +48,6 @@ import { AppraisalView } from '@/modules/crewing/AppraisalView_v2';
 import { CrewInfoForm_v2 as CrewInfoForm } from '@/modules/crew-pool/CrewInfoForm_v2';
 import { getBaseRank } from '@shared/crew-mapping';
 import { HandoverAttachmentsDialog, getHandoverAttachmentCount } from '@/components/HandoverAttachmentsDialog';
-import { VesselAssignmentImportDialog } from '@/modules/crew-pool/VesselAssignmentImportDialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { findHighestActiveCoc, inferDepartmentFromRank, LicenseRecord } from '@/utils/data/licenseDceTemplates';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
@@ -750,7 +749,6 @@ export function VesselModule_v2(): JSX.Element {
     const [fleetValue, setFleetValue] = useState("");
     const [addGroupValue, setAddGroupValue] = useState("");
     const [showFilters, setShowFilters] = useState(true);
-    const [isVesselAssignmentImportOpen, setIsVesselAssignmentImportOpen] = useState(false);
     const [selectedVessel, setSelectedVessel] = useState<any>(null);
     const [activeTab, setActiveTab] = useState("crew-list");
     const [showArchived, setShowArchived] = useState(false);
@@ -1315,17 +1313,6 @@ export function VesselModule_v2(): JSX.Element {
         <div className="flex flex-col h-full">
             <SectionTitleComponents title="Vessel Database">
                 <div className="flex gap-2 items-center">
-                    {(permissions.length === 0 || canCreate("Crew Database")) && (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setIsVesselAssignmentImportOpen(true)}
-                            className="h-8 gap-2 bg-white dark:bg-gray-800 text-[#0f172a] dark:text-white border-gray-300 dark:border-gray-600"
-                        >
-                            <Upload className="h-4 w-4" />
-                            Import Vessel Data
-                        </Button>
-                    )}
                     <Button
                         variant="outline"
                         size="sm"
@@ -2876,10 +2863,6 @@ export function VesselModule_v2(): JSX.Element {
                 vesselUuid={selectedVessel?.vesselId || ''}
             />
 
-            <VesselAssignmentImportDialog
-                isOpen={isVesselAssignmentImportOpen}
-                onClose={() => setIsVesselAssignmentImportOpen(false)}
-            />
         </div>
     );
 }

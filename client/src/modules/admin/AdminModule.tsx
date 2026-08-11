@@ -13,6 +13,8 @@ import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog"
 import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarchyDialog";
 import { VesselOrgChartDialog } from "@/components/dialogs/VesselOrgChartDialog";
 import { VesselZipUploadDialog } from "./components/VesselZipUploadDialog";
+import { CrewImportDialog } from "@/modules/crew-pool/CrewImportDialog";
+import { VesselAssignmentImportDialog } from "@/modules/crew-pool/VesselAssignmentImportDialog";
 import {
   Table,
   TableBody,
@@ -551,6 +553,8 @@ const AdminModuleInner = (): JSX.Element => {
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
   const [isVesselZipUploadOpen, setIsVesselZipUploadOpen] = useState(false);
+  const [isCrewImportOpen, setIsCrewImportOpen] = useState(false);
+  const [isVesselAssignmentImportOpen, setIsVesselAssignmentImportOpen] = useState(false);
   const [selectedTrainingMatrixTab, setSelectedTrainingMatrixTab] = useState("training-master");
   const [isTrainingMasterEditing, setIsTrainingMasterEditing] = useState(false);
   const [showTrainingFilters, setShowTrainingFilters] = useState(true);
@@ -4461,18 +4465,42 @@ const AdminModuleInner = (): JSX.Element => {
               {selectedRankAdminTab === "vessel" && (
                 <div className={`flex ${responsive.stackButtons ? 'flex-col space-y-1' : 'gap-2'}`}>
                   {!revisionMode ? (
-                    <Button
-                      onClick={handleRevision}
-                      disabled={selectedVessels.length === 0}
-                      className={`h-8 text-xs ${
-                        selectedVessels.length === 0 
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                          : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
-                      }`}
-                      data-testid="revision-button"
-                    >
-                      + Revision
-                    </Button>
+                    <>
+                      {(permissions.length === 0 || canCreate("Crew Database")) && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm font-medium"
+                            onClick={() => setIsCrewImportOpen(true)}
+                          >
+                            <Upload className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
+                            Import Crew
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm font-medium"
+                            onClick={() => setIsVesselAssignmentImportOpen(true)}
+                          >
+                            <Upload className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
+                            Import Vessel Data
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        onClick={handleRevision}
+                        disabled={selectedVessels.length === 0}
+                        className={`h-8 text-xs ${
+                          selectedVessels.length === 0
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
+                        }`}
+                        data-testid="revision-button"
+                      >
+                        + Revision
+                      </Button>
+                    </>
                   ) : (
                     <>
                       <Button
@@ -4576,18 +4604,42 @@ const AdminModuleInner = (): JSX.Element => {
             {selectedRankAdminTab === "vessel" && (
               <div className="flex gap-2">
                 {!revisionMode ? (
-                  <Button
-                    onClick={handleRevision}
-                    disabled={selectedVessels.length === 0}
-                    className={`h-8 text-xs ${
-                      selectedVessels.length === 0 
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                        : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
-                    }`}
-                    data-testid="revision-button"
-                  >
-                    + Revision
-                  </Button>
+                  <>
+                    {(permissions.length === 0 || canCreate("Crew Database")) && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm font-medium"
+                          onClick={() => setIsCrewImportOpen(true)}
+                        >
+                          <Upload className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
+                          Import Crew
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm font-medium"
+                          onClick={() => setIsVesselAssignmentImportOpen(true)}
+                        >
+                          <Upload className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
+                          Import Vessel Data
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      onClick={handleRevision}
+                      disabled={selectedVessels.length === 0}
+                      className={`h-8 text-xs ${
+                        selectedVessels.length === 0
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-[#5dc86f] hover:bg-[#22c55e] text-white'
+                      }`}
+                      data-testid="revision-button"
+                    >
+                      + Revision
+                    </Button>
+                  </>
                 ) : (
                   <>
                     <Button
@@ -5188,6 +5240,14 @@ const AdminModuleInner = (): JSX.Element => {
             <VesselZipUploadDialog
               isOpen={isVesselZipUploadOpen}
               onClose={() => setIsVesselZipUploadOpen(false)}
+            />
+            <CrewImportDialog
+              isOpen={isCrewImportOpen}
+              onClose={() => setIsCrewImportOpen(false)}
+            />
+            <VesselAssignmentImportDialog
+              isOpen={isVesselAssignmentImportOpen}
+              onClose={() => setIsVesselAssignmentImportOpen(false)}
             />
           </CardContent>
         </Card>
