@@ -18,10 +18,11 @@ router.get("/list", vesselListController.getAll);
 // Vessel Rank Hierarchy & Crew Assignment Import endpoints
 // importUploadMiddleware intercepts multipart/form-data (field: "file") on these
 // four routes only — all planning/attachment routes below are completely unaffected.
-router.post("/import/parse-zip",         importUploadMiddleware, tenantContextGuard, vesselImportController.parseZip);
-router.post("/import/generate-workbook", importUploadMiddleware, tenantContextGuard, vesselImportController.generateWorkbook);
-router.post("/import/hierarchy",         importUploadMiddleware, tenantContextGuard, vesselImportController.importHierarchy);
-router.post("/import/assignments",       importUploadMiddleware, tenantContextGuard, vesselImportController.importAssignments);
+router.post("/import/parse-zip",              importUploadMiddleware, tenantContextGuard, vesselImportController.parseZip);
+router.post("/import/generate-workbook",      importUploadMiddleware, tenantContextGuard, vesselImportController.generateWorkbook);
+router.post("/import/generate-workbook-from-db",                      tenantContextGuard, vesselImportController.generateWorkbookFromDb);
+router.post("/import/hierarchy",              importUploadMiddleware, tenantContextGuard, vesselImportController.importHierarchy);
+router.post("/import/assignments",            importUploadMiddleware, tenantContextGuard, vesselImportController.importAssignments);
 
 // Get all planning records for conflict detection (used by Rotation V2)
 router.get("/planning", vesselPlanningController.getAll);

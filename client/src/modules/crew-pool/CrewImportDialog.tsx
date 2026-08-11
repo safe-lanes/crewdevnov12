@@ -50,6 +50,8 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
   const [validationResult, setValidationResult] = useState<any>(null);
   const [importResult, setImportResult] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showWorkbookPrompt, setShowWorkbookPrompt] = useState(false);
+  const [isDownloadingWorkbook, setIsDownloadingWorkbook] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Attachment ZIP upload (second step of the import flow)
@@ -71,6 +73,8 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
     setValidationResult(null);
     setImportResult(null);
     setErrorMessage(null);
+    setShowWorkbookPrompt(false);
+    setIsDownloadingWorkbook(false);
     setZipFile(null);
     setAttachStatus("idle");
     setAttachResult(null);
@@ -217,6 +221,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
       setImportResult(res);
       if (res.success) {
         setStatus("success");
+        setShowWorkbookPrompt(true);
         // Refetch V2 lists so UI stays synced
         queryClient.invalidateQueries({ queryKey: ["v2", "crew-list"] });
         toast({
@@ -234,6 +239,43 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
         title: "Import failed",
         description: err.message || "Failed to execute import",
       });
+    }
+  };
+
+  // Download vessel crew import workbook from DB after successful crew import
+  const handleDownloadWorkbook = async () => {
+    setIsDownloadingWorkbook(true);
+    try {
+      const response = await fetch("/api/v2/vessel/import/generate-workbook-from-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "vessel_crew_import.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({
+        title: "Workbook downloaded",
+        description: "vessel_crew_import.xlsx is ready for Stage 1 & Stage 2 import.",
+      });
+      handleClose();
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Download failed",
+        description: err.message || "Failed to generate vessel import workbook",
+      });
+      // Keep the prompt open so the operator can retry
+    } finally {
+      setIsDownloadingWorkbook(false);
     }
   };
 
@@ -524,11 +566,52 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                 })}
               </div>
 
-              <div className="text-center">
-                <Button className="bg-[#5dc86f] text-white hover:bg-[#218838]" onClick={handleClose}>
-                  Finish
-                </Button>
-              </div>
+              {/* Vessel Workbook Download Prompt */}
+              {showWorkbookPrompt ? (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <FileSpreadsheet className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">
+                        Download Vessel Crew Import sheet?
+                      </p>
+                      <p className="text-xs text-blue-700 mt-0.5">
+                        Generate a pre-filled vessel import workbook from the crew now in your database — ready for Stage 1 &amp; Stage 2.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs border-blue-200 text-blue-700 hover:bg-blue-100"
+                      onClick={() => handleClose()}
+                      disabled={isDownloadingWorkbook}
+                    >
+                      No, close
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={handleDownloadWorkbook}
+                      disabled={isDownloadingWorkbook}
+                    >
+                      {isDownloadingWorkbook ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      {isDownloadingWorkbook ? "Generating…" : "Yes, download"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <Button className="bg-[#5dc86f] text-white hover:bg-[#218838]" onClick={handleClose}>
+                    Finish
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import {
   parseCrewListZip,
   generateVesselImportWorkbook,
+  buildWorkbookFromDb,
   importVesselRankHierarchy,
   importCrewAssignments,
 } from "../services";
@@ -178,6 +179,30 @@ export const vesselImportController = {
       res
         .status(500)
         .json({ error: "Failed to generate vessel import workbook" });
+    }
+  },
+
+  /**
+   * Generate vessel import workbook directly from the database.
+   * Queries crewSeaService (serviceType=Company, toDate IS NULL) and joins
+   * masterVessels + crewMembersV2 for vessel/empNo data. All rows get
+   * Lookup Status = OK. No file upload needed.
+   */
+  async generateWorkbookFromDb(req: Request, res: Response) {
+    try {
+      const result = await buildWorkbookFromDb();
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=vessel_crew_import.xlsx",
+      );
+      res.send(result.buffer);
+    } catch (error: any) {
+      console.error("[VESSEL IMPORT] Error generating workbook from DB:", error);
+      res.status(500).json({ error: "Failed to generate vessel import workbook from database" });
     }
   },
 
