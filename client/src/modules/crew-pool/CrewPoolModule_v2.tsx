@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/select';
 import { CrewInfoForm_v2 } from './CrewInfoForm_v2';
 import { CrewImportDialog } from './CrewImportDialog';
-import { VesselAssignmentImportDialog } from './VesselAssignmentImportDialog';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
@@ -81,7 +80,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     const [gridApi, setGridApi] = useState<GridApi | null>(null);
     const [isCrewInfoFormOpen, setIsCrewInfoFormOpen] = useState(false);
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-    const [isVesselAssignmentImportOpen, setIsVesselAssignmentImportOpen] = useState(false);
     const [selectedCrewMember, setSelectedCrewMember] = useState<any | null>(null);
     const viewport = useViewport();
     const viewportConfig = getViewportConfig(viewport);
@@ -1496,15 +1494,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                             Import Crew
                         </Button>
                         <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 text-xs bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm font-medium"
-                            onClick={() => setIsVesselAssignmentImportOpen(true)}
-                        >
-                            <Upload className="h-3.5 w-3.5 mr-1.5 text-slate-500" />
-                            Import Vessel Data
-                        </Button>
-                        <Button
                             variant="default"
                             size="sm"
                             className="h-8 text-xs bg-[#5dc86f] hover:bg-[#218838] text-white font-medium shadow-sm"
@@ -1542,11 +1531,6 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 onClose={() => setIsImportDialogOpen(false)}
             />
 
-            {/* Vessel Rank Hierarchy & Crew Assignment Import Dialog */}
-            <VesselAssignmentImportDialog
-                isOpen={isVesselAssignmentImportOpen}
-                onClose={() => setIsVesselAssignmentImportOpen(false)}
-            />
         </div>
     );
 };
