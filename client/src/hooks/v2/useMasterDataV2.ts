@@ -33,6 +33,20 @@ export const useVesselsV2 = (options?: UseMasterOptions) => {
   });
 };
 
+/**
+ * Returns all vessels including inactive/deleted ones.
+ * Use this for sea service and import template dropdowns where historical
+ * vessel records may reference vessels that are no longer active.
+ */
+export const useAllVesselsV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
+    queryKey: [`${V2_MASTERS_BASE}/vessels/all`],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
+  });
+};
+
 export const useVesselByUuidV2 = (uuid: string | undefined) => {
   return useQuery<any>({
     queryKey: [`${V2_MASTERS_BASE}/vessels`, uuid],

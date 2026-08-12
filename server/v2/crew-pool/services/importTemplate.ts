@@ -217,6 +217,8 @@ async function fetchReferenceData() {
     db.select({ name: admCompanyRanksV2.rank, rankId: admCompanyRanksV2.rankId }).from(admCompanyRanksV2).where(eq(admCompanyRanksV2.isDeleted, false)),
     db.select({ rankId: admVesselOrgChartV2.rankId, sortOrder: admVesselOrgChartV2.sortOrder }).from(admVesselOrgChartV2).where(eq(admVesselOrgChartV2.isDeleted, false)),
     db.select({ name: masterManningAgents.name }).from(masterManningAgents).where(eq(masterManningAgents.isDeleted, false)),
+    // Intentionally no is_active/is_deleted filter — the Company Vessels reference list must
+    // include inactive vessels so that historical sea service records can be imported cleanly.
     db.select({ name: masterVessels.vessel }).from(masterVessels),
   ]);
 

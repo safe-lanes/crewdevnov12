@@ -7,6 +7,8 @@ router.get("/nationalities", mastersController.getNationalities);
 router.get("/nationalities/:uuid", mastersController.getNationalityByUuid);
 
 router.get("/vessels", mastersController.getVessels);
+// /vessels/all must be registered before /vessels/:uuid to avoid "all" being treated as a UUID.
+router.get("/vessels/all", mastersController.getAllVessels);
 router.get("/vessels/:uuid", mastersController.getVesselByUuid);
 
 router.get("/vessel-types", mastersController.getVesselTypes);

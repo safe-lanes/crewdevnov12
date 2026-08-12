@@ -71,6 +71,12 @@ export const mastersService = {
     return rows.map(addVesselAliases);
   },
 
+  /** Returns all vessels including inactive/deleted — for sea service & import template use. */
+  async getAllVessels() {
+    const rows = await mastersRepo.findAllVesselsIncludingInactive();
+    return rows.map(addVesselAliases);
+  },
+
   async getVesselByUuid(vesselUuid: string) {
     const result = await mastersRepo.findVesselByUuid(vesselUuid);
     if (!result) throw new Error(`Vessel not found: ${vesselUuid}`);

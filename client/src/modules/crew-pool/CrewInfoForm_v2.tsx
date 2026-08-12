@@ -33,7 +33,7 @@ import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@share
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
-import { useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
+import { useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useAllVesselsV2, useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
 import { LicenseSelectionDialog } from './LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from './TrainingCourseSelectionDialog';
 import { validateMobileNumber, normalizeMobileInput, applyDialingCode, getDialingCode } from '../recruitment/countryDialingCodes';
@@ -893,7 +893,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // External API hooks for master data with 5-minute cache and 2 retry attempts
   const { data: externalVesselTypesData, isLoading: vesselTypesLoading } = useVesselTypesV2();
-  const { data: externalVesselsData, isLoading: vesselsLoading } = useVesselsV2();
+  // useAllVesselsV2 returns every vessel including inactive ones — required so that
+  // historical sea service, medicals, briefings and de-briefings entries can reference
+  // vessels that are no longer active. Other modules keep using useVesselsV2.
+  const { data: externalVesselsData, isLoading: vesselsLoading } = useAllVesselsV2();
   const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useNationalitiesV2();
   const { data: externalCountriesData, isLoading: countriesLoading } = useCountriesV2();
   const { data: externalLanguagesData, isLoading: languagesLoading } = useLanguagesV2();

@@ -53,6 +53,8 @@ const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
     imoNumber: 'imoNumber',
     flag: 'flag',
     vesselType: 'vesselType',
+    isActive: 'isActive',
+    isDeleted: 'isDeleted',
   },
   vesselTypes: {
     vtuid: 'vtUuid',
@@ -177,7 +179,27 @@ export class MastersRepository {
     return results[0];
   }
 
+  /**
+   * Returns active, non-deleted vessels only.
+   * Used by the standard /api/v2/masters/vessels endpoint consumed by most modules.
+   * Consistent with findAllVesselTypes / findAllPorts / findAllLanguages etc.
+   */
   async findAllVessels() {
+    const db = getDb();
+    return db
+      .select()
+      .from(masterVessels)
+      .where(and(eq(masterVessels.isActive, true), eq(masterVessels.isDeleted, false)))
+      .orderBy(sql`LOWER(${masterVessels.vessel})`);
+  }
+
+  /**
+   * Returns every vessel regardless of is_active / is_deleted status.
+   * Used by endpoints that must surface inactive/historical vessels
+   * (e.g. Sea Service and crew import template dropdowns).
+   * Do NOT add an active/deleted filter here — that is the whole point.
+   */
+  async findAllVesselsIncludingInactive() {
     const db = getDb();
     return db
       .select()

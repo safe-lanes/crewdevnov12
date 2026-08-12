@@ -35,6 +35,17 @@ export const mastersController = {
     }
   },
 
+  /** Returns all vessels including inactive/deleted — for sea service & import template dropdowns. */
+  async getAllVessels(req: Request, res: Response) {
+    try {
+      const data = await mastersService.getAllVessels();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching all vessels:", error);
+      res.status(500).json({ error: "Failed to fetch vessels" });
+    }
+  },
+
   async getVesselByUuid(req: Request, res: Response) {
     try {
       const data = await mastersService.getVesselByUuid(req.params.uuid);

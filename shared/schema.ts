@@ -1227,6 +1227,10 @@ export const masterVessels = pgTable(
     imoNumber: text("imo_number"),
     flag: text("flag"),
     vesselType: text("vessel_type"),
+    // is_active / is_deleted added via migration 0186.
+    // Populated by sync-all from the external master data API.
+    isActive: boolean("is_active").default(true),
+    isDeleted: boolean("is_deleted").default(false),
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
