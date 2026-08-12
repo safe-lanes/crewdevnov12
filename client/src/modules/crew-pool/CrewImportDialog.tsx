@@ -552,6 +552,9 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                 {IMPORT_CATEGORIES.map((cat) => {
                   const imported = importResult.imported?.[cat.key] ?? 0;
                   const expected = importResult.expected?.[cat.key] ?? imported;
+                  const skipped = cat.key === "seaService" && importResult.seaServiceSkipped > 0
+                    ? importResult.seaServiceSkipped
+                    : 0;
                   return (
                     <div key={cat.key} className="bg-[#f8fafc] p-2.5 rounded border border-[#e2e8f0]">
                       <span className="text-gray-500 block">{cat.label}</span>
@@ -559,8 +562,13 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                         className="font-semibold text-gray-800 text-sm"
                         data-testid={`text-imported-${cat.key}`}
                       >
-                        {imported} / {expected}
+                        {imported} / {expected + skipped}
                       </span>
+                      {skipped > 0 && (
+                        <span className="text-amber-600 block text-xs mt-0.5">
+                          {skipped} duplicate{skipped > 1 ? "s" : ""} skipped
+                        </span>
+                      )}
                     </div>
                   );
                 })}

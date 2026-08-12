@@ -252,6 +252,8 @@ export interface ImportResult {
   expected: ImportCounts;
   seafarerCodes: string[]; // All emp numbers created
   errors: ValidationError[];
+  /** Sea service rows dropped because they were exact duplicates within the uploaded file */
+  seaServiceSkipped: number;
 }
 
 function emptyCounts(): ImportCounts {
@@ -359,6 +361,8 @@ interface PreparedImport {
   summary: ImportCounts;
   seafarerCodes: string[];
   resolved: ResolvedRows | null;
+  /** Sea service rows dropped during in-batch deduplication (duplicate within the file) */
+  seaServiceInBatchSkipped: number;
 }
 
 /**
@@ -714,6 +718,38 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
     }
   }
 
+  // ── Pre-validation in-batch deduplication of sea service rows ─────────────
+  // Natural key: Employee ID + Vessel Name + Rank Served + (normalised) Sign On Date.
+  // We track duplicate *indices* rather than filtering the array so that every
+  // subsequent validateSubSheet call still uses the original worksheet row numbers.
+  // Duplicate rows have their Attachment Ref nulled out so the attachment-ref
+  // uniqueness check does not raise a false error for rows we are about to skip.
+  const seaServiceDuplicateIndices = new Set<number>();
+  {
+    const seenSeaKeys = new Set<string>();
+    data.seaServiceRows.forEach((row, idx) => {
+      // Normalize the sign-on date through parseDate so that equivalent
+      // representations (e.g. "20/05/2024", "20-May-2024", "2024-05-20") all
+      // produce the same canonical key and therefore deduplicate correctly.
+      const rawSignOn = getCellValue(row, "Sign On Date");
+      const normSignOn = parseDate(rawSignOn) ?? (rawSignOn ?? "").trim();
+      const key = [
+        normalizeEmpNo(getCellValue(row, "Employee ID") ?? ""),
+        (getCellValue(row, "Vessel Name") ?? "").trim().toLowerCase(),
+        (getCellValue(row, "Rank Served") ?? "").trim().toLowerCase(),
+        normSignOn,
+      ].join("::");
+      if (seenSeaKeys.has(key)) {
+        seaServiceDuplicateIndices.add(idx);
+        // Null out the attachment ref so the uniqueness check below does not
+        // flag this duplicate row as a conflicting attachment ref.
+        row["Attachment Ref"] = null;
+      } else {
+        seenSeaKeys.add(key);
+      }
+    });
+  }
+
   validateSubSheet(data.childrenRows, "Children Details", ["First Name"], ["Date of Birth"]);
   validateSubSheet(data.nokRows, "Emergency Contact", [], []);
   validateSubSheet(data.documentRows, "Travel Documents", ["Document Name"], ["Date of Issue", "Date of Expiry"], true);
@@ -811,7 +847,9 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
       });
     }
 
-    for (const row of data.seaServiceRows) {
+    for (let _ssIdx = 0; _ssIdx < data.seaServiceRows.length; _ssIdx++) {
+      if (seaServiceDuplicateIndices.has(_ssIdx)) continue; // skip in-file duplicate
+      const row = data.seaServiceRows[_ssIdx];
       const crewUuid = linkOf(row);
       if (!crewUuid) continue;
       const vtName = getCellValue(row, "Vessel Type");
@@ -968,11 +1006,18 @@ async function prepareImport(buffer: Buffer, resolve: boolean): Promise<Prepared
     }
   }
 
+  // data.seaServiceRows is intact (original worksheet row numbers preserved).
+  // summary.seaService reflects the full raw count; seaServiceDuplicateIndices
+  // holds the rows we skipped during resolution.
+  const summary = summaryFromParsed(data);
+  const seaServiceInBatchSkipped = seaServiceDuplicateIndices.size;
+
   return {
     errors,
-    summary: summaryFromParsed(data),
+    summary,
     seafarerCodes,
     resolved,
+    seaServiceInBatchSkipped,
   };
 }
 
@@ -1016,12 +1061,19 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
       expected: prepared.summary,
       seafarerCodes: [],
       errors: prepared.errors,
+      seaServiceSkipped: 0,
     };
   }
 
   const r = prepared.resolved;
-  const expected = prepared.summary;
   const db = getDb();
+
+  // Adjust expected.seaService so the post-import count verification accounts
+  // for rows legitimately skipped as in-file duplicates.
+  const expected: ImportCounts = {
+    ...prepared.summary,
+    seaService: prepared.summary.seaService - prepared.seaServiceInBatchSkipped,
+  };
 
   try {
     return await db.transaction(async (tx: any) => {
@@ -1069,6 +1121,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
         expected,
         seafarerCodes: prepared.seafarerCodes,
         errors: [],
+        seaServiceSkipped: prepared.seaServiceInBatchSkipped,
       };
     });
   } catch (error: any) {
@@ -1086,6 +1139,7 @@ export async function executeImport(buffer: Buffer): Promise<ImportResult> {
         value: null,
         message: `Import failed and was completely rolled back. Error: ${error.message}`,
       }],
+      seaServiceSkipped: prepared.seaServiceInBatchSkipped,
     };
   }
 }
