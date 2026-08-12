@@ -346,28 +346,28 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent
-        className="sm:max-w-[550px] p-6"
+        className="sm:max-w-[620px] p-4 sm:p-5 max-h-[90vh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
-        <DialogHeader>
+        <DialogHeader className="pb-1">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold text-[#2c3e50]">
+            <DialogTitle className="text-lg font-semibold text-[#2c3e50]">
               Import Crew Members
             </DialogTitle>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 mt-0.5">
             Step 1: import crew data from the Excel sheet. Step 2: upload a ZIP of the supporting attachment files.
           </p>
         </DialogHeader>
 
         {/* Mode toggle: Excel data vs attachment ZIP */}
-        <div className="flex gap-1 p-1 bg-[#f1f5f9] rounded-lg">
+        <div className="flex gap-1 p-1 bg-[#f1f5f9] rounded-lg my-0.5">
           <button
             type="button"
             data-testid="tab-import-data"
             onClick={() => setMode("data")}
-            className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${
+            className={`flex-1 text-xs sm:text-sm font-medium py-1 rounded-md transition-colors ${
               mode === "data" ? "bg-white text-[#2c3e50] shadow-sm" : "text-gray-500"
             }`}
           >
@@ -377,7 +377,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
             type="button"
             data-testid="tab-import-attachments"
             onClick={() => setMode("attachments")}
-            className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${
+            className={`flex-1 text-xs sm:text-sm font-medium py-1 rounded-md transition-colors ${
               mode === "attachments" ? "bg-white text-[#2c3e50] shadow-sm" : "text-gray-500"
             }`}
           >
@@ -386,21 +386,21 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
         </div>
 
         {mode === "data" && (
-        <div className="py-4 space-y-4">
+        <div className="py-2 space-y-2.5">
           {/* Download Template Button */}
           {status === "idle" && (
-            <div className="flex items-center justify-between p-4 bg-[#f8fafc] border border-dashed border-[#cbd5e1] rounded-lg">
+            <div className="flex items-center justify-between p-3 bg-[#f8fafc] border border-dashed border-[#cbd5e1] rounded-lg">
               <div className="flex items-center space-x-3">
-                <FileSpreadsheet className="h-8 w-8 text-[#5dc86f]" />
+                <FileSpreadsheet className="h-7 w-7 text-[#5dc86f] flex-shrink-0" />
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700">Need the template?</h4>
-                  <p className="text-xs text-gray-500">Download our simple template structure filled with reference data master values.</p>
+                  <h4 className="text-xs font-medium text-gray-700">Need the template?</h4>
+                  <p className="text-[11px] text-gray-500">Download our simple template structure filled with reference data master values.</p>
                 </div>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                className="text-xs border-[#cbd5e1] text-gray-700"
+                className="text-xs border-[#cbd5e1] text-gray-700 flex-shrink-0"
                 onClick={handleDownloadTemplate}
                 disabled={isDownloadingTemplate}
                 data-testid="button-download-template"
@@ -418,25 +418,25 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
           {/* Upload Box / File Info */}
           {!file ? (
             <div
-              className="flex flex-col items-center justify-center border-2 border-dashed border-[#cbd5e1] hover:border-[#5dc86f] cursor-pointer rounded-lg p-10 space-y-3 bg-[#fafcfd] transition-colors"
+              className="flex flex-col items-center justify-center border-2 border-dashed border-[#cbd5e1] hover:border-[#5dc86f] cursor-pointer rounded-lg p-8 space-y-2 bg-[#fafcfd] transition-colors"
               onClick={handleSelectFileClick}
             >
-              <Upload className="h-10 w-10 text-gray-400" />
+              <Upload className="h-8 w-8 text-gray-400" />
               <div className="text-center">
-                <span className="text-[#3b82f6] font-medium hover:underline text-sm">Upload a file</span>
-                <span className="text-gray-500 text-sm"> or drag and drop</span>
+                <span className="text-[#3b82f6] font-medium hover:underline text-xs">Upload a file</span>
+                <span className="text-gray-500 text-xs"> or drag and drop</span>
               </div>
-              <p className="text-xs text-gray-400">Excel (.xlsx) or CSV format up to 10MB</p>
+              <p className="text-[11px] text-gray-400">Excel (.xlsx) or CSV format up to 10MB</p>
             </div>
           ) : (
-            <div className="flex items-center justify-between p-4 border border-[#e2e8f0] rounded-lg bg-white">
-              <div className="flex items-center space-x-3">
-                <FileSpreadsheet className="h-8 w-8 text-[#3b82f6]" />
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 truncate max-w-[280px]">
+            <div className={`flex items-center justify-between ${status === "success" ? "p-2 px-3 bg-emerald-50/50 border border-emerald-100" : "p-3 border border-[#e2e8f0] bg-white"} rounded-lg`}>
+              <div className="flex items-center space-x-2.5 min-w-0">
+                <FileSpreadsheet className={`h-6 w-6 ${status === "success" ? "text-emerald-600" : "text-[#3b82f6]"} flex-shrink-0`} />
+                <div className="min-w-0 truncate">
+                  <h4 className="text-xs font-medium text-gray-700 truncate">
                     {file.name}
                   </h4>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-[11px] text-gray-400">
                     {(file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>
@@ -445,7 +445,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-gray-400 hover:text-gray-600"
+                  className="h-7 w-7 text-gray-400 hover:text-gray-600 flex-shrink-0"
                   onClick={() => {
                     setFile(null);
                   }}
@@ -458,7 +458,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-600 flex items-start space-x-2">
+            <div className="p-2.5 bg-red-50 border border-red-200 rounded-md text-xs text-red-600 flex items-start space-x-2">
               <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
               <span>{errorMessage}</span>
             </div>
@@ -466,49 +466,49 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
 
           {/* Validation Statuses */}
           {status === "validating" && (
-            <div className="flex flex-col items-center justify-center p-6 space-y-3">
-              <Loader2 className="h-8 w-8 text-[#3b82f6] animate-spin" />
-              <p className="text-sm text-gray-600 font-medium">Validating file & links...</p>
+            <div className="flex flex-col items-center justify-center p-5 space-y-2">
+              <Loader2 className="h-7 w-7 text-[#3b82f6] animate-spin" />
+              <p className="text-xs text-gray-600 font-medium">Validating file & links...</p>
             </div>
           )}
 
           {status === "importing" && (
-            <div className="flex flex-col items-center justify-center p-6 space-y-3">
-              <Loader2 className="h-8 w-8 text-[#5dc86f] animate-spin" />
-              <p className="text-sm text-gray-600 font-medium">Importing crew data into database...</p>
+            <div className="flex flex-col items-center justify-center p-5 space-y-2">
+              <Loader2 className="h-7 w-7 text-[#5dc86f] animate-spin" />
+              <p className="text-xs text-gray-600 font-medium">Importing crew data into database...</p>
             </div>
           )}
 
           {status === "invalid" && validationResult && (
-            <div className="space-y-3 p-4 bg-red-50 border border-red-100 rounded-lg">
-              <div className="flex items-center space-x-2 text-red-700 font-medium text-sm">
-                <AlertTriangle className="h-5 w-5" />
+            <div className="space-y-2.5 p-3 bg-red-50 border border-red-100 rounded-lg">
+              <div className="flex items-center space-x-2 text-red-700 font-medium text-xs">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                 <span>Validation Failed ({validationResult.errors.length} errors found)</span>
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-[11px] text-gray-600">
                 Correct the errors in the Excel sheet and upload again. Download the error report to view which cells failed.
               </p>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs border-red-200 text-red-700 hover:bg-red-100"
+                  className="h-7 text-xs border-red-200 text-red-700 hover:bg-red-100"
                   onClick={handleDownloadErrorReport}
                 >
-                  <Download className="h-3.5 w-3.5 mr-1" />
+                  <Download className="h-3 w-3 mr-1" />
                   Download Error Report
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-xs text-gray-600"
+                  className="h-7 text-xs text-gray-600"
                   onClick={() => {
                     setFile(null);
                     setStatus("idle");
                     setValidationResult(null);
                   }}
                 >
-                  <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                  <RefreshCw className="h-3 w-3 mr-1" />
                   Reset
                 </Button>
               </div>
@@ -516,18 +516,18 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
           )}
 
           {status === "valid" && validationResult && (
-            <div className="space-y-4 p-4 bg-emerald-50 border border-emerald-100 rounded-lg">
-              <div className="flex items-center space-x-2 text-emerald-800 font-medium text-sm">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
+            <div className="space-y-2.5 p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
+              <div className="flex items-center space-x-2 text-emerald-800 font-medium text-xs">
+                <CheckCircle className="h-4 w-4 text-emerald-600 flex-shrink-0" />
                 <span>Validation Successful!</span>
               </div>
               
-              <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-3 gap-1.5 text-xs">
                 {IMPORT_CATEGORIES.map((cat) => (
-                  <div key={cat.key} className="bg-white p-2.5 rounded border border-emerald-100">
-                    <span className="text-gray-500 block">{cat.label}</span>
+                  <div key={cat.key} className="bg-white p-1.5 px-2 rounded border border-emerald-100 flex flex-col justify-between">
+                    <span className="text-[11px] text-gray-500 truncate" title={cat.label}>{cat.label}</span>
                     <span
-                      className="font-semibold text-gray-800 text-sm"
+                      className="font-semibold text-gray-800 text-xs mt-0.5"
                       data-testid={`text-${cat.key}-count`}
                     >
                       {validationResult.summary?.[cat.key] ?? 0}
@@ -539,16 +539,16 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
           )}
 
           {status === "success" && importResult && (
-            <div className="space-y-4 p-6">
-              <div className="text-center space-y-2">
-                <CheckCircle className="h-14 w-14 text-[#5dc86f] mx-auto" />
-                <h3 className="text-lg font-semibold text-gray-800">Crew Imported Successfully</h3>
-                <p className="text-sm text-gray-500">
+            <div className="space-y-2.5">
+              <div className="text-center space-y-1 py-1">
+                <CheckCircle className="h-9 w-9 text-[#5dc86f] mx-auto" />
+                <h3 className="text-base font-semibold text-gray-800">Crew Imported Successfully</h3>
+                <p className="text-xs text-gray-500">
                   Successfully completed bulk import. {importResult.imported.crew} seafarers are now added to your database.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-3 gap-1.5 text-xs">
                 {IMPORT_CATEGORIES.map((cat) => {
                   const imported = importResult.imported?.[cat.key] ?? 0;
                   const expected = importResult.expected?.[cat.key] ?? imported;
@@ -556,19 +556,21 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                     ? importResult.seaServiceSkipped
                     : 0;
                   return (
-                    <div key={cat.key} className="bg-[#f8fafc] p-2.5 rounded border border-[#e2e8f0]">
-                      <span className="text-gray-500 block">{cat.label}</span>
-                      <span
-                        className="font-semibold text-gray-800 text-sm"
-                        data-testid={`text-imported-${cat.key}`}
-                      >
-                        {imported} / {expected + skipped}
-                      </span>
-                      {skipped > 0 && (
-                        <span className="text-amber-600 block text-xs mt-0.5">
-                          {skipped} duplicate{skipped > 1 ? "s" : ""} skipped
+                    <div key={cat.key} className="bg-[#f8fafc] p-1.5 px-2 rounded border border-[#e2e8f0] flex flex-col justify-between">
+                      <span className="text-[11px] text-gray-500 truncate" title={cat.label}>{cat.label}</span>
+                      <div className="flex items-baseline justify-between mt-0.5">
+                        <span
+                          className="font-semibold text-gray-800 text-xs"
+                          data-testid={`text-imported-${cat.key}`}
+                        >
+                          {imported} / {expected + skipped}
                         </span>
-                      )}
+                        {skipped > 0 && (
+                          <span className="text-amber-600 text-[10px] ml-1 truncate" title={`${skipped} duplicate${skipped > 1 ? "s" : ""} skipped`}>
+                            ({skipped} dup)
+                          </span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -576,14 +578,14 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
 
               {/* Vessel Workbook Download Prompt */}
               {showWorkbookPrompt ? (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
-                  <div className="flex items-start gap-3">
-                    <FileSpreadsheet className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-blue-900">
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5 px-3 space-y-2">
+                  <div className="flex items-start gap-2.5">
+                    <FileSpreadsheet className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-blue-900">
                         Download Vessel Crew Import sheet?
                       </p>
-                      <p className="text-xs text-blue-700 mt-0.5">
+                      <p className="text-[11px] text-blue-700 leading-snug">
                         Generate a pre-filled vessel import workbook from the crew now in your database — ready for Stage 1 &amp; Stage 2.
                       </p>
                     </div>
@@ -592,7 +594,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-xs border-blue-200 text-blue-700 hover:bg-blue-100"
+                      className="h-7 text-xs px-2.5 border-blue-200 text-blue-700 hover:bg-blue-100"
                       onClick={() => handleClose()}
                       disabled={isDownloadingWorkbook}
                     >
@@ -600,22 +602,22 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                     </Button>
                     <Button
                       size="sm"
-                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white"
+                      className="h-7 text-xs px-2.5 bg-blue-600 hover:bg-blue-700 text-white"
                       onClick={handleDownloadWorkbook}
                       disabled={isDownloadingWorkbook}
                     >
                       {isDownloadingWorkbook ? (
-                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                       ) : (
-                        <Download className="h-3.5 w-3.5 mr-1.5" />
+                        <Download className="h-3 w-3 mr-1" />
                       )}
                       {isDownloadingWorkbook ? "Generating…" : "Yes, download"}
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="text-center">
-                  <Button className="bg-[#5dc86f] text-white hover:bg-[#218838]" onClick={handleClose}>
+                <div className="text-center pt-1">
+                  <Button size="sm" className="h-8 text-xs px-4 bg-[#5dc86f] text-white hover:bg-[#218838]" onClick={handleClose}>
                     Finish
                   </Button>
                 </div>
@@ -626,8 +628,8 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
         )}
 
         {mode === "attachments" && (
-          <div className="py-4 space-y-4">
-            <div className="p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg text-xs text-gray-600">
+          <div className="py-2 space-y-2.5">
+            <div className="p-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg text-[11px] text-gray-600">
               Zip your files so each one sits in a{" "}
               <span className="font-mono text-gray-800">&lt;Employee ID&gt;/&lt;Attachment Ref&gt;/</span>{" "}
               folder (the Attachment Ref comes from the Excel sheet), then upload the ZIP here.
@@ -635,33 +637,33 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
 
             {!zipFile ? (
               <div
-                className="flex flex-col items-center justify-center border-2 border-dashed border-[#cbd5e1] hover:border-[#5dc86f] cursor-pointer rounded-lg p-10 space-y-3 bg-[#fafcfd] transition-colors"
+                className="flex flex-col items-center justify-center border-2 border-dashed border-[#cbd5e1] hover:border-[#5dc86f] cursor-pointer rounded-lg p-8 space-y-2 bg-[#fafcfd] transition-colors"
                 onClick={() => zipInputRef.current?.click()}
                 data-testid="dropzone-attachments-zip"
               >
-                <Upload className="h-10 w-10 text-gray-400" />
+                <Upload className="h-8 w-8 text-gray-400" />
                 <div className="text-center">
-                  <span className="text-[#3b82f6] font-medium hover:underline text-sm">Upload a ZIP</span>
-                  <span className="text-gray-500 text-sm"> of attachment files</span>
+                  <span className="text-[#3b82f6] font-medium hover:underline text-xs">Upload a ZIP</span>
+                  <span className="text-gray-500 text-xs"> of attachment files</span>
                 </div>
-                <p className="text-xs text-gray-400">PDF, PNG or JPEG files, up to 5MB each</p>
+                <p className="text-[11px] text-gray-400">PDF, PNG or JPEG files, up to 5MB each</p>
               </div>
             ) : (
-              <div className="flex items-center justify-between p-4 border border-[#e2e8f0] rounded-lg bg-white">
-                <div className="flex items-center space-x-3">
-                  <FileSpreadsheet className="h-8 w-8 text-[#3b82f6]" />
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 truncate max-w-[280px]" data-testid="text-zip-name">
+              <div className="flex items-center justify-between p-3 border border-[#e2e8f0] rounded-lg bg-white">
+                <div className="flex items-center space-x-2.5 min-w-0">
+                  <FileSpreadsheet className="h-6 w-6 text-[#3b82f6] flex-shrink-0" />
+                  <div className="min-w-0 truncate">
+                    <h4 className="text-xs font-medium text-gray-700 truncate" data-testid="text-zip-name">
                       {zipFile.name}
                     </h4>
-                    <p className="text-xs text-gray-400">{(zipFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p className="text-[11px] text-gray-400">{(zipFile.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
                 </div>
                 {attachStatus === "idle" && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-gray-400 hover:text-gray-600"
+                    className="h-7 w-7 text-gray-400 hover:text-gray-600 flex-shrink-0"
                     onClick={() => setZipFile(null)}
                     data-testid="button-clear-zip"
                   >
@@ -672,17 +674,17 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
             )}
 
             {attachStatus === "uploading" && (
-              <div className="space-y-3 p-4 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg" data-testid="upload-progress-container">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-gray-700 flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 text-[#5dc86f] animate-spin" />
+              <div className="space-y-2 p-3 bg-[#f8fafc] border border-[#e2e8f0] rounded-lg" data-testid="upload-progress-container">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-gray-700 flex items-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 text-[#5dc86f] animate-spin" />
                     Uploading & attaching files…
                   </span>
                   <span className="text-gray-500 tabular-nums" data-testid="text-upload-percent">
                     {uploadProgress}%
                   </span>
                 </div>
-                <div className="w-full h-2 bg-[#e2e8f0] rounded-full overflow-hidden">
+                <div className="w-full h-1.5 bg-[#e2e8f0] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-[#5dc86f] rounded-full transition-all duration-200"
                     style={{ width: `${uploadProgress}%` }}
@@ -690,7 +692,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                   />
                 </div>
                 {zipFile && (
-                  <p className="text-xs text-gray-400">
+                  <p className="text-[11px] text-gray-400">
                     {(zipFile.size / 1024 / 1024).toFixed(2)} MB total
                   </p>
                 )}
@@ -698,71 +700,71 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
             )}
 
             {attachStatus === "done" && attachResult && (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="bg-emerald-50 p-2.5 rounded border border-emerald-100">
-                    <span className="text-gray-500 block">Files Attached</span>
-                    <span className="font-semibold text-emerald-700 text-sm" data-testid="text-attached-count">
+              <div className="space-y-2.5">
+                <div className="grid grid-cols-4 gap-1.5 text-xs">
+                  <div className="bg-emerald-50 p-1.5 px-2 rounded border border-emerald-100">
+                    <span className="text-[11px] text-gray-500 block truncate">Files Attached</span>
+                    <span className="font-semibold text-emerald-700 text-xs" data-testid="text-attached-count">
                       {attachResult.imported}
                     </span>
                   </div>
-                  <div className="bg-amber-50 p-2.5 rounded border border-amber-100">
-                    <span className="text-gray-500 block">Skipped</span>
-                    <span className="font-semibold text-amber-700 text-sm" data-testid="text-skipped-count">
+                  <div className="bg-amber-50 p-1.5 px-2 rounded border border-amber-100">
+                    <span className="text-[11px] text-gray-500 block truncate">Skipped</span>
+                    <span className="font-semibold text-amber-700 text-xs" data-testid="text-skipped-count">
                       {attachResult.skippedCount}
                     </span>
                   </div>
-                  <div className="bg-white p-2.5 rounded border border-[#e2e8f0]">
-                    <span className="text-gray-500 block">Records Covered</span>
-                    <span className="font-semibold text-gray-800 text-sm" data-testid="text-records-covered">
+                  <div className="bg-white p-1.5 px-2 rounded border border-[#e2e8f0]">
+                    <span className="text-[11px] text-gray-500 block truncate">Records</span>
+                    <span className="font-semibold text-gray-800 text-xs" data-testid="text-records-covered">
                       {attachResult.recordsCovered}
                     </span>
                   </div>
-                  <div className="bg-white p-2.5 rounded border border-[#e2e8f0]">
-                    <span className="text-gray-500 block">Crew Covered</span>
-                    <span className="font-semibold text-gray-800 text-sm" data-testid="text-crew-covered">
+                  <div className="bg-white p-1.5 px-2 rounded border border-[#e2e8f0]">
+                    <span className="text-[11px] text-gray-500 block truncate">Crew</span>
+                    <span className="font-semibold text-gray-800 text-xs" data-testid="text-crew-covered">
                       {attachResult.crewCovered}
                     </span>
                   </div>
                 </div>
 
                 {attachResult.skipped?.length > 0 && (
-                  <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-amber-700 font-medium">
-                      {attachResult.skipped.length} file{attachResult.skipped.length !== 1 ? "s" : ""} skipped
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs border-amber-200 text-amber-700 hover:bg-amber-50"
-                      onClick={handleDownloadSkippedReport}
-                      data-testid="button-download-skipped-report"
-                    >
-                      <Download className="h-3.5 w-3.5 mr-1" />
-                      Download report
-                    </Button>
-                  </div>
-                  <div className="max-h-48 overflow-y-auto border border-amber-100 rounded-lg divide-y divide-amber-50">
-                    {attachResult.skipped.map((s: { path: string; reason: string; category?: string }, i: number) => (
-                      <div key={i} className="p-2.5 text-xs" data-testid={`row-skipped-${i}`}>
-                        <div className="flex items-start space-x-2">
-                          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                              {s.category && (
-                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium flex-shrink-0 ${skipCategoryStyle(s.category)}`}>
-                                  {s.category}
-                                </span>
-                              )}
-                              <p className="font-mono text-gray-700 break-all">{s.path}</p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-amber-700 font-medium">
+                        {attachResult.skipped.length} file{attachResult.skipped.length !== 1 ? "s" : ""} skipped
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 text-[11px] px-2 border-amber-200 text-amber-700 hover:bg-amber-50"
+                        onClick={handleDownloadSkippedReport}
+                        data-testid="button-download-skipped-report"
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Download report
+                      </Button>
+                    </div>
+                    <div className="max-h-36 overflow-y-auto border border-amber-100 rounded-lg divide-y divide-amber-50">
+                      {attachResult.skipped.map((s: { path: string; reason: string; category?: string }, i: number) => (
+                        <div key={i} className="p-2 text-xs" data-testid={`row-skipped-${i}`}>
+                          <div className="flex items-start space-x-1.5">
+                            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                {s.category && (
+                                  <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-medium flex-shrink-0 ${skipCategoryStyle(s.category)}`}>
+                                    {s.category}
+                                  </span>
+                                )}
+                                <p className="font-mono text-[11px] text-gray-700 truncate">{s.path}</p>
+                              </div>
+                              <p className="text-[11px] text-gray-500">{s.reason}</p>
                             </div>
-                            <p className="text-gray-500">{s.reason}</p>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -787,19 +789,19 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
         />
 
         {mode === "data" && status !== "success" && (
-          <DialogFooter className="gap-2 sm:gap-0 mt-4 border-t pt-4">
-            <Button variant="outline" onClick={handleClose} disabled={status === "validating" || status === "importing"}>
+          <DialogFooter className="gap-2 sm:gap-0 mt-3 border-t pt-3">
+            <Button variant="outline" size="sm" onClick={handleClose} disabled={status === "validating" || status === "importing"}>
               Cancel
             </Button>
 
             {file && status === "idle" && (
-              <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleValidate}>
+              <Button size="sm" className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleValidate}>
                 Validate File
               </Button>
             )}
 
             {status === "valid" && (
-              <Button className="bg-[#5dc86f] text-white hover:bg-[#218838]" onClick={handleImport}>
+              <Button size="sm" className="bg-[#5dc86f] text-white hover:bg-[#218838]" onClick={handleImport}>
                 Confirm Import
               </Button>
             )}
@@ -807,13 +809,14 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
         )}
 
         {mode === "attachments" && (
-          <DialogFooter className="gap-2 sm:gap-0 mt-4 border-t pt-4">
-            <Button variant="outline" onClick={handleClose} disabled={attachStatus === "uploading"}>
+          <DialogFooter className="gap-2 sm:gap-0 mt-3 border-t pt-3">
+            <Button variant="outline" size="sm" onClick={handleClose} disabled={attachStatus === "uploading"}>
               {attachStatus === "done" ? "Close" : "Cancel"}
             </Button>
 
             {zipFile && attachStatus !== "done" && (
               <Button
+                size="sm"
                 className="bg-[#5dc86f] text-white hover:bg-[#218838]"
                 onClick={handleUploadAttachments}
                 disabled={attachStatus === "uploading"}
