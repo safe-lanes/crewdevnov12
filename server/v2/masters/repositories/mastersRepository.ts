@@ -37,6 +37,7 @@ const MASTER_TABLE_MAP: Record<string, any> = {
 
 const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
   nationalities: {
+    id: 'id',
     cid: 'natUuid',
     countryCode: 'countryCode',
     countryName: 'countryName',
@@ -48,6 +49,7 @@ const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
     isDeleted: 'isDeleted',
   },
   vessels: {
+    id: 'id',
     vuid: 'vesselUuid',
     vessel: 'vessel',
     imoNumber: 'imoNumber',
@@ -79,6 +81,7 @@ const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
     vessels: 'vessels',
   },
   ports: {
+    id: 'id',
     puid: 'portUuid',
     name: 'name',
     latitude: 'latitude',
@@ -120,6 +123,7 @@ const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
     orderBy: 'orderBy',
   },
   users: {
+    id: 'id',
     uuid: 'userUuid',
     firstname: 'firstname',
     lastname: 'lastname',
@@ -130,8 +134,10 @@ const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
     department: 'department',
     role: 'role',
     displayName: 'displayName',
+    vesselIds: 'vesselIds',
   },
   roles: {
+    id: 'id',
     ruid: 'ruid',
     role: 'assignedRole',
     roletype: 'roletype',
@@ -724,6 +730,16 @@ export class MastersRepository {
         console.log(`[MastersRepository] Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}: ${totalInserted}/${insertData.length} rows`);
       }
       console.log(`[MastersRepository] Successfully inserted ${totalInserted} rows into ${masterType}`);
+
+      // Reset the serial sequence to MAX(id) for tables where we inserted explicit IDs
+      // from the API. Without this, the sequence stays at 1 after TRUNCATE RESTART IDENTITY
+      // and future auto-inserts would collide with the explicit IDs.
+      if (Object.values(mapping).includes('id')) {
+        await db.execute(
+          sql.raw(`SELECT setval(pg_get_serial_sequence('${tableName}', 'id'), COALESCE(MAX(id), 1)) FROM ${tableName}`)
+        );
+        console.log(`[MastersRepository] Reset serial sequence for ${tableName}`);
+      }
 
       return { count: insertData.length };
     } catch (error) {

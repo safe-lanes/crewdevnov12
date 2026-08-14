@@ -1425,6 +1425,7 @@ export const masterUsers = pgTable(
     department: text("department"),
     role: text("role"),
     displayName: text("display_name"),
+    vesselIds: varchar("vessel_ids", { length: 255 }),
     synchedAt: timestamp("synched_at", { withTimezone: true }).defaultNow(),
   },
   (t) => ({
