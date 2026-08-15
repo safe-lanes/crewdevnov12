@@ -317,18 +317,20 @@ export class VesselPlanningRepository {
 
   async findSecondaryByVesselAndRank(
     vesselUuid: string,
-    crewUuid?: string | null,
-    relieverCrewUuid?: string | null,
+    rankId: string,
     excludePlanUuid?: string,
-    rankName?: string
+    rank?: string
   ): Promise<any | undefined> {
     const db = getDb();
     const conditions = [
       eq(vesselPlanningV2.vesselUuid, vesselUuid),
+      eq(vesselPlanningV2.rankId, rankId),
+      eq(vesselPlanningV2.crewStatus, 'secondary'),
       eq(vesselPlanningV2.isDeleted, false),
+      eq(vesselPlanningV2.isArchived, false),
     ];
-    if (rankName) {
-      conditions.push(eq(vesselPlanningV2.rank, rankName));
+    if (rank) {
+      conditions.push(eq(vesselPlanningV2.rank, rank));
     }
     const results = await db
       .select()
