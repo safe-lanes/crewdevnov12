@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, sql, getTableName } from "drizzle-orm";
+import { eq, and, desc, asc, sql, getTableName, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { admRoleMasterAc } from "../../../../shared/v2/admin/schema";
 import {
@@ -343,6 +343,45 @@ export class MastersRepository {
       .from(masterUsers)
       .where(eq(masterUsers.userUuid, userUuid));
     return results[0];
+  }
+
+  /**
+   * Resolves the vessel UUIDs a Ship user is permitted to access.
+   *
+   * Reads master_users.vessel_ids (comma-separated integer vessel IDs synced
+   * from the parent system via Sync All), then looks up the corresponding
+   * vessel_uuid values in master_vessels. Used by the auth middleware to
+   * populate req.user.vessels before any controller runs.
+   *
+   * Returns [] when the user is not found, has no vessel_ids, or the IDs
+   * resolve to no matching vessels. Any DB error propagates to the caller.
+   */
+  async findVesselUuidsByUserId(userId: number): Promise<string[]> {
+    const db = getDb();
+
+    const users = await db
+      .select({ vesselIds: masterUsers.vesselIds })
+      .from(masterUsers)
+      .where(eq(masterUsers.id, userId));
+
+    const raw = users[0]?.vesselIds;
+    if (!raw || !raw.trim()) return [];
+
+    const vesselIdInts = raw
+      .split(',')
+      .map((s: string) => parseInt(s.trim(), 10))
+      .filter((n: number) => Number.isInteger(n) && !isNaN(n));
+
+    if (vesselIdInts.length === 0) return [];
+
+    const vessels = await db
+      .select({ vesselUuid: masterVessels.vesselUuid })
+      .from(masterVessels)
+      .where(inArray(masterVessels.id, vesselIdInts));
+
+    return vessels
+      .map((v: { vesselUuid: string | null }) => v.vesselUuid)
+      .filter((uuid: string | null): uuid is string => typeof uuid === 'string' && uuid.length > 0);
   }
 
   async findAllLicensesDce() {

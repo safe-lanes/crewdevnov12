@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { tenantConnectionManager } from "../utils/tenantConnectionManager";
 import { isExempt } from "./exemptPaths";
+import { MastersRepository } from "../v2/masters/repositories/mastersRepository";
+
+const mastersRepo = new MastersRepository();
 
 export interface JwtPayload {
   id: number;
@@ -96,6 +99,46 @@ function isJwtError(err: unknown): err is { name: string; message: string } {
   );
 }
 
+/**
+ * Wraps NextFunction with a vessel scope lookup for Ship users.
+ *
+ * After req.user is set (JWT verify or bypass decode), Ship users with a
+ * valid integer `id` get their assigned vessel UUIDs fetched from
+ * master_users.vessel_ids → master_vessels.vessel_uuid and written to
+ * req.user.vessels before the request proceeds.
+ *
+ * Guards:
+ * - Non-integer id (e.g. dev persona "dev-persona") → skipped, token vessels used as-is.
+ * - Non-Ship userType → skipped, no lookup performed.
+ * - DB failure → logged server-side only, req.user.vessels falls back to []
+ *   so assertVesselScope returns a clean 403 with no internal details exposed.
+ * - Error propagation (next called with err arg) → passed through unchanged.
+ */
+function withVesselScope(req: Request, next: NextFunction): NextFunction {
+  return function (err?: any) {
+    if (err !== undefined) {
+      next(err);
+      return;
+    }
+    const userId = Number(req.user?.id);
+    if (!Number.isInteger(userId) || req.user?.userType?.toLowerCase() !== "ship") {
+      next();
+      return;
+    }
+    mastersRepo
+      .findVesselUuidsByUserId(userId)
+      .then((vessels) => {
+        req.user!.vessels = vessels;
+        next();
+      })
+      .catch((lookupErr: unknown) => {
+        console.error("[authMiddleware] vessel scope lookup failed:", lookupErr);
+        req.user!.vessels = [];
+        next();
+      });
+  };
+}
+
 export function authMiddleware(
   req: Request,
   res: Response,
@@ -121,7 +164,7 @@ export function authMiddleware(
           req.tokenData = decoded as JwtPayload;
         }
       }
-      next();
+      withVesselScope(req, next)();
       return;
     }
     res.status(500).json({
@@ -133,7 +176,7 @@ export function authMiddleware(
 
   if (req.tokenData) {
     req.user = req.tokenData;
-    proceedWithTenantBinding(req, res, next);
+    proceedWithTenantBinding(req, res, withVesselScope(req, next));
     return;
   }
 
@@ -154,7 +197,7 @@ export function authMiddleware(
     }
     req.user = decoded;
     req.tokenData = decoded;
-    proceedWithTenantBinding(req, res, next);
+    proceedWithTenantBinding(req, res, withVesselScope(req, next));
   } catch (err: unknown) {
     if (isJwtError(err) && err.name === "TokenExpiredError") {
       res.status(401).json({

@@ -68,9 +68,30 @@ let db: Client;
 let server: Server;
 let base: string;
 
-function shipToken(vessels: string[] | undefined = [vslA]): string {
+/** Ship user whose DB assignment covers vessel A only (id 990179). */
+function shipTokenA(): string {
   return jwt.sign(
-    { id: 990179, domain: "test", userType: "Ship", ...(vessels ? { vessels } : {}) },
+    { id: 990179, domain: "test", userType: "Ship" },
+    TEST_SECRET,
+    { expiresIn: "1h" },
+  );
+}
+/** Ship user whose DB assignment covers vessel B only (id 990181). */
+function shipTokenB(): string {
+  return jwt.sign(
+    { id: 990181, domain: "test", userType: "Ship" },
+    TEST_SECRET,
+    { expiresIn: "1h" },
+  );
+}
+/**
+ * Ship user with no master_users row (id 990182).
+ * Used to verify that missing DB assignment fails closed regardless of
+ * any vessels claim that might appear in the JWT.
+ */
+function shipTokenNoDb(): string {
+  return jwt.sign(
+    { id: 990182, domain: "test", userType: "Ship" },
     TEST_SECRET,
     { expiresIn: "1h" },
   );
@@ -194,6 +215,28 @@ beforeAll(async () => {
     vessel: `MV B ${S}`,
     vessel_type: VESSEL_TYPE,
   });
+
+  // Seed master_users for Ship test users so the vessel-scope DB lookup
+  // (withVesselScope in authMiddleware) populates req.user.vessels correctly.
+  // Query the actual serial IDs assigned to the test vessels since the DB
+  // owns the PK sequence.
+  const vslARow = await db.query(
+    "SELECT id FROM master_vessels WHERE vessel_uuid = $1", [vslA],
+  );
+  const vslBRow = await db.query(
+    "SELECT id FROM master_vessels WHERE vessel_uuid = $1", [vslB],
+  );
+  const vslADbId: number = vslARow.rows[0].id;
+  const vslBDbId: number = vslBRow.rows[0].id;
+
+  // Remove any stale rows from previous failed test runs before inserting.
+  await db.query("DELETE FROM master_users WHERE id IN (990179, 990181)");
+  // User 990179 (shipTokenA): vessel A only.
+  await insert("master_users", { id: 990179, vessel_ids: String(vslADbId) });
+  // User 990181 (shipTokenB): vessel B only.
+  await insert("master_users", { id: 990181, vessel_ids: String(vslBDbId) });
+  // User 990182 (shipTokenNoDb): intentionally has no master_users row
+  // so the lookup returns [] and assertVesselScope returns 403.
   await insert("acc_wage_scales_v2", {
     scale_uuid: scaleUuid,
     scale_name: `VW Scale ${S}`,
@@ -325,6 +368,7 @@ afterAll(async () => {
   await db.query(`DELETE FROM adm_company_ranks_v2 WHERE rank IN ($1,$2)`, [RANK, RANK_NOSCALE]);
   await db.query(`DELETE FROM acc_wage_scale_lines_v2 WHERE scale_uuid = $1`, [scaleUuid]);
   await db.query(`DELETE FROM acc_wage_scales_v2 WHERE scale_uuid = $1`, [scaleUuid]);
+  await db.query(`DELETE FROM master_users WHERE id IN (990179, 990181)`);
   await db.query(`DELETE FROM master_vessels WHERE vessel_uuid IN ($1,$2)`, [vslA, vslB]);
   await db.query(`DELETE FROM master_vessel_types WHERE vt_uuid = $1`, [vtUuid]);
   await db.query(`DELETE FROM acc_pay_elements_v2 WHERE pay_element_uuid IN ($1,$2)`, [elBAS, elRTQ]);
@@ -376,12 +420,12 @@ describe("auto-create on load (create-only)", () => {
 
   it("Ship user may auto-create own vessel; cross-vessel → 403", async () => {
     const own = await call("POST", "/engagements/auto-create", {
-      token: shipToken([vslA]),
+      token: shipTokenA(),
       body: { vesselUuid: vslA, period: PERIOD },
     });
     expect(own.status).toBe(200);
     const cross = await call("POST", "/engagements/auto-create", {
-      token: shipToken([vslB]),
+      token: shipTokenB(),
       body: { vesselUuid: vslA, period: PERIOD },
     });
     expect(cross.status).toBe(403);
@@ -415,25 +459,25 @@ describe("auto-create on load (create-only)", () => {
 });
 
 describe("vessel sign-off date", () => {
-  it("Ship cross-vessel sign-off → 403; no-vessels claim fail-closed", async () => {
+  it("Ship cross-vessel sign-off → 403; no DB assignment fails closed", async () => {
     const cross = await call(
       "POST",
       `/engagements/${createdEngagementUuid}/sign-off`,
       {
-        token: shipToken([vslB]),
+        token: shipTokenB(),
         body: { period: PERIOD, endDate: "2026-06-20" },
       },
     );
     expect(cross.status).toBe(403);
-    const noClaim = await call(
+    const noDb = await call(
       "POST",
       `/engagements/${createdEngagementUuid}/sign-off`,
       {
-        token: shipToken([]),
+        token: shipTokenNoDb(),
         body: { period: PERIOD, endDate: "2026-06-20" },
       },
     );
-    expect(noClaim.status).toBe(403);
+    expect(noDb.status).toBe(403);
   });
 
   it("rejects a period that does not match the endDate month (lock-bypass attempt)", async () => {
@@ -442,7 +486,7 @@ describe("vessel sign-off date", () => {
       "POST",
       `/engagements/${createdEngagementUuid}/sign-off`,
       {
-        token: shipToken([vslA]),
+        token: shipTokenA(),
         body: { period: "2026-07", endDate: "2026-06-20" },
       },
     );
@@ -454,7 +498,7 @@ describe("vessel sign-off date", () => {
       "POST",
       `/engagements/${createdEngagementUuid}/sign-off`,
       {
-        token: shipToken([vslA]),
+        token: shipTokenA(),
         body: { period: "2026-05", endDate: "2026-05-20" },
       },
     );
@@ -463,7 +507,7 @@ describe("vessel sign-off date", () => {
 
   it("refuses sign-off on an engagement frozen by a submitted settlement", async () => {
     const r = await call("POST", `/engagements/${engF}/sign-off`, {
-      token: shipToken([vslA]),
+      token: shipTokenA(),
       body: { period: "2026-05", endDate: "2026-05-20" },
     });
     expect(r.status).toBe(409);
@@ -474,7 +518,7 @@ describe("vessel sign-off date", () => {
       "POST",
       `/engagements/${createdEngagementUuid}/sign-off`,
       {
-        token: shipToken([vslA]),
+        token: shipTokenA(),
         body: { period: PERIOD, endDate: "2026-06-20" },
       },
     );
@@ -487,7 +531,7 @@ describe("vessel sign-off date", () => {
 describe("vessel submit auto-runs the calculation", () => {
   it("submit succeeds, calc completes, sign-off prorates 3,000 → 2,000.00", async () => {
     const r = await call("POST", `/vessel-portage/${vslA}/${PERIOD}/submit`, {
-      token: shipToken([vslA]),
+      token: shipTokenA(),
     });
     expect(r.status).toBe(200);
     expect(r.body.portage.status).toBe("submitted");
@@ -516,7 +560,7 @@ describe("vessel submit auto-runs the calculation", () => {
       "POST",
       `/engagements/${createdEngagementUuid}/sign-off`,
       {
-        token: shipToken([vslA]),
+        token: shipTokenA(),
         body: { period: PERIOD, endDate: "2026-06-25" },
       },
     );
@@ -539,7 +583,7 @@ describe("vessel submit auto-runs the calculation", () => {
       status: "accepted",
     });
     const r = await call("POST", `/vessel-portage/${vslB}/${PERIOD}/submit`, {
-      token: shipToken([vslB]),
+      token: shipTokenB(),
     });
     expect(r.status).toBe(200);
     expect(r.body.portage.status).toBe("submitted");
@@ -615,5 +659,51 @@ describe("broadened stale-calculation indicator", () => {
       { token: officeToken() },
     );
     expect(after.body.staleInputs).toBe(true);
+  });
+});
+
+describe("DB-authority vessel scope", () => {
+  /**
+   * These three tests directly exercise the withVesselScope middleware contract:
+   * req.user.vessels is sourced exclusively from master_users.vessel_ids,
+   * not from any JWT vessels claim. JWT claims are completely ignored.
+   */
+
+  it("DB assignment grants access to own vessel", async () => {
+    // shipTokenA() has master_users row with vessel A's DB id.
+    // Any vessel-A-scoped endpoint should not return 403.
+    const r = await call("POST", "/engagements/auto-create", {
+      token: shipTokenA(),
+      body: { vesselUuid: vslA, period: PERIOD },
+    });
+    // The month is already submitted so auto-create will hit a lock (200
+    // skippedLockedMonth) — either way it must not be a 403 scope denial.
+    expect(r.status).not.toBe(403);
+  });
+
+  it("JWT vessel claim is ignored — DB is the sole authority", async () => {
+    // Build a token that explicitly carries vessels=[vslA] in the JWT
+    // payload but belongs to user 990182, who has NO master_users row.
+    // Under the old (claim-trusted) design this would grant access;
+    // under the new DB-authority design it must be denied.
+    const jwtWithClaim = jwt.sign(
+      { id: 990182, domain: "test", userType: "Ship", vessels: [vslA] },
+      TEST_SECRET,
+      { expiresIn: "1h" },
+    );
+    const r = await call("POST", "/engagements/auto-create", {
+      token: jwtWithClaim,
+      body: { vesselUuid: vslA, period: PERIOD },
+    });
+    expect(r.status).toBe(403);
+  });
+
+  it("missing DB assignment fails closed with 403", async () => {
+    // shipTokenNoDb() (id 990182) has no master_users row.
+    // The lookup returns [] and assertVesselScope rejects the request.
+    const r = await call("POST", `/vessel-portage/${vslA}/${PERIOD}/submit`, {
+      token: shipTokenNoDb(),
+    });
+    expect(r.status).toBe(403);
   });
 });
