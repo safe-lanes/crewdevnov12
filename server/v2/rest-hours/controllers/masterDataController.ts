@@ -18,6 +18,7 @@ export const masterDataController = {
           vesselType: masterVessels.vesselType,
         })
         .from(masterVessels)
+        .where(and(eq(masterVessels.isActive, true), eq(masterVessels.isDeleted, false)))
         .orderBy(sql`LOWER(${masterVessels.vessel})`);
 
       res.json(vessels);

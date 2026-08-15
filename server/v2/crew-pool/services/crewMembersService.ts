@@ -524,7 +524,7 @@ export const crewMembersService = {
     view?: "active" | "all";
   }): Promise<{ data: any[]; pagination: PaginationMeta }> {
     const db = getDb();
-    const limit = Math.min(filters?.limit || 1000, 1000);
+    const limit = Math.min(filters?.limit || 5000, 5000);
     const offset = filters?.offset || 0;
 
     const conditions: any[] = [

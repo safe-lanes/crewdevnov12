@@ -956,7 +956,7 @@ export async function importCrewAssignments(
         reliefDue: parsedReliefDue,
         portOfJoining,
         joiningPortUuid,
-        assignmentType: isPrimary ? "primary" : "secondary",
+        assignmentType: isPrimary ? "OnBoard" : "Planned",
         joiningStatus: joiningStatus || "Signed On",
         relieverRank,
         crew,
@@ -1126,7 +1126,7 @@ export async function importCrewAssignments(
       for (const item of rowsToProcess) {
         const crew = item.crew;
         const vessel = item.vessel;
-        const isPrimary = item.assignmentType === "primary";
+        const isPrimary = item.assignmentType === "OnBoard" || item.assignmentType === "primary";
         const targetPos = item.targetPos;
 
         let finalReliefDue = item.reliefDue;
@@ -1242,7 +1242,7 @@ export async function importCrewAssignments(
               .where(
                 and(
                   eq(crewAssignments.crewUuid, crew.crewUuid),
-                  eq(crewAssignments.assignmentType, "primary"),
+                  inArray(crewAssignments.assignmentType, ["OnBoard", "primary"]),
                   eq(crewAssignments.isCurrent, true),
                 ),
               );
