@@ -6130,7 +6130,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                                   onClick={() => {
                                     setFormData(prev => ({
                                       ...prev,
@@ -6144,7 +6145,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
                             </div>
@@ -6395,8 +6396,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
-                                  className="h-10 w-10 p-0"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                                   onClick={() => {
                                     setFormData(prev => ({
                                       ...prev,
@@ -6405,7 +6406,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   }}
                                   data-testid={`button-remove-b2-ref-${index}`}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               )}
                             </div>
@@ -6459,7 +6460,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-red-600"
                                 onClick={() => {
                                   setFormData(prev => ({
                                     ...prev,
@@ -6473,7 +6475,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   }
                                 }}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
                           </div>
@@ -6611,7 +6613,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                               <Button
                                 type="button"
                                 variant="ghost"
-                                size="sm"
+                                size="icon"
+                                className="h-6 w-6 text-gray-400 hover:text-red-600"
                                 onClick={() => {
                                   setFormData(prev => ({
                                     ...prev,
@@ -6625,7 +6628,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   }
                                 }}
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
                           </div>
@@ -6847,8 +6850,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   <Button
                                     type="button"
                                     variant="ghost"
-                                    size="sm"
-                                    className="h-10 w-10 p-0"
+                                    size="icon"
+                                    className="h-6 w-6 text-gray-400 hover:text-red-600"
                                     onClick={() => {
                                       setFormData(prev => ({
                                         ...prev,
@@ -6857,7 +6860,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     data-testid={`button-remove-b3-auth-${index}`}
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
@@ -6911,7 +6914,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                                   onClick={() => {
                                     setFormData(prev => ({
                                       ...prev,
@@ -6925,7 +6929,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
                             </div>
@@ -7063,7 +7067,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                                   onClick={() => {
                                     setFormData(prev => ({
                                       ...prev,
@@ -7077,7 +7082,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
                             </div>
@@ -7321,8 +7326,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   <Button
                                     type="button"
                                     variant="ghost"
-                                    size="sm"
-                                    className="h-10 w-10 p-0"
+                                    size="icon"
+                                    className="h-6 w-6 text-gray-400 hover:text-red-600"
                                     onClick={() => {
                                       setFormData(prev => ({
                                         ...prev,
@@ -7331,7 +7336,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     data-testid={`button-remove-b4-cert-${index}`}
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
@@ -7385,7 +7390,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                                   onClick={() => {
                                     setFormData(prev => ({
                                       ...prev,
@@ -7399,7 +7405,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
                             </div>
@@ -7537,7 +7543,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                                   onClick={() => {
                                     setFormData(prev => ({
                                       ...prev,
@@ -7551,7 +7558,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
                             </div>
@@ -7824,8 +7831,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   <Button
                                     type="button"
                                     variant="ghost"
-                                    size="sm"
-                                    className="h-10 w-10 p-0"
+                                    size="icon"
+                                    className="h-6 w-6 text-gray-400 hover:text-red-600"
                                     onClick={() => {
                                       setFormData(prev => ({
                                         ...prev,
@@ -7834,7 +7841,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     data-testid={`button-remove-b5-test-${index}`}
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
@@ -7888,7 +7895,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                                   onClick={() => {
                                     setFormData(prev => ({
                                       ...prev,
@@ -7902,7 +7910,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
                             </div>
@@ -8204,8 +8212,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                   <Button
                                     type="button"
                                     variant="ghost"
-                                    size="sm"
-                                    className="h-10 w-10 p-0"
+                                    size="icon"
+                                    className="h-6 w-6 text-gray-400 hover:text-red-600"
                                     onClick={() => {
                                       setFormData(prev => {
                                         const newComments = { ...prev.b6InterviewComments };
@@ -8222,7 +8230,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }}
                                     data-testid={`button-remove-b6-interview-${index}`}
                                   >
-                                    <Trash2 className="h-4 w-4" />
+                                    <Trash2 className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
@@ -8315,7 +8323,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                                   onClick={() => {
                                     setFormData(prev => ({
                                       ...prev,
@@ -8329,7 +8338,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
                             </div>
@@ -8759,7 +8768,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-6 w-6 text-gray-400 hover:text-red-600"
                                   onClick={() => {
                                     setFormData(prev => ({
                                       ...prev,
@@ -8773,7 +8783,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     }
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
                             </div>

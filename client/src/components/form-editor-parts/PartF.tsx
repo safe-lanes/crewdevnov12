@@ -154,7 +154,6 @@ const PartFComponent: React.FC<PartFProps> = ({
                             variant="ghost"
                             size="icon"
                             onClick={() => deleteRecommendation(recommendation.id)}
-                            style={{ color: '#52baf3' }}
                             className="h-6 w-6 text-gray-400 hover:text-red-600"
                             data-testid={`button-delete-recommendation-${index}`}
                           >
