@@ -255,12 +255,17 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
       const response = await apiRequest('POST', `/api/v2/admin/form-versions/${versionId}/release`);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, versionId) => {
       invalidateVersionQueries();
       setHasSavedDraft(false);
       setIsConfigMode(false);
-      setVersionExplicitlySelected(false);
-      setActiveVersion("");
+      // Keep the explicit-selection flag ON and land on the just-released
+      // version, so the auto-select effect can't bounce us back into the
+      // stale draft while the versions list refetches (same guard as
+      // handleExitConfig).
+      setVersionExplicitlySelected(true);
+      const releasedNo = rgVersions.find(v => v.id === versionId)?.versionNo || selectedVersionNo || "";
+      setActiveVersion(releasedNo);
       toast({ title: "Version released", description: "The version has been released successfully." });
     },
     onError: (error: Error) => {
