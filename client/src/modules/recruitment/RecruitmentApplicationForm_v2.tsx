@@ -21,6 +21,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { ComplianceScreeningIndicators } from './ComplianceScreening';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { useNationalitiesV2, useVesselTypesV2, useCountriesV2, useLanguagesV2, useUsersV2, useVesselsV2, useFleetGroupsV2, useManningAgentsV2, useTrainingCategoryOptionsV2, withLegacyCategory, useTrainingStatusOptionsV2, withLegacyStatus } from '@/hooks/v2/useMasterDataV2';
@@ -3369,7 +3370,20 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             screeningDate: screeningDate,
           },
         });
-        
+
+        // Fire-and-forget compliance screening — must NEVER block submission.
+        fetch(`/api/v2/recruitment/candidates/${currentUuid}/compliance-screening/screen`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        })
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ['v2', 'screening', currentUuid] });
+          })
+          .catch((err) => {
+            console.warn('Compliance screening trigger failed (non-blocking):', err);
+          });
+
         // Update local formData with the generated file number and screening date
         setFormData(prev => ({
           ...prev,
@@ -6009,11 +6023,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <div className="space-y-8">
                 {/* B1. Initial Screening - matching legacy exactly with full comment functionality */}
                 <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B1. Initial Screening</h3>
-                    <div className="cursor-help" title="Guidance for initial screening process">
-                      <Info className="h-4 w-4 text-gray-400" />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-medium" style={{ color: '#16569e' }}>B1. Initial Screening</h3>
+                      <div className="cursor-help" title="Guidance for initial screening process">
+                        <Info className="h-4 w-4 text-gray-400" />
+                      </div>
                     </div>
+                    <ComplianceScreeningIndicators recCanUuid={recCanUuid} />
                   </div>
                   
                   {[

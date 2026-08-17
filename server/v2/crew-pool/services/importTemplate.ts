@@ -20,12 +20,13 @@ import { and, eq } from "drizzle-orm";
 
 // Maximum number of data rows for the main data sheets (crew details, sea service, etc.).
 // Drives dropdown/validation ranges — range-based, so file size is unaffected by this value.
-const TEMPLATE_MAX_ROWS = 5000;
+// Also controls how many Attachment Ref formula cells are written (one per row).
+// Set IMPORT_TEMPLATE_MAX_ROWS in .env to override (e.g. IMPORT_TEMPLATE_MAX_ROWS=35000).
+const TEMPLATE_MAX_ROWS: number = parseInt(process.env.IMPORT_TEMPLATE_MAX_ROWS || '30000');
 
-// Maximum rows for attachment sheets. Each row requires its own formula cell (Attachment Ref
-// uses a row-specific COUNTIF range), so this directly controls file size.
-// 5000 covers large crews with multiple attachments per person while keeping the file small.
-const ATTACHMENT_MAX_ROWS = 5000;
+// Attachment Ref sheets use the same limit so the formula coverage matches the data area.
+// Note: each row writes a physical formula cell — larger values produce larger Excel files.
+const ATTACHMENT_MAX_ROWS: number = TEMPLATE_MAX_ROWS;
 
 // ============================================================================
 // SHEET DEFINITIONS — Column headers the client sees
@@ -368,6 +369,13 @@ function buildInstructionsSheet(
     "NOTE: You may type values manually instead of using the dropdowns. Manually typed values that do not match",
     "the Reference Data lists will be highlighted in orange and rejected during import (listed in the error report).",
     "",
+    "IMPORTANT WARNING — PASTING DATA FROM ANOTHER SHEET",
+    "If you are copying data from another Excel sheet, you MUST use Paste Special — Values Only.",
+    "Shortcut: Ctrl + Alt + V, then press V, then Enter.",
+    "Or: Right-click the cell → Paste Special → Values.",
+    "A regular Ctrl+V paste will overwrite the dropdown lists and orange-highlight rules in this template,",
+    "causing dropdowns to disappear and invalid values to go un-highlighted.",
+    "",
     "ATTACHMENTS (OPTIONAL — UPLOADED SEPARATELY AS A ZIP)",
     "Documents, Visas, Licenses, Sea Service, Training, Education, Medicals, Doctor Visits, Briefings and",
     "De-briefings each have an auto-filled 'Attachment Ref' column. It fills in automatically as you enter the",
@@ -383,8 +391,8 @@ function buildInstructionsSheet(
     const rowNum = idx + 2;
     const cell = ws.getCell(rowNum, 1);
     cell.value = inst;
-    if (inst.startsWith("HOW TO USE") || inst.startsWith("COLOR LEGEND")) {
-      cell.font = { name: "Calibri", bold: true, size: 12, color: { argb: "FF000000" } };
+    if (inst.startsWith("HOW TO USE") || inst.startsWith("COLOR LEGEND") || inst.startsWith("IMPORTANT WARNING")) {
+      cell.font = { name: "Calibri", bold: true, size: 12, color: { argb: "FFCC0000" } };
     } else {
       cell.font = { name: "Calibri", size: 11, color: { argb: "FF333333" } };
     }
@@ -781,15 +789,15 @@ export async function generateImportTemplate(): Promise<Buffer> {
     const sanitizeForFolder = (cellRef: string): string => {
       // [bare Excel string arg, space-padded Excel string arg]
       const pairs: [string, string][] = [
-        ['"/"',  '" / "'],   // forward slash
+        ['"/"', '" / "'],   // forward slash
         ['"\\"', '" \\ "'],  // backslash
-        ['":"',  '" : "'],   // colon
-        ['"*"',  '" * "'],   // asterisk
-        ['"?"',  '" ? "'],   // question mark
+        ['":"', '" : "'],   // colon
+        ['"*"', '" * "'],   // asterisk
+        ['"?"', '" ? "'],   // question mark
         ['""""', '" "" "'],  // double-quote (Excel: """" = one literal ")
-        ['"<"',  '" < "'],   // less-than
-        ['">"',  '" > "'],   // greater-than
-        ['"|"',  '" | "'],   // pipe
+        ['"<"', '" < "'],   // less-than
+        ['">"', '" > "'],   // greater-than
+        ['"|"', '" | "'],   // pipe
       ];
       return pairs.reduce(
         (expr, [bare, padded]) =>
@@ -798,7 +806,7 @@ export async function generateImportTemplate(): Promise<Buffer> {
       );
     };
 
-    // Write formulas for all data rows
+    // Write formulas for all data rows (up to ATTACHMENT_MAX_ROWS, same as TEMPLATE_MAX_ROWS)
     for (let row = 3; row <= ATTACHMENT_MAX_ROWS + 2; row++) {
       // sanitizeForFolder is applied to the *display* parts only.
       // The COUNTIF criteria still reference the raw $A{row} so deduplication works.

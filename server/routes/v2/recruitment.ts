@@ -106,6 +106,7 @@ import {
 } from "../../v2/recruitment/controllers/approvalsController";
 
 import { searchVessels } from "../../v2/recruitment/controllers/vesselSearchController";
+import { complianceScreeningController } from "../../v2/recruitment/controllers/complianceScreeningController";
 
 const router = Router();
 
@@ -316,6 +317,13 @@ router.get("/candidates/:recCanUuid/decision", recruitmentDecisionController.get
 router.put("/candidates/:recCanUuid/decision", recruitmentDecisionController.upsert);
 router.get("/decisions/:decisionUuid/assigned-groups", recruitmentDecisionController.getAssignedGroups);
 router.post("/decisions/:decisionUuid/assigned-groups", recruitmentDecisionController.addAssignedGroup);
+
+// ============================================
+// COMPLIANCE SCREENING (Task 578 — OFAC / Global Sanctions)
+// ============================================
+router.post("/candidates/:recCanUuid/compliance-screening/screen", (req, res) => complianceScreeningController.screen(req, res));
+router.get("/candidates/:recCanUuid/compliance-screening", (req, res) => complianceScreeningController.getScreening(req, res));
+router.put("/candidates/:recCanUuid/compliance-screening/remark", (req, res) => complianceScreeningController.setRemark(req, res));
 
 // ============================================
 // ATTACHMENT RAW STREAMING ROUTES (filesystem)

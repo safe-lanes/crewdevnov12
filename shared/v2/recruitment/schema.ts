@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, boolean, integer, numeric, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean, integer, numeric, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Common audit columns for all tables
@@ -812,3 +812,29 @@ export const vesselSearchMisses = pgTable("vessel_search_misses", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   ...auditColumns,
 });
+// ============================================================================
+// COMPLIANCE SCREENING (Task 578) — single row per candidate, migration 0187
+// ============================================================================
+export const recCandidateScreening = pgTable("rec_candidate_screening", {
+  id: serial("id").primaryKey(),
+  screeningUuid: text("screening_uuid").notNull().unique(),
+  recCanUuid: text("rec_can_uuid").notNull().unique(),
+  overallStatus: text("overall_status").notNull().default("PENDING"),
+  result: jsonb("result"),
+  provider: text("provider"),
+  checkedByUuid: text("checked_by_uuid"),
+  checkedOn: timestamp("checked_on", { withTimezone: true }),
+  remark: text("remark"),
+  remarkByUuid: text("remark_by_uuid"),
+  remarkOn: timestamp("remark_on", { withTimezone: true }),
+  // standard audit columns
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdByUuid: text("created_by_uuid"),
+  updatedByUuid: text("updated_by_uuid"),
+  isDeleted: boolean("is_deleted").notNull().default(false),
+  isSync: boolean("is_sync").notNull().default(false),
+});
+export type RecCandidateScreening = typeof recCandidateScreening.$inferSelect;
+export type InsertRecCandidateScreening = typeof recCandidateScreening.$inferInsert;
