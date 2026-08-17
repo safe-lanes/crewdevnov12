@@ -67,19 +67,6 @@ export function ComplianceScreeningIndicators({ recCanUuid }: { recCanUuid: stri
     // shows a generic note until Re-screen fetches a fresh list.
     const [liveIssues, setLiveIssues] = useState<any[] | null>(null);
 
-    // Feature flag — when off, render nothing at all
-    const { data: config } = useQuery({
-        queryKey: ['v2', 'screening', 'config'],
-        queryFn: async () => {
-            const res = await fetch(`${SCREENING_API}/compliance-screening/config`);
-            if (!res.ok) return { enabled: false };
-            return res.json();
-        },
-        staleTime: 5 * 60 * 1000,
-    });
-
-    const enabled = !!config?.enabled;
-
     // ONE screening object per candidate (null = never screened)
     const { data: screening } = useQuery({
         queryKey: ['v2', 'screening', recCanUuid],
@@ -88,7 +75,7 @@ export function ComplianceScreeningIndicators({ recCanUuid }: { recCanUuid: stri
             if (!res.ok) return null;
             return res.json();
         },
-        enabled: enabled && !!recCanUuid,
+        enabled: !!recCanUuid,
     });
 
     const rescreenMutation = useMutation({
@@ -131,7 +118,7 @@ export function ComplianceScreeningIndicators({ recCanUuid }: { recCanUuid: stri
         },
     });
 
-    if (!enabled || !recCanUuid) return null;
+    if (!recCanUuid) return null;
 
     const anyCompleted = screening ? getChecks(screening).some((c: any) => c?.checkStatus === 'COMPLETED') : false;
 

@@ -13,7 +13,6 @@ import {
     type ScreeningPayload,
     type ValidationIssue,
 } from "../../../../shared/v2/recruitment/complianceScreeningTypes";
-import { tenantConfigService } from "../../accounts/services/tenantConfigService";
 import { getAdapterFor } from "../complianceProviders/providerRegistry";
 import { callProvider } from "../complianceProviders/httpCaller";
 import { screeningRepository } from "../repositories/complianceScreeningRepository";
@@ -32,17 +31,6 @@ const REQUIRED_PERSON_FIELDS: Array<{
     ];
 
 export class ScreeningService {
-    /** Feature flag: acc_tenant_config_v2.settings.complianceScreeningEnabled === true */
-    async isEnabled(): Promise<boolean> {
-        try {
-            const cfg = await tenantConfigService.get();
-            const settings = (cfg?.settings ?? {}) as Record<string, unknown>;
-            return settings.complianceScreeningEnabled === true;
-        } catch {
-            return false; // any problem reading config = feature off (safe default)
-        }
-    }
-
     /** Build our canonical payload from A1/A2 data (read-only). */
     async buildPayload(recCanUuid: string): Promise<ScreeningPayload> {
         const db = getDb();

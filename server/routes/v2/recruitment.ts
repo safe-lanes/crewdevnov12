@@ -321,7 +321,6 @@ router.post("/decisions/:decisionUuid/assigned-groups", recruitmentDecisionContr
 // ============================================
 // COMPLIANCE SCREENING (Task 578 — OFAC / Global Sanctions)
 // ============================================
-router.get("/compliance-screening/config", (req, res) => complianceScreeningController.getConfig(req, res));
 router.post("/candidates/:recCanUuid/compliance-screening/screen", (req, res) => complianceScreeningController.screen(req, res));
 router.get("/candidates/:recCanUuid/compliance-screening", (req, res) => complianceScreeningController.getScreening(req, res));
 router.put("/candidates/:recCanUuid/compliance-screening/remark", (req, res) => complianceScreeningController.setRemark(req, res));

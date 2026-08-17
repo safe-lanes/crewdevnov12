@@ -3372,7 +3372,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         });
 
         // Fire-and-forget compliance screening — must NEVER block submission.
-        // If the feature flag is off the server returns 403 and we silently ignore it.
         fetch(`/api/v2/recruitment/candidates/${currentUuid}/compliance-screening/screen`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
