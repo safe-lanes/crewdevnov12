@@ -48,6 +48,11 @@ export const PerformanceOverviewCard = ({
       const year = periodFilter.year || currentYear;
       const month = periodFilter.month || currentMonth;
       months.push(`${year}-${String(month).padStart(2, '0')}`);
+    } else if (periodFilter.mode === 'year-quarter' && periodFilter.year && periodFilter.quarter) {
+      const s = (periodFilter.quarter - 1) * 3 + 1;
+      for (const mo of [s, s + 1, s + 2]) {
+        months.push(`${periodFilter.year}-${String(mo).padStart(2, '0')}`);
+      }
     } else if (periodFilter.mode === 'date-range' && periodFilter.dateFrom && periodFilter.dateTo) {
       const startDate = new Date(periodFilter.dateFrom);
       const endDate = new Date(periodFilter.dateTo);
@@ -92,10 +97,20 @@ export const PerformanceOverviewCard = ({
     return allVessels.length;
   }, [vesselIds, allVessels]);
 
-  // Compute monthValue for dialogs
-  // Note: For single-month periods, use that month. For multi-month periods (quarter/range),
-  // use the first month as dialogs currently support single-month view only.
-  // TODO: Future enhancement - support multi-month aggregation in dialogs
+  // Custom date range → { from, to } as YYYY-MM-DD.
+  // new Date() guard: persisted store rehydrates Dates as ISO strings.
+  const dateRange = useMemo(() => {
+    if (periodFilter?.mode === 'date-range' && periodFilter.dateFrom && periodFilter.dateTo) {
+      const f = new Date(periodFilter.dateFrom);
+      const t = new Date(periodFilter.dateTo);
+      const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return { from: fmt(f), to: fmt(t) };
+    }
+    return undefined;
+  }, [periodFilter]);
+
+  // Compute monthValue for dialogs (single-month fallback; multi-month periods
+  // pass monthValues/dateRange to the dialogs instead)
   const dialogMonthValue = useMemo(() => {
     if (monthsToFetch.length > 0) {
       return monthsToFetch[0]; // Use first month for consistency
@@ -103,19 +118,24 @@ export const PerformanceOverviewCard = ({
     return `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
   }, [monthsToFetch, currentYear, currentMonth]);
 
-  // Check if we're in multi-month mode or have no valid month
-  const isMultiMonthMode = monthsToFetch.length !== 1;
+  // Period props for dialogs: quarter → monthValues; custom range → dateRange
+  const dialogMonthValues = useMemo(() => {
+    return !dateRange && monthsToFetch.length > 1 ? monthsToFetch : undefined;
+  }, [dateRange, monthsToFetch]);
 
   // Fetch crew records data
   const { data: allCrewRecords = [], isLoading, isError, isFetching, error } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'crew-records-performance', vesselIds, complianceMode, opaMode, monthsToFetch],
+    queryKey: ['v2', 'rest-hours', 'crew-records-performance', vesselIds, complianceMode, opaMode, monthsToFetch, dateRange],
     queryFn: async () => {
       if (monthsToFetch.length === 0) return [];
 
       // Single batched backend call across all months and selected vessels.
+      // Custom range: day-accurate recalculation via dateFrom/dateTo.
       return await restHoursApiV2.crewRecords.getAll({
         vesselId: vesselIds && vesselIds.length > 0 ? vesselIds : undefined,
-        monthValues: monthsToFetch,
+        monthValues: dateRange ? undefined : monthsToFetch,
+        dateFrom: dateRange?.from,
+        dateTo: dateRange?.to,
         complianceMode,
         opaMode,
       });
@@ -231,10 +251,10 @@ export const PerformanceOverviewCard = ({
         <div className="text-center">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total Violations</div>
           <div 
-            className={`text-3xl font-bold text-gray-800 dark:text-gray-200 ${!isMultiMonthMode ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''} transition-colors`}
+            className={`text-3xl font-bold text-gray-800 dark:text-gray-200 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors`}
             data-testid="metric-total-violations"
-            onClick={() => !isMultiMonthMode && setViolationsDialogOpen(true)}
-            title={!isMultiMonthMode ? "Click to view details" : "Drilldown available for single-month view only"}
+            onClick={() => setViolationsDialogOpen(true)}
+            title="Click to view details"
           >
             {metrics.totalViolations}
           </div>
@@ -242,10 +262,10 @@ export const PerformanceOverviewCard = ({
         <div className="text-center">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Total NCs</div>
           <div 
-            className={`text-3xl font-bold text-gray-800 dark:text-gray-200 ${!isMultiMonthMode ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''} transition-colors`}
+            className={`text-3xl font-bold text-gray-800 dark:text-gray-200 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors`}
             data-testid="metric-significant-ncs"
-            onClick={() => !isMultiMonthMode && setNCsDialogOpen(true)}
-            title={!isMultiMonthMode ? "Click to view details" : "Drilldown available for single-month view only"}
+            onClick={() => setNCsDialogOpen(true)}
+            title="Click to view details"
           >
             {metrics.significantNCs}
           </div>
@@ -253,10 +273,10 @@ export const PerformanceOverviewCard = ({
         <div className="text-center">
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Predicted NCs</div>
           <div 
-            className={`text-3xl font-bold text-gray-800 dark:text-gray-200 ${!isMultiMonthMode ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''} transition-colors`}
+            className={`text-3xl font-bold text-gray-800 dark:text-gray-200 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors`}
             data-testid="metric-predicted-ncs"
-            onClick={() => !isMultiMonthMode && setPredictedViolationsDialogOpen(true)}
-            title={!isMultiMonthMode ? "Click to view details" : "Drilldown available for single-month view only"}
+            onClick={() => setPredictedViolationsDialogOpen(true)}
+            title="Click to view details"
           >
             {metrics.predictedNCs}
           </div>
@@ -270,10 +290,10 @@ export const PerformanceOverviewCard = ({
             No of Vessels with Violations
           </div>
           <div 
-            className={`flex-1 flex items-center justify-center ${!isMultiMonthMode ? 'cursor-pointer' : ''} transition-opacity hover:opacity-80`}
+            className={`flex-1 flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80`}
             data-testid="chart-vessels-violations"
-            onClick={() => !isMultiMonthMode && setVesselViolationsDialogOpen(true)}
-            title={!isMultiMonthMode ? "Click to view vessel violations" : "Drilldown available for single-month view only"}
+            onClick={() => setVesselViolationsDialogOpen(true)}
+            title="Click to view vessel violations"
           >
             <SemiCircularGauge
               value={metrics.vesselsWithViolations}
@@ -289,10 +309,10 @@ export const PerformanceOverviewCard = ({
             No of Vessels with NCs
           </div>
           <div 
-            className={`flex-1 flex items-center justify-center ${!isMultiMonthMode ? 'cursor-pointer' : ''} transition-opacity hover:opacity-80`}
+            className={`flex-1 flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80`}
             data-testid="chart-vessels-ncs"
-            onClick={() => !isMultiMonthMode && setVesselNCsDialogOpen(true)}
-            title={!isMultiMonthMode ? "Click to view vessel NCs" : "Drilldown available for single-month view only"}
+            onClick={() => setVesselNCsDialogOpen(true)}
+            title="Click to view vessel NCs"
           >
             <SemiCircularGauge
               value={metrics.vesselsWithNCs}
@@ -311,6 +331,8 @@ export const PerformanceOverviewCard = ({
         vesselId=""
         vesselName=""
         monthValue={dialogMonthValue}
+        monthValues={dialogMonthValues}
+        dateRange={dateRange}
         complianceMode={complianceMode}
         opaMode={opaMode}
         isPredicted={false}
@@ -323,6 +345,8 @@ export const PerformanceOverviewCard = ({
         vesselId=""
         vesselName=""
         monthValue={dialogMonthValue}
+        monthValues={dialogMonthValues}
+        dateRange={dateRange}
         complianceMode={complianceMode}
         opaMode={opaMode}
         isPredicted={false}
@@ -335,6 +359,8 @@ export const PerformanceOverviewCard = ({
         vesselId=""
         vesselName=""
         monthValue={dialogMonthValue}
+        monthValues={dialogMonthValues}
+        dateRange={dateRange}
         complianceMode={complianceMode}
         opaMode={opaMode}
         isPredicted={true}
@@ -345,6 +371,8 @@ export const PerformanceOverviewCard = ({
         open={vesselViolationsDialogOpen}
         onOpenChange={setVesselViolationsDialogOpen}
         monthValue={dialogMonthValue}
+        monthValues={dialogMonthValues}
+        dateRange={dateRange}
         complianceMode={complianceMode}
         opaMode={opaMode}
         vesselIds={vesselIds}
@@ -354,6 +382,8 @@ export const PerformanceOverviewCard = ({
         open={vesselNCsDialogOpen}
         onOpenChange={setVesselNCsDialogOpen}
         monthValue={dialogMonthValue}
+        monthValues={dialogMonthValues}
+        dateRange={dateRange}
         complianceMode={complianceMode}
         opaMode={opaMode}
         vesselIds={vesselIds}

@@ -10,6 +10,8 @@ import { restHoursApiV2 } from '../api/restHoursApiV2';
 interface RankWiseNCsChartProps {
   vesselIds?: string[];
   monthValue?: string;
+  monthValues?: string[];
+  dateRange?: { from: string; to: string };
   onRenderToolbar?: (toolbar: JSX.Element) => void;
   complianceMode?: 'Rest' | 'Work';
   opaMode?: boolean;
@@ -23,6 +25,8 @@ interface NCByRank {
 export const RankWiseNCsChart = ({ 
   vesselIds, 
   monthValue, 
+  monthValues,
+  dateRange,
   onRenderToolbar,
   complianceMode = 'Rest',
   opaMode = false,
@@ -45,30 +49,39 @@ export const RankWiseNCsChart = ({
     if (monthValue) {
       params.monthValue = monthValue;
     }
+    if (monthValues && monthValues.length > 0) {
+      params.monthValues = monthValues;
+    }
+    if (dateRange) {
+      params.dateRange = dateRange;
+    }
     if (vesselIds && vesselIds.length > 0) {
       params.vesselIds = vesselIds;
     }
     params.complianceMode = complianceMode;
     params.opaMode = opaMode;
     return params;
-  }, [vesselIds, monthValue, complianceMode, opaMode]);
+  }, [vesselIds, monthValue, monthValues, dateRange, complianceMode, opaMode]);
 
   const { data: ncsData = [], isLoading, isFetching, error } = useQuery<NCByRank[]>({
     queryKey: ['v2', 'rest-hours', 'ncs-by-rank', queryParams],
     queryFn: async () => {
-      if (!queryParams.monthValue) return [];
+      if (!queryParams.monthValue && !queryParams.monthValues && !queryParams.dateRange) return [];
 
       // Single backend call — server aggregates across all selected vessels
       const result: NCByRank[] = await restHoursApiV2.crewRecords.getNcsByRank({
         vesselId: queryParams.vesselIds && queryParams.vesselIds.length > 0 ? queryParams.vesselIds : undefined,
         monthValue: queryParams.monthValue,
+        monthValues: queryParams.monthValues,
+        dateFrom: queryParams.dateRange?.from,
+        dateTo: queryParams.dateRange?.to,
         complianceMode: queryParams.complianceMode,
         opaMode: queryParams.opaMode,
       });
 
       return result;
     },
-    enabled: !!monthValue,
+    enabled: !!(monthValue || (monthValues && monthValues.length > 0) || dateRange),
   });
 
   const handleDownload = useCallback(() => {
@@ -298,7 +311,7 @@ export const RankWiseNCsChart = ({
     );
   }
 
-  if (!monthValue) {
+  if (!monthValue && !(monthValues && monthValues.length > 0) && !dateRange) {
     return (
       <div className="w-full h-full flex items-center justify-center">
         <div className="text-sm text-gray-500">Please select a period to view NCs</div>
@@ -364,14 +377,16 @@ export const RankWiseNCsChart = ({
       </Dialog>
 
       {/* Drill-down Dialog - Shows NCs for selected rank */}
-      {selectedRank && monthValue && (
+      {selectedRank && (monthValue || (monthValues && monthValues.length > 0) || dateRange) && (
         <NCOverviewDialog
           open={showDrillDown}
           onOpenChange={setShowDrillDown}
           vesselId=""
           vesselName=""
           vesselIds={vesselIds}
-          monthValue={monthValue}
+          monthValue={monthValue || ''}
+          monthValues={monthValues}
+          dateRange={dateRange}
           complianceMode={complianceMode}
           opaMode={opaMode}
           isPredicted={false}

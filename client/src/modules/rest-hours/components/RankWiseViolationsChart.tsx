@@ -10,6 +10,8 @@ import { restHoursApiV2 } from '../api/restHoursApiV2';
 interface RankWiseViolationsChartProps {
   vesselIds?: string[];
   monthValue?: string;
+  monthValues?: string[];
+  dateRange?: { from: string; to: string };
   onRenderToolbar?: (toolbar: JSX.Element) => void;
   complianceMode?: 'Rest' | 'Work';
   opaMode?: boolean;
@@ -23,6 +25,8 @@ interface ViolationByRank {
 export const RankWiseViolationsChart = ({ 
   vesselIds, 
   monthValue, 
+  monthValues,
+  dateRange,
   onRenderToolbar,
   complianceMode = 'Rest',
   opaMode = false,
@@ -45,30 +49,39 @@ export const RankWiseViolationsChart = ({
     if (monthValue) {
       params.monthValue = monthValue;
     }
+    if (monthValues && monthValues.length > 0) {
+      params.monthValues = monthValues;
+    }
+    if (dateRange) {
+      params.dateRange = dateRange;
+    }
     if (vesselIds && vesselIds.length > 0) {
       params.vesselIds = vesselIds;
     }
     params.complianceMode = complianceMode;
     params.opaMode = opaMode;
     return params;
-  }, [vesselIds, monthValue, complianceMode, opaMode]);
+  }, [vesselIds, monthValue, monthValues, dateRange, complianceMode, opaMode]);
 
   const { data: violationsData = [], isLoading, isFetching, error } = useQuery<ViolationByRank[]>({
     queryKey: ['v2', 'rest-hours', 'violations-by-rank', queryParams],
     queryFn: async () => {
-      if (!queryParams.monthValue) return [];
+      if (!queryParams.monthValue && !queryParams.monthValues && !queryParams.dateRange) return [];
 
       // Single backend call — server aggregates across all selected vessels
       const result: ViolationByRank[] = await restHoursApiV2.crewRecords.getViolationsByRank({
         vesselId: queryParams.vesselIds && queryParams.vesselIds.length > 0 ? queryParams.vesselIds : undefined,
         monthValue: queryParams.monthValue,
+        monthValues: queryParams.monthValues,
+        dateFrom: queryParams.dateRange?.from,
+        dateTo: queryParams.dateRange?.to,
         complianceMode: queryParams.complianceMode,
         opaMode: queryParams.opaMode,
       });
 
       return result;
     },
-    enabled: !!monthValue,
+    enabled: !!(monthValue || (monthValues && monthValues.length > 0) || dateRange),
   });
 
   const handleDownload = useCallback(() => {
@@ -298,7 +311,7 @@ export const RankWiseViolationsChart = ({
     );
   }
 
-  if (!monthValue) {
+  if (!monthValue && !(monthValues && monthValues.length > 0) && !dateRange) {
     return (
       <div className="w-full h-full flex items-center justify-center">
         <div className="text-sm text-gray-500">Please select a period to view violations</div>
@@ -364,14 +377,16 @@ export const RankWiseViolationsChart = ({
       </Dialog>
 
       {/* Drill-down Dialog */}
-      {selectedRank && monthValue && (
+      {selectedRank && (monthValue || (monthValues && monthValues.length > 0) || dateRange) && (
         <ViolationsOverviewDialog
           open={showDrillDown}
           onOpenChange={setShowDrillDown}
           vesselId=""
           vesselName=""
           vesselIds={vesselIds}
-          monthValue={monthValue}
+          monthValue={monthValue || ''}
+          monthValues={monthValues}
+          dateRange={dateRange}
           complianceMode={complianceMode}
           opaMode={opaMode}
           isPredicted={false}

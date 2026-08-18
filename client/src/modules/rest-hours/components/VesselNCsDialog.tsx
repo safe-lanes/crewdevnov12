@@ -7,11 +7,14 @@ import { NCReportDialog } from './NCReportDialog';
 import type { NCReport, RestHoursCrewRecord } from '@shared/schema';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
+import { enumerateMonths } from '../utils/periodUtils';
 
 interface VesselNCsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   monthValue: string;
+  monthValues?: string[]; // Optional multi-month period (quarter)
+  dateRange?: { from: string; to: string }; // Optional custom date range (YYYY-MM-DD)
   complianceMode: 'Rest' | 'Work';
   opaMode: boolean;
   vesselIds?: string[];
@@ -38,6 +41,8 @@ export function VesselNCsDialog({
   open,
   onOpenChange,
   monthValue,
+  monthValues,
+  dateRange,
   complianceMode,
   opaMode,
   vesselIds = [],
@@ -45,41 +50,30 @@ export function VesselNCsDialog({
   const [selectedCrewRecord, setSelectedCrewRecord] = useState<RestHoursCrewRecord | null>(null);
   const [ncReportDialogOpen, setNCReportDialogOpen] = useState(false);
 
-  // Fetch vessel records first to get UUIDs for the given month
-  const [year, month] = monthValue.split('-');
-  const { data: vesselRecords = [], isLoading: isLoadingVesselRecords } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'vessel-records', vesselIds, monthValue],
-    queryFn: async () => {
-      const records = await restHoursApiV2.vesselRecords.getAll({ month, year });
-      // Filter to only the requested vessel IDs if specified
-      if (vesselIds.length > 0) {
-        return records.filter((r: any) => vesselIds.includes(r.vesselId));
-      }
-      return records;
-    },
-    enabled: open,
-  });
+  // Months covered by the selected period (single month, quarter, or custom range)
+  const monthsInPeriod = useMemo(() => {
+    if (dateRange) return enumerateMonths(dateRange.from, dateRange.to);
+    if (monthValues && monthValues.length > 0) return monthValues;
+    return [monthValue];
+  }, [dateRange, monthValues, monthValue]);
 
-  // Get actual vessel UUIDs for fetching crew records
-  const vesselUuids = useMemo(() => 
-    vesselRecords.map((vr: any) => vr.vesselId), 
-    [vesselRecords]
-  );
-
-  // Fetch crew records scoped to the selected vessels AND month.
-  // Without monthValue, the server returns every record the vessel has ever had,
-  // which causes NCs from other months to leak into this popup.
+  // Fetch crew records scoped to the selected vessels AND period.
+  // Without a period filter, the server returns every record the vessel has
+  // ever had, which causes NCs from other months to leak into this popup.
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'crew-records', { vesselUuids, monthValue, complianceMode, opaMode }],
+    queryKey: ['v2', 'rest-hours', 'crew-records', { vesselIds, monthValue, monthValues, dateRange, complianceMode, opaMode }],
     queryFn: async () => {
       return restHoursApiV2.crewRecords.getAll({
-        vesselId: vesselUuids,
-        monthValue,
+        vesselId: vesselIds.length > 0 ? vesselIds : undefined,
+        monthValue: !dateRange && !(monthValues && monthValues.length > 0) ? monthValue : undefined,
+        monthValues: !dateRange && monthValues && monthValues.length > 0 ? monthValues : undefined,
+        dateFrom: dateRange?.from,
+        dateTo: dateRange?.to,
         complianceMode,
         opaMode,
       });
     },
-    enabled: open && vesselUuids.length > 0,
+    enabled: open,
   });
 
   // Fetch vessel master data using V2 API
@@ -108,17 +102,18 @@ export function VesselNCsDialog({
 
   // Fetch NC reports and constrain to the selected vessels AND month.
   // The /nc-reports/all endpoint has no server-side month filter, so we filter
-  // client-side on monthValue to avoid mixing reports from other months.
+  // client-side on the months in the selected period to avoid mixing reports
+  // from other months.
   const { data: allNCReports = [], isLoading: isLoadingNCs } = useQuery<NCReport[]>({
-    queryKey: ['v2', 'rest-hours', 'nc-reports', 'all', { vesselUuids, monthValue }],
+    queryKey: ['v2', 'rest-hours', 'nc-reports', 'all', { vesselIds, monthsInPeriod }],
     queryFn: async () => {
       const reports = await restHoursApiV2.ncReports.getAll();
       return reports.filter((r: any) =>
-        (vesselUuids.includes(r.vesselId) || vesselUuids.includes(r.vesselRecordUuid)) &&
-        r.monthValue === monthValue
+        (vesselIds.length === 0 || vesselIds.includes(r.vesselId) || vesselIds.includes(r.vesselRecordUuid)) &&
+        monthsInPeriod.includes(r.monthValue)
       );
     },
-    enabled: open && crewRecordsWithNCs.length > 0 && vesselUuids.length > 0,
+    enabled: open && crewRecordsWithNCs.length > 0,
   });
 
   // Group NCs by vessel
@@ -127,17 +122,17 @@ export function VesselNCsDialog({
 
     const ncReportsMap = new Map<string, NCReport>();
     allNCReports.forEach(report => {
-      const key = report.crewMemberId || `${report.crewMemberId}-${report.vesselId}`;
-      ncReportsMap.set(key, report);
+      // Key by crew + vessel + month so multi-month periods and same-crew
+      // cross-vessel cases each keep their own report distinct
+      ncReportsMap.set(`${report.crewMemberId}-${report.vesselId}-${report.monthValue}`, report);
     });
 
     // Process each crew member with NCs
     crewRecordsWithNCs.forEach(crew => {
-      const vesselRecord = vesselRecords.find((vr: any) => vr.vesselId === (crew.vesselId || crew.vesselRecordUuid));
-      const vesselId = vesselRecord?.vesselId || crew.vesselId || '';
+      const vesselId = crew.vesselId || '';
       const vesselName = vesselNameMap.get(vesselId) || vesselId;
       
-      const ncReport = ncReportsMap.get(crew.crewMemberId) || null;
+      const ncReport = ncReportsMap.get(`${crew.crewMemberId}-${crew.vesselId}-${crew.monthValue}`) || null;
 
       // Get or create vessel group
       if (!groups.has(vesselId)) {
@@ -166,7 +161,7 @@ export function VesselNCsDialog({
     return Array.from(groups.values()).sort((a, b) => 
       a.vesselName.localeCompare(b.vesselName)
     );
-  }, [crewRecordsWithNCs, allNCReports, vesselNameMap, vesselRecords]);
+  }, [crewRecordsWithNCs, allNCReports, vesselNameMap]);
 
   // Calculate row count for each vessel (for rowSpan)
   const vesselRowCounts = useMemo(() => {
@@ -189,7 +184,14 @@ export function VesselNCsDialog({
     setNCReportDialogOpen(true);
   };
 
-  const isLoading = isLoadingVesselRecords || isLoadingSummaries || isLoadingNCs;
+  // Period label for the dialog title
+  const periodLabel = dateRange
+    ? `${dateRange.from} to ${dateRange.to}`
+    : monthsInPeriod.length > 1
+      ? `${formatMonth(monthsInPeriod[0])} to ${formatMonth(monthsInPeriod[monthsInPeriod.length - 1])}`
+      : formatMonth(monthValue);
+
+  const isLoading = isLoadingSummaries || isLoadingNCs;
 
   return (
     <>
@@ -197,7 +199,7 @@ export function VesselNCsDialog({
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              NCs - Vessel Count - {formatMonth(monthValue)}
+              NCs - Vessel Count - {periodLabel}
             </DialogTitle>
             <DialogDescription className="sr-only">
               View non-conformity reports grouped by vessel with crew member details

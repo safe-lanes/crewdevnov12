@@ -101,6 +101,31 @@ export const RestHoursDashboard = (): JSX.Element => {
     return undefined;
   }, [periodFilter]);
 
+  // Quarter mode → the 3 months of the selected quarter (YYYY-MM strings)
+  const monthValues = useMemo(() => {
+    if (periodFilter.mode === 'year-quarter' && periodFilter.year && periodFilter.quarter) {
+      const s = (periodFilter.quarter - 1) * 3 + 1;
+      return [s, s + 1, s + 2].map(mo => `${periodFilter.year}-${String(mo).padStart(2, '0')}`);
+    }
+    return undefined;
+  }, [periodFilter]);
+
+  // Custom date range → { from, to } as YYYY-MM-DD.
+  // new Date() guard: persisted store rehydrates Dates as ISO strings.
+  const dateRange = useMemo(() => {
+    // The store's PeriodFilterValue predates the date-range mode; PeriodFilter
+    // actually emits dateFrom/dateTo (Date objects, or ISO strings after
+    // Zustand persist rehydration), so read them via the component's own type.
+    const pf = periodFilter as PeriodFilterValue;
+    if (pf.mode === 'date-range' && pf.dateFrom && pf.dateTo) {
+      const f = new Date(pf.dateFrom);
+      const t = new Date(pf.dateTo);
+      const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return { from: fmt(f), to: fmt(t) };
+    }
+    return undefined;
+  }, [periodFilter]);
+
   // Get vessel IDs from vessel/fleet/group selection (for filtering)
   const vesselIds = useMemo(() => {
     let names: string[] = [];
@@ -501,6 +526,8 @@ export const RestHoursDashboard = (): JSX.Element => {
                   <RankWiseViolationsChart 
                     vesselIds={vesselIds} 
                     monthValue={monthValue}
+                    monthValues={monthValues}
+                    dateRange={dateRange}
                     onRenderToolbar={handleSetRankViolationsToolbar}
                     complianceMode="Rest"
                     opaMode={false}
@@ -570,6 +597,8 @@ export const RestHoursDashboard = (): JSX.Element => {
                   <RankWiseNCsChart 
                     vesselIds={vesselIds} 
                     monthValue={monthValue} 
+                    monthValues={monthValues}
+                    dateRange={dateRange}
                     onRenderToolbar={handleSetChart6Toolbar}
                     complianceMode="Rest"
                     opaMode={false}

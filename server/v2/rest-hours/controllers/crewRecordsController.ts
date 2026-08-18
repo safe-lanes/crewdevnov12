@@ -4,7 +4,7 @@ import { crewRecordsService } from "../services";
 export const crewRecordsController = {
   async getAll(req: Request, res: Response) {
     try {
-      const { vesselId, monthValue, monthValues, ranks, search, complianceMode, opaMode } = req.query;
+      const { vesselId, monthValue, monthValues, dateFrom, dateTo, ranks, search, complianceMode, opaMode } = req.query;
 
       const vesselIds = vesselId
         ? (vesselId as string).split(",").filter(Boolean)
@@ -20,6 +20,19 @@ export const crewRecordsController = {
 
       const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
       const opa = opaMode === 'true' || opaMode === '1';
+
+      // Custom date range path: day-accurate recalculation from daily records
+      // (same engine as Reports → Rest Hour Violations "date" granularity).
+      if (dateFrom && dateTo) {
+        const records = await crewRecordsService.getBulkByDateRange({
+          vesselIds,
+          dateFrom: dateFrom as string,
+          dateTo: dateTo as string,
+          complianceMode: mode,
+          opaMode: opa,
+        });
+        return res.json(records);
+      }
 
       // Bulk path: multi-month aggregation (used by Periodic / Vessel Analysis charts).
       // Skips placeholder/sign-on resolution since these views only aggregate real totals.
@@ -107,15 +120,21 @@ export const crewRecordsController = {
 
   async getViolationsByRank(req: Request, res: Response) {
     try {
-      const { vesselId, monthValue, complianceMode, opaMode } = req.query;
+      const { vesselId, monthValue, monthValues, dateFrom, dateTo, complianceMode, opaMode } = req.query;
       const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
       const opa = opaMode === 'true' || opaMode === '1';
       const vesselIds = vesselId
         ? (vesselId as string).split(",").filter(Boolean)
         : undefined;
+      const monthValuesList = monthValues
+        ? (monthValues as string).split(",").filter(Boolean)
+        : undefined;
       const result = await crewRecordsService.getViolationsByRank({
         vesselIds,
         monthValue: monthValue as string | undefined,
+        monthValues: monthValuesList,
+        dateFrom: dateFrom as string | undefined,
+        dateTo: dateTo as string | undefined,
         complianceMode: mode,
         opaMode: opa,
       });
@@ -128,15 +147,21 @@ export const crewRecordsController = {
 
   async getNcsByRank(req: Request, res: Response) {
     try {
-      const { vesselId, monthValue, complianceMode, opaMode } = req.query;
+      const { vesselId, monthValue, monthValues, dateFrom, dateTo, complianceMode, opaMode } = req.query;
       const mode: 'Rest' | 'Work' = complianceMode === 'Work' ? 'Work' : 'Rest';
       const opa = opaMode === 'true' || opaMode === '1';
       const vesselIds = vesselId
         ? (vesselId as string).split(",").filter(Boolean)
         : undefined;
+      const monthValuesList = monthValues
+        ? (monthValues as string).split(",").filter(Boolean)
+        : undefined;
       const result = await crewRecordsService.getNcsByRank({
         vesselIds,
         monthValue: monthValue as string | undefined,
+        monthValues: monthValuesList,
+        dateFrom: dateFrom as string | undefined,
+        dateTo: dateTo as string | undefined,
         complianceMode: mode,
         opaMode: opa,
       });

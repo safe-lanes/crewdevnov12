@@ -6,11 +6,14 @@ import { filterViolations } from '../violationFilters';
 import type { ViolationDailyRecord } from '../types';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
+import { enumerateMonths } from '../utils/periodUtils';
 
 interface VesselViolationsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   monthValue: string;
+  monthValues?: string[]; // Optional multi-month period (quarter)
+  dateRange?: { from: string; to: string }; // Optional custom date range (YYYY-MM-DD)
   complianceMode: 'Rest' | 'Work';
   opaMode: boolean;
   vesselIds?: string[];
@@ -19,10 +22,17 @@ interface VesselViolationsDialogProps {
 // Using ViolationDailyRecord from shared types
 type DailyRecord = ViolationDailyRecord;
 
+// Helper function to normalize rank for comparison (strip suffixes like "_1", "_2", trim, lowercase)
+function normalizeRank(rank: string | null | undefined): string {
+  if (!rank) return '';
+  return rank.replace(/_\d+$/, '').trim().toLowerCase();
+}
+
 interface CrewViolationData {
   crewMemberId: string;
   crewMemberName: string;
   rank: string;
+  monthValue: string;
   totalViolations: number;
   violationDates: number[];
 }
@@ -37,44 +47,37 @@ export function VesselViolationsDialog({
   open,
   onOpenChange,
   monthValue,
+  monthValues,
+  dateRange,
   complianceMode,
   opaMode,
   vesselIds = [],
 }: VesselViolationsDialogProps) {
-  
-  // Fetch vessel records first to get UUIDs for the given month
-  const [year, month] = monthValue.split('-');
-  const { data: vesselRecords = [], isLoading: isLoadingVesselRecords } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'vessel-records', vesselIds, monthValue],
+
+  // Months covered by the selected period (single month, quarter, or custom range)
+  const monthsInPeriod = useMemo(() => {
+    if (dateRange) return enumerateMonths(dateRange.from, dateRange.to);
+    if (monthValues && monthValues.length > 0) return monthValues;
+    return [monthValue];
+  }, [dateRange, monthValues, monthValue]);
+
+  // Fetch crew records scoped to the selected vessels AND period.
+  // Without a period filter, the server returns every record the vessel has
+  // ever had, which leaks violations from other months into this popup.
+  const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
+    queryKey: ['v2', 'rest-hours', 'crew-records', { vesselIds, monthValue, monthValues, dateRange, complianceMode, opaMode }],
     queryFn: async () => {
-      const records = await restHoursApiV2.vesselRecords.getAll({ month, year });
-      // Filter to only the requested vessel IDs if specified
-      if (vesselIds.length > 0) {
-        return records.filter((r: any) => vesselIds.includes(r.vesselId));
-      }
-      return records;
+      return restHoursApiV2.crewRecords.getAll({
+        vesselId: vesselIds.length > 0 ? vesselIds : undefined,
+        monthValue: !dateRange && !(monthValues && monthValues.length > 0) ? monthValue : undefined,
+        monthValues: !dateRange && monthValues && monthValues.length > 0 ? monthValues : undefined,
+        dateFrom: dateRange?.from,
+        dateTo: dateRange?.to,
+        complianceMode,
+        opaMode,
+      });
     },
     enabled: open,
-  });
-
-  // Get actual vessel UUIDs for fetching crew records
-  const vesselUuids = useMemo(() => 
-    vesselRecords.map((vr: any) => vr.vesselId), 
-    [vesselRecords]
-  );
-
-  // Fetch crew records for all vessel records
-  const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'crew-records', vesselUuids, complianceMode, opaMode],
-    queryFn: async () => {
-      const allCrewRecords: any[] = [];
-      for (const vesselId of vesselUuids) {
-        const records = await restHoursApiV2.crewRecords.getAll({ vesselId });
-        allCrewRecords.push(...records);
-      }
-      return allCrewRecords;
-    },
-    enabled: open && vesselUuids.length > 0,
   });
 
   // Fetch vessel master data using V2 API
@@ -109,16 +112,16 @@ export function VesselViolationsDialog({
     [crewRecordsWithViolations]
   );
 
-  // Fetch daily records for crew with violations using V2 API
+  // Fetch daily records for the months in the selected period.
+  // Fetching per month (instead of per crew across all months) keeps every
+  // grid attributable to its own month — no cross-month overwrites.
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'daily-records', crewMemberIdsWithViolations, monthValue],
+    queryKey: ['v2', 'rest-hours', 'daily-records', crewMemberIdsWithViolations, monthsInPeriod],
     queryFn: async () => {
-      const allRecords: any[] = [];
-      for (const crewMemberId of crewMemberIdsWithViolations) {
-        const records = await restHoursApiV2.dailyRecords.getAll({ crewMemberId });
-        allRecords.push(...records);
-      }
-      return allRecords;
+      const perMonth = await Promise.all(
+        monthsInPeriod.map(monthYear => restHoursApiV2.dailyRecords.getAll({ monthYear }))
+      );
+      return perMonth.flat();
     },
     enabled: open && crewMemberIdsWithViolations.length > 0,
   });
@@ -130,19 +133,21 @@ export function VesselViolationsDialog({
     const dailyRecordsMap = new Map<string, DailyRecord[]>();
     
     allDailyRecords.forEach(recordContainer => {
-      const crewMemberId = recordContainer.crewMemberId;
       try {
         const dailyRecords: DailyRecord[] = JSON.parse(recordContainer.dailyRecords);
-        dailyRecordsMap.set(crewMemberId, dailyRecords);
+        // Key by crew + vessel + rank + month so multiple grids per crew
+        // (other vessels, promotion-split rank rows, or other months) never
+        // overwrite each other.
+        const mapKey = `${recordContainer.crewMemberId}-${recordContainer.vesselId}-${normalizeRank(recordContainer.rank)}-${recordContainer.monthYear}`;
+        dailyRecordsMap.set(mapKey, dailyRecords);
       } catch (e) {
-        console.error('Failed to parse dailyRecords for crew:', crewMemberId, e);
+        console.error('Failed to parse dailyRecords for crew:', recordContainer.crewMemberId, e);
       }
     });
 
     // Process each crew member with violations
     crewRecordsWithViolations.forEach(crew => {
-      const vesselRecord = vesselRecords.find((vr: any) => vr.vesselId === (crew.vesselId || crew.vesselRecordUuid));
-      const vesselId = vesselRecord?.vesselId || crew.vesselId || '';
+      const vesselId = crew.vesselId || '';
       const vesselName = vesselNameMap.get(vesselId) || vesselId;
 
       // Parse violation dates
@@ -155,7 +160,7 @@ export function VesselViolationsDialog({
       }
 
       // Filter violations based on compliance mode and OPA mode
-      const dailyRecords = dailyRecordsMap.get(crew.crewMemberId) || [];
+      const dailyRecords = dailyRecordsMap.get(`${crew.crewMemberId}-${crew.vesselId}-${normalizeRank(crew.rank)}-${crew.monthValue}`) || [];
       const filteredViolationDays: number[] = [];
 
       violationDays.forEach(day => {
@@ -188,6 +193,7 @@ export function VesselViolationsDialog({
         crewMemberId: crew.crewMemberId,
         crewMemberName: crew.name,
         rank: crew.rank,
+        monthValue: crew.monthValue,
         totalViolations: filteredViolationDays.length,
         violationDates: filteredViolationDays.sort((a, b) => a - b),
       });
@@ -197,7 +203,7 @@ export function VesselViolationsDialog({
     return Array.from(groups.values()).sort((a, b) => 
       a.vesselName.localeCompare(b.vesselName)
     );
-  }, [crewRecordsWithViolations, allDailyRecords, complianceMode, opaMode, vesselNameMap, vesselRecords]);
+  }, [crewRecordsWithViolations, allDailyRecords, complianceMode, opaMode, vesselNameMap]);
 
   // Calculate row count for each vessel (for rowSpan)
   const vesselRowCounts = useMemo(() => {
@@ -215,20 +221,27 @@ export function VesselViolationsDialog({
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
-  // Format violation dates as "Nov: 3, 4, 6"
-  const formatViolationDates = (days: number[]) => {
-    const monthName = formatMonth(monthValue).split(' ')[0];
+  // Format violation dates as "Nov: 3, 4, 6" using the row's own month
+  const formatViolationDates = (days: number[], rowMonthValue: string) => {
+    const monthName = formatMonth(rowMonthValue || monthValue).split(' ')[0];
     return `${monthName}: ${days.join(', ')}`;
   };
 
-  const isLoading = isLoadingVesselRecords || isLoadingSummaries || isLoadingDaily;
+  // Period label for the dialog title
+  const periodLabel = dateRange
+    ? `${dateRange.from} to ${dateRange.to}`
+    : monthsInPeriod.length > 1
+      ? `${formatMonth(monthsInPeriod[0])} to ${formatMonth(monthsInPeriod[monthsInPeriod.length - 1])}`
+      : formatMonth(monthValue);
+
+  const isLoading = isLoadingSummaries || isLoadingDaily;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            Violations - Vessel Count - {formatMonth(monthValue)}
+            Violations - Vessel Count - {periodLabel}
           </DialogTitle>
           <DialogDescription className="sr-only">
             View violations grouped by vessel with crew member details
@@ -268,7 +281,7 @@ export function VesselViolationsDialog({
                           <td className="px-4 py-2 text-sm">{crew.rank}</td>
                           <td className="px-4 py-2 text-sm">{crew.crewMemberName}</td>
                           <td className="px-4 py-2 text-sm text-center">{crew.totalViolations}</td>
-                          <td className="px-4 py-2 text-sm">{formatViolationDates(crew.violationDates)}</td>
+                          <td className="px-4 py-2 text-sm">{formatViolationDates(crew.violationDates, crew.monthValue)}</td>
                         </tr>
                       );
                     })

@@ -10,6 +10,7 @@ import { NCReportDialog } from './NCReportDialog';
 import type { RestHoursCrewRecord, NCReport } from '@shared/schema';
 import { useV2Vessels } from '../hooks/useRestHoursV2Data';
 import { restHoursApiV2 } from '../api/restHoursApiV2';
+import { enumerateMonths } from '../utils/periodUtils';
 
 const VIOLATION_CODE_DESCRIPTIONS: Record<string, string> = {
   'A': "Minimum 10 hours of rest in any 24 hour period",
@@ -36,6 +37,8 @@ interface NCOverviewDialogProps {
   vesselId: string;
   vesselName: string;
   monthValue: string;
+  monthValues?: string[]; // Optional multi-month period (quarter)
+  dateRange?: { from: string; to: string }; // Optional custom date range (YYYY-MM-DD)
   complianceMode: 'Rest' | 'Work';
   opaMode: boolean;
   isPredicted?: boolean;
@@ -66,6 +69,7 @@ interface NCRecord {
   rankSortOrder: number;
   vesselId: string;
   vesselName: string;
+  monthValue: string;
   day: number;
   filteredViolations: string[];
   filteredDiagnostics: ViolationDiagnostic[];
@@ -86,6 +90,8 @@ export function NCOverviewDialog({
   vesselId,
   vesselName,
   monthValue,
+  monthValues,
+  dateRange,
   complianceMode,
   opaMode,
   isPredicted = false,
@@ -94,6 +100,13 @@ export function NCOverviewDialog({
 }: NCOverviewDialogProps) {
   const [ncReportDialogOpen, setNCReportDialogOpen] = useState(false);
   const [selectedNCReportRecord, setSelectedNCReportRecord] = useState<RestHoursCrewRecord | null>(null);
+
+  // Months covered by the selected period (single month, quarter, or custom range)
+  const monthsInPeriod = useMemo(() => {
+    if (dateRange) return enumerateMonths(dateRange.from, dateRange.to);
+    if (monthValues && monthValues.length > 0) return monthValues;
+    return [monthValue];
+  }, [dateRange, monthValues, monthValue]);
 
   // Determine which vessel IDs to use
   // If vesselIds array is provided and not empty, use it; otherwise use single vesselId
@@ -116,13 +129,16 @@ export function NCOverviewDialog({
   queryParams.append('opaMode', String(opaMode));
 
   const { data: crewSummaries = [], isLoading: isLoadingSummaries } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'crew-records', vesselIdsToUse, monthValue, complianceMode, opaMode],
+    queryKey: ['v2', 'rest-hours', 'crew-records', vesselIdsToUse, monthValue, monthValues, dateRange, complianceMode, opaMode],
     queryFn: async () => {
       // For V2 API, we fetch crew records - the API may need vessel record UUID instead of vessel IDs
       // If vesselIdsToUse contains vessel UUIDs, we can use them
       return restHoursApiV2.crewRecords.getAll({
         vesselId: vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : undefined,
-        monthValue,
+        monthValue: !dateRange && !(monthValues && monthValues.length > 0) ? monthValue : undefined,
+        monthValues: !dateRange && monthValues && monthValues.length > 0 ? monthValues : undefined,
+        dateFrom: dateRange?.from,
+        dateTo: dateRange?.to,
         complianceMode,
         opaMode,
       });
@@ -168,12 +184,17 @@ export function NCOverviewDialog({
 
   // Fetch daily records only for crew members with NCs
   const { data: allDailyRecords = [], isLoading: isLoadingDaily } = useQuery<any[]>({
-    queryKey: ['v2', 'rest-hours', 'daily-records', crewIdsWithNCs, vesselIdsToUse, monthValue],
+    queryKey: ['v2', 'rest-hours', 'daily-records', crewIdsWithNCs, vesselIdsToUse, monthsInPeriod],
     queryFn: async () => {
-      return restHoursApiV2.dailyRecords.getAll({
-        vesselId: vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : undefined,
-        monthYear: monthValue,
-      });
+      const perMonth = await Promise.all(
+        monthsInPeriod.map(monthYear =>
+          restHoursApiV2.dailyRecords.getAll({
+            vesselId: vesselIdsToUse.length === 1 ? vesselIdsToUse[0] : undefined,
+            monthYear,
+          })
+        )
+      );
+      return perMonth.flat();
     },
     enabled: open && crewIdsWithNCs.length > 0,
   });
@@ -209,13 +230,13 @@ export function NCOverviewDialog({
   const ncReportsStatusMap = useMemo(() => {
     const map = new Map<string, 'Open' | 'Closed'>();
     allNCReports
-      .filter(report => report.monthValue === monthValue)
+      .filter(report => monthsInPeriod.includes(report.monthValue))
       .forEach(report => {
         const key = `${report.crewMemberId}-${report.vesselId}-${report.monthValue}`;
         map.set(key, (report.status as any) || 'Open');
       });
     return map;
-  }, [allNCReports, monthValue]);
+  }, [allNCReports, monthsInPeriod]);
 
   // Parse and aggregate all NCs from all crew members using pre-calculated NC days
   const ncRecords = useMemo(() => {
@@ -243,15 +264,16 @@ export function NCOverviewDialog({
     const filteredRecords = allDailyRecords.filter(record =>
       crewIdsWithNCs.includes(record.crewMemberId) && 
       (vesselIdsToUse.length === 0 || vesselIdsToUse.includes(record.vesselId)) &&
-      record.monthYear === monthValue
+      monthsInPeriod.includes(record.monthYear)
     );
     
     filteredRecords.forEach(recordContainer => {
         try {
           const dailyRecords: DailyRecord[] = JSON.parse(recordContainer.dailyRecords);
-          // Key by crew + vessel + rank so promotion months (multiple rank-period
-          // grids per crew) attribute each grid to its own rank row.
-          const mapKey = `${recordContainer.crewMemberId}-${recordContainer.vesselId}-${normalizeRank(recordContainer.rank)}`;
+          // Key by crew + vessel + rank + month so promotion months (multiple
+          // rank-period grids per crew) attribute each grid to its own rank row,
+          // and multi-month periods don't overwrite each other's grids.
+          const mapKey = `${recordContainer.crewMemberId}-${recordContainer.vesselId}-${normalizeRank(recordContainer.rank)}-${recordContainer.monthYear}`;
           dailyRecordsMap.set(mapKey, dailyRecords);
         } catch (e) {
           console.error('Failed to parse daily records:', e);
@@ -276,16 +298,16 @@ export function NCOverviewDialog({
         return;
       }
 
-      // Get the daily records for this crew member's specific rank row.
+      // Get the daily records for this crew member's specific rank row and month.
       const dailyRecords =
-        dailyRecordsMap.get(`${crew.crewMemberId}-${crew.vesselId}-${normalizeRank(crew.rank)}`) || [];
+        dailyRecordsMap.get(`${crew.crewMemberId}-${crew.vesselId}-${normalizeRank(crew.rank)}-${crew.monthValue}`) || [];
 
       // Get rank sort order (strip suffix for matching)
       const baseName = crew.rank.split('_')[0];
       const rankSortOrder = rankOrderMap.get(baseName) || rankOrderMap.get(crew.rank) || 999;
 
-      // Get NC report status for this crew member
-      const ncReportKey = `${crew.crewMemberId}-${crew.vesselId}-${monthValue}`;
+      // Get NC report status for this crew member (keyed by the row's own month)
+      const ncReportKey = `${crew.crewMemberId}-${crew.vesselId}-${crew.monthValue || monthValue}`;
       const ncStatus = ncReportsStatusMap.get(ncReportKey) || 'Open';
 
       // For each violation day (which contributes to the NC), find the corresponding daily record
@@ -305,6 +327,7 @@ export function NCOverviewDialog({
             rankSortOrder,
             vesselId: crew.vesselId,
             vesselName: vesselNameMap.get(crew.vesselId) || crew.vesselId,
+            monthValue: crew.monthValue,
             day: day,
             filteredViolations: sortViolationCodes(filteredViolations),
             filteredDiagnostics,
@@ -320,6 +343,7 @@ export function NCOverviewDialog({
             rankSortOrder,
             vesselId: crew.vesselId,
             vesselName: vesselNameMap.get(crew.vesselId) || crew.vesselId,
+            monthValue: crew.monthValue,
             day: day,
             filteredViolations: [],
             filteredDiagnostics: [],
@@ -335,9 +359,10 @@ export function NCOverviewDialog({
       if (a.vesselName !== b.vesselName) return a.vesselName.localeCompare(b.vesselName);
       if (a.rankSortOrder !== b.rankSortOrder) return a.rankSortOrder - b.rankSortOrder;
       if (a.crewMemberName !== b.crewMemberName) return a.crewMemberName.localeCompare(b.crewMemberName);
+      if (a.monthValue !== b.monthValue) return a.monthValue.localeCompare(b.monthValue);
       return a.day - b.day;
     });
-  }, [crewSummaries, allDailyRecords, rankOrderMap, vesselNameMap, vesselIdsToUse, complianceMode, opaMode, isPredicted, crewIdsWithNCs, rankFilter, monthValue, ncReportsStatusMap]);
+  }, [crewSummaries, allDailyRecords, rankOrderMap, vesselNameMap, vesselIdsToUse, complianceMode, opaMode, isPredicted, crewIdsWithNCs, rankFilter, monthValue, monthsInPeriod, ncReportsStatusMap]);
 
   // Format month for display
   const formatMonth = (monthStr: string) => {
@@ -374,7 +399,11 @@ export function NCOverviewDialog({
   // Determine title based on vessel filter
   const dialogTitle = useMemo(() => {
     const prefix = isPredicted ? 'Predicted Non-Conformities' : 'Non-Conformities';
-    const month = formatMonth(monthValue);
+    const month = dateRange
+      ? `${dateRange.from} to ${dateRange.to}`
+      : monthsInPeriod.length > 1
+        ? `${formatMonth(monthsInPeriod[0])} to ${formatMonth(monthsInPeriod[monthsInPeriod.length - 1])}`
+        : formatMonth(monthValue);
     
     if (vesselIdsToUse.length === 0) {
       // No vessel filter - showing all vessels
@@ -387,7 +416,7 @@ export function NCOverviewDialog({
       // Multiple vessels
       return rankFilter ? `${prefix} - Multiple Vessels - ${rankFilter} - ${month}` : `${prefix} - Multiple Vessels - ${month}`;
     }
-  }, [vesselIdsToUse, vesselName, vesselNameMap, monthValue, isPredicted, rankFilter]);
+  }, [vesselIdsToUse, vesselName, vesselNameMap, monthValue, monthsInPeriod, dateRange, isPredicted, rankFilter]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -440,7 +469,7 @@ export function NCOverviewDialog({
                       <td className="px-4 py-2 text-sm">
                         {isFirstRowForCrew ? record.crewMemberName : ''}
                       </td>
-                      <td className="px-4 py-2 text-sm">{formatDay(record.day, monthValue)}</td>
+                      <td className="px-4 py-2 text-sm">{formatDay(record.day, record.monthValue || monthValue)}</td>
                       <td className="px-4 py-2 text-sm">
                         {record.filteredViolations.map((code, idx) => {
                           const diagnostic = record.filteredDiagnostics.find(d => d.code === code);

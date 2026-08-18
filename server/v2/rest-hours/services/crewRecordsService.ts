@@ -538,6 +538,77 @@ export const crewRecordsService = {
     return enrichRecordsWithComputedFields(records, complianceMode, opaMode);
   },
 
+  // Day-accurate custom range: computes violations/NCs per crew per month-portion
+  // from daily records, using the same engine as Reports → Rest Hour Violations
+  // (see server/v2/reports/handlers/restHours.ts "date" granularity).
+  async getBulkByDateRange(params: {
+    vesselIds?: string[];
+    dateFrom: string; // YYYY-MM-DD
+    dateTo: string;   // YYYY-MM-DD
+    complianceMode?: 'Rest' | 'Work';
+    opaMode?: boolean;
+  }): Promise<any[]> {
+    const { vesselIds, dateFrom, dateTo } = params;
+    const mode = params.complianceMode ?? 'Rest';
+    const opa = params.opaMode ?? false;
+    const [fy, fm, fd] = dateFrom.split('-').map(Number);
+    const [ty, tm, td] = dateTo.split('-').map(Number);
+    const out: any[] = [];
+
+    let y = fy;
+    let m = fm;
+    while (y < ty || (y === ty && m <= tm)) {
+      const monthYear = `${y}-${String(m).padStart(2, '0')}`;
+      const daysInMonth = new Date(y, m, 0).getDate();
+      const rangeFrom = y === fy && m === fm ? fd : 1;
+      const rangeTo = y === ty && m === tm ? td : daysInMonth;
+
+      const records = await dailyRecordsRepository.findAll({ monthYear });
+      for (const rec of records) {
+        if (vesselIds && vesselIds.length > 0 && !vesselIds.includes(rec.vesselId)) continue;
+
+        // Intersect with the record's applicable window (sign-on/promotion)
+        let dayFrom = rangeFrom;
+        let dayTo = rangeTo;
+        if (rec.applicableFrom && rec.applicableFrom.startsWith(monthYear)) {
+          dayFrom = Math.max(dayFrom, parseInt(rec.applicableFrom.split('-')[2], 10));
+        }
+        if (rec.applicableTo && rec.applicableTo.startsWith(monthYear)) {
+          dayTo = Math.min(dayTo, parseInt(rec.applicableTo.split('-')[2], 10));
+        }
+        if (dayFrom > dayTo) continue;
+
+        const dayRange = { from: dayFrom, to: dayTo };
+        const vDates = getViolationDates(rec.dailyRecords, mode, opa, false, dayRange);
+        const pDates = getViolationDates(rec.dailyRecords, mode, opa, true, dayRange);
+        const { totalNCs, predictedNCs } = calculateNCs(rec.dailyRecords, mode, opa, dayRange);
+        if (vDates.length === 0 && pDates.length === 0 && totalNCs === 0 && predictedNCs === 0) continue;
+
+        out.push({
+          id: rec.id,
+          crewMemberId: rec.crewMemberId,
+          vesselId: rec.vesselId,
+          rank: rec.rank,
+          name: rec.name,
+          monthValue: monthYear,
+          totalViolations: vDates.length,
+          predictedViolations: pDates.length,
+          totalNCs,
+          predictedNCs,
+          violationDates: JSON.stringify(vDates),
+          predictedViolationDates: JSON.stringify(pDates),
+        });
+      }
+
+      m += 1;
+      if (m > 12) {
+        m = 1;
+        y += 1;
+      }
+    }
+    return out;
+  },
+
   async getByFilters(params: {
     vesselIds?: string[];
     monthValue?: string;
@@ -907,17 +978,35 @@ export const crewRecordsService = {
     vesselId?: string;
     vesselIds?: string[];
     monthValue?: string;
+    monthValues?: string[];
+    dateFrom?: string;
+    dateTo?: string;
     complianceMode?: 'Rest' | 'Work';
     opaMode?: boolean;
   }): Promise<Array<{ rank: string; violationDays: number }>> {
-    const { vesselId, vesselIds, monthValue, complianceMode, opaMode } = params;
+    const { vesselId, vesselIds, monthValue, monthValues, dateFrom, dateTo, complianceMode, opaMode } = params;
 
     const effectiveVesselIds = vesselIds && vesselIds.length > 0
       ? vesselIds
       : (vesselId ? [vesselId] : undefined);
 
     let records: EnrichedCrewRecord[] = [];
-    if (effectiveVesselIds && effectiveVesselIds.length > 0) {
+    if (dateFrom && dateTo) {
+      records = await this.getBulkByDateRange({
+        vesselIds: effectiveVesselIds,
+        dateFrom,
+        dateTo,
+        complianceMode,
+        opaMode,
+      });
+    } else if (monthValues && monthValues.length > 0) {
+      records = await this.getBulkByMonths({
+        vesselIds: effectiveVesselIds,
+        monthValues,
+        complianceMode,
+        opaMode,
+      });
+    } else if (effectiveVesselIds && effectiveVesselIds.length > 0) {
       for (const vId of effectiveVesselIds) {
         const part = await this.getAll({ vesselId: vId, monthValue, complianceMode, opaMode });
         records.push(...part);
@@ -944,17 +1033,35 @@ export const crewRecordsService = {
     vesselId?: string;
     vesselIds?: string[];
     monthValue?: string;
+    monthValues?: string[];
+    dateFrom?: string;
+    dateTo?: string;
     complianceMode?: 'Rest' | 'Work';
     opaMode?: boolean;
   }): Promise<Array<{ rank: string; ncCount: number }>> {
-    const { vesselId, vesselIds, monthValue, complianceMode, opaMode } = params;
+    const { vesselId, vesselIds, monthValue, monthValues, dateFrom, dateTo, complianceMode, opaMode } = params;
 
     const effectiveVesselIds = vesselIds && vesselIds.length > 0
       ? vesselIds
       : (vesselId ? [vesselId] : undefined);
 
     let records: EnrichedCrewRecord[] = [];
-    if (effectiveVesselIds && effectiveVesselIds.length > 0) {
+    if (dateFrom && dateTo) {
+      records = await this.getBulkByDateRange({
+        vesselIds: effectiveVesselIds,
+        dateFrom,
+        dateTo,
+        complianceMode,
+        opaMode,
+      });
+    } else if (monthValues && monthValues.length > 0) {
+      records = await this.getBulkByMonths({
+        vesselIds: effectiveVesselIds,
+        monthValues,
+        complianceMode,
+        opaMode,
+      });
+    } else if (effectiveVesselIds && effectiveVesselIds.length > 0) {
       for (const vId of effectiveVesselIds) {
         const part = await this.getAll({ vesselId: vId, monthValue, complianceMode, opaMode });
         records.push(...part);
