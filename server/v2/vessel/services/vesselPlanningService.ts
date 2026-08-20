@@ -5,7 +5,7 @@ import { getDb } from "../../db";
 import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { masterPorts, masterVessels, masterVesselTypes, masterNationalities, masterCountries } from "../../../../shared/schema";
 import { admCompanyTrainingsV2, admAvailableRanksV2 } from "../../../../shared/v2/admin/schema";
-import { eq, and, sql, desc, or, isNull, aliasedTable, inArray } from "drizzle-orm";
+import { eq, and, sql, desc, or, isNull, aliasedTable, inArray, ne } from "drizzle-orm";
 import { resolveVesselTypeUuid } from "../../crew-pool/services/masterDataResolver";
 import { fileStorageService } from "../../shared/fileStorageService.js";
 import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
@@ -1138,10 +1138,22 @@ export const vesselPlanningService = {
     // vessel (active rows only), excluding the row being signed off. This avoids
     // stranding a vacant position when a valid secondary exists by rank name.
     if (!secondaryCrew && vesselUuid && planning.rank) {
-      const byName = await vesselPlanningRepository.findByVesselAndRankName(vesselUuid, planning.rank);
-      secondaryCrew = byName.find(
-        (s) => (s.crewStatus ?? "").toLowerCase() === "secondary" && s.planUuid !== planUuid,
-      ) ?? null;
+      const [secondaryByName] = await db
+        .select()
+        .from(vesselPlanningV2)
+        .where(
+          and(
+            eq(vesselPlanningV2.vesselUuid, vesselUuid),
+            eq(vesselPlanningV2.rank, planning.rank),
+            eq(vesselPlanningV2.crewStatus, "secondary"),
+            eq(vesselPlanningV2.isDeleted, false),
+            eq(vesselPlanningV2.isArchived, false),
+            ne(vesselPlanningV2.planUuid, planUuid),
+          ),
+        )
+        .limit(1);
+
+      secondaryCrew = secondaryByName ?? null;
     }
 
     await db.transaction(async (tx) => {

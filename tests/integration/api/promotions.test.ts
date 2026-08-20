@@ -17,7 +17,9 @@ import {
   crewAssignments,
   crewMembersV2,
 } from '../../../shared/v2/crew-pool/schema';
-import { eq } from 'drizzle-orm';
+import { vesselPlanningV2 } from '../../../shared/v2/vessel/schema';
+import { vesselPlanningService } from '../../../server/v2/vessel/services/vesselPlanningService';
+import { and, eq, inArray } from 'drizzle-orm';
 import { findNextPromotionRank } from '../../../client/src/modules/promotions/promotionUtils';
 
 const API_BASE = 'http://localhost:5000';
@@ -481,6 +483,135 @@ describe('Promotions API Integration', () => {
 
       await Promise.all([runLocked(), runLocked()]);
       expect(maximumConcurrentCallbacks).toBe(1);
+    });
+  });
+
+  describe('Onboard promotion old Position rank-change sign-off', () => {
+    const fixtureSuffix = `${Date.now()}-${process.pid}`;
+    const vesselUuid = `promotion-signoff-vessel-${fixtureSuffix}`;
+    const oldPrimaryPlanUuid = `promotion-signoff-old-primary-${fixtureSuffix}`;
+    const siblingPrimaryPlanUuid = `promotion-signoff-sibling-primary-${fixtureSuffix}`;
+    const exactSecondaryOldPrimaryPlanUuid = `promotion-signoff-exact-old-primary-${fixtureSuffix}`;
+    const exactSecondaryPlanUuid = `promotion-signoff-exact-secondary-${fixtureSuffix}`;
+    const planUuids = [
+      oldPrimaryPlanUuid,
+      siblingPrimaryPlanUuid,
+      exactSecondaryOldPrimaryPlanUuid,
+      exactSecondaryPlanUuid,
+    ];
+
+    afterAll(async () => {
+      const db = getDb();
+      await db
+        .delete(vesselPlanningV2)
+        .where(inArray(vesselPlanningV2.planUuid, planUuids));
+    });
+
+    it('archives the exact old Position and leaves it vacant when no exact Secondary exists', async () => {
+      const db = getDb();
+      await db.insert(vesselPlanningV2).values([
+        {
+          planUuid: oldPrimaryPlanUuid,
+          vesselUuid,
+          rankId: 'promotion-signoff-os-1',
+          rank: 'OS_1',
+          crewUuid: `promotion-signoff-promotee-${fixtureSuffix}`,
+          crewStatus: 'primary',
+          signOnDate: '2026-01-01',
+        },
+        {
+          planUuid: siblingPrimaryPlanUuid,
+          vesselUuid,
+          rankId: 'promotion-signoff-os-2',
+          rank: 'OS_2',
+          crewUuid: `promotion-signoff-sibling-${fixtureSuffix}`,
+          crewStatus: 'primary',
+          signOnDate: '2026-01-01',
+        },
+      ]);
+
+      await vesselPlanningService.signOffForRankChange(oldPrimaryPlanUuid, {
+        signOffDate: '2026-08-20',
+      });
+
+      const [oldPosition] = await db
+        .select()
+        .from(vesselPlanningV2)
+        .where(eq(vesselPlanningV2.planUuid, oldPrimaryPlanUuid));
+      const [siblingPosition] = await db
+        .select()
+        .from(vesselPlanningV2)
+        .where(eq(vesselPlanningV2.planUuid, siblingPrimaryPlanUuid));
+      const activeOldPositionRows = await db
+        .select()
+        .from(vesselPlanningV2)
+        .where(
+          and(
+            eq(vesselPlanningV2.vesselUuid, vesselUuid),
+            eq(vesselPlanningV2.rank, 'OS_1'),
+            eq(vesselPlanningV2.isDeleted, false),
+            eq(vesselPlanningV2.isArchived, false),
+          ),
+        );
+
+      expect(oldPosition).toMatchObject({
+        signOffDate: '2026-08-20',
+        reliefStatus: 'Signed Off',
+        isArchived: true,
+      });
+      expect(activeOldPositionRows).toHaveLength(0);
+      expect(siblingPosition).toMatchObject({
+        crewStatus: 'primary',
+        isArchived: false,
+      });
+    });
+
+    it('continues promoting an exact old-Position Secondary to Primary', async () => {
+      const db = getDb();
+      await db.insert(vesselPlanningV2).values([
+        {
+          planUuid: exactSecondaryOldPrimaryPlanUuid,
+          vesselUuid,
+          rankId: 'promotion-signoff-exact-os-1',
+          rank: 'OS_1',
+          crewUuid: `promotion-signoff-exact-primary-${fixtureSuffix}`,
+          crewStatus: 'primary',
+          signOnDate: '2026-01-01',
+        },
+        {
+          planUuid: exactSecondaryPlanUuid,
+          vesselUuid,
+          rankId: 'promotion-signoff-exact-os-1',
+          rank: 'OS_1',
+          crewUuid: `promotion-signoff-exact-secondary-${fixtureSuffix}`,
+          crewStatus: 'secondary',
+          signOnDate: '2026-01-01',
+        },
+      ]);
+
+      await vesselPlanningService.signOffForRankChange(
+        exactSecondaryOldPrimaryPlanUuid,
+        { signOffDate: '2026-08-20' },
+      );
+
+      const [oldPosition] = await db
+        .select()
+        .from(vesselPlanningV2)
+        .where(eq(vesselPlanningV2.planUuid, exactSecondaryOldPrimaryPlanUuid));
+      const [exactSecondary] = await db
+        .select()
+        .from(vesselPlanningV2)
+        .where(eq(vesselPlanningV2.planUuid, exactSecondaryPlanUuid));
+
+      expect(oldPosition).toMatchObject({
+        signOffDate: '2026-08-20',
+        reliefStatus: 'Signed Off',
+        isArchived: true,
+      });
+      expect(exactSecondary).toMatchObject({
+        crewStatus: 'primary',
+        isArchived: false,
+      });
     });
   });
 
