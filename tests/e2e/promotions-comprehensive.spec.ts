@@ -81,6 +81,133 @@ test.describe('Promotions - Comprehensive Workflow', () => {
     }
   });
 
+  test('should show configured Position choices only for an onboard multi-Position promotion', async ({ page }) => {
+    const crewMemberId = 'T493-E2E';
+    const vesselUuid = 'T493-VESSEL';
+
+    await page.route('**/api/v2/crew-pool/crew/enriched', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{
+          empNo: crewMemberId,
+          employeeId: crewMemberId,
+          firstName: 'Task',
+          familyName: 'Position',
+          presentRank: 'OS_1',
+          status: 'Active',
+          vesselUuid,
+          vesselName: 'Task 493 Vessel',
+        }]),
+      });
+    });
+    await page.route('**/api/v2/admin/promotion-hierarchies', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{
+          id: 493,
+          groupName: 'Task 493 Deck Ratings',
+          rankPath: JSON.stringify([
+            'OS_1',
+            'OS_2',
+            'OS_3',
+            'AB_1',
+            'AB_2',
+            'AB_3',
+          ]),
+          isActive: true,
+        }]),
+      });
+    });
+    await page.route('**/api/v2/promotions/reviews', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '[]',
+      });
+    });
+    await page.route('**/api/v2/admin/forms', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{
+          id: 493,
+          name: 'Promotion Review Form',
+          category: 'promotion',
+          isLockForm: false,
+        }]),
+      });
+    });
+    await page.route('**/api/v2/admin/rank-groups', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([{
+          id: 493,
+          formId: 493,
+          ranks: JSON.stringify(['AB']),
+          archivedAt: null,
+          configuration: null,
+        }]),
+      });
+    });
+    await page.route(`**/api/v2/promotions/reviews/crew/${crewMemberId}/rank/AB`, async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Promotion review not found' }),
+      });
+    });
+    await page.route(`**/api/v2/crew-pool/crew/by-emp-no/${crewMemberId}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          empNo: crewMemberId,
+          presentRank: 'OS_1',
+        }),
+      });
+    });
+    await page.route(`**/api/v2/admin/vessel-revisions/ranks/${vesselUuid}`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          { displayRole: 'AB_1' },
+          { displayRole: 'AB_2' },
+          { displayRole: 'AB_3' },
+          { displayRole: 'OS_1' },
+        ]),
+      });
+    });
+
+    await page.goto('/');
+    await page.getByTestId('nav-promotions').click();
+    await expect(page.getByTestId(`button-edit-${crewMemberId}`)).toBeVisible();
+    await page.getByTestId(`button-edit-${crewMemberId}`).click();
+
+    await page.getByTestId('button-step-b').click();
+    await page.getByTestId('radio-promotion-decision-yes').click();
+    await page.getByTestId('radio-promotion-type-on-board').click();
+    await page.getByTestId('button-step-c').click();
+
+    await expect(page.getByTestId('button-select-promotion-position')).toBeVisible();
+    await page.getByTestId('button-select-promotion-position').click();
+    await expect(page.getByText(
+      'Choose a specific position to promote Task Position to.',
+    )).toBeVisible();
+    await expect(page.getByTestId('radio-promotion-position-AB_1')).toBeVisible();
+    await expect(page.getByTestId('radio-promotion-position-AB_2')).toBeVisible();
+    await expect(page.getByTestId('radio-promotion-position-AB_3')).toBeVisible();
+    await page.getByText('Cancel', { exact: true }).click();
+
+    await page.getByTestId('button-step-b').click();
+    await page.getByTestId('radio-promotion-type-prior-joining').click();
+    await page.getByTestId('button-step-c').click();
+    await expect(page.getByTestId('button-select-promotion-position')).toHaveCount(0);
+  });
+
   test('should show promotion approval actions or action buttons', async ({ page }) => {
     const container = page.getByTestId('promotions-container');
     

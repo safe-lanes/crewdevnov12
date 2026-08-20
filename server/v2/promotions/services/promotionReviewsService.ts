@@ -17,7 +17,7 @@ import { applyAuditUser } from "../../admin/utils/auditUser";
 import type { PromotionReviewV2, PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
-import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
+import { vesselPlanningV2, type VesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { promoExecutionLedgerV2, promotionReviewsV2, promoChecklistAttachmentsV2 } from "../../../../shared/v2/promotions/schema";
 import { eq, and, isNull, or, sql, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -820,7 +820,7 @@ export class PromotionReviewsService {
     }
   }
 
-  private async getActivePlanningRows(vesselUuid: string) {
+  private async getActivePlanningRows(vesselUuid: string): Promise<VesselPlanningV2[]> {
     const db = getDb();
     return db
       .select()
@@ -937,13 +937,16 @@ export class PromotionReviewsService {
     const targetRows = planningRows.filter(
       (row) => row.rank === targetPosition,
     );
-    const targetRankId =
-      targetRows.find((row) => !!row.rankId)?.rankId || "";
-    if (!targetRankId) {
+    const targetPrimaryRow = targetRows.find(
+      (row) =>
+        String(row.crewStatus).toLowerCase() === "primary",
+    );
+    if (!targetPrimaryRow?.planUuid || !targetPrimaryRow.rankId) {
       throw new PromotionGuardError(
-        `Onboard promotion cannot be completed because the selected position ${targetPosition.replace(/_/g, " ")} is not available in Vessel Planning for the current vessel.`,
+        `Onboard promotion cannot be completed because the selected position ${targetPosition.replace(/_/g, " ")} has no active Primary row and rank id in Vessel Planning for the current vessel.`,
       );
     }
+    const targetRankId = targetPrimaryRow.rankId;
 
     const hasSignedOnPrimary = signedOnRows.some(
       (row) =>
@@ -993,26 +996,13 @@ export class PromotionReviewsService {
       );
     }
 
-    const targetPlanUuid =
-      targetRows.find(
-        (row) =>
-          String(row.crewStatus).toLowerCase() === "primary",
-      )?.planUuid ||
-      targetRows[0]?.planUuid ||
-      "";
-    if (!targetPlanUuid) {
-      throw new PromotionGuardError(
-        `Onboard promotion cannot be completed because the selected position ${targetPosition.replace(/_/g, " ")} is not available in Vessel Planning for the current vessel.`,
-      );
-    }
-
     return {
       vesselUuid,
       currentPlanUuid: currentRow.planUuid,
       currentPosition,
       targetPosition,
       targetRankId,
-      targetPlanUuid,
+      targetPlanUuid: targetPrimaryRow.planUuid,
     };
   }
 

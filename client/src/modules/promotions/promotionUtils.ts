@@ -1,10 +1,23 @@
 import { PromotionHierarchy } from '@shared/schema';
 import { getBaseRank } from '@shared/crew-mapping';
 
-function getBasePromotionPath(rankPath: string[]): string[] {
+function getBasePromotionPath(rankPath: unknown): string[] {
+  let parsedPath: string[] = [];
+  if (Array.isArray(rankPath)) {
+    parsedPath = rankPath.filter((rank): rank is string => typeof rank === 'string');
+  } else if (typeof rankPath === 'string') {
+    try {
+      const parsed = JSON.parse(rankPath);
+      parsedPath = Array.isArray(parsed)
+        ? parsed.filter((rank): rank is string => typeof rank === 'string')
+        : [];
+    } catch {
+      parsedPath = [];
+    }
+  }
   const basePath: string[] = [];
   const seen = new Set<string>();
-  for (const rank of rankPath) {
+  for (const rank of parsedPath) {
     const baseRank = getBaseRank(rank).trim();
     const key = baseRank.toLowerCase();
     if (!baseRank || seen.has(key)) {
