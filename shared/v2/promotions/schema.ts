@@ -25,6 +25,7 @@ export const promotionReviewsV2 = pgTable("promotion_reviews_v2", {
   reviewUuid: text("review_uuid").notNull().unique(),
   crewMemberId: text("crew_member_id").notNull(),
   promotionToRank: text("promotion_to_rank").notNull(),
+  selectedPosition: text("selected_position"),
   selectedVesselTypeForA23b: text("selected_vessel_type_for_a2_3b"),
   promotionConfirmed: text("promotion_confirmed"),
   vesselAssigned: text("vessel_assigned"),

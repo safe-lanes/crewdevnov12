@@ -1,4 +1,20 @@
 import { PromotionHierarchy } from '@shared/schema';
+import { getBaseRank } from '@shared/crew-mapping';
+
+function getBasePromotionPath(rankPath: string[]): string[] {
+  const basePath: string[] = [];
+  const seen = new Set<string>();
+  for (const rank of rankPath) {
+    const baseRank = getBaseRank(rank).trim();
+    const key = baseRank.toLowerCase();
+    if (!baseRank || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    basePath.push(baseRank);
+  }
+  return basePath;
+}
 
 /**
  * Finds the next promotion rank for a given current rank based on promotion hierarchies
@@ -10,26 +26,27 @@ export function findNextPromotionRank(
   currentRank: string,
   hierarchies: PromotionHierarchy[]
 ): { nextRank: string | null; hasPath: boolean } {
-  // Find the hierarchy that contains the current rank
-  const hierarchy = hierarchies.find(h => h.rankPath.includes(currentRank));
-
-  if (!hierarchy) {
-    // No career path configured for this rank
-    return { nextRank: null, hasPath: false };
+  const currentBaseRank = getBaseRank(currentRank).trim().toLowerCase();
+  for (const hierarchy of hierarchies) {
+    const basePath = getBasePromotionPath(hierarchy.rankPath);
+    const currentIndex = basePath.findIndex(
+      (rank) => rank.trim().toLowerCase() === currentBaseRank,
+    );
+    if (currentIndex === -1) {
+      continue;
+    }
+    return {
+      nextRank:
+        currentIndex < basePath.length - 1
+          ? basePath[currentIndex + 1]
+          : null,
+      hasPath: true,
+    };
   }
-
-  // rankPath is stored junior→senior (index 0 = most junior, last index = most senior)
-  // So we move towards the last index to get more senior ranks
-  const currentIndex = hierarchy.rankPath.indexOf(currentRank);
-
-  // Check if there's a next rank (more senior position)
-  if (currentIndex < hierarchy.rankPath.length - 1) {
-    // Next rank exists (one position higher index = more senior)
-    return { nextRank: hierarchy.rankPath[currentIndex + 1], hasPath: true };
-  } else {
-    // Already at senior position (last index = top of the ladder)
-    return { nextRank: null, hasPath: true };
-  }
+  return {
+    nextRank: null,
+    hasPath: false,
+  };
 }
 
 /**

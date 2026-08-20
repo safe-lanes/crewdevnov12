@@ -17,16 +17,19 @@ import { applyAuditUser } from "../../admin/utils/auditUser";
 import type { PromotionReviewV2, PromoSuitabilityV2 } from "../../../../shared/v2/promotions/types";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { promoExecutionLedgerV2, promotionReviewsV2, promoChecklistAttachmentsV2 } from "../../../../shared/v2/promotions/schema";
 import { eq, and, isNull, or, sql, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { fileStorageService } from "../../shared/fileStorageService.js";
 import { decodeStoredFile } from "../../shared/serveAttachmentHelper.js";
 import { v4 as uuidv4 } from "uuid";
+import { getBaseRank } from "../../../../shared/crew-mapping";
 
 export const promotionReviewWritableSchema = z.object({
   crewMemberId: z.string().optional(),
   promotionToRank: z.string().optional(),
+  selectedPosition: z.string().nullable().optional(),
   selectedVesselTypeForA2_3b: z.string().nullable().optional(),
   selectedVesselTypeForA23b: z.string().nullable().optional(),
   criteriaVerifiedStatus: z.string().optional(),
@@ -144,6 +147,7 @@ export interface BackfillResult {
 }
 
 function findNextPromotionRank(currentRank: string, hierarchies: any[]): string | null {
+  const currentBaseRank = getBaseRank(currentRank).trim().toLowerCase();
   for (const hierarchy of hierarchies) {
     let rankPath: string[];
     try {
@@ -153,13 +157,29 @@ function findNextPromotionRank(currentRank: string, hierarchies: any[]): string 
     } catch (e) {
       rankPath = [];
     }
-    if (!rankPath.includes(currentRank)) continue;
+    const basePath = getBasePromotionPath(rankPath);
+    const currentIndex = basePath.findIndex(
+      (rank) => rank.trim().toLowerCase() === currentBaseRank,
+    );
+    if (currentIndex === -1) continue;
     // rankPath is stored junior→senior (index 0 = most junior, last index = most senior)
-    const currentIndex = rankPath.indexOf(currentRank);
-    if (currentIndex < rankPath.length - 1) return rankPath[currentIndex + 1];
+    if (currentIndex < basePath.length - 1) return basePath[currentIndex + 1];
     return null;
   }
   return null;
+}
+
+function getBasePromotionPath(rankPath: string[]): string[] {
+  const output: string[] = [];
+  const seen = new Set<string>();
+  for (const rank of rankPath) {
+    const baseRank = getBaseRank(rank).trim();
+    const key = baseRank.toLowerCase();
+    if (!baseRank || seen.has(key)) continue;
+    seen.add(key);
+    output.push(baseRank);
+  }
+  return output;
 }
 
 // True when the given rank appears anywhere in the promotion hierarchies. Used
@@ -354,6 +374,7 @@ function assembleV1Response(
     reviewUuid: review.reviewUuid,
     crewMemberId: review.crewMemberId,
     promotionToRank: review.promotionToRank,
+    selectedPosition: review.selectedPosition || null,
     selectedVesselTypeForA2_3b: review.selectedVesselTypeForA23b || null,
     criteriaVerifiedStatus: JSON.stringify(criteriaVerifiedStatus),
     criteriaMeetsStatus: JSON.stringify(criteriaMeetsStatus),
@@ -393,6 +414,15 @@ function isApprovedPriorJoining(r: {
   const timing = (r.promotionTiming ?? "").trim().toLowerCase();
   return status === "approved" && timing === "prior-joining";
 }
+
+type OnboardPromotionExecutionContext = {
+  vesselUuid: string;
+  currentPlanUuid: string;
+  currentPosition: string;
+  targetPosition: string;
+  targetRankId: string;
+  targetPlanUuid: string;
+};
 
 export class PromotionReviewsService {
   async getCriteriaMaster() {
@@ -790,6 +820,215 @@ export class PromotionReviewsService {
     }
   }
 
+  private async getActivePlanningRows(vesselUuid: string) {
+    const db = getDb();
+    return db
+      .select()
+      .from(vesselPlanningV2)
+      .where(
+        and(
+          eq(vesselPlanningV2.vesselUuid, vesselUuid),
+          eq(vesselPlanningV2.isDeleted, false),
+          eq(vesselPlanningV2.isArchived, false),
+        ),
+      );
+  }
+
+  private async resolveOnboardPromotionContext(params: {
+    crewMemberId: string;
+    promotionToRank: string;
+    selectedPosition?: string | null;
+  }): Promise<OnboardPromotionExecutionContext> {
+    const {
+      crewMemberId,
+      promotionToRank,
+      selectedPosition,
+    } = params;
+    const db = getDb();
+    const [crew] = await db
+      .select({
+        crewUuid: crewMembersV2.crewUuid,
+      })
+      .from(crewMembersV2)
+      .where(eq(crewMembersV2.empNo, crewMemberId));
+    if (!crew?.crewUuid) {
+      throw new PromotionGuardError(
+        "Onboard promotion cannot be completed because the crew member could not be found.",
+      );
+    }
+
+    const { crewAssignmentsService } = await import(
+      "../../crew-pool/services/crewAssignmentsService"
+    );
+    const currentAssignment =
+      await crewAssignmentsService.getCurrent(crew.crewUuid);
+    const vesselUuid = currentAssignment?.vesselUuid;
+    if (!vesselUuid) {
+      throw new PromotionGuardError(
+        "Onboard promotion cannot be completed because the crew member is not assigned to a current vessel.",
+      );
+    }
+
+    const planningRows =
+      await this.getActivePlanningRows(vesselUuid);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    const signedOnRows = planningRows.filter((row) => {
+      if (!row.signOnDate) return false;
+      const date = new Date(row.signOnDate);
+      return (
+        !Number.isNaN(date.getTime()) &&
+        date.getTime() <= endOfToday.getTime()
+      );
+    });
+    const promoteeRows = signedOnRows.filter(
+      (row) => row.crewUuid === crew.crewUuid,
+    );
+    if (promoteeRows.length !== 1) {
+      throw new PromotionGuardError(
+        "Onboard promotion cannot be completed because the crew member's current onboard position could not be determined.",
+      );
+    }
+
+    const currentRow = promoteeRows[0];
+    const currentPosition = currentRow.rank;
+    const { vesselRevisionsService } = await import(
+      "../../admin/services/vesselRevisionsService"
+    );
+    const vesselRanks =
+      await vesselRevisionsService.getRanksByVesselId(vesselUuid);
+    const targetBaseRank = getBaseRank(promotionToRank)
+      .trim()
+      .toLowerCase();
+    const configuredTargetPositions = Array.from(new Set(
+      vesselRanks
+        .map((rank: any) => rank.displayRole || "")
+        .filter((position: string) => {
+          return (
+            !!position &&
+            getBaseRank(position).trim().toLowerCase() ===
+              targetBaseRank
+          );
+        }),
+    ));
+    if (configuredTargetPositions.length === 0) {
+      throw new PromotionGuardError(
+        `Onboard promotion cannot be completed because the target rank "${promotionToRank}" is not configured for the crew member's current vessel.`,
+      );
+    }
+
+    let targetPosition: string;
+    if (configuredTargetPositions.length === 1) {
+      targetPosition = configuredTargetPositions[0];
+    } else {
+      targetPosition = String(selectedPosition || "").trim();
+      if (!targetPosition) {
+        throw new PromotionGuardError(
+          "Please select a position before completing the promotion.",
+        );
+      }
+      if (!configuredTargetPositions.includes(targetPosition)) {
+        throw new PromotionGuardError(
+          `The selected position "${targetPosition}" is not configured for the target rank on the crew member's current vessel.`,
+        );
+      }
+    }
+
+    const targetRows = planningRows.filter(
+      (row) => row.rank === targetPosition,
+    );
+    const targetRankId =
+      targetRows.find((row) => !!row.rankId)?.rankId || "";
+    if (!targetRankId) {
+      throw new PromotionGuardError(
+        `Onboard promotion cannot be completed because the selected position ${targetPosition.replace(/_/g, " ")} is not available in Vessel Planning for the current vessel.`,
+      );
+    }
+
+    const hasSignedOnPrimary = signedOnRows.some(
+      (row) =>
+        row.rank === targetPosition &&
+        String(row.crewStatus).toLowerCase() === "primary" &&
+        !!row.crewUuid,
+    );
+    const hasSignedOnSecondary = signedOnRows.some(
+      (row) =>
+        row.rank === targetPosition &&
+        String(row.crewStatus).toLowerCase() === "secondary" &&
+        !!row.crewUuid,
+    );
+    if (hasSignedOnPrimary && hasSignedOnSecondary) {
+      throw new PromotionGuardError(
+        `Onboard promotion cannot be completed. Neither a Primary nor Secondary position is available at ${targetPosition.replace(/_/g, " ")} to promote the crew onboard.`,
+      );
+    }
+
+    const hasExactPositionSecondary = signedOnRows.some(
+      (row) =>
+        row.crewUuid !== crew.crewUuid &&
+        row.rank === currentPosition &&
+        String(row.crewStatus).toLowerCase() === "secondary" &&
+        !!row.crewUuid,
+    );
+    const currentBaseRank = getBaseRank(currentPosition)
+      .trim()
+      .toLowerCase();
+    const hasSameFamilyCoverage = signedOnRows.some(
+      (row) =>
+        row.crewUuid !== crew.crewUuid &&
+        row.rank !== currentPosition &&
+        !!row.crewUuid &&
+        ["primary", "secondary"].includes(
+          String(row.crewStatus).toLowerCase(),
+        ) &&
+        getBaseRank(row.rank).trim().toLowerCase() ===
+          currentBaseRank,
+    );
+    if (
+      !hasExactPositionSecondary &&
+      !hasSameFamilyCoverage
+    ) {
+      throw new PromotionGuardError(
+        "Onboard promotion cannot be completed. A reliever must be assigned and signed onboard for the crew member's current rank before promotion can be executed.",
+      );
+    }
+
+    const targetPlanUuid =
+      targetRows.find(
+        (row) =>
+          String(row.crewStatus).toLowerCase() === "primary",
+      )?.planUuid ||
+      targetRows[0]?.planUuid ||
+      "";
+    if (!targetPlanUuid) {
+      throw new PromotionGuardError(
+        `Onboard promotion cannot be completed because the selected position ${targetPosition.replace(/_/g, " ")} is not available in Vessel Planning for the current vessel.`,
+      );
+    }
+
+    return {
+      vesselUuid,
+      currentPlanUuid: currentRow.planUuid,
+      currentPosition,
+      targetPosition,
+      targetRankId,
+      targetPlanUuid,
+    };
+  }
+
+  private async withOnboardPositionLock<T>(
+    context: OnboardPromotionExecutionContext,
+    task: () => Promise<T>,
+  ): Promise<T> {
+    const db = getDb();
+    return db.transaction(async (tx: typeof db) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${context.vesselUuid}), hashtext(${context.targetPosition}))`,
+      );
+      return task();
+    });
+  }
+
   // Enforce the promotion workflow rules before a write is persisted:
   //  1. A Date of Promotion may not be in the future.
   //  2. Only the next rank in the crew member's hierarchy may be promoted
@@ -799,13 +1038,14 @@ export class PromotionReviewsService {
   private async assertPromotionGuards(params: {
     crewMemberId?: string | null;
     promotionToRank?: string | null;
+    selectedPosition?: string | null;
     promotionDate?: string | null;
     promotionTiming?: string | null;
     incomingStatus?: string | null;
     existingStatus?: string | null;
     reviewUuid?: string | null;
-  }) {
-    const { crewMemberId, promotionToRank, promotionDate, promotionTiming, incomingStatus, existingStatus, reviewUuid } = params;
+  }): Promise<OnboardPromotionExecutionContext | null> {
+    const { crewMemberId, promotionToRank, selectedPosition, promotionDate, promotionTiming, incomingStatus, existingStatus, reviewUuid } = params;
 
     // 1. No future-dated promotion.
     if (promotionDate && String(promotionDate).trim()) {
@@ -870,70 +1110,22 @@ export class PromotionReviewsService {
       }
     }
 
-    // 4. On-board promotion — reliever must already be onboard. The promotee's
-    //    existing rank position must not become vacant. Before an on-board
-    //    promotion can be executed (transition into "completed"), a relieving
-    //    crew member must be assigned AND signed onboard as a Secondary at the
-    //    promotee's CURRENT rank on the promotee's current vessel. This guard
-    //    runs before the review is persisted, so a blocked promotion leaves the
-    //    rank, the execution ledger and the vessel-planning rows untouched.
     const timing = (promotionTiming ?? "").trim().toLowerCase();
     if (
       timing === "on-board" &&
       incomingStatus &&
       incomingRank === statusRank("completed") &&
       existingRank < statusRank("completed") &&
-      crewMemberId
+      crewMemberId &&
+      promotionToRank
     ) {
-      const noRelieverMessage =
-        "Onboard promotion cannot be completed. A reliever must be assigned and signed onboard for the crew member's current rank before promotion can be executed.";
-
-      const db = getDb();
-      const [crew] = await db
-        .select({ crewUuid: crewMembersV2.crewUuid, presentRank: crewMembersV2.presentRank })
-        .from(crewMembersV2)
-        .where(eq(crewMembersV2.empNo, crewMemberId));
-
-      const currentRank = crew?.presentRank?.trim();
-      // Fail-closed: an on-board completion can only be allowed once a signed-on
-      // reliever is proven. If the promotee, their current rank or their current
-      // vessel cannot be resolved, the reliever condition cannot be satisfied, so
-      // the promotion must be blocked rather than silently allowed.
-      if (!crew?.crewUuid || !currentRank) {
-        throw new PromotionGuardError(noRelieverMessage);
-      }
-
-      const { crewAssignmentsService } = await import("../../crew-pool/services/crewAssignmentsService");
-      const current = await crewAssignmentsService.getCurrent(crew.crewUuid);
-      const vesselUuid = current?.vesselUuid;
-
-      if (!vesselUuid) {
-        // No current vessel assignment — there cannot be an onboard reliever.
-        throw new PromotionGuardError(noRelieverMessage);
-      }
-
-      const { vesselPlanningRepository } = await import("../../vessel/repositories");
-      const slots = await vesselPlanningRepository.findByVesselAndRankName(vesselUuid, currentRank);
-
-      const endOfToday = new Date();
-      endOfToday.setHours(23, 59, 59, 999);
-
-      // A valid reliever is a Secondary at the promotee's current rank, on the
-      // same vessel, who is NOT the promotee, and whose sign-on date has
-      // actually arrived (a future-dated/planned reliever is not yet onboard).
-      const hasSignedOnReliever = slots.some((s: any) => {
-        if ((s.crewStatus ?? "").toLowerCase() !== "secondary") return false;
-        if (s.crewUuid === crew.crewUuid) return false;
-        const signOn = (s.signOnDate ?? "").trim();
-        if (!signOn) return false;
-        const d = new Date(signOn);
-        return !isNaN(d.getTime()) && d.getTime() <= endOfToday.getTime();
+      return this.resolveOnboardPromotionContext({
+        crewMemberId,
+        promotionToRank,
+        selectedPosition,
       });
-
-      if (!hasSignedOnReliever) {
-        throw new PromotionGuardError(noRelieverMessage);
-      }
     }
+    return null;
   }
 
   // ── Rank Propagation Engine (Phase 2) ────────────────────────────────────
@@ -1116,34 +1308,19 @@ export class PromotionReviewsService {
     review: PromotionReviewV2,
     actorUuid?: string | null,
     signOnDate?: string | null,
+    onboardContext?: OnboardPromotionExecutionContext | null,
   ): Promise<void> {
     try {
       const empNo = (review.crewMemberId ?? "").trim();
-      const toRank = (review.promotionToRank ?? "").trim();
-      if (!empNo || !toRank) return;
+      if (!empNo || !onboardContext) return;
 
       const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
       const crew = await crewMembersService.getByEmpNo(empNo);
       if (!crew) return;
 
-      const { crewAssignmentsService } = await import("../../crew-pool/services/crewAssignmentsService");
-      const current = await crewAssignmentsService.getCurrent(crew.crewUuid);
-      const vesselUuid = current?.vesselUuid;
-      if (!vesselUuid) {
-        console.warn(
-          `[promotion-engine] On-board promotion ${review.reviewUuid}: crew ${empNo} ` +
-          `has no current vessel assignment; skipping target-rank placement.`,
-        );
-        return;
-      }
-
-      const { vesselPlanningRepository } = await import("../../vessel/repositories");
-
-      // Reuse the rankId convention already on the vessel: find an existing
-      // planning row for the target rank (by name) and copy its rankId. This
-      // avoids guessing how rankId is encoded across the manning matrix.
-      // findByVesselAndRankName already excludes archived/deleted rows.
-      const slots = await vesselPlanningRepository.findByVesselAndRankName(vesselUuid, toRank);
+      const slots = (
+        await this.getActivePlanningRows(onboardContext.vesselUuid)
+      ).filter((row) => row.rank === onboardContext.targetPosition);
 
       // Idempotency: already placed (as primary or secondary) on this vessel/rank.
       const alreadyPlaced = slots.find((s: any) => s.crewUuid === crew.crewUuid);
@@ -1174,64 +1351,9 @@ export class PromotionReviewsService {
       );
       const targetStatus: "primary" | "secondary" = hasActivePrimary ? "secondary" : "primary";
 
-      let rankId: string | null = null;
-      let vacantSlot: any = null;
-      if (slots.length > 0) {
-        rankId = slots[0].rankId ?? null;
-        if (targetStatus === "secondary") {
-          // An active Secondary row already exists for this rank — don't create a
-          // duplicate. Match by status alone (any active secondary row blocks),
-          // mirroring vesselPlanningService.signOnReliever CASE A, so a corrupt
-          // vacant-secondary row can't spawn parallel secondaries.
-          const existingSecondary = slots.find(
-            (s: any) => (s.crewStatus ?? "").toLowerCase() === "secondary",
-          );
-          if (existingSecondary) {
-            console.warn(
-              `[promotion-engine] On-board promotion ${review.reviewUuid}: a Secondary ` +
-              `already occupies "${toRank}" on the vessel; skipping placement.`,
-            );
-            return;
-          }
-        } else {
-          // Placing as Primary into a vacant position: reuse an existing vacant
-          // slot row (no crew assigned) so we fill the manning slot instead of
-          // leaving an empty duplicate alongside the new Primary. Pick
-          // deterministically (by planUuid) when several vacant rows exist.
-          vacantSlot =
-            slots
-              .filter((s: any) => !s.crewUuid)
-              .sort((a: any, b: any) =>
-                String(a.planUuid).localeCompare(String(b.planUuid)),
-              )[0] ?? null;
-        }
-      } else {
-        // No slot for the target rank yet — resolve the rankId from masters.
-        const db = getDb();
-        const { admAvailableRanksV2 } = await import("../../../../shared/v2/admin/schema");
-        const [rankRow] = await db
-          .select({ rankId: admAvailableRanksV2.rankId })
-          .from(admAvailableRanksV2)
-          .where(and(
-            eq(admAvailableRanksV2.name, toRank),
-            eq(admAvailableRanksV2.isDeleted, false),
-          ))
-          .limit(1);
-        rankId = rankRow?.rankId ?? null;
-      }
-
-      if (!rankId) {
-        console.warn(
-          `[promotion-engine] On-board promotion ${review.reviewUuid}: could not resolve ` +
-          `a rank id for "${toRank}"; skipping target-rank placement.`,
-        );
-        return;
-      }
-
       const { vesselPlanningService } = await import("../../vessel/services/vesselPlanningService");
-      if (targetStatus === "primary" && vacantSlot) {
-        // Fill the existing vacant manning slot rather than inserting a duplicate.
-        await vesselPlanningService.update(vacantSlot.planUuid, {
+      if (targetStatus === "primary") {
+        await vesselPlanningService.update(onboardContext.targetPlanUuid, {
           crewUuid: crew.crewUuid,
           crewStatus: "primary",
           signOnDate: (signOnDate ?? "").trim() || undefined,
@@ -1239,10 +1361,10 @@ export class PromotionReviewsService {
         });
       } else {
         await vesselPlanningService.create({
-          vesselUuid,
+          vesselUuid: onboardContext.vesselUuid,
           crewUuid: crew.crewUuid,
-          rankId,
-          rank: toRank,
+          rankId: onboardContext.targetRankId,
+          rank: onboardContext.targetPosition,
           crewStatus: targetStatus,
           signOnDate: (signOnDate ?? "").trim() || undefined,
           auditUserUuid: actorUuid ?? undefined,
@@ -1261,7 +1383,11 @@ export class PromotionReviewsService {
   // the rank propagation engine executes the promotion (idempotently). For
   // on-board promotions the promotee is additionally placed as a Secondary on
   // their current vessel to drive the takeover flow.
-  private async runCompletionHook(review: PromotionReviewV2 | null, actorUuid?: string | null) {
+  private async runCompletionHook(
+    review: PromotionReviewV2 | null,
+    actorUuid?: string | null,
+    onboardContext?: OnboardPromotionExecutionContext | null,
+  ) {
     if (!review) return;
     if (statusRank(review.status) < statusRank("completed")) return;
 
@@ -1289,10 +1415,20 @@ export class PromotionReviewsService {
       const fromRank = (ledger?.fromRank ?? "").trim();
       const toRank = (review.promotionToRank ?? "").trim();
 
-      await this.placePromoteeOnTargetRank(review, actorUuid, effectiveDate);
+      await this.placePromoteeOnTargetRank(
+        review,
+        actorUuid,
+        effectiveDate,
+        onboardContext,
+      );
 
-      if (fromRank && fromRank !== toRank) {
-        await this.signOffPromoteeOldRank(review, fromRank, effectiveDate, actorUuid);
+      if (fromRank && fromRank !== toRank && onboardContext) {
+        await this.signOffPromoteeOldRank(
+          review,
+          onboardContext,
+          effectiveDate,
+          actorUuid,
+        );
       }
     }
   }
@@ -1304,41 +1440,16 @@ export class PromotionReviewsService {
   // touch their crew_assignments or sea service. Best-effort + idempotent.
   private async signOffPromoteeOldRank(
     review: PromotionReviewV2,
-    fromRank: string,
+    onboardContext: OnboardPromotionExecutionContext,
     effectiveDate?: string | null,
     actorUuid?: string | null,
   ): Promise<void> {
     try {
-      const empNo = (review.crewMemberId ?? "").trim();
       const signOffDate = (effectiveDate ?? "").trim();
-      if (!empNo || !fromRank || !signOffDate) return;
-
-      const { crewMembersService } = await import("../../crew-pool/services/crewMembersService");
-      const crew = await crewMembersService.getByEmpNo(empNo);
-      if (!crew) return;
-
-      const { crewAssignmentsService } = await import("../../crew-pool/services/crewAssignmentsService");
-      const current = await crewAssignmentsService.getCurrent(crew.crewUuid);
-      const vesselUuid = current?.vesselUuid;
-      if (!vesselUuid) return;
-
-      const { vesselPlanningRepository } = await import("../../vessel/repositories");
-      const slots = await vesselPlanningRepository.findByVesselAndRankName(vesselUuid, fromRank);
-
-      // The promotee's own active planning row at their previous rank. Prefer the
-      // primary row; fall back to any active row they hold at that rank. Once the
-      // row is archived (signed off) it is no longer returned here, so a re-run is
-      // a safe no-op.
-      const oldRow =
-        slots.find(
-          (s: any) =>
-            s.crewUuid === crew.crewUuid &&
-            (s.crewStatus ?? "").toLowerCase() === "primary",
-        ) ?? slots.find((s: any) => s.crewUuid === crew.crewUuid);
-      if (!oldRow) return;
+      if (!signOffDate) return;
 
       const { vesselPlanningService } = await import("../../vessel/services/vesselPlanningService");
-      await vesselPlanningService.signOffForRankChange(oldRow.planUuid, {
+      await vesselPlanningService.signOffForRankChange(onboardContext.currentPlanUuid, {
         signOffDate,
         auditUserUuid: actorUuid ?? undefined,
       });
@@ -1590,9 +1701,16 @@ export class PromotionReviewsService {
       coreFields.selectedVesselTypeForA23b = _svt;
     }
 
-    await this.assertPromotionGuards({
+    const effectivePromotionTiming = coreFields.promotionTiming;
+    coreFields.selectedPosition =
+      String(effectivePromotionTiming || "").trim().toLowerCase() === "on-board"
+        ? (coreFields.selectedPosition?.trim() || null)
+        : null;
+
+    const onboardContext = await this.assertPromotionGuards({
       crewMemberId: coreFields.crewMemberId,
       promotionToRank: coreFields.promotionToRank,
+      selectedPosition: coreFields.selectedPosition,
       promotionDate: coreFields.promotionDate,
       promotionTiming: coreFields.promotionTiming,
       incomingStatus: coreFields.status,
@@ -1600,33 +1718,54 @@ export class PromotionReviewsService {
       reviewUuid: null,
     });
 
-    // First submission can happen directly via POST (new review submitted for
-    // approval). Snapshot the lock flag so later admin toggles don't change it.
-    if (coreFields.status === "submitted") {
-      coreFields.isLockForm = await this.resolvePromotionLockFlag();
+    const persistReview = async (
+      executionContext: OnboardPromotionExecutionContext | null,
+    ) => {
+      // First submission can happen directly via POST (new review submitted for
+      // approval). Snapshot the lock flag so later admin toggles don't change it.
+      if (coreFields.status === "submitted") {
+        coreFields.isLockForm = await this.resolvePromotionLockFlag();
+      }
+
+      // Pin-at-submission rule: only a review born directly in "submitted" state
+      // gets pinned; drafts stay unpinned and live-follow the latest version.
+      delete coreFields.formVersionId;
+      delete coreFields.formVersionUuid;
+      if (coreFields.status === "submitted") {
+        const pin = await this.resolvePromotionFormVersion(coreFields.promotionToRank);
+        coreFields.formVersionId = pin.formVersionId;
+        coreFields.formVersionUuid = pin.formVersionUuid;
+      }
+
+      const review = await reviewsRepo.create(coreFields);
+
+      await this.saveChildData(review.reviewUuid, {
+        criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
+        trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+        b2VesselTypes, b2FleetGroups,
+      }, coreFields.updatedByUuid ?? null);
+
+      await this.runCompletionHook(
+        review,
+        coreFields.updatedByUuid ?? null,
+        executionContext,
+      );
+
+      return this.getReviewByUuid(review.reviewUuid);
+    };
+
+    if (onboardContext) {
+      return this.withOnboardPositionLock(onboardContext, async () => {
+        const lockedContext = await this.resolveOnboardPromotionContext({
+          crewMemberId: coreFields.crewMemberId,
+          promotionToRank: coreFields.promotionToRank,
+          selectedPosition: coreFields.selectedPosition,
+        });
+        return persistReview(lockedContext);
+      });
     }
 
-    // Pin-at-submission rule: only a review born directly in "submitted" state
-    // gets pinned; drafts stay unpinned and live-follow the latest version.
-    delete coreFields.formVersionId;
-    delete coreFields.formVersionUuid;
-    if (coreFields.status === "submitted") {
-      const pin = await this.resolvePromotionFormVersion(coreFields.promotionToRank);
-      coreFields.formVersionId = pin.formVersionId;
-      coreFields.formVersionUuid = pin.formVersionUuid;
-    }
-
-    const review = await reviewsRepo.create(coreFields);
-
-    await this.saveChildData(review.reviewUuid, {
-      criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
-      trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
-      b2VesselTypes, b2FleetGroups,
-    }, coreFields.updatedByUuid ?? null);
-
-    await this.runCompletionHook(review, coreFields.updatedByUuid ?? null);
-
-    return this.getReviewByUuid(review.reviewUuid);
+    return persistReview(null);
   }
 
   async updateReview(reviewUuid: string, data: any) {
@@ -1644,6 +1783,58 @@ export class PromotionReviewsService {
 
     const existing = await reviewsRepo.findByUuid(reviewUuid);
     const existingStatusRaw = existing?.status ?? null;
+    const selectedPositionWasProvided =
+      Object.prototype.hasOwnProperty.call(coreFields, "selectedPosition");
+    const effectivePromotionTiming =
+      coreFields.promotionTiming ?? existing?.promotionTiming ?? null;
+    if (
+      String(effectivePromotionTiming || "").trim().toLowerCase() !==
+      "on-board"
+    ) {
+      coreFields.selectedPosition = null;
+    } else if (selectedPositionWasProvided) {
+      coreFields.selectedPosition =
+        coreFields.selectedPosition?.trim() || null;
+    } else {
+      delete coreFields.selectedPosition;
+    }
+
+    const isAlreadyCompleted =
+      statusRank(existing?.status) >= statusRank("completed");
+    if (isAlreadyCompleted) {
+      const immutableFieldChanged =
+        (
+          data.promotionToRank !== undefined &&
+          data.promotionToRank !== existing?.promotionToRank
+        ) ||
+        (
+          data.promotionTiming !== undefined &&
+          data.promotionTiming !== existing?.promotionTiming
+        ) ||
+        (
+          data.promotionDate !== undefined &&
+          data.promotionDate !== existing?.promotionDate
+        ) ||
+        (
+          data.selectedPosition !== undefined &&
+          data.selectedPosition !== existing?.selectedPosition
+        );
+      if (immutableFieldChanged) {
+        throw new PromotionGuardError(
+          "Completed promotion execution details cannot be changed.",
+        );
+      }
+    }
+
+    if (
+      statusRank(existing?.status) >= statusRank("approved") &&
+      data.promotionTiming !== undefined &&
+      data.promotionTiming !== existing?.promotionTiming
+    ) {
+      throw new PromotionGuardError(
+        "Promotion Type cannot be changed after Part B has been submitted.",
+      );
+    }
 
     // Idempotency / no regression: never move a review backwards through the
     // workflow. Re-saving a review that is already at (or past) the requested
@@ -1652,9 +1843,13 @@ export class PromotionReviewsService {
       delete coreFields.status;
     }
 
-    await this.assertPromotionGuards({
+    const effectiveSelectedPosition = selectedPositionWasProvided
+      ? coreFields.selectedPosition
+      : existing?.selectedPosition ?? null;
+    const onboardContext = await this.assertPromotionGuards({
       crewMemberId: coreFields.crewMemberId ?? existing?.crewMemberId ?? null,
       promotionToRank: coreFields.promotionToRank ?? existing?.promotionToRank ?? null,
+      selectedPosition: effectiveSelectedPosition,
       promotionDate: coreFields.promotionDate,
       promotionTiming: coreFields.promotionTiming ?? existing?.promotionTiming ?? null,
       incomingStatus: coreFields.status,
@@ -1662,44 +1857,65 @@ export class PromotionReviewsService {
       reviewUuid,
     });
 
-    // Task #569: snapshot the promotion form's admin lock-form flag onto this
-    // review at the first submission (Submit for Approval → status "submitted")
-    // so later admin lock/unlock toggles do not retroactively change the lock
-    // state of already-submitted reviews. Mirror the appraisal stage-2 snapshot.
-    if (coreFields.status === "submitted") {
-      const existingStatus = (existingStatusRaw || "").trim().toLowerCase();
-      const alreadyLocked = ["submitted", "approved", "completed"].includes(existingStatus);
-      if (!alreadyLocked) {
-        coreFields.isLockForm = await this.resolvePromotionLockFlag();
+    const persistReview = async (
+      executionContext: OnboardPromotionExecutionContext | null,
+    ) => {
+      // Task #569: snapshot the promotion form's admin lock-form flag onto this
+      // review at the first submission (Submit for Approval → status "submitted")
+      // so later admin lock/unlock toggles do not retroactively change the lock
+      // state of already-submitted reviews. Mirror the appraisal stage-2 snapshot.
+      if (coreFields.status === "submitted") {
+        const existingStatus = (existingStatusRaw || "").trim().toLowerCase();
+        const alreadyLocked = ["submitted", "approved", "completed"].includes(existingStatus);
+        if (!alreadyLocked) {
+          coreFields.isLockForm = await this.resolvePromotionLockFlag();
+        }
       }
+
+      // Pin-at-submission rule: the pin is taken exactly once — at the FIRST
+      // transition into "submitted". Before that, no pin exists (form live-follows
+      // the latest release, including after a rank change). After that, the pin
+      // is never touched again.
+      delete coreFields.formVersionId;
+      delete coreFields.formVersionUuid;
+      const notYetSubmitted = statusRank(existingStatusRaw) < statusRank("submitted");
+      if (notYetSubmitted && coreFields.status === "submitted") {
+        const rankToPin = coreFields.promotionToRank ?? existing?.promotionToRank ?? null;
+        const pin = await this.resolvePromotionFormVersion(rankToPin);
+        coreFields.formVersionId = pin.formVersionId;
+        coreFields.formVersionUuid = pin.formVersionUuid;
+      }
+
+      const review = await reviewsRepo.update(reviewUuid, coreFields);
+      if (!review) return null;
+
+      await this.saveChildData(reviewUuid, {
+        criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
+        trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
+        b2VesselTypes, b2FleetGroups,
+      }, coreFields.updatedByUuid ?? null);
+
+      await this.runCompletionHook(
+        review,
+        coreFields.updatedByUuid ?? null,
+        executionContext,
+      );
+
+      return this.getReviewByUuid(reviewUuid);
+    };
+
+    if (onboardContext) {
+      return this.withOnboardPositionLock(onboardContext, async () => {
+        const lockedContext = await this.resolveOnboardPromotionContext({
+          crewMemberId: coreFields.crewMemberId ?? existing?.crewMemberId ?? "",
+          promotionToRank: coreFields.promotionToRank ?? existing?.promotionToRank ?? "",
+          selectedPosition: effectiveSelectedPosition,
+        });
+        return persistReview(lockedContext);
+      });
     }
 
-    // Pin-at-submission rule: the pin is taken exactly once — at the FIRST
-    // transition into "submitted". Before that, no pin exists (form live-follows
-    // the latest release, including after a rank change). After that, the pin
-    // is never touched again.
-    delete coreFields.formVersionId;
-    delete coreFields.formVersionUuid;
-    const notYetSubmitted = statusRank(existingStatusRaw) < statusRank("submitted");
-    if (notYetSubmitted && coreFields.status === "submitted") {
-      const rankToPin = coreFields.promotionToRank ?? existing?.promotionToRank ?? null;
-      const pin = await this.resolvePromotionFormVersion(rankToPin);
-      coreFields.formVersionId = pin.formVersionId;
-      coreFields.formVersionUuid = pin.formVersionUuid;
-    }
-
-    const review = await reviewsRepo.update(reviewUuid, coreFields);
-    if (!review) return null;
-
-    await this.saveChildData(reviewUuid, {
-      criteriaVerifiedStatus, criteriaMeetsStatus, cesTestsData, criteriaComments,
-      trainingNeeds, approvalData, selectedApproversForSubmission, checklistProgressData,
-      b2VesselTypes, b2FleetGroups,
-    }, coreFields.updatedByUuid ?? null);
-
-    await this.runCompletionHook(review, coreFields.updatedByUuid ?? null);
-
-    return this.getReviewByUuid(reviewUuid);
+    return persistReview(null);
   }
 
   async deleteReview(reviewUuid: string): Promise<boolean> {

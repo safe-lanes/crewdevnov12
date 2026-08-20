@@ -10,11 +10,14 @@ import { TrainingCourseSelectionDialog } from '@/modules/crew-pool/TrainingCours
 import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplates';
 import type { Form, RankGroup, CrewDashboardSummary, PromotionReview } from '@shared/schema';
 import type { PromotionA2Config } from '@shared/schema';
+import { getBaseRank } from '@shared/crew-mapping';
+import { PromotionPositionSelectDialog } from '@/components/promotion-review-parts/PromotionPositionSelectDialog';
 
 type PromotionReviewResponse = PromotionReview & {
   selectedApproversForSubmission?: string | null;
   b2VesselTypes?: string[];
   b2FleetGroups?: string[];
+  selectedPosition?: string | null;
 };
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useVesselTypesV2, useUsersV2, useFleetGroupsV2 } from '@/hooks/v2/useMasterDataV2';
@@ -787,6 +790,65 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
   const [vesselAssigned, setVesselAssigned] = useState<string>('');
   const [promotionDate, setPromotionDate] = useState<string>('');
   const [promotionTiming, setPromotionTiming] = useState<string>('');
+  const [selectedPosition, setSelectedPosition] = useState('');
+  const [positionDialogOpen, setPositionDialogOpen] = useState(false);
+
+  const currentVesselUuid = promotionData?.presentVessel || '';
+  const crewName = promotionData?.name || '';
+
+  const {
+    data: currentVesselRanks = [],
+    isLoading: isLoadingCurrentVesselRanks,
+    isError: isCurrentVesselRanksError,
+  } = useQuery<any[]>({
+    queryKey: [
+      '/api/v2/admin/vessel-revisions/ranks',
+      currentVesselUuid,
+    ],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/v2/admin/vessel-revisions/ranks/${currentVesselUuid}`,
+      );
+      if (!response.ok) {
+        throw new Error('Failed to load vessel positions');
+      }
+      return response.json();
+    },
+    enabled:
+      promotionTiming === 'on-board' &&
+      !!currentVesselUuid,
+  });
+
+  const targetPositions = useMemo(() => {
+    const targetBaseRank = getBaseRank(promotionToRank)
+      .trim()
+      .toLowerCase();
+    const positions = currentVesselRanks
+      .map((rank: any) => rank.displayRole || '')
+      .filter((position: string) => {
+        return (
+          !!position &&
+          getBaseRank(position).trim().toLowerCase() ===
+            targetBaseRank
+        );
+      });
+    return Array.from(new Set(positions));
+  }, [currentVesselRanks, promotionToRank]);
+
+  const isOnboardPromotion = promotionTiming === 'on-board';
+  const requiresPositionSelection =
+    isOnboardPromotion &&
+    targetPositions.length > 1;
+  const isCompletedPromotion =
+    String(existingReviewData?.status || '')
+      .trim()
+      .toLowerCase() === 'completed';
+  const showPositionSelector =
+    isOnboardPromotion &&
+    (
+      requiresPositionSelection ||
+      (isCompletedPromotion && !!selectedPosition)
+    );
 
   const [showChecklistForm, setShowChecklistForm] = useState(promotionData?.initialSection === 'checklist');
 
@@ -950,6 +1012,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       if (existingReviewData.promotionTiming) {
         setPromotionTiming(existingReviewData.promotionTiming);
       }
+      setSelectedPosition(existingReviewData.selectedPosition || '');
 
       const b2vt = existingReviewData.b2VesselTypes;
       if (Array.isArray(b2vt)) {
@@ -987,6 +1050,14 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       nextCommentIdRef.current = 3;
     }
   }, [isLoadingReview, existingReviewData]);
+
+  const handlePromotionTimingChange = (value: string) => {
+    setPromotionTiming(value);
+    if (value !== 'on-board') {
+      setSelectedPosition('');
+      setPositionDialogOpen(false);
+    }
+  };
 
   const collectFormData = useCallback((formData: PromotionReviewFormData, scope: 'a' | 'b' | 'c' | 'full' = 'full') => {
     const includeA = scope === 'a' || scope === 'full';
@@ -1107,11 +1178,16 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       partBNotes: includeB ? (formData.partBNotes || null) : undefined,
       promotionConfirmed: includeB ? promotionConfirmed : undefined,
       promotionTiming: includeB ? promotionTiming : undefined,
+      selectedPosition: includeC
+        ? (isOnboardPromotion && selectedPosition
+          ? selectedPosition
+          : null)
+        : undefined,
       vesselAssigned: includeC ? vesselAssigned : undefined,
       promotionDate: includeC ? promotionDate : undefined,
       partCNotes: includeC ? (formData.partCNotes || null) : undefined,
     };
-  }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses, effectiveReviewUuid]);
+  }, [criteriaData, cesTests, criteriaComments, trainingComments, trainingNeeds, approvers, promotionConfirmed, vesselAssigned, promotionDate, promotionTiming, selectedPosition, isOnboardPromotion, selectedVesselTypeForA2_3b, promotionData, selectedApproversForSubmission, existingReviewData, vesselTypes, vesselClasses, effectiveReviewUuid]);
 
   const validateTrainingNames = useCallback(() => {
     const hasBlankTrainingName = trainingNeeds.some(t => !t.training?.trim());
@@ -1225,6 +1301,31 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
       });
       return;
     }
+    if (isOnboardPromotion && isLoadingCurrentVesselRanks) {
+      toast({
+        title: "Please wait",
+        description: "Vessel positions are still loading.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (isOnboardPromotion && isCurrentVesselRanksError) {
+      toast({
+        title: "Unable to load vessel positions",
+        description: "Please retry before completing the promotion.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (requiresPositionSelection && !selectedPosition) {
+      toast({
+        title: "Position is required",
+        description:
+          "Please select a position before completing the promotion.",
+        variant: "destructive",
+      });
+      return;
+    }
     const parsedDate = new Date(promotionDate);
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
@@ -1243,7 +1344,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     }, 'c');
     reviewData.status = 'completed';
     saveMutation.mutate({ data: reviewData, action: 'submit-c' });
-  }, [collectFormData, saveMutation, promotionConfirmed, promotionDate, toast]);
+  }, [collectFormData, saveMutation, promotionConfirmed, promotionDate, toast, isOnboardPromotion, isLoadingCurrentVesselRanks, isCurrentVesselRanksError, requiresPositionSelection, selectedPosition]);
 
   const handleSubmit = (data: PromotionReviewFormData) => {
     if (!validateTrainingNames()) {
@@ -2002,7 +2103,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               promotionConfirmed={promotionConfirmed}
               onSetPromotionConfirmed={setPromotionConfirmed}
               promotionTiming={promotionTiming}
-              onSetPromotionTiming={setPromotionTiming}
+              onSetPromotionTiming={handlePromotionTimingChange}
               onSave={handleSaveDraftB}
               onSubmit={confirmSubmitB}
               approverNames={approverMasterData.map(a => a.displayName)}
@@ -2037,7 +2138,10 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
               currentUserDisplay={currentUserDisplay}
               onSave={handleSaveDraftC}
               onSubmit={confirmSubmitC}
-              disabled={lockState.lockPartC || lockState.lockPartCPriorJoining}
+              disabled={lockState.lockPartC || lockState.lockPartCPriorJoining || isCompletedPromotion}
+              showPositionSelector={showPositionSelector}
+              selectedPosition={selectedPosition}
+              onOpenPositionSelector={() => setPositionDialogOpen(true)}
             />
             </div>
             </fieldset>
@@ -2063,6 +2167,17 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         onClose={() => setIsTrainingDialogOpen(false)}
         onConfirm={addTrainingsFromDatabase}
         existingCourseIds={trainingNeeds.map(t => t.correspondingInDB).filter(Boolean)}
+      />
+
+      <PromotionPositionSelectDialog
+        open={positionDialogOpen}
+        onOpenChange={setPositionDialogOpen}
+        positions={targetPositions}
+        crewName={crewName}
+        onPositionSelect={(position) => {
+          setSelectedPosition(position);
+          setPositionDialogOpen(false);
+        }}
       />
 
       <Dialog open={priorJoiningSuccessOpen} onOpenChange={setPriorJoiningSuccessOpen}>

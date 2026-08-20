@@ -11,6 +11,9 @@ interface PartCExecutionProps extends React.HTMLAttributes<HTMLDivElement> {
   onSave?: () => void;
   onSubmit?: () => void;
   disabled?: boolean;
+  showPositionSelector?: boolean;
+  selectedPosition?: string;
+  onOpenPositionSelector?: () => void;
 }
 
 export const PartCExecution = memo(function PartCExecution({
@@ -20,6 +23,9 @@ export const PartCExecution = memo(function PartCExecution({
   onSave,
   onSubmit,
   disabled = false,
+  showPositionSelector = false,
+  selectedPosition = '',
+  onOpenPositionSelector,
   ...restProps
 }: PartCExecutionProps) {
   return (
@@ -48,6 +54,34 @@ export const PartCExecution = memo(function PartCExecution({
               data-testid="input-promotion-date"
             />
           </div>
+
+          {showPositionSelector && (
+            <div className="flex items-center gap-4">
+              <Label className="text-sm w-48">
+                C1.2 Select Position:
+              </Label>
+              {disabled ? (
+                <Input
+                  className="w-64 bg-gray-100"
+                  value={selectedPosition.replace(/_/g, ' ')}
+                  readOnly
+                  data-testid="input-selected-promotion-position"
+                />
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-64 justify-start"
+                  onClick={onOpenPositionSelector}
+                  data-testid="button-select-promotion-position"
+                >
+                  {selectedPosition
+                    ? selectedPosition.replace(/_/g, ' ')
+                    : 'Select Position'}
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-between items-center pt-4">
