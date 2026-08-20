@@ -20,16 +20,21 @@ describe('Reports API Integration', () => {
   const vesselAName = `Report Sign-Ons Vessel A ${fixtureSuffix}`;
   const vesselBName = `Report Sign-Ons Vessel B ${fixtureSuffix}`;
   const onboardCrewUuid = `report-sign-ons-onboard-${fixtureSuffix}`;
+  const today = new Date().toISOString().slice(0, 10);
+  const timestampLocalDate = addDays(today, 7);
+  const timestampStoredDate = `${addDays(timestampLocalDate, -1)}T18:30:00.000Z`;
 
   const crewFixtures = [
     { key: 'onboard', empNo: `ONBOARD-${fixtureSuffix}`, firstName: 'Onboard', familyName: 'Crew' },
     { key: 'past', empNo: `PAST-${fixtureSuffix}`, firstName: 'Past', familyName: 'Planned' },
     { key: 'today', empNo: `TODAY-${fixtureSuffix}`, firstName: 'Today', familyName: 'Confirmed' },
     { key: 'boundary', empNo: `BOUNDARY-${fixtureSuffix}`, firstName: 'Boundary', familyName: 'Transit' },
+    { key: 'timestamp', empNo: `TIMESTAMP-${fixtureSuffix}`, firstName: 'Timestamp', familyName: 'Planned' },
     { key: 'vessel-b', empNo: `VESSEL-B-${fixtureSuffix}`, firstName: 'Vessel', familyName: 'Filtered' },
     { key: 'after', empNo: `AFTER-${fixtureSuffix}`, firstName: 'After', familyName: 'Window' },
     { key: 'blank', empNo: `BLANK-${fixtureSuffix}`, firstName: 'Blank', familyName: 'Date' },
     { key: 'invalid', empNo: `INVALID-${fixtureSuffix}`, firstName: 'Invalid', familyName: 'Date' },
+    { key: 'invalid-timestamp', empNo: `INVALID-TIMESTAMP-${fixtureSuffix}`, firstName: 'Invalid', familyName: 'Timestamp' },
     { key: 'proposed', empNo: `PROPOSED-${fixtureSuffix}`, firstName: 'Proposed', familyName: 'Status' },
     { key: 'signed-on', empNo: `SIGNED-${fixtureSuffix}`, firstName: 'Signed', familyName: 'On' },
     { key: 'unsupported', empNo: `UNSUPPORTED-${fixtureSuffix}`, firstName: 'Unsupported', familyName: 'Status' },
@@ -52,7 +57,6 @@ describe('Reports API Integration', () => {
     }
 
     const db = getDb();
-    const today = new Date().toISOString().slice(0, 10);
 
     await db.insert(masterVessels).values([
       { vesselUuid: vesselAUuid, vessel: vesselAName },
@@ -101,9 +105,11 @@ describe('Reports API Integration', () => {
       planningRow('archived-parent', 'Planned', addDays(today, 5), { isArchived: true }),
       planningRow('vessel-b', 'Confirmed', addDays(today, 10), { vesselUuid: vesselBUuid }),
       planningRow('boundary', 'In Transit', addDays(today, 30)),
+      planningRow('timestamp', 'Planned', timestampStoredDate),
       planningRow('after', 'Planned', addDays(today, 31)),
       planningRow('blank', 'Planned', null),
       planningRow('invalid', 'Planned', 'not-a-date'),
+      planningRow('invalid-timestamp', 'Planned', `${addDays(today, 8)}T99:99:99.000Z`),
       planningRow('proposed', 'Proposed', today),
       planningRow('signed-on', 'Signed On', today),
       planningRow('unsupported', 'Ready', today),
@@ -157,18 +163,25 @@ describe('Reports API Integration', () => {
       crewByKey.past.empNo,
       crewByKey.today.empNo,
       crewByKey['archived-parent'].empNo,
+      crewByKey.timestamp.empNo,
       crewByKey.boundary.empNo,
     ]);
     expect(data.rows.map((row: { signOnStatus: string }) => row.signOnStatus)).toEqual([
       'Planned',
       'Confirmed',
       'Planned',
+      'Planned',
       'In Transit',
     ]);
     expect(data.rows.map((row: { empNo: string }) => row.empNo)).not.toContain(
       crewByKey.onboard.empNo,
     );
-    expect(data.total).toBe(4);
+    expect(data.rows.find((row: { empNo: string; plannedSignOnDate: string }) => row.empNo === crewByKey.timestamp.empNo)?.plannedSignOnDate)
+      .toBe(timestampLocalDate);
+    expect(data.rows.map((row: { empNo: string }) => row.empNo)).not.toContain(
+      crewByKey['invalid-timestamp'].empNo,
+    );
+    expect(data.total).toBe(5);
   });
 
   it('applies the Vessel filter', async () => {
@@ -179,9 +192,10 @@ describe('Reports API Integration', () => {
       crewByKey.past.empNo,
       crewByKey.today.empNo,
       crewByKey['archived-parent'].empNo,
+      crewByKey.timestamp.empNo,
       crewByKey.boundary.empNo,
     ]);
-    expect(vesselAData.total).toBe(4);
+    expect(vesselAData.total).toBe(5);
     expect(vesselBData.rows.map((row: { empNo: string }) => row.empNo)).toEqual([
       crewByKey['vessel-b'].empNo,
     ]);

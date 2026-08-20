@@ -115,7 +115,24 @@ const plannedFilters = z
   .strict();
 
 const plannedSignOffDate = dateExpr(vesselPlanningV2.signOffDate);
-const plannedSignOnDate = dateExpr(vesselPlanningV2.relieverSignOnDate);
+const plannedPlainSignOnDate = dateExpr(vesselPlanningV2.relieverSignOnDate);
+const plannedSignOnDate = sql`
+  CASE
+    WHEN ${plannedPlainSignOnDate} IS NOT NULL
+      THEN ${plannedPlainSignOnDate}
+    WHEN ${vesselPlanningV2.relieverSignOnDate}
+      ~ '^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]([.][0-9]+)?Z$'
+      AND pg_input_is_valid(
+        ${vesselPlanningV2.relieverSignOnDate},
+        'timestamp with time zone'
+      )
+      THEN (
+        ${vesselPlanningV2.relieverSignOnDate}::timestamptz
+        AT TIME ZONE 'Asia/Kolkata'
+      )::date
+    ELSE NULL
+  END
+`;
 
 const plannedCols: ReportColumn[] = [
   { key: "empNo", label: "Emp No", type: "text", width: 110 },
@@ -193,7 +210,7 @@ export const rotationPlannedSignOnsReport: ReportHandler<z.infer<typeof plannedF
         presentRank: vesselPlanningV2.rank,
         vesselName: masterVessels.vessel,
         signOnStatus: vesselPlanningV2.joiningStatus,
-        plannedSignOnDate: vesselPlanningV2.relieverSignOnDate,
+        plannedSignOnDate: sql<string>`TO_CHAR(${plannedSignOnDate}, 'YYYY-MM-DD')`,
       })
       .from(vesselPlanningV2)
       .innerJoin(crewMembersV2, eq(crewMembersV2.crewUuid, vesselPlanningV2.relieverCrewUuid))
