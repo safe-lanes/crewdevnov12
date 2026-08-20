@@ -115,6 +115,7 @@ const plannedFilters = z
   .strict();
 
 const plannedSignOffDate = dateExpr(vesselPlanningV2.signOffDate);
+const plannedSignOnDate = dateExpr(vesselPlanningV2.relieverSignOnDate);
 
 const plannedCols: ReportColumn[] = [
   { key: "empNo", label: "Emp No", type: "text", width: 110 },
@@ -132,6 +133,88 @@ const plannedSortMap: Record<string, PgColumn | SQL> = {
   vesselName: masterVessels.vessel,
   reliefStatus: vesselPlanningV2.reliefStatus,
   plannedSignOffDate: plannedSignOffDate,
+};
+
+const plannedSignOnCols: ReportColumn[] = [
+  { key: "empNo", label: "Emp No", type: "text", width: 110 },
+  { key: "name", label: "Name", type: "text" },
+  { key: "presentRank", label: "Rank", type: "text" },
+  { key: "vesselName", label: "Vessel", type: "text" },
+  { key: "signOnStatus", label: "Sign On Status", type: "text", width: 130 },
+  { key: "plannedSignOnDate", label: "Planned Sign On Date", type: "date", width: 160 },
+];
+
+const plannedSignOnSortMap: Record<string, PgColumn | SQL> = {
+  empNo: crewMembersV2.empNo,
+  name: crewMembersV2.firstName,
+  presentRank: vesselPlanningV2.rank,
+  vesselName: masterVessels.vessel,
+  signOnStatus: vesselPlanningV2.joiningStatus,
+  plannedSignOnDate: plannedSignOnDate,
+};
+
+export const rotationPlannedSignOnsReport: ReportHandler<z.infer<typeof plannedFilters>> = {
+  reportId: "rot-planned-sign-ons",
+  title: "Planned Sign-Ons Within N Days",
+  columns: plannedSignOnCols,
+  filterSchema: plannedFilters,
+  async run(filters, ctx) {
+    const db = getDb();
+    const n = filters.withinDays;
+    const conds: SQL[] = [
+      eq(vesselPlanningV2.isDeleted, false),
+      isNotNull(vesselPlanningV2.relieverCrewUuid),
+      sql`${vesselPlanningV2.isRelieverArchived} IS NOT TRUE`,
+      inArray(vesselPlanningV2.joiningStatus, ["Planned", "Confirmed", "In Transit"]),
+      sql`${plannedSignOnDate} IS NOT NULL`,
+      sql`${plannedSignOnDate} <= CURRENT_DATE + (${n} || ' days')::interval`,
+      eq(crewMembersV2.isDeleted, false),
+    ];
+    if (filters.vessel) conds.push(eq(masterVessels.vessel, filters.vessel));
+    const where = and(...conds);
+
+    const totalRes = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(vesselPlanningV2)
+      .innerJoin(crewMembersV2, eq(crewMembersV2.crewUuid, vesselPlanningV2.relieverCrewUuid))
+      .leftJoin(masterVessels, eq(masterVessels.vesselUuid, vesselPlanningV2.vesselUuid))
+      .where(where);
+    const total = Number(totalRes[0]?.c ?? 0);
+
+    const sortKey = ctx.sort?.key ?? "plannedSignOnDate";
+    const order = (ctx.sort?.direction === "desc" ? desc : asc)(
+      plannedSignOnSortMap[sortKey] ?? plannedSignOnSortMap.plannedSignOnDate,
+    );
+
+    const rows = await db
+      .select({
+        empNo: crewMembersV2.empNo,
+        name: nameExpr,
+        presentRank: vesselPlanningV2.rank,
+        vesselName: masterVessels.vessel,
+        signOnStatus: vesselPlanningV2.joiningStatus,
+        plannedSignOnDate: vesselPlanningV2.relieverSignOnDate,
+      })
+      .from(vesselPlanningV2)
+      .innerJoin(crewMembersV2, eq(crewMembersV2.crewUuid, vesselPlanningV2.relieverCrewUuid))
+      .leftJoin(masterVessels, eq(masterVessels.vesselUuid, vesselPlanningV2.vesselUuid))
+      .where(where)
+      .orderBy(order, asc(vesselPlanningV2.planUuid))
+      .limit(ctx.pageSize)
+      .offset((ctx.page - 1) * ctx.pageSize);
+
+    return {
+      total,
+      rows: rows.map((r: (typeof rows)[number]) => ({
+        empNo: r.empNo ?? null,
+        name: r.name ?? null,
+        presentRank: r.presentRank ?? null,
+        vesselName: r.vesselName ?? null,
+        signOnStatus: r.signOnStatus ?? null,
+        plannedSignOnDate: r.plannedSignOnDate ?? null,
+      })),
+    };
+  },
 };
 
 export const rotationPlannedReliefsReport: ReportHandler<z.infer<typeof plannedFilters>> = {

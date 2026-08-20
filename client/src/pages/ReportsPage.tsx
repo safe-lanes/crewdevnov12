@@ -114,6 +114,7 @@ const REPORT_TREE: ReportCategory[] = [
     children: [
       // Temporarily hidden from Reports sidebar (uncomment to restore)
       // { id: "rot-overdue-relief", label: "Crew Overdue for Relief" },
+      { id: "rot-planned-sign-ons", label: "Planned Sign-Ons Within N Days" },
       { id: "rot-planned-reliefs", label: "Planned Reliefs Within N Days" },
     ],
   },
@@ -305,6 +306,10 @@ const REPORT_FILTERS: Record<string, FilterDescriptor[]> = {
   "rot-overdue-relief": [
     { kind: "byDays", label: "By", defaultValue: 30 },
     { kind: "rank", label: "Filter by Rank" },
+  ],
+  "rot-planned-sign-ons": [
+    { kind: "withinDays", label: "Within", defaultValue: 30 },
+    { kind: "vessel", label: "Filter by Vessel" },
   ],
   "rot-planned-reliefs": [
     { kind: "withinDays", label: "Within", defaultValue: 30 },

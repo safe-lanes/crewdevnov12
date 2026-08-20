@@ -12,6 +12,7 @@ import {
 } from "./crewPool";
 import {
   rotationOverdueReliefReport,
+  rotationPlannedSignOnsReport,
   rotationPlannedReliefsReport,
 } from "./rotation";
 import {
@@ -63,6 +64,7 @@ export function registerAllReports(): void {
 
   // Rotation
   registerReport(rotationOverdueReliefReport);
+  registerReport(rotationPlannedSignOnsReport);
   registerReport(rotationPlannedReliefsReport);
 
   // Rest Hours
