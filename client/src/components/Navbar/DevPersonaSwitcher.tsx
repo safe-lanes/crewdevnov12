@@ -4,8 +4,8 @@ import { Check, ChevronRight, UserCog } from "lucide-react";
 import {
   DEV_BYPASS,
   applyDevPersona,
-  clearDevPersona,
   getActiveDevPersona,
+  getDevPersonaMasterUserId,
   getLastVesselId,
   type DevVessel,
 } from "@/lib/devPersona";
@@ -28,7 +28,12 @@ interface VesselRecord {
 // access-control roles master — ruids are resolved at runtime, never
 // hardcoded, and never substituted: if the role name is not found, the
 // persona is disabled with a warning (fail-loud).
-const PERSONAS: Array<{ key: string; label: string; roleName: string; ship: boolean }> = [
+const PERSONAS: Array<{
+  key: string;
+  label: string;
+  roleName: string;
+  ship: boolean;
+}> = [
   { key: "sail-admin", label: "Sail Admin", roleName: "Sail Admin", ship: false },
   { key: "admin", label: "Admin", roleName: "Admin", ship: false },
   { key: "user", label: "User", roleName: "User", ship: false },
@@ -75,14 +80,12 @@ export default function DevPersonaSwitcher() {
     );
 
   const selectPersona = (persona: (typeof PERSONAS)[number], vessel?: DevVessel) => {
-    if (persona.key === "sail-admin") {
-      clearDevPersona();
-      return;
-    }
     const role = findRole(persona.roleName);
-    if (!role) return;
+    const masterUserId = getDevPersonaMasterUserId(persona.key);
+    if (!role || !masterUserId) return;
     applyDevPersona({
       personaKey: persona.key,
+      masterUserId,
       role: role.assignedRole,
       roleId: role.ruid,
       userType: persona.ship ? "Ship" : "Office",
@@ -130,6 +133,8 @@ export default function DevPersonaSwitcher() {
           {PERSONAS.map((persona) => {
             const isActivePersona = activeKey === persona.key;
             const roleMissing = persona.key !== "sail-admin" && roles && !findRole(persona.roleName);
+            const userFixtureMissing = !getDevPersonaMasterUserId(persona.key);
+            const personaDisabled = !!roleMissing || userFixtureMissing;
             if (persona.ship) {
               const isExpanded = expandedKey === persona.key;
               return (
@@ -137,7 +142,7 @@ export default function DevPersonaSwitcher() {
                   <button
                     className="flex items-center justify-between w-full px-3 py-2 text-sm text-gray-800 hover:bg-gray-100 disabled:opacity-50"
                     onClick={() => setExpandedKey(isExpanded ? null : persona.key)}
-                    disabled={!!roleMissing}
+                    disabled={personaDisabled}
                     data-testid={`button-persona-${persona.key}`}
                   >
                     <span className="flex items-center gap-2">
@@ -147,6 +152,11 @@ export default function DevPersonaSwitcher() {
                         {roleMissing && (
                           <span className="text-[10px] text-red-600" data-testid={`warning-role-missing-${persona.key}`}>
                             role not found in this tenant
+                          </span>
+                        )}
+                        {userFixtureMissing && (
+                          <span className="text-[10px] text-red-600">
+                            no master user fixture
                           </span>
                         )}
                       </span>
@@ -191,7 +201,7 @@ export default function DevPersonaSwitcher() {
                 key={persona.key}
                 className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-800 hover:bg-gray-100 disabled:opacity-50"
                 onClick={() => selectPersona(persona)}
-                disabled={!!roleMissing}
+                disabled={personaDisabled}
                 data-testid={`button-persona-${persona.key}`}
               >
                 {isActivePersona ? <Check size={14} className="text-green-600" /> : <span className="w-[14px]" />}
@@ -202,10 +212,12 @@ export default function DevPersonaSwitcher() {
                       role not found in this tenant
                     </span>
                   )}
+                  {userFixtureMissing && (
+                    <span className="text-[10px] text-red-600">
+                      no master user fixture
+                    </span>
+                  )}
                 </span>
-                {persona.key === "sail-admin" && (
-                  <span className="text-[10px] text-gray-400 ml-auto">default</span>
-                )}
               </button>
             );
           })}

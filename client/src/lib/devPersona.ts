@@ -11,6 +11,13 @@ const PERSONA_KEY = "devPersona";
 const TOKEN_KEY = "devAuthToken";
 const LAST_VESSEL_KEY = "devLastVesselId";
 
+const DEV_PERSONA_MASTER_USER_IDS: Readonly<Record<string, number>> = {
+  "sail-admin": 1,
+  admin: 24,
+  "vessel-admin": 7,
+  "vessel-user": 8,
+};
+
 export interface DevVessel {
   vessel: string;
   vesselId: string;
@@ -19,6 +26,7 @@ export interface DevVessel {
 
 export interface DevPersonaState {
   personaKey: string;
+  masterUserId: number;
   role: string;
   roleId: string;
   userType: string;
@@ -36,9 +44,13 @@ function base64Url(obj: Record<string, unknown>): string {
 // Unsigned dev JWT (header.payload.devsig). Only meaningful when the backend
 // runs with AUTH_BYPASS=true, where the token is jwt.decode'd unverified.
 function buildDevToken(state: DevPersonaState): string {
+  if (!Number.isInteger(state.masterUserId) || state.masterUserId <= 0) {
+    throw new Error("Dev persona requires a positive integer master user ID.");
+  }
+
   const header = { alg: "none", typ: "JWT" };
   const payload = {
-    id: "dev-persona",
+    id: state.masterUserId,
     userType: state.userType,
     role: state.role,
     roleId: state.roleId,
@@ -49,10 +61,45 @@ function buildDevToken(state: DevPersonaState): string {
   return `${base64Url(header)}.${base64Url(payload)}.devsig`;
 }
 
+export function getDevPersonaMasterUserId(personaKey: string): number | undefined {
+  return DEV_PERSONA_MASTER_USER_IDS[personaKey];
+}
+
+function readStoredDevPersona(): DevPersonaState | null {
+  try {
+    const raw = localStorage.getItem(PERSONA_KEY);
+    if (!raw) return null;
+
+    const stored = JSON.parse(raw) as Partial<DevPersonaState>;
+    const masterUserId = Number.isInteger(stored.masterUserId)
+      ? stored.masterUserId
+      : getDevPersonaMasterUserId(stored.personaKey ?? "");
+
+    if (
+      !masterUserId ||
+      typeof stored.personaKey !== "string" ||
+      typeof stored.role !== "string" ||
+      typeof stored.roleId !== "string" ||
+      typeof stored.userType !== "string"
+    ) {
+      return null;
+    }
+
+    return { ...stored, masterUserId } as DevPersonaState;
+  } catch {
+    return null;
+  }
+}
+
 export function getDevPersonaToken(): string | null {
   if (!DEV_BYPASS) return null;
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    const state = readStoredDevPersona();
+    if (!state) return null;
+
+    const token = buildDevToken(state);
+    localStorage.setItem(TOKEN_KEY, token);
+    return token;
   } catch {
     return null;
   }
@@ -60,12 +107,7 @@ export function getDevPersonaToken(): string | null {
 
 export function getActiveDevPersona(): DevPersonaState | null {
   if (!DEV_BYPASS) return null;
-  try {
-    const raw = localStorage.getItem(PERSONA_KEY);
-    return raw ? (JSON.parse(raw) as DevPersonaState) : null;
-  } catch {
-    return null;
-  }
+  return readStoredDevPersona();
 }
 
 export function getLastVesselId(): string | null {
@@ -82,7 +124,7 @@ export function applyDevPersona(state: DevPersonaState): void {
   const profile = {
     role: state.role,
     roleId: state.roleId,
-    userId: "dev-persona",
+    userId: String(state.masterUserId),
     userType: state.userType,
     ...(state.designation ? { designation: state.designation } : {}),
     myVessels: state.vessel ? [state.vessel] : [],
