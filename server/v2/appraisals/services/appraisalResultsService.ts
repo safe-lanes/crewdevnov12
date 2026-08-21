@@ -38,6 +38,26 @@ const trainingFollowupsRepo = new ApprTrainingFollowupsRepository();
 const reviewersRepo = new ApprReviewersRepository();
 const crewMembersRepo = new CrewMembersRepository();
 
+const APPRAISAL_PINNED_STATUSES = new Set([
+  "preliminary",
+  "submitted",
+  "pending_review",
+  "stage2_submitted",
+  "reviewed",
+  "stage3_submitted",
+]);
+
+export class FormVersionPinError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FormVersionPinError";
+  }
+}
+
+function statusRequiresAppraisalVersionPin(status: string | null | undefined): boolean {
+  return APPRAISAL_PINNED_STATUSES.has((status ?? "").trim().toLowerCase());
+}
+
 async function fetchChildDataForUuids(appraisalUuids: string[]) {
   if (appraisalUuids.length === 0) {
     return {
@@ -114,7 +134,7 @@ async function notifyNewManualG1Reviewers(
     if (pendingRows.length === 0) return;
 
     await triggerAppraisalReviewNotification(
-      pendingRows.map(r => ({
+      pendingRows.map((r: typeof apprOfficeReviewsV2.$inferSelect) => ({
         userUuid: r.userUuid!,
         reviewerName: r.name || undefined,
         designation: r.position || undefined,
@@ -126,7 +146,7 @@ async function notifyNewManualG1Reviewers(
 
     const now = new Date();
     await Promise.all(
-      pendingRows.map(r =>
+      pendingRows.map((r: typeof apprOfficeReviewsV2.$inferSelect) =>
         db.update(apprOfficeReviewsV2)
           .set({ emailSentAt: now })
           .where(eq(apprOfficeReviewsV2.id, r.id))
@@ -182,6 +202,58 @@ async function triggerAppraisalReviewNotification(
 }
 
 export class AppraisalResultsService {
+  private async resolveRequiredAppraisalFormVersion(
+    rank: string | null | undefined,
+  ): Promise<{ formVersionId: number; formVersionUuid: string }> {
+    const normalizedRank = (rank ?? "").trim();
+    if (!normalizedRank) {
+      throw new FormVersionPinError(
+        "Cannot save this appraisal without a seafarer rank and a released appraisal form version.",
+      );
+    }
+
+    try {
+      const formForRank = await formsService.getFormForRank(normalizedRank, "appraisal");
+      const formVersionId = formForRank?.formVersionId;
+      const formVersionUuid = formForRank?.formVersionUuid;
+      if (
+        formForRank?.noReleasedVersion ||
+        !Number.isInteger(formVersionId) ||
+        !formVersionUuid
+      ) {
+        throw new FormVersionPinError(
+          `No released appraisal form version exists for rank "${normalizedRank}". Release a form version before saving this appraisal.`,
+        );
+      }
+      return { formVersionId, formVersionUuid };
+    } catch (error) {
+      if (error instanceof FormVersionPinError) throw error;
+      throw new FormVersionPinError(
+        `Unable to resolve a released appraisal form version for rank "${normalizedRank}". This appraisal was not saved.`,
+      );
+    }
+  }
+
+  private async resolveAppraisalPinForSubmittedStatus(params: {
+    status: string | null | undefined;
+    rank: string | null | undefined;
+    formVersionId: number | null | undefined;
+    formVersionUuid: string | null | undefined;
+  }): Promise<{ formVersionId: number; formVersionUuid: string } | null> {
+    if (!statusRequiresAppraisalVersionPin(params.status)) return null;
+
+    const hasId = params.formVersionId != null;
+    const hasUuid = !!params.formVersionUuid;
+    if (hasId !== hasUuid) {
+      throw new FormVersionPinError(
+        "This appraisal has an incomplete form-version pin. Both form-version values are required before it can be submitted.",
+      );
+    }
+    if (hasId && hasUuid) return null;
+
+    return this.resolveRequiredAppraisalFormVersion(params.rank);
+  }
+
   async getAll() {
     const appraisals = await appraisalResultsRepo.findAll();
     if (appraisals.length === 0) return [];
@@ -287,22 +359,10 @@ export class AppraisalResultsService {
 
     const appraisalUuid = uuidv4();
 
-    // Pin the appraisal to the latest released form version for the seafarer's
-    // rank at creation time so later releases don't re-skin saved appraisals.
-    let formVersionId: number | null = null;
-    let formVersionUuid: string | null = null;
-    const seafarersRank: string | undefined = appraisalData?.seafarersRank;
-    if (seafarersRank) {
-      try {
-        const formForRank = await formsService.getFormForRank(seafarersRank, "appraisal");
-        if (formForRank && !formForRank.noReleasedVersion) {
-          formVersionId = formForRank.formVersionId ?? null;
-          formVersionUuid = formForRank.formVersionUuid ?? null;
-        }
-      } catch (e) {
-        console.warn(`[Appraisals V2] Failed to resolve form version for rank "${seafarersRank}":`, e);
-      }
-    }
+    // Appraisals are pinned at creation time. Never create a record that can
+    // later become a submitted appraisal without a frozen form version.
+    const { formVersionId, formVersionUuid } =
+      await this.resolveRequiredAppraisalFormVersion(appraisalData?.seafarersRank);
 
     const created = await appraisalResultsRepo.createWithUuid({
       appraisalUuid,
@@ -398,6 +458,21 @@ export class AppraisalResultsService {
       updateFields.appraisalPeriodTo = appraisalData.appraisalPeriodTo || null;
       updateFields.personalityIndexCategory = appraisalData.personalityIndexCategory || null;
       updateFields.primaryAppraiser = appraisalData.primaryAppraiser || null;
+    }
+
+    const effectiveStatus = auditData.status !== undefined
+      ? auditData.status
+      : existing.status;
+    const effectiveRank = appraisalData?.seafarersRank ?? existing.seafarersRank;
+    const resolvedPin = await this.resolveAppraisalPinForSubmittedStatus({
+      status: effectiveStatus,
+      rank: effectiveRank,
+      formVersionId: existing.formVersionId,
+      formVersionUuid: existing.formVersionUuid,
+    });
+    if (resolvedPin) {
+      updateFields.formVersionId = resolvedPin.formVersionId;
+      updateFields.formVersionUuid = resolvedPin.formVersionUuid;
     }
 
     await appraisalResultsRepo.updateById(id, updateFields);
@@ -500,6 +575,15 @@ export class AppraisalResultsService {
     const newStatus = rank(nominalForStage) >= rank(currentNormalized)
       ? nominalForStage
       : (currentNormalized in STATUS_ORDER ? currentNormalized : nominalForStage);
+    const rankForVersionResolution = stage === "stage1"
+      ? data.seafarersRank
+      : appraisal.seafarersRank;
+    const resolvedPin = await this.resolveAppraisalPinForSubmittedStatus({
+      status: newStatus,
+      rank: rankForVersionResolution,
+      formVersionId: appraisal.formVersionId,
+      formVersionUuid: appraisal.formVersionUuid,
+    });
 
     const stageUpdate: any = {
       status: newStatus,
@@ -507,6 +591,10 @@ export class AppraisalResultsService {
       submittedAt: new Date(),
       updatedByUuid: auditUserUuid,
     };
+    if (resolvedPin) {
+      stageUpdate.formVersionId = resolvedPin.formVersionId;
+      stageUpdate.formVersionUuid = resolvedPin.formVersionUuid;
+    }
 
     if (stage === "stage1") {
       stageUpdate.stage1Status = "completed";

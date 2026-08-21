@@ -94,6 +94,10 @@ function statusRank(status?: string | null): number {
   return STATUS_RANK[(status ?? "").trim().toLowerCase()] ?? 0;
 }
 
+function statusRequiresPromotionVersionPin(status?: string | null): boolean {
+  return statusRank(status) >= statusRank("submitted");
+}
+
 // Parse a promotion / approval date string (ISO 8601 or dd/mm/yyyy) into epoch
 // milliseconds for chronological ordering and effective-date resolution.
 // dd/mm/yyyy is tried first so it is not misread as US m/d/y. Overflow values
@@ -802,22 +806,57 @@ export class PromotionReviewsService {
     }
   }
 
-  // Task 334: resolve the current released form version for a promotion rank.
-  // Never throws / never blocks creation — a missing version just means no pin
-  // (render falls back to latest, same as today).
-  private async resolvePromotionFormVersion(promotionToRank: string | null | undefined):
-    Promise<{ formVersionId: number | null; formVersionUuid: string | null }> {
-    try {
-      if (!promotionToRank) return { formVersionId: null, formVersionUuid: null };
-      const formForRank = await formsService.getFormForRank(promotionToRank, "promotion");
-      return {
-        formVersionId: formForRank?.formVersionId ?? null,
-        formVersionUuid: formForRank?.formVersionUuid ?? null,
-      };
-    } catch (e) {
-      console.warn("[Promotions V2] Failed to resolve form version pin:", e);
-      return { formVersionId: null, formVersionUuid: null };
+  private async resolveRequiredPromotionFormVersion(promotionToRank: string | null | undefined):
+    Promise<{ formVersionId: number; formVersionUuid: string }> {
+    const normalizedRank = (promotionToRank ?? "").trim();
+    if (!normalizedRank) {
+      throw new PromotionGuardError(
+        "Cannot submit this promotion review without a promotion rank and a released promotion form version.",
+      );
     }
+    try {
+      const formForRank = await formsService.getFormForRank(normalizedRank, "promotion");
+      const formVersionId = formForRank?.formVersionId;
+      const formVersionUuid = formForRank?.formVersionUuid;
+      if (
+        formForRank?.noReleasedVersion ||
+        !Number.isInteger(formVersionId) ||
+        !formVersionUuid
+      ) {
+        throw new PromotionGuardError(
+          `No released promotion form version exists for rank "${normalizedRank}". Release a form version before submitting this review.`,
+        );
+      }
+      return {
+        formVersionId,
+        formVersionUuid,
+      };
+    } catch (error) {
+      if (error instanceof PromotionGuardError) throw error;
+      throw new PromotionGuardError(
+        `Unable to resolve a released promotion form version for rank "${normalizedRank}". This review was not saved.`,
+      );
+    }
+  }
+
+  private async resolvePromotionPinForSubmittedStatus(params: {
+    status: string | null | undefined;
+    promotionToRank: string | null | undefined;
+    formVersionId: number | null | undefined;
+    formVersionUuid: string | null | undefined;
+  }): Promise<{ formVersionId: number; formVersionUuid: string } | null> {
+    if (!statusRequiresPromotionVersionPin(params.status)) return null;
+
+    const hasId = params.formVersionId != null;
+    const hasUuid = !!params.formVersionUuid;
+    if (hasId !== hasUuid) {
+      throw new PromotionGuardError(
+        "This promotion review has an incomplete form-version pin. Both form-version values are required before it can be submitted.",
+      );
+    }
+    if (hasId && hasUuid) return null;
+
+    return this.resolveRequiredPromotionFormVersion(params.promotionToRank);
   }
 
   private async getActivePlanningRows(vesselUuid: string): Promise<VesselPlanningV2[]> {
@@ -1717,12 +1756,17 @@ export class PromotionReviewsService {
         coreFields.isLockForm = await this.resolvePromotionLockFlag();
       }
 
-      // Pin-at-submission rule: only a review born directly in "submitted" state
-      // gets pinned; drafts stay unpinned and live-follow the latest version.
+      // Pins are server-resolved only. Draft and In Progress reviews remain
+      // unpinned; every submitted-or-later review must get a complete pair.
       delete coreFields.formVersionId;
       delete coreFields.formVersionUuid;
-      if (coreFields.status === "submitted") {
-        const pin = await this.resolvePromotionFormVersion(coreFields.promotionToRank);
+      const pin = await this.resolvePromotionPinForSubmittedStatus({
+        status: coreFields.status,
+        promotionToRank: coreFields.promotionToRank,
+        formVersionId: null,
+        formVersionUuid: null,
+      });
+      if (pin) {
         coreFields.formVersionId = pin.formVersionId;
         coreFields.formVersionUuid = pin.formVersionUuid;
       }
@@ -1862,16 +1906,19 @@ export class PromotionReviewsService {
         }
       }
 
-      // Pin-at-submission rule: the pin is taken exactly once — at the FIRST
-      // transition into "submitted". Before that, no pin exists (form live-follows
-      // the latest release, including after a rank change). After that, the pin
-      // is never touched again.
+      // Pins are taken at the first submitted-or-later write and are never
+      // trusted from the client. A legacy final-state review with no pin is
+      // resolved now or rejected before the update can persist.
       delete coreFields.formVersionId;
       delete coreFields.formVersionUuid;
-      const notYetSubmitted = statusRank(existingStatusRaw) < statusRank("submitted");
-      if (notYetSubmitted && coreFields.status === "submitted") {
-        const rankToPin = coreFields.promotionToRank ?? existing?.promotionToRank ?? null;
-        const pin = await this.resolvePromotionFormVersion(rankToPin);
+      const effectiveStatus = coreFields.status ?? existingStatusRaw;
+      const pin = await this.resolvePromotionPinForSubmittedStatus({
+        status: effectiveStatus,
+        promotionToRank: coreFields.promotionToRank ?? existing?.promotionToRank ?? null,
+        formVersionId: existing?.formVersionId,
+        formVersionUuid: existing?.formVersionUuid,
+      });
+      if (pin) {
         coreFields.formVersionId = pin.formVersionId;
         coreFields.formVersionUuid = pin.formVersionUuid;
       }

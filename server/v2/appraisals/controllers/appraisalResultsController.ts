@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { AppraisalResultsService } from "../services";
+import { AppraisalResultsService, FormVersionPinError } from "../services";
 
 const service = new AppraisalResultsService();
 
@@ -107,6 +107,9 @@ export class AppraisalResultsController {
       res.status(201).json(appraisal);
     } catch (error) {
       console.error("[Appraisals V2] Failed to create appraisal:", error);
+      if (error instanceof FormVersionPinError) {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: "Failed to create appraisal" });
     }
   }
@@ -122,6 +125,9 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error) {
       console.error("[Appraisals V2] Failed to update appraisal:", error);
+      if (error instanceof FormVersionPinError) {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: "Failed to update appraisal" });
     }
   }
@@ -156,6 +162,9 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 1 submission error:", error);
+      if (error instanceof FormVersionPinError) {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: error.message || "Failed to submit stage 1" });
     }
   }
@@ -182,6 +191,9 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 2 submission error:", error);
+      if (error instanceof FormVersionPinError) {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: error.message || "Failed to submit stage 2" });
     }
   }
@@ -202,6 +214,9 @@ export class AppraisalResultsController {
       res.json(appraisal);
     } catch (error: any) {
       console.error("[Appraisals V2] Stage 3 submission error:", error);
+      if (error instanceof FormVersionPinError) {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: error.message || "Failed to submit stage 3" });
     }
   }

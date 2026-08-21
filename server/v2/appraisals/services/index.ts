@@ -1,1 +1,1 @@
-export { AppraisalResultsService } from "./appraisalResultsService";
+export { AppraisalResultsService, FormVersionPinError } from "./appraisalResultsService";

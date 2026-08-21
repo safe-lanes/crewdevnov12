@@ -95,6 +95,39 @@ async function buildPromotions(client: any): Promise<PromotionSeed[]> {
   return seeds;
 }
 
+async function resolveReleasedPromotionFormVersion(
+  client: any,
+  rank: string,
+): Promise<{ id: number; fvUuid: string }> {
+  const result = await client.query(
+    `SELECT v.id, v.fv_uuid
+       FROM adm_form_versions_v2 v
+       JOIN adm_rank_groups_v2 rg ON rg.id = v.rank_group_id
+       JOIN adm_forms_v2 f ON f.id = rg.form_id
+      WHERE v.status = 'released'
+        AND COALESCE(v.is_deleted, false) = false
+        AND rg.archived_at IS NULL
+        AND COALESCE(f.is_deleted, false) = false
+        AND f.category = 'promotion'
+        AND EXISTS (
+          SELECT 1
+          FROM json_array_elements_text(rg.ranks::json) AS rank_item(rank_label)
+          WHERE lower(trim(rank_item.rank_label)) = lower(trim($1))
+        )
+      ORDER BY NULLIF(regexp_replace(v.version_no, '\\D', '', 'g'), '')::int DESC NULLS LAST,
+               v.released_at DESC NULLS LAST
+      LIMIT 1`,
+    [rank],
+  );
+  const version = result.rows[0];
+  if (!version?.id || !version?.fv_uuid) {
+    throw new Error(
+      `No released promotion form version exists for demo seed rank "${rank}".`,
+    );
+  }
+  return { id: version.id, fvUuid: version.fv_uuid };
+}
+
 interface DaParent {
   testType: string;
   status: string;
@@ -174,13 +207,15 @@ async function main() {
     const promotions = await buildPromotions(client);
     let promoInserted = 0;
     for (const p of promotions) {
+      const formVersion = await resolveReleasedPromotionFormVersion(client, p.rank);
       await client.query(
         `INSERT INTO promotion_reviews_v2
           (review_uuid, crew_member_id, promotion_to_rank, promotion_confirmed,
            vessel_assigned, promotion_date, promotion_timing, status,
-           sort_order, created_by_uuid, updated_by_uuid, is_deleted, is_sync)
-         VALUES ($1, $2, $3, 'yes', $4, $5, 'immediate', 'approved', 0, $6, $6, false, false)`,
-        [randomUUID(), p.crew, p.rank, p.vessel, p.date, TAG]
+            form_version_id, form_version_uuid,
+            sort_order, created_by_uuid, updated_by_uuid, is_deleted, is_sync)
+          VALUES ($1, $2, $3, 'yes', $4, $5, 'immediate', 'approved', $6, $7, 0, $8, $8, false, false)`,
+        [randomUUID(), p.crew, p.rank, p.vessel, p.date, formVersion.id, formVersion.fvUuid, TAG]
       );
       promoInserted++;
     }
