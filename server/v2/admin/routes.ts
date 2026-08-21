@@ -17,39 +17,41 @@ import {
   accessControlController,
   vesselOrgChartController,
 } from "./controllers";
+import { requirePermission } from "../../middleware/requirePermission";
+import { requireTrustedAccessControlAdmin } from "../../middleware/requireTrustedAccessControlAdmin";
 
 const router = Router();
 
-router.get("/forms", formsController.getAll);
+router.get("/forms", requirePermission("Forms", "view"), formsController.getAll);
 router.get("/forms/for-rank/:rankLabel", formsController.getFormForRank);
-router.post("/forms/cleanup-duplicates", formsController.cleanupDuplicates);
-router.get("/forms/:id", formsController.getById);
-router.post("/forms", formsController.create);
-router.put("/forms/:id", formsController.update);
-router.patch("/forms/:id", formsController.updateLockFlag);
-router.delete("/forms/:id", formsController.delete);
+router.post("/forms/cleanup-duplicates", requirePermission("Forms", "delete"), formsController.cleanupDuplicates);
+router.get("/forms/:id", requirePermission("Forms", "view"), formsController.getById);
+router.post("/forms", requirePermission("Forms", "create"), formsController.create);
+router.put("/forms/:id", requirePermission("Forms", "edit"), formsController.update);
+router.patch("/forms/:id", requirePermission("Forms", "edit"), formsController.updateLockFlag);
+router.delete("/forms/:id", requirePermission("Forms", "delete"), formsController.delete);
 
-router.get("/forms/:id/versions", formsController.getVersions);
-router.post("/forms/:id/versions", formsController.createVersion);
+router.get("/forms/:id/versions", requirePermission("Forms", "view"), formsController.getVersions);
+router.post("/forms/:id/versions", requirePermission("Forms", "create"), formsController.createVersion);
 
 router.get("/form-versions/:versionId/configuration", formsController.getVersionConfiguration);
-router.get("/form-versions/:id", formsController.getVersionById);
-router.put("/form-versions/:id", formsController.updateVersion);
-router.post("/form-versions/:id/release", formsController.releaseVersion);
-router.delete("/form-versions/:id", formsController.deleteVersion);
+router.get("/form-versions/:id", requirePermission("Forms", "view"), formsController.getVersionById);
+router.put("/form-versions/:id", requirePermission("Forms", "edit"), formsController.updateVersion);
+router.post("/form-versions/:id/release", requirePermission("Forms", "edit"), formsController.releaseVersion);
+router.delete("/form-versions/:id", requirePermission("Forms", "delete"), formsController.deleteVersion);
 
-router.get("/rank-groups", rankGroupsController.getAll);
-router.get("/rank-groups/check-assignment", rankGroupsController.checkAssignment);
-router.get("/rank-groups/form/:formId", rankGroupsController.getByFormId);
-router.get("/rank-groups/form/:formId/rank-conflicts", rankGroupsController.getRankConflicts);
-router.get("/rank-groups/:id", rankGroupsController.getById);
-router.post("/rank-groups", rankGroupsController.create);
-router.put("/rank-groups/:id", rankGroupsController.update);
-router.put("/rank-groups/:id/configuration", rankGroupsController.updateConfiguration);
-router.post("/rank-groups/:id/release-configuration", rankGroupsController.releaseConfiguration);
-router.post("/rank-groups/:id/archive", rankGroupsController.archive);
-router.post("/rank-groups/:id/unarchive", rankGroupsController.unarchive);
-router.delete("/rank-groups/:id", rankGroupsController.delete);
+router.get("/rank-groups", requirePermission("Forms", "view"), rankGroupsController.getAll);
+router.get("/rank-groups/check-assignment", requirePermission("Forms", "view"), rankGroupsController.checkAssignment);
+router.get("/rank-groups/form/:formId", requirePermission("Forms", "view"), rankGroupsController.getByFormId);
+router.get("/rank-groups/form/:formId/rank-conflicts", requirePermission("Forms", "view"), rankGroupsController.getRankConflicts);
+router.get("/rank-groups/:id", requirePermission("Forms", "view"), rankGroupsController.getById);
+router.post("/rank-groups", requirePermission("Forms", "create"), rankGroupsController.create);
+router.put("/rank-groups/:id", requirePermission("Forms", "edit"), rankGroupsController.update);
+router.put("/rank-groups/:id/configuration", requirePermission("Forms", "edit"), rankGroupsController.updateConfiguration);
+router.post("/rank-groups/:id/release-configuration", requirePermission("Forms", "edit"), rankGroupsController.releaseConfiguration);
+router.post("/rank-groups/:id/archive", requirePermission("Forms", "delete"), rankGroupsController.archive);
+router.post("/rank-groups/:id/unarchive", requirePermission("Forms", "edit"), rankGroupsController.unarchive);
+router.delete("/rank-groups/:id", requirePermission("Forms", "delete"), rankGroupsController.delete);
 
 router.get("/available-ranks", availableRanksController.getAll);
 router.post("/available-ranks", availableRanksController.create);
@@ -128,18 +130,18 @@ router.get("/training-matrix-vessel-revisions/:id", trainingMatrixVesselRevision
 router.post("/training-matrix-vessel-revisions", trainingMatrixVesselRevisionsController.create);
 
 router.get("/access-control/menus", accessControlController.getAllMenus);
-router.post("/access-control/menus", accessControlController.createMenu);
-router.put("/access-control/menus/:muid", accessControlController.updateMenu);
-router.delete("/access-control/menus/:muid", accessControlController.deleteMenu);
+router.post("/access-control/menus", requireTrustedAccessControlAdmin(), accessControlController.createMenu);
+router.put("/access-control/menus/:muid", requireTrustedAccessControlAdmin(), accessControlController.updateMenu);
+router.delete("/access-control/menus/:muid", requireTrustedAccessControlAdmin(), accessControlController.deleteMenu);
 
 router.get("/access-control/roles", accessControlController.getAllRoles);
-router.post("/access-control/roles", accessControlController.createRole);
-router.put("/access-control/roles/:ruid", accessControlController.updateRole);
-router.delete("/access-control/roles/:ruid", accessControlController.deleteRole);
+router.post("/access-control/roles", requireTrustedAccessControlAdmin(), accessControlController.createRole);
+router.put("/access-control/roles/:ruid", requireTrustedAccessControlAdmin(), accessControlController.updateRole);
+router.delete("/access-control/roles/:ruid", requireTrustedAccessControlAdmin(), accessControlController.deleteRole);
 
 router.get("/access-control/my-permissions", accessControlController.getMyPermissions);
-router.get("/access-control/roles/:ruid/permissions", accessControlController.getPermissions);
-router.put("/access-control/roles/:ruid/permissions", accessControlController.savePermissions);
+router.get("/access-control/roles/:ruid/permissions", requireTrustedAccessControlAdmin(), accessControlController.getPermissions);
+router.put("/access-control/roles/:ruid/permissions", requireTrustedAccessControlAdmin(), accessControlController.savePermissions);
 
 router.get("/vessel-org-chart", vesselOrgChartController.getAll);
 router.get("/vessel-org-chart/rank-scope", vesselOrgChartController.getRankScope);

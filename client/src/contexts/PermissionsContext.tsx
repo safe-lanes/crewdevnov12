@@ -91,14 +91,11 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
   const myVessels = userProfile?.myVessels || [];
 
   const { data, isLoading } = useQuery({
+    // Keep browser identity values in the local cache key so a profile or
+    // tenant switch never reuses another actor's stale permission response.
+    // They are deliberately not included in the API request.
     queryKey: ['/api/v2/admin/access-control/my-permissions', roleId, roleName],
-    queryFn: async () => {
-      const result = await adminApiV2.getMyPermissions({
-        roleId: roleId || undefined,
-        roleName: roleName || undefined,
-      });
-      return result;
-    },
+    queryFn: () => adminApiV2.getMyPermissions(),
     enabled: !!(roleId || roleName),
     staleTime: 5 * 60 * 1000,
     retry: 2,

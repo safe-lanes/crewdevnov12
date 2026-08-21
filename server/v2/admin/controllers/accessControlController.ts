@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { accessControlService } from "../services";
+import { resolveRequestRole } from "../../auth/roleResolutionService";
 
 export const accessControlController = {
   async getAllMenus(req: Request, res: Response) {
@@ -104,10 +105,20 @@ export const accessControlController = {
 
   async getMyPermissions(req: Request, res: Response) {
     try {
-      const { roleId, roleName } = req.query;
+      const roleResolution = await resolveRequestRole(req);
+      if (!roleResolution.ok) {
+        console.error("Unable to resolve permissions for authenticated user:", {
+          reason: roleResolution.reason,
+        });
+        return res.status(403).json({
+          error: "forbidden",
+          message: "Unable to resolve permissions for this user.",
+        });
+      }
+
       const result = await accessControlService.getMyPermissions(
-        roleId as string | undefined,
-        roleName as string | undefined
+        roleResolution.role.roleId,
+        roleResolution.role.roleName,
       );
       res.json(result);
     } catch (error: any) {
