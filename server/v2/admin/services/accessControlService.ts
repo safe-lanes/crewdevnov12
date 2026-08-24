@@ -31,8 +31,8 @@ export const accessControlService = {
     return accessControlRepo.softDeleteMenuByUuid(muid);
   },
 
-  async getAllRoles(): Promise<AdmRoleMasterAc[]> {
-    return accessControlRepo.findAllRoles();
+  async getAllRoles(includeInactive = false): Promise<AdmRoleMasterAc[]> {
+    return accessControlRepo.findAllRoles(includeInactive);
   },
 
   async getRoleByUuid(ruid: string): Promise<AdmRoleMasterAc> {

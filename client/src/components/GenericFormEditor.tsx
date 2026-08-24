@@ -70,8 +70,18 @@ interface VersionRow {
 
 interface RoleRow {
   ruid: string;
+  assignedRole?: string;
   name?: string;
   roleName?: string;
+  isActive?: boolean;
+  isDeleted?: boolean;
+}
+
+type RoleStatus = "inactive" | "deleted" | "missing" | null;
+
+interface RoleSummary {
+  title: string;
+  status: RoleStatus;
 }
 
 type DepartmentRow = string | {
@@ -286,6 +296,30 @@ function departmentOption(department: DepartmentRow): { value: string; label: st
   return value ? { value, label: department.name || department.departmentName || value } : null;
 }
 
+function roleTitle(role: RoleRow): string {
+  return role.assignedRole?.trim() || role.name?.trim() || role.roleName?.trim() || role.ruid;
+}
+
+function selectableRoles(roles: RoleRow[]): RoleRow[] {
+  return roles
+    .filter((role) => role.isActive === true && role.isDeleted === false)
+    .sort((left, right) =>
+      roleTitle(left).localeCompare(roleTitle(right), undefined, { sensitivity: "base" }) ||
+      left.ruid.localeCompare(right.ruid),
+    );
+}
+
+function roleSummary(roles: RoleRow[], uuid: string | null): RoleSummary {
+  if (!uuid) return { title: "Not set", status: null };
+
+  const role = roles.find((item) => item.ruid === uuid);
+  if (!role) return { title: `Unknown role (${uuid})`, status: "missing" };
+
+  if (role.isDeleted) return { title: roleTitle(role), status: "deleted" };
+  if (!role.isActive) return { title: roleTitle(role), status: "inactive" };
+  return { title: roleTitle(role), status: null };
+}
+
 function shouldConfirmVersionChange(isDirty: boolean, currentVersionUuid: string, nextVersionUuid: string): boolean {
   return isDirty && currentVersionUuid !== nextVersionUuid;
 }
@@ -373,13 +407,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   });
 
   const { data: roles = [] } = useQuery<RoleRow[]>({
-    queryKey: ["/api/v2/admin/access-control/roles"],
+    queryKey: ["/api/v2/admin/access-control/roles", "includeInactive"],
     queryFn: async () => {
-      const response = await fetch("/api/v2/admin/access-control/roles");
+      const response = await fetch("/api/v2/admin/access-control/roles?includeInactive=true");
       if (!response.ok) return [];
       return response.json();
     },
   });
+  const activeRoles = useMemo(() => selectableRoles(roles), [roles]);
   const { data: departments = [] } = useQuery<DepartmentRow[]>({
     queryKey: ["/api/v2/masters/departments"],
     queryFn: async () => {
@@ -730,10 +765,6 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   };
 
   const sectionForSettings = selectedSection ? trees[selectedSection.partUuid]?.[selectedSection.index] : undefined;
-  const roleName = (uuid: string | null) => {
-    const role = roles.find((item) => item.ruid === uuid);
-    return role?.name || role?.roleName || uuid || "Not set";
-  };
   const vesselLabel = (uuid: string) => {
     const type = vesselTypes.find((item) => (item.vtUuid || item.vtuid) === uuid);
     return type?.name || type?.vesselType || type?.label || uuid;
@@ -873,9 +904,38 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                               <Badge variant="outline" className="text-[10px] font-normal">
                                 {section.applicable_vessel_types.length === 0 ? "All vessel types" : `${section.applicable_vessel_types.length} vessel type(s)`}
                               </Badge>
-                              <Badge variant="outline" className="text-[10px] font-normal">
-                                {section.responsible_mode === "role" ? `Role: ${roleName(section.responsible_role_uuid)}` : section.responsible_mode === "department" ? `Dept: ${section.responsible_department || "Not set"}` : "No responsible party"}
-                              </Badge>
+                              {section.responsible_mode === "role" ? (() => {
+                                const summary = roleSummary(roles, section.responsible_role_uuid);
+                                const statusClassName = summary.status === "missing"
+                                  ? "border-red-300 bg-red-50 text-red-700"
+                                  : "border-amber-300 bg-amber-50 text-amber-800";
+                                const statusLabel = summary.status === "inactive"
+                                  ? "Inactive role"
+                                  : summary.status === "deleted"
+                                    ? "Deleted role"
+                                    : "Role not found";
+                                return (
+                                  <>
+                                    <Badge variant="outline" className="text-[10px] font-normal">
+                                      {`Role: ${summary.title}`}
+                                    </Badge>
+                                    {summary.status && (
+                                      <Badge
+                                        variant="outline"
+                                        className={`text-[10px] font-medium ${statusClassName}`}
+                                        data-testid={`badge-responsible-role-status-${sectionIndex + 1}`}
+                                      >
+                                        <AlertCircle className="mr-1 h-3 w-3" />
+                                        {statusLabel}
+                                      </Badge>
+                                    )}
+                                  </>
+                                );
+                              })() : (
+                                <Badge variant="outline" className="text-[10px] font-normal">
+                                  {section.responsible_mode === "department" ? `Dept: ${section.responsible_department || "Not set"}` : "No responsible party"}
+                                </Badge>
+                              )}
                               {section.comment_box_required && <Badge variant="outline" className="text-[10px] font-normal">Comment required</Badge>}
                               {section.signature_required && <Badge variant="outline" className="text-[10px] font-normal">Signature required</Badge>}
                             </div>
@@ -1035,7 +1095,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
               {settingsValues.responsibleMode === "role" && (
                 <Select value={settingsValues.responsibleRoleUuid} onValueChange={(value) => setSettingsValues((current) => ({ ...current, responsibleRoleUuid: value }))}>
                   <SelectTrigger data-testid="select-responsible-role"><SelectValue placeholder="Select a role" /></SelectTrigger>
-                  <SelectContent>{roles.map((role) => <SelectItem value={role.ruid} key={role.ruid}>{role.name || role.roleName || role.ruid}</SelectItem>)}</SelectContent>
+                  <SelectContent>{activeRoles.map((role) => <SelectItem value={role.ruid} key={role.ruid}>{roleTitle(role)}</SelectItem>)}</SelectContent>
                 </Select>
               )}
               {settingsValues.responsibleMode === "department" && (
@@ -1108,6 +1168,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 export const genericFormEditorTestUtils = {
   createOption,
   departmentOption,
+  roleSummary,
+  selectableRoles,
   renumberSections,
   shouldConfirmVersionChange,
   toPayload,

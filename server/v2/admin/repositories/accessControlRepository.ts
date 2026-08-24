@@ -53,11 +53,17 @@ export class AccessControlRepository {
     return results.length > 0;
   }
 
-  async findAllRoles(): Promise<AdmRoleMasterAc[]> {
+  async findAllRoles(includeInactive = false): Promise<AdmRoleMasterAc[]> {
     const db = getDb();
-    return db
+    const query = db
       .select()
-      .from(admRoleMasterAc)
+      .from(admRoleMasterAc);
+
+    if (includeInactive) {
+      return query.orderBy(asc(admRoleMasterAc.sortOrder));
+    }
+
+    return query
       .where(and(eq(admRoleMasterAc.isDeleted, false), eq(admRoleMasterAc.isActive, true)))
       .orderBy(asc(admRoleMasterAc.sortOrder));
   }

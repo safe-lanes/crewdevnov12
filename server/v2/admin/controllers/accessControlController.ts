@@ -55,7 +55,8 @@ export const accessControlController = {
 
   async getAllRoles(req: Request, res: Response) {
     try {
-      const records = await accessControlService.getAllRoles();
+      const includeInactive = req.query.includeInactive === "true";
+      const records = await accessControlService.getAllRoles(includeInactive);
       res.json(records);
     } catch (error: any) {
       console.error("Error fetching roles:", error);

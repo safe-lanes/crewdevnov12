@@ -101,4 +101,44 @@ describe("generic configurable-form editor helpers", () => {
     }]);
     expect(payload.sections[0].responsible_department).toBe("Marine Operations");
   });
+
+  it("uses role titles, sorts selectable roles, and preserves stale assignment warnings", () => {
+    const roles = [
+      { ruid: "zulu", assignedRole: "Zulu Officer", isActive: true, isDeleted: false },
+      { ruid: "alpha", assignedRole: "Alpha Officer", isActive: true, isDeleted: false },
+      { ruid: "inactive", assignedRole: "Former Master", isActive: false, isDeleted: false },
+      { ruid: "deleted", assignedRole: "Removed Officer", isActive: false, isDeleted: true },
+    ];
+
+    expect(genericFormEditorTestUtils.selectableRoles(roles).map((role) => role.assignedRole)).toEqual([
+      "Alpha Officer",
+      "Zulu Officer",
+    ]);
+    expect(genericFormEditorTestUtils.roleSummary(roles, "inactive")).toEqual({
+      title: "Former Master",
+      status: "inactive",
+    });
+    expect(genericFormEditorTestUtils.roleSummary(roles, "deleted")).toEqual({
+      title: "Removed Officer",
+      status: "deleted",
+    });
+    expect(genericFormEditorTestUtils.roleSummary(roles, "missing")).toEqual({
+      title: "Unknown role (missing)",
+      status: "missing",
+    });
+
+    const payload = genericFormEditorTestUtils.toPayload([{
+      clientKey: "role-owned-section",
+      section_code: "B1",
+      section_title: "Role owner",
+      applicable_vessel_types: [],
+      responsible_mode: "role",
+      responsible_role_uuid: "alpha",
+      responsible_department: null,
+      comment_box_required: false,
+      signature_required: false,
+      questions: [],
+    }]);
+    expect(payload.sections[0].responsible_role_uuid).toBe("alpha");
+  });
 });
