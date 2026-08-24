@@ -93,7 +93,11 @@ function render(element: React.ReactElement) {
   };
 }
 
-function renderPreview(sections: ConfiguredFormSection[] = [configuredSection], vesselType = "all") {
+function renderPreview(
+  sections: ConfiguredFormSection[] = [configuredSection],
+  vesselType = "all",
+  preservedPreviewState: Pick<React.ComponentProps<typeof ConfiguredFormRenderer>, "selectedPartUuid" | "expandedSections"> = {},
+) {
   return render(
     <ConfiguredFormRenderer
       mode="preview"
@@ -107,6 +111,7 @@ function renderPreview(sections: ConfiguredFormSection[] = [configuredSection], 
         { vtUuid: "bulk", name: "Bulk Carrier" },
       ]}
       selectedVesselTypeUuid={vesselType}
+      {...preservedPreviewState}
     />,
   );
 }
@@ -147,18 +152,24 @@ describe("configured form renderer preview", () => {
     expect(screen.getByTestId("preview-response-info")).toHaveTextContent("Information only");
     expect(screen.getByText("Master")).toBeInTheDocument();
     expect(screen.queryByText("ready_for_work")).not.toBeInTheDocument();
+    expect(screen.queryByText("Single Selection")).toBeNull();
+    expect(screen.queryByText("Configured form preview")).toBeNull();
   });
 
-  it("shows preview-only comments, signatures, and stable required indicators without fetches", () => {
+  it("renders one renderer stepper plus preview-only comments, signatures, and row indicators without fetches", () => {
     const fetchSpy = vi.spyOn(global, "fetch");
     renderPreview();
     click(screen.getByTestId("button-preview-part-B"));
 
+    expect(activeContainer?.querySelectorAll('[data-testid="preview-part-stepper"]')).toHaveLength(1);
+    expect(screen.getByTestId("preview-point-yes-no").className).toContain("grid");
     click(screen.getByTestId("button-preview-comment-yes-no"));
     expect(screen.getByTestId("preview-comment-yes-no")).toBeInTheDocument();
     expect(screen.getByTestId("preview-section-comment-section-one")).toBeInTheDocument();
     expect(screen.getByTestId("preview-signature-section-one")).toHaveTextContent("Signature placeholder");
-    expect(screen.getByTestId("preview-required-yes-no")).toHaveTextContent("Required");
+    expect(screen.getByTestId("preview-signature-name-section-one")).toHaveAttribute("placeholder", "Name");
+    expect(screen.getByTestId("preview-section-footer-section-one")).toHaveTextContent("To be completed by: Master");
+    expect(screen.getByTestId("preview-required-yes-no")).toHaveTextContent("*");
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -196,6 +207,28 @@ describe("configured form renderer preview", () => {
 
     expect(screen.getByTestId("responsible-not-applicable-not-applicable")).toHaveTextContent("No responsible party");
     expect(screen.queryByTestId("missing-responsible-not-applicable")).toBeNull();
+  });
+
+  it("uses parent-owned preview navigation state after the renderer remounts", () => {
+    const preservedPreviewState = {
+      selectedPartUuid: "part-b",
+      expandedSections: { "section-one": false },
+    };
+    renderPreview([configuredSection], "all", preservedPreviewState);
+    expect(screen.getByTestId("preview-section-section-one")).toBeInTheDocument();
+    expect(screen.queryByTestId("preview-point-yes-no")).toBeNull();
+
+    const previousContainer = activeContainer;
+    act(() => {
+      activeRoot?.unmount();
+    });
+    previousContainer?.remove();
+    activeRoot = null;
+    activeContainer = null;
+
+    renderPreview([configuredSection], "all", preservedPreviewState);
+    expect(screen.getByTestId("preview-section-section-one")).toBeInTheDocument();
+    expect(screen.queryByTestId("preview-point-yes-no")).toBeNull();
   });
 
   it("marks vessel-restricted sections as not applicable and preserves preview section state", () => {
