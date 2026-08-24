@@ -31,6 +31,7 @@ router.get("/countries/:uuid", mastersController.getCountryByUuid);
 
 router.get("/users", mastersController.getUsers);
 router.get("/users/:uuid", mastersController.getUserByUuid);
+router.get("/departments", mastersController.getDepartments);
 
 router.get("/licenses-dce", mastersController.getLicensesDce);
 router.get("/licenses-dce/:id", mastersController.getLicenseDceById);

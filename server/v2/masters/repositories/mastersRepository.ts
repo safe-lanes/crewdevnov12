@@ -336,6 +336,18 @@ export class MastersRepository {
       .orderBy(asc(masterUsers.fullname));
   }
 
+  async findDistinctDepartments(): Promise<string[]> {
+    const db = getDb();
+    const rows = await db
+      .selectDistinct({ department: masterUsers.department })
+      .from(masterUsers)
+      .where(sql`${masterUsers.department} IS NOT NULL AND btrim(${masterUsers.department}) <> ''`)
+      .orderBy(asc(masterUsers.department));
+    return rows
+      .map((row: { department: string | null }) => row.department?.trim())
+      .filter((department: string | undefined): department is string => !!department);
+  }
+
   async findUserByUuid(userUuid: string) {
     const db = getDb();
     const results = await db

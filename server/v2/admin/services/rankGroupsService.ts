@@ -1,11 +1,12 @@
 import { eq, and, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
-import { admFormVersionsV2, admRankGroupsV2 } from "../../../../shared/v2/admin/schema";
+import { admFormVersionsV2, admFormsV2, admRankGroupsV2 } from "../../../../shared/v2/admin/schema";
 import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { FormsRepository } from "../repositories/formsRepository";
 import { FormVersionsRepository } from "../repositories/formVersionsRepository";
 import { applyAuditUser } from "../utils/auditUser";
+import { formStructureService } from "./formStructureService";
 import type { AdmRankGroupV2, InsertAdmRankGroupV2 } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
 
@@ -44,16 +45,21 @@ async function upsertDraftVersion(formId: number, rankGroupId: number, configura
   }, 0);
   const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
 
-  await formVersionsRepo.create(applyAuditUser({
-    formId,
-    rankGroupId,
-    versionNo: nextVersionNo,
-    versionDate,
-    status: "draft",
-    configuration,
-    releasedAt: null,
-    auditUserUuid,
-  }, true));
+  const sourceVersion = await formVersionsRepo.findLatestReleasedByRankGroupId(rankGroupId);
+  const db = getDb();
+  await db.transaction(async (tx: any) => {
+    const created = await formVersionsRepo.create(applyAuditUser({
+      formId,
+      rankGroupId,
+      versionNo: nextVersionNo,
+      versionDate,
+      status: "draft",
+      configuration,
+      releasedAt: null,
+      auditUserUuid,
+    }, true), tx);
+    await formStructureService.copyStructure(sourceVersion?.fvUuid, created.fvUuid, tx);
+  });
 
   console.log(`✅ [V2 DRAFT] Created draft v${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId}`);
 }
@@ -79,6 +85,17 @@ async function releaseAndMirrorConfiguration(
     if (!locked) throw new Error(`Rank group not found: ${rankGroupId}`);
     const formId = Number(locked.form_id);
     const rankGroupName = String(locked.name);
+    const formRows = await tx
+      .select({ formUuid: admFormsV2.formUuid })
+      .from(admFormsV2)
+      .where(and(eq(admFormsV2.id, formId), eq(admFormsV2.isDeleted, false)));
+    const form = formRows[0];
+    if (!form) throw new Error(`Form not found: ${formId}`);
+    if (await formStructureService.hasStructureForForm(form.formUuid, tx)) {
+      throw new Error(
+        "Cannot create a direct released version because this form has configurable structure. Create a draft so structure can be copied before release.",
+      );
+    }
 
     const now = new Date();
     const versionDate = now.toLocaleDateString("en-GB", {

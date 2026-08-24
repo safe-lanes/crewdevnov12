@@ -1,4 +1,5 @@
 export { FormsRepository } from "./formsRepository";
+export { FormStructureRepository, formStructureRepository } from "./formStructureRepository";
 export { FormVersionsRepository } from "./formVersionsRepository";
 export { RankGroupsRepository } from "./rankGroupsRepository";
 export { AvailableRanksRepository } from "./availableRanksRepository";

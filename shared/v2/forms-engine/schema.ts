@@ -130,6 +130,100 @@ export const insertFrmSectionSchema = createInsertSchema(frmSections).omit(inser
 export const insertFrmQuestionSchema = createInsertSchema(frmQuestions).omit(insertAuditOmit);
 export const insertFrmQuestionOptionSchema = createInsertSchema(frmQuestionOptions).omit(insertAuditOmit);
 
+const rowUuidSchema = z.string().uuid();
+
+export const formStructureOptionInputSchema = z.object({
+  option_uuid: rowUuidSchema.optional(),
+  option_label: z.string().trim().min(1).max(500),
+  option_value: z.string().trim().min(1).max(500),
+}).strict();
+
+export const formStructureQuestionInputSchema = z.object({
+  question_uuid: rowUuidSchema.optional(),
+  question_code: z.string().trim().min(1).max(100),
+  question_text: z.string().trim().min(1).max(2000),
+  response_type: z.enum(QUESTION_RESPONSE_TYPES),
+  is_mandatory: z.boolean().default(false),
+  comment_enabled: z.boolean().default(true),
+  options: z.array(formStructureOptionInputSchema).default([]),
+}).strict().superRefine((question, ctx) => {
+  const needsOptions = question.response_type === "single_select" || question.response_type === "multi_select";
+  if (needsOptions && question.options.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["options"],
+      message: `${question.response_type} questions require at least one option`,
+    });
+  }
+  if (!needsOptions && question.options.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["options"],
+      message: `${question.response_type} questions cannot define options`,
+    });
+  }
+});
+
+export const formStructureSectionInputSchema = z.object({
+  section_uuid: rowUuidSchema.optional(),
+  section_code: z.string().trim().min(1).max(100),
+  section_title: z.string().trim().min(1).max(500),
+  applicable_vessel_types: z.array(rowUuidSchema).default([]),
+  responsible_mode: z.enum(RESPONSIBLE_MODES).default("not_applicable"),
+  responsible_role_uuid: rowUuidSchema.nullable().optional(),
+  responsible_department: z.string().trim().max(500).nullable().optional(),
+  comment_box_required: z.boolean().default(false),
+  signature_required: z.boolean().default(false),
+  questions: z.array(formStructureQuestionInputSchema).default([]),
+}).strict().superRefine((section, ctx) => {
+  if (section.responsible_mode === "role") {
+    if (!section.responsible_role_uuid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["responsible_role_uuid"],
+        message: "responsible_role_uuid is required when responsible_mode is role",
+      });
+    }
+    if (section.responsible_department) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["responsible_department"],
+        message: "responsible_department must be empty when responsible_mode is role",
+      });
+    }
+  } else if (section.responsible_mode === "department") {
+    if (!section.responsible_department) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["responsible_department"],
+        message: "responsible_department is required when responsible_mode is department",
+      });
+    }
+    if (section.responsible_role_uuid) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["responsible_role_uuid"],
+        message: "responsible_role_uuid must be empty when responsible_mode is department",
+      });
+    }
+  } else if (section.responsible_role_uuid || section.responsible_department) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["responsible_mode"],
+      message: "responsible targets must be empty when responsible_mode is not_applicable",
+    });
+  }
+});
+
+export const formStructureInputSchema = z.object({
+  sections: z.array(formStructureSectionInputSchema),
+}).strict();
+
+export type FormStructureOptionInput = z.infer<typeof formStructureOptionInputSchema>;
+export type FormStructureQuestionInput = z.infer<typeof formStructureQuestionInputSchema>;
+export type FormStructureSectionInput = z.infer<typeof formStructureSectionInputSchema>;
+export type FormStructureInput = z.infer<typeof formStructureInputSchema>;
+
 export type InsertFrmFormPart = z.infer<typeof insertFrmFormPartSchema>;
 export type FrmFormPart = typeof frmFormParts.$inferSelect;
 export type InsertFrmSection = z.infer<typeof insertFrmSectionSchema>;

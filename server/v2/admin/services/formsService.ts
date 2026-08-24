@@ -2,6 +2,8 @@ import { FormsRepository } from "../repositories/formsRepository";
 import { FormVersionsRepository } from "../repositories/formVersionsRepository";
 import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { applyAuditUser } from "../utils/auditUser";
+import { getDb } from "../../db";
+import { formStructureService } from "./formStructureService";
 import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2 } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
 
@@ -296,17 +298,23 @@ export const formsService = {
       return isNaN(vNo) ? max : Math.max(max, vNo);
     }, 0);
     const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
-    return formVersionsRepo.create(applyAuditUser({
-      configuration: data.configuration ?? null,
-      sharedConfig: data.sharedConfig ?? null,
-      rankGroupId: data.rankGroupId,
-      formId: form.id,
-      versionNo: nextVersionNo,
-      versionDate: pickedVersionDate,
-      status: "draft",
-      releasedAt: null,
-      auditUserUuid,
-    }, true));
+    const sourceVersion = await formVersionsRepo.findLatestReleasedByRankGroupId(data.rankGroupId);
+    const db = getDb();
+    return db.transaction(async (tx: any) => {
+      const created = await formVersionsRepo.create(applyAuditUser({
+        configuration: data.configuration ?? null,
+        sharedConfig: data.sharedConfig ?? null,
+        rankGroupId: data.rankGroupId,
+        formId: form.id,
+        versionNo: nextVersionNo,
+        versionDate: pickedVersionDate,
+        status: "draft",
+        releasedAt: null,
+        auditUserUuid,
+      }, true), tx);
+      await formStructureService.copyStructure(sourceVersion?.fvUuid, created.fvUuid, tx);
+      return created;
+    });
   },
 
   async createVersion(formUuid: string, data: Omit<InsertAdmFormVersionV2, "fvUuid" | "formId">): Promise<AdmFormVersionV2> {

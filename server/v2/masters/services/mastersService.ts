@@ -154,6 +154,10 @@ export const mastersService = {
     return rows.map(addUserAliases);
   },
 
+  async getDepartments() {
+    return mastersRepo.findDistinctDepartments();
+  },
+
   async getUserByUuid(userUuid: string) {
     const result = await mastersRepo.findUserByUuid(userUuid);
     if (!result) throw new Error(`User not found: ${userUuid}`);

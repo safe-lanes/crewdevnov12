@@ -32,6 +32,16 @@ const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
     menuName: "Forms",
     action: "create",
   },
+  {
+    key: "GET /form-versions/:fvUuid/parts/:partUuid/structure",
+    menuName: "Forms",
+    action: "view",
+  },
+  {
+    key: "PUT /form-versions/:fvUuid/parts/:partUuid/structure",
+    menuName: "Forms",
+    action: "edit",
+  },
   { key: "GET /form-versions/:id", menuName: "Forms", action: "view" },
   { key: "PUT /form-versions/:id", menuName: "Forms", action: "edit" },
   {

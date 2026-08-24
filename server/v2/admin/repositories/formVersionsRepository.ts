@@ -50,9 +50,8 @@ export class FormVersionsRepository {
     return results[0];
   }
 
-  async create(data: Omit<InsertAdmFormVersionV2, "fvUuid">): Promise<AdmFormVersionV2> {
-    const db = getDb();
-    const results = await db
+  async create(data: Omit<InsertAdmFormVersionV2, "fvUuid">, executor: any = getDb()): Promise<AdmFormVersionV2> {
+    const results = await executor
       .insert(admFormVersionsV2)
       .values({ ...data, fvUuid: uuidv4() })
       .returning();

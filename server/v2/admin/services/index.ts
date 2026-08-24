@@ -1,4 +1,5 @@
 export { formsService } from "./formsService";
+export { formStructureService } from "./formStructureService";
 export { rankGroupsService } from "./rankGroupsService";
 export { availableRanksService } from "./availableRanksService";
 export { promotionHierarchiesService } from "./promotionHierarchiesService";

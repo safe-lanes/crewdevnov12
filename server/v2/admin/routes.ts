@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   formsController,
+  formStructureController,
   rankGroupsController,
   availableRanksController,
   promotionHierarchiesController,
@@ -35,6 +36,16 @@ router.get("/forms/:id/versions", requirePermission("Forms", "view"), formsContr
 router.post("/forms/:id/versions", requirePermission("Forms", "create"), formsController.createVersion);
 
 router.get("/form-versions/:versionId/configuration", formsController.getVersionConfiguration);
+router.get(
+  "/form-versions/:fvUuid/parts/:partUuid/structure",
+  requirePermission("Forms", "view"),
+  formStructureController.getStructure,
+);
+router.put(
+  "/form-versions/:fvUuid/parts/:partUuid/structure",
+  requirePermission("Forms", "edit"),
+  formStructureController.replaceStructure,
+);
 router.get("/form-versions/:id", requirePermission("Forms", "view"), formsController.getVersionById);
 router.put("/form-versions/:id", requirePermission("Forms", "edit"), formsController.updateVersion);
 router.post("/form-versions/:id/release", requirePermission("Forms", "edit"), formsController.releaseVersion);

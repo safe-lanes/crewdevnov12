@@ -150,6 +150,9 @@ export const rankGroupsController = {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
+      if (error.message?.includes("configurable structure")) {
+        return res.status(409).json({ error: error.message });
+      }
       console.error("Error releasing rank group configuration:", error);
       res.status(500).json({ error: "Failed to release rank group configuration" });
     }

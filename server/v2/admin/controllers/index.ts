@@ -1,4 +1,5 @@
 export { formsController } from "./formsController";
+export { formStructureController } from "./formStructureController";
 export { rankGroupsController } from "./rankGroupsController";
 export { availableRanksController } from "./availableRanksController";
 export { promotionHierarchiesController } from "./promotionHierarchiesController";

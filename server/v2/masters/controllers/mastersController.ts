@@ -82,6 +82,16 @@ export const mastersController = {
     }
   },
 
+  async getDepartments(req: Request, res: Response) {
+    try {
+      const data = await mastersService.getDepartments();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      res.status(500).json({ error: "Failed to fetch departments" });
+    }
+  },
+
   async getAdditionalGroups(req: Request, res: Response) {
     try {
       const data = await mastersService.getAdditionalGroups();
