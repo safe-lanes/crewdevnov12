@@ -60,6 +60,7 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
   return (
     <EditorComponent
       form={form}
+      formName={formName}
       rankGroupName={rankGroupName}
       rankGroupConfig={rankGroupConfig}
       configurableParts={configurableParts}

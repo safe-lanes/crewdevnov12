@@ -81,6 +81,22 @@ describe("generic configurable-form editor helpers", () => {
     expect(genericFormEditorTestUtils.shouldConfirmVersionChange(true, "current", "current")).toBe(false);
   });
 
+  it("keeps Configure and Preview scroll positions independent across view switches", () => {
+    const afterConfigureScroll = genericFormEditorTestUtils.captureViewScrollPosition(
+      { configure: 0, preview: 0 },
+      "configure",
+      800,
+    );
+    const afterPreviewScroll = genericFormEditorTestUtils.captureViewScrollPosition(
+      afterConfigureScroll,
+      "preview",
+      200,
+    );
+
+    expect(afterPreviewScroll).toEqual({ configure: 800, preview: 200 });
+    expect(afterPreviewScroll.configure).toBe(800);
+  });
+
   it("accepts the master-data string[] department response and serializes the chosen department", () => {
     expect(genericFormEditorTestUtils.departmentOption("Marine Operations")).toEqual({
       value: "Marine Operations",

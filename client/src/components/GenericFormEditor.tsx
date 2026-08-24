@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Plus, Save, Settings2, Trash2, X } from "lucide-react";
 import { Form } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfiguredFormRenderer } from "@/components/configured-form/ConfiguredFormRenderer";
 
 export interface ConfigurableFormPart {
   formPartUuid: string;
@@ -78,6 +79,7 @@ interface RoleRow {
 }
 
 type RoleStatus = "inactive" | "deleted" | "missing" | null;
+type EditorViewMode = "configure" | "preview";
 
 interface RoleSummary {
   title: string;
@@ -320,6 +322,14 @@ function roleSummary(roles: RoleRow[], uuid: string | null): RoleSummary {
   return { title: roleTitle(role), status: null };
 }
 
+function captureViewScrollPosition(
+  positions: Record<EditorViewMode, number>,
+  viewMode: EditorViewMode,
+  scrollTop: number,
+): Record<EditorViewMode, number> {
+  return { ...positions, [viewMode]: scrollTop };
+}
+
 function shouldConfirmVersionChange(isDirty: boolean, currentVersionUuid: string, nextVersionUuid: string): boolean {
   return isDirty && currentVersionUuid !== nextVersionUuid;
 }
@@ -338,6 +348,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [selectedPartUuid, setSelectedPartUuid] = useState("");
   const [selectedVersionUuid, setSelectedVersionUuid] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [viewMode, setViewMode] = useState<EditorViewMode>("configure");
+  const [previewVesselTypeUuid, setPreviewVesselTypeUuid] = useState("all");
   const [trees, setTrees] = useState<Record<string, SectionModel[]>>({});
   const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -360,6 +372,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [pendingVersionUuid, setPendingVersionUuid] = useState<string | null>(null);
   const baselineRef = useRef<string | null>(null);
+  const editorContentRef = useRef<HTMLElement | null>(null);
+  const editorScrollTopRef = useRef<Record<EditorViewMode, number>>({ configure: 0, preview: 0 });
 
   const { data: formPartsData = [], isLoading: isLoadingParts } = useQuery<ConfigurableFormPart[]>({
     queryKey: [`/api/v2/admin/forms/${realFormId}/parts`],
@@ -770,6 +784,23 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     return type?.name || type?.vesselType || type?.label || uuid;
   };
 
+  const toggleViewMode = () => {
+    if (editorContentRef.current) {
+      editorScrollTopRef.current = captureViewScrollPosition(
+        editorScrollTopRef.current,
+        viewMode,
+        editorContentRef.current.scrollTop,
+      );
+    }
+    setViewMode((current) => current === "configure" ? "preview" : "configure");
+  };
+
+  useLayoutEffect(() => {
+    const element = editorContentRef.current;
+    if (!element) return;
+    element.scrollTop = editorScrollTopRef.current[viewMode];
+  }, [viewMode]);
+
   return (
     <>
       <Dialog open onOpenChange={(open) => { if (!open) handleClose(); }}>
@@ -783,6 +814,30 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 </DialogDescription>
               </div>
               <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center rounded-md border bg-white p-0.5" role="group" aria-label="Form editor view">
+                  <Button
+                    type="button"
+                    variant={viewMode === "configure" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-8 px-3 text-xs"
+                    onClick={viewMode === "preview" ? toggleViewMode : undefined}
+                    aria-pressed={viewMode === "configure"}
+                    data-testid="button-configure-mode"
+                  >
+                    Configure
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={viewMode === "preview" ? "default" : "ghost"}
+                    size="sm"
+                    className="h-8 px-3 text-xs"
+                    onClick={viewMode === "configure" ? toggleViewMode : undefined}
+                    aria-pressed={viewMode === "preview"}
+                    data-testid="button-preview-mode"
+                  >
+                    Preview
+                  </Button>
+                </div>
                 <span className="text-gray-500">Version</span>
                 <Select
                   value={selectedVersion?.fvUuid || ""}
@@ -845,7 +900,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
               )}
             </aside>
 
-            <main className="min-w-0 flex-1 overflow-y-auto bg-white">
+             <main ref={editorContentRef} className="min-w-0 flex-1 overflow-y-auto bg-white">
               <div className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur px-6 py-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="text-lg font-semibold text-gray-800">{selectedPart?.partCode} · {selectedPart?.partTitle}</div>
@@ -855,18 +910,18 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {!canEdit && (
+                   {viewMode === "configure" && !canEdit && (
                     <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800" data-testid="released-read-only-message">
                       <AlertCircle className="h-4 w-4" />
                       Released versions are read-only. Create a new draft to make changes.
                     </div>
                   )}
-                  {!canEdit && (
+                   {viewMode === "configure" && !canEdit && (
                     <Button onClick={startEditing} data-testid="button-edit-as-new-draft">
                       <Plus className="h-4 w-4 mr-2" /> Edit as new draft
                     </Button>
                   )}
-                  {canEdit && (
+                   {viewMode === "configure" && canEdit && (
                     <Button onClick={save} disabled={isSaving || isLoadingTree} className="bg-[#16569e] hover:bg-[#0f4078]" data-testid="button-save-form-structure">
                       <Save className="h-4 w-4 mr-2" /> {isSaving ? "Saving..." : "Save"}
                     </Button>
@@ -881,10 +936,25 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 </div>
               )}
 
-              {isLoadingTree ? (
-                <div className="p-10 text-center text-sm text-gray-500">Loading form structure…</div>
-              ) : (
-                <div className="p-6 space-y-5">
+               <div className={viewMode === "preview" ? "block p-6" : "hidden"} aria-hidden={viewMode !== "preview"}>
+                 <ConfiguredFormRenderer
+                   mode="preview"
+                   formTitle={formName}
+                   parts={allParts}
+                   structures={trees}
+                   roles={roles}
+                   departments={departments}
+                   vesselTypes={vesselTypes}
+                   selectedVesselTypeUuid={previewVesselTypeUuid}
+                   onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
+                 />
+               </div>
+
+               <div className={viewMode === "configure" ? "block" : "hidden"} aria-hidden={viewMode !== "configure"}>
+                 {isLoadingTree ? (
+                   <div className="p-10 text-center text-sm text-gray-500">Loading form structure…</div>
+                 ) : (
+                   <div className="p-6 space-y-5">
                   {currentSections.map((section, sectionIndex) => (
                     <Card key={section.clientKey} className="border-gray-200 shadow-sm" data-testid={`card-section-${sectionIndex + 1}`}>
                       <CardHeader className="py-4 px-5 bg-[#f8fafc] border-b">
@@ -1047,8 +1117,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                     </div>
                   )}
                   {canEdit && currentSections.length > 0 && <Button onClick={() => addSection(selectedPart.formPartUuid)} variant="outline" className="w-full border-dashed" data-testid="button-add-section"><Plus className="h-4 w-4 mr-2" /> Add New Section</Button>}
-                </div>
-              )}
+                   </div>
+                 )}
+               </div>
             </main>
           </div>
           <div className="border-t bg-[#f8fafc] px-6 py-3 flex items-center justify-between">
@@ -1171,6 +1242,7 @@ export const genericFormEditorTestUtils = {
   roleSummary,
   selectableRoles,
   renumberSections,
+  captureViewScrollPosition,
   shouldConfirmVersionChange,
   toPayload,
 };
