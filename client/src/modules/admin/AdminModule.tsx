@@ -3408,9 +3408,11 @@ const AdminModuleInner = (): JSX.Element => {
   const expandedFormsData = useMemo(() => {
     if (!formsData) return [];
 
-    const isRankGroupArchivedByName = (rankGroupName: string, formId: number) => {
-      const rankGroup = allRankGroups.find(rg => rg.name === rankGroupName && rg.formId === formId);
-      return rankGroup?.archivedAt != null;
+    const getActiveRankGroupsForForm = (formId: number): string[] => {
+      return allRankGroups
+        .filter(rg => rg.formId === formId && rg.archivedAt == null)
+        .map(rg => rg.name)
+        .filter((name): name is string => !!name && name.trim().length > 0);
     };
 
     const getLatestVersionForRankGroup = (rankGroupName: string, formId: number): { versionNo: string; versionDate: string } | null => {
@@ -3464,37 +3466,34 @@ const AdminModuleInner = (): JSX.Element => {
       hasDraft?: boolean;
     }> = [];
 
-    // Process each category in order (appraisal first, then promotion)
-    const categoryOrder = ['appraisal', 'promotion'];
+    // Process every category returned by the API. Preserve the established
+    // appraisal/promotion order, then keep any future categories predictable.
+    const categoryPriority = (category: string) => {
+      if (category === 'appraisal') return 0;
+      if (category === 'promotion') return 1;
+      return 2;
+    };
+    const categoryOrder = Object.keys(formsByCategory).sort((left, right) =>
+      categoryPriority(left) - categoryPriority(right) || left.localeCompare(right)
+    );
     categoryOrder.forEach(category => {
       const categoryForms = formsByCategory[category] || [];
 
       // Calculate total row count for this category (excluding archived rank groups)
       let totalCategoryRows = 0;
       categoryForms.forEach(form => {
-        if (form.rankGroup && form.rankGroup.trim()) {
-          const rankGroups = form.rankGroup.split(',').map(rg => rg.trim()).filter(rg => rg.length > 0);
-          // Filter out archived rank groups
-          const activeRankGroups = rankGroups.filter(rg => !isRankGroupArchivedByName(rg, form.id));
-          // At least 1 row per form (placeholder if all archived)
-          totalCategoryRows += Math.max(activeRankGroups.length, 1);
-        } else {
-          totalCategoryRows += 1;
-        }
+        // Use normalized rank-group rows, not the legacy adm_forms_v2.rank_group
+        // text mirror, which can contain stale values for forms with no groups.
+        totalCategoryRows += Math.max(getActiveRankGroupsForForm(form.id).length, 1);
       });
 
       // Track if this is the first row in the category
       let isFirstRowInCategory = true;
 
       categoryForms.forEach((form) => {
-        if (form.rankGroup && form.rankGroup.trim()) {
-          // Split the concatenated rank groups and create separate rows
-          const rankGroups = form.rankGroup.split(',').map(rg => rg.trim()).filter(rg => rg.length > 0);
-          // Filter out archived rank groups
-          const activeRankGroups = rankGroups.filter(rg => !isRankGroupArchivedByName(rg, form.id));
-
-          if (activeRankGroups.length > 0) {
-            activeRankGroups.forEach((rankGroup, index) => {
+        const activeRankGroups = getActiveRankGroupsForForm(form.id);
+        if (activeRankGroups.length > 0) {
+          activeRankGroups.forEach((rankGroup, index) => {
               const rgVersion = getLatestVersionForRankGroup(rankGroup, form.id);
               const hasDraft = hasDraftForRankGroup(rankGroup, form.id);
               expanded.push({
@@ -3518,26 +3517,10 @@ const AdminModuleInner = (): JSX.Element => {
                 isPlaceholderRow: false
               });
               isFirstRowInCategory = false;
-            });
-          } else {
-            // All rank groups are archived - show a placeholder row so form remains visible
-            expanded.push({
-              ...form,
-              id: form.id * 1000, // Unique ID for placeholder row
-              originalFormId: form.id,
-              expandedRankGroup: '',
-              rankGroup: '',
-              isFirstInGroup: true,
-              groupSize: 1,
-              category: form.category || 'appraisal',
-              isFirstInCategory: isFirstRowInCategory,
-              categoryRowSpan: totalCategoryRows,
-              isPlaceholderRow: true
-            });
-            isFirstRowInCategory = false;
-          }
+          });
         } else {
-          // Form has no rank groups at all - show placeholder row
+          // No active normalized rank groups: keep the form visible with a
+          // placeholder row and the existing "+" action.
           expanded.push({
             ...form,
             id: form.id * 1000,
