@@ -85,6 +85,36 @@ afterEach(() => {
 });
 
 describe("GenericFormEditor Preview portal", () => {
+  it("PASS: Configure locks page scroll and contains background focus", () => {
+    const { editor } = renderEditor();
+    const backgroundButton = document.createElement("button");
+    backgroundButton.textContent = "Background control";
+    document.body.appendChild(backgroundButton);
+
+    expect(document.body.style.overflow).toBe("hidden");
+
+    act(() => {
+      backgroundButton.focus();
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
+    });
+
+    expect(editor.contains(document.activeElement)).toBe(true);
+    backgroundButton.remove();
+  });
+
+  it("PASS: Configure backdrop and Escape use the normal controlled close path", () => {
+    const { onClose } = renderEditor();
+    const overlay = editorOverlay();
+
+    click(overlay);
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
   it("PASS: keeps the editor mounted while Preview is a visible body-level sibling and hides its overlay", () => {
     const { editor, overlay, portal } = openPreview();
 
@@ -106,6 +136,26 @@ describe("GenericFormEditor Preview portal", () => {
 
     expect(onClose).not.toHaveBeenCalled();
     expect(editor).toBeInTheDocument();
+  });
+
+  it("PASS: Preview lets an open portalled listbox own Escape and Tab", () => {
+    const { onClose, portal } = openPreview();
+    const listbox = document.createElement("div");
+    listbox.setAttribute("role", "listbox");
+    const option = document.createElement("button");
+    option.textContent = "Portalled option";
+    listbox.appendChild(option);
+    document.body.appendChild(listbox);
+
+    act(() => {
+      option.focus();
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
+    });
+
+    expect(portal).toHaveAttribute("data-preview-visible", "true");
+    expect(onClose).not.toHaveBeenCalled();
+    listbox.remove();
   });
 
   it("PASS: Tab focus stays within Preview controls", () => {
@@ -137,7 +187,7 @@ describe("GenericFormEditor Preview portal", () => {
     expect(editor).not.toHaveClass("invisible", "pointer-events-none");
     expect(editor).not.toHaveAttribute("inert");
     expect(overlay).not.toHaveClass("hidden");
-    expect(document.body.style.overflow).toBe("");
+    expect(document.body.style.overflow).toBe("hidden");
   });
 
   it("PASS: Preview Back restores the mounted editor", () => {

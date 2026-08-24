@@ -190,6 +190,13 @@ describe("configured form renderer preview", () => {
 
     pointerDown(trigger);
     expect(document.body.querySelector('[role="listbox"]')).toBeInTheDocument();
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    expect(document.body.querySelector('[role="listbox"]')).toBeNull();
+
+    pointerDown(trigger);
+    expect(document.body.querySelector('[role="listbox"]')).toBeInTheDocument();
     click(portalOption("Bulk Carrier"));
 
     expect(screen.getByTestId("preview-section-not-applicable-section-one")).toHaveTextContent("Bulk Carrier");
@@ -206,6 +213,13 @@ describe("configured form renderer preview", () => {
 
     const trigger = screen.getByTestId("preview-response-single").querySelector<HTMLElement>('[role="combobox"]');
     if (!trigger) throw new Error("Preview single-select did not render a combobox");
+    pointerDown(trigger);
+    expect(document.body.querySelector('[role="listbox"]')).toBeInTheDocument();
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    expect(document.body.querySelector('[role="listbox"]')).toBeNull();
+
     pointerDown(trigger);
     expect(document.body.querySelector('[role="listbox"]')).toBeInTheDocument();
     click(portalOption("Ready for work"));

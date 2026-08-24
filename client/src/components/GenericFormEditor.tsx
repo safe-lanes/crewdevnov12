@@ -337,6 +337,10 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
   )).filter((element) => element.getAttribute("aria-hidden") !== "true");
 }
 
+function hasOpenPortalledListbox(): boolean {
+  return document.querySelector('[role="listbox"]') !== null;
+}
+
 function shouldConfirmVersionChange(isDirty: boolean, currentVersionUuid: string, nextVersionUuid: string): boolean {
   return isDirty && currentVersionUuid !== nextVersionUuid;
 }
@@ -816,6 +820,26 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   }, []);
 
   useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const appRoot = document.getElementById("root");
+    const hadInert = appRoot?.hasAttribute("inert") ?? false;
+    const previousAriaHidden = appRoot?.getAttribute("aria-hidden") ?? null;
+
+    document.body.style.overflow = "hidden";
+    appRoot?.setAttribute("inert", "");
+    appRoot?.setAttribute("aria-hidden", "true");
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      if (!appRoot) return;
+      if (hadInert) appRoot.setAttribute("inert", "");
+      else appRoot.removeAttribute("inert");
+      if (previousAriaHidden === null) appRoot.removeAttribute("aria-hidden");
+      else appRoot.setAttribute("aria-hidden", previousAriaHidden);
+    };
+  }, []);
+
+  useEffect(() => {
     const editorDialog = editorDialogRef.current;
     if (!editorDialog) return;
 
@@ -827,6 +851,58 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
     return () => editorDialog.removeAttribute("inert");
   }, [isPreview]);
+
+  useEffect(() => {
+    if (isPreview || settingsDialog || confirmDelete || showLeaveDialog) return;
+
+    const focusEditor = () => {
+      const editor = editorDialogRef.current;
+      if (!editor) return;
+      const [firstFocusable] = getFocusableElements(editor);
+      (firstFocusable || editor).focus();
+    };
+    const focusTimer = window.setTimeout(focusEditor, 0);
+    const handleConfigureKeys = (event: KeyboardEvent) => {
+      const editor = editorDialogRef.current;
+      if (!editor) return;
+      if (hasOpenPortalledListbox()) return;
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        handleClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const focusable = getFocusableElements(editor);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        editor.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const activeElement = document.activeElement as HTMLElement | null;
+      if (!editor.contains(activeElement)) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleConfigureKeys, true);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener("keydown", handleConfigureKeys, true);
+    };
+  }, [confirmDelete, handleClose, isPreview, settingsDialog, showLeaveDialog]);
 
   useEffect(() => {
     if (!isPreview) return;
@@ -845,6 +921,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     const handlePreviewKeys = (event: KeyboardEvent) => {
       const preview = previewPortalRef.current;
       if (!preview) return;
+      if (hasOpenPortalledListbox()) return;
 
       if (event.key === "Escape") {
         event.preventDefault();
@@ -888,33 +965,38 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
   return (
     <>
-      <Dialog open={!isPreview} onOpenChange={(open) => {
-        if (!open && !isPreview) handleClose();
-      }}>
-        <DialogContent
-          ref={editorDialogRef}
-          forceMount
-          overlayClassName={isPreview ? "hidden" : undefined}
-          className={`max-w-[1440px] w-[98vw] h-[94vh] p-0 gap-0 overflow-hidden${isPreview ? " invisible pointer-events-none" : ""}`}
-          aria-hidden={isPreview}
-          onEscapeKeyDown={(event) => {
-            if (isPreview) event.preventDefault();
-          }}
-          onPointerDownOutside={(event) => {
-            if (isPreview) event.preventDefault();
-          }}
-          onInteractOutside={(event) => {
-            if (isPreview) event.preventDefault();
-          }}
-          data-testid="generic-form-editor"
-        >
-          <DialogHeader className="border-b bg-[#f7fafc] px-6 py-4">
+      {typeof document !== "undefined" && createPortal(
+        <>
+          <div
+            className={`fixed inset-0 z-[200] bg-black/80${isPreview ? " hidden" : ""}`}
+            aria-hidden="true"
+            onClick={!isPreview ? handleClose : undefined}
+            data-state="open"
+            data-testid="generic-form-editor-overlay"
+          />
+          <div
+            ref={editorDialogRef}
+            className={`fixed left-[50%] top-[50%] z-[200] grid w-[98vw] max-w-[1440px] h-[94vh] translate-x-[-50%] translate-y-[-50%] gap-0 overflow-hidden border bg-background p-0 shadow-lg sm:rounded-lg${isPreview ? " invisible pointer-events-none" : ""}`}
+            role="dialog"
+            aria-modal={!isPreview}
+            aria-label={`${formName} form editor`}
+            aria-hidden={isPreview}
+            tabIndex={-1}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && !isPreview) {
+                event.preventDefault();
+                handleClose();
+              }
+            }}
+            data-testid="generic-form-editor"
+          >
+          <div className="flex flex-col space-y-1.5 border-b bg-[#f7fafc] px-6 py-4 text-center sm:text-left">
             <div className="flex flex-wrap items-start justify-between gap-4 pr-8">
               <div>
-                <DialogTitle className="text-[#16569e] text-xl">{formName}</DialogTitle>
-                <DialogDescription className="mt-1">
+                <h2 className="text-xl font-semibold leading-none tracking-tight text-[#16569e]">{formName}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {rankGroupName || "All rank groups"} · configure the form structure and response points
-                </DialogDescription>
+                </p>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="flex items-center rounded-md border bg-white p-0.5" role="group" aria-label="Form editor view">
@@ -964,7 +1046,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 )}
               </div>
             </div>
-          </DialogHeader>
+          </div>
 
           <div className="flex min-h-0 flex-1">
               <>
@@ -1217,8 +1299,20 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
             <Button variant="ghost" onClick={handleClose} data-testid="button-close-generic-editor"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
             <div className="text-xs text-gray-500">{isDirty ? "Unsaved changes" : "All changes saved"} · option values stay hidden and stable after creation</div>
           </div>
-        </DialogContent>
-      </Dialog>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-4 top-4 h-8 w-8"
+            onClick={handleClose}
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          </div>
+        </>,
+        document.body,
+      )}
 
       {typeof document !== "undefined" && createPortal(
         <div
