@@ -81,7 +81,7 @@ describe("generic configurable-form editor helpers", () => {
     expect(genericFormEditorTestUtils.shouldConfirmVersionChange(true, "current", "current")).toBe(false);
   });
 
-  it("keeps Configure and Preview scroll positions independent across view switches", () => {
+  it("PASS: keeps Configure and Preview scroll positions independent across view switches", () => {
     const afterConfigureScroll = genericFormEditorTestUtils.captureViewScrollPosition(
       { configure: 0, preview: 0 },
       "configure",

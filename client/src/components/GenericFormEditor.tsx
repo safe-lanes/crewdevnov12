@@ -1223,7 +1223,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       {typeof document !== "undefined" && createPortal(
         <div
           ref={previewPortalRef}
-          className={isPreview ? "relative z-[201]" : "hidden"}
+          className={isPreview ? "relative" : "hidden"}
           role="dialog"
           aria-label={`${formName} preview`}
           aria-modal={isPreview}

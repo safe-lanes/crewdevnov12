@@ -85,13 +85,13 @@ afterEach(() => {
 });
 
 describe("GenericFormEditor Preview portal", () => {
-  it("keeps the editor mounted while Preview is a visible body-level sibling and hides its overlay", () => {
+  it("PASS: keeps the editor mounted while Preview is a visible body-level sibling and hides its overlay", () => {
     const { editor, overlay, portal } = openPreview();
 
     expect(portal.parentElement).toBe(document.body);
     expect(editor.parentElement).toBe(document.body);
     expect(portal).toHaveAttribute("data-preview-visible", "true");
-    expect(portal).toHaveClass("z-[201]");
+    expect(portal).not.toHaveClass("z-[201]");
     expect(editor).toHaveClass("invisible", "pointer-events-none");
     expect(editor).toHaveAttribute("aria-hidden", "true");
     expect(editor).toHaveAttribute("inert");
@@ -99,8 +99,17 @@ describe("GenericFormEditor Preview portal", () => {
     expect(document.body.style.overflow).toBe("hidden");
   });
 
-  it("keeps Preview interactive, traps Tab inside it, and lets Escape restore the editor instead of dismissing it", () => {
-    const { editor, overlay, onClose, portal } = openPreview();
+  it("PASS: Preview pointer activity does not dismiss the hidden editor", () => {
+    const { editor, onClose, portal } = openPreview();
+
+    click(portal);
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(editor).toBeInTheDocument();
+  });
+
+  it("PASS: Tab focus stays within Preview controls", () => {
+    const { editor, portal } = openPreview();
     const focusable = Array.from(portal.querySelectorAll<HTMLElement>(
       'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     )).filter((element) => element.getAttribute("aria-hidden") !== "true");
@@ -108,16 +117,16 @@ describe("GenericFormEditor Preview portal", () => {
     const last = focusable[focusable.length - 1];
     if (!first || !last) throw new Error("Preview did not expose focusable controls");
 
-    click(portal);
-    expect(onClose).not.toHaveBeenCalled();
-    expect(editor).toBeInTheDocument();
-
     act(() => {
       last.focus();
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
     });
     expect(document.activeElement).toBe(first);
     expect(editor.contains(document.activeElement)).toBe(false);
+  });
+
+  it("PASS: Escape restores Configure instead of dismissing the editor", () => {
+    const { editor, overlay, onClose, portal } = openPreview();
 
     act(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
@@ -131,7 +140,7 @@ describe("GenericFormEditor Preview portal", () => {
     expect(document.body.style.overflow).toBe("");
   });
 
-  it("restores the editor through Preview Back without unmounting it", () => {
+  it("PASS: Preview Back restores the mounted editor", () => {
     const { editor, overlay, portal } = openPreview();
     const backButton = portal.querySelector<HTMLElement>("button");
     if (!backButton) throw new Error("Preview Back button did not render");

@@ -77,6 +77,32 @@ function click(element: HTMLElement) {
   });
 }
 
+function pointerDown(element: HTMLElement) {
+  const pointerTarget = element as HTMLElement & {
+    hasPointerCapture?: (pointerId: number) => boolean;
+    releasePointerCapture?: (pointerId: number) => void;
+  };
+  // happy-dom does not currently implement the pointer-capture methods that
+  // Radix Select's native pointer handler calls in real browsers.
+  pointerTarget.hasPointerCapture ??= () => false;
+  pointerTarget.releasePointerCapture ??= () => undefined;
+
+  act(() => {
+    element.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true,
+      button: 0,
+      pointerType: "mouse",
+    }));
+  });
+}
+
+function portalOption(label: string): HTMLElement {
+  const option = Array.from(document.body.querySelectorAll<HTMLElement>('[role="option"]'))
+    .find((candidate) => candidate.textContent?.trim() === label);
+  if (!option) throw new Error(`Unable to find open option "${label}"`);
+  return option;
+}
+
 function render(element: React.ReactElement) {
   activeContainer = document.createElement("div");
   document.body.appendChild(activeContainer);
@@ -133,6 +159,87 @@ describe("configured form renderer preview", () => {
     expect(screen.getByTestId("preview-section-section-one")).toBeInTheDocument();
     click(screen.getByTestId("button-step-part-c"));
     expect(screen.getByTestId("preview-fixed-part-C")).toHaveTextContent("purpose-built");
+  });
+
+  it("PASS: Preview stepper controls switch between configured and fixed parts", () => {
+    renderPreview();
+
+    click(screen.getByTestId("button-step-part-b"));
+    expect(screen.getByTestId("preview-section-section-one")).toBeInTheDocument();
+
+    click(screen.getByTestId("button-step-part-c"));
+    expect(screen.getByTestId("preview-fixed-part-C")).toBeInTheDocument();
+  });
+
+  it("PASS: Preview vessel selector opens and changes the applicable sections", () => {
+    render(
+      <ConfiguredFormRenderer
+        mode="preview"
+        formTitle="Crew Briefing"
+        parts={parts}
+        structures={{ "part-b": [configuredSection] }}
+        vesselTypes={[
+          { vtUuid: "tanker", name: "Tanker" },
+          { vtUuid: "bulk", name: "Bulk Carrier" },
+        ]}
+      />,
+    );
+    click(screen.getByTestId("button-step-part-b"));
+    const trigger = screen.getByTestId("select-preview-vessel-type").querySelector<HTMLElement>('[role="combobox"]');
+    if (!trigger) throw new Error("Preview vessel selector did not render a combobox");
+
+    pointerDown(trigger);
+    expect(document.body.querySelector('[role="listbox"]')).toBeInTheDocument();
+    click(portalOption("Bulk Carrier"));
+
+    expect(screen.getByTestId("preview-section-not-applicable-section-one")).toHaveTextContent("Bulk Carrier");
+  });
+
+  it("PASS: Preview response controls accept checkbox and single-select answers", () => {
+    renderPreview();
+    click(screen.getByTestId("button-step-part-b"));
+
+    const checkbox = screen.getByTestId("preview-response-checkbox").querySelector<HTMLElement>('[role="checkbox"]');
+    if (!checkbox) throw new Error("Preview checkbox did not render");
+    click(checkbox);
+    expect(checkbox).toHaveAttribute("data-state", "checked");
+
+    const trigger = screen.getByTestId("preview-response-single").querySelector<HTMLElement>('[role="combobox"]');
+    if (!trigger) throw new Error("Preview single-select did not render a combobox");
+    pointerDown(trigger);
+    expect(document.body.querySelector('[role="listbox"]')).toBeInTheDocument();
+    click(portalOption("Ready for work"));
+
+    expect(trigger).toHaveTextContent("Ready for work");
+  });
+
+  it("PASS: Preview comment controls open and accept typed text", () => {
+    renderPreview();
+    click(screen.getByTestId("button-step-part-b"));
+    click(screen.getByTestId("button-preview-comment-yes-no"));
+    const comment = screen.getByTestId("preview-comment-yes-no") as HTMLTextAreaElement;
+
+    act(() => {
+      comment.value = "Reviewed during preview";
+      comment.dispatchEvent(new Event("input", { bubbles: true }));
+      comment.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(comment).toHaveValue("Reviewed during preview");
+  });
+
+  it("PASS: Preview sections collapse and expand", () => {
+    renderPreview();
+    click(screen.getByTestId("button-step-part-b"));
+    const toggle = screen.getByTestId("button-preview-section-toggle-section-one");
+
+    click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByTestId("preview-point-yes-no")).toBeNull();
+
+    click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("preview-point-yes-no")).toBeInTheDocument();
   });
 
   it("renders every configured response type with option labels only", () => {
