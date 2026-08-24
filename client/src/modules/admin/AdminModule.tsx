@@ -8340,7 +8340,7 @@ const AdminModuleInner = (): JSX.Element => {
   );
 
   const renderFormsTable = () => (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col">
       <SectionTitleComponents title={"Forms Configuration"}>
         <div className="flex items-center gap-2 ml-[19px] mr-[19px]">
           {/* Create Form button hidden per Task #333. Kept commented in case
@@ -8384,10 +8384,10 @@ const AdminModuleInner = (): JSX.Element => {
 
       {/* Table */}
       {!isLoading && !error && (
-        <Card className="border-0 shadow-none bg-[#f7fafc] rounded-lg">
-          <CardContent className="p-4 pl-0 bg-[#f7fafc]">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-              <ScrollArea className="h-[500px] w-full">
+        <Card className="flex min-h-0 flex-1 flex-col border-0 shadow-none bg-[#f7fafc] rounded-lg">
+          <CardContent className="flex min-h-0 flex-1 flex-col p-4 pl-0 bg-[#f7fafc]">
+            <div className="flex min-h-0 flex-1 flex-col bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+              <ScrollArea className="min-h-0 flex-1 w-full">
                 <Table className="bg-white rounded-lg shadow-md overflow-hidden">
               <TableHeader>
                 <TableRow className="bg-[#52baf3]">
@@ -8547,7 +8547,7 @@ const AdminModuleInner = (): JSX.Element => {
 
       {/* Pagination */}
       {!isLoading && !error && (
-        <div className="mt-4 text-xs font-normal font-['Mulish',Helvetica] text-black">
+        <div className="mt-4 shrink-0 text-xs font-normal font-['Mulish',Helvetica] text-black">
           {expandedFormsData.length > 0 ? `1 to ${expandedFormsData.length} of ${expandedFormsData.length}` : "0 to 0 of 0"}
         </div>
       )}
