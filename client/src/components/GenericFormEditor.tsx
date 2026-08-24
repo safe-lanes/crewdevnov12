@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Plus, Save, Settings2, Trash2, X } from "lucide-react";
 import { Form } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -330,6 +331,12 @@ function captureViewScrollPosition(
   return { ...positions, [viewMode]: scrollTop };
 }
 
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+  )).filter((element) => element.getAttribute("aria-hidden") !== "true");
+}
+
 function shouldConfirmVersionChange(isDirty: boolean, currentVersionUuid: string, nextVersionUuid: string): boolean {
   return isDirty && currentVersionUuid !== nextVersionUuid;
 }
@@ -373,6 +380,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [pendingVersionUuid, setPendingVersionUuid] = useState<string | null>(null);
   const baselineRef = useRef<string | null>(null);
   const editorContentRef = useRef<HTMLElement | null>(null);
+  const editorDialogRef = useRef<HTMLDivElement | null>(null);
+  const previewPortalRef = useRef<HTMLDivElement | null>(null);
   const editorScrollTopRef = useRef<Record<EditorViewMode, number>>({ configure: 0, preview: 0 });
 
   const { data: formPartsData = [], isLoading: isLoadingParts } = useQuery<ConfigurableFormPart[]>({
@@ -464,6 +473,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const serializedTrees = JSON.stringify(trees);
   const isDirty = baselineRef.current !== null && baselineRef.current !== serializedTrees;
   const canEdit = isEditing && (!selectedVersion || selectedVersion.status === "draft");
+  const isPreview = viewMode === "preview";
 
   useEffect(() => {
     if (!selectedPartUuid && configurableParts[0]) {
@@ -801,10 +811,103 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     element.scrollTop = editorScrollTopRef.current[viewMode];
   }, [viewMode]);
 
+  const closePreview = useCallback(() => {
+    setViewMode("configure");
+  }, []);
+
+  useEffect(() => {
+    const editorDialog = editorDialogRef.current;
+    if (!editorDialog) return;
+
+    if (isPreview) {
+      editorDialog.setAttribute("inert", "");
+    } else {
+      editorDialog.removeAttribute("inert");
+    }
+
+    return () => editorDialog.removeAttribute("inert");
+  }, [isPreview]);
+
+  useEffect(() => {
+    if (!isPreview) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusPreview = () => {
+      const preview = previewPortalRef.current;
+      if (!preview) return;
+      const [firstFocusable] = getFocusableElements(preview);
+      (firstFocusable || preview).focus();
+    };
+
+    const focusTimer = window.setTimeout(focusPreview, 0);
+    const handlePreviewKeys = (event: KeyboardEvent) => {
+      const preview = previewPortalRef.current;
+      if (!preview) return;
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closePreview();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable = getFocusableElements(preview);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        preview.focus();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const activeElement = document.activeElement as HTMLElement | null;
+
+      if (!preview.contains(activeElement)) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handlePreviewKeys, true);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener("keydown", handlePreviewKeys, true);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [closePreview, isPreview]);
+
   return (
     <>
-      <Dialog open onOpenChange={(open) => { if (!open) handleClose(); }}>
-        <DialogContent className="max-w-[1440px] w-[98vw] h-[94vh] p-0 gap-0 overflow-hidden" data-testid="generic-form-editor">
+      <Dialog open={!isPreview} onOpenChange={(open) => {
+        if (!open && !isPreview) handleClose();
+      }}>
+        <DialogContent
+          ref={editorDialogRef}
+          forceMount
+          overlayClassName={isPreview ? "hidden" : undefined}
+          className={`max-w-[1440px] w-[98vw] h-[94vh] p-0 gap-0 overflow-hidden${isPreview ? " invisible pointer-events-none" : ""}`}
+          aria-hidden={isPreview}
+          onEscapeKeyDown={(event) => {
+            if (isPreview) event.preventDefault();
+          }}
+          onPointerDownOutside={(event) => {
+            if (isPreview) event.preventDefault();
+          }}
+          onInteractOutside={(event) => {
+            if (isPreview) event.preventDefault();
+          }}
+          data-testid="generic-form-editor"
+        >
           <DialogHeader className="border-b bg-[#f7fafc] px-6 py-4">
             <div className="flex flex-wrap items-start justify-between gap-4 pr-8">
               <div>
@@ -1117,20 +1220,33 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         </DialogContent>
       </Dialog>
 
-      <div className={viewMode === "preview" ? "" : "hidden"} aria-hidden={viewMode !== "preview"}>
-        <ConfiguredFormRenderer
-          mode="preview"
-          formTitle={formName}
-          parts={allParts}
-          structures={trees}
-          roles={roles}
-          departments={departments}
-          vesselTypes={vesselTypes}
-          selectedVesselTypeUuid={previewVesselTypeUuid}
-          onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
-          onBack={() => setViewMode("configure")}
-        />
-      </div>
+      {typeof document !== "undefined" && createPortal(
+        <div
+          ref={previewPortalRef}
+          className={isPreview ? "relative z-[201]" : "hidden"}
+          role="dialog"
+          aria-label={`${formName} preview`}
+          aria-modal={isPreview}
+          aria-hidden={!isPreview}
+          tabIndex={-1}
+          data-testid="configured-preview-portal"
+          data-preview-visible={isPreview}
+        >
+          <ConfiguredFormRenderer
+            mode="preview"
+            formTitle={formName}
+            parts={allParts}
+            structures={trees}
+            roles={roles}
+            departments={departments}
+            vesselTypes={vesselTypes}
+            selectedVesselTypeUuid={previewVesselTypeUuid}
+            onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
+            onBack={closePreview}
+          />
+        </div>,
+        document.body,
+      )}
 
       <Dialog open={settingsDialog !== null} onOpenChange={(open) => !open && setSettingsDialog(null)}>
         <DialogContent className="max-w-lg" data-testid="section-settings-dialog">
@@ -1246,6 +1362,7 @@ export const genericFormEditorTestUtils = {
   selectableRoles,
   renumberSections,
   captureViewScrollPosition,
+  getFocusableElements,
   shouldConfirmVersionChange,
   toPayload,
 };
