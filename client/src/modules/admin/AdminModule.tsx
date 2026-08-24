@@ -65,6 +65,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Form, RankGroup, AvailableRank, InsertMasterDataEntry } from "@shared/schema";
 import { FormEditorFactory } from "@/components/FormEditorFactory";
+import type { ConfigurableFormPart } from "@/components/GenericFormEditor";
 import { formTemplates, createFormEditor } from "@/utils/formEditorGenerator";
 import { apiRequest } from "@/lib/queryClient";
 import { 
@@ -3347,6 +3348,32 @@ const AdminModuleInner = (): JSX.Element => {
       return response.json();
     },
   });
+  const formIds = useMemo(() => (formsData || []).map(f => f.id), [formsData]);
+
+  // The generic editor is selected from form-part metadata rather than from
+  // an expanding list of form names. Keep this read-only lookup beside the
+  // Forms table so the factory can preserve the two legacy editors exactly.
+  const { data: allFormParts = [] } = useQuery<Array<ConfigurableFormPart & { formId: number }>>({
+    queryKey: ["/api/v2/admin/form-parts-all", formIds],
+    queryFn: async () => {
+      if (formIds.length === 0) return [];
+      const results = await Promise.all(formIds.map(async (formId) => {
+        const response = await fetch(`/api/v2/admin/forms/${formId}/parts`);
+        if (!response.ok) return [];
+        const parts = await response.json() as ConfigurableFormPart[];
+        return parts.map((part) => ({ ...part, formId }));
+      }));
+      return results.flat();
+    },
+    enabled: selectedAdminPage === "forms" && formIds.length > 0,
+  });
+
+  const formPartsByFormId = useMemo(() => {
+    return allFormParts.reduce((result, part) => {
+      (result[part.formId] ||= []).push(part);
+      return result;
+    }, {} as Record<number, ConfigurableFormPart[]>);
+  }, [allFormParts]);
 
   const { data: allRankGroups = [] } = useQuery<RankGroup[]>({
     queryKey: ["/api/v2/admin/rank-groups", { includeArchived: true }],
@@ -3360,7 +3387,6 @@ const AdminModuleInner = (): JSX.Element => {
     enabled: selectedAdminPage === "forms",
   });
 
-  const formIds = useMemo(() => (formsData || []).map(f => f.id), [formsData]);
   const { data: allFormVersions = [] } = useQuery<Array<{ id: number; formId: number; rankGroupId: number | null; versionNo: string; versionDate: string; status: string }>>({
     queryKey: ["/api/v2/admin/form-versions-all", formIds],
     queryFn: async () => {
@@ -8592,6 +8618,7 @@ const AdminModuleInner = (): JSX.Element => {
           formName={editingForm.name}
           form={editingForm}
           rankGroupName={editingRankGroup || undefined}
+          configurableParts={formPartsByFormId[('originalFormId' in editingForm ? (editingForm as any).originalFormId : editingForm.id)] || []}
           rankGroupConfig={(() => {
             const rg = allRankGroups.find(
               r => r.name === editingRankGroup && r.formId === ('originalFormId' in editingForm ? (editingForm as any).originalFormId : editingForm.id)

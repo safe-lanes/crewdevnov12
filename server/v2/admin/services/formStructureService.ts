@@ -4,6 +4,7 @@ import type {
   FormStructureQuestionInput,
   FormStructureSectionInput,
 } from "../../../../shared/v2/forms-engine/schema";
+import { getDb } from "../../db";
 import { formStructureRepository } from "../repositories/formStructureRepository";
 
 export class FormStructureServiceError extends Error {
@@ -163,6 +164,33 @@ function validateBusinessUniqueness(input: FormStructureInput): void {
   }
 }
 
+function validateReplacement(input: FormStructureInput) {
+  return (
+    current: Awaited<ReturnType<typeof formStructureRepository.readTree>>,
+    tx: any,
+  ): Promise<void> => {
+    validateIdentities(input, current);
+    validateBusinessUniqueness(input);
+    return formStructureRepository.validateReferenceData(input, tx);
+  };
+}
+
+function mapReplacementError(error: any): never {
+  if (error?.message?.includes("only draft versions are editable")) {
+    throw new FormStructureServiceError(error.message, 409);
+  }
+  if (error?.message?.includes("same form")) {
+    throw new FormStructureServiceError(error.message, 400);
+  }
+  if (
+    error?.message?.includes("Unknown vessel type UUID") ||
+    error?.message?.includes("Unknown responsible role UUID")
+  ) {
+    throw new FormStructureServiceError(error.message, 400);
+  }
+  throw error;
+}
+
 export const formStructureService = {
   async getStructure(fvUuid: string, partUuid: string) {
     const context = await formStructureRepository.findContext(fvUuid, partUuid);
@@ -198,27 +226,46 @@ export const formStructureService = {
         partUuid,
         input,
         auditUserUuid,
-        async (current, tx) => {
-          validateIdentities(input, current);
-          validateBusinessUniqueness(input);
-          await formStructureRepository.validateReferenceData(input, tx);
-        },
+        validateReplacement(input),
       );
       return treeResponse(fvUuid, partUuid, tree);
     } catch (error: any) {
-      if (error?.message?.includes("only draft versions are editable")) {
-        throw new FormStructureServiceError(error.message, 409);
+      return mapReplacementError(error);
+    }
+  },
+
+  async replaceStructures(
+    fvUuid: string,
+    parts: Array<{ partUuid: string; structure: FormStructureInput }>,
+    auditUserUuid: string | null,
+  ) {
+    const seenParts = new Set<string>();
+    for (const { partUuid } of parts) {
+      if (seenParts.has(partUuid)) {
+        throw new FormStructureServiceError(`Duplicate form_part_uuid: ${partUuid}`);
       }
-      if (error?.message?.includes("same form")) {
-        throw new FormStructureServiceError(error.message, 400);
-      }
-      if (
-        error?.message?.includes("Unknown vessel type UUID") ||
-        error?.message?.includes("Unknown responsible role UUID")
-      ) {
-        throw new FormStructureServiceError(error.message, 400);
-      }
-      throw error;
+      seenParts.add(partUuid);
+    }
+
+    try {
+      const responses = await getDb().transaction(async (tx: any) => {
+        const saved = [];
+        for (const { partUuid, structure } of parts) {
+          const tree = await formStructureRepository.replaceTree(
+            fvUuid,
+            partUuid,
+            structure,
+            auditUserUuid,
+            validateReplacement(structure),
+            tx,
+          );
+          saved.push(treeResponse(fvUuid, partUuid, tree));
+        }
+        return saved;
+      });
+      return { form_version_uuid: fvUuid, parts: responses };
+    } catch (error: any) {
+      return mapReplacementError(error);
     }
   },
 

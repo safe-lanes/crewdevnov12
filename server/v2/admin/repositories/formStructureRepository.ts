@@ -129,9 +129,10 @@ export class FormStructureRepository {
     input: FormStructureInput,
     auditUserUuid: string | null,
     validate?: ReplaceTreeValidator,
+    executor?: Executor,
   ) {
     const db = getDb();
-    return db.transaction(async (tx: Executor) => {
+    const replaceWithExecutor = async (tx: Executor) => {
       const context = await this.findContextWithExecutor(tx, fvUuid, partUuid);
       if (!context) throw new Error("Form version or form part not found");
       if (context.version.status !== "draft") {
@@ -326,7 +327,8 @@ export class FormStructureRepository {
       }
 
       return this.readTreeWithExecutor(tx, fvUuid, partUuid);
-    });
+    };
+    return executor ? replaceWithExecutor(executor) : db.transaction(replaceWithExecutor);
   }
 
   async copyStructure(

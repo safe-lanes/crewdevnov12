@@ -2,6 +2,7 @@
 import React from 'react';
 import { FormEditor } from '@/components/FormEditor';
 import { PromotionFormEditor } from '@/components/PromotionFormEditor';
+import { GenericFormEditor, type ConfigurableFormPart } from '@/components/GenericFormEditor';
 import { Form } from '@shared/schema';
 
 // Dynamic form editor mapping
@@ -15,6 +16,7 @@ interface FormEditorFactoryProps {
   form: Form;
   rankGroupName?: string;
   rankGroupConfig?: any;
+  configurableParts?: ConfigurableFormPart[];
   useV2?: boolean;
   onClose: () => void;
   onSave: (data: any) => void;
@@ -25,12 +27,16 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
   form,
   rankGroupName,
   rankGroupConfig,
+  configurableParts = [],
   useV2,
   onClose,
   onSave
 }) => {
   // Get the appropriate editor component
-  const EditorComponent = formEditors[formName];
+  // Keep the two legacy name mappings authoritative. All other forms opt into
+  // the generic tree editor only when the server reports a configurable part.
+  const EditorComponent = formEditors[formName]
+    ?? (configurableParts.some((part) => part.partType === 'configurable') ? GenericFormEditor : undefined);
   
   if (!EditorComponent) {
     return (
@@ -56,6 +62,7 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
       form={form}
       rankGroupName={rankGroupName}
       rankGroupConfig={rankGroupConfig}
+      configurableParts={configurableParts}
       useV2={useV2}
       onClose={onClose}
       onSave={onSave}

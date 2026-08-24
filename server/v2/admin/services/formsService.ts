@@ -4,6 +4,8 @@ import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { applyAuditUser } from "../utils/auditUser";
 import { getDb } from "../../db";
 import { formStructureService } from "./formStructureService";
+import { frmFormParts } from "../../../../shared/v2/forms-engine/schema";
+import { and, asc, eq } from "drizzle-orm";
 import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2 } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
 
@@ -40,6 +42,26 @@ export const formsService = {
     const form = await formsRepo.findByUuid(formUuid);
     if (!form) throw new Error(`Form not found: ${formUuid}`);
     return form;
+  },
+
+  async getPartsByFormId(id: number) {
+    const form = await formsRepo.findById(id);
+    if (!form) throw new Error(`Form not found: ${id}`);
+    return getDb()
+      .select({
+        formPartUuid: frmFormParts.formPartUuid,
+        formUuid: frmFormParts.formUuid,
+        partCode: frmFormParts.partCode,
+        partTitle: frmFormParts.partTitle,
+        partType: frmFormParts.partType,
+        isOfficeOnly: frmFormParts.isOfficeOnly,
+      })
+      .from(frmFormParts)
+      .where(and(
+        eq(frmFormParts.formUuid, form.formUuid),
+        eq(frmFormParts.isDeleted, false),
+      ))
+      .orderBy(asc(frmFormParts.sortOrder), asc(frmFormParts.id));
   },
 
   async create(data: Omit<InsertAdmFormV2, "formUuid">): Promise<AdmFormV2> {

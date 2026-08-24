@@ -48,6 +48,37 @@ function testStructure(): FormStructureInput {
   };
 }
 
+function acceptanceSizedStructure(): FormStructureInput {
+  return {
+    sections: Array.from({ length: 10 }, (_, sectionIndex) => {
+      const sectionCode = `B${sectionIndex + 1}`;
+      return {
+        section_code: sectionCode,
+        section_title: `Briefing section ${sectionIndex + 1}`,
+        applicable_vessel_types: [],
+        responsible_mode: "not_applicable" as const,
+        comment_box_required: false,
+        signature_required: false,
+        questions: Array.from({ length: 10 }, (_, questionIndex) => {
+          const isSelect = questionIndex === 0;
+          return {
+            question_code: `${sectionCode}.${questionIndex + 1}`,
+            question_text: `Briefing point ${sectionIndex + 1}.${questionIndex + 1}`,
+            response_type: isSelect ? "single_select" : "yes_no",
+            is_mandatory: false,
+            comment_enabled: true,
+            // Two selections in each of ten sections = the acceptance 20 options.
+            options: isSelect ? [
+              { option_label: "Yes", option_value: `yes_${sectionIndex + 1}` },
+              { option_label: "No", option_value: `no_${sectionIndex + 1}` },
+            ] : [],
+          };
+        }),
+      };
+    }),
+  };
+}
+
 async function createFormFixture(name: string) {
   const db = getDb();
   const formUuid = uuidv4();
@@ -195,6 +226,75 @@ describe.sequential("form structure service integration", () => {
     expect(emptiedDraft.sections).toEqual([]);
   });
 
+  it("handles the acceptance-sized source through both draft-copy paths without mutating the released source", async () => {
+    const { form, rankGroup, partUuid } = await createFormFixture(`Structure acceptance ${uuidv4()}`);
+    const sourceDraft = await formsService.createVersionByFormId(form.id, {
+      rankGroupId: rankGroup.id,
+      configuration: "{}",
+      sharedConfig: "{}",
+      versionDate: "24-Aug-2026",
+    } as any);
+    const startedAt = Date.now();
+    const saved = await formStructureService.replaceStructure(
+      sourceDraft.fvUuid,
+      partUuid,
+      acceptanceSizedStructure(),
+      null,
+    );
+    const saveDurationMs = Date.now() - startedAt;
+    const counts = {
+      sections: saved.sections.length,
+      questions: saved.sections.reduce((total, section) => total + section.questions.length, 0),
+      options: saved.sections.reduce(
+        (total, section) => total + section.questions.reduce((points, question) => points + question.options.length, 0),
+        0,
+      ),
+    };
+    expect(counts).toEqual({ sections: 10, questions: 100, options: 20 });
+    expect(saveDurationMs).toBeLessThan(10_000);
+
+    const released = await formsService.releaseVersionById(sourceDraft.id);
+    const sourceTree = await formStructureService.getStructure(released.fvUuid, partUuid);
+    const sourceSectionUuid = sourceTree.sections[0].section_uuid;
+    const sourceQuestionUuid = sourceTree.sections[0].questions[0].question_uuid;
+    const sourceOptionUuid = sourceTree.sections[0].questions[0].options[0].option_uuid;
+
+    // Direct form-version creation copies the released tree into an editable draft.
+    const directDraft = await formsService.createVersionByFormId(form.id, {
+      rankGroupId: rankGroup.id,
+      configuration: "{}",
+      sharedConfig: "{}",
+      versionDate: "24-Aug-2026",
+    } as any);
+    const directTree = await formStructureService.getStructure(directDraft.fvUuid, partUuid);
+    expect(directTree.sections).toHaveLength(10);
+    expect(directTree.sections[0].questions).toHaveLength(10);
+    expect(directTree.sections[0].questions[0].options).toHaveLength(2);
+    expect(directTree.sections[0].section_uuid).not.toBe(sourceSectionUuid);
+    expect(directTree.sections[0].questions[0].question_uuid).not.toBe(sourceQuestionUuid);
+    expect(directTree.sections[0].questions[0].options[0].option_uuid).not.toBe(sourceOptionUuid);
+    expect((await formStructureService.getStructure(released.fvUuid, partUuid)).sections).toHaveLength(10);
+
+    // Remove the direct draft so the rank-group configuration path must build its own copy.
+    await formStructureService.replaceStructure(directDraft.fvUuid, partUuid, { sections: [] }, null);
+    await getDb().delete(admFormVersionsV2).where(eq(admFormVersionsV2.id, directDraft.id));
+
+    await rankGroupsService.updateConfigurationById(rankGroup.id, "{}");
+    const rankGroupDrafts = await getDb().select().from(admFormVersionsV2).where(and(
+      eq(admFormVersionsV2.rankGroupId, rankGroup.id),
+      eq(admFormVersionsV2.status, "draft"),
+      eq(admFormVersionsV2.isDeleted, false),
+    ));
+    expect(rankGroupDrafts).toHaveLength(1);
+    const rankGroupTree = await formStructureService.getStructure(rankGroupDrafts[0].fvUuid, partUuid);
+    expect(rankGroupTree.sections).toHaveLength(10);
+    expect(rankGroupTree.sections[0].questions).toHaveLength(10);
+    expect(rankGroupTree.sections[0].questions[0].options).toHaveLength(2);
+    expect(rankGroupTree.sections[0].section_uuid).not.toBe(sourceSectionUuid);
+    expect((await formStructureService.getStructure(released.fvUuid, partUuid)).sections).toHaveLength(10);
+    console.info(`Acceptance-sized form structure saved in ${saveDurationMs}ms (10 sections, 100 questions, 20 options).`);
+  });
+
   it("rejects cross-form ownership and invalid master-data references before writes", async () => {
     const source = await createFormFixture(`Structure owner ${uuidv4()}`);
     const foreign = await createFormFixture(`Structure foreign ${uuidv4()}`);
@@ -221,6 +321,38 @@ describe.sequential("form structure service integration", () => {
     await expect(
       formStructureService.replaceStructure(draft.fvUuid, source.partUuid, unknownRolePayload, null),
     ).rejects.toThrow("Unknown responsible role UUID");
+  });
+
+  it("rolls back every configurable part when a batch member fails validation", async () => {
+    const { form, rankGroup, partUuid } = await createFormFixture(`Structure batch rollback ${uuidv4()}`);
+    const secondPartUuid = uuidv4();
+    await getDb().insert(frmFormParts).values({
+      formPartUuid: secondPartUuid,
+      formUuid: form.formUuid,
+      partCode: "D",
+      partTitle: "Debriefing Points",
+      partType: "configurable",
+      isOfficeOnly: false,
+    });
+    const draft = await formsService.createVersionByFormId(form.id, {
+      rankGroupId: rankGroup.id,
+      configuration: "{}",
+      sharedConfig: "{}",
+      versionDate: "24-Aug-2026",
+    } as any);
+    const invalidSecondPart = testStructure();
+    invalidSecondPart.sections[0].responsible_mode = "role";
+    invalidSecondPart.sections[0].responsible_role_uuid = uuidv4();
+
+    await expect(
+      formStructureService.replaceStructures(draft.fvUuid, [
+        { partUuid, structure: testStructure() },
+        { partUuid: secondPartUuid, structure: invalidSecondPart },
+      ], null),
+    ).rejects.toThrow("Unknown responsible role UUID");
+
+    expect((await formStructureService.getStructure(draft.fvUuid, partUuid)).sections).toEqual([]);
+    expect((await formStructureService.getStructure(draft.fvUuid, secondPartUuid)).sections).toEqual([]);
   });
 
   it("rolls back the entire tree when a database write fails mid-replacement", async () => {

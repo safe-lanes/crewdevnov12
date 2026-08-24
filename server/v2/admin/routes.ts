@@ -26,6 +26,7 @@ const router = Router();
 router.get("/forms", requirePermission("Forms", "view"), formsController.getAll);
 router.get("/forms/for-rank/:rankLabel", formsController.getFormForRank);
 router.post("/forms/cleanup-duplicates", requirePermission("Forms", "delete"), formsController.cleanupDuplicates);
+router.get("/forms/:id/parts", requirePermission("Forms", "view"), formsController.getParts);
 router.get("/forms/:id", requirePermission("Forms", "view"), formsController.getById);
 router.post("/forms", requirePermission("Forms", "create"), formsController.create);
 router.put("/forms/:id", requirePermission("Forms", "edit"), formsController.update);
@@ -45,6 +46,11 @@ router.put(
   "/form-versions/:fvUuid/parts/:partUuid/structure",
   requirePermission("Forms", "edit"),
   formStructureController.replaceStructure,
+);
+router.put(
+  "/form-versions/:fvUuid/structures",
+  requirePermission("Forms", "edit"),
+  formStructureController.replaceStructures,
 );
 router.get("/form-versions/:id", requirePermission("Forms", "view"), formsController.getVersionById);
 router.put("/form-versions/:id", requirePermission("Forms", "edit"), formsController.updateVersion);

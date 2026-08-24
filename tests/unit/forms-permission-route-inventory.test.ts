@@ -17,6 +17,7 @@ const routeKey = (method: string, path: string) =>
 const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
   { key: "GET /forms", menuName: "Forms", action: "view" },
   { key: "GET /forms/:id", menuName: "Forms", action: "view" },
+  { key: "GET /forms/:id/parts", menuName: "Forms", action: "view" },
   { key: "POST /forms", menuName: "Forms", action: "create" },
   { key: "PUT /forms/:id", menuName: "Forms", action: "edit" },
   { key: "PATCH /forms/:id", menuName: "Forms", action: "edit" },
@@ -39,6 +40,11 @@ const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
   },
   {
     key: "PUT /form-versions/:fvUuid/parts/:partUuid/structure",
+    menuName: "Forms",
+    action: "edit",
+  },
+  {
+    key: "PUT /form-versions/:fvUuid/structures",
     menuName: "Forms",
     action: "edit",
   },

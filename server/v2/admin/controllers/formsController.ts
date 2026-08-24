@@ -31,6 +31,23 @@ export const formsController = {
     }
   },
 
+  async getParts(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid form ID" });
+      }
+      const parts = await formsService.getPartsByFormId(id);
+      res.json(parts);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error fetching form parts:", error);
+      res.status(500).json({ error: "Failed to fetch form parts" });
+    }
+  },
+
   async create(req: Request, res: Response) {
     try {
       const result = insertAdmFormV2Schema
