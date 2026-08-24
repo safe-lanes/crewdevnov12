@@ -96,7 +96,6 @@ function render(element: React.ReactElement) {
 function renderPreview(
   sections: ConfiguredFormSection[] = [configuredSection],
   vesselType = "all",
-  preservedPreviewState: Pick<React.ComponentProps<typeof ConfiguredFormRenderer>, "selectedPartUuid" | "expandedSections"> = {},
 ) {
   return render(
     <ConfiguredFormRenderer
@@ -111,7 +110,6 @@ function renderPreview(
         { vtUuid: "bulk", name: "Bulk Carrier" },
       ]}
       selectedVesselTypeUuid={vesselType}
-      {...preservedPreviewState}
     />,
   );
 }
@@ -131,15 +129,15 @@ describe("configured form renderer preview", () => {
     renderPreview();
 
     expect(screen.getByTestId("preview-fixed-part-A")).toHaveTextContent("purpose-built");
-    click(screen.getByTestId("button-preview-part-B"));
+    click(screen.getByTestId("button-step-part-b"));
     expect(screen.getByTestId("preview-section-section-one")).toBeInTheDocument();
-    click(screen.getByTestId("button-preview-part-C"));
+    click(screen.getByTestId("button-step-part-c"));
     expect(screen.getByTestId("preview-fixed-part-C")).toHaveTextContent("purpose-built");
   });
 
   it("renders every configured response type with option labels only", () => {
     renderPreview();
-    click(screen.getByTestId("button-preview-part-B"));
+    click(screen.getByTestId("button-step-part-b"));
 
     expect(screen.getByTestId("preview-response-yes-no")).toBeInTheDocument();
     expect(screen.getByTestId("preview-response-yes-no-na")).toBeInTheDocument();
@@ -153,18 +151,21 @@ describe("configured form renderer preview", () => {
     expect(screen.getByText("Master")).toBeInTheDocument();
     expect(screen.queryByText("ready_for_work")).not.toBeInTheDocument();
     expect(screen.queryByText("Single Selection")).toBeNull();
-    expect(screen.queryByText("Configured form preview")).toBeNull();
+    expect(screen.getByText("Crew Briefing · Preview")).toBeInTheDocument();
   });
 
-  it("renders one renderer stepper plus preview-only comments, signatures, and row indicators without fetches", () => {
+  it("renders through the Base form stepper with no save controls or fetches", () => {
     const fetchSpy = vi.spyOn(global, "fetch");
     renderPreview();
-    click(screen.getByTestId("button-preview-part-B"));
+    click(screen.getByTestId("button-step-part-b"));
 
-    expect(activeContainer?.querySelectorAll('[data-testid="preview-part-stepper"]')).toHaveLength(1);
-    expect(screen.getByTestId("preview-point-yes-no").className).toContain("grid");
+    expect(activeContainer?.querySelectorAll('[data-testid^="button-step-"]')).toHaveLength(6);
+    expect(activeContainer?.querySelector('[data-testid="button-save-draft"]')).toBeNull();
+    expect(screen.getByTestId("preview-point-yes-no").tagName).toBe("TR");
     click(screen.getByTestId("button-preview-comment-yes-no"));
     expect(screen.getByTestId("preview-comment-yes-no")).toBeInTheDocument();
+    expect(screen.getByTestId("preview-comment-row-yes-no").tagName).toBe("TR");
+    expect(screen.getByTestId("preview-comment-row-yes-no").previousElementSibling).toBe(screen.getByTestId("preview-point-yes-no"));
     expect(screen.getByTestId("preview-section-comment-section-one")).toBeInTheDocument();
     expect(screen.getByTestId("preview-signature-section-one")).toHaveTextContent("Signature placeholder");
     expect(screen.getByTestId("preview-signature-name-section-one")).toHaveAttribute("placeholder", "Name");
@@ -186,11 +187,11 @@ describe("configured form renderer preview", () => {
       ],
     };
     renderPreview([incomplete]);
-    click(screen.getByTestId("button-preview-part-B"));
+    click(screen.getByTestId("button-step-part-b"));
 
     expect(screen.getByTestId("missing-section-title-incomplete")).toHaveTextContent("Section title not configured");
     expect(screen.getByTestId("missing-responsible-incomplete")).toHaveTextContent("Responsible party not configured");
-    expect(screen.getByTestId("preview-point-label-missing-text")).toHaveTextContent("Point text not configured");
+    expect(screen.getByTestId("missing-point-text-missing-text")).toHaveTextContent("Point text not configured");
     expect(screen.getByTestId("missing-options-missing-options")).toHaveTextContent("No options configured");
   });
 
@@ -203,37 +204,31 @@ describe("configured form renderer preview", () => {
       responsible_department: null,
     };
     renderPreview([noResponsibleParty]);
-    click(screen.getByTestId("button-preview-part-B"));
+    click(screen.getByTestId("button-step-part-b"));
 
     expect(screen.getByTestId("responsible-not-applicable-not-applicable")).toHaveTextContent("No responsible party");
     expect(screen.queryByTestId("missing-responsible-not-applicable")).toBeNull();
   });
 
-  it("uses parent-owned preview navigation state after the renderer remounts", () => {
-    const preservedPreviewState = {
-      selectedPartUuid: "part-b",
-      expandedSections: { "section-one": false },
-    };
-    renderPreview([configuredSection], "all", preservedPreviewState);
-    expect(screen.getByTestId("preview-section-section-one")).toBeInTheDocument();
-    expect(screen.queryByTestId("preview-point-yes-no")).toBeNull();
-
-    const previousContainer = activeContainer;
-    act(() => {
-      activeRoot?.unmount();
-    });
-    previousContainer?.remove();
-    activeRoot = null;
-    activeContainer = null;
-
-    renderPreview([configuredSection], "all", preservedPreviewState);
+  it("retains local collapsed state when the shared shell rerenders", () => {
+    const { rerender } = renderPreview();
+    click(screen.getByTestId("button-step-part-b"));
+    click(screen.getByTestId("button-preview-section-toggle-section-one"));
+    rerender(
+      <ConfiguredFormRenderer
+        mode="preview"
+        formTitle="Crew Briefing"
+        parts={parts}
+        structures={{ "part-b": [configuredSection] }}
+      />,
+    );
     expect(screen.getByTestId("preview-section-section-one")).toBeInTheDocument();
     expect(screen.queryByTestId("preview-point-yes-no")).toBeNull();
   });
 
   it("marks vessel-restricted sections as not applicable and preserves preview section state", () => {
     const { rerender } = renderPreview([configuredSection], "bulk");
-    click(screen.getByTestId("button-preview-part-B"));
+    click(screen.getByTestId("button-step-part-b"));
     expect(screen.getByTestId("preview-section-not-applicable-section-one")).toHaveTextContent("Bulk Carrier");
 
     rerender(
@@ -252,6 +247,8 @@ describe("configured form renderer preview", () => {
 
     click(screen.getByTestId("button-preview-section-toggle-section-one"));
     expect(screen.queryByTestId("preview-point-yes-no")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("preview-section-footer-section-one")).toBeNull();
+    expect(screen.queryByTestId("preview-signature-section-one")).toBeNull();
     click(screen.getByTestId("button-preview-section-toggle-section-one"));
     expect(screen.getByTestId("preview-point-yes-no")).toBeInTheDocument();
   });

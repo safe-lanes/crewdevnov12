@@ -1,20 +1,21 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { AlertCircle, ChevronRight, MessageSquare } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { z } from "zod";
+import { AlertCircle, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { sailDesignSystem } from "@/config/sailDesignSystem";
+import {
+  FormSection,
+  FormTable,
+  SAILButton,
+  SAILFormField,
+  SAILInput,
+  SAILSelect,
+  BaseSubmoduleForm,
+} from "@/components/BaseSubmoduleForm";
+import { getTableClasses, sailDesignSystem } from "@/config/sailDesignSystem";
 
 export type ConfiguredFormMode = "preview" | "live";
 
@@ -110,6 +111,7 @@ export interface ConfiguredFormRendererProps {
   vesselTypes?: ConfiguredFormVesselType[];
   selectedVesselTypeUuid?: string;
   onSelectedVesselTypeUuidChange?: (value: string) => void;
+  onBack?: () => void;
   selectedPartUuid?: string;
   onSelectedPartUuidChange?: (value: string) => void;
   expandedSections?: Record<string, boolean>;
@@ -153,63 +155,17 @@ function optionLabel(option: ConfiguredFormOption): string {
 function InlineMissing({ children, testId }: { children: React.ReactNode; testId: string }) {
   return (
     <div
-      className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+      className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm"
+      style={{
+        borderColor: sailDesignSystem.colors.accent,
+        backgroundColor: sailDesignSystem.colors.background,
+        color: sailDesignSystem.colors.headerText,
+      }}
       data-testid={testId}
     >
       <AlertCircle className="h-4 w-4 shrink-0" />
       <span>{children}</span>
     </div>
-  );
-}
-
-function PartStepper({
-  parts,
-  selectedPartUuid,
-  onSelect,
-}: {
-  parts: ConfiguredFormPart[];
-  selectedPartUuid: string;
-  onSelect: (partUuid: string) => void;
-}) {
-  return (
-    <nav className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:gap-1 sm:overflow-visible sm:pb-0" aria-label="Form parts">
-      {parts.map((part, index) => {
-        const isSelected = selectedPartUuid === part.formPartUuid;
-        const partTitle = part.partTitle.trim() || `Part ${part.partCode || index + 1}`;
-        return (
-          <button
-            key={part.formPartUuid}
-            type="button"
-            onClick={() => onSelect(part.formPartUuid)}
-            className={`group flex min-w-[180px] shrink-0 items-center gap-3 rounded-md border-l-4 px-3 py-3 text-left text-sm transition-colors sm:w-full ${
-              isSelected ? "text-white shadow-sm" : "border-transparent bg-white text-gray-700 hover:bg-gray-50"
-            }`}
-            style={isSelected ? {
-              backgroundColor: sailDesignSystem.colors.headerText,
-              borderColor: sailDesignSystem.colors.headerText,
-            } : { borderColor: sailDesignSystem.colors.border }}
-            data-testid={`button-preview-part-${part.partCode || index + 1}`}
-          >
-            <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-              style={{
-                backgroundColor: isSelected ? "rgba(255,255,255,0.2)" : sailDesignSystem.colors.background,
-                color: isSelected ? sailDesignSystem.colors.cardBackground : sailDesignSystem.colors.headerText,
-              }}
-            >
-              {part.partCode || index + 1}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold">{partTitle}</span>
-              <span className={`hidden text-[11px] sm:block ${isSelected ? "text-blue-100" : "text-gray-400"}`}>
-                {part.partType === "fixed" ? "Purpose-built part" : "Configured structure"}
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 opacity-60" />
-          </button>
-        );
-      })}
-    </nav>
   );
 }
 
@@ -234,10 +190,10 @@ function SectionResponsibility({
     }
     return (
       <div className="flex flex-wrap items-center gap-2" data-testid={`responsible-role-${sectionId}`}>
-        <p className="text-sm font-semibold text-gray-700">To be completed by: {roleName(role)}</p>
-        {role.isDeleted && <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">Deleted role</Badge>}
+        <p className="text-sm font-semibold">To be completed by: {roleName(role)}</p>
+        {role.isDeleted && <Badge variant="outline">Deleted role</Badge>}
         {!role.isDeleted && role.isActive === false && (
-          <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-800">Inactive role</Badge>
+          <Badge variant="outline">Inactive role</Badge>
         )}
       </div>
     );
@@ -253,14 +209,14 @@ function SectionResponsibility({
       return <InlineMissing testId={`missing-responsible-${sectionId}`}>Responsible department not found</InlineMissing>;
     }
     return (
-      <p className="text-sm font-semibold text-gray-700" data-testid={`responsible-department-${sectionId}`}>
+      <p className="text-sm font-semibold" data-testid={`responsible-department-${sectionId}`}>
         To be completed by: {department ? departmentName(department) : value}
       </p>
     );
   }
 
   return (
-    <p className="text-sm text-gray-600" data-testid={`responsible-not-applicable-${sectionId}`}>
+    <p className="text-sm" data-testid={`responsible-not-applicable-${sectionId}`}>
       No responsible party · Not applicable
     </p>
   );
@@ -283,6 +239,7 @@ function ConfiguredPoint({
   const labels = question.response_type === "yes_no_na" ? ["Yes", "No", "NA"] : ["Yes", "No"];
   const options = question.options || [];
   const selectedOptions = Array.isArray(answer) ? answer : [];
+  const tableClasses = getTableClasses();
 
   const responseControl = (() => {
     switch (question.response_type) {
@@ -296,7 +253,7 @@ function ConfiguredPoint({
             data-testid={`preview-response-${questionId}`}
           >
             {labels.map((label) => (
-              <label key={label} className="flex items-center gap-2 text-sm text-gray-700">
+              <label key={label} className="flex items-center gap-2 text-sm">
                 <RadioGroupItem value={label} />
                 {label}
               </label>
@@ -308,18 +265,19 @@ function ConfiguredPoint({
           return <InlineMissing testId={`missing-options-${questionId}`}>{MISSING_OPTIONS}</InlineMissing>;
         }
         return (
-          <Select value={typeof answer === "string" ? answer : ""} onValueChange={(value) => setAnswer(questionId, value)}>
-            <SelectTrigger className="max-w-sm bg-white" data-testid={`preview-response-${questionId}`}>
-              <SelectValue placeholder="Choose an option" />
-            </SelectTrigger>
-            <SelectContent>
+          <div data-testid={`preview-response-${questionId}`}>
+            <SAILSelect
+              value={typeof answer === "string" ? answer : ""}
+              onValueChange={(value) => setAnswer(questionId, value)}
+              placeholder="Choose an option"
+            >
               {options.map((option, index) => (
                 <SelectItem key={option.clientKey || option.option_uuid || `${questionId}-option-${index}`} value={option.option_value || `option-${index}`}>
                   {optionLabel(option)}
                 </SelectItem>
               ))}
-            </SelectContent>
-          </Select>
+            </SAILSelect>
+          </div>
         );
       case "multi_select":
         if (options.length === 0) {
@@ -330,7 +288,7 @@ function ConfiguredPoint({
             {options.map((option, index) => {
               const value = option.option_value || `option-${index}`;
               return (
-                <label key={option.clientKey || option.option_uuid || `${questionId}-option-${index}`} className="flex items-center gap-2 text-sm text-gray-700">
+                <label key={option.clientKey || option.option_uuid || `${questionId}-option-${index}`} className="flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={selectedOptions.includes(value)}
                     onCheckedChange={(checked) => setAnswer(
@@ -352,34 +310,34 @@ function ConfiguredPoint({
             value={typeof answer === "string" ? answer : ""}
             onChange={(event) => setAnswer(questionId, event.target.value)}
             placeholder="Enter a response"
-            className="min-h-[74px] max-w-2xl resize-y bg-white"
+            className="min-h-[74px] max-w-2xl resize-y"
             data-testid={`preview-response-${questionId}`}
           />
         );
       case "date":
         return (
-          <Input
+          <SAILInput
             type="date"
             value={typeof answer === "string" ? answer : ""}
             onChange={(event) => setAnswer(questionId, event.target.value)}
-            className="max-w-xs bg-white"
+            className="max-w-xs"
             data-testid={`preview-response-${questionId}`}
           />
         );
       case "number":
         return (
-          <Input
+          <SAILInput
             type="number"
             value={typeof answer === "string" ? answer : ""}
             onChange={(event) => setAnswer(questionId, event.target.value)}
             placeholder="Enter a number"
-            className="max-w-xs bg-white"
+            className="max-w-xs"
             data-testid={`preview-response-${questionId}`}
           />
         );
       case "checkbox":
         return (
-          <label className="flex items-center gap-2 text-sm text-gray-700" data-testid={`preview-response-${questionId}`}>
+          <label className="flex items-center gap-2 text-sm" data-testid={`preview-response-${questionId}`}>
             <Checkbox
               checked={answer === true}
               onCheckedChange={(checked) => setAnswer(questionId, checked === true)}
@@ -407,56 +365,48 @@ function ConfiguredPoint({
   })();
 
   return (
-    <div
-      role="row"
-      className="grid grid-cols-1 gap-3 border-b px-5 py-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(220px,36%)_44px] sm:items-center sm:gap-4"
-      style={{ borderColor: sailDesignSystem.colors.border }}
-      data-testid={`preview-point-${questionId}`}
-    >
-      <div role="cell" className="min-w-0 text-sm leading-6" data-testid={`preview-point-label-${questionId}`}>
-        <span className="mr-2 font-mono text-xs font-semibold" style={{ color: sailDesignSystem.colors.textSecondary }}>
-          {question.question_code.trim() || "Point code not configured"}
-        </span>
-        <span className={hasText ? "font-semibold" : "font-semibold text-amber-800"}>
-          {hasText ? question.question_text : MISSING_POINT_TEXT}
-        </span>
-        {question.is_mandatory && (
-          <span className="ml-1 font-bold text-red-600" aria-label="Mandatory" data-testid={`preview-required-${questionId}`}>
-            *
-          </span>
-        )}
-      </div>
-      <div role="cell" className="min-w-0 sm:justify-self-end sm:w-full">
-        {responseControl}
-      </div>
-      <div role="cell" className="flex justify-end sm:justify-center">
-        {question.comment_enabled && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-gray-500 hover:text-gray-700"
-            onClick={() => setCommentExpanded((expanded) => !expanded)}
-            aria-expanded={commentExpanded}
-            aria-label="Comment"
-            title="Comment"
-            data-testid={`button-preview-comment-${questionId}`}
-          >
-            <MessageSquare className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+    <>
+      <tr className={tableClasses.row} data-testid={`preview-point-${questionId}`}>
+        <td className={tableClasses.cell} data-testid={`preview-point-label-${questionId}`}>
+          <SAILFormField label={question.question_code.trim() || "Point code not configured"}>
+            <span className="font-semibold" data-testid={!hasText ? `missing-point-text-${questionId}` : undefined}>
+              {hasText ? question.question_text : MISSING_POINT_TEXT}
+              {question.is_mandatory && (
+                <span className="ml-1 font-bold" style={{ color: sailDesignSystem.colors.accent }} aria-label="Mandatory" data-testid={`preview-required-${questionId}`}>
+                  *
+                </span>
+              )}
+            </span>
+          </SAILFormField>
+        </td>
+        <td className={tableClasses.cell}>{responseControl}</td>
+        <td className={`${tableClasses.cell} text-center`}>
+          {question.comment_enabled && (
+            <SAILButton
+              type="button"
+              variant="secondary"
+              className="h-8 w-8 px-2"
+              onClick={() => setCommentExpanded((expanded) => !expanded)}
+              aria-expanded={commentExpanded}
+              aria-label="Comment"
+              title="Comment"
+              data-testid={`button-preview-comment-${questionId}`}
+            >
+              <MessageSquare className="h-4 w-4" />
+            </SAILButton>
+          )}
+        </td>
+      </tr>
       {question.comment_enabled && commentExpanded && (
-        <Textarea
-          placeholder="Preview comment — not saved"
-          className="min-h-[66px] bg-white sm:col-span-3"
-          data-testid={`preview-comment-${questionId}`}
-        />
+        <tr className={tableClasses.row} data-testid={`preview-comment-row-${questionId}`}>
+          <td colSpan={3} className={tableClasses.cell}>
+            <SAILFormField label="Comment">
+              <Textarea placeholder="Preview comment — not saved" data-testid={`preview-comment-${questionId}`} />
+            </SAILFormField>
+          </td>
+        </tr>
       )}
-      {question.comment_enabled && commentExpanded && (
-        <span className="sr-only">Preview comment — not saved</span>
-      )}
-    </div>
+    </>
   );
 }
 
@@ -486,162 +436,80 @@ function ConfiguredSection({
   const sectionTitle = section.section_title.trim() || MISSING_SECTION_TITLE;
   const sectionCode = section.section_code.trim() || "Section code not configured";
 
-  return (
-    <Card
-      className="overflow-hidden border shadow-sm"
-      style={{
-        borderColor: sailDesignSystem.colors.border,
-        backgroundColor: sailDesignSystem.colors.cardBackground,
-      }}
-      data-testid={`preview-section-${sectionId}`}
-    >
-      <CardHeader
-        className="border-b px-5 py-4"
-        style={{
-          borderColor: sailDesignSystem.colors.border,
-          backgroundColor: sailDesignSystem.colors.cardBackground,
-        }}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <CardTitle className="text-xl" style={{ color: sailDesignSystem.colors.headerText }}>
-            <span className="font-mono text-base" style={{ color: sailDesignSystem.colors.textSecondary }}>
-              {sectionCode}
-            </span>{" "}
-            {sectionTitle}
-          </CardTitle>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 shrink-0 px-2 text-xs"
-            onClick={onToggleExpanded}
-            aria-expanded={isExpanded}
-            data-testid={`button-preview-section-toggle-${sectionId}`}
-          >
-            {isExpanded ? "Collapse" : "Expand"}
-          </Button>
+  const footer = isApplicable && isExpanded ? (
+    <div className="mt-6 space-y-5 border-t pt-5" style={{ borderColor: sailDesignSystem.colors.border }} data-testid={`preview-section-footer-${sectionId}`}>
+      {section.comment_box_required && (
+        <div data-testid={`preview-section-comment-${sectionId}`}>
+          <SAILFormField label="Section comment">
+            <Textarea placeholder="Preview comment — not saved" />
+          </SAILFormField>
         </div>
-        {!section.section_title.trim() && (
-          <p className="mt-1 text-sm text-amber-800" data-testid={`missing-section-title-${sectionId}`}>
-            <AlertCircle className="mr-1 inline-block h-3.5 w-3.5" />
-            {MISSING_SECTION_TITLE}
+      )}
+      {section.signature_required && (
+        <div className="space-y-4 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={`preview-signature-${sectionId}`}>
+          <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Signature</p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <SAILFormField label="Name"><SAILInput readOnly placeholder="Name" data-testid={`preview-signature-name-${sectionId}`} /></SAILFormField>
+            <SAILFormField label="Signature"><SAILInput readOnly placeholder="Signature" data-testid={`preview-signature-mark-${sectionId}`} /></SAILFormField>
+            <SAILFormField label="Date"><SAILInput readOnly placeholder="Date" data-testid={`preview-signature-date-${sectionId}`} /></SAILFormField>
+          </div>
+          <p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>
+        </div>
+      )}
+      <SectionResponsibility section={section} roles={roles} departments={departments} sectionId={sectionId} />
+    </div>
+  ) : undefined;
+
+  return (
+    <div data-testid={`preview-section-${sectionId}`}>
+      <FormSection
+        title={`${sectionCode} ${sectionTitle}`}
+        headerActions={
+          <SAILButton type="button" variant="secondary" className="h-8 px-3 text-xs" onClick={onToggleExpanded} aria-expanded={isExpanded} data-testid={`button-preview-section-toggle-${sectionId}`}>
+            {isExpanded ? "Collapse" : "Expand"}
+          </SAILButton>
+        }
+        headerNotice={!section.section_title.trim() && (
+          <p className="mt-1 text-sm" style={{ color: sailDesignSystem.colors.accent }} data-testid={`missing-section-title-${sectionId}`}>
+            <AlertCircle className="mr-1 inline-block h-3.5 w-3.5" />{MISSING_SECTION_TITLE}
           </p>
         )}
-      </CardHeader>
-      {isExpanded && (
-        <CardContent className="p-0">
-          {!isApplicable ? (
-            <div
-              className="m-5 rounded-md border border-dashed px-4 py-3 text-sm text-gray-600"
-              data-testid={`preview-section-not-applicable-${sectionId}`}
-            >
-              This section is not applicable to {vesselTypeLabel}.
-            </div>
-          ) : (
-            <>
-              <div role="table" aria-label={`${sectionCode} points`}>
-                {section.questions.length === 0 && (
-                  <div
-                    className="px-5 py-5 text-sm text-gray-500"
-                    data-testid={`preview-no-points-${sectionId}`}
-                  >
-                    No points configured.
-                  </div>
-                )}
-                {section.questions.map((question, questionIndex) => {
-                  const questionId = question.clientKey || question.question_uuid || `${sectionId}-point-${questionIndex + 1}`;
-                  return (
-                    <ConfiguredPoint
-                      key={questionId}
-                      question={question}
-                      questionId={questionId}
-                      answers={answers}
-                      setAnswer={setAnswer}
-                    />
-                  );
-                })}
-              </div>
-              <div
-                className="space-y-5 border-t px-5 py-5"
-                style={{ borderColor: sailDesignSystem.colors.border }}
-                data-testid={`preview-section-footer-${sectionId}`}
-              >
-                  {section.comment_box_required && (
-                    <div className="space-y-2" data-testid={`preview-section-comment-${sectionId}`}>
-                      <label className="text-sm font-semibold text-gray-700">
-                        Section comment <span className="text-red-600">*</span>
-                      </label>
-                      <Textarea placeholder="Preview comment — not saved" className="min-h-[84px] bg-white" />
-                    </div>
-                  )}
-                  {section.signature_required && (
-                    <div
-                      className="space-y-4 rounded-md border border-dashed px-4 py-4"
-                      style={{ borderColor: sailDesignSystem.colors.headerText }}
-                      data-testid={`preview-signature-${sectionId}`}
-                    >
-                      <div className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>
-                        Signature
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-3">
-                        <label className="space-y-1 text-xs font-semibold text-gray-600">
-                          Name
-                          <Input readOnly placeholder="Name" className="bg-white" data-testid={`preview-signature-name-${sectionId}`} />
-                        </label>
-                        <label className="space-y-1 text-xs font-semibold text-gray-600">
-                          Signature
-                          <Input readOnly placeholder="Signature" className="bg-white" data-testid={`preview-signature-mark-${sectionId}`} />
-                        </label>
-                        <label className="space-y-1 text-xs font-semibold text-gray-600">
-                          Date
-                          <Input readOnly placeholder="Date" className="bg-white" data-testid={`preview-signature-date-${sectionId}`} />
-                        </label>
-                      </div>
-                      <p className="text-xs text-gray-500">Signature placeholder — live signing is not available in Preview.</p>
-                    </div>
-                  )}
-                <SectionResponsibility
-                  section={section}
-                  roles={roles}
-                  departments={departments}
-                  sectionId={sectionId}
-                />
-              </div>
-            </>
-          )}
-        </CardContent>
-      )}
-    </Card>
+        footer={footer}
+      >
+        {!isExpanded ? null : !isApplicable ? (
+          <InlineMissing testId={`preview-section-not-applicable-${sectionId}`}>
+            This section is not applicable to {vesselTypeLabel}.
+          </InlineMissing>
+        ) : section.questions.length === 0 ? (
+          <InlineMissing testId={`preview-no-points-${sectionId}`}>No points configured.</InlineMissing>
+        ) : (
+          <FormTable headers={["Point", "Response", "Comment"]}>
+            {section.questions.map((question, questionIndex) => {
+              const questionId = question.clientKey || question.question_uuid || `${sectionId}-point-${questionIndex + 1}`;
+              return <ConfiguredPoint key={questionId} question={question} questionId={questionId} answers={answers} setAnswer={setAnswer} />;
+            })}
+          </FormTable>
+        )}
+      </FormSection>
+    </div>
   );
 }
 
 function FixedPartPlaceholder({ part }: { part: ConfiguredFormPart }) {
   return (
-    <Card className="border-dashed" data-testid={`preview-fixed-part-${part.partCode}`}>
-      <CardContent className="p-8">
-        <div className="flex items-start gap-3">
-          <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-            style={{ backgroundColor: sailDesignSystem.colors.headerText }}
-          >
-            {part.partCode}
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>
-              {part.partTitle.trim() || `Part ${part.partCode}`}
-            </h3>
-            <p className="mt-2 text-sm text-gray-600">
-              This part is purpose-built and is not yet implemented in the shared configurable-form renderer.
-            </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div data-testid={`preview-fixed-part-${part.partCode}`}>
+      <FormSection title={`${part.partCode} ${part.partTitle.trim() || `Part ${part.partCode}`}`}>
+        <InlineMissing testId={`preview-fixed-part-message-${part.partCode}`}>
+          This part is purpose-built and is not yet implemented in the shared configurable-form renderer.
+        </InlineMissing>
+      </FormSection>
+    </div>
   );
 }
 
 export function ConfiguredFormRenderer({
   mode,
+  formTitle = "Configured form",
   parts,
   structures,
   roles = [],
@@ -649,22 +517,14 @@ export function ConfiguredFormRenderer({
   vesselTypes = [],
   selectedVesselTypeUuid,
   onSelectedVesselTypeUuidChange,
-  selectedPartUuid: controlledSelectedPartUuid,
-  onSelectedPartUuidChange,
-  expandedSections: controlledExpandedSections,
-  onExpandedSectionsChange,
+  onBack,
   className = "",
 }: ConfiguredFormRendererProps) {
-  const [internalSelectedPartUuid, setInternalSelectedPartUuid] = useState(parts[0]?.formPartUuid || "");
   const [internalVesselTypeUuid, setInternalVesselTypeUuid] = useState("all");
   const [answers, setAnswers] = useState<Record<string, ConfiguredFormAnswerValue>>({});
   const [internalExpandedSections, setInternalExpandedSections] = useState<Record<string, boolean>>({});
 
-  const selectedPartUuid = controlledSelectedPartUuid ?? internalSelectedPartUuid;
-  const expandedSections = controlledExpandedSections ?? internalExpandedSections;
   const selectedVessel = selectedVesselTypeUuid ?? internalVesselTypeUuid;
-  const selectedPart = parts.find((part) => part.formPartUuid === selectedPartUuid) ?? parts[0];
-  const selectedSections = selectedPart ? structures[selectedPart.formPartUuid] || [] : [];
   const selectedVesselLabel = selectedVessel === "all"
     ? "all vessel types"
     : vesselTypes.find((type) => (type.vtUuid || type.vtuid) === selectedVessel)
@@ -681,14 +541,6 @@ export function ConfiguredFormRenderer({
     [vesselTypes],
   );
 
-  useEffect(() => {
-    if (!selectedPartUuid || !parts.some((part) => part.formPartUuid === selectedPartUuid)) {
-      const fallbackPartUuid = parts[0]?.formPartUuid || "";
-      setInternalSelectedPartUuid(fallbackPartUuid);
-      onSelectedPartUuidChange?.(fallbackPartUuid);
-    }
-  }, [parts, selectedPartUuid, onSelectedPartUuidChange]);
-
   const setAnswer = (questionId: string, value: ConfiguredFormAnswerValue) => {
     setAnswers((current) => ({ ...current, [questionId]: value }));
   };
@@ -696,19 +548,6 @@ export function ConfiguredFormRenderer({
   const setVesselType = (value: string) => {
     setInternalVesselTypeUuid(value);
     onSelectedVesselTypeUuidChange?.(value);
-  };
-
-  const setSelectedPart = (value: string) => {
-    setInternalSelectedPartUuid(value);
-    onSelectedPartUuidChange?.(value);
-  };
-
-  const setExpandedSections = (
-    update: Record<string, boolean> | ((current: Record<string, boolean>) => Record<string, boolean>),
-  ) => {
-    const next = typeof update === "function" ? update(expandedSections) : update;
-    setInternalExpandedSections(next);
-    onExpandedSectionsChange?.(next);
   };
 
   if (mode === "live") {
@@ -721,90 +560,53 @@ export function ConfiguredFormRenderer({
     );
   }
 
+  const previewSchema = z.object({});
+  const baseSections = parts.map((part, index) => ({
+    id: part.formPartUuid,
+    title: part.partTitle.trim() || `Part ${part.partCode || index + 1}`,
+    letter: part.partCode || String(index + 1),
+  }));
+
   return (
-    <div
-      className={`min-h-full ${className}`}
-      style={{ fontFamily: sailDesignSystem.typography.fontFamily }}
-      data-testid="configured-form-preview"
-    >
-      <div
-        className="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-2.5"
-        style={{
-          borderColor: sailDesignSystem.colors.border,
-          backgroundColor: sailDesignSystem.colors.background,
-        }}
-        data-testid="preview-only-banner"
+    <div className={className} data-testid="configured-form-preview" style={{ fontFamily: sailDesignSystem.typography.fontFamily }}>
+      <BaseSubmoduleForm
+        title={`${formTitle} · Preview`}
+        sections={baseSections}
+        schema={previewSchema}
+        defaultValues={{}}
+        onClose={onBack || (() => undefined)}
+        onSubmit={() => undefined}
+        hideSaveDraft
       >
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>
-            Preview only
-          </span>
-          <span className="text-xs" style={{ color: sailDesignSystem.colors.textSecondary }}>
-            Inputs are interactive for review, but nothing is saved.
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="preview-vessel-type" className="text-xs font-semibold" style={{ color: sailDesignSystem.colors.textSecondary }}>
-            Vessel type
-          </label>
-          <Select value={selectedVessel} onValueChange={setVesselType}>
-            <SelectTrigger
-              id="preview-vessel-type"
-              className="h-8 w-[210px]"
-              style={{ backgroundColor: sailDesignSystem.colors.cardBackground }}
-              data-testid="select-preview-vessel-type"
-            >
-              <SelectValue placeholder="All vessel types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All vessel types</SelectItem>
-              {vesselOptions.map((option) => (
-                <SelectItem key={option.uuid} value={option.uuid}>{option.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+        {({ activeSection }) => {
+          const selectedPart = parts.find((part) => part.formPartUuid === activeSection);
+          const selectedSections = selectedPart ? structures[selectedPart.formPartUuid] || [] : [];
 
-      <div className="flex flex-col gap-5 p-6 sm:flex-row">
-        <aside
-          className="w-full shrink-0 border-b pb-4 sm:w-56 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4"
-          style={{ borderColor: sailDesignSystem.colors.border }}
-          data-testid="preview-part-stepper"
-        >
-          <div className="mb-3 px-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Form parts</div>
-          <PartStepper
-            parts={parts}
-            selectedPartUuid={selectedPart?.formPartUuid || ""}
-            onSelect={setSelectedPart}
-          />
-        </aside>
-
-        <section className="min-w-0 flex-1">
-          {!selectedPart && (
-            <InlineMissing testId="preview-no-form-parts">No form parts are configured.</InlineMissing>
-          )}
-          {selectedPart && (
+          return (
             <>
-              <header className="mb-6 border-b pb-4" style={{ borderColor: sailDesignSystem.colors.border }}>
-                <h2 className="text-2xl font-bold" style={{ color: sailDesignSystem.colors.headerText }}>
-                  Part {selectedPart.partCode}{" "}
-                  <span className="font-semibold">
-                    {selectedPart.partTitle.trim() || `Part ${selectedPart.partCode}`}
-                  </span>
-                </h2>
-                <p className="mt-1 text-sm" style={{ color: sailDesignSystem.colors.textSecondary }}>
-                  {selectedPart.partType === "fixed"
-                    ? "Purpose-built form content"
-                    : "Complete each point and record comments where needed."}
-                </p>
-              </header>
+              <div className="flex flex-wrap items-end justify-between gap-4" data-testid="preview-only-banner">
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Preview only</p>
+                  <p className="text-xs">Inputs are interactive for review, but nothing is saved.</p>
+                </div>
+                <SAILFormField label="Vessel type" className="min-w-[210px]" >
+                  <div data-testid="select-preview-vessel-type">
+                    <SAILSelect value={selectedVessel} onValueChange={setVesselType} placeholder="All vessel types">
+                      <SelectItem value="all">All vessel types</SelectItem>
+                      {vesselOptions.map((option) => <SelectItem key={option.uuid} value={option.uuid}>{option.label}</SelectItem>)}
+                    </SAILSelect>
+                  </div>
+                </SAILFormField>
+              </div>
 
-              {selectedPart.partType === "fixed" && <FixedPartPlaceholder part={selectedPart} />}
-              {selectedPart.partType !== "fixed" && (
+              {!selectedPart ? (
+                <InlineMissing testId="preview-no-form-parts">No form parts are configured.</InlineMissing>
+              ) : selectedPart.partType === "fixed" ? (
+                <FixedPartPlaceholder part={selectedPart} />
+              ) : (
                 <div className="space-y-5">
                   {selectedVessel !== "all" && (
-                    <p className="text-xs" style={{ color: sailDesignSystem.colors.textSecondary }}>
+                    <p className="text-xs">
                       Sections restricted to another vessel type remain marked as not applicable for {selectedVesselLabel}.
                     </p>
                   )}
@@ -827,8 +629,8 @@ export function ConfiguredFormRenderer({
                         departments={departments}
                         vesselTypeLabel={selectedVesselLabel}
                         isApplicable={isApplicable}
-                        isExpanded={expandedSections[sectionId] !== false}
-                        onToggleExpanded={() => setExpandedSections((current) => ({
+                        isExpanded={internalExpandedSections[sectionId] !== false}
+                        onToggleExpanded={() => setInternalExpandedSections((current) => ({
                           ...current,
                           [sectionId]: !(current[sectionId] !== false),
                         }))}
@@ -840,9 +642,9 @@ export function ConfiguredFormRenderer({
                 </div>
               )}
             </>
-          )}
-        </section>
-      </div>
+          );
+        }}
+      </BaseSubmoduleForm>
     </div>
   );
 }

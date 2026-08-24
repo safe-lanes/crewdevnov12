@@ -26,6 +26,7 @@ interface BaseSubmoduleFormProps {
   onClose: () => void;
   onSubmit: (data: any) => void;
   disableSaveDraft?: boolean;
+  hideSaveDraft?: boolean;
   children: (props: {
     activeSection: string;
     form: any;
@@ -41,6 +42,7 @@ export const BaseSubmoduleForm: React.FC<BaseSubmoduleFormProps> = ({
   onClose,
   onSubmit,
   disableSaveDraft = false,
+  hideSaveDraft = false,
   children
 }) => {
   const [activeSection, setActiveSection] = useState(sections[0]?.id || "");
@@ -93,30 +95,32 @@ export const BaseSubmoduleForm: React.FC<BaseSubmoduleFormProps> = ({
             </Button>
             <h1 className="text-lg sm:text-xl font-bold">{title}</h1>
           </div>
-          <div className="flex gap-1 sm:gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              disabled={disableSaveDraft}
-              data-testid="button-save-draft"
-              onClick={() => form.handleSubmit(onSubmit)()}
-              className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex"
-              style={{ backgroundColor: sailDesignSystem.colors.primary }}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Draft
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              disabled={disableSaveDraft}
-              data-testid="button-save-draft-mobile"
-              onClick={() => form.handleSubmit(onSubmit)()}
-              className="sm:hidden"
-            >
-              <Save className="h-4 w-4" />
-            </Button>
-          </div>
+          {!hideSaveDraft && (
+            <div className="flex gap-1 sm:gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={disableSaveDraft}
+                data-testid="button-save-draft"
+                onClick={() => form.handleSubmit(onSubmit)()}
+                className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex"
+                style={{ backgroundColor: sailDesignSystem.colors.primary }}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Draft
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={disableSaveDraft}
+                data-testid="button-save-draft-mobile"
+                onClick={() => form.handleSubmit(onSubmit)()}
+                className="sm:hidden"
+              >
+                <Save className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Mobile Horizontal Stepper */}
@@ -245,23 +249,31 @@ export const BaseSubmoduleForm: React.FC<BaseSubmoduleFormProps> = ({
 // Reusable Card Section Component
 export const FormSection: React.FC<{
   title: string;
-  description?: string;
+  description?: React.ReactNode;
+  headerActions?: React.ReactNode;
+  headerNotice?: React.ReactNode;
+  footer?: React.ReactNode;
   children: React.ReactNode;
-}> = ({ title, description, children }) => (
+}> = ({ title, description, headerActions, headerNotice, footer, children }) => (
   <Card className="bg-white">
     <CardContent className="p-6">
       <div className="pb-4 mb-6">
-        <h3 className="text-xl font-semibold mb-2" style={{ color: sailDesignSystem.colors.headerText }}>
-          {title}
-        </h3>
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-xl font-semibold mb-2" style={{ color: sailDesignSystem.colors.headerText }}>
+            {title}
+          </h3>
+          {headerActions}
+        </div>
         {description && (
           <div style={{ color: sailDesignSystem.colors.headerText }} className="text-sm">
             {description}
           </div>
         )}
+        {headerNotice}
         <div className="w-full h-0.5 mt-2" style={{ backgroundColor: sailDesignSystem.colors.headerText }}></div>
       </div>
       {children}
+      {footer}
     </CardContent>
   </Card>
 );

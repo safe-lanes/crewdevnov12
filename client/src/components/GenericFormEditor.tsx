@@ -350,8 +350,6 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [viewMode, setViewMode] = useState<EditorViewMode>("configure");
   const [previewVesselTypeUuid, setPreviewVesselTypeUuid] = useState("all");
-  const [previewSelectedPartUuid, setPreviewSelectedPartUuid] = useState("");
-  const [previewExpandedSections, setPreviewExpandedSections] = useState<Record<string, boolean>>({});
   const [trees, setTrees] = useState<Record<string, SectionModel[]>>({});
   const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -866,25 +864,6 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           </DialogHeader>
 
           <div className="flex min-h-0 flex-1">
-            {viewMode === "preview" ? (
-              <main ref={editorContentRef} className="min-w-0 flex-1 overflow-y-auto bg-white">
-                <ConfiguredFormRenderer
-                  mode="preview"
-                  formTitle={formName}
-                  parts={allParts}
-                  structures={trees}
-                  roles={roles}
-                  departments={departments}
-                  vesselTypes={vesselTypes}
-                  selectedVesselTypeUuid={previewVesselTypeUuid}
-                  onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
-                  selectedPartUuid={previewSelectedPartUuid}
-                  onSelectedPartUuidChange={setPreviewSelectedPartUuid}
-                  expandedSections={previewExpandedSections}
-                  onExpandedSectionsChange={setPreviewExpandedSections}
-                />
-              </main>
-            ) : (
               <>
             <aside className="w-64 shrink-0 border-r bg-[#f8fafc] p-4 overflow-y-auto">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-3">Form parts</div>
@@ -1130,7 +1109,6 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                </div>
              </main>
               </>
-            )}
           </div>
           <div className="border-t bg-[#f8fafc] px-6 py-3 flex items-center justify-between">
             <Button variant="ghost" onClick={handleClose} data-testid="button-close-generic-editor"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
@@ -1138,6 +1116,21 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      <div className={viewMode === "preview" ? "" : "hidden"} aria-hidden={viewMode !== "preview"}>
+        <ConfiguredFormRenderer
+          mode="preview"
+          formTitle={formName}
+          parts={allParts}
+          structures={trees}
+          roles={roles}
+          departments={departments}
+          vesselTypes={vesselTypes}
+          selectedVesselTypeUuid={previewVesselTypeUuid}
+          onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
+          onBack={() => setViewMode("configure")}
+        />
+      </div>
 
       <Dialog open={settingsDialog !== null} onOpenChange={(open) => !open && setSettingsDialog(null)}>
         <DialogContent className="max-w-lg" data-testid="section-settings-dialog">
