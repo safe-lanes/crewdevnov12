@@ -39,6 +39,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfiguredFormRenderer } from "@/components/configured-form/ConfiguredFormRenderer";
+import { SharedFormShell } from "@/components/SharedFormShell";
 
 export interface ConfigurableFormPart {
   formPartUuid: string;
@@ -385,7 +386,6 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const baselineRef = useRef<string | null>(null);
   const editorContentRef = useRef<HTMLElement | null>(null);
   const editorDialogRef = useRef<HTMLDivElement | null>(null);
-  const previewPortalRef = useRef<HTMLDivElement | null>(null);
   const editorScrollTopRef = useRef<Record<EditorViewMode, number>>({ configure: 0, preview: 0 });
 
   const { data: formPartsData = [], isLoading: isLoadingParts } = useQuery<ConfigurableFormPart[]>({
@@ -840,20 +840,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   }, []);
 
   useEffect(() => {
-    const editorDialog = editorDialogRef.current;
-    if (!editorDialog) return;
-
-    if (isPreview) {
-      editorDialog.setAttribute("inert", "");
-    } else {
-      editorDialog.removeAttribute("inert");
-    }
-
-    return () => editorDialog.removeAttribute("inert");
-  }, [isPreview]);
-
-  useEffect(() => {
-    if (isPreview || settingsDialog || confirmDelete || showLeaveDialog) return;
+    if (settingsDialog || confirmDelete || showLeaveDialog) return;
 
     const focusEditor = () => {
       const editor = editorDialogRef.current;
@@ -870,7 +857,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopImmediatePropagation();
-        handleClose();
+        if (isPreview) closePreview();
+        else handleClose();
         return;
       }
       if (event.key !== "Tab") return;
@@ -902,192 +890,93 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       window.clearTimeout(focusTimer);
       document.removeEventListener("keydown", handleConfigureKeys, true);
     };
-  }, [confirmDelete, handleClose, isPreview, settingsDialog, showLeaveDialog]);
+  }, [closePreview, confirmDelete, handleClose, isPreview, settingsDialog, showLeaveDialog]);
 
-  useEffect(() => {
-    if (!isPreview) return;
+  const editorHeader = (
+    <div className="sticky top-0 bg-white border-b px-4 py-3 sm:px-6 sm:py-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold leading-none tracking-tight text-[#16569e]">{formName}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {rankGroupName || "All rank groups"} · configure the form structure and response points
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex items-center rounded-md border bg-white p-0.5" role="group" aria-label="Form editor view">
+            <Button type="button" variant={viewMode === "configure" ? "default" : "ghost"} size="sm" className="h-8 px-3 text-xs" onClick={viewMode === "preview" ? toggleViewMode : undefined} aria-pressed={viewMode === "configure"} data-testid="button-configure-mode">
+              Configure
+            </Button>
+            <Button type="button" variant={viewMode === "preview" ? "default" : "ghost"} size="sm" className="h-8 px-3 text-xs" onClick={viewMode === "configure" ? toggleViewMode : undefined} aria-pressed={viewMode === "preview"} data-testid="button-preview-mode">
+              Preview
+            </Button>
+          </div>
+          <span className="text-gray-500">Version</span>
+          <Select value={selectedVersion?.fvUuid || ""} onValueChange={requestVersionChange}>
+            <SelectTrigger className="w-[180px] h-9 bg-white" data-testid="select-form-version">
+              <SelectValue placeholder={isLoadingVersions ? "Loading..." : "No version"} />
+            </SelectTrigger>
+            <SelectContent>
+              {sortedVersions.map((version) => (
+                <SelectItem value={version.fvUuid} key={version.fvUuid}>
+                  v{version.versionNo} · {version.status === "draft" ? "Draft" : "Released"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedVersion && <Badge variant={selectedVersion.status === "draft" ? "secondary" : "outline"}>{selectedVersion.status === "draft" ? "Draft" : "Released"}</Badge>}
+          <Button type="button" variant="ghost" size="icon" onClick={handleClose} aria-label="Close">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const focusPreview = () => {
-      const preview = previewPortalRef.current;
-      if (!preview) return;
-      const [firstFocusable] = getFocusableElements(preview);
-      (firstFocusable || preview).focus();
-    };
-
-    const focusTimer = window.setTimeout(focusPreview, 0);
-    const handlePreviewKeys = (event: KeyboardEvent) => {
-      const preview = previewPortalRef.current;
-      if (!preview) return;
-      if (hasOpenPortalledListbox()) return;
-
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        closePreview();
-        return;
-      }
-
-      if (event.key !== "Tab") return;
-
-      const focusable = getFocusableElements(preview);
-      if (focusable.length === 0) {
-        event.preventDefault();
-        preview.focus();
-        return;
-      }
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const activeElement = document.activeElement as HTMLElement | null;
-
-      if (!preview.contains(activeElement)) {
-        event.preventDefault();
-        first.focus();
-      } else if (event.shiftKey && activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener("keydown", handlePreviewKeys, true);
-    return () => {
-      window.clearTimeout(focusTimer);
-      document.removeEventListener("keydown", handlePreviewKeys, true);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [closePreview, isPreview]);
+  const editorFooter = (
+    <div className="border-t bg-[#f8fafc] px-6 py-3 flex items-center justify-between">
+      <Button variant="ghost" onClick={handleClose} data-testid="button-close-generic-editor"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
+      <div className="text-xs text-gray-500">{isDirty ? "Unsaved changes" : "All changes saved"} · option values stay hidden and stable after creation</div>
+    </div>
+  );
 
   return (
     <>
       {typeof document !== "undefined" && createPortal(
-        <>
-          <div
-            className={`fixed inset-0 z-[200] bg-black/80${isPreview ? " hidden" : ""}`}
-            aria-hidden="true"
-            onClick={!isPreview ? handleClose : undefined}
-            data-state="open"
-            data-testid="generic-form-editor-overlay"
-          />
-          <div
-            ref={editorDialogRef}
-            className={`fixed left-[50%] top-[50%] z-[200] grid w-[98vw] max-w-[1440px] h-[94vh] translate-x-[-50%] translate-y-[-50%] gap-0 overflow-hidden border bg-background p-0 shadow-lg sm:rounded-lg${isPreview ? " invisible pointer-events-none" : ""}`}
-            role="dialog"
-            aria-modal={!isPreview}
-            aria-label={`${formName} form editor`}
-            aria-hidden={isPreview}
-            tabIndex={-1}
-            onKeyDown={(event) => {
-              if (event.key === "Escape" && !isPreview) {
-                event.preventDefault();
-                handleClose();
-              }
-            }}
-            data-testid="generic-form-editor"
-          >
-          <div className="flex flex-col space-y-1.5 border-b bg-[#f7fafc] px-6 py-4 text-center sm:text-left">
-            <div className="flex flex-wrap items-start justify-between gap-4 pr-8">
-              <div>
-                <h2 className="text-xl font-semibold leading-none tracking-tight text-[#16569e]">{formName}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {rankGroupName || "All rank groups"} · configure the form structure and response points
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="flex items-center rounded-md border bg-white p-0.5" role="group" aria-label="Form editor view">
-                  <Button
-                    type="button"
-                    variant={viewMode === "configure" ? "default" : "ghost"}
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    onClick={viewMode === "preview" ? toggleViewMode : undefined}
-                    aria-pressed={viewMode === "configure"}
-                    data-testid="button-configure-mode"
-                  >
-                    Configure
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={viewMode === "preview" ? "default" : "ghost"}
-                    size="sm"
-                    className="h-8 px-3 text-xs"
-                    onClick={viewMode === "configure" ? toggleViewMode : undefined}
-                    aria-pressed={viewMode === "preview"}
-                    data-testid="button-preview-mode"
-                  >
-                    Preview
-                  </Button>
-                </div>
-                <span className="text-gray-500">Version</span>
-                <Select
-                  value={selectedVersion?.fvUuid || ""}
-                  onValueChange={requestVersionChange}
-                >
-                  <SelectTrigger className="w-[180px] h-9 bg-white" data-testid="select-form-version">
-                    <SelectValue placeholder={isLoadingVersions ? "Loading..." : "No version"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sortedVersions.map((version) => (
-                      <SelectItem value={version.fvUuid} key={version.fvUuid}>
-                        v{version.versionNo} · {version.status === "draft" ? "Draft" : "Released"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {selectedVersion && (
-                  <Badge variant={selectedVersion.status === "draft" ? "secondary" : "outline"}>
-                    {selectedVersion.status === "draft" ? "Draft" : "Released"}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex min-h-0 flex-1">
+        <SharedFormShell
+          title={`${formName} form editor`}
+          sections={allParts.map((part) => ({
+            id: part.formPartUuid,
+            title: part.partTitle || `Part ${part.partCode}`,
+            letter: part.partCode,
+            disabled: part.partType !== "configurable",
+          }))}
+          activeSection={selectedPart?.formPartUuid || selectedPartUuid}
+          onActiveSectionChange={setSelectedPartUuid}
+          onClose={handleClose}
+          header={editorHeader}
+          footer={editorFooter}
+          dialogRef={editorDialogRef}
+          contentRef={(node) => { editorContentRef.current = node; }}
+          testId="generic-form-editor"
+        >
+          <div className="min-w-0 space-y-5">
+            {isPreview ? (
+              <ConfiguredFormRenderer
+                mode="preview"
+                embedded
+                formTitle={formName}
+                parts={allParts}
+                structures={trees}
+                roles={roles}
+                departments={departments}
+                vesselTypes={vesselTypes}
+                selectedPartUuid={selectedPart?.formPartUuid || selectedPartUuid}
+                selectedVesselTypeUuid={previewVesselTypeUuid}
+                onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
+              />
+            ) : (
               <>
-            <aside className="w-64 shrink-0 border-r bg-[#f8fafc] p-4 overflow-y-auto">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-3">Form parts</div>
-              <div className="space-y-1" data-testid="form-part-navigator">
-                {allParts.map((part) => {
-                  const isConfigurable = part.partType === "configurable";
-                  const isSelected = part.formPartUuid === selectedPart?.formPartUuid;
-                  return (
-                    <button
-                      type="button"
-                      key={part.formPartUuid}
-                      disabled={!isConfigurable}
-                      onClick={() => isConfigurable && setSelectedPartUuid(part.formPartUuid)}
-                      className={`w-full flex items-center gap-3 rounded-md px-3 py-3 text-left transition-colors ${
-                        isSelected ? "bg-[#16569e] text-white shadow-sm" : isConfigurable ? "hover:bg-white text-gray-700" : "text-gray-400"
-                      }`}
-                      data-testid={`button-part-${part.partCode}`}
-                    >
-                      <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-                        isSelected ? "bg-white/20" : isConfigurable ? "bg-[#dbeafe] text-[#16569e]" : "bg-gray-200"
-                      }`}>{part.partCode}</span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold truncate">{part.partTitle || `Part ${part.partCode}`}</span>
-                        <span className={`block text-[11px] ${isSelected ? "text-blue-100" : "text-gray-400"}`}>
-                          {isConfigurable ? "Editable structure" : "Fixed part"}
-                        </span>
-                      </span>
-                      {isConfigurable && <ChevronRight className="h-4 w-4 opacity-60" />}
-                    </button>
-                  );
-                })}
-              </div>
-              {allParts.length === 0 && !isLoadingParts && (
-                <div className="text-xs text-gray-500 p-2">No form parts are configured.</div>
-              )}
-            </aside>
-
-             <main ref={editorContentRef} className="min-w-0 flex-1 overflow-y-auto bg-white">
-              <div className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur px-6 py-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="text-lg font-semibold text-gray-800">{selectedPart?.partCode} · {selectedPart?.partTitle}</div>
                   <div className="text-xs text-gray-500">
@@ -1289,56 +1178,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                     </div>
                   )}
                   {canEdit && currentSections.length > 0 && <Button onClick={() => addSection(selectedPart.formPartUuid)} variant="outline" className="w-full border-dashed" data-testid="button-add-section"><Plus className="h-4 w-4 mr-2" /> Add New Section</Button>}
-                   </div>
-                 )}
-               </div>
-             </main>
+                    </div>
+                  )}
+                </div>
               </>
+            )}
           </div>
-          <div className="border-t bg-[#f8fafc] px-6 py-3 flex items-center justify-between">
-            <Button variant="ghost" onClick={handleClose} data-testid="button-close-generic-editor"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
-            <div className="text-xs text-gray-500">{isDirty ? "Unsaved changes" : "All changes saved"} · option values stay hidden and stable after creation</div>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute right-4 top-4 h-8 w-8"
-            onClick={handleClose}
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-          </div>
-        </>,
-        document.body,
-      )}
-
-      {typeof document !== "undefined" && createPortal(
-        <div
-          ref={previewPortalRef}
-          className={isPreview ? "relative" : "hidden"}
-          role="dialog"
-          aria-label={`${formName} preview`}
-          aria-modal={isPreview}
-          aria-hidden={!isPreview}
-          tabIndex={-1}
-          data-testid="configured-preview-portal"
-          data-preview-visible={isPreview}
-        >
-          <ConfiguredFormRenderer
-            mode="preview"
-            formTitle={formName}
-            parts={allParts}
-            structures={trees}
-            roles={roles}
-            departments={departments}
-            vesselTypes={vesselTypes}
-            selectedVesselTypeUuid={previewVesselTypeUuid}
-            onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
-            onBack={closePreview}
-          />
-        </div>,
+        </SharedFormShell>,
         document.body,
       )}
 

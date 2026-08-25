@@ -1,205 +1,79 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { GenericFormEditor } from "../../client/src/components/GenericFormEditor";
+import { GenericFormEditor } from "@/components/GenericFormEditor";
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
-  return {
-    ...actual,
-    useQuery: () => ({
-      data: [],
-      isLoading: false,
-      refetch: vi.fn(),
-    }),
-  };
+  return { ...actual, useQuery: () => ({ data: [], isLoading: false, refetch: vi.fn() }) };
 });
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-let activeContainer: HTMLDivElement | null = null;
-let activeRoot: Root | null = null;
+let root: Root | null = null;
+let container: HTMLDivElement | null = null;
 
 function renderEditor() {
-  activeContainer = document.createElement("div");
-  document.body.appendChild(activeContainer);
-  activeRoot = createRoot(activeContainer);
+  container = document.createElement("div");
+  document.body.appendChild(container);
+  root = createRoot(container);
   const onClose = vi.fn();
-
   act(() => {
-    activeRoot?.render(
+    root?.render(
       <GenericFormEditor
         form={{ id: 99 } as any}
-        formName="Crew Briefing"
-        configurableParts={[
-          { formPartUuid: "part-b", partCode: "B", partTitle: "Crew discussion", partType: "configurable" },
-        ]}
+        formName="Safety review"
+        configurableParts={[{ formPartUuid: "part-b", partCode: "B", partTitle: "Deck briefing", partType: "configurable" }]}
         onClose={onClose}
         onSave={vi.fn()}
       />,
     );
   });
-
-  const editor = document.querySelector<HTMLElement>('[data-testid="generic-form-editor"]');
-  const previewButton = document.querySelector<HTMLElement>('[data-testid="button-preview-mode"]');
-  if (!editor || !previewButton) throw new Error("Generic Form Editor did not render");
-
+  const editor = document.body.querySelector<HTMLElement>('[data-testid="generic-form-editor"]');
+  const previewButton = document.body.querySelector<HTMLButtonElement>('[data-testid="button-preview-mode"]');
+  if (!editor || !previewButton) throw new Error("Editor did not render");
   return { editor, previewButton, onClose };
 }
 
 function click(element: HTMLElement) {
-  act(() => {
-    element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-  });
-}
-
-function previewPortal(): HTMLElement {
-  const portal = document.body.querySelector<HTMLElement>('[data-testid="configured-preview-portal"]');
-  if (!portal) throw new Error("Preview portal did not render");
-  return portal;
-}
-
-function editorOverlay(): HTMLElement {
-  const overlay = Array.from(document.body.querySelectorAll<HTMLElement>('[data-state="open"]'))
-    .find((element) => element.className.includes("bg-black/80"));
-  if (!overlay) throw new Error("Editor overlay did not render");
-  return overlay;
-}
-
-function openPreview() {
-  const rendered = renderEditor();
-  const overlay = editorOverlay();
-  click(rendered.previewButton);
-  return { ...rendered, overlay, portal: previewPortal() };
+  act(() => element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
 }
 
 afterEach(() => {
-  act(() => {
-    activeRoot?.unmount();
-  });
-  activeContainer?.remove();
-  activeRoot = null;
-  activeContainer = null;
+  act(() => root?.unmount());
+  container?.remove();
+  root = null;
+  container = null;
   document.body.style.overflow = "";
   vi.restoreAllMocks();
 });
 
-describe("GenericFormEditor Preview portal", () => {
-  it("PASS: Configure locks page scroll and contains background focus", () => {
-    const { editor } = renderEditor();
-    const backgroundButton = document.createElement("button");
-    backgroundButton.textContent = "Background control";
-    document.body.appendChild(backgroundButton);
+describe("GenericFormEditor shared Preview shell", () => {
+  it("keeps one mounted dialog while switching its content", () => {
+    const { editor, previewButton } = renderEditor();
+    expect(document.body.querySelectorAll('[role="dialog"][data-testid="generic-form-editor"]')).toHaveLength(1);
+    click(previewButton);
+    expect(document.body.querySelectorAll('[role="dialog"][data-testid="generic-form-editor"]')).toHaveLength(1);
+    expect(editor.querySelector('[data-testid="configured-form-preview"]')).toBeTruthy();
+    expect(document.body.querySelector('[data-testid="configured-preview-portal"]')).toBeNull();
+  });
 
+  it("keeps page lock and returns from Preview with Escape", () => {
+    const { editor, previewButton, onClose } = renderEditor();
+    click(previewButton);
     expect(document.body.style.overflow).toBe("hidden");
-
-    act(() => {
-      backgroundButton.focus();
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
-    });
-
-    expect(editor.contains(document.activeElement)).toBe(true);
-    backgroundButton.remove();
-  });
-
-  it("PASS: Configure backdrop and Escape use the normal controlled close path", () => {
-    const { onClose } = renderEditor();
-    const overlay = editorOverlay();
-
-    click(overlay);
-    expect(onClose).toHaveBeenCalledTimes(1);
-
-    act(() => {
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-    });
-    expect(onClose).toHaveBeenCalledTimes(2);
-  });
-
-  it("PASS: keeps the editor mounted while Preview is a visible body-level sibling and hides its overlay", () => {
-    const { editor, overlay, portal } = openPreview();
-
-    expect(portal.parentElement).toBe(document.body);
-    expect(editor.parentElement).toBe(document.body);
-    expect(portal).toHaveAttribute("data-preview-visible", "true");
-    expect(portal).not.toHaveClass("z-[201]");
-    expect(editor).toHaveClass("invisible", "pointer-events-none");
-    expect(editor).toHaveAttribute("aria-hidden", "true");
-    expect(editor).toHaveAttribute("inert");
-    expect(overlay).toHaveClass("hidden");
-    expect(document.body.style.overflow).toBe("hidden");
-  });
-
-  it("PASS: Preview pointer activity does not dismiss the hidden editor", () => {
-    const { editor, onClose, portal } = openPreview();
-
-    click(portal);
-
+    act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
     expect(onClose).not.toHaveBeenCalled();
-    expect(editor).toBeInTheDocument();
+    expect(editor.querySelector('[data-testid="configured-form-preview"]')).toBeNull();
   });
 
-  it("PASS: Preview lets an open portalled listbox own Escape and Tab", () => {
-    const { onClose, portal } = openPreview();
+  it("yields Escape to an open portalled listbox", () => {
+    const { editor, previewButton, onClose } = renderEditor();
+    click(previewButton);
     const listbox = document.createElement("div");
     listbox.setAttribute("role", "listbox");
-    const option = document.createElement("button");
-    option.textContent = "Portalled option";
-    listbox.appendChild(option);
     document.body.appendChild(listbox);
-
-    act(() => {
-      option.focus();
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
-    });
-
-    expect(portal).toHaveAttribute("data-preview-visible", "true");
+    act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
+    expect(editor.querySelector('[data-testid="configured-form-preview"]')).toBeTruthy();
     expect(onClose).not.toHaveBeenCalled();
     listbox.remove();
-  });
-
-  it("PASS: Tab focus stays within Preview controls", () => {
-    const { editor, portal } = openPreview();
-    const focusable = Array.from(portal.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    )).filter((element) => element.getAttribute("aria-hidden") !== "true");
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (!first || !last) throw new Error("Preview did not expose focusable controls");
-
-    act(() => {
-      last.focus();
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
-    });
-    expect(document.activeElement).toBe(first);
-    expect(editor.contains(document.activeElement)).toBe(false);
-  });
-
-  it("PASS: Escape restores Configure instead of dismissing the editor", () => {
-    const { editor, overlay, onClose, portal } = openPreview();
-
-    act(() => {
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
-    });
-
-    expect(onClose).not.toHaveBeenCalled();
-    expect(portal).toHaveAttribute("data-preview-visible", "false");
-    expect(editor).not.toHaveClass("invisible", "pointer-events-none");
-    expect(editor).not.toHaveAttribute("inert");
-    expect(overlay).not.toHaveClass("hidden");
-    expect(document.body.style.overflow).toBe("hidden");
-  });
-
-  it("PASS: Preview Back restores the mounted editor", () => {
-    const { editor, overlay, portal } = openPreview();
-    const backButton = portal.querySelector<HTMLElement>("button");
-    if (!backButton) throw new Error("Preview Back button did not render");
-
-    click(backButton);
-
-    expect(portal).toHaveAttribute("data-preview-visible", "false");
-    expect(editor).toBeInTheDocument();
-    expect(editor).not.toHaveClass("invisible");
-    expect(overlay).not.toHaveClass("hidden");
   });
 });

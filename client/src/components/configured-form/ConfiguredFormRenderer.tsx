@@ -112,6 +112,7 @@ export interface ConfiguredFormRendererProps {
   selectedVesselTypeUuid?: string;
   onSelectedVesselTypeUuidChange?: (value: string) => void;
   onBack?: () => void;
+  embedded?: boolean;
   selectedPartUuid?: string;
   onSelectedPartUuidChange?: (value: string) => void;
   expandedSections?: Record<string, boolean>;
@@ -518,6 +519,8 @@ export function ConfiguredFormRenderer({
   selectedVesselTypeUuid,
   onSelectedVesselTypeUuidChange,
   onBack,
+  embedded = false,
+  selectedPartUuid,
   className = "",
 }: ConfiguredFormRendererProps) {
   const [internalVesselTypeUuid, setInternalVesselTypeUuid] = useState("all");
@@ -567,6 +570,81 @@ export function ConfiguredFormRenderer({
     letter: part.partCode || String(index + 1),
   }));
 
+  const renderPreviewContent = (activeSection: string) => {
+    const selectedPart = parts.find((part) => part.formPartUuid === activeSection);
+    const selectedSections = selectedPart ? structures[selectedPart.formPartUuid] || [] : [];
+
+    return (
+      <>
+        <div className="flex flex-wrap items-end justify-between gap-4" data-testid="preview-only-banner">
+          <div>
+            <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Preview only</p>
+            <p className="text-xs">Inputs are interactive for review, but nothing is saved.</p>
+          </div>
+          <SAILFormField label="Vessel type" className="min-w-[210px]" >
+            <div data-testid="select-preview-vessel-type">
+              <SAILSelect value={selectedVessel} onValueChange={setVesselType} placeholder="All vessel types">
+                <SelectItem value="all">All vessel types</SelectItem>
+                {vesselOptions.map((option) => <SelectItem key={option.uuid} value={option.uuid}>{option.label}</SelectItem>)}
+              </SAILSelect>
+            </div>
+          </SAILFormField>
+        </div>
+
+        {!selectedPart ? (
+          <InlineMissing testId="preview-no-form-parts">No form parts are configured.</InlineMissing>
+        ) : selectedPart.partType === "fixed" ? (
+          <FixedPartPlaceholder part={selectedPart} />
+        ) : (
+          <div className="space-y-5">
+            {selectedVessel !== "all" && (
+              <p className="text-xs">
+                Sections restricted to another vessel type remain marked as not applicable for {selectedVesselLabel}.
+              </p>
+            )}
+            {selectedSections.length === 0 && (
+              <InlineMissing testId={`preview-no-sections-${selectedPart.partCode}`}>
+                No sections configured for this part.
+              </InlineMissing>
+            )}
+            {selectedSections.map((section, sectionIndex) => {
+              const sectionId = section.clientKey || section.section_uuid || `${selectedPart.formPartUuid}-section-${sectionIndex + 1}`;
+              const isApplicable = selectedVessel === "all"
+                || section.applicable_vessel_types.length === 0
+                || section.applicable_vessel_types.includes(selectedVessel);
+              return (
+                <ConfiguredSection
+                  key={sectionId}
+                  section={section}
+                  sectionId={sectionId}
+                  roles={roles}
+                  departments={departments}
+                  vesselTypeLabel={selectedVesselLabel}
+                  isApplicable={isApplicable}
+                  isExpanded={internalExpandedSections[sectionId] !== false}
+                  onToggleExpanded={() => setInternalExpandedSections((current) => ({
+                    ...current,
+                    [sectionId]: !(current[sectionId] !== false),
+                  }))}
+                  answers={answers}
+                  setAnswer={setAnswer}
+                />
+              );
+            })}
+          </div>
+        )}
+      </>
+    );
+  };
+
+  if (embedded) {
+    return (
+      <div className={className} data-testid="configured-form-preview" style={{ fontFamily: sailDesignSystem.typography.fontFamily }}>
+        {renderPreviewContent(selectedPartUuid || baseSections[0]?.id || "")}
+      </div>
+    );
+  }
+
   return (
     <div className={className} data-testid="configured-form-preview" style={{ fontFamily: sailDesignSystem.typography.fontFamily }}>
       <BaseSubmoduleForm
@@ -578,72 +656,7 @@ export function ConfiguredFormRenderer({
         onSubmit={() => undefined}
         hideSaveDraft
       >
-        {({ activeSection }) => {
-          const selectedPart = parts.find((part) => part.formPartUuid === activeSection);
-          const selectedSections = selectedPart ? structures[selectedPart.formPartUuid] || [] : [];
-
-          return (
-            <>
-              <div className="flex flex-wrap items-end justify-between gap-4" data-testid="preview-only-banner">
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Preview only</p>
-                  <p className="text-xs">Inputs are interactive for review, but nothing is saved.</p>
-                </div>
-                <SAILFormField label="Vessel type" className="min-w-[210px]" >
-                  <div data-testid="select-preview-vessel-type">
-                    <SAILSelect value={selectedVessel} onValueChange={setVesselType} placeholder="All vessel types">
-                      <SelectItem value="all">All vessel types</SelectItem>
-                      {vesselOptions.map((option) => <SelectItem key={option.uuid} value={option.uuid}>{option.label}</SelectItem>)}
-                    </SAILSelect>
-                  </div>
-                </SAILFormField>
-              </div>
-
-              {!selectedPart ? (
-                <InlineMissing testId="preview-no-form-parts">No form parts are configured.</InlineMissing>
-              ) : selectedPart.partType === "fixed" ? (
-                <FixedPartPlaceholder part={selectedPart} />
-              ) : (
-                <div className="space-y-5">
-                  {selectedVessel !== "all" && (
-                    <p className="text-xs">
-                      Sections restricted to another vessel type remain marked as not applicable for {selectedVesselLabel}.
-                    </p>
-                  )}
-                  {selectedSections.length === 0 && (
-                    <InlineMissing testId={`preview-no-sections-${selectedPart.partCode}`}>
-                      No sections configured for this part.
-                    </InlineMissing>
-                  )}
-                  {selectedSections.map((section, sectionIndex) => {
-                    const sectionId = section.clientKey || section.section_uuid || `${selectedPart.formPartUuid}-section-${sectionIndex + 1}`;
-                    const isApplicable = selectedVessel === "all"
-                      || section.applicable_vessel_types.length === 0
-                      || section.applicable_vessel_types.includes(selectedVessel);
-                    return (
-                      <ConfiguredSection
-                        key={sectionId}
-                        section={section}
-                        sectionId={sectionId}
-                        roles={roles}
-                        departments={departments}
-                        vesselTypeLabel={selectedVesselLabel}
-                        isApplicable={isApplicable}
-                        isExpanded={internalExpandedSections[sectionId] !== false}
-                        onToggleExpanded={() => setInternalExpandedSections((current) => ({
-                          ...current,
-                          [sectionId]: !(current[sectionId] !== false),
-                        }))}
-                        answers={answers}
-                        setAnswer={setAnswer}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          );
-        }}
+        {({ activeSection }) => renderPreviewContent(activeSection)}
       </BaseSubmoduleForm>
     </div>
   );

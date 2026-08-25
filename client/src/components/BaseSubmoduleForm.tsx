@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { sailDesignSystem } from "@/config/sailDesignSystem";
+import { SharedFormShell } from "@/components/SharedFormShell";
 
 interface BaseSubmoduleFormProps {
   title: string;
@@ -84,165 +85,85 @@ export const BaseSubmoduleForm: React.FC<BaseSubmoduleFormProps> = ({
     });
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
-      <div className="bg-white rounded-lg w-full h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b p-3 sm:p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-lg sm:text-xl font-bold">{title}</h1>
-          </div>
-          {!hideSaveDraft && (
-            <div className="flex gap-1 sm:gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={disableSaveDraft}
-                data-testid="button-save-draft"
-                onClick={() => form.handleSubmit(onSubmit)()}
-                className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex"
-                style={{ backgroundColor: sailDesignSystem.colors.primary }}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save Draft
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={disableSaveDraft}
-                data-testid="button-save-draft-mobile"
-                onClick={() => form.handleSubmit(onSubmit)()}
-                className="sm:hidden"
-              >
-                <Save className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Mobile Horizontal Stepper */}
-        <div className="block sm:hidden bg-white border-b px-4 py-3">
-          <nav className="flex justify-center space-x-4">
-            {sections.map((section, index) => {
-              const isActive = activeSection === section.id;
-              const sectionLetter = section.letter || (section.id.length <= 2 ? section.id.toUpperCase() : section.id.charAt(0).toUpperCase());
-              
-              return (
-                <div key={section.id} className="flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => setActiveSection(section.id)}
-                    className="flex items-center justify-center"
-                    data-testid={`button-step-mobile-${section.id}`}
-                  >
-                    <span 
-                      className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
-                        isActive 
-                          ? "bg-blue-600 text-white" 
-                          : "bg-gray-600 text-white"
-                      }`}
-                    >
-                      {sectionLetter}
-                    </span>
-                  </button>
-                  {index < sections.length - 1 && (
-                    <div className="w-8 h-0.5 bg-gray-300 mx-2"></div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left Sidebar - Enhanced Stepper (Hidden on Mobile) */}
-          <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-gray-50 border-r overflow-y-auto">
-            <div className="p-3">
-              <nav className="space-y-1">
-                {sections.map((section, index) => {
-                  const isActive = activeSection === section.id;
-                  const isCompleted = false; // You can add completion logic here
-                  const sectionLetter = section.letter || (section.id.length <= 2 ? section.id.toUpperCase() : section.id.charAt(0).toUpperCase());
-                  
-                  return (
-                    <div key={section.id} className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setActiveSection(section.id)}
-                        className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
-                          isActive 
-                            ? "bg-blue-50 border-blue-600 text-blue-700" 
-                            : "border-transparent hover:bg-gray-100 text-gray-700"
-                        }`}
-                        aria-current={isActive ? "step" : undefined}
-                        data-testid={`button-step-${section.id}`}
-                      >
-                        <span 
-                          className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
-                            isActive 
-                              ? "bg-blue-600 text-white" 
-                              : "bg-gray-600 text-white"
-                          }`}
-                        >
-                          {sectionLetter}
-                        </span>
-                        <span 
-                          className="hidden xl:block ml-3 text-left text-sm leading-tight flex-1"
-                          data-testid={`text-step-title-${section.id}`}
-                          title={section.title}
-                          style={{ 
-                            wordBreak: 'break-word',
-                            lineHeight: '1.2',
-                            maxWidth: '8rem',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden'
-                          }}
-                        >
-                          {section.title.replace(/^Part [A-Z]: /, "")}
-                        </span>
-                      </button>
-                      {index < sections.length - 1 && (
-                        <div className="absolute left-7 top-12 w-0.5 h-3 bg-gray-300"></div>
-                      )}
-                    </div>
-                  );
-                })}
-              </nav>
-            </div>
-          </aside>
-
-          {/* Form Content */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6" style={{ backgroundColor: sailDesignSystem.colors.background }}>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
-                {children({ activeSection, form, showConfirmDialog })}
-              </form>
-            </Form>
-          </div>
-        </div>
+  const header = (
+    <div className="sticky top-0 bg-white border-b p-3 sm:p-4 flex items-center justify-between">
+      <div className="flex items-center gap-2 sm:gap-4">
+        <Button variant="ghost" size="icon" onClick={onClose}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <h1 className="text-lg sm:text-xl font-bold">{title}</h1>
       </div>
-
-      {/* Confirmation Dialog */}
-      <AlertDialog open={confirmDialog.isOpen} onOpenChange={closeConfirmDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {confirmDialog.description}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeConfirmDialog}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDialog.onConfirm}>Yes</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {!hideSaveDraft && (
+        <div className="flex gap-1 sm:gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disableSaveDraft}
+            data-testid="button-save-draft"
+            onClick={() => form.handleSubmit(onSubmit)()}
+            className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex"
+            style={{ backgroundColor: sailDesignSystem.colors.primary }}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            Save Draft
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disableSaveDraft}
+            data-testid="button-save-draft-mobile"
+            onClick={() => form.handleSubmit(onSubmit)()}
+            className="sm:hidden"
+          >
+            <Save className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
+  );
+
+  const footer = (
+    <div className="border-t bg-[#f8fafc] px-6 py-3 flex items-center justify-between">
+      <Button variant="ghost" onClick={onClose}>
+        <ArrowLeft className="h-4 w-4 mr-2" /> Back
+      </Button>
+    </div>
+  );
+
+  const confirmation = (
+    <AlertDialog open={confirmDialog.isOpen} onOpenChange={closeConfirmDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {confirmDialog.description}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={closeConfirmDialog}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDialog.onConfirm}>Yes</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
+  return (
+    <SharedFormShell
+      title={title}
+      sections={sections}
+      onClose={onClose}
+      header={header}
+      footer={footer}
+      confirmDialog={confirmation}
+      activeSection={activeSection}
+      onActiveSectionChange={setActiveSection}
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+          {children({ activeSection, form, showConfirmDialog })}
+        </form>
+      </Form>
+    </SharedFormShell>
   );
 };
 
