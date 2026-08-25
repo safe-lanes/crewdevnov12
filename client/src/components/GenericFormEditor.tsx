@@ -7,7 +7,7 @@ import { getCrewUserId } from "@/lib/crewUser";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfiguredFormRenderer } from "@/components/configured-form/ConfiguredFormRenderer";
 import { SharedFormShell } from "@/components/SharedFormShell";
+import { FormTable } from "@/components/BaseSubmoduleForm";
+import { getTableClasses, sailDesignSystem } from "@/config/sailDesignSystem";
 
 export interface ConfigurableFormPart {
   formPartUuid: string;
@@ -938,6 +940,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       <div className="text-xs text-gray-500">{isDirty ? "Unsaved changes" : "All changes saved"} · option values stay hidden and stable after creation</div>
     </div>
   );
+  const tableClasses = getTableClasses();
 
   return (
     <>
@@ -975,16 +978,19 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
               />
             ) : (
-              <>
-                <div className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur px-6 py-3 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div className="text-lg font-semibold text-gray-800">{selectedPart?.partCode} · {selectedPart?.partTitle}</div>
-                  <div className="text-xs text-gray-500">
-                    {currentSections.length} section{currentSections.length === 1 ? "" : "s"} ·
-                    {" "}{currentSections.reduce((sum, section) => sum + section.questions.length, 0)} points
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
+               <>
+                 <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-4 backdrop-blur">
+                   <div className="flex flex-wrap items-start justify-between gap-3">
+                     <div className="min-w-0 flex-1">
+                       <div className="text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>
+                         {selectedPart?.partCode} · {selectedPart?.partTitle}
+                       </div>
+                       <div className="mt-1 text-sm" style={{ color: sailDesignSystem.colors.textSecondary }}>
+                         {currentSections.length} section{currentSections.length === 1 ? "" : "s"} ·
+                         {" "}{currentSections.reduce((sum, section) => sum + section.questions.length, 0)} points
+                       </div>
+                     </div>
+                     <div className="flex items-center gap-2">
                    {viewMode === "configure" && !canEdit && (
                     <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800" data-testid="released-read-only-message">
                       <AlertCircle className="h-4 w-4" />
@@ -1001,8 +1007,10 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                       <Save className="h-4 w-4 mr-2" /> {isSaving ? "Saving..." : "Save"}
                     </Button>
                   )}
-                </div>
-              </div>
+                     </div>
+                   </div>
+                   <div className="mt-3 h-0.5 w-full" style={{ backgroundColor: sailDesignSystem.colors.headerText }} />
+                 </div>
 
               {saveError && (
                 <div className="mx-6 mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 flex items-start gap-2" data-testid="text-form-save-error">
@@ -1017,158 +1025,163 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                  ) : (
                    <div className="p-6 space-y-5">
                   {currentSections.map((section, sectionIndex) => (
-                    <Card key={section.clientKey} className="border-gray-200 shadow-sm" data-testid={`card-section-${sectionIndex + 1}`}>
-                      <CardHeader className="py-4 px-5 bg-[#f8fafc] border-b">
-                        <div className="flex items-start gap-3">
-                          <Badge className="mt-1 bg-[#16569e] hover:bg-[#16569e]">{section.section_code}</Badge>
-                          <div className="flex-1 min-w-0">
-                            <Input
-                              value={section.section_title}
-                              disabled={!canEdit}
-                              onChange={(event) => updateSection(selectedPart.formPartUuid, sectionIndex, (value) => ({ ...value, section_title: event.target.value }))}
-                              placeholder="Section title"
-                              className={`h-9 bg-white font-semibold ${!section.section_title.trim() && canEdit ? "border-red-300" : ""}`}
-                              data-testid={`input-section-title-${sectionIndex + 1}`}
-                            />
-                            {!section.section_title.trim() && canEdit && <p className="text-[11px] text-red-600 mt-1">Section title is required.</p>}
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              <Badge variant="outline" className="text-[10px] font-normal">
-                                {section.applicable_vessel_types.length === 0 ? "All vessel types" : `${section.applicable_vessel_types.length} vessel type(s)`}
-                              </Badge>
-                              {section.responsible_mode === "role" ? (() => {
-                                const summary = roleSummary(roles, section.responsible_role_uuid);
-                                const statusClassName = summary.status === "missing"
-                                  ? "border-red-300 bg-red-50 text-red-700"
-                                  : "border-amber-300 bg-amber-50 text-amber-800";
-                                const statusLabel = summary.status === "inactive"
-                                  ? "Inactive role"
-                                  : summary.status === "deleted"
-                                    ? "Deleted role"
-                                    : "Role not found";
-                                return (
-                                  <>
-                                    <Badge variant="outline" className="text-[10px] font-normal">
-                                      {`Role: ${summary.title}`}
-                                    </Badge>
-                                    {summary.status && (
-                                      <Badge
-                                        variant="outline"
-                                        className={`text-[10px] font-medium ${statusClassName}`}
-                                        data-testid={`badge-responsible-role-status-${sectionIndex + 1}`}
-                                      >
-                                        <AlertCircle className="mr-1 h-3 w-3" />
-                                        {statusLabel}
-                                      </Badge>
-                                    )}
-                                  </>
-                                );
-                              })() : (
-                                <Badge variant="outline" className="text-[10px] font-normal">
-                                  {section.responsible_mode === "department" ? `Dept: ${section.responsible_department || "Not set"}` : "No responsible party"}
-                                </Badge>
-                              )}
-                              {section.comment_box_required && <Badge variant="outline" className="text-[10px] font-normal">Comment required</Badge>}
-                              {section.signature_required && <Badge variant="outline" className="text-[10px] font-normal">Signature required</Badge>}
-                            </div>
-                          </div>
-                          {canEdit && (
-                            <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={sectionIndex === 0} onClick={() => moveSection(selectedPart.formPartUuid, sectionIndex, -1)} data-testid={`button-move-section-up-${sectionIndex + 1}`}><ArrowUp className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" disabled={sectionIndex === currentSections.length - 1} onClick={() => moveSection(selectedPart.formPartUuid, sectionIndex, 1)} data-testid={`button-move-section-down-${sectionIndex + 1}`}><ArrowDown className="h-4 w-4" /></Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => requestDelete("Delete section?", "This will also remove all points in the section.", () => updatePartTree(selectedPart.formPartUuid, (sections) => sections.filter((_, index) => index !== sectionIndex)))} data-testid={`button-delete-section-${sectionIndex + 1}`}><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                          )}
-                        </div>
-                        {canEdit && (
-                          <div className="flex flex-wrap gap-2 pt-3">
-                            <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "vessel")} data-testid={`button-section-vessel-settings-${sectionIndex + 1}`}><Settings2 className="h-3.5 w-3.5 mr-1.5" /> Vessel types</Button>
-                            <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "responsible")} data-testid={`button-section-responsible-settings-${sectionIndex + 1}`}>Responsible party</Button>
-                            <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "comment")} data-testid={`button-section-comment-settings-${sectionIndex + 1}`}>Comment box</Button>
-                            <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "signature")} data-testid={`button-section-signature-settings-${sectionIndex + 1}`}>Signature</Button>
-                          </div>
-                        )}
-                      </CardHeader>
-                      <CardContent className="p-5 space-y-3">
-                        {section.questions.map((question, questionIndex) => (
-                          <div key={question.clientKey} className="rounded-md border border-gray-200 p-4" data-testid={`card-point-${sectionIndex + 1}-${questionIndex + 1}`}>
-                            <div className="flex gap-3">
-                              <Badge variant="secondary" className="mt-1 shrink-0 font-mono">{question.question_code}</Badge>
-                              <div className="min-w-0 flex-1 space-y-3">
-                                <Textarea
-                                  value={question.question_text}
-                                  disabled={!canEdit}
-                                  onChange={(event) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, question_text: event.target.value }))}
-                                  onKeyDown={(event) => {
-                                    if (event.key === "Enter" && !event.shiftKey && canEdit) {
-                                      event.preventDefault();
-                                      addQuestion(selectedPart.formPartUuid, sectionIndex);
-                                    }
-                                  }}
-                                  placeholder="Enter point text, then press Enter for the next point"
-                                  className={`min-h-[42px] resize-y ${!question.question_text.trim() && canEdit ? "border-red-300" : ""}`}
-                                  data-testid={`textarea-point-text-${sectionIndex + 1}-${questionIndex + 1}`}
-                                />
-                                {!question.question_text.trim() && canEdit && <p className="text-[11px] text-red-600">Point text is required.</p>}
-                                <div className="flex flex-wrap items-center gap-3">
-                                  <Select value={question.response_type} disabled={!canEdit} onValueChange={(value) => changeResponseType(selectedPart.formPartUuid, sectionIndex, questionIndex, value)}>
-                                    <SelectTrigger className="w-[180px] h-9" data-testid={`select-response-type-${sectionIndex + 1}-${questionIndex + 1}`}><SelectValue /></SelectTrigger>
-                                    <SelectContent>{RESPONSE_TYPES.map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
-                                  </Select>
-                                  <label className="flex items-center gap-2 text-xs text-gray-700">
-                                    <Checkbox checked={question.is_mandatory} disabled={!canEdit} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, is_mandatory: checked === true }))} data-testid={`checkbox-point-mandatory-${sectionIndex + 1}-${questionIndex + 1}`} />
-                                    Mandatory
-                                  </label>
-                                  <label className="flex items-center gap-2 text-xs text-gray-700">
-                                    <Checkbox checked={question.comment_enabled} disabled={!canEdit} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, comment_enabled: checked === true }))} data-testid={`checkbox-point-comment-${sectionIndex + 1}-${questionIndex + 1}`} />
-                                    Comment enabled
-                                  </label>
-                                  <span className="text-[11px] text-gray-400">{responseLabel(question.response_type)}</span>
-                                </div>
-                                {(question.response_type === "single_select" || question.response_type === "multi_select") && (
-                                  <div className="rounded-md bg-gray-50 p-3 space-y-2" data-testid={`option-editor-${sectionIndex + 1}-${questionIndex + 1}`}>
-                                    <div className="flex items-center justify-between">
-                                      <div className="text-xs font-semibold text-gray-700">Options</div>
-                                      {canEdit && <Button variant="outline" size="sm" onClick={() => addOption(selectedPart.formPartUuid, sectionIndex, questionIndex)} data-testid={`button-add-option-${sectionIndex + 1}-${questionIndex + 1}`}><Plus className="h-3.5 w-3.5 mr-1" /> Add option</Button>}
-                                    </div>
-                                    {question.options.map((option, optionIndex) => (
-                                      <div className="flex items-center gap-2" key={option.clientKey}>
-                                        <span className="w-5 text-center text-xs text-gray-400">{optionIndex + 1}</span>
-                                        <Input
-                                          value={option.option_label}
-                                          disabled={!canEdit}
-                                          onChange={(event) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({
-                                            ...value,
-                                            options: value.options.map((item, index) => index === optionIndex ? { ...item, option_label: event.target.value } : item),
-                                          }))}
-                                          className="h-8 bg-white text-sm"
-                                          placeholder="Option label"
-                                          data-testid={`input-option-label-${sectionIndex + 1}-${questionIndex + 1}-${optionIndex + 1}`}
-                                        />
-                                        {canEdit && (
-                                          <>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={optionIndex === 0} onClick={() => moveOption(selectedPart.formPartUuid, sectionIndex, questionIndex, optionIndex, -1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={optionIndex === question.options.length - 1} onClick={() => moveOption(selectedPart.formPartUuid, sectionIndex, questionIndex, optionIndex, 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, options: value.options.filter((_, index) => index !== optionIndex) }))}><X className="h-3.5 w-3.5" /></Button>
-                                          </>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                              {canEdit && (
-                                <div className="flex flex-col gap-1">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" disabled={questionIndex === 0} onClick={() => moveQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, -1)} data-testid={`button-move-point-up-${sectionIndex + 1}-${questionIndex + 1}`}><ArrowUp className="h-4 w-4" /></Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" disabled={questionIndex === section.questions.length - 1} onClick={() => moveQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, 1)} data-testid={`button-move-point-down-${sectionIndex + 1}-${questionIndex + 1}`}><ArrowDown className="h-4 w-4" /></Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => requestDelete("Delete point?", "This point and its options will be removed.", () => updateSection(selectedPart.formPartUuid, sectionIndex, (value) => ({ ...value, questions: value.questions.filter((_, index) => index !== questionIndex) })))} data-testid={`button-delete-point-${sectionIndex + 1}-${questionIndex + 1}`}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                        {section.questions.length === 0 && <div className="text-sm text-gray-400 py-3 text-center border border-dashed rounded-md">No points yet. Add the first point below.</div>}
-                        {canEdit && <Button variant="outline" onClick={() => addQuestion(selectedPart.formPartUuid, sectionIndex)} data-testid={`button-add-point-${sectionIndex + 1}`}><Plus className="h-4 w-4 mr-2" /> Add New Point</Button>}
-                      </CardContent>
+                     <Card key={section.clientKey} className="bg-white shadow-md" data-testid={`card-section-${sectionIndex + 1}`}>
+                       <CardContent className="p-6">
+                         <div className="pb-4 mb-6">
+                           <div className="flex items-start justify-between gap-3">
+                             <div className="min-w-0 flex-1">
+                               <div className="flex items-center gap-2">
+                                 <span className="shrink-0 text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{section.section_code}</span>
+                                 <Input
+                                   value={section.section_title}
+                                   disabled={!canEdit}
+                                   onChange={(event) => updateSection(selectedPart.formPartUuid, sectionIndex, (value) => ({ ...value, section_title: event.target.value }))}
+                                   placeholder="Section title"
+                                   className={`h-9 border-0 bg-transparent px-0 text-xl font-semibold shadow-none focus-visible:ring-0 ${!section.section_title.trim() && canEdit ? "border-b border-red-300" : ""}`}
+                                   data-testid={`input-section-title-${sectionIndex + 1}`}
+                                 />
+                               </div>
+                               {!section.section_title.trim() && canEdit && <p className="mt-1 text-[11px] text-red-600">Section title is required.</p>}
+                               <div className="mt-2 flex flex-wrap gap-1.5">
+                                 <Badge variant="outline" className="text-[10px] font-normal">
+                                   {section.applicable_vessel_types.length === 0 ? "All vessel types" : `${section.applicable_vessel_types.length} vessel type(s)`}
+                                 </Badge>
+                                 {section.responsible_mode === "role" ? (() => {
+                                   const summary = roleSummary(roles, section.responsible_role_uuid);
+                                   const statusClassName = summary.status === "missing"
+                                     ? "border-red-300 bg-red-50 text-red-700"
+                                     : "border-amber-300 bg-amber-50 text-amber-800";
+                                   const statusLabel = summary.status === "inactive"
+                                     ? "Inactive role"
+                                     : summary.status === "deleted"
+                                       ? "Deleted role"
+                                       : "Role not found";
+                                   return (
+                                     <>
+                                       <Badge variant="outline" className="text-[10px] font-normal">{`Role: ${summary.title}`}</Badge>
+                                       {summary.status && (
+                                         <Badge variant="outline" className={`text-[10px] font-medium ${statusClassName}`} data-testid={`badge-responsible-role-status-${sectionIndex + 1}`}>
+                                           <AlertCircle className="mr-1 h-3 w-3" />{statusLabel}
+                                         </Badge>
+                                       )}
+                                     </>
+                                   );
+                                 })() : (
+                                   <Badge variant="outline" className="text-[10px] font-normal">
+                                     {section.responsible_mode === "department" ? `Dept: ${section.responsible_department || "Not set"}` : "No responsible party"}
+                                   </Badge>
+                                 )}
+                                 {section.comment_box_required && <Badge variant="outline" className="text-[10px] font-normal">Comment required</Badge>}
+                                 {section.signature_required && <Badge variant="outline" className="text-[10px] font-normal">Signature required</Badge>}
+                               </div>
+                             </div>
+                             {canEdit && (
+                               <div className="flex items-center gap-1">
+                                 <Button variant="ghost" size="icon" className="h-8 w-8" disabled={sectionIndex === 0} onClick={() => moveSection(selectedPart.formPartUuid, sectionIndex, -1)} data-testid={`button-move-section-up-${sectionIndex + 1}`}><ArrowUp className="h-4 w-4" /></Button>
+                                 <Button variant="ghost" size="icon" className="h-8 w-8" disabled={sectionIndex === currentSections.length - 1} onClick={() => moveSection(selectedPart.formPartUuid, sectionIndex, 1)} data-testid={`button-move-section-down-${sectionIndex + 1}`}><ArrowDown className="h-4 w-4" /></Button>
+                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => requestDelete("Delete section?", "This will also remove all points in the section.", () => updatePartTree(selectedPart.formPartUuid, (sections) => sections.filter((_, index) => index !== sectionIndex)))} data-testid={`button-delete-section-${sectionIndex + 1}`}><Trash2 className="h-4 w-4" /></Button>
+                               </div>
+                             )}
+                           </div>
+                           {canEdit && (
+                             <div className="mt-4 flex flex-wrap gap-2">
+                               <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "vessel")} data-testid={`button-section-vessel-settings-${sectionIndex + 1}`}><Settings2 className="h-3.5 w-3.5 mr-1.5" /> Vessel types</Button>
+                               <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "responsible")} data-testid={`button-section-responsible-settings-${sectionIndex + 1}`}>Responsible party</Button>
+                               <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "comment")} data-testid={`button-section-comment-settings-${sectionIndex + 1}`}>Comment box</Button>
+                               <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "signature")} data-testid={`button-section-signature-settings-${sectionIndex + 1}`}>Signature</Button>
+                             </div>
+                           )}
+                           <div className="mt-4 h-0.5 w-full" style={{ backgroundColor: sailDesignSystem.colors.headerText }} />
+                         </div>
+                         {section.questions.length > 0 ? (
+                           <FormTable headers={["Point", "Response type / options", "Flags", "Actions"]}>
+                             {section.questions.map((question, questionIndex) => (
+                               <tr key={question.clientKey} className={tableClasses.row} data-testid={`card-point-${sectionIndex + 1}-${questionIndex + 1}`}>
+                                 <td className={`${tableClasses.cell} align-top`}>
+                                   <div className="mb-1 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{question.question_code}</div>
+                                   <Textarea
+                                     value={question.question_text}
+                                     disabled={!canEdit}
+                                     onChange={(event) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, question_text: event.target.value }))}
+                                     onKeyDown={(event) => {
+                                       if (event.key === "Enter" && !event.shiftKey && canEdit) {
+                                         event.preventDefault();
+                                         addQuestion(selectedPart.formPartUuid, sectionIndex);
+                                       }
+                                     }}
+                                     placeholder="Enter point text, then press Enter for the next point"
+                                     className={`min-h-[42px] resize-y border-0 bg-transparent px-0 text-sm font-semibold text-[#4f5863] shadow-none focus-visible:ring-0 ${!question.question_text.trim() && canEdit ? "border-b border-red-300" : ""}`}
+                                     data-testid={`textarea-point-text-${sectionIndex + 1}-${questionIndex + 1}`}
+                                   />
+                                   {!question.question_text.trim() && canEdit && <p className="text-[11px] text-red-600">Point text is required.</p>}
+                                 </td>
+                                 <td className={`${tableClasses.cell} align-top`}>
+                                   <Select value={question.response_type} disabled={!canEdit} onValueChange={(value) => changeResponseType(selectedPart.formPartUuid, sectionIndex, questionIndex, value)}>
+                                     <SelectTrigger className="h-9 w-full min-w-[160px]" data-testid={`select-response-type-${sectionIndex + 1}-${questionIndex + 1}`}><SelectValue /></SelectTrigger>
+                                     <SelectContent>{RESPONSE_TYPES.map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
+                                   </Select>
+                                   <div className="mt-2 text-[11px] text-gray-400">{responseLabel(question.response_type)}</div>
+                                   {(question.response_type === "single_select" || question.response_type === "multi_select") && (
+                                     <div className="mt-3 space-y-2 border-t pt-3" data-testid={`option-editor-${sectionIndex + 1}-${questionIndex + 1}`}>
+                                       <div className="flex items-center justify-between gap-2">
+                                         <div className="text-xs font-semibold text-gray-700">Options</div>
+                                         {canEdit && <Button variant="outline" size="sm" onClick={() => addOption(selectedPart.formPartUuid, sectionIndex, questionIndex)} data-testid={`button-add-option-${sectionIndex + 1}-${questionIndex + 1}`}><Plus className="h-3.5 w-3.5 mr-1" /> Add option</Button>}
+                                       </div>
+                                       {question.options.map((option, optionIndex) => (
+                                         <div className="flex items-center gap-2" key={option.clientKey}>
+                                           <span className="w-5 text-center text-xs text-gray-400">{optionIndex + 1}</span>
+                                           <Input
+                                             value={option.option_label}
+                                             disabled={!canEdit}
+                                             onChange={(event) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({
+                                               ...value,
+                                               options: value.options.map((item, index) => index === optionIndex ? { ...item, option_label: event.target.value } : item),
+                                             }))}
+                                             className="h-8 bg-white text-sm"
+                                             placeholder="Option label"
+                                             data-testid={`input-option-label-${sectionIndex + 1}-${questionIndex + 1}-${optionIndex + 1}`}
+                                           />
+                                           {canEdit && (
+                                             <>
+                                               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={optionIndex === 0} onClick={() => moveOption(selectedPart.formPartUuid, sectionIndex, questionIndex, optionIndex, -1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                                               <Button variant="ghost" size="icon" className="h-8 w-8" disabled={optionIndex === question.options.length - 1} onClick={() => moveOption(selectedPart.formPartUuid, sectionIndex, questionIndex, optionIndex, 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                                               <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, options: value.options.filter((_, index) => index !== optionIndex) }))}><X className="h-3.5 w-3.5" /></Button>
+                                             </>
+                                           )}
+                                         </div>
+                                       ))}
+                                     </div>
+                                   )}
+                                 </td>
+                                 <td className={`${tableClasses.cell} align-top`}>
+                                   <div className="space-y-2">
+                                     <label className="flex items-center gap-2 text-xs text-gray-700">
+                                       <Checkbox checked={question.is_mandatory} disabled={!canEdit} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, is_mandatory: checked === true }))} data-testid={`checkbox-point-mandatory-${sectionIndex + 1}-${questionIndex + 1}`} />
+                                       Mandatory
+                                     </label>
+                                     <label className="flex items-center gap-2 text-xs text-gray-700">
+                                       <Checkbox checked={question.comment_enabled} disabled={!canEdit} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, comment_enabled: checked === true }))} data-testid={`checkbox-point-comment-${sectionIndex + 1}-${questionIndex + 1}`} />
+                                       Comment enabled
+                                     </label>
+                                   </div>
+                                 </td>
+                                 <td className={`${tableClasses.cell} align-top`}>
+                                   {canEdit && (
+                                     <div className="flex items-center gap-1">
+                                       <Button variant="ghost" size="icon" className="h-8 w-8" disabled={questionIndex === 0} onClick={() => moveQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, -1)} data-testid={`button-move-point-up-${sectionIndex + 1}-${questionIndex + 1}`}><ArrowUp className="h-4 w-4" /></Button>
+                                       <Button variant="ghost" size="icon" className="h-8 w-8" disabled={questionIndex === section.questions.length - 1} onClick={() => moveQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, 1)} data-testid={`button-move-point-down-${sectionIndex + 1}-${questionIndex + 1}`}><ArrowDown className="h-4 w-4" /></Button>
+                                       <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => requestDelete("Delete point?", "This point and its options will be removed.", () => updateSection(selectedPart.formPartUuid, sectionIndex, (value) => ({ ...value, questions: value.questions.filter((_, index) => index !== questionIndex) })))} data-testid={`button-delete-point-${sectionIndex + 1}-${questionIndex + 1}`}><Trash2 className="h-4 w-4" /></Button>
+                                     </div>
+                                   )}
+                                 </td>
+                               </tr>
+                             ))}
+                           </FormTable>
+                         ) : (
+                           <div className="border border-dashed border-gray-300 py-6 text-center text-sm text-gray-400">No points yet. Add the first point below.</div>
+                         )}
+                         {canEdit && <Button variant="outline" className="mt-4" onClick={() => addQuestion(selectedPart.formPartUuid, sectionIndex)} data-testid={`button-add-point-${sectionIndex + 1}`}><Plus className="h-4 w-4 mr-2" /> Add New Point</Button>}
+                       </CardContent>
                     </Card>
                   ))}
                   {currentSections.length === 0 && (

@@ -3,9 +3,18 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GenericFormEditor } from "@/components/GenericFormEditor";
 
+const queryResults = vi.hoisted(() => new Map<string, unknown>());
+
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
-  return { ...actual, useQuery: () => ({ data: [], isLoading: false, refetch: vi.fn() }) };
+  return {
+    ...actual,
+    useQuery: (options: { queryKey?: unknown[] }) => ({
+      data: queryResults.get(String(options.queryKey?.[0])) ?? [],
+      isLoading: false,
+      refetch: vi.fn(),
+    }),
+  };
 });
 
 let root: Root | null = null;
@@ -16,6 +25,7 @@ function renderEditor() {
   document.body.appendChild(container);
   root = createRoot(container);
   const onClose = vi.fn();
+  const onSave = vi.fn();
   act(() => {
     root?.render(
       <GenericFormEditor
@@ -23,18 +33,59 @@ function renderEditor() {
         formName="Safety review"
         configurableParts={[{ formPartUuid: "part-b", partCode: "B", partTitle: "Deck briefing", partType: "configurable" }]}
         onClose={onClose}
-        onSave={vi.fn()}
+        onSave={onSave}
       />,
     );
   });
   const editor = document.body.querySelector<HTMLElement>('[data-testid="generic-form-editor"]');
   const previewButton = document.body.querySelector<HTMLButtonElement>('[data-testid="button-preview-mode"]');
   if (!editor || !previewButton) throw new Error("Editor did not render");
-  return { editor, previewButton, onClose };
+  return { editor, previewButton, onClose, onSave };
 }
 
 function click(element: HTMLElement) {
   act(() => element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
+}
+
+async function flushAsyncWork() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
+function loadEditableStructure() {
+  queryResults.set("/api/v2/admin/forms/99/versions", [{
+    fvUuid: "draft-version",
+    versionNo: "01",
+    versionDate: "01-Jan-2026",
+    status: "draft",
+  }]);
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    if (url.includes("/structure")) {
+      return {
+        ok: true,
+        json: async () => ({
+          sections: [{
+            section_code: "B1",
+            section_title: "Navigation readiness",
+            applicable_vessel_types: [],
+            responsible_mode: "not_applicable",
+            comment_box_required: false,
+            signature_required: false,
+            questions: [{
+              question_code: "B1.1",
+              question_text: "Bridge team briefing completed",
+              response_type: "single_select",
+              is_mandatory: true,
+              comment_enabled: true,
+              options: [{ option_label: "Yes", option_value: "yes" }],
+            }],
+          }],
+        }),
+      };
+    }
+    return { ok: true, json: async () => ({}) };
+  }));
 }
 
 afterEach(() => {
@@ -43,7 +94,9 @@ afterEach(() => {
   root = null;
   container = null;
   document.body.style.overflow = "";
+  queryResults.clear();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("GenericFormEditor shared Preview shell", () => {
@@ -75,5 +128,44 @@ describe("GenericFormEditor shared Preview shell", () => {
     expect(editor.querySelector('[data-testid="configured-form-preview"]')).toBeTruthy();
     expect(onClose).not.toHaveBeenCalled();
     listbox.remove();
+  });
+
+  it("renders editable Configure points as Preview-aligned table rows and retains save and dialog actions", async () => {
+    loadEditableStructure();
+    const { editor, previewButton, onSave } = renderEditor();
+    await flushAsyncWork();
+    await flushAsyncWork();
+
+    const point = editor.querySelector<HTMLElement>('[data-testid="card-point-1-1"]');
+    expect(point?.tagName).toBe("TR");
+    expect(point?.closest("table")).toBeTruthy();
+    expect(point?.querySelector('[data-testid="select-response-type-1-1"]')).toBeTruthy();
+    expect(point?.querySelector('[data-testid="checkbox-point-mandatory-1-1"]')).toBeTruthy();
+    expect(point?.querySelector('[data-testid="option-editor-1-1"]')).toBeTruthy();
+    expect(point?.querySelector('[data-slot="badge"]')).toBeNull();
+
+    const settingsButton = editor.querySelector<HTMLElement>('[data-testid="button-section-vessel-settings-1"]');
+    if (!settingsButton) throw new Error("Section settings button did not render");
+    click(settingsButton);
+    expect(document.body.querySelector('[data-testid="section-settings-dialog"]')).toBeTruthy();
+
+    const deleteButton = editor.querySelector<HTMLElement>('[data-testid="button-delete-point-1-1"]');
+    if (!deleteButton) throw new Error("Point delete button did not render");
+    click(deleteButton);
+    expect(document.body.textContent).toContain("Delete point?");
+
+    const cancelDelete = Array.from(document.body.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent === "Cancel");
+    if (!cancelDelete) throw new Error("Delete confirmation cancel button did not render");
+    click(cancelDelete);
+
+    const saveButton = editor.querySelector<HTMLElement>('[data-testid="button-save-form-structure"]');
+    if (!saveButton) throw new Error("Save button did not render");
+    click(saveButton);
+    await flushAsyncWork();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ formVersionUuid: "draft-version", savedParts: 1 }));
+
+    click(previewButton);
+    expect(editor.querySelector('[data-testid="configured-form-preview"]')).toBeTruthy();
   });
 });
