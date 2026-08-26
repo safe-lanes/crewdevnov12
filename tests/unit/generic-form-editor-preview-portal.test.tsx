@@ -31,7 +31,11 @@ function renderEditor() {
       <GenericFormEditor
         form={{ id: 99 } as any}
         formName="Safety review"
-        configurableParts={[{ formPartUuid: "part-b", partCode: "B", partTitle: "Deck briefing", partType: "configurable" }]}
+        configurableParts={[
+          { formPartUuid: "part-a", partCode: "A", partTitle: "Preparation", partType: "fixed" },
+          { formPartUuid: "part-b", partCode: "B", partTitle: "Deck briefing", partType: "configurable" },
+          { formPartUuid: "part-c", partCode: "C", partTitle: "Office review", partType: "fixed" },
+        ]}
         onClose={onClose}
         onSave={onSave}
       />,
@@ -70,7 +74,7 @@ function loadEditableStructure() {
             section_title: "Navigation readiness",
             applicable_vessel_types: [],
             responsible_mode: "not_applicable",
-            comment_box_required: false,
+            comment_box_required: true,
             signature_required: false,
             questions: [{
               question_code: "B1.1",
@@ -79,6 +83,20 @@ function loadEditableStructure() {
               is_mandatory: true,
               comment_enabled: true,
               options: [{ option_label: "Yes", option_value: "yes" }],
+            }, {
+              question_code: "B1.2",
+              question_text: "Crew observations",
+              response_type: "free_text",
+              is_mandatory: false,
+              comment_enabled: false,
+              options: [],
+            }, {
+              question_code: "B1.3",
+              question_text: "Crew count",
+              response_type: "number",
+              is_mandatory: false,
+              comment_enabled: false,
+              options: [],
             }],
           }],
         }),
@@ -86,6 +104,22 @@ function loadEditableStructure() {
     }
     return { ok: true, json: async () => ({}) };
   }));
+}
+
+async function typeContinuously(input: HTMLInputElement | HTMLTextAreaElement, text: string) {
+  const prototype = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  const setNativeValue = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+  if (!setNativeValue) throw new Error("Native value setter is unavailable");
+
+  act(() => input.focus());
+  for (const character of text) {
+    act(() => {
+      setNativeValue.call(input, input.value + character);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await flushAsyncWork();
+    expect(document.activeElement).toBe(input);
+  }
 }
 
 afterEach(() => {
@@ -167,5 +201,86 @@ describe("GenericFormEditor shared Preview shell", () => {
 
     click(previewButton);
     expect(editor.querySelector('[data-testid="configured-form-preview"]')).toBeTruthy();
+  });
+
+  it("keeps controlled Configure text focused while typing and preserves it when adding a point", async () => {
+    loadEditableStructure();
+    const { editor } = renderEditor();
+    await flushAsyncWork();
+    await flushAsyncWork();
+
+    const sectionTitle = editor.querySelector<HTMLInputElement>('[data-testid="input-section-title-1"]');
+    const pointText = editor.querySelector<HTMLTextAreaElement>('[data-testid="textarea-point-text-1-1"]');
+    const optionLabel = editor.querySelector<HTMLInputElement>('[data-testid="input-option-label-1-1-1"]');
+    if (!sectionTitle || !pointText || !optionLabel) throw new Error("Configure text controls did not render");
+
+    await typeContinuously(sectionTitle, " continuous section title");
+    await typeContinuously(pointText, " with a complete point sentence");
+    await typeContinuously(optionLabel, " and a complete option label");
+
+    expect(sectionTitle).toHaveValue("Navigation readiness continuous section title");
+    expect(pointText).toHaveValue("Bridge team briefing completed with a complete point sentence");
+    expect(optionLabel).toHaveValue("Yes and a complete option label");
+
+    click(editor.querySelector<HTMLElement>('[data-testid="button-add-point-1"]')!);
+    expect(sectionTitle).toHaveValue("Navigation readiness continuous section title");
+    expect(pointText).toHaveValue("Bridge team briefing completed with a complete point sentence");
+    expect(optionLabel).toHaveValue("Yes and a complete option label");
+  });
+
+  it("navigates every fixed part and shows the same placeholder in Configure and Preview", async () => {
+    loadEditableStructure();
+    const { editor, previewButton } = renderEditor();
+    await flushAsyncWork();
+    await flushAsyncWork();
+
+    const partA = editor.querySelector<HTMLButtonElement>('[data-testid="button-step-part-a"]');
+    const partC = editor.querySelector<HTMLButtonElement>('[data-testid="button-step-part-c"]');
+    if (!partA || !partC) throw new Error("Fixed-part navigation controls did not render");
+
+    expect(partA).not.toBeDisabled();
+    expect(partC).not.toBeDisabled();
+
+    click(partA);
+    expect(editor.querySelector('[data-testid="preview-fixed-part-A"]')).toBeTruthy();
+    click(partC);
+    expect(editor.querySelector('[data-testid="preview-fixed-part-C"]')).toBeTruthy();
+
+    click(previewButton);
+    await flushAsyncWork();
+    click(partA);
+    expect(editor.querySelector('[data-testid="preview-fixed-part-A"]')).toBeTruthy();
+    click(partC);
+    expect(editor.querySelector('[data-testid="preview-fixed-part-C"]')).toBeTruthy();
+  });
+
+  it("keeps Preview response and comment inputs focused while typing", async () => {
+    loadEditableStructure();
+    const { editor, previewButton } = renderEditor();
+    await flushAsyncWork();
+    await flushAsyncWork();
+    click(previewButton);
+    await flushAsyncWork();
+
+    const freeText = editor.querySelector<HTMLTextAreaElement>('textarea[data-testid^="preview-response-"]');
+    const number = editor.querySelector<HTMLInputElement>('input[type="number"][data-testid^="preview-response-"]');
+    const questionCommentButton = editor.querySelector<HTMLElement>('[data-testid^="button-preview-comment-"]');
+    const sectionComment = editor.querySelector<HTMLTextAreaElement>('[data-testid^="preview-section-comment-input-"]');
+    if (!freeText || !number || !questionCommentButton || !sectionComment) {
+      throw new Error("Preview text controls did not render");
+    }
+
+    await typeContinuously(freeText, "free text response");
+    await typeContinuously(number, "123");
+    click(questionCommentButton);
+    const questionComment = editor.querySelector<HTMLTextAreaElement>('textarea[data-testid^="preview-comment-"]');
+    if (!questionComment) throw new Error("Preview question comment did not render");
+    await typeContinuously(questionComment, "question comment");
+    await typeContinuously(sectionComment, "section comment");
+
+    expect(freeText).toHaveValue("free text response");
+    expect(number).toHaveValue(123);
+    expect(questionComment).toHaveValue("question comment");
+    expect(sectionComment).toHaveValue("section comment");
   });
 });

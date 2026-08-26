@@ -442,7 +442,7 @@ function ConfiguredSection({
       {section.comment_box_required && (
         <div data-testid={`preview-section-comment-${sectionId}`}>
           <SAILFormField label="Section comment">
-            <Textarea placeholder="Preview comment — not saved" />
+            <Textarea placeholder="Preview comment — not saved" data-testid={`preview-section-comment-input-${sectionId}`} />
           </SAILFormField>
         </div>
       )}

@@ -389,6 +389,19 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const editorContentRef = useRef<HTMLElement | null>(null);
   const editorDialogRef = useRef<HTMLDivElement | null>(null);
   const editorScrollTopRef = useRef<Record<EditorViewMode, number>>({ configure: 0, preview: 0 });
+  const focusLifecycleRef = useRef<{
+    isPreview: boolean;
+    settingsDialog: typeof settingsDialog;
+    confirmDelete: typeof confirmDelete;
+    showLeaveDialog: boolean;
+    handleClose: () => void;
+  }>({
+    isPreview: false,
+    settingsDialog: null,
+    confirmDelete: null,
+    showLeaveDialog: false,
+    handleClose: () => undefined,
+  });
 
   const { data: formPartsData = [], isLoading: isLoadingParts } = useQuery<ConfigurableFormPart[]>({
     queryKey: [`/api/v2/admin/forms/${realFormId}/parts`],
@@ -474,8 +487,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     () => versions.find((version) => version.fvUuid === selectedVersionUuid) ?? sortedVersions[0],
     [selectedVersionUuid, sortedVersions, versions],
   );
-  const selectedPart = configurableParts.find((part) => part.formPartUuid === selectedPartUuid) ?? configurableParts[0];
-  const currentSections = selectedPart ? (trees[selectedPart.formPartUuid] || []) : [];
+  // Navigation includes every part. Only configurable parts have editable
+  // trees; fixed parts are rendered as their purpose-built placeholder in
+  // both Configure and Preview.
+  const selectedPart = allParts.find((part) => part.formPartUuid === selectedPartUuid) ?? configurableParts[0];
+  const currentSections = selectedPart?.partType === "configurable"
+    ? (trees[selectedPart.formPartUuid] || [])
+    : [];
   const serializedTrees = JSON.stringify(trees);
   const isDirty = baselineRef.current !== null && baselineRef.current !== serializedTrees;
   const canEdit = isEditing && (!selectedVersion || selectedVersion.status === "draft");
@@ -744,6 +762,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       onClose();
     }
   };
+  focusLifecycleRef.current = {
+    isPreview,
+    settingsDialog,
+    confirmDelete,
+    showLeaveDialog,
+    handleClose,
+  };
 
   const applyVersionChange = (versionUuid: string) => {
     setSelectedVersionUuid(versionUuid);
@@ -842,9 +867,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   }, []);
 
   useEffect(() => {
-    if (settingsDialog || confirmDelete || showLeaveDialog) return;
-
     const focusEditor = () => {
+      const lifecycle = focusLifecycleRef.current;
+      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog) return;
       const editor = editorDialogRef.current;
       if (!editor) return;
       const [firstFocusable] = getFocusableElements(editor);
@@ -852,6 +877,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     };
     const focusTimer = window.setTimeout(focusEditor, 0);
     const handleConfigureKeys = (event: KeyboardEvent) => {
+      const lifecycle = focusLifecycleRef.current;
+      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog) return;
       const editor = editorDialogRef.current;
       if (!editor) return;
       if (hasOpenPortalledListbox()) return;
@@ -859,8 +886,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopImmediatePropagation();
-        if (isPreview) closePreview();
-        else handleClose();
+        if (lifecycle.isPreview) closePreview();
+        else lifecycle.handleClose();
         return;
       }
       if (event.key !== "Tab") return;
@@ -892,7 +919,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       window.clearTimeout(focusTimer);
       document.removeEventListener("keydown", handleConfigureKeys, true);
     };
-  }, [closePreview, confirmDelete, handleClose, isPreview, settingsDialog, showLeaveDialog]);
+  }, [closePreview, isPreview]);
 
   const editorHeader = (
     <div className="sticky top-0 bg-white border-b px-4 py-3 sm:px-6 sm:py-4">
@@ -951,7 +978,6 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
             id: part.formPartUuid,
             title: part.partTitle || `Part ${part.partCode}`,
             letter: part.partCode,
-            disabled: part.partType !== "configurable",
           }))}
           activeSection={selectedPart?.formPartUuid || selectedPartUuid}
           onActiveSectionChange={setSelectedPartUuid}
@@ -1024,6 +1050,22 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                    <div className="p-10 text-center text-sm text-gray-500">Loading form structure…</div>
                  ) : (
                    <div className="p-6 space-y-5">
+                  {selectedPart?.partType === "fixed" ? (
+                    <ConfiguredFormRenderer
+                      mode="preview"
+                      embedded
+                      formTitle={formName}
+                      parts={allParts}
+                      structures={trees}
+                      roles={roles}
+                      departments={departments}
+                      vesselTypes={vesselTypes}
+                      selectedPartUuid={selectedPart.formPartUuid}
+                      selectedVesselTypeUuid={previewVesselTypeUuid}
+                      onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
+                    />
+                  ) : (
+                  <>
                   {currentSections.map((section, sectionIndex) => (
                      <Card key={section.clientKey} className="bg-white shadow-md" data-testid={`card-section-${sectionIndex + 1}`}>
                        <CardContent className="p-6">
@@ -1191,6 +1233,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                     </div>
                   )}
                   {canEdit && currentSections.length > 0 && <Button onClick={() => addSection(selectedPart.formPartUuid)} variant="outline" className="w-full border-dashed" data-testid="button-add-section"><Plus className="h-4 w-4 mr-2" /> Add New Section</Button>}
+                  </>
+                  )}
                     </div>
                   )}
                 </div>
