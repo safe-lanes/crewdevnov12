@@ -73,6 +73,15 @@ interface VersionRow {
   configuration?: string | null;
 }
 
+interface SavedStructuresResponse {
+  form_version_uuid: string;
+  parts: Array<{
+    form_version_uuid: string;
+    form_part_uuid: string;
+    sections: unknown[];
+  }>;
+}
+
 interface RoleRow {
   ruid: string;
   assignedRole?: string;
@@ -361,6 +370,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const realFormId = form.originalFormId ?? form.id;
   const [selectedPartUuid, setSelectedPartUuid] = useState("");
   const [selectedVersionUuid, setSelectedVersionUuid] = useState("");
+  const [authoritativeVersion, setAuthoritativeVersion] = useState<VersionRow | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [viewMode, setViewMode] = useState<EditorViewMode>("configure");
   const [previewVesselTypeUuid, setPreviewVesselTypeUuid] = useState("all");
@@ -386,6 +396,10 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [pendingVersionUuid, setPendingVersionUuid] = useState<string | null>(null);
   const baselineRef = useRef<string | null>(null);
+  const treeLoadGenerationRef = useRef(0);
+  const saveTransitionRef = useRef(false);
+  const skipNextTreeLoadVersionRef = useRef<string | null>(null);
+  const draftCreationRef = useRef<Promise<VersionRow> | null>(null);
   const editorContentRef = useRef<HTMLElement | null>(null);
   const editorDialogRef = useRef<HTMLDivElement | null>(null);
   const editorScrollTopRef = useRef<Record<EditorViewMode, number>>({ configure: 0, preview: 0 });
@@ -475,17 +489,23 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     },
   });
 
+  const availableVersions = useMemo(() => {
+    if (!authoritativeVersion || versions.some((version) => version.fvUuid === authoritativeVersion.fvUuid)) {
+      return versions;
+    }
+    return [authoritativeVersion, ...versions];
+  }, [authoritativeVersion, versions]);
   const sortedVersions = useMemo(
-    () => [...versions].sort((a, b) => {
+    () => [...availableVersions].sort((a, b) => {
       const numberDiff = Number(b.versionNo) - Number(a.versionNo);
       if (numberDiff !== 0) return numberDiff;
       return a.status === "draft" ? -1 : 1;
     }),
-    [versions],
+    [availableVersions],
   );
   const selectedVersion = useMemo(
-    () => versions.find((version) => version.fvUuid === selectedVersionUuid) ?? sortedVersions[0],
-    [selectedVersionUuid, sortedVersions, versions],
+    () => availableVersions.find((version) => version.fvUuid === selectedVersionUuid) ?? sortedVersions[0],
+    [availableVersions, selectedVersionUuid, sortedVersions],
   );
   // Navigation includes every part. Only configurable parts have editable
   // trees; fixed parts are rendered as their purpose-built placeholder in
@@ -497,6 +517,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const serializedTrees = JSON.stringify(trees);
   const isDirty = baselineRef.current !== null && baselineRef.current !== serializedTrees;
   const canEdit = isEditing && (!selectedVersion || selectedVersion.status === "draft");
+  const canModify = canEdit && !isSaving;
   const isPreview = viewMode === "preview";
 
   useEffect(() => {
@@ -516,12 +537,19 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   }, [rankGroupId, selectedVersionUuid, sortedVersions, isLoadingVersions]);
 
   useEffect(() => {
+    if (saveTransitionRef.current) return;
     if (!selectedVersion?.fvUuid || configurableParts.length === 0) {
       setTrees({});
       baselineRef.current = null;
       return;
     }
+    if (skipNextTreeLoadVersionRef.current === selectedVersion.fvUuid) {
+      skipNextTreeLoadVersionRef.current = null;
+      setIsLoadingTree(false);
+      return;
+    }
     let cancelled = false;
+    const loadGeneration = ++treeLoadGenerationRef.current;
     setIsLoadingTree(true);
     setSaveError("");
     Promise.all(configurableParts.map(async (part) => {
@@ -532,20 +560,20 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       return [part.formPartUuid, normalizeTree(await response.json(), part.partCode)] as const;
     }))
       .then((entries) => {
-        if (cancelled) return;
+        if (cancelled || saveTransitionRef.current || loadGeneration !== treeLoadGenerationRef.current) return;
         const loaded = Object.fromEntries(entries);
         setTrees(loaded);
         baselineRef.current = JSON.stringify(loaded);
       })
       .catch((error: Error) => {
-        if (!cancelled) {
+        if (!cancelled && !saveTransitionRef.current && loadGeneration === treeLoadGenerationRef.current) {
           setTrees(Object.fromEntries(configurableParts.map((part) => [part.formPartUuid, []])));
           baselineRef.current = JSON.stringify({});
           setSaveError(error.message);
         }
       })
       .finally(() => {
-        if (!cancelled) setIsLoadingTree(false);
+        if (!cancelled && loadGeneration === treeLoadGenerationRef.current) setIsLoadingTree(false);
       });
     return () => {
       cancelled = true;
@@ -577,6 +605,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   }, [selectedSection, trees]);
 
   const updatePartTree = useCallback((partUuid: string, updater: (sections: SectionModel[]) => SectionModel[]) => {
+    if (saveTransitionRef.current) return;
     const part = configurableParts.find((item) => item.formPartUuid === partUuid);
     if (!part) return;
     setTrees((previous) => ({
@@ -668,28 +697,28 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
   const createDraft = async (): Promise<VersionRow> => {
     if (selectedVersion?.status === "draft") return selectedVersion;
-    const existingDraft = versions.find((version) => version.status === "draft");
-    if (existingDraft) {
-      setSelectedVersionUuid(existingDraft.fvUuid);
-      setIsEditing(true);
-      return existingDraft;
-    }
+    const existingDraft = availableVersions.find((version) => version.status === "draft");
+    if (existingDraft) return existingDraft;
+    if (draftCreationRef.current) return draftCreationRef.current;
     const maxVersion = versions.reduce((max, version) => Math.max(max, Number(version.versionNo) || 0), 0);
     const sourceConfiguration = selectedVersion?.configuration
       || (typeof rankGroupConfig === "string" ? rankGroupConfig : JSON.stringify(rankGroupConfig || {}));
-    const response = await apiRequest("POST", `/api/v2/admin/forms/${realFormId}/versions`, {
-      versionNo: String(maxVersion + 1).padStart(2, "0"),
-      versionDate: formatVersionDate(),
-      status: "draft",
-      rankGroupId,
-      configuration: sourceConfiguration,
-      auditUserUuid: getCrewUserId(),
-    });
-    const created = await response.json() as VersionRow;
-    setSelectedVersionUuid(created.fvUuid);
-    setIsEditing(true);
-    await refetchVersions();
-    return created;
+    draftCreationRef.current = (async () => {
+      const response = await apiRequest("POST", `/api/v2/admin/forms/${realFormId}/versions`, {
+        versionNo: String(maxVersion + 1).padStart(2, "0"),
+        versionDate: formatVersionDate(),
+        status: "draft",
+        rankGroupId,
+        configuration: sourceConfiguration,
+        auditUserUuid: getCrewUserId(),
+      });
+      return response.json() as Promise<VersionRow>;
+    })();
+    try {
+      return await draftCreationRef.current;
+    } finally {
+      draftCreationRef.current = null;
+    }
   };
 
   const validateTrees = (): string | null => {
@@ -717,7 +746,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   };
 
   const save = async () => {
-    if (!canEdit) return;
+    if (!canEdit || saveTransitionRef.current) return;
     const validationError = validateTrees();
     if (validationError) {
       setSaveError(validationError);
@@ -726,8 +755,11 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     }
     setIsSaving(true);
     setSaveError("");
+    saveTransitionRef.current = true;
+    treeLoadGenerationRef.current += 1;
     const startedAt = performance.now();
     try {
+      const treesAtSave = trees;
       const draft = await createDraft();
       const response = await apiRequest(
         "PUT",
@@ -735,14 +767,36 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         {
           parts: configurableParts.map((part) => ({
             form_part_uuid: part.formPartUuid,
-            structure: toPayload(trees[part.formPartUuid] || []),
+            structure: toPayload(treesAtSave[part.formPartUuid] || []),
           })),
           auditUserUuid: getCrewUserId(),
         },
       );
       if (!response.ok) throw new Error("Form structure save failed");
-      baselineRef.current = JSON.stringify(trees);
-      onSave({ formVersionUuid: draft.fvUuid, savedParts: configurableParts.length, durationMs: Math.round(performance.now() - startedAt) });
+      const savedResponse = await response.json() as SavedStructuresResponse;
+      if (savedResponse.form_version_uuid !== draft.fvUuid || !Array.isArray(savedResponse.parts)) {
+        throw new Error("Form structure save returned an invalid response");
+      }
+      const savedTrees = Object.fromEntries(configurableParts.map((part) => {
+        const savedPart = savedResponse.parts.find((item) => item.form_part_uuid === part.formPartUuid);
+        if (!savedPart) throw new Error(`Form structure save omitted ${part.partTitle}`);
+        return [part.formPartUuid, normalizeTree(savedPart, part.partCode)];
+      }));
+      if (selectedVersion?.fvUuid !== draft.fvUuid) {
+        skipNextTreeLoadVersionRef.current = draft.fvUuid;
+      }
+      setAuthoritativeVersion(draft);
+      setSelectedVersionUuid(draft.fvUuid);
+      setIsEditing(true);
+      setTrees(savedTrees);
+      baselineRef.current = JSON.stringify(savedTrees);
+      saveTransitionRef.current = false;
+      onSave({
+        formId: realFormId,
+        formVersionUuid: draft.fvUuid,
+        savedParts: configurableParts.length,
+        durationMs: Math.round(performance.now() - startedAt),
+      });
       toast({ title: "Draft saved", description: "The complete form structure has been saved." });
       await refetchVersions();
     } catch (error: any) {
@@ -750,6 +804,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       setSaveError(message);
       toast({ title: "Unable to save form", description: message, variant: "destructive" });
     } finally {
+      saveTransitionRef.current = false;
       setIsSaving(false);
     }
   };
@@ -772,7 +827,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
   const applyVersionChange = (versionUuid: string) => {
     setSelectedVersionUuid(versionUuid);
-    const version = versions.find((item) => item.fvUuid === versionUuid);
+    const version = availableVersions.find((item) => item.fvUuid === versionUuid);
     setIsEditing(version?.status === "draft");
   };
 
@@ -787,7 +842,11 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
   const startEditing = async () => {
     try {
-      await createDraft();
+      const draft = await createDraft();
+      setAuthoritativeVersion(draft);
+      setSelectedVersionUuid(draft.fvUuid);
+      setIsEditing(true);
+      await refetchVersions();
       toast({ title: "Draft ready", description: "You can now edit this form version." });
     } catch (error: any) {
       toast({ title: "Unable to create draft", description: error?.message || "Please try again.", variant: "destructive" });
@@ -1076,14 +1135,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                  <span className="shrink-0 text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{section.section_code}</span>
                                  <Input
                                    value={section.section_title}
-                                   disabled={!canEdit}
+                                   disabled={!canModify}
                                    onChange={(event) => updateSection(selectedPart.formPartUuid, sectionIndex, (value) => ({ ...value, section_title: event.target.value }))}
                                    placeholder="Section title"
-                                   className={`h-9 border-0 bg-transparent px-0 text-xl font-semibold shadow-none focus-visible:ring-0 ${!section.section_title.trim() && canEdit ? "border-b border-red-300" : ""}`}
+                                   className={`h-9 border-0 bg-transparent px-0 text-xl font-semibold shadow-none focus-visible:ring-0 ${!section.section_title.trim() && canModify ? "border-b border-red-300" : ""}`}
                                    data-testid={`input-section-title-${sectionIndex + 1}`}
                                  />
                                </div>
-                               {!section.section_title.trim() && canEdit && <p className="mt-1 text-[11px] text-red-600">Section title is required.</p>}
+                               {!section.section_title.trim() && canModify && <p className="mt-1 text-[11px] text-red-600">Section title is required.</p>}
                                <div className="mt-2 flex flex-wrap gap-1.5">
                                  <Badge variant="outline" className="text-[10px] font-normal">
                                    {section.applicable_vessel_types.length === 0 ? "All vessel types" : `${section.applicable_vessel_types.length} vessel type(s)`}
@@ -1117,7 +1176,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                  {section.signature_required && <Badge variant="outline" className="text-[10px] font-normal">Signature required</Badge>}
                                </div>
                              </div>
-                             {canEdit && (
+                             {canModify && (
                                <div className="flex items-center gap-1">
                                  <Button variant="ghost" size="icon" className="h-8 w-8" disabled={sectionIndex === 0} onClick={() => moveSection(selectedPart.formPartUuid, sectionIndex, -1)} data-testid={`button-move-section-up-${sectionIndex + 1}`}><ArrowUp className="h-4 w-4" /></Button>
                                  <Button variant="ghost" size="icon" className="h-8 w-8" disabled={sectionIndex === currentSections.length - 1} onClick={() => moveSection(selectedPart.formPartUuid, sectionIndex, 1)} data-testid={`button-move-section-down-${sectionIndex + 1}`}><ArrowDown className="h-4 w-4" /></Button>
@@ -1125,7 +1184,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                </div>
                              )}
                            </div>
-                           {canEdit && (
+                           {canModify && (
                              <div className="mt-4 flex flex-wrap gap-2">
                                <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "vessel")} data-testid={`button-section-vessel-settings-${sectionIndex + 1}`}><Settings2 className="h-3.5 w-3.5 mr-1.5" /> Vessel types</Button>
                                <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "responsible")} data-testid={`button-section-responsible-settings-${sectionIndex + 1}`}>Responsible party</Button>
@@ -1143,22 +1202,22 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                    <div className="mb-1 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{question.question_code}</div>
                                    <Textarea
                                      value={question.question_text}
-                                     disabled={!canEdit}
+                                     disabled={!canModify}
                                      onChange={(event) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, question_text: event.target.value }))}
                                      onKeyDown={(event) => {
-                                       if (event.key === "Enter" && !event.shiftKey && canEdit) {
+                                       if (event.key === "Enter" && !event.shiftKey && canModify) {
                                          event.preventDefault();
                                          addQuestion(selectedPart.formPartUuid, sectionIndex);
                                        }
                                      }}
                                      placeholder="Enter point text, then press Enter for the next point"
-                                     className={`min-h-[42px] resize-y border-0 bg-transparent px-0 text-sm font-semibold text-[#4f5863] shadow-none focus-visible:ring-0 ${!question.question_text.trim() && canEdit ? "border-b border-red-300" : ""}`}
+                                     className={`min-h-[42px] resize-y border-0 bg-transparent px-0 text-sm font-semibold text-[#4f5863] shadow-none focus-visible:ring-0 ${!question.question_text.trim() && canModify ? "border-b border-red-300" : ""}`}
                                      data-testid={`textarea-point-text-${sectionIndex + 1}-${questionIndex + 1}`}
                                    />
-                                   {!question.question_text.trim() && canEdit && <p className="text-[11px] text-red-600">Point text is required.</p>}
+                                   {!question.question_text.trim() && canModify && <p className="text-[11px] text-red-600">Point text is required.</p>}
                                  </td>
                                  <td className={`${tableClasses.cell} align-top`}>
-                                   <Select value={question.response_type} disabled={!canEdit} onValueChange={(value) => changeResponseType(selectedPart.formPartUuid, sectionIndex, questionIndex, value)}>
+                                   <Select value={question.response_type} disabled={!canModify} onValueChange={(value) => changeResponseType(selectedPart.formPartUuid, sectionIndex, questionIndex, value)}>
                                      <SelectTrigger className="h-9 w-full min-w-[160px]" data-testid={`select-response-type-${sectionIndex + 1}-${questionIndex + 1}`}><SelectValue /></SelectTrigger>
                                      <SelectContent>{RESPONSE_TYPES.map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
                                    </Select>
@@ -1167,14 +1226,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                      <div className="mt-3 space-y-2 border-t pt-3" data-testid={`option-editor-${sectionIndex + 1}-${questionIndex + 1}`}>
                                        <div className="flex items-center justify-between gap-2">
                                          <div className="text-xs font-semibold text-gray-700">Options</div>
-                                         {canEdit && <Button variant="outline" size="sm" onClick={() => addOption(selectedPart.formPartUuid, sectionIndex, questionIndex)} data-testid={`button-add-option-${sectionIndex + 1}-${questionIndex + 1}`}><Plus className="h-3.5 w-3.5 mr-1" /> Add option</Button>}
+                                         {canModify && <Button variant="outline" size="sm" onClick={() => addOption(selectedPart.formPartUuid, sectionIndex, questionIndex)} data-testid={`button-add-option-${sectionIndex + 1}-${questionIndex + 1}`}><Plus className="h-3.5 w-3.5 mr-1" /> Add option</Button>}
                                        </div>
                                        {question.options.map((option, optionIndex) => (
                                          <div className="flex items-center gap-2" key={option.clientKey}>
                                            <span className="w-5 text-center text-xs text-gray-400">{optionIndex + 1}</span>
                                            <Input
                                              value={option.option_label}
-                                             disabled={!canEdit}
+                                             disabled={!canModify}
                                              onChange={(event) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({
                                                ...value,
                                                options: value.options.map((item, index) => index === optionIndex ? { ...item, option_label: event.target.value } : item),
@@ -1183,7 +1242,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                              placeholder="Option label"
                                              data-testid={`input-option-label-${sectionIndex + 1}-${questionIndex + 1}-${optionIndex + 1}`}
                                            />
-                                           {canEdit && (
+                                           {canModify && (
                                              <>
                                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={optionIndex === 0} onClick={() => moveOption(selectedPart.formPartUuid, sectionIndex, questionIndex, optionIndex, -1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
                                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={optionIndex === question.options.length - 1} onClick={() => moveOption(selectedPart.formPartUuid, sectionIndex, questionIndex, optionIndex, 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
@@ -1198,17 +1257,17 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                  <td className={`${tableClasses.cell} align-top`}>
                                    <div className="space-y-2">
                                      <label className="flex items-center gap-2 text-xs text-gray-700">
-                                       <Checkbox checked={question.is_mandatory} disabled={!canEdit} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, is_mandatory: checked === true }))} data-testid={`checkbox-point-mandatory-${sectionIndex + 1}-${questionIndex + 1}`} />
+                                       <Checkbox checked={question.is_mandatory} disabled={!canModify} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, is_mandatory: checked === true }))} data-testid={`checkbox-point-mandatory-${sectionIndex + 1}-${questionIndex + 1}`} />
                                        Mandatory
                                      </label>
                                      <label className="flex items-center gap-2 text-xs text-gray-700">
-                                       <Checkbox checked={question.comment_enabled} disabled={!canEdit} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, comment_enabled: checked === true }))} data-testid={`checkbox-point-comment-${sectionIndex + 1}-${questionIndex + 1}`} />
+                                       <Checkbox checked={question.comment_enabled} disabled={!canModify} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, comment_enabled: checked === true }))} data-testid={`checkbox-point-comment-${sectionIndex + 1}-${questionIndex + 1}`} />
                                        Comment enabled
                                      </label>
                                    </div>
                                  </td>
                                  <td className={`${tableClasses.cell} align-top`}>
-                                   {canEdit && (
+                                   {canModify && (
                                      <div className="flex items-center gap-1">
                                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={questionIndex === 0} onClick={() => moveQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, -1)} data-testid={`button-move-point-up-${sectionIndex + 1}-${questionIndex + 1}`}><ArrowUp className="h-4 w-4" /></Button>
                                        <Button variant="ghost" size="icon" className="h-8 w-8" disabled={questionIndex === section.questions.length - 1} onClick={() => moveQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, 1)} data-testid={`button-move-point-down-${sectionIndex + 1}-${questionIndex + 1}`}><ArrowDown className="h-4 w-4" /></Button>
@@ -1222,17 +1281,17 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                          ) : (
                            <div className="border border-dashed border-gray-300 py-6 text-center text-sm text-gray-400">No points yet. Add the first point below.</div>
                          )}
-                         {canEdit && <Button variant="outline" className="mt-4" onClick={() => addQuestion(selectedPart.formPartUuid, sectionIndex)} data-testid={`button-add-point-${sectionIndex + 1}`}><Plus className="h-4 w-4 mr-2" /> Add New Point</Button>}
+                         {canModify && <Button variant="outline" className="mt-4" onClick={() => addQuestion(selectedPart.formPartUuid, sectionIndex)} data-testid={`button-add-point-${sectionIndex + 1}`}><Plus className="h-4 w-4 mr-2" /> Add New Point</Button>}
                        </CardContent>
                     </Card>
                   ))}
                   {currentSections.length === 0 && (
                     <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center">
                       <div className="text-sm text-gray-500 mb-4">This configurable part has no sections yet.</div>
-                      {canEdit && <Button onClick={() => addSection(selectedPart.formPartUuid)} data-testid="button-add-first-section"><Plus className="h-4 w-4 mr-2" /> Add New Section</Button>}
+                      {canModify && <Button onClick={() => addSection(selectedPart.formPartUuid)} data-testid="button-add-first-section"><Plus className="h-4 w-4 mr-2" /> Add New Section</Button>}
                     </div>
                   )}
-                  {canEdit && currentSections.length > 0 && <Button onClick={() => addSection(selectedPart.formPartUuid)} variant="outline" className="w-full border-dashed" data-testid="button-add-section"><Plus className="h-4 w-4 mr-2" /> Add New Section</Button>}
+                  {canModify && currentSections.length > 0 && <Button onClick={() => addSection(selectedPart.formPartUuid)} variant="outline" className="w-full border-dashed" data-testid="button-add-section"><Plus className="h-4 w-4 mr-2" /> Add New Section</Button>}
                   </>
                   )}
                     </div>

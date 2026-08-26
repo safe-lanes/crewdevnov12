@@ -3901,6 +3901,16 @@ const AdminModuleInner = (): JSX.Element => {
   // The server endpoint itself remains untouched.
 
   const handleFormSave = (formData: any) => {
+    if (formData.formVersionUuid && formData.formId) {
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/rank-groups'] });
+      queryClient.invalidateQueries({ predicate: (query) => {
+        const key = query.queryKey[0];
+        return key === '/api/v2/admin/form-versions-all'
+          || key === `/api/v2/admin/forms/${formData.formId}/versions`;
+      }});
+      return;
+    }
     if (!formData.formId) return;
 
     const rankGroup = allRankGroups.find(
