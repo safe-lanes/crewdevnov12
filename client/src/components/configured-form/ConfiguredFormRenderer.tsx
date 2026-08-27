@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { z } from "zod";
 import { AlertCircle, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SelectItem } from "@/components/ui/select";
@@ -187,6 +188,103 @@ function InlineMissing({ children, testId }: { children: React.ReactNode; testId
   );
 }
 
+type QuestionCommentState = {
+  text: string;
+  isExpanded: boolean;
+  isEditing: boolean;
+  setText: (value: string) => void;
+  open: () => void;
+  edit: () => void;
+  finishEditing: () => void;
+};
+
+function useQuestionComment(): QuestionCommentState {
+  const [text, setText] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const hasComment = text.trim().length > 0;
+
+  return {
+    text,
+    isExpanded,
+    isEditing,
+    setText,
+    open: () => {
+      setIsExpanded(true);
+      setIsEditing(!hasComment);
+    },
+    edit: () => {
+      setIsExpanded(true);
+      setIsEditing(true);
+    },
+    finishEditing: () => setIsEditing(false),
+  };
+}
+
+function QuestionCommentControl({
+  questionId,
+  comment,
+}: {
+  questionId: string;
+  comment: QuestionCommentState;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="h-6 w-6 text-gray-500 hover:bg-transparent hover:text-gray-700"
+      onClick={comment.open}
+      aria-expanded={comment.isExpanded}
+      aria-label="Comment"
+      title="Comment"
+      data-testid={`button-preview-comment-${questionId}`}
+    >
+      <MessageSquare className="h-[18px] w-[18px]" />
+    </Button>
+  );
+}
+
+function QuestionCommentRow({
+  questionId,
+  colSpan,
+  comment,
+}: {
+  questionId: string;
+  colSpan: number;
+  comment: QuestionCommentState;
+}) {
+  if (!comment.isExpanded) return null;
+
+  return (
+    <tr className={getTableClasses().row} data-testid={`preview-comment-row-${questionId}`}>
+      <td colSpan={colSpan} className={getTableClasses().cell}>
+        {comment.isEditing ? (
+          <Textarea
+            value={comment.text}
+            onChange={(event) => comment.setText(event.target.value)}
+            onBlur={comment.finishEditing}
+            placeholder="Comment: Add your observations here..."
+            className="text-blue-600 italic border-blue-200"
+            rows={2}
+            autoFocus
+            data-testid={`preview-comment-${questionId}`}
+          />
+        ) : (
+          <button
+            type="button"
+            className="w-full rounded p-2 text-left text-[13px] italic text-blue-600 hover:bg-gray-50"
+            onClick={comment.edit}
+            data-testid={`preview-comment-display-${questionId}`}
+          >
+            {comment.text || "Click to add comment..."}
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+}
+
 function SectionResponsibility({
   section,
   roles,
@@ -247,7 +345,7 @@ function ConfiguredPoint({
   answers: Record<string, ConfiguredFormAnswerValue>;
   setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
 }) {
-  const [commentExpanded, setCommentExpanded] = useState(false);
+  const comment = useQuestionComment();
   const answer = answers[questionId];
   const hasText = question.question_text.trim().length > 0;
   const labels = question.response_type === "yes_no_na" ? ["Yes", "No", "NA"] : ["Yes", "No"];
@@ -397,30 +495,11 @@ function ConfiguredPoint({
         <td className={tableClasses.cell}>{responseControl}</td>
         <td className={`${tableClasses.cell} text-center`}>
           {question.comment_enabled && (
-            <SAILButton
-              type="button"
-              variant="secondary"
-              className="h-8 w-8 px-2"
-              onClick={() => setCommentExpanded((expanded) => !expanded)}
-              aria-expanded={commentExpanded}
-              aria-label="Comment"
-              title="Comment"
-              data-testid={`button-preview-comment-${questionId}`}
-            >
-              <MessageSquare className="h-4 w-4" />
-            </SAILButton>
+            <QuestionCommentControl questionId={questionId} comment={comment} />
           )}
         </td>
       </tr>
-      {question.comment_enabled && commentExpanded && (
-        <tr className={tableClasses.row} data-testid={`preview-comment-row-${questionId}`}>
-          <td colSpan={3} className={tableClasses.cell}>
-            <SAILFormField label="Comment">
-              <Textarea placeholder="Preview comment — not saved" data-testid={`preview-comment-${questionId}`} />
-            </SAILFormField>
-          </td>
-        </tr>
-      )}
+      {question.comment_enabled && <QuestionCommentRow questionId={questionId} colSpan={3} comment={comment} />}
     </>
   );
 }
@@ -438,7 +517,7 @@ function ConfiguredMatrixPoint({
   answers: Record<string, ConfiguredFormAnswerValue>;
   setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
 }) {
-  const [commentExpanded, setCommentExpanded] = useState(false);
+  const comment = useQuestionComment();
   const answer = answers[questionId];
   const selectedOptions = Array.isArray(answer) ? answer : [];
   const tableClasses = getTableClasses();
@@ -478,29 +557,12 @@ function ConfiguredMatrixPoint({
         })}
         <td className={`${tableClasses.cell} min-w-[56px] text-center`}>
           {question.comment_enabled && (
-            <SAILButton
-              type="button"
-              variant="secondary"
-              className="h-8 w-8 px-2"
-              onClick={() => setCommentExpanded((expanded) => !expanded)}
-              aria-expanded={commentExpanded}
-              aria-label="Comment"
-              title="Comment"
-              data-testid={`button-preview-comment-${questionId}`}
-            >
-              <MessageSquare className="h-4 w-4" />
-            </SAILButton>
+            <QuestionCommentControl questionId={questionId} comment={comment} />
           )}
         </td>
       </tr>
-      {question.comment_enabled && commentExpanded && (
-        <tr className={tableClasses.row} data-testid={`preview-comment-row-${questionId}`}>
-          <td colSpan={options.length + 2} className={tableClasses.cell}>
-            <SAILFormField label="Comment">
-              <Textarea placeholder="Preview comment — not saved" data-testid={`preview-comment-${questionId}`} />
-            </SAILFormField>
-          </td>
-        </tr>
+      {question.comment_enabled && (
+        <QuestionCommentRow questionId={questionId} colSpan={options.length + 2} comment={comment} />
       )}
     </>
   );

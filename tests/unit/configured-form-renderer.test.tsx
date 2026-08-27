@@ -77,6 +77,22 @@ function click(element: HTMLElement) {
   });
 }
 
+function setTextareaValue(textarea: HTMLTextAreaElement, value: string) {
+  const setNativeValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+  if (!setNativeValue) throw new Error("Native textarea value setter is unavailable");
+  act(() => {
+    setNativeValue.call(textarea, value);
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+function finishEditing(textarea: HTMLTextAreaElement) {
+  act(() => {
+    textarea.focus();
+    textarea.blur();
+  });
+}
+
 function pointerDown(element: HTMLElement) {
   const pointerTarget = element as HTMLElement & {
     hasPointerCapture?: (pointerId: number) => boolean;
@@ -474,6 +490,50 @@ describe("configured form renderer preview", () => {
     pointerDown(trigger);
     expect(portalOption("1 — Poor")).toBeInTheDocument();
     expect(portalOption("2 — Excellent")).toBeInTheDocument();
+  });
+
+  it("uses Appraisal-style muted comment icons and distinguishes entered list and matrix comments", () => {
+    renderPreview();
+    click(screen.getByTestId("button-step-part-b"));
+
+    const listCommentButton = screen.getByTestId("button-preview-comment-yes-no");
+    expect(listCommentButton).toHaveClass("h-6", "w-6", "text-gray-500", "hover:bg-transparent", "hover:text-gray-700");
+    expect(listCommentButton).not.toHaveClass("bg-blue-600", "border");
+    click(listCommentButton);
+    const listComment = screen.getByTestId("preview-comment-yes-no") as HTMLTextAreaElement;
+    setTextareaValue(listComment, "Bridge team confirmed the checklist.");
+    finishEditing(listComment);
+    const listCommentDisplay = screen.getByTestId("preview-comment-display-yes-no");
+    expect(listCommentDisplay).toHaveTextContent("Bridge team confirmed the checklist.");
+    expect(listCommentDisplay).toHaveClass("text-blue-600", "italic");
+
+    const matrixSection: ConfiguredFormSection = {
+      ...configuredSection,
+      clientKey: "comment-matrix",
+      effectiveLayout: "matrix",
+      questions: [{
+        clientKey: "comment-matrix-question",
+        question_code: "B1.1",
+        question_text: "Rate readiness",
+        response_type: "single_select",
+        is_mandatory: false,
+        comment_enabled: true,
+        options: [{ clientKey: "one", option_label: "1", option_value: "1" }],
+      }],
+    };
+    renderPreview([matrixSection]);
+    click(screen.getByTestId("button-step-part-b"));
+
+    const matrixCommentButton = screen.getByTestId("button-preview-comment-comment-matrix-question");
+    expect(matrixCommentButton).toHaveClass("h-6", "w-6", "text-gray-500", "hover:bg-transparent", "hover:text-gray-700");
+    expect(matrixCommentButton).not.toHaveClass("bg-blue-600", "border");
+    click(matrixCommentButton);
+    const matrixComment = screen.getByTestId("preview-comment-comment-matrix-question") as HTMLTextAreaElement;
+    setTextareaValue(matrixComment, "Observed during the toolbox talk.");
+    finishEditing(matrixComment);
+    const matrixCommentDisplay = screen.getByTestId("preview-comment-display-comment-matrix-question");
+    expect(matrixCommentDisplay).toHaveTextContent("Observed during the toolbox talk.");
+    expect(matrixCommentDisplay).toHaveClass("text-blue-600", "italic");
   });
 
   it("uses the same matrix rendering branch for live hosts", () => {
