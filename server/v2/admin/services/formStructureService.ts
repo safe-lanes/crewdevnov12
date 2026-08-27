@@ -1,11 +1,22 @@
-import type {
-  FormStructureInput,
-  FormStructureOptionInput,
-  FormStructureQuestionInput,
-  FormStructureSectionInput,
+import {
+  formStructureInputSchema,
+  type FormStructureInput,
+  type FormStructureOptionInput,
+  type FormStructureOptionSetInput,
+  type FormStructureQuestionInput,
+  type FormStructureSectionInput,
 } from "../../../../shared/v2/forms-engine/schema";
 import { getDb } from "../../db";
 import { formStructureRepository } from "../repositories/formStructureRepository";
+
+/*
+ * Keep direct service callers compatible with the pre-option-set contract.
+ * HTTP callers are already parsed by the controller; integration callers are
+ * normalized here so defaults such as option_sets and layout_preference exist.
+ */
+function normalizeStructureInput(input: FormStructureInput): FormStructureInput {
+  return formStructureInputSchema.parse(input);
+}
 
 export class FormStructureServiceError extends Error {
   constructor(
@@ -15,6 +26,14 @@ export class FormStructureServiceError extends Error {
     super(message);
     this.name = "FormStructureServiceError";
   }
+}
+
+export async function copyFormVersionStructure(
+  sourceFormVersionUuid: string,
+  targetFormVersionUuid: string,
+  executor?: any,
+) {
+  return formStructureRepository.copyStructure(sourceFormVersionUuid, targetFormVersionUuid, executor);
 }
 
 function parseApplicableVesselTypes(value: string | null): string[] {
@@ -39,16 +58,30 @@ function treeResponse(
     questionsBySection.set(question.sectionUuid, questions);
   }
 
-  const optionsByQuestion = new Map<string, any[]>();
+  const optionsBySet = new Map<string, any[]>();
   for (const option of tree.options as any[]) {
-    const options = optionsByQuestion.get(option.questionUuid) ?? [];
+    const options = optionsBySet.get(option.optionSetUuid) ?? [];
     options.push(option);
-    optionsByQuestion.set(option.questionUuid, options);
+    optionsBySet.set(option.optionSetUuid, options);
   }
+  const setsByUuid = new Map((tree.optionSets as any[]).map((set) => [set.optionSetUuid, set]));
+  const mapOptions = (optionSetUuid: string | null | undefined) =>
+    (optionSetUuid ? optionsBySet.get(optionSetUuid) ?? [] : []).map((option) => ({
+      option_uuid: option.optionUuid,
+      option_label: option.optionLabel,
+      option_value: option.optionValue,
+      sort_order: option.sortOrder,
+    }));
 
   return {
     form_version_uuid: fvUuid,
     form_part_uuid: partUuid,
+    option_sets: (tree.optionSets as any[]).map((set) => ({
+      option_set_uuid: set.optionSetUuid,
+      option_set_name: set.setName,
+      sort_order: set.sortOrder,
+      options: mapOptions(set.optionSetUuid),
+    })),
     sections: (tree.sections as any[]).map((section) => ({
       section_uuid: section.sectionUuid,
       section_code: section.sectionCode,
@@ -59,6 +92,15 @@ function treeResponse(
       responsible_department: section.responsibleDepartment,
       comment_box_required: section.commentBoxRequired,
       signature_required: section.signatureRequired,
+      default_option_set_uuid: section.defaultOptionSetUuid,
+      layout_preference: section.layoutPreference,
+      effectiveLayout: resolveEffectiveLayout(
+        section.layoutPreference,
+        questionsBySection.get(section.sectionUuid) ?? [],
+        section.defaultOptionSetUuid,
+        setsByUuid,
+        optionsBySet,
+      ),
       sort_order: section.sortOrder,
       questions: (questionsBySection.get(section.sectionUuid) ?? []).map((question) => ({
         question_uuid: question.questionUuid,
@@ -67,16 +109,34 @@ function treeResponse(
         response_type: question.responseType,
         is_mandatory: question.isMandatory,
         comment_enabled: question.commentEnabled,
+        option_set_uuid: question.optionSetUuid,
         sort_order: question.sortOrder,
-        options: (optionsByQuestion.get(question.questionUuid) ?? []).map((option) => ({
-          option_uuid: option.optionUuid,
-          option_label: option.optionLabel,
-          option_value: option.optionValue,
-          sort_order: option.sortOrder,
-        })),
+        options: mapOptions(question.optionSetUuid ?? section.defaultOptionSetUuid),
       })),
     })),
   };
+}
+
+export function resolveEffectiveLayout(
+  preference: string,
+  questions: any[],
+  defaultOptionSetUuid: string | null,
+  setsByUuid: Map<string, any>,
+  optionsBySet: Map<string, any[]>,
+): "list" | "matrix" {
+  if (preference === "list" || questions.length === 0) return "list";
+  const setUuids = questions.map((question) => question.optionSetUuid ?? defaultOptionSetUuid);
+  if (
+    setUuids.some((uuid) => !uuid) ||
+    new Set(setUuids).size !== 1 ||
+    questions.some((question) => question.responseType !== "single_select" && question.responseType !== "multi_select")
+  ) return "list";
+  const setUuid = setUuids[0] as string;
+  if (!setsByUuid.has(setUuid)) return "list";
+  const options = optionsBySet.get(setUuid) ?? [];
+  if (options.length === 0 || options.length > 12) return "list";
+  if (options.length <= 6) return "matrix";
+  return options.every((option) => String(option.optionLabel).length <= 4) ? "matrix" : "list";
 }
 
 function ensureUnique(values: string[], description: string): void {
@@ -102,28 +162,87 @@ function validateIdentities(
   const existingOptions = new Map(
     (current.options as any[]).filter((row) => !row.isDeleted).map((row) => [row.optionUuid, row]),
   );
+  const existingSets = new Map(
+    (current.optionSets as any[]).filter((row) => !row.isDeleted).map((row) => [row.optionSetUuid, row]),
+  );
 
   const sectionUuids = input.sections.flatMap((section) => section.section_uuid ? [section.section_uuid] : []);
   const questionUuids = input.sections.flatMap((section) =>
     section.questions.flatMap((question) => question.question_uuid ? [question.question_uuid] : []),
   );
-  const optionUuids = input.sections.flatMap((section) =>
-    section.questions.flatMap((question) =>
-      question.options.flatMap((option) => option.option_uuid ? [option.option_uuid] : []),
-    ),
-  );
+  const optionSets = input.option_sets ?? [];
+  const setUuids = optionSets.flatMap((set) => set.option_set_uuid ? [set.option_set_uuid] : []);
+  const optionDefinitions = new Map<string, {
+    optionLabel: string;
+    optionValue: string;
+    optionSetUuid?: string;
+  }>();
+  const recordOption = (
+    option: { option_uuid?: string; option_label: string; option_value: string },
+    optionSetUuid?: string,
+  ) => {
+    if (!option.option_uuid) return;
+    const prior = optionDefinitions.get(option.option_uuid);
+    if (prior && (
+      prior.optionLabel !== option.option_label ||
+      prior.optionValue !== option.option_value ||
+      (prior.optionSetUuid && optionSetUuid && prior.optionSetUuid !== optionSetUuid)
+    )) {
+      throw new FormStructureServiceError(
+        `Conflicting definitions for option_uuid: ${option.option_uuid}`,
+      );
+    }
+    optionDefinitions.set(option.option_uuid, {
+      optionLabel: option.option_label,
+      optionValue: option.option_value,
+      optionSetUuid: prior?.optionSetUuid ?? optionSetUuid,
+    });
+  };
+  for (const set of optionSets) {
+    for (const option of set.options) recordOption(option, set.option_set_uuid);
+  }
+  for (const section of input.sections) {
+    for (const question of section.questions) {
+      const existingQuestionSet = question.question_uuid
+        ? existingQuestions.get(question.question_uuid)?.optionSetUuid
+        : undefined;
+      const resolvedSetUuid = question.option_set_uuid ??
+        section.default_option_set_uuid ??
+        existingQuestionSet;
+      for (const option of question.options) recordOption(option, resolvedSetUuid);
+    }
+  }
+  const optionUuids = [...optionDefinitions.keys()];
   ensureUnique(sectionUuids, "section_uuid");
   ensureUnique(questionUuids, "question_uuid");
-  ensureUnique(optionUuids, "option_uuid");
 
-  const allIdentities = [...sectionUuids, ...questionUuids, ...optionUuids];
+  ensureUnique(setUuids, "option_set_uuid");
+  const allIdentities = [...sectionUuids, ...questionUuids, ...setUuids, ...optionUuids];
   ensureUnique(allIdentities, "structure row UUID");
+
+  for (const set of optionSets) {
+    for (const option of set.options) {
+      if (!option.option_uuid) continue;
+      const existing = existingOptions.get(option.option_uuid);
+      if (!existing) throw new FormStructureServiceError(`option_uuid does not belong to this draft: ${option.option_uuid}`);
+      if (set.option_set_uuid && existing.optionSetUuid !== set.option_set_uuid) {
+        throw new FormStructureServiceError(`option_uuid ${option.option_uuid} belongs to a different option set`);
+      }
+    }
+  }
+  const availableSets = new Set([...existingSets.keys(), ...setUuids]);
 
   for (const section of input.sections) {
     if (section.section_uuid && !existingSections.has(section.section_uuid)) {
       throw new FormStructureServiceError(`section_uuid does not belong to this draft: ${section.section_uuid}`);
     }
+    if (section.default_option_set_uuid && !availableSets.has(section.default_option_set_uuid)) {
+      throw new FormStructureServiceError(`default_option_set_uuid does not belong to this form version: ${section.default_option_set_uuid}`);
+    }
     for (const question of section.questions) {
+      if (question.option_set_uuid && !availableSets.has(question.option_set_uuid)) {
+        throw new FormStructureServiceError(`option_set_uuid does not belong to this form version: ${question.option_set_uuid}`);
+      }
       if (question.question_uuid) {
         const existing = existingQuestions.get(question.question_uuid);
         if (!existing) {
@@ -139,8 +258,10 @@ function validateIdentities(
           if (!existing) {
             throw new FormStructureServiceError(`option_uuid does not belong to this draft: ${option.option_uuid}`);
           }
-          if (existing.questionUuid !== question.question_uuid) {
-            throw new FormStructureServiceError(`option_uuid ${option.option_uuid} belongs to a different question`);
+          const expectedSetUuid = question.option_set_uuid ??
+            (question.question_uuid ? existingQuestions.get(question.question_uuid)?.optionSetUuid : undefined);
+          if (expectedSetUuid && existing.optionSetUuid !== expectedSetUuid) {
+            throw new FormStructureServiceError(`option_uuid ${option.option_uuid} belongs to a different option set`);
           }
         }
       }
@@ -150,6 +271,13 @@ function validateIdentities(
 
 function validateBusinessUniqueness(input: FormStructureInput): void {
   ensureUnique(input.sections.map((section) => section.section_code), "section_code");
+  ensureUnique(
+    (input.option_sets ?? []).flatMap((set) => set.option_set_name ? [set.option_set_name] : []),
+    "option_set_name",
+  );
+  for (const set of input.option_sets ?? []) {
+    ensureUnique(set.options.map((option) => option.option_value), `option_value in option set ${set.option_set_name ?? "(unnamed)"}`);
+  }
   for (const section of input.sections) {
     ensureUnique(
       section.questions.map((question) => question.question_code),
@@ -164,14 +292,15 @@ function validateBusinessUniqueness(input: FormStructureInput): void {
   }
 }
 
-function validateReplacement(input: FormStructureInput) {
-  return (
+function validateReplacement(input: FormStructureInput, fvUuid: string) {
+  return async (
     current: Awaited<ReturnType<typeof formStructureRepository.readTree>>,
     tx: any,
   ): Promise<void> => {
     validateIdentities(input, current);
     validateBusinessUniqueness(input);
-    return formStructureRepository.validateReferenceData(input, tx);
+    await formStructureRepository.validateReferenceData(input, tx);
+    await formStructureRepository.validateOptionSetOwnership(fvUuid, input, current, tx);
   };
 }
 
@@ -184,7 +313,8 @@ function mapReplacementError(error: any): never {
   }
   if (
     error?.message?.includes("Unknown vessel type UUID") ||
-    error?.message?.includes("Unknown responsible role UUID")
+    error?.message?.includes("Unknown responsible role UUID") ||
+    error?.message?.includes("Option set does not belong to this form version")
   ) {
     throw new FormStructureServiceError(error.message, 400);
   }
@@ -208,6 +338,7 @@ export const formStructureService = {
     input: FormStructureInput,
     auditUserUuid: string | null,
   ) {
+    input = normalizeStructureInput(input);
     const context = await formStructureRepository.findContext(fvUuid, partUuid);
     if (!context) throw new FormStructureServiceError("Form version or form part not found", 404);
     if (context.formUuid !== context.part.formUuid) {
@@ -226,7 +357,7 @@ export const formStructureService = {
         partUuid,
         input,
         auditUserUuid,
-        validateReplacement(input),
+        validateReplacement(input, fvUuid),
       );
       return treeResponse(fvUuid, partUuid, tree);
     } catch (error: any) {
@@ -251,12 +382,13 @@ export const formStructureService = {
       const responses = await getDb().transaction(async (tx: any) => {
         const saved = [];
         for (const { partUuid, structure } of parts) {
+          const normalizedStructure = normalizeStructureInput(structure);
           const tree = await formStructureRepository.replaceTree(
             fvUuid,
             partUuid,
-            structure,
+            normalizedStructure,
             auditUserUuid,
-            validateReplacement(structure),
+            validateReplacement(normalizedStructure, fvUuid),
             tx,
           );
           saved.push(treeResponse(fvUuid, partUuid, tree));
@@ -278,9 +410,23 @@ export const formStructureService = {
     return formStructureRepository.copyStructure(sourceFvUuid, destinationFvUuid, executor);
   },
 
+  async copyFormVersionStructure(
+    sourceFormVersionUuid: string,
+    targetFormVersionUuid: string,
+    executor?: any,
+  ) {
+    return copyFormVersionStructure(sourceFormVersionUuid, targetFormVersionUuid, executor);
+  },
+
   async hasStructureForForm(formUuid: string, executor?: any) {
     return formStructureRepository.hasStructureForForm(formUuid, executor);
   },
 };
 
-export type { FormStructureInput, FormStructureOptionInput, FormStructureQuestionInput, FormStructureSectionInput };
+export type {
+  FormStructureInput,
+  FormStructureOptionInput,
+  FormStructureOptionSetInput,
+  FormStructureQuestionInput,
+  FormStructureSectionInput,
+};

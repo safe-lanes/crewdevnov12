@@ -3,7 +3,7 @@ import { FormVersionsRepository } from "../repositories/formVersionsRepository";
 import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { applyAuditUser } from "../utils/auditUser";
 import { getDb } from "../../db";
-import { formStructureService } from "./formStructureService";
+import { copyFormVersionStructure } from "./formStructureService";
 import { frmFormParts } from "../../../../shared/v2/forms-engine/schema";
 import { and, asc, eq } from "drizzle-orm";
 import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2 } from "../../../../shared/v2/admin/types";
@@ -334,7 +334,9 @@ export const formsService = {
         releasedAt: null,
         auditUserUuid,
       }, true), tx);
-      await formStructureService.copyStructure(sourceVersion?.fvUuid, created.fvUuid, tx);
+      if (sourceVersion?.fvUuid) {
+        await copyFormVersionStructure(sourceVersion.fvUuid, created.fvUuid, tx);
+      }
       return created;
     });
   },

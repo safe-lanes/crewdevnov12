@@ -9,7 +9,8 @@ import {
 } from "@shared/v2/admin/schema";
 import {
   frmFormParts,
-  frmQuestionOptions,
+  frmOptions,
+  frmOptionSets,
   frmQuestions,
   frmSections,
   type FormStructureInput,
@@ -18,6 +19,7 @@ import { formsService } from "@server/v2/admin/services/formsService";
 import { rankGroupsService } from "@server/v2/admin/services/rankGroupsService";
 import {
   FormStructureServiceError,
+  copyFormVersionStructure,
   formStructureService,
 } from "@server/v2/admin/services/formStructureService";
 import { formStructureRepository } from "@server/v2/admin/repositories/formStructureRepository";
@@ -129,11 +131,19 @@ async function deleteFixture(formUuid: string) {
   const questionUuids = questions.map((row) => row.questionUuid);
 
   if (questionUuids.length > 0) {
-    await db.delete(frmQuestionOptions).where(inArray(frmQuestionOptions.questionUuid, questionUuids));
     await db.delete(frmQuestions).where(inArray(frmQuestions.questionUuid, questionUuids));
   }
   if (sectionUuids.length > 0) {
     await db.delete(frmSections).where(inArray(frmSections.sectionUuid, sectionUuids));
+  }
+  if (versionUuids.length > 0) {
+    const sets = await db.select({ optionSetUuid: frmOptionSets.optionSetUuid }).from(frmOptionSets)
+      .where(inArray(frmOptionSets.formVersionUuid, versionUuids));
+    const setUuids = sets.map((row) => row.optionSetUuid);
+    if (setUuids.length > 0) {
+      await db.delete(frmOptions).where(inArray(frmOptions.optionSetUuid, setUuids));
+      await db.delete(frmOptionSets).where(inArray(frmOptionSets.optionSetUuid, setUuids));
+    }
   }
   await db.delete(admFormVersionsV2).where(eq(admFormVersionsV2.formId, form.id));
   await db.delete(admRankGroupsV2).where(eq(admRankGroupsV2.formId, form.id));
@@ -163,10 +173,12 @@ describe.sequential("form structure service integration", () => {
     );
     expect(saved.sections).toHaveLength(1);
     expect(saved.sections[0].questions[0].options).toHaveLength(2);
+    expect(saved.option_sets).toHaveLength(1);
 
     const savedSectionUuid = saved.sections[0].section_uuid;
     const savedQuestionUuid = saved.sections[0].questions[0].question_uuid;
     const savedOptionUuid = saved.sections[0].questions[0].options[0].option_uuid;
+    const savedSetUuid = saved.option_sets[0].option_set_uuid;
 
     const renamed = await formStructureService.replaceStructure(firstDraft.fvUuid, partUuid, {
       sections: [{
@@ -220,10 +232,205 @@ describe.sequential("form structure service integration", () => {
     expect(copiedTree.sections[0].section_uuid).not.toBe(savedSectionUuid);
     expect(copiedTree.sections[0].questions[0].question_uuid).not.toBe(savedQuestionUuid);
     expect(copiedTree.sections[0].questions[0].options[0].option_uuid).not.toBe(savedOptionUuid);
+    expect(copiedTree.option_sets[0].option_set_uuid).not.toBe(savedSetUuid);
 
     await formStructureService.replaceStructure(copiedDraft.fvUuid, partUuid, { sections: [] }, null);
     const emptiedDraft = await formStructureService.getStructure(copiedDraft.fvUuid, partUuid);
     expect(emptiedDraft.sections).toEqual([]);
+  });
+
+  it("persists named shared sets, resolves section defaults, and exposes effectiveLayout", async () => {
+    const { form, rankGroup, partUuid } = await createFormFixture(`Structure sets ${uuidv4()}`);
+    const draft = await formsService.createVersionByFormId(form.id, {
+      rankGroupId: rankGroup.id,
+      configuration: "{}",
+      sharedConfig: "{}",
+      versionDate: "24-Aug-2026",
+    } as any);
+    const setUuid = uuidv4();
+    const saved = await formStructureService.replaceStructure(draft.fvUuid, partUuid, {
+      option_sets: [{
+        option_set_uuid: setUuid,
+        option_set_name: "Readiness",
+        options: [
+          { option_label: "Yes", option_value: "yes" },
+          { option_label: "No", option_value: "no" },
+        ],
+      }],
+      sections: [{
+        section_code: "B1",
+        section_title: "Shared choices",
+        applicable_vessel_types: [],
+        responsible_mode: "not_applicable",
+        comment_box_required: false,
+        signature_required: false,
+        default_option_set_uuid: setUuid,
+        layout_preference: "auto",
+        questions: [
+          {
+            question_code: "B1Q1",
+            question_text: "First point",
+            response_type: "single_select",
+            is_mandatory: false,
+            comment_enabled: true,
+            options: [],
+          },
+          {
+            question_code: "B1Q2",
+            question_text: "Second point",
+            response_type: "multi_select",
+            is_mandatory: false,
+            comment_enabled: true,
+            options: [],
+          },
+        ],
+      }],
+    }, null);
+
+    expect(saved.option_sets).toMatchObject([{
+      option_set_uuid: setUuid,
+      option_set_name: "Readiness",
+    }]);
+    expect(saved.sections[0].effectiveLayout).toBe("matrix");
+    expect(saved.sections[0].questions[0].options.map((option: any) => option.option_value)).toEqual(["yes", "no"]);
+    expect(saved.sections[0].questions[1].options.map((option: any) => option.option_value)).toEqual(["yes", "no"]);
+
+    // The GET/PUT shape intentionally includes the same shared options both
+    // top-level and under each question for legacy editor compatibility.
+    const roundTripped = await formStructureService.replaceStructure(
+      draft.fvUuid,
+      partUuid,
+      saved as any,
+      null,
+    );
+    expect(roundTripped.option_sets[0].options).toHaveLength(2);
+    expect(roundTripped.sections[0].questions[0].options).toHaveLength(2);
+  });
+
+  it("retains an unreferenced named set so it can be assigned later", async () => {
+    const { form, rankGroup, partUuid } = await createFormFixture(`Structure unassigned set ${uuidv4()}`);
+    const draft = await formsService.createVersionByFormId(form.id, {
+      rankGroupId: rankGroup.id,
+      configuration: "{}",
+      sharedConfig: "{}",
+      versionDate: "24-Aug-2026",
+    } as any);
+    const setUuid = uuidv4();
+    const first = await formStructureService.replaceStructure(draft.fvUuid, partUuid, {
+      option_sets: [{
+        option_set_uuid: setUuid,
+        option_set_name: "Future choices",
+        options: [{ option_label: "Ready", option_value: "ready" }],
+      }],
+      sections: [],
+    }, null);
+    expect(first.option_sets.map((set: any) => set.option_set_uuid)).toContain(setUuid);
+
+    const assigned = await formStructureService.replaceStructure(draft.fvUuid, partUuid, {
+      option_sets: first.option_sets.map((set: any) => ({
+        option_set_uuid: set.option_set_uuid,
+        option_set_name: set.option_set_name,
+        options: set.options.map((option: any) => ({
+          option_uuid: option.option_uuid,
+          option_label: option.option_label,
+          option_value: option.option_value,
+        })),
+      })),
+      sections: [{
+        section_code: "B1",
+        section_title: "Assigned later",
+        applicable_vessel_types: [],
+        responsible_mode: "not_applicable",
+        comment_box_required: false,
+        signature_required: false,
+        default_option_set_uuid: setUuid,
+        layout_preference: "auto",
+        questions: [{
+          question_code: "B1Q1",
+          question_text: "Ready?",
+          response_type: "single_select",
+          is_mandatory: false,
+          comment_enabled: true,
+          options: [],
+        }],
+      }],
+    }, null);
+    expect(assigned.sections[0].questions[0].options[0].option_value).toBe("ready");
+  });
+
+  it("keeps reusable sets when another part is saved with the legacy payload", async () => {
+    const { form, rankGroup, partUuid } = await createFormFixture(`Structure legacy set retention ${uuidv4()}`);
+    const secondPartUuid = uuidv4();
+    await getDb().insert(frmFormParts).values({
+      formPartUuid: secondPartUuid,
+      formUuid: form.formUuid,
+      partCode: "D",
+      partTitle: "Debriefing",
+      partType: "configurable",
+      isOfficeOnly: false,
+    });
+    const draft = await formsService.createVersionByFormId(form.id, {
+      rankGroupId: rankGroup.id,
+      configuration: "{}",
+      sharedConfig: "{}",
+      versionDate: "24-Aug-2026",
+    } as any);
+    const setUuid = uuidv4();
+    const first = await formStructureService.replaceStructure(draft.fvUuid, partUuid, {
+      option_sets: [{
+        option_set_uuid: setUuid,
+        option_set_name: "Reusable choices",
+        options: [{ option_label: "Ready", option_value: "ready" }],
+      }],
+      sections: [],
+    }, null);
+    expect(first.option_sets).toHaveLength(1);
+
+    await formStructureService.replaceStructure(draft.fvUuid, secondPartUuid, { sections: [] }, null);
+    const afterLegacySave = await formStructureService.getStructure(draft.fvUuid, partUuid);
+    expect(afterLegacySave.option_sets).toMatchObject([{
+      option_set_uuid: setUuid,
+      options: [{ option_value: "ready" }],
+    }]);
+  });
+
+  it("requires a released source and a draft target before writing any structure", async () => {
+    const { form, rankGroup, partUuid } = await createFormFixture(`Structure guarded copy ${uuidv4()}`);
+    const sourceDraft = await formsService.createVersionByFormId(form.id, {
+      rankGroupId: rankGroup.id,
+      configuration: "{}",
+      sharedConfig: "{}",
+      versionDate: "24-Aug-2026",
+    } as any);
+    await formStructureService.replaceStructure(sourceDraft.fvUuid, partUuid, testStructure(), null);
+    const [draftTarget] = await getDb().insert(admFormVersionsV2).values({
+      fvUuid: uuidv4(),
+      formId: form.id,
+      rankGroupId: rankGroup.id,
+      versionNo: "98",
+      versionDate: "24-Aug-2026",
+      status: "draft",
+      configuration: "{}",
+    }).returning();
+    await expect(copyFormVersionStructure(sourceDraft.fvUuid, draftTarget.fvUuid))
+      .rejects.toThrow("source status must be exactly released");
+    expect((await formStructureService.getStructure(draftTarget.fvUuid, partUuid)).sections).toEqual([]);
+
+    const source = await formsService.releaseVersionById(sourceDraft.id);
+    const [target] = await getDb().insert(admFormVersionsV2).values({
+      fvUuid: uuidv4(),
+      formId: form.id,
+      rankGroupId: rankGroup.id,
+      versionNo: "99",
+      versionDate: "24-Aug-2026",
+      status: "released",
+      configuration: "{}",
+      releasedAt: new Date(),
+    }).returning();
+
+    await expect(copyFormVersionStructure(source.fvUuid, target.fvUuid))
+      .rejects.toThrow("target status must be exactly draft");
+    expect((await formStructureService.getStructure(target.fvUuid, partUuid)).sections).toEqual([]);
   });
 
   it("handles the acceptance-sized source through both draft-copy paths without mutating the released source", async () => {
@@ -277,6 +484,14 @@ describe.sequential("form structure service integration", () => {
 
     // Remove the direct draft so the rank-group configuration path must build its own copy.
     await formStructureService.replaceStructure(directDraft.fvUuid, partUuid, { sections: [] }, null);
+    const directSets = await getDb().select({ optionSetUuid: frmOptionSets.optionSetUuid })
+      .from(frmOptionSets)
+      .where(eq(frmOptionSets.formVersionUuid, directDraft.fvUuid));
+    const directSetUuids = directSets.map((set) => set.optionSetUuid);
+    if (directSetUuids.length > 0) {
+      await getDb().delete(frmOptions).where(inArray(frmOptions.optionSetUuid, directSetUuids));
+      await getDb().delete(frmOptionSets).where(inArray(frmOptionSets.optionSetUuid, directSetUuids));
+    }
     await getDb().delete(admFormVersionsV2).where(eq(admFormVersionsV2.id, directDraft.id));
 
     await rankGroupsService.updateConfigurationById(rankGroup.id, "{}");

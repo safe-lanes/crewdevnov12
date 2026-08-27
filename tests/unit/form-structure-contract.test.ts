@@ -69,4 +69,34 @@ describe("form structure request contract", () => {
 
     expect(result.success).toBe(true);
   });
+
+  it("accepts named sets, section defaults, and matrix layout without inline question options", () => {
+    const optionSetUuid = uuidv4();
+    const section = validSection();
+    section.default_option_set_uuid = optionSetUuid;
+    section.layout_preference = "matrix";
+    section.questions[0].options = [];
+    const result = formStructureInputSchema.safeParse({
+      option_sets: [{
+        option_set_uuid: optionSetUuid,
+        option_set_name: "Readiness",
+        options: [validOption()],
+      }],
+      sections: [section],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid layouts and option-set references on non-select questions", () => {
+    const section = validSection();
+    section.layout_preference = "grid";
+    expect(formStructureInputSchema.safeParse({ sections: [section] }).success).toBe(false);
+
+    const nonSelect = validSection();
+    nonSelect.questions[0].response_type = "free_text";
+    nonSelect.questions[0].options = [];
+    nonSelect.questions[0].option_set_uuid = uuidv4();
+    expect(formStructureInputSchema.safeParse({ sections: [nonSelect] }).success).toBe(false);
+  });
 });

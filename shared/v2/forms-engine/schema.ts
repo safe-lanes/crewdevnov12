@@ -26,6 +26,7 @@ export const QUESTION_RESPONSE_TYPES = [
   "checkbox",
   "info_only",
 ] as const;
+export const SECTION_LAYOUT_PREFERENCES = ["auto", "list", "matrix"] as const;
 
 export const frmFormParts = pgTable(
   "frm_form_parts",
@@ -68,12 +69,48 @@ export const frmSections = pgTable(
     responsibleDepartment: text("responsible_department"),
     commentBoxRequired: boolean("comment_box_required").notNull().default(false),
     signatureRequired: boolean("signature_required").notNull().default(false),
+    defaultOptionSetUuid: text("default_option_set_uuid"),
+    layoutPreference: text("layout_preference").notNull().default("auto"),
     ...auditColumns,
   },
   (table) => ({
     formVersionUuidIdx: index("idx_frm_sections_form_version_uuid").on(table.formVersionUuid),
     formPartUuidIdx: index("idx_frm_sections_form_part_uuid").on(table.formPartUuid),
     responsibleRoleUuidIdx: index("idx_frm_sections_responsible_role_uuid").on(table.responsibleRoleUuid),
+    defaultOptionSetUuidIdx: index("idx_frm_sections_default_option_set_uuid").on(table.defaultOptionSetUuid),
+  }),
+);
+
+export const frmOptionSets = pgTable(
+  "frm_option_sets",
+  {
+    id: serial("id").primaryKey(),
+    optionSetUuid: text("option_set_uuid").notNull().unique(),
+    formVersionUuid: text("form_version_uuid")
+      .notNull()
+      .references(() => admFormVersionsV2.fvUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    setName: text("set_name"),
+    ...auditColumns,
+  },
+  (table) => ({
+    formVersionUuidIdx: index("idx_frm_option_sets_form_version_uuid").on(table.formVersionUuid),
+  }),
+);
+
+export const frmOptions = pgTable(
+  "frm_options",
+  {
+    id: serial("id").primaryKey(),
+    optionUuid: text("option_uuid").notNull().unique(),
+    optionSetUuid: text("option_set_uuid")
+      .notNull()
+      .references(() => frmOptionSets.optionSetUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    optionLabel: text("option_label").notNull(),
+    optionValue: text("option_value").notNull(),
+    ...auditColumns,
+  },
+  (table) => ({
+    optionSetUuidIdx: index("idx_frm_options_option_set_uuid").on(table.optionSetUuid),
   }),
 );
 
@@ -90,27 +127,14 @@ export const frmQuestions = pgTable(
     responseType: text("response_type").notNull(),
     isMandatory: boolean("is_mandatory").notNull().default(false),
     commentEnabled: boolean("comment_enabled").notNull().default(true),
+    optionSetUuid: text("option_set_uuid").references(() => frmOptionSets.optionSetUuid, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
     ...auditColumns,
   },
   (table) => ({
     sectionUuidIdx: index("idx_frm_questions_section_uuid").on(table.sectionUuid),
-  }),
-);
-
-export const frmQuestionOptions = pgTable(
-  "frm_question_options",
-  {
-    id: serial("id").primaryKey(),
-    optionUuid: text("option_uuid").notNull().unique(),
-    questionUuid: text("question_uuid")
-      .notNull()
-      .references(() => frmQuestions.questionUuid, { onDelete: "restrict", onUpdate: "cascade" }),
-    optionLabel: text("option_label").notNull(),
-    optionValue: text("option_value").notNull(),
-    ...auditColumns,
-  },
-  (table) => ({
-    questionUuidIdx: index("idx_frm_question_options_question_uuid").on(table.questionUuid),
   }),
 );
 
@@ -128,7 +152,8 @@ const insertAuditOmit = {
 export const insertFrmFormPartSchema = createInsertSchema(frmFormParts).omit(insertAuditOmit);
 export const insertFrmSectionSchema = createInsertSchema(frmSections).omit(insertAuditOmit);
 export const insertFrmQuestionSchema = createInsertSchema(frmQuestions).omit(insertAuditOmit);
-export const insertFrmQuestionOptionSchema = createInsertSchema(frmQuestionOptions).omit(insertAuditOmit);
+export const insertFrmOptionSetSchema = createInsertSchema(frmOptionSets).omit(insertAuditOmit);
+export const insertFrmOptionSchema = createInsertSchema(frmOptions).omit(insertAuditOmit);
 
 const rowUuidSchema = z.string().uuid();
 
@@ -136,6 +161,14 @@ export const formStructureOptionInputSchema = z.object({
   option_uuid: rowUuidSchema.optional(),
   option_label: z.string().trim().min(1).max(500),
   option_value: z.string().trim().min(1).max(500),
+  sort_order: z.number().int().nonnegative().optional(),
+}).strict();
+
+export const formStructureOptionSetInputSchema = z.object({
+  option_set_uuid: rowUuidSchema.optional(),
+  option_set_name: z.string().trim().max(500).nullable().optional(),
+  sort_order: z.number().int().nonnegative().optional(),
+  options: z.array(formStructureOptionInputSchema).default([]),
 }).strict();
 
 export const formStructureQuestionInputSchema = z.object({
@@ -145,17 +178,12 @@ export const formStructureQuestionInputSchema = z.object({
   response_type: z.enum(QUESTION_RESPONSE_TYPES),
   is_mandatory: z.boolean().default(false),
   comment_enabled: z.boolean().default(true),
+  option_set_uuid: rowUuidSchema.nullable().optional(),
+  sort_order: z.number().int().nonnegative().optional(),
   options: z.array(formStructureOptionInputSchema).default([]),
 }).strict().superRefine((question, ctx) => {
   const needsOptions = question.response_type === "single_select" || question.response_type === "multi_select";
-  if (needsOptions && question.options.length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["options"],
-      message: `${question.response_type} questions require at least one option`,
-    });
-  }
-  if (!needsOptions && question.options.length > 0) {
+  if (!needsOptions && (question.options.length > 0 || question.option_set_uuid)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["options"],
@@ -174,8 +202,28 @@ export const formStructureSectionInputSchema = z.object({
   responsible_department: z.string().trim().max(500).nullable().optional(),
   comment_box_required: z.boolean().default(false),
   signature_required: z.boolean().default(false),
+  default_option_set_uuid: rowUuidSchema.nullable().optional(),
+  layout_preference: z.enum(SECTION_LAYOUT_PREFERENCES).default("auto"),
+  effectiveLayout: z.enum(["list", "matrix"]).optional(),
+  sort_order: z.number().int().nonnegative().optional(),
   questions: z.array(formStructureQuestionInputSchema).default([]),
 }).strict().superRefine((section, ctx) => {
+  for (let index = 0; index < section.questions.length; index++) {
+    const question = section.questions[index];
+    const needsOptions = question.response_type === "single_select" || question.response_type === "multi_select";
+    if (
+      needsOptions &&
+      question.options.length === 0 &&
+      !question.option_set_uuid &&
+      !section.default_option_set_uuid
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["questions", index, "options"],
+        message: `${question.response_type} questions require options, an option_set_uuid, or a section default_option_set_uuid`,
+      });
+    }
+  }
   if (section.responsible_mode === "role") {
     if (!section.responsible_role_uuid) {
       ctx.addIssue({
@@ -216,10 +264,14 @@ export const formStructureSectionInputSchema = z.object({
 });
 
 export const formStructureInputSchema = z.object({
+  form_version_uuid: rowUuidSchema.optional(),
+  form_part_uuid: rowUuidSchema.optional(),
+  option_sets: z.array(formStructureOptionSetInputSchema).default([]),
   sections: z.array(formStructureSectionInputSchema),
 }).strict();
 
 export type FormStructureOptionInput = z.infer<typeof formStructureOptionInputSchema>;
+export type FormStructureOptionSetInput = z.infer<typeof formStructureOptionSetInputSchema>;
 export type FormStructureQuestionInput = z.infer<typeof formStructureQuestionInputSchema>;
 export type FormStructureSectionInput = z.infer<typeof formStructureSectionInputSchema>;
 export type FormStructureInput = z.infer<typeof formStructureInputSchema>;
@@ -230,5 +282,7 @@ export type InsertFrmSection = z.infer<typeof insertFrmSectionSchema>;
 export type FrmSection = typeof frmSections.$inferSelect;
 export type InsertFrmQuestion = z.infer<typeof insertFrmQuestionSchema>;
 export type FrmQuestion = typeof frmQuestions.$inferSelect;
-export type InsertFrmQuestionOption = z.infer<typeof insertFrmQuestionOptionSchema>;
-export type FrmQuestionOption = typeof frmQuestionOptions.$inferSelect;
+export type InsertFrmOptionSet = z.infer<typeof insertFrmOptionSetSchema>;
+export type FrmOptionSet = typeof frmOptionSets.$inferSelect;
+export type InsertFrmOption = z.infer<typeof insertFrmOptionSchema>;
+export type FrmOption = typeof frmOptions.$inferSelect;

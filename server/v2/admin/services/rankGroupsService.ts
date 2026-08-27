@@ -6,7 +6,7 @@ import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { FormsRepository } from "../repositories/formsRepository";
 import { FormVersionsRepository } from "../repositories/formVersionsRepository";
 import { applyAuditUser } from "../utils/auditUser";
-import { formStructureService } from "./formStructureService";
+import { copyFormVersionStructure, formStructureService } from "./formStructureService";
 import type { AdmRankGroupV2, InsertAdmRankGroupV2 } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
 
@@ -58,7 +58,9 @@ async function upsertDraftVersion(formId: number, rankGroupId: number, configura
       releasedAt: null,
       auditUserUuid,
     }, true), tx);
-    await formStructureService.copyStructure(sourceVersion?.fvUuid, created.fvUuid, tx);
+    if (sourceVersion?.fvUuid) {
+      await copyFormVersionStructure(sourceVersion.fvUuid, created.fvUuid, tx);
+    }
   });
 
   console.log(`✅ [V2 DRAFT] Created draft v${nextVersionNo} for form ${formId}, rankGroup ${rankGroupId}`);
