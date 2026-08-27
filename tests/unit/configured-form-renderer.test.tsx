@@ -373,4 +373,61 @@ describe("configured form renderer preview", () => {
     click(screen.getByTestId("button-preview-section-toggle-section-one"));
     expect(screen.getByTestId("preview-point-yes-no")).toBeInTheDocument();
   });
+
+  it("renders a server-resolved matrix with option headers and select controls", () => {
+    const scale = [
+      { clientKey: "one", option_label: "1", option_value: "1" },
+      { clientKey: "two", option_label: "2", option_value: "2" },
+    ];
+    const matrixSection: ConfiguredFormSection = {
+      ...configuredSection,
+      clientKey: "matrix",
+      effectiveLayout: "matrix",
+      questions: [
+        { clientKey: "matrix-single", question_code: "B1.1", question_text: "Rate readiness", response_type: "single_select", is_mandatory: false, comment_enabled: true, options: scale },
+        { clientKey: "matrix-multi", question_code: "B1.2", question_text: "Choose evidence", response_type: "multi_select", is_mandatory: false, comment_enabled: false, options: scale },
+      ],
+    };
+    renderPreview([matrixSection]);
+    click(screen.getByTestId("button-step-part-b"));
+
+    expect(screen.getByTestId("preview-matrix-section-matrix")).toHaveTextContent("1");
+    expect(screen.getByTestId("preview-matrix-section-matrix")).toHaveTextContent("2");
+    expect(screen.getByTestId("matrix-option-matrix-single-1")).toHaveAttribute("type", "radio");
+    expect(screen.getByTestId("matrix-option-matrix-multi-1")).toHaveAttribute("type", "checkbox");
+    expect(screen.queryByTestId("preview-point-matrix-single")).toBeNull();
+  });
+
+  it("uses the same matrix rendering branch for live hosts", () => {
+    const onAnswerChange = vi.fn();
+    const liveSection: ConfiguredFormSection = {
+      ...configuredSection,
+      clientKey: "live-matrix",
+      effectiveLayout: "matrix",
+      questions: [{
+        clientKey: "live-single",
+        question_code: "B1.1",
+        question_text: "Rate readiness",
+        response_type: "single_select",
+        is_mandatory: false,
+        comment_enabled: false,
+        options: [{ clientKey: "one", option_label: "1", option_value: "1" }],
+      }],
+    };
+    render(
+      <ConfiguredFormRenderer
+        mode="live"
+        embedded
+        parts={[parts[1]]}
+        structures={{ "part-b": [liveSection] }}
+        selectedPartUuid="part-b"
+        live={{ answers: {}, onAnswerChange }}
+      />,
+    );
+
+    const choice = screen.getByTestId("matrix-option-live-single-1");
+    click(choice);
+    expect(screen.getByTestId("configured-form-live")).toBeInTheDocument();
+    expect(onAnswerChange).toHaveBeenCalledWith("live-single", "1");
+  });
 });

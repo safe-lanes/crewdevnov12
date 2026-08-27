@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Plus, Save, Settings2, Trash2, X } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowUp, Check, ChevronRight, Copy, Plus, Save, Settings2, Trash2, X } from "lucide-react";
 import { Form } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { getCrewUserId } from "@/lib/crewUser";
@@ -78,6 +78,7 @@ interface SavedStructuresResponse {
   parts: Array<{
     form_version_uuid: string;
     form_part_uuid: string;
+    option_sets?: unknown[];
     sections: unknown[];
   }>;
 }
@@ -121,6 +122,13 @@ interface OptionModel {
   option_value: string;
 }
 
+interface OptionSetModel {
+  clientKey: string;
+  option_set_uuid?: string;
+  option_set_name: string | null;
+  options: OptionModel[];
+}
+
 interface QuestionModel {
   clientKey: string;
   question_uuid?: string;
@@ -129,6 +137,7 @@ interface QuestionModel {
   response_type: string;
   is_mandatory: boolean;
   comment_enabled: boolean;
+  option_set_uuid: string | null;
   options: OptionModel[];
 }
 
@@ -143,6 +152,9 @@ interface SectionModel {
   responsible_department: string | null;
   comment_box_required: boolean;
   signature_required: boolean;
+  default_option_set_uuid: string | null;
+  layout_preference: "auto" | "list" | "matrix";
+  effectiveLayout?: "list" | "matrix";
   questions: QuestionModel[];
 }
 
@@ -188,7 +200,83 @@ function createOption(label = "New option", existing: OptionModel[] = []): Optio
   };
 }
 
-function emptyQuestion(sectionCode: string, questionIndex: number): QuestionModel {
+function newUuid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === "x" ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
+function cloneOption(option: OptionModel, omitOptionUuid = false): OptionModel {
+  const { option_uuid, ...optionWithoutUuid } = option;
+  return {
+    ...optionWithoutUuid,
+    clientKey: clientKey("option"),
+    ...(omitOptionUuid ? {} : (option_uuid ? { option_uuid } : {})),
+  };
+}
+
+function cloneOptions(options: OptionModel[], omitOptionUuid = false): OptionModel[] {
+  return options.map((option) => cloneOption(option, omitOptionUuid));
+}
+
+function isNamedOptionSet(set: Pick<OptionSetModel, "option_set_name">): boolean {
+  return set.option_set_name !== null;
+}
+
+function buildNumericScaleOptions(
+  startInput: string,
+  endInput: string,
+  firstLabel = "",
+  lastLabel = "",
+): { options?: OptionModel[]; error?: string } {
+  const start = Number(startInput);
+  const end = Number(endInput);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isInteger(start) || !Number.isInteger(end)) {
+    return { error: "Enter whole-number start and end values." };
+  }
+  if (end < start) return { error: "End must be greater than start." };
+  if (end === start) return { error: "A scale needs at least two values." };
+  return {
+    options: Array.from({ length: end - start + 1 }, (_, index) => {
+      const value = String(start + index);
+      return {
+        clientKey: clientKey("option"),
+        option_label: index === 0 && firstLabel.trim()
+          ? firstLabel.trim()
+          : index === end - start && lastLabel.trim()
+            ? lastLabel.trim()
+            : value,
+        option_value: value,
+      };
+    }),
+  };
+}
+
+function resolveDraftEffectiveLayout(section: SectionModel): "list" | "matrix" {
+  if (section.layout_preference === "list") return "list";
+  if (section.questions.length === 0) return "list";
+  if (section.questions.some((question) => question.response_type !== "single_select" && question.response_type !== "multi_select")) {
+    return "list";
+  }
+  const setUuids = new Set(section.questions.map((question) => question.option_set_uuid || section.default_option_set_uuid || ""));
+  if (setUuids.size !== 1 || !setUuids.values().next().value) return "list";
+  const options = section.questions[0].options;
+  if (options.length <= 6) return "matrix";
+  if (options.length <= 12 && options.every((option) => option.option_label.trim().length <= 4)) return "matrix";
+  return "list";
+}
+
+function emptyQuestion(
+  sectionCode: string,
+  questionIndex: number,
+  inheritedOptions: OptionModel[] = [],
+  inheritedSetUuid: string | null = null,
+): QuestionModel {
   return {
     clientKey: clientKey("question"),
     question_code: `${sectionCode}.${questionIndex + 1}`,
@@ -196,7 +284,8 @@ function emptyQuestion(sectionCode: string, questionIndex: number): QuestionMode
     response_type: "yes_no",
     is_mandatory: false,
     comment_enabled: true,
-    options: [],
+    option_set_uuid: inheritedSetUuid,
+    options: cloneOptions(inheritedOptions),
   };
 }
 
@@ -211,6 +300,8 @@ function emptySection(partCode: string, sectionIndex: number): SectionModel {
     responsible_department: null,
     comment_box_required: false,
     signature_required: false,
+    default_option_set_uuid: null,
+    layout_preference: "auto",
     questions: [],
   };
 }
@@ -229,8 +320,28 @@ function renumberSections(partCode: string, sections: SectionModel[]): SectionMo
   });
 }
 
-function normalizeTree(data: any, partCode: string): SectionModel[] {
+function normalizeOptionSets(data: any): OptionSetModel[] {
+  const optionSets = Array.isArray(data?.option_sets) ? data.option_sets : [];
+  return optionSets.map((set: any) => ({
+    clientKey: clientKey("option-set"),
+    option_set_uuid: set.option_set_uuid,
+    option_set_name: set.option_set_name ?? null,
+    options: Array.isArray(set.options) ? set.options.map((option: any) => ({
+      clientKey: clientKey("option"),
+      option_uuid: option.option_uuid,
+      option_label: option.option_label || "",
+      option_value: option.option_value || slugOptionValue(option.option_label || "option"),
+    })) : [],
+  }));
+}
+
+function normalizeTree(
+  data: any,
+  partCode: string,
+  optionSets: OptionSetModel[] = normalizeOptionSets(data),
+): SectionModel[] {
   const sections = Array.isArray(data?.sections) ? data.sections : [];
+  const optionsBySet = new Map(optionSets.map((set) => [set.option_set_uuid, set.options]));
   return renumberSections(partCode, sections.map((section: any) => ({
     clientKey: clientKey("section"),
     section_uuid: section.section_uuid,
@@ -244,6 +355,9 @@ function normalizeTree(data: any, partCode: string): SectionModel[] {
     responsible_department: section.responsible_department ?? null,
     comment_box_required: !!section.comment_box_required,
     signature_required: !!section.signature_required,
+    default_option_set_uuid: section.default_option_set_uuid ?? null,
+    layout_preference: section.layout_preference || "auto",
+    effectiveLayout: section.effectiveLayout,
     questions: Array.isArray(section.questions) ? section.questions.map((question: any) => ({
       clientKey: clientKey("question"),
       question_uuid: question.question_uuid,
@@ -252,19 +366,38 @@ function normalizeTree(data: any, partCode: string): SectionModel[] {
       response_type: question.response_type || "yes_no",
       is_mandatory: !!question.is_mandatory,
       comment_enabled: question.comment_enabled !== false,
-      options: Array.isArray(question.options) ? question.options.map((option: any) => ({
+      // The repository persists resolved question references. A question that
+      // comes back with the same set as its section default is represented in
+      // the editor as inherited, so changing that default after a reload
+      // updates it while a different set remains an explicit override.
+      option_set_uuid: question.option_set_uuid === section.default_option_set_uuid
+        ? null
+        : question.option_set_uuid ?? null,
+      options: ((Array.isArray(question.options) && question.options.length > 0)
+        ? question.options
+        : (optionsBySet.get(question.option_set_uuid || section.default_option_set_uuid) || [])
+      ).map((option: any) => ({
         clientKey: clientKey("option"),
         option_uuid: option.option_uuid,
         option_label: option.option_label || "",
         // Existing values are loaded verbatim and are never regenerated on label edits.
         option_value: option.option_value || slugOptionValue(option.option_label || "option"),
-      })) : [],
+      })),
     })) : [],
   })));
 }
 
-function toPayload(sections: SectionModel[]) {
+function toPayload(sections: SectionModel[], optionSets: OptionSetModel[] = []) {
   return {
+    option_sets: optionSets.map((set) => ({
+      ...(set.option_set_uuid ? { option_set_uuid: set.option_set_uuid } : {}),
+      option_set_name: set.option_set_name,
+      options: set.options.map((option) => ({
+        ...(option.option_uuid ? { option_uuid: option.option_uuid } : {}),
+        option_label: option.option_label.trim(),
+        option_value: option.option_value,
+      })),
+    })),
     sections: sections.map((section) => ({
       ...(section.section_uuid ? { section_uuid: section.section_uuid } : {}),
       section_code: section.section_code,
@@ -275,6 +408,8 @@ function toPayload(sections: SectionModel[]) {
       responsible_department: section.responsible_mode === "department" ? section.responsible_department : null,
       comment_box_required: section.comment_box_required,
       signature_required: section.signature_required,
+      default_option_set_uuid: section.default_option_set_uuid,
+      layout_preference: section.layout_preference,
       questions: section.questions.map((question) => ({
         ...(question.question_uuid ? { question_uuid: question.question_uuid } : {}),
         question_code: question.question_code,
@@ -282,7 +417,8 @@ function toPayload(sections: SectionModel[]) {
         response_type: question.response_type,
         is_mandatory: question.is_mandatory,
         comment_enabled: question.comment_enabled,
-        options: question.options.map((option) => ({
+        option_set_uuid: question.option_set_uuid,
+        options: (question.option_set_uuid || section.default_option_set_uuid ? [] : question.options).map((option) => ({
           ...(option.option_uuid ? { option_uuid: option.option_uuid } : {}),
           option_label: option.option_label.trim(),
           // This is intentionally preserved on edits and only created for new options.
@@ -375,6 +511,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [viewMode, setViewMode] = useState<EditorViewMode>("configure");
   const [previewVesselTypeUuid, setPreviewVesselTypeUuid] = useState("all");
   const [trees, setTrees] = useState<Record<string, SectionModel[]>>({});
+  const [optionSets, setOptionSets] = useState<Record<string, OptionSetModel[]>>({});
   const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -393,6 +530,10 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     description: string;
     onConfirm: () => void;
   } | null>(null);
+  const [scaleDialog, setScaleDialog] = useState<{ partUuid: string; setUuid: string } | null>(null);
+  const [scaleValues, setScaleValues] = useState({ start: "", end: "", firstLabel: "", lastLabel: "" });
+  const [scaleError, setScaleError] = useState("");
+  const [bulkResponseTypes, setBulkResponseTypes] = useState<Record<string, string>>({});
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [pendingVersionUuid, setPendingVersionUuid] = useState<string | null>(null);
   const baselineRef = useRef<string | null>(null);
@@ -514,8 +655,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const currentSections = selectedPart?.partType === "configurable"
     ? (trees[selectedPart.formPartUuid] || [])
     : [];
-  const serializedTrees = JSON.stringify(trees);
-  const isDirty = baselineRef.current !== null && baselineRef.current !== serializedTrees;
+  const previewStructures = useMemo(() => Object.fromEntries(Object.entries(trees).map(([partUuid, sections]) => [
+    partUuid,
+    sections.map((section) => ({ ...section, effectiveLayout: resolveDraftEffectiveLayout(section) })),
+  ])), [trees]);
+  const serializedState = JSON.stringify({ trees, optionSets });
+  const isDirty = baselineRef.current !== null && baselineRef.current !== serializedState;
   const canEdit = isEditing && (!selectedVersion || selectedVersion.status === "draft");
   const canModify = canEdit && !isSaving;
   const isPreview = viewMode === "preview";
@@ -540,6 +685,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     if (saveTransitionRef.current) return;
     if (!selectedVersion?.fvUuid || configurableParts.length === 0) {
       setTrees({});
+      setOptionSets({});
       baselineRef.current = null;
       return;
     }
@@ -557,18 +703,28 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         `/api/v2/admin/form-versions/${selectedVersion.fvUuid}/parts/${part.formPartUuid}/structure`,
       );
       if (!response.ok) throw new Error(`Failed to load ${part.partTitle}`);
-      return [part.formPartUuid, normalizeTree(await response.json(), part.partCode)] as const;
+      const data = await response.json();
+      const normalizedOptionSets = normalizeOptionSets(data);
+      return [part.formPartUuid, {
+        sections: normalizeTree(data, part.partCode, normalizedOptionSets),
+        optionSets: normalizedOptionSets,
+      }] as const;
     }))
       .then((entries) => {
         if (cancelled || saveTransitionRef.current || loadGeneration !== treeLoadGenerationRef.current) return;
-        const loaded = Object.fromEntries(entries);
-        setTrees(loaded);
-        baselineRef.current = JSON.stringify(loaded);
+        const loadedTrees = Object.fromEntries(entries.map(([partUuid, value]) => [partUuid, value.sections]));
+        const loadedOptionSets = Object.fromEntries(entries.map(([partUuid, value]) => [partUuid, value.optionSets]));
+        setTrees(loadedTrees);
+        setOptionSets(loadedOptionSets);
+        baselineRef.current = JSON.stringify({ trees: loadedTrees, optionSets: loadedOptionSets });
       })
       .catch((error: Error) => {
         if (!cancelled && !saveTransitionRef.current && loadGeneration === treeLoadGenerationRef.current) {
-          setTrees(Object.fromEntries(configurableParts.map((part) => [part.formPartUuid, []])));
-          baselineRef.current = JSON.stringify({});
+          const emptyTrees = Object.fromEntries(configurableParts.map((part) => [part.formPartUuid, []]));
+          const emptyOptionSets = Object.fromEntries(configurableParts.map((part) => [part.formPartUuid, []]));
+          setTrees(emptyTrees);
+          setOptionSets(emptyOptionSets);
+          baselineRef.current = JSON.stringify({ trees: emptyTrees, optionSets: emptyOptionSets });
           setSaveError(error.message);
         }
       })
@@ -630,6 +786,38 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     }));
   };
 
+  const updatePartOptionSets = useCallback((partUuid: string, updater: (sets: OptionSetModel[]) => OptionSetModel[]) => {
+    if (saveTransitionRef.current) return;
+    setOptionSets((previous) => {
+      const nextSets = updater(previous[partUuid] || []);
+      return {
+        ...previous,
+        ...Object.fromEntries(configurableParts.map((part) => [part.formPartUuid, nextSets])),
+      };
+    });
+  }, [configurableParts]);
+
+  const optionSetFor = (partUuid: string, uuid: string | null | undefined): OptionSetModel | undefined =>
+    uuid ? (optionSets[partUuid] || []).find((set) => set.option_set_uuid === uuid) : undefined;
+
+  const namedOptionSetsFor = (partUuid: string): OptionSetModel[] =>
+    (optionSets[partUuid] || []).filter(isNamedOptionSet);
+
+  const pointSetUuid = (partUuid: string, section: SectionModel, question: QuestionModel): string | null =>
+    question.option_set_uuid || section.default_option_set_uuid || null;
+
+  const createCustomSet = (partUuid: string, options: OptionModel[] = [createOption()]) => {
+    const uuid = newUuid();
+    const set: OptionSetModel = {
+      clientKey: clientKey("option-set"),
+      option_set_uuid: uuid,
+      option_set_name: null,
+      options: cloneOptions(options, true),
+    };
+    updatePartOptionSets(partUuid, (sets) => [...sets, set]);
+    return set;
+  };
+
   const addSection = (partUuid: string) => {
     updatePartTree(partUuid, (sections) => [...sections, emptySection(
       configurableParts.find((part) => part.formPartUuid === partUuid)?.partCode || "B",
@@ -640,25 +828,242 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const addQuestion = (partUuid: string, sectionIndex: number) => {
     updateSection(partUuid, sectionIndex, (section) => ({
       ...section,
-      questions: [...section.questions, emptyQuestion(section.section_code, section.questions.length)],
+      questions: [...section.questions, (() => {
+        const inherited = optionSetFor(partUuid, section.default_option_set_uuid);
+        const question = emptyQuestion(
+          section.section_code,
+          section.questions.length,
+          inherited?.options || [],
+          null,
+        );
+        return inherited ? { ...question, response_type: "single_select" } : question;
+      })()],
     }));
   };
 
   const addOption = (partUuid: string, sectionIndex: number, questionIndex: number) => {
-    updateQuestion(partUuid, sectionIndex, questionIndex, (question) => ({
-      ...question,
-      options: [...question.options, createOption("New option", question.options)],
-    }));
+    updateQuestion(partUuid, sectionIndex, questionIndex, (question) => {
+      const currentSet = optionSetFor(partUuid, question.option_set_uuid || trees[partUuid]?.[sectionIndex]?.default_option_set_uuid);
+      const nextOption = createOption("New option", question.options);
+      if (currentSet && isNamedOptionSet(currentSet) && currentSet.option_set_uuid) {
+        updateOptionSet(partUuid, currentSet.option_set_uuid, (set) => ({ ...set, options: [...set.options, nextOption] }));
+        return { ...question, options: [...question.options, nextOption] };
+      }
+      if (currentSet?.option_set_uuid) {
+        updatePartOptionSets(partUuid, (sets) => sets.map((set) => set.option_set_uuid === currentSet.option_set_uuid
+          ? { ...set, options: [...set.options, nextOption] }
+          : set));
+        return { ...question, options: [...question.options, nextOption] };
+      }
+      const customSet = createCustomSet(partUuid, [...question.options, nextOption]);
+      return { ...question, option_set_uuid: customSet.option_set_uuid || null, options: customSet.options };
+    });
   };
 
   const changeResponseType = (partUuid: string, sectionIndex: number, questionIndex: number, responseType: string) => {
-    updateQuestion(partUuid, sectionIndex, questionIndex, (question) => ({
-      ...question,
-      response_type: responseType,
-      options: responseType === "single_select" || responseType === "multi_select"
-        ? (question.options.length > 0 ? question.options : [createOption()])
-        : [],
+    const previousQuestion = trees[partUuid]?.[sectionIndex]?.questions[questionIndex];
+    const previousSet = optionSetFor(partUuid, previousQuestion?.option_set_uuid);
+    updateQuestion(partUuid, sectionIndex, questionIndex, (question) => {
+      const isSelect = responseType === "single_select" || responseType === "multi_select";
+      if (!isSelect) {
+        return { ...question, response_type: responseType, option_set_uuid: null, options: [] };
+      }
+      const section = trees[partUuid]?.[sectionIndex];
+      const inherited = section?.default_option_set_uuid
+        ? optionSetFor(partUuid, section.default_option_set_uuid)
+        : undefined;
+      if (inherited) {
+        return {
+          ...question,
+          response_type: responseType,
+          option_set_uuid: null,
+          options: cloneOptions(inherited.options),
+        };
+      }
+      const currentOptions = question.options.length > 0 ? question.options : [createOption()];
+      const currentSet = optionSetFor(partUuid, question.option_set_uuid);
+      if (currentSet) return { ...question, response_type: responseType, options: cloneOptions(currentSet.options) };
+      const customSet = createCustomSet(partUuid, currentOptions);
+      return {
+        ...question,
+        response_type: responseType,
+        option_set_uuid: customSet.option_set_uuid || null,
+        options: customSet.options,
+      };
+    });
+    if (
+      (responseType !== "single_select" && responseType !== "multi_select")
+      && previousSet?.option_set_uuid
+      && previousSet
+      && !isNamedOptionSet(previousSet)
+    ) {
+      const isStillUsed = (trees[partUuid] || []).some((section, currentSectionIndex) =>
+        section.questions.some((question, currentQuestionIndex) =>
+          !(currentSectionIndex === sectionIndex && currentQuestionIndex === questionIndex)
+          && question.option_set_uuid === previousSet.option_set_uuid,
+        ));
+      if (!isStillUsed) {
+        updatePartOptionSets(partUuid, (sets) => sets.filter((set) => set.option_set_uuid !== previousSet.option_set_uuid));
+      }
+    }
+  };
+
+  const setSectionDefault = (partUuid: string, sectionIndex: number, value: string) => {
+    const nextUuid = value === "none" ? null : value;
+    const nextSet = optionSetFor(partUuid, nextUuid);
+    updateSection(partUuid, sectionIndex, (section) => ({
+      ...section,
+      default_option_set_uuid: nextUuid,
+      questions: section.questions.map((question) => question.option_set_uuid || (
+        question.response_type !== "single_select" && question.response_type !== "multi_select"
+      )
+        ? question
+        : {
+            ...question,
+            options: nextSet ? cloneOptions(nextSet.options) : question.options,
+          }),
     }));
+  };
+
+  const setQuestionOptionSet = (
+    partUuid: string,
+    sectionIndex: number,
+    questionIndex: number,
+    value: string,
+  ) => {
+    const section = trees[partUuid]?.[sectionIndex];
+    const question = section?.questions[questionIndex];
+    if (!section || !question) return;
+    if (value === "section-default") {
+      updateQuestion(partUuid, sectionIndex, questionIndex, (current) => ({
+        ...current,
+        response_type: current.response_type === "single_select" || current.response_type === "multi_select"
+          ? current.response_type
+          : "single_select",
+        option_set_uuid: null,
+        options: cloneOptions(optionSetFor(partUuid, section.default_option_set_uuid)?.options || []),
+      }));
+      return;
+    }
+    if (value === "custom") {
+      const currentSet = optionSetFor(partUuid, question.option_set_uuid);
+      if (currentSet && !isNamedOptionSet(currentSet)) return;
+      const customSet = createCustomSet(partUuid, question.options.length > 0 ? question.options : [createOption()]);
+      updateQuestion(partUuid, sectionIndex, questionIndex, (current) => ({
+        ...current,
+        response_type: current.response_type === "single_select" || current.response_type === "multi_select"
+          ? current.response_type
+          : "single_select",
+        option_set_uuid: customSet.option_set_uuid || null,
+        options: cloneOptions(customSet.options),
+      }));
+      return;
+    }
+    const selectedSet = optionSetFor(partUuid, value);
+    if (!selectedSet) return;
+    updateQuestion(partUuid, sectionIndex, questionIndex, (current) => ({
+      ...current,
+      response_type: current.response_type === "single_select" || current.response_type === "multi_select"
+        ? current.response_type
+        : "single_select",
+      option_set_uuid: value,
+      options: cloneOptions(selectedSet.options),
+    }));
+  };
+
+  const updateOptionSet = (
+    partUuid: string,
+    setUuid: string,
+    updater: (set: OptionSetModel) => OptionSetModel,
+  ) => {
+    updatePartOptionSets(partUuid, (sets) => sets.map((set) => set.option_set_uuid === setUuid ? updater(set) : set));
+    setTrees((previous) => ({
+      ...previous,
+      ...Object.fromEntries(Object.entries(previous).map(([treePartUuid, sections]) => [treePartUuid, sections.map((section) => ({
+        ...section,
+        questions: section.questions.map((question) => {
+          if ((question.option_set_uuid || section.default_option_set_uuid) !== setUuid) return question;
+          const set = optionSetFor(partUuid, setUuid);
+          const next = set ? updater(set) : undefined;
+          return next ? { ...question, options: cloneOptions(next.options) } : question;
+        }),
+      }))])),
+    }));
+  };
+
+  const addNamedOptionSet = (partUuid: string) => {
+    updatePartOptionSets(partUuid, (sets) => [...sets, {
+      clientKey: clientKey("option-set"),
+      option_set_uuid: newUuid(),
+      option_set_name: "New option set",
+      options: [createOption("Option 1")],
+    }]);
+  };
+
+  const duplicateOptionSet = (partUuid: string, set: OptionSetModel) => {
+    updatePartOptionSets(partUuid, (sets) => [...sets, {
+      clientKey: clientKey("option-set"),
+      option_set_uuid: newUuid(),
+      option_set_name: `${set.option_set_name || "Option set"} (copy)`,
+      options: cloneOptions(set.options, true),
+    }]);
+  };
+
+  const optionSetUsage = (_partUuid: string, setUuid: string): string[] =>
+    Object.values(trees).flatMap((sections) => sections.flatMap((section) => section.questions
+      .filter((question) => (question.option_set_uuid || section.default_option_set_uuid) === setUuid)
+      .map((question) => `${question.question_code}${question.question_text.trim() ? ` — ${question.question_text.trim()}` : ""}`)));
+
+  const deleteNamedOptionSet = (partUuid: string, set: OptionSetModel) => {
+    const usage = optionSetUsage(partUuid, set.option_set_uuid || "");
+    if (usage.length > 0) {
+      const message = `Cannot delete "${set.option_set_name}": used by ${usage.join(", ")}.`;
+      setSaveError(message);
+      toast({ title: "Option set is in use", description: message, variant: "destructive" });
+      return;
+    }
+    const message = "Deleting unused named option sets is not available through the current structure API, so the set was left unchanged.";
+    setSaveError(message);
+    toast({ title: "Deletion is unavailable", description: message, variant: "destructive" });
+  };
+
+  const duplicateSection = (partUuid: string, sectionIndex: number) => {
+    updatePartTree(partUuid, (sections) => {
+      const source = sections[sectionIndex];
+      if (!source) return sections;
+      const copy: SectionModel = {
+        ...source,
+        clientKey: clientKey("section"),
+        section_uuid: undefined,
+        section_title: `${source.section_title || "Untitled section"} (copy)`,
+        effectiveLayout: undefined,
+        questions: source.questions.map((question) => ({
+          ...question,
+          clientKey: clientKey("question"),
+          question_uuid: undefined,
+          options: cloneOptions(question.options),
+        })),
+      };
+      return [...sections.slice(0, sectionIndex + 1), copy, ...sections.slice(sectionIndex + 1)];
+    });
+  };
+
+  const applyNumericScale = () => {
+    if (!scaleDialog) return;
+    const result = buildNumericScaleOptions(
+      scaleValues.start,
+      scaleValues.end,
+      scaleValues.firstLabel,
+      scaleValues.lastLabel,
+    );
+    if (result.error || !result.options) {
+      setScaleError(result.error || "Unable to generate this scale.");
+      return;
+    }
+    updateOptionSet(scaleDialog.partUuid, scaleDialog.setUuid, (set) => ({ ...set, options: result.options || [] }));
+    setScaleDialog(null);
+    setScaleValues({ start: "", end: "", firstLabel: "", lastLabel: "" });
+    setScaleError("");
   };
 
   const moveSection = (partUuid: string, index: number, direction: -1 | 1) => {
@@ -685,8 +1090,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     updateQuestion(partUuid, sectionIndex, questionIndex, (question) => {
       const target = index + direction;
       if (target < 0 || target >= question.options.length) return question;
+      const currentSet = optionSetFor(partUuid, question.option_set_uuid || trees[partUuid]?.[sectionIndex]?.default_option_set_uuid);
       const options = [...question.options];
       [options[index], options[target]] = [options[target], options[index]];
+      if (currentSet?.option_set_uuid) {
+        updateOptionSet(partUuid, currentSet.option_set_uuid, (set) => ({ ...set, options }));
+      }
       return { ...question, options };
     });
   };
@@ -723,6 +1132,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
   const validateTrees = (): string | null => {
     for (const part of configurableParts) {
+      const namedSets = namedOptionSetsFor(part.formPartUuid);
+      if (namedSets.some((set) => !set.option_set_name?.trim())) return "Named option sets need a name";
+      if (namedSets.some((set) => set.options.length === 0)) return "Named option sets need at least one option";
+      if (namedSets.some((set) => set.options.some((option) => !option.option_label.trim()))) {
+        return "Named option-set option labels cannot be empty";
+      }
       for (const section of trees[part.formPartUuid] || []) {
         if (!section.section_title.trim()) return `${section.section_code}: section title is required`;
         if (section.responsible_mode === "role" && !section.responsible_role_uuid) {
@@ -735,6 +1150,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           if (!question.question_text.trim()) return `${question.question_code}: point text is required`;
           if ((question.response_type === "single_select" || question.response_type === "multi_select") && question.options.length === 0) {
             return `${question.question_code}: add at least one option`;
+          }
+          if (question.option_set_uuid && !optionSetFor(part.formPartUuid, question.option_set_uuid)) {
+            return `${question.question_code}: selected option set is unavailable`;
           }
           if (question.options.some((option) => !option.option_label.trim())) {
             return `${question.question_code}: option labels cannot be empty`;
@@ -760,6 +1178,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     const startedAt = performance.now();
     try {
       const treesAtSave = trees;
+      const optionSetsAtSave = optionSets;
       const draft = await createDraft();
       const response = await apiRequest(
         "PUT",
@@ -767,7 +1186,10 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         {
           parts: configurableParts.map((part) => ({
             form_part_uuid: part.formPartUuid,
-            structure: toPayload(treesAtSave[part.formPartUuid] || []),
+            structure: toPayload(
+              treesAtSave[part.formPartUuid] || [],
+              optionSetsAtSave[part.formPartUuid] || [],
+            ),
           })),
           auditUserUuid: getCrewUserId(),
         },
@@ -777,11 +1199,17 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       if (savedResponse.form_version_uuid !== draft.fvUuid || !Array.isArray(savedResponse.parts)) {
         throw new Error("Form structure save returned an invalid response");
       }
-      const savedTrees = Object.fromEntries(configurableParts.map((part) => {
+      const savedEntries = configurableParts.map((part) => {
         const savedPart = savedResponse.parts.find((item) => item.form_part_uuid === part.formPartUuid);
         if (!savedPart) throw new Error(`Form structure save omitted ${part.partTitle}`);
-        return [part.formPartUuid, normalizeTree(savedPart, part.partCode)];
-      }));
+        const savedOptionSets = normalizeOptionSets(savedPart);
+        return [part.formPartUuid, {
+          sections: normalizeTree(savedPart, part.partCode, savedOptionSets),
+          optionSets: savedOptionSets,
+        }] as const;
+      });
+      const savedTrees = Object.fromEntries(savedEntries.map(([partUuid, value]) => [partUuid, value.sections]));
+      const savedOptionSets = Object.fromEntries(savedEntries.map(([partUuid, value]) => [partUuid, value.optionSets]));
       if (selectedVersion?.fvUuid !== draft.fvUuid) {
         skipNextTreeLoadVersionRef.current = draft.fvUuid;
       }
@@ -789,7 +1217,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       setSelectedVersionUuid(draft.fvUuid);
       setIsEditing(true);
       setTrees(savedTrees);
-      baselineRef.current = JSON.stringify(savedTrees);
+      setOptionSets(savedOptionSets);
+      baselineRef.current = JSON.stringify({ trees: savedTrees, optionSets: savedOptionSets });
       saveTransitionRef.current = false;
       onSave({
         formId: realFormId,
@@ -1054,7 +1483,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 embedded
                 formTitle={formName}
                 parts={allParts}
-                structures={trees}
+                structures={previewStructures}
                 roles={roles}
                 departments={departments}
                 vesselTypes={vesselTypes}
@@ -1109,13 +1538,85 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                    <div className="p-10 text-center text-sm text-gray-500">Loading form structure…</div>
                  ) : (
                    <div className="p-6 space-y-5">
+                   {selectedPart?.partType === "configurable" && (
+                     <Card className="border-[#b7cce4] bg-[#f8fbff]" data-testid="option-set-builder">
+                       <CardContent className="p-5">
+                         <div className="flex flex-wrap items-center justify-between gap-3">
+                           <div>
+                             <h3 className="font-semibold text-[#173f70]">Named option sets</h3>
+                             <p className="mt-1 text-xs text-gray-600">Reusable choices for this version. Option values stay stable when labels change.</p>
+                           </div>
+                           {canModify && <Button size="sm" onClick={() => addNamedOptionSet(selectedPart.formPartUuid)} data-testid="button-add-option-set"><Plus className="mr-1.5 h-3.5 w-3.5" /> Add named set</Button>}
+                         </div>
+                         {namedOptionSetsFor(selectedPart.formPartUuid).length === 0 ? (
+                           <div className="mt-4 rounded border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500">No named option sets yet.</div>
+                         ) : (
+                           <div className="mt-4 space-y-3">
+                             {namedOptionSetsFor(selectedPart.formPartUuid).map((set) => {
+                               const usage = optionSetUsage(selectedPart.formPartUuid, set.option_set_uuid || "");
+                               return (
+                                 <div key={set.clientKey} className="rounded-md border bg-white p-4" data-testid={`card-option-set-${set.option_set_uuid}`}>
+                                   <div className="flex flex-wrap items-center gap-2">
+                                     <Input
+                                       value={set.option_set_name || ""}
+                                       disabled={!canModify}
+                                       onChange={(event) => updateOptionSet(selectedPart.formPartUuid, set.option_set_uuid || "", (current) => ({ ...current, option_set_name: event.target.value }))}
+                                       className="h-8 max-w-sm font-medium"
+                                       aria-label="Option set name"
+                                     />
+                                     <Badge variant="outline" className="text-[10px]">{usage.length} point{usage.length === 1 ? "" : "s"} use this set</Badge>
+                                     <div className="ml-auto flex items-center gap-1">
+                                       {canModify && <Button variant="ghost" size="sm" onClick={() => duplicateOptionSet(selectedPart.formPartUuid, set)}><Copy className="mr-1 h-3.5 w-3.5" /> Duplicate</Button>}
+                                       {canModify && <Button variant="ghost" size="sm" className="text-red-600" onClick={() => deleteNamedOptionSet(selectedPart.formPartUuid, set)}><Trash2 className="mr-1 h-3.5 w-3.5" /> Delete</Button>}
+                                     </div>
+                                   </div>
+                                   <div className="mt-3 space-y-2">
+                                     {set.options.map((option, optionIndex) => (
+                                       <div className="flex items-center gap-2" key={option.clientKey}>
+                                         <span className="w-5 text-center text-xs text-gray-400">{optionIndex + 1}</span>
+                                         <Input
+                                           value={option.option_label}
+                                           disabled={!canModify}
+                                           onChange={(event) => updateOptionSet(selectedPart.formPartUuid, set.option_set_uuid || "", (current) => ({
+                                             ...current,
+                                             options: current.options.map((item, index) => index === optionIndex ? { ...item, option_label: event.target.value } : item),
+                                           }))}
+                                           className="h-8 text-sm"
+                                           placeholder="Option label"
+                                           aria-label={`Option ${optionIndex + 1} label`}
+                                         />
+                                         <span className="min-w-[88px] text-right font-mono text-[10px] text-gray-400" title="Stored value">value: {option.option_value}</span>
+                                         {canModify && <>
+                                           <Button variant="ghost" size="icon" className="h-8 w-8" disabled={optionIndex === 0} onClick={() => updateOptionSet(selectedPart.formPartUuid, set.option_set_uuid || "", (current) => {
+                                             const options = [...current.options]; [options[optionIndex], options[optionIndex - 1]] = [options[optionIndex - 1], options[optionIndex]]; return { ...current, options };
+                                           })}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                                           <Button variant="ghost" size="icon" className="h-8 w-8" disabled={optionIndex === set.options.length - 1} onClick={() => updateOptionSet(selectedPart.formPartUuid, set.option_set_uuid || "", (current) => {
+                                             const options = [...current.options]; [options[optionIndex], options[optionIndex + 1]] = [options[optionIndex + 1], options[optionIndex]]; return { ...current, options };
+                                           })}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                                           <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => updateOptionSet(selectedPart.formPartUuid, set.option_set_uuid || "", (current) => ({ ...current, options: current.options.filter((_, index) => index !== optionIndex) }))}><X className="h-3.5 w-3.5" /></Button>
+                                         </>}
+                                       </div>
+                                     ))}
+                                   </div>
+                                   {canModify && <div className="mt-3 flex flex-wrap gap-2">
+                                     <Button variant="outline" size="sm" onClick={() => updateOptionSet(selectedPart.formPartUuid, set.option_set_uuid || "", (current) => ({ ...current, options: [...current.options, createOption("New option", current.options)] }))}><Plus className="mr-1 h-3.5 w-3.5" /> Add option</Button>
+                                     <Button variant="outline" size="sm" onClick={() => { setScaleDialog({ partUuid: selectedPart.formPartUuid, setUuid: set.option_set_uuid || "" }); setScaleError(""); }} data-testid={`button-generate-numeric-scale-${set.option_set_uuid}`}>Generate numeric scale</Button>
+                                   </div>}
+                                 </div>
+                               );
+                             })}
+                           </div>
+                         )}
+                       </CardContent>
+                     </Card>
+                   )}
                   {selectedPart?.partType === "fixed" ? (
                     <ConfiguredFormRenderer
                       mode="preview"
                       embedded
                       formTitle={formName}
                       parts={allParts}
-                      structures={trees}
+                      structures={previewStructures}
                       roles={roles}
                       departments={departments}
                       vesselTypes={vesselTypes}
@@ -1174,12 +1675,15 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                  )}
                                  {section.comment_box_required && <Badge variant="outline" className="text-[10px] font-normal">Comment required</Badge>}
                                  {section.signature_required && <Badge variant="outline" className="text-[10px] font-normal">Signature required</Badge>}
+                                  {section.default_option_set_uuid && <Badge variant="outline" className="text-[10px] font-normal">Default: {optionSetFor(selectedPart.formPartUuid, section.default_option_set_uuid)?.option_set_name || "Custom set"}</Badge>}
+                                  <Badge variant="outline" className="text-[10px] font-normal">Layout: {section.layout_preference}</Badge>
                                </div>
                              </div>
                              {canModify && (
                                <div className="flex items-center gap-1">
                                  <Button variant="ghost" size="icon" className="h-8 w-8" disabled={sectionIndex === 0} onClick={() => moveSection(selectedPart.formPartUuid, sectionIndex, -1)} data-testid={`button-move-section-up-${sectionIndex + 1}`}><ArrowUp className="h-4 w-4" /></Button>
                                  <Button variant="ghost" size="icon" className="h-8 w-8" disabled={sectionIndex === currentSections.length - 1} onClick={() => moveSection(selectedPart.formPartUuid, sectionIndex, 1)} data-testid={`button-move-section-down-${sectionIndex + 1}`}><ArrowDown className="h-4 w-4" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateSection(selectedPart.formPartUuid, sectionIndex)} aria-label="Duplicate section" data-testid={`button-duplicate-section-${sectionIndex + 1}`}><Copy className="h-4 w-4" /></Button>
                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => requestDelete("Delete section?", "This will also remove all points in the section.", () => updatePartTree(selectedPart.formPartUuid, (sections) => sections.filter((_, index) => index !== sectionIndex)))} data-testid={`button-delete-section-${sectionIndex + 1}`}><Trash2 className="h-4 w-4" /></Button>
                                </div>
                              )}
@@ -1190,8 +1694,52 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "responsible")} data-testid={`button-section-responsible-settings-${sectionIndex + 1}`}>Responsible party</Button>
                                <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "comment")} data-testid={`button-section-comment-settings-${sectionIndex + 1}`}>Comment box</Button>
                                <Button variant="outline" size="sm" onClick={() => openSettings(selectedPart.formPartUuid, sectionIndex, "signature")} data-testid={`button-section-signature-settings-${sectionIndex + 1}`}>Signature</Button>
+                                <div className="flex items-center gap-2 rounded-md border bg-white px-2 py-1">
+                                  <span className="text-xs text-gray-600">Default set</span>
+                                  <Select value={section.default_option_set_uuid || "none"} onValueChange={(value) => setSectionDefault(selectedPart.formPartUuid, sectionIndex, value)}>
+                                    <SelectTrigger className="h-7 w-[175px] text-xs" data-testid={`select-section-default-set-${sectionIndex + 1}`}><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="none">No default</SelectItem>
+                                      {namedOptionSetsFor(selectedPart.formPartUuid).map((set) => <SelectItem key={set.option_set_uuid} value={set.option_set_uuid || ""}>{set.option_set_name}</SelectItem>)}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex items-center gap-2 rounded-md border bg-white px-2 py-1">
+                                  <span className="text-xs text-gray-600">Layout</span>
+                                  <Select value={section.layout_preference} onValueChange={(value: "auto" | "list" | "matrix") => updateSection(selectedPart.formPartUuid, sectionIndex, (current) => ({ ...current, layout_preference: value }))}>
+                                    <SelectTrigger className="h-7 w-[105px] text-xs" data-testid={`select-section-layout-${sectionIndex + 1}`}><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="auto">Auto</SelectItem>
+                                      <SelectItem value="list">List</SelectItem>
+                                      <SelectItem value="matrix">Matrix</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex items-center gap-2 rounded-md border bg-white px-2 py-1">
+                                  <Select value={bulkResponseTypes[section.clientKey] || "single_select"} onValueChange={(value) => setBulkResponseTypes((current) => ({ ...current, [section.clientKey]: value }))}>
+                                    <SelectTrigger className="h-7 w-[155px] text-xs" data-testid={`select-bulk-response-type-${sectionIndex + 1}`}><SelectValue /></SelectTrigger>
+                                    <SelectContent>{RESPONSE_TYPES.map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
+                                  </Select>
+                                  <Button variant="ghost" size="sm" onClick={() => {
+                                    const type = bulkResponseTypes[section.clientKey] || "single_select";
+                                    requestDelete(
+                                      "Change response type for all points?",
+                                      `${section.questions.length} point${section.questions.length === 1 ? "" : "s"} will change to ${responseLabel(type)}.`,
+                                      () => section.questions.forEach((_, questionIndex) => changeResponseType(selectedPart.formPartUuid, sectionIndex, questionIndex, type)),
+                                    );
+                                  }} disabled={section.questions.length === 0}>Apply to all</Button>
+                                </div>
                              </div>
                            )}
+                            {section.layout_preference === "auto" && section.effectiveLayout === "list" && (
+                              <p className="mt-3 text-xs text-amber-700" data-testid={`text-auto-layout-reason-${sectionIndex + 1}`}>
+                                Auto resolved to list because {section.questions.some((question) => question.response_type !== "single_select" && question.response_type !== "multi_select")
+                                  ? "the section includes a non-select point"
+                                  : new Set(section.questions.map((question) => pointSetUuid(selectedPart.formPartUuid, section, question))).size > 1
+                                    ? "points use different option sets"
+                                    : "the server reported this set is not eligible for a matrix"}.
+                              </p>
+                            )}
                            <div className="mt-4 h-0.5 w-full" style={{ backgroundColor: sailDesignSystem.colors.headerText }} />
                          </div>
                          {section.questions.length > 0 ? (
@@ -1221,9 +1769,29 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                      <SelectTrigger className="h-9 w-full min-w-[160px]" data-testid={`select-response-type-${sectionIndex + 1}-${questionIndex + 1}`}><SelectValue /></SelectTrigger>
                                      <SelectContent>{RESPONSE_TYPES.map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
                                    </Select>
-                                   <div className="mt-2 text-[11px] text-gray-400">{responseLabel(question.response_type)}</div>
+                                    <div className="mt-2 text-[11px] text-gray-500">Single Selection allows one answer, Multi Selection allows several.</div>
                                    {(question.response_type === "single_select" || question.response_type === "multi_select") && (
-                                     <div className="mt-3 space-y-2 border-t pt-3" data-testid={`option-editor-${sectionIndex + 1}-${questionIndex + 1}`}>
+                                      <div className="mt-3 space-y-2 border-t pt-3" data-testid={`option-editor-${sectionIndex + 1}-${questionIndex + 1}`}>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <span className="text-xs font-semibold text-gray-700">Option source</span>
+                                          <Select
+                                            value={question.option_set_uuid
+                                              ? (isNamedOptionSet(optionSetFor(selectedPart.formPartUuid, question.option_set_uuid) || { option_set_name: null }) ? question.option_set_uuid : "custom")
+                                              : (section.default_option_set_uuid ? "section-default" : "custom")}
+                                            disabled={!canModify}
+                                            onValueChange={(value) => setQuestionOptionSet(selectedPart.formPartUuid, sectionIndex, questionIndex, value)}
+                                          >
+                                            <SelectTrigger className="h-8 min-w-[180px] flex-1 text-xs" data-testid={`select-point-option-set-${sectionIndex + 1}-${questionIndex + 1}`}><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                              {section.default_option_set_uuid && <SelectItem value="section-default">Section default — {optionSetFor(selectedPart.formPartUuid, section.default_option_set_uuid)?.option_set_name || "set"}</SelectItem>}
+                                              {namedOptionSetsFor(selectedPart.formPartUuid).map((set) => <SelectItem value={set.option_set_uuid || ""} key={set.option_set_uuid}>{set.option_set_name}</SelectItem>)}
+                                              <SelectItem value="custom">Custom options for this point</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div className="text-[11px] text-[#16569e]">
+                                          Using: {optionSetFor(selectedPart.formPartUuid, pointSetUuid(selectedPart.formPartUuid, section, question))?.option_set_name || "Custom options"}
+                                        </div>
                                        <div className="flex items-center justify-between gap-2">
                                          <div className="text-xs font-semibold text-gray-700">Options</div>
                                          {canModify && <Button variant="outline" size="sm" onClick={() => addOption(selectedPart.formPartUuid, sectionIndex, questionIndex)} data-testid={`button-add-option-${sectionIndex + 1}-${questionIndex + 1}`}><Plus className="h-3.5 w-3.5 mr-1" /> Add option</Button>}
@@ -1234,10 +1802,20 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                            <Input
                                              value={option.option_label}
                                              disabled={!canModify}
-                                             onChange={(event) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({
-                                               ...value,
-                                               options: value.options.map((item, index) => index === optionIndex ? { ...item, option_label: event.target.value } : item),
-                                             }))}
+                                              onChange={(event) => {
+                                                const activeSet = optionSetFor(selectedPart.formPartUuid, question.option_set_uuid || section.default_option_set_uuid);
+                                                if (activeSet?.option_set_uuid) {
+                                                  updateOptionSet(selectedPart.formPartUuid, activeSet.option_set_uuid, (value) => ({
+                                                    ...value,
+                                                    options: value.options.map((item, index) => index === optionIndex ? { ...item, option_label: event.target.value } : item),
+                                                  }));
+                                                } else {
+                                                  updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({
+                                                    ...value,
+                                                    options: value.options.map((item, index) => index === optionIndex ? { ...item, option_label: event.target.value } : item),
+                                                  }));
+                                                }
+                                              }}
                                              className="h-8 bg-white text-sm"
                                              placeholder="Option label"
                                              data-testid={`input-option-label-${sectionIndex + 1}-${questionIndex + 1}-${optionIndex + 1}`}
@@ -1246,7 +1824,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                              <>
                                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={optionIndex === 0} onClick={() => moveOption(selectedPart.formPartUuid, sectionIndex, questionIndex, optionIndex, -1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
                                                <Button variant="ghost" size="icon" className="h-8 w-8" disabled={optionIndex === question.options.length - 1} onClick={() => moveOption(selectedPart.formPartUuid, sectionIndex, questionIndex, optionIndex, 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
-                                               <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, options: value.options.filter((_, index) => index !== optionIndex) }))}><X className="h-3.5 w-3.5" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => {
+                                                  const activeSet = optionSetFor(selectedPart.formPartUuid, question.option_set_uuid || section.default_option_set_uuid);
+                                                  if (activeSet?.option_set_uuid) {
+                                                    updateOptionSet(selectedPart.formPartUuid, activeSet.option_set_uuid, (value) => ({ ...value, options: value.options.filter((_, index) => index !== optionIndex) }));
+                                                  } else {
+                                                    updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, options: value.options.filter((_, index) => index !== optionIndex) }));
+                                                  }
+                                                }}><X className="h-3.5 w-3.5" /></Button>
                                              </>
                                            )}
                                          </div>
@@ -1374,6 +1959,39 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         </DialogContent>
       </Dialog>
 
+      <Dialog open={scaleDialog !== null} onOpenChange={(open) => {
+        if (!open) {
+          setScaleDialog(null);
+          setScaleError("");
+        }
+      }}>
+        <DialogContent className="max-w-md" data-testid="numeric-scale-dialog">
+          <DialogHeader>
+            <DialogTitle>Generate numeric scale</DialogTitle>
+            <DialogDescription>Creates an inclusive, whole-number scale. End labels change labels only; stored values remain numeric.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="space-y-1 text-sm">Start
+              <Input value={scaleValues.start} onChange={(event) => setScaleValues((value) => ({ ...value, start: event.target.value }))} inputMode="numeric" placeholder="1" data-testid="input-scale-start" />
+            </label>
+            <label className="space-y-1 text-sm">End
+              <Input value={scaleValues.end} onChange={(event) => setScaleValues((value) => ({ ...value, end: event.target.value }))} inputMode="numeric" placeholder="10" data-testid="input-scale-end" />
+            </label>
+            <label className="space-y-1 text-sm">First label (optional)
+              <Input value={scaleValues.firstLabel} onChange={(event) => setScaleValues((value) => ({ ...value, firstLabel: event.target.value }))} placeholder="Poor" data-testid="input-scale-first-label" />
+            </label>
+            <label className="space-y-1 text-sm">Last label (optional)
+              <Input value={scaleValues.lastLabel} onChange={(event) => setScaleValues((value) => ({ ...value, lastLabel: event.target.value }))} placeholder="Excellent" data-testid="input-scale-last-label" />
+            </label>
+          </div>
+          {scaleError && <p className="text-sm text-red-600" data-testid="text-scale-error">{scaleError}</p>}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setScaleDialog(null)}>Cancel</Button>
+            <Button onClick={applyNumericScale} data-testid="button-apply-numeric-scale">Generate scale</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={confirmDelete !== null} onOpenChange={(open) => !open && setConfirmDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>{confirmDelete?.title}</AlertDialogTitle><AlertDialogDescription>{confirmDelete?.description}</AlertDialogDescription></AlertDialogHeader>
@@ -1412,8 +2030,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 };
 
 export const genericFormEditorTestUtils = {
+  buildNumericScaleOptions,
   createOption,
+  cloneOptions,
   departmentOption,
+  isNamedOptionSet,
+  normalizeTree,
+  resolveDraftEffectiveLayout,
   roleSummary,
   selectableRoles,
   renumberSections,

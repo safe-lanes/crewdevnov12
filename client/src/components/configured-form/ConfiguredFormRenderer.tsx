@@ -42,6 +42,7 @@ export interface ConfiguredFormQuestion {
   response_type: string;
   is_mandatory: boolean;
   comment_enabled: boolean;
+  option_set_uuid?: string | null;
   options: ConfiguredFormOption[];
   clientKey?: string;
 }
@@ -56,6 +57,9 @@ export interface ConfiguredFormSection {
   responsible_department: string | null;
   comment_box_required: boolean;
   signature_required: boolean;
+  default_option_set_uuid?: string | null;
+  layout_preference?: "auto" | "list" | "matrix";
+  effectiveLayout?: "list" | "matrix";
   questions: ConfiguredFormQuestion[];
   clientKey?: string;
 }
@@ -411,6 +415,126 @@ function ConfiguredPoint({
   );
 }
 
+function ConfiguredMatrixPoint({
+  question,
+  questionId,
+  options,
+  answers,
+  setAnswer,
+}: {
+  question: ConfiguredFormQuestion;
+  questionId: string;
+  options: ConfiguredFormOption[];
+  answers: Record<string, ConfiguredFormAnswerValue>;
+  setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
+}) {
+  const [commentExpanded, setCommentExpanded] = useState(false);
+  const answer = answers[questionId];
+  const selectedOptions = Array.isArray(answer) ? answer : [];
+  const tableClasses = getTableClasses();
+
+  return (
+    <>
+      <tr className={tableClasses.row} data-testid={`preview-matrix-point-${questionId}`}>
+        <td className={`${tableClasses.cell} min-w-[220px]`}>
+          <span className="mr-2 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{question.question_code || "Point code not configured"}</span>
+          <span className="text-sm font-semibold">{question.question_text.trim() || MISSING_POINT_TEXT}</span>
+          {question.is_mandatory && <span className="ml-1 font-bold" style={{ color: sailDesignSystem.colors.accent }} aria-label="Mandatory">*</span>}
+        </td>
+        {options.map((option, index) => {
+          const value = option.option_value || `option-${index}`;
+          const label = optionLabel(option);
+          const isSingle = question.response_type === "single_select";
+          const checked = isSingle ? answer === value : selectedOptions.includes(value);
+          return (
+            <td className={`${tableClasses.cell} min-w-[84px] text-center`} key={option.clientKey || option.option_uuid || value}>
+              <input
+                type={isSingle ? "radio" : "checkbox"}
+                name={`matrix-${questionId}`}
+                checked={checked}
+                onChange={(event) => setAnswer(
+                  questionId,
+                  isSingle
+                    ? value
+                    : event.target.checked
+                      ? [...selectedOptions, value]
+                      : selectedOptions.filter((selected) => selected !== value),
+                )}
+                aria-label={`${question.question_code}: ${label}`}
+                data-testid={`matrix-option-${questionId}-${index + 1}`}
+              />
+            </td>
+          );
+        })}
+        <td className={`${tableClasses.cell} min-w-[56px] text-center`}>
+          {question.comment_enabled && (
+            <SAILButton
+              type="button"
+              variant="secondary"
+              className="h-8 w-8 px-2"
+              onClick={() => setCommentExpanded((expanded) => !expanded)}
+              aria-expanded={commentExpanded}
+              aria-label="Comment"
+              title="Comment"
+              data-testid={`button-preview-comment-${questionId}`}
+            >
+              <MessageSquare className="h-4 w-4" />
+            </SAILButton>
+          )}
+        </td>
+      </tr>
+      {question.comment_enabled && commentExpanded && (
+        <tr className={tableClasses.row} data-testid={`preview-comment-row-${questionId}`}>
+          <td colSpan={options.length + 2} className={tableClasses.cell}>
+            <SAILFormField label="Comment">
+              <Textarea placeholder="Preview comment — not saved" data-testid={`preview-comment-${questionId}`} />
+            </SAILFormField>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+function ConfiguredMatrixSection({
+  section,
+  sectionId,
+  answers,
+  setAnswer,
+}: {
+  section: ConfiguredFormSection;
+  sectionId: string;
+  answers: Record<string, ConfiguredFormAnswerValue>;
+  setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
+}) {
+  const options = section.questions[0]?.options || [];
+  const tableClasses = getTableClasses();
+
+  return (
+    <div className="w-full overflow-x-auto" data-testid={`preview-matrix-section-${sectionId}`}>
+      <table className="min-w-max w-full border-collapse">
+        <thead>
+          <tr>
+            <th className={`${tableClasses.header} min-w-[220px] text-left`}>Point</th>
+            {options.map((option, index) => (
+              <th className={`${tableClasses.header} min-w-[84px] text-center text-xs`} key={option.clientKey || option.option_uuid || `${sectionId}-header-${index}`}>
+                {optionLabel(option)}
+              </th>
+            ))}
+            <th className={`${tableClasses.header} min-w-[56px] text-center`}>Comment</th>
+          </tr>
+        </thead>
+        <tbody>
+          {section.questions.map((question, questionIndex) => {
+            const questionId = question.clientKey || question.question_uuid || `${sectionId}-point-${questionIndex + 1}`;
+            return <ConfiguredMatrixPoint key={questionId} question={question} questionId={questionId} options={options} answers={answers} setAnswer={setAnswer} />;
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ConfiguredSection({
   section,
   sectionId,
@@ -483,6 +607,8 @@ function ConfiguredSection({
           </InlineMissing>
         ) : section.questions.length === 0 ? (
           <InlineMissing testId={`preview-no-points-${sectionId}`}>No points configured.</InlineMissing>
+        ) : section.effectiveLayout === "matrix" ? (
+          <ConfiguredMatrixSection section={section} sectionId={sectionId} answers={answers} setAnswer={setAnswer} />
         ) : (
           <FormTable headers={["Point", "Response", "Comment"]}>
             {section.questions.map((question, questionIndex) => {
@@ -521,10 +647,11 @@ export function ConfiguredFormRenderer({
   onBack,
   embedded = false,
   selectedPartUuid,
+  live,
   className = "",
 }: ConfiguredFormRendererProps) {
   const [internalVesselTypeUuid, setInternalVesselTypeUuid] = useState("all");
-  const [answers, setAnswers] = useState<Record<string, ConfiguredFormAnswerValue>>({});
+  const [internalAnswers, setInternalAnswers] = useState<Record<string, ConfiguredFormAnswerValue>>({});
   const [internalExpandedSections, setInternalExpandedSections] = useState<Record<string, boolean>>({});
 
   const selectedVessel = selectedVesselTypeUuid ?? internalVesselTypeUuid;
@@ -544,24 +671,19 @@ export function ConfiguredFormRenderer({
     [vesselTypes],
   );
 
+  const answers = mode === "live" && live ? live.answers : internalAnswers;
   const setAnswer = (questionId: string, value: ConfiguredFormAnswerValue) => {
-    setAnswers((current) => ({ ...current, [questionId]: value }));
+    if (mode === "live" && live) {
+      live.onAnswerChange(questionId, value);
+      return;
+    }
+    setInternalAnswers((current) => ({ ...current, [questionId]: value }));
   };
 
   const setVesselType = (value: string) => {
     setInternalVesselTypeUuid(value);
     onSelectedVesselTypeUuidChange?.(value);
   };
-
-  if (mode === "live") {
-    return (
-      <div className={className} data-testid="configured-form-live-unimplemented">
-        <InlineMissing testId="configured-form-live-mode-message">
-          Live configured-form rendering is reserved for Phase 3.
-        </InlineMissing>
-      </div>
-    );
-  }
 
   const previewSchema = z.object({});
   const baseSections = parts.map((part, index) => ({
@@ -570,16 +692,16 @@ export function ConfiguredFormRenderer({
     letter: part.partCode || String(index + 1),
   }));
 
-  const renderPreviewContent = (activeSection: string) => {
+  const renderFormContent = (activeSection: string) => {
     const selectedPart = parts.find((part) => part.formPartUuid === activeSection);
     const selectedSections = selectedPart ? structures[selectedPart.formPartUuid] || [] : [];
 
     return (
       <>
-        <div className="flex flex-wrap items-end justify-between gap-4" data-testid="preview-only-banner">
+        <div className="flex flex-wrap items-end justify-between gap-4" data-testid={mode === "preview" ? "preview-only-banner" : "configured-form-live-banner"}>
           <div>
-            <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Preview only</p>
-            <p className="text-xs">Inputs are interactive for review, but nothing is saved.</p>
+            <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{mode === "preview" ? "Preview only" : "Configured form"}</p>
+            <p className="text-xs">{mode === "preview" ? "Inputs are interactive for review, but nothing is saved." : "Responses are managed by the live form host."}</p>
           </div>
           <SAILFormField label="Vessel type" className="min-w-[210px]" >
             <div data-testid="select-preview-vessel-type">
@@ -639,16 +761,16 @@ export function ConfiguredFormRenderer({
 
   if (embedded) {
     return (
-      <div className={className} data-testid="configured-form-preview" style={{ fontFamily: sailDesignSystem.typography.fontFamily }}>
-        {renderPreviewContent(selectedPartUuid || baseSections[0]?.id || "")}
+      <div className={className} data-testid={mode === "preview" ? "configured-form-preview" : "configured-form-live"} style={{ fontFamily: sailDesignSystem.typography.fontFamily }}>
+        {renderFormContent(selectedPartUuid || baseSections[0]?.id || "")}
       </div>
     );
   }
 
   return (
-    <div className={className} data-testid="configured-form-preview" style={{ fontFamily: sailDesignSystem.typography.fontFamily }}>
+    <div className={className} data-testid={mode === "preview" ? "configured-form-preview" : "configured-form-live"} style={{ fontFamily: sailDesignSystem.typography.fontFamily }}>
       <BaseSubmoduleForm
-        title={`${formTitle} · Preview`}
+        title={`${formTitle} · ${mode === "preview" ? "Preview" : "Live"}`}
         sections={baseSections}
         schema={previewSchema}
         defaultValues={{}}
@@ -656,7 +778,7 @@ export function ConfiguredFormRenderer({
         onSubmit={() => undefined}
         hideSaveDraft
       >
-        {({ activeSection }) => renderPreviewContent(activeSection)}
+        {({ activeSection }) => renderFormContent(activeSection)}
       </BaseSubmoduleForm>
     </div>
   );
