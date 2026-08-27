@@ -398,6 +398,47 @@ describe("configured form renderer preview", () => {
     expect(screen.queryByTestId("preview-point-matrix-single")).toBeNull();
   });
 
+  it("shows numeric-scale endpoint descriptors separately from matrix headers and list choices", () => {
+    const scale = [
+      { clientKey: "one", option_label: "1", option_value: "1" },
+      { clientKey: "two", option_label: "2", option_value: "2" },
+    ];
+    const matrixSection: ConfiguredFormSection = {
+      ...configuredSection,
+      clientKey: "described-matrix",
+      effectiveLayout: "matrix",
+      questions: [{
+        clientKey: "described-matrix-question",
+        question_code: "B1.1",
+        question_text: "Rate readiness",
+        response_type: "single_select",
+        is_mandatory: false,
+        comment_enabled: false,
+        low_end_label: "Poor",
+        high_end_label: "Excellent",
+        options: scale,
+      }],
+    };
+    renderPreview([matrixSection]);
+    click(screen.getByTestId("button-step-part-b"));
+    expect(screen.getByTestId("matrix-end-label-described-matrix-low")).toHaveTextContent("Poor");
+    expect(screen.getByTestId("matrix-end-label-described-matrix-high")).toHaveTextContent("Excellent");
+
+    const listSection: ConfiguredFormSection = {
+      ...matrixSection,
+      clientKey: "described-list",
+      effectiveLayout: "list",
+      questions: [{ ...matrixSection.questions[0], clientKey: "described-list-question" }],
+    };
+    renderPreview([listSection]);
+    click(screen.getByTestId("button-step-part-b"));
+    const trigger = screen.getByTestId("preview-response-described-list-question").querySelector<HTMLElement>('[role="combobox"]');
+    if (!trigger) throw new Error("List-scale select did not render a combobox");
+    pointerDown(trigger);
+    expect(portalOption("1 — Poor")).toBeInTheDocument();
+    expect(portalOption("2 — Excellent")).toBeInTheDocument();
+  });
+
   it("uses the same matrix rendering branch for live hosts", () => {
     const onAnswerChange = vi.fn();
     const liveSection: ConfiguredFormSection = {

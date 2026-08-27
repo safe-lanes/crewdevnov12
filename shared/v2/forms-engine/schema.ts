@@ -90,6 +90,8 @@ export const frmOptionSets = pgTable(
       .notNull()
       .references(() => admFormVersionsV2.fvUuid, { onDelete: "restrict", onUpdate: "cascade" }),
     setName: text("set_name"),
+    lowEndLabel: text("low_end_label"),
+    highEndLabel: text("high_end_label"),
     ...auditColumns,
   },
   (table) => ({
@@ -167,6 +169,8 @@ export const formStructureOptionInputSchema = z.object({
 export const formStructureOptionSetInputSchema = z.object({
   option_set_uuid: rowUuidSchema.optional(),
   option_set_name: z.string().trim().max(500).nullable().optional(),
+  low_end_label: z.string().trim().min(1).max(500).nullable().optional(),
+  high_end_label: z.string().trim().min(1).max(500).nullable().optional(),
   sort_order: z.number().int().nonnegative().optional(),
   options: z.array(formStructureOptionInputSchema).default([]),
 }).strict();
@@ -179,6 +183,11 @@ export const formStructureQuestionInputSchema = z.object({
   is_mandatory: z.boolean().default(false),
   comment_enabled: z.boolean().default(true),
   option_set_uuid: rowUuidSchema.nullable().optional(),
+  // Read responses include the descriptors resolved from the question's
+  // effective option set. They are accepted on a read-modify-write payload
+  // but persistence remains set-owned.
+  low_end_label: z.string().trim().min(1).max(500).nullable().optional(),
+  high_end_label: z.string().trim().min(1).max(500).nullable().optional(),
   sort_order: z.number().int().nonnegative().optional(),
   options: z.array(formStructureOptionInputSchema).default([]),
 }).strict().superRefine((question, ctx) => {

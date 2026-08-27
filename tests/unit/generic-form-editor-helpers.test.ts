@@ -101,8 +101,10 @@ describe("generic configurable-form editor helpers", () => {
     const scale = genericFormEditorTestUtils.buildNumericScaleOptions("1", "10", "Poor", "Excellent");
     expect(scale.error).toBeUndefined();
     expect(scale.options).toHaveLength(10);
-    expect(scale.options?.[0]).toMatchObject({ option_label: "Poor", option_value: "1" });
-    expect(scale.options?.[9]).toMatchObject({ option_label: "Excellent", option_value: "10" });
+    expect(scale.options?.[0]).toMatchObject({ option_label: "1", option_value: "1" });
+    expect(scale.options?.[9]).toMatchObject({ option_label: "10", option_value: "10" });
+    expect(scale.lowEndLabel).toBe("Poor");
+    expect(scale.highEndLabel).toBe("Excellent");
     expect(scale.options?.every((option) => !option.option_uuid)).toBe(true);
     expect(scale.options?.map((option) => option.option_value)).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
 
@@ -217,6 +219,57 @@ describe("generic configurable-form editor helpers", () => {
       ...section,
       questions: [{ ...section.questions[0], response_type: "free_text", option_set_uuid: null, options: [] }],
     })).toBe("list");
+  });
+
+  it("explains every matrix eligibility fallback without relying on the saved server layout", () => {
+    const base = {
+      clientKey: "section",
+      section_code: "B1",
+      section_title: "Ratings",
+      applicable_vessel_types: [],
+      responsible_mode: "not_applicable" as const,
+      responsible_role_uuid: null,
+      responsible_department: null,
+      comment_box_required: false,
+      signature_required: false,
+      default_option_set_uuid: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      layout_preference: "matrix" as const,
+      questions: [{
+        clientKey: "one",
+        question_code: "B1.1",
+        question_text: "One",
+        response_type: "single_select",
+        is_mandatory: false,
+        comment_enabled: true,
+        option_set_uuid: null,
+        options: Array.from({ length: 7 }, (_, index) => ({
+          clientKey: `option-${index}`,
+          option_label: String(index + 1),
+          option_value: String(index + 1),
+        })),
+      }],
+    };
+
+    expect(genericFormEditorTestUtils.matrixIneligibilityReason({
+      ...base,
+      questions: [{ ...base.questions[0], response_type: "free_text" }],
+    })).toBe("the section includes a non-select point");
+    expect(genericFormEditorTestUtils.matrixIneligibilityReason({
+      ...base,
+      questions: [{ ...base.questions[0], option_set_uuid: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }, base.questions[0]],
+    })).toBe("points use mixed option sets");
+    expect(genericFormEditorTestUtils.matrixIneligibilityReason({
+      ...base,
+      questions: [{ ...base.questions[0], options: Array.from({ length: 13 }, (_, index) => ({
+        clientKey: `option-${index}`, option_label: String(index + 1), option_value: String(index + 1),
+      })) }],
+    })).toBe("the shared option set has more than 12 options");
+    expect(genericFormEditorTestUtils.matrixIneligibilityReason({
+      ...base,
+      questions: [{ ...base.questions[0], options: base.questions[0].options.map((option, index) => index === 0
+        ? { ...option, option_label: "Very poor" }
+        : option) }],
+    })).toBe("the shared option set has labels longer than four characters");
   });
 
   it("derives independent section and point codes from the parent part code", () => {

@@ -190,11 +190,23 @@ export class FormStructureRepository {
 
       // The old editor sends options nested under a question. Resolve that
       // payload into an unnamed set while accepting the new set-based form.
-      const setPayloads = new Map<string, { uuid: string; name: string | null; options: any[] }>();
+      const setPayloads = new Map<string, {
+        uuid: string;
+        name: string | null;
+        lowEndLabel: string | null;
+        highEndLabel: string | null;
+        options: any[];
+      }>();
       const questionUuidByInput = new Map<object, string>();
       for (const set of input.option_sets ?? []) {
         const uuid = set.option_set_uuid ?? uuidv4();
-        setPayloads.set(uuid, { uuid, name: set.option_set_name ?? null, options: set.options });
+        setPayloads.set(uuid, {
+          uuid,
+          name: set.option_set_name ?? null,
+          lowEndLabel: set.low_end_label ?? null,
+          highEndLabel: set.high_end_label ?? null,
+          options: set.options,
+        });
       }
       const questionSetUuid = new Map<string, string | null>();
       for (const section of input.sections) {
@@ -207,9 +219,21 @@ export class FormStructureRepository {
             const existingQuestion = questionByUuid.get(questionUuid);
             const existingSet = existingQuestion?.optionSetUuid ? setByUuid.get(existingQuestion.optionSetUuid) : undefined;
             setUuid = existingSet && existingSet.setName == null ? existingSet.optionSetUuid : uuidv4();
-            setPayloads.set(setUuid as string, { uuid: setUuid as string, name: null, options: question.options });
+            setPayloads.set(setUuid as string, {
+              uuid: setUuid as string,
+              name: null,
+              lowEndLabel: null,
+              highEndLabel: null,
+              options: question.options,
+            });
           } else if (setUuid && question.options.length > 0 && !setPayloads.has(setUuid)) {
-            setPayloads.set(setUuid, { uuid: setUuid, name: setByUuid.get(setUuid)?.setName ?? null, options: question.options });
+            setPayloads.set(setUuid, {
+              uuid: setUuid,
+              name: setByUuid.get(setUuid)?.setName ?? null,
+              lowEndLabel: setByUuid.get(setUuid)?.lowEndLabel ?? null,
+              highEndLabel: setByUuid.get(setUuid)?.highEndLabel ?? null,
+              options: question.options,
+            });
           }
           if (!setUuid) setUuid = section.default_option_set_uuid ?? existingSection?.defaultOptionSetUuid ?? null;
           questionSetUuid.set(questionUuid, setUuid);
@@ -220,6 +244,8 @@ export class FormStructureRepository {
         const existing = setByUuid.get(payload.uuid);
         const setValues = {
           setName: payload.name,
+          lowEndLabel: payload.lowEndLabel,
+          highEndLabel: payload.highEndLabel,
           updatedByUuid: auditUserUuid,
           updatedAt: sql`now()`,
           isDeleted: false,
@@ -400,6 +426,8 @@ export class FormStructureRepository {
           optionSetUuid,
           formVersionUuid: destinationFvUuid,
           setName: row.setName,
+          lowEndLabel: row.lowEndLabel,
+          highEndLabel: row.highEndLabel,
           sortOrder: row.sortOrder,
           createdByUuid: null,
           updatedByUuid: null,

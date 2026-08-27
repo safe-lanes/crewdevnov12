@@ -252,6 +252,8 @@ describe.sequential("form structure service integration", () => {
       option_sets: [{
         option_set_uuid: setUuid,
         option_set_name: "Readiness",
+        low_end_label: "Needs attention",
+        high_end_label: "Ready",
         options: [
           { option_label: "Yes", option_value: "yes" },
           { option_label: "No", option_value: "no" },
@@ -290,6 +292,8 @@ describe.sequential("form structure service integration", () => {
     expect(saved.option_sets).toMatchObject([{
       option_set_uuid: setUuid,
       option_set_name: "Readiness",
+      low_end_label: "Needs attention",
+      high_end_label: "Ready",
     }]);
     expect(saved.sections[0].effectiveLayout).toBe("matrix");
     expect(saved.sections[0].questions[0].options.map((option: any) => option.option_value)).toEqual(["yes", "no"]);
@@ -305,6 +309,29 @@ describe.sequential("form structure service integration", () => {
     );
     expect(roundTripped.option_sets[0].options).toHaveLength(2);
     expect(roundTripped.sections[0].questions[0].options).toHaveLength(2);
+    expect(roundTripped.sections[0].questions[0]).toMatchObject({
+      low_end_label: "Needs attention",
+      high_end_label: "Ready",
+    });
+
+    const released = await formsService.releaseVersionById(draft.id);
+    const copiedDraft = await formsService.createVersionByFormId(form.id, {
+      rankGroupId: rankGroup.id,
+      configuration: "{}",
+      sharedConfig: "{}",
+      versionDate: "25-Aug-2026",
+    } as any);
+    const copiedTree = await formStructureService.getStructure(copiedDraft.fvUuid, partUuid);
+    expect(copiedTree.option_sets[0]).toMatchObject({
+      option_set_name: "Readiness",
+      low_end_label: "Needs attention",
+      high_end_label: "Ready",
+    });
+    expect(copiedTree.option_sets[0].option_set_uuid).not.toBe(setUuid);
+    expect((await formStructureService.getStructure(released.fvUuid, partUuid)).option_sets[0]).toMatchObject({
+      low_end_label: "Needs attention",
+      high_end_label: "Ready",
+    });
   });
 
   it("retains an unreferenced named set so it can be assigned later", async () => {

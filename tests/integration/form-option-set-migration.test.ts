@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const migrationSql = await readFile("migrations/0200_form_version_option_sets.sql", "utf8");
+const endpointMigrationSql = await readFile("migrations/0201_option_set_endpoint_labels.sql", "utf8");
 
 async function createLegacyFixture(client: PoolClient) {
   const formUuid = uuidv4();
@@ -64,7 +65,7 @@ async function createLegacyFixture(client: PoolClient) {
       ($1, $3, 'Active', 'active', 0, false),
       ($2, $3, 'Archived', 'archived', 1, true)
   `, [activeOptionUuid, deletedOptionUuid, questionUuid]);
-  return { questionUuid, activeOptionUuid, deletedOptionUuid };
+  return { versionUuid, questionUuid, activeOptionUuid, deletedOptionUuid };
 }
 
 describe.sequential("form option-set migration", () => {
@@ -109,6 +110,57 @@ describe.sequential("form option-set migration", () => {
         )
       `);
       await expect(client.query(migrationSql)).rejects.toThrow("foreign-key dependenc");
+    } finally {
+      await client.query("ROLLBACK");
+      client.release();
+    }
+  });
+
+  it("extracts only unambiguous numeric endpoint descriptors and leaves incomplete labels unchanged", async () => {
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const fixture = await createLegacyFixture(client);
+      await client.query(migrationSql);
+      const extractableSetUuid = uuidv4();
+      const incompleteSetUuid = uuidv4();
+      await client.query(`
+        INSERT INTO frm_option_sets(option_set_uuid, form_version_uuid, set_name)
+        VALUES ($1, $3, 'Extractable scale'), ($2, $3, 'Incomplete scale')
+      `, [extractableSetUuid, incompleteSetUuid, fixture.versionUuid]);
+      await client.query(`
+        INSERT INTO frm_options(option_uuid, option_set_uuid, option_label, option_value, sort_order)
+        VALUES
+          ($1, $4, '1 - Poor', '1', 0),
+          ($2, $4, '2', '2', 1),
+          ($3, $4, '3 - Excellent', '3', 2),
+          ($5, $6, '1 -', '1', 0),
+          ($7, $6, '2', '2', 1)
+      `, [uuidv4(), uuidv4(), uuidv4(), extractableSetUuid, uuidv4(), incompleteSetUuid, uuidv4()]);
+
+      await client.query(endpointMigrationSql);
+
+      const extracted = await client.query<{
+        low_end_label: string | null;
+        high_end_label: string | null;
+      }>("SELECT low_end_label, high_end_label FROM frm_option_sets WHERE option_set_uuid = $1", [extractableSetUuid]);
+      expect(extracted.rows[0]).toEqual({ low_end_label: "Poor", high_end_label: "Excellent" });
+      const extractedOptions = await client.query<{ option_label: string }>(
+        "SELECT option_label FROM frm_options WHERE option_set_uuid = $1 ORDER BY sort_order",
+        [extractableSetUuid],
+      );
+      expect(extractedOptions.rows.map((row) => row.option_label)).toEqual(["1", "2", "3"]);
+
+      const incomplete = await client.query<{
+        low_end_label: string | null;
+        high_end_label: string | null;
+      }>("SELECT low_end_label, high_end_label FROM frm_option_sets WHERE option_set_uuid = $1", [incompleteSetUuid]);
+      expect(incomplete.rows[0]).toEqual({ low_end_label: null, high_end_label: null });
+      const incompleteOption = await client.query<{ option_label: string }>(
+        "SELECT option_label FROM frm_options WHERE option_set_uuid = $1 ORDER BY sort_order LIMIT 1",
+        [incompleteSetUuid],
+      );
+      expect(incompleteOption.rows[0].option_label).toBe("1 -");
     } finally {
       await client.query("ROLLBACK");
       client.release();

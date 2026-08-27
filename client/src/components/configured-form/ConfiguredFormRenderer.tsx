@@ -43,6 +43,8 @@ export interface ConfiguredFormQuestion {
   is_mandatory: boolean;
   comment_enabled: boolean;
   option_set_uuid?: string | null;
+  low_end_label?: string | null;
+  high_end_label?: string | null;
   options: ConfiguredFormOption[];
   clientKey?: string;
 }
@@ -155,6 +157,17 @@ function departmentMatches(department: ConfiguredFormDepartment, value: string):
 
 function optionLabel(option: ConfiguredFormOption): string {
   return option.option_label.trim() || "Option label not configured";
+}
+
+function endpointDescriptor(
+  optionIndex: number,
+  options: ConfiguredFormOption[],
+  lowEndLabel?: string | null,
+  highEndLabel?: string | null,
+): string | null {
+  if (optionIndex === 0 && lowEndLabel?.trim()) return lowEndLabel.trim();
+  if (optionIndex === options.length - 1 && highEndLabel?.trim()) return highEndLabel.trim();
+  return null;
 }
 
 function InlineMissing({ children, testId }: { children: React.ReactNode; testId: string }) {
@@ -278,7 +291,7 @@ function ConfiguredPoint({
             >
               {options.map((option, index) => (
                 <SelectItem key={option.clientKey || option.option_uuid || `${questionId}-option-${index}`} value={option.option_value || `option-${index}`}>
-                  {optionLabel(option)}
+                  {optionLabel(option)}{endpointDescriptor(index, options, question.low_end_label, question.high_end_label) ? ` — ${endpointDescriptor(index, options, question.low_end_label, question.high_end_label)}` : ""}
                 </SelectItem>
               ))}
             </SAILSelect>
@@ -292,6 +305,7 @@ function ConfiguredPoint({
           <div className="space-y-2" data-testid={`preview-response-${questionId}`}>
             {options.map((option, index) => {
               const value = option.option_value || `option-${index}`;
+              const descriptor = endpointDescriptor(index, options, question.low_end_label, question.high_end_label);
               return (
                 <label key={option.clientKey || option.option_uuid || `${questionId}-option-${index}`} className="flex items-center gap-2 text-sm">
                   <Checkbox
@@ -303,7 +317,7 @@ function ConfiguredPoint({
                         : selectedOptions.filter((selected) => selected !== value),
                     )}
                   />
-                  {optionLabel(option)}
+                  {optionLabel(option)}{descriptor ? <span className="text-xs text-muted-foreground">— {descriptor}</span> : null}
                 </label>
               );
             })}
@@ -516,11 +530,19 @@ function ConfiguredMatrixSection({
         <thead>
           <tr>
             <th className={`${tableClasses.header} min-w-[220px] text-left`}>Point</th>
-            {options.map((option, index) => (
+            {options.map((option, index) => {
+              const descriptor = endpointDescriptor(index, options, section.questions[0]?.low_end_label, section.questions[0]?.high_end_label);
+              return (
               <th className={`${tableClasses.header} min-w-[84px] text-center text-xs`} key={option.clientKey || option.option_uuid || `${sectionId}-header-${index}`}>
                 {optionLabel(option)}
+                {descriptor && (
+                  <span className="mt-0.5 block text-[10px] font-normal leading-tight opacity-90" data-testid={`matrix-end-label-${sectionId}-${index === 0 ? "low" : "high"}`}>
+                    {descriptor}
+                  </span>
+                )}
               </th>
-            ))}
+              );
+            })}
             <th className={`${tableClasses.header} min-w-[56px] text-center`}>Comment</th>
           </tr>
         </thead>

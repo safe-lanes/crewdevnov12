@@ -79,6 +79,8 @@ function treeResponse(
     option_sets: (tree.optionSets as any[]).map((set) => ({
       option_set_uuid: set.optionSetUuid,
       option_set_name: set.setName,
+      low_end_label: set.lowEndLabel,
+      high_end_label: set.highEndLabel,
       sort_order: set.sortOrder,
       options: mapOptions(set.optionSetUuid),
     })),
@@ -103,6 +105,13 @@ function treeResponse(
       ),
       sort_order: section.sortOrder,
       questions: (questionsBySection.get(section.sectionUuid) ?? []).map((question) => ({
+        ...(() => {
+          const optionSet = setsByUuid.get(question.optionSetUuid ?? section.defaultOptionSetUuid);
+          return {
+            low_end_label: optionSet?.lowEndLabel ?? null,
+            high_end_label: optionSet?.highEndLabel ?? null,
+          };
+        })(),
         question_uuid: question.questionUuid,
         question_code: question.questionCode,
         question_text: question.questionText,

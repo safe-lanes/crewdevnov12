@@ -126,6 +126,8 @@ interface OptionSetModel {
   clientKey: string;
   option_set_uuid?: string;
   option_set_name: string | null;
+  low_end_label: string | null;
+  high_end_label: string | null;
   options: OptionModel[];
 }
 
@@ -138,6 +140,8 @@ interface QuestionModel {
   is_mandatory: boolean;
   comment_enabled: boolean;
   option_set_uuid: string | null;
+  low_end_label?: string | null;
+  high_end_label?: string | null;
   options: OptionModel[];
 }
 
@@ -233,7 +237,7 @@ function buildNumericScaleOptions(
   endInput: string,
   firstLabel = "",
   lastLabel = "",
-): { options?: OptionModel[]; error?: string } {
+): { options?: OptionModel[]; lowEndLabel?: string | null; highEndLabel?: string | null; error?: string } {
   const start = Number(startInput);
   const end = Number(endInput);
   if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isInteger(start) || !Number.isInteger(end)) {
@@ -246,14 +250,12 @@ function buildNumericScaleOptions(
       const value = String(start + index);
       return {
         clientKey: clientKey("option"),
-        option_label: index === 0 && firstLabel.trim()
-          ? firstLabel.trim()
-          : index === end - start && lastLabel.trim()
-            ? lastLabel.trim()
-            : value,
+        option_label: value,
         option_value: value,
       };
     }),
+    lowEndLabel: firstLabel.trim() || null,
+    highEndLabel: lastLabel.trim() || null,
   };
 }
 
@@ -266,9 +268,27 @@ function resolveDraftEffectiveLayout(section: SectionModel): "list" | "matrix" {
   const setUuids = new Set(section.questions.map((question) => question.option_set_uuid || section.default_option_set_uuid || ""));
   if (setUuids.size !== 1 || !setUuids.values().next().value) return "list";
   const options = section.questions[0].options;
+  if (options.length === 0 || options.length > 12) return "list";
   if (options.length <= 6) return "matrix";
   if (options.length <= 12 && options.every((option) => option.option_label.trim().length <= 4)) return "matrix";
   return "list";
+}
+
+function matrixIneligibilityReason(section: SectionModel): string | null {
+  if (section.questions.length === 0) return "the section has no points";
+  if (section.questions.some((question) => question.response_type !== "single_select" && question.response_type !== "multi_select")) {
+    return "the section includes a non-select point";
+  }
+  const setUuids = new Set(section.questions.map((question) => question.option_set_uuid || section.default_option_set_uuid || ""));
+  if (setUuids.size > 1) return "points use mixed option sets";
+  if (!setUuids.values().next().value) return "points do not have a shared option set";
+  const options = section.questions[0].options;
+  if (options.length === 0) return "the shared option set has no options";
+  if (options.length > 12) return "the shared option set has more than 12 options";
+  if (options.length > 6 && options.some((option) => option.option_label.trim().length > 4)) {
+    return "the shared option set has labels longer than four characters";
+  }
+  return null;
 }
 
 function emptyQuestion(
@@ -326,6 +346,8 @@ function normalizeOptionSets(data: any): OptionSetModel[] {
     clientKey: clientKey("option-set"),
     option_set_uuid: set.option_set_uuid,
     option_set_name: set.option_set_name ?? null,
+    low_end_label: set.low_end_label ?? null,
+    high_end_label: set.high_end_label ?? null,
     options: Array.isArray(set.options) ? set.options.map((option: any) => ({
       clientKey: clientKey("option"),
       option_uuid: option.option_uuid,
@@ -341,7 +363,7 @@ function normalizeTree(
   optionSets: OptionSetModel[] = normalizeOptionSets(data),
 ): SectionModel[] {
   const sections = Array.isArray(data?.sections) ? data.sections : [];
-  const optionsBySet = new Map(optionSets.map((set) => [set.option_set_uuid, set.options]));
+  const optionSetsByUuid = new Map(optionSets.map((set) => [set.option_set_uuid, set]));
   return renumberSections(partCode, sections.map((section: any) => ({
     clientKey: clientKey("section"),
     section_uuid: section.section_uuid,
@@ -373,9 +395,11 @@ function normalizeTree(
       option_set_uuid: question.option_set_uuid === section.default_option_set_uuid
         ? null
         : question.option_set_uuid ?? null,
+      low_end_label: question.low_end_label ?? optionSetsByUuid.get(question.option_set_uuid || section.default_option_set_uuid)?.low_end_label ?? null,
+      high_end_label: question.high_end_label ?? optionSetsByUuid.get(question.option_set_uuid || section.default_option_set_uuid)?.high_end_label ?? null,
       options: ((Array.isArray(question.options) && question.options.length > 0)
         ? question.options
-        : (optionsBySet.get(question.option_set_uuid || section.default_option_set_uuid) || [])
+        : (optionSetsByUuid.get(question.option_set_uuid || section.default_option_set_uuid)?.options || [])
       ).map((option: any) => ({
         clientKey: clientKey("option"),
         option_uuid: option.option_uuid,
@@ -392,6 +416,8 @@ function toPayload(sections: SectionModel[], optionSets: OptionSetModel[] = []) 
     option_sets: optionSets.map((set) => ({
       ...(set.option_set_uuid ? { option_set_uuid: set.option_set_uuid } : {}),
       option_set_name: set.option_set_name,
+      low_end_label: set.low_end_label,
+      high_end_label: set.high_end_label,
       options: set.options.map((option) => ({
         ...(option.option_uuid ? { option_uuid: option.option_uuid } : {}),
         option_label: option.option_label.trim(),
@@ -812,6 +838,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       clientKey: clientKey("option-set"),
       option_set_uuid: uuid,
       option_set_name: null,
+      low_end_label: null,
+      high_end_label: null,
       options: cloneOptions(options, true),
     };
     updatePartOptionSets(partUuid, (sets) => [...sets, set]);
@@ -856,7 +884,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         return { ...question, options: [...question.options, nextOption] };
       }
       const customSet = createCustomSet(partUuid, [...question.options, nextOption]);
-      return { ...question, option_set_uuid: customSet.option_set_uuid || null, options: customSet.options };
+      return {
+        ...question,
+        option_set_uuid: customSet.option_set_uuid || null,
+        options: customSet.options,
+        low_end_label: customSet.low_end_label,
+        high_end_label: customSet.high_end_label,
+      };
     });
   };
 
@@ -878,17 +912,29 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           response_type: responseType,
           option_set_uuid: null,
           options: cloneOptions(inherited.options),
+          low_end_label: inherited.low_end_label,
+          high_end_label: inherited.high_end_label,
         };
       }
       const currentOptions = question.options.length > 0 ? question.options : [createOption()];
       const currentSet = optionSetFor(partUuid, question.option_set_uuid);
-      if (currentSet) return { ...question, response_type: responseType, options: cloneOptions(currentSet.options) };
+      if (currentSet) {
+        return {
+          ...question,
+          response_type: responseType,
+          options: cloneOptions(currentSet.options),
+          low_end_label: currentSet.low_end_label,
+          high_end_label: currentSet.high_end_label,
+        };
+      }
       const customSet = createCustomSet(partUuid, currentOptions);
       return {
         ...question,
         response_type: responseType,
         option_set_uuid: customSet.option_set_uuid || null,
         options: customSet.options,
+        low_end_label: customSet.low_end_label,
+        high_end_label: customSet.high_end_label,
       };
     });
     if (
@@ -921,6 +967,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         : {
             ...question,
             options: nextSet ? cloneOptions(nextSet.options) : question.options,
+            low_end_label: nextSet?.low_end_label ?? null,
+            high_end_label: nextSet?.high_end_label ?? null,
           }),
     }));
   };
@@ -942,6 +990,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           : "single_select",
         option_set_uuid: null,
         options: cloneOptions(optionSetFor(partUuid, section.default_option_set_uuid)?.options || []),
+        low_end_label: optionSetFor(partUuid, section.default_option_set_uuid)?.low_end_label ?? null,
+        high_end_label: optionSetFor(partUuid, section.default_option_set_uuid)?.high_end_label ?? null,
       }));
       return;
     }
@@ -956,6 +1006,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           : "single_select",
         option_set_uuid: customSet.option_set_uuid || null,
         options: cloneOptions(customSet.options),
+        low_end_label: customSet.low_end_label,
+        high_end_label: customSet.high_end_label,
       }));
       return;
     }
@@ -968,6 +1020,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         : "single_select",
       option_set_uuid: value,
       options: cloneOptions(selectedSet.options),
+      low_end_label: selectedSet.low_end_label,
+      high_end_label: selectedSet.high_end_label,
     }));
   };
 
@@ -985,7 +1039,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           if ((question.option_set_uuid || section.default_option_set_uuid) !== setUuid) return question;
           const set = optionSetFor(partUuid, setUuid);
           const next = set ? updater(set) : undefined;
-          return next ? { ...question, options: cloneOptions(next.options) } : question;
+          return next ? {
+            ...question,
+            options: cloneOptions(next.options),
+            low_end_label: next.low_end_label,
+            high_end_label: next.high_end_label,
+          } : question;
         }),
       }))])),
     }));
@@ -996,6 +1055,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       clientKey: clientKey("option-set"),
       option_set_uuid: newUuid(),
       option_set_name: "New option set",
+      low_end_label: null,
+      high_end_label: null,
       options: [createOption("Option 1")],
     }]);
   };
@@ -1005,6 +1066,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       clientKey: clientKey("option-set"),
       option_set_uuid: newUuid(),
       option_set_name: `${set.option_set_name || "Option set"} (copy)`,
+      low_end_label: set.low_end_label,
+      high_end_label: set.high_end_label,
       options: cloneOptions(set.options, true),
     }]);
   };
@@ -1060,7 +1123,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       setScaleError(result.error || "Unable to generate this scale.");
       return;
     }
-    updateOptionSet(scaleDialog.partUuid, scaleDialog.setUuid, (set) => ({ ...set, options: result.options || [] }));
+    updateOptionSet(scaleDialog.partUuid, scaleDialog.setUuid, (set) => ({
+      ...set,
+      options: result.options || [],
+      low_end_label: result.lowEndLabel ?? null,
+      high_end_label: result.highEndLabel ?? null,
+    }));
     setScaleDialog(null);
     setScaleValues({ start: "", end: "", firstLabel: "", lastLabel: "" });
     setScaleError("");
@@ -1731,13 +1799,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                 </div>
                              </div>
                            )}
-                            {section.layout_preference === "auto" && section.effectiveLayout === "list" && (
+                             {section.layout_preference !== "list" && resolveDraftEffectiveLayout(section) === "list" && (
                               <p className="mt-3 text-xs text-amber-700" data-testid={`text-auto-layout-reason-${sectionIndex + 1}`}>
-                                Auto resolved to list because {section.questions.some((question) => question.response_type !== "single_select" && question.response_type !== "multi_select")
-                                  ? "the section includes a non-select point"
-                                  : new Set(section.questions.map((question) => pointSetUuid(selectedPart.formPartUuid, section, question))).size > 1
-                                    ? "points use different option sets"
-                                    : "the server reported this set is not eligible for a matrix"}.
+                                 {section.layout_preference === "auto" ? "Auto resolved to list" : "Matrix falls back to list"} because {matrixIneligibilityReason(section) || "the section is not eligible for a matrix"}.
                               </p>
                             )}
                            <div className="mt-4 h-0.5 w-full" style={{ backgroundColor: sailDesignSystem.colors.headerText }} />
@@ -1968,7 +2032,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         <DialogContent className="max-w-md" data-testid="numeric-scale-dialog">
           <DialogHeader>
             <DialogTitle>Generate numeric scale</DialogTitle>
-            <DialogDescription>Creates an inclusive, whole-number scale. End labels change labels only; stored values remain numeric.</DialogDescription>
+          <DialogDescription>Creates an inclusive, whole-number scale. Values and headers remain numeric; optional endpoint descriptors appear alongside the scale.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1 text-sm">Start
@@ -2037,6 +2101,7 @@ export const genericFormEditorTestUtils = {
   isNamedOptionSet,
   normalizeTree,
   resolveDraftEffectiveLayout,
+  matrixIneligibilityReason,
   roleSummary,
   selectableRoles,
   renumberSections,
