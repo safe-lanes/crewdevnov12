@@ -365,6 +365,7 @@ describe("GenericFormEditor shared Preview shell", () => {
     expect(point?.querySelector('[data-testid="checkbox-point-mandatory-1-1"]')).toBeTruthy();
     expect(point?.querySelector('[data-testid="option-editor-1-1"]')).toBeTruthy();
     expect(point?.querySelector('[data-slot="badge"]')).toBeNull();
+    expect(editor.textContent).toContain("No responsible party");
 
     const settingsButton = editor.querySelector<HTMLElement>('[data-testid="button-section-vessel-settings-1"]');
     if (!settingsButton) throw new Error("Section settings button did not render");

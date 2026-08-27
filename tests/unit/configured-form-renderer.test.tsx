@@ -316,7 +316,7 @@ describe("configured form renderer preview", () => {
     expect(screen.getByTestId("missing-options-missing-options")).toHaveTextContent("No options configured");
   });
 
-  it("renders a neutral responsibility state when responsibility is not applicable", () => {
+  it("omits the responsibility line when responsibility is not applicable", () => {
     const noResponsibleParty: ConfiguredFormSection = {
       ...configuredSection,
       clientKey: "not-applicable",
@@ -327,8 +327,45 @@ describe("configured form renderer preview", () => {
     renderPreview([noResponsibleParty]);
     click(screen.getByTestId("button-step-part-b"));
 
-    expect(screen.getByTestId("responsible-not-applicable-not-applicable")).toHaveTextContent("No responsible party");
+    expect(screen.queryByTestId("responsible-not-applicable-not-applicable")).toBeNull();
+    expect(screen.getByTestId("preview-section-footer-not-applicable")).toBeInTheDocument();
     expect(screen.queryByTestId("missing-responsible-not-applicable")).toBeNull();
+  });
+
+  it("collapses the footer when no footer content is configured", () => {
+    const noFooter: ConfiguredFormSection = {
+      ...configuredSection,
+      clientKey: "empty-footer",
+      responsible_mode: "not_applicable",
+      responsible_role_uuid: null,
+      responsible_department: null,
+      comment_box_required: false,
+      signature_required: false,
+    };
+    renderPreview([noFooter]);
+    click(screen.getByTestId("button-step-part-b"));
+
+    expect(screen.queryByTestId("preview-section-footer-empty-footer")).toBeNull();
+    expect(screen.queryByText("No responsible party · Not applicable")).toBeNull();
+  });
+
+  it("keeps the department responsibility line in the footer", () => {
+    const departmentSection: ConfiguredFormSection = {
+      ...configuredSection,
+      clientKey: "department",
+      responsible_mode: "department",
+      responsible_role_uuid: null,
+      responsible_department: "Marine Operations",
+      comment_box_required: false,
+      signature_required: false,
+    };
+    renderPreview([departmentSection]);
+    click(screen.getByTestId("button-step-part-b"));
+
+    expect(screen.getByTestId("responsible-department-department")).toHaveTextContent(
+      "To be completed by: Marine Operations",
+    );
+    expect(screen.getByTestId("preview-section-footer-department")).toBeInTheDocument();
   });
 
   it("retains local collapsed state when the shared shell rerenders", () => {
@@ -470,5 +507,41 @@ describe("configured form renderer preview", () => {
     click(choice);
     expect(screen.getByTestId("configured-form-live")).toBeInTheDocument();
     expect(onAnswerChange).toHaveBeenCalledWith("live-single", "1");
+  });
+
+  it("omits the responsibility line and empty footer for live sections without a responsible party", () => {
+    const onAnswerChange = vi.fn();
+    const liveSection: ConfiguredFormSection = {
+      ...configuredSection,
+      clientKey: "live-no-responsibility",
+      responsible_mode: "not_applicable",
+      responsible_role_uuid: null,
+      responsible_department: null,
+      comment_box_required: false,
+      signature_required: false,
+      questions: [{
+        clientKey: "live-no-responsibility-question",
+        question_code: "B1.1",
+        question_text: "Confirm readiness",
+        response_type: "yes_no",
+        is_mandatory: false,
+        comment_enabled: false,
+        options: [],
+      }],
+    };
+    render(
+      <ConfiguredFormRenderer
+        mode="live"
+        embedded
+        parts={[parts[1]]}
+        structures={{ "part-b": [liveSection] }}
+        selectedPartUuid="part-b"
+        live={{ answers: {}, onAnswerChange }}
+      />,
+    );
+
+    expect(screen.getByTestId("configured-form-live")).toBeInTheDocument();
+    expect(screen.queryByTestId("responsible-not-applicable-live-no-responsibility")).toBeNull();
+    expect(screen.queryByTestId("preview-section-footer-live-no-responsibility")).toBeNull();
   });
 });

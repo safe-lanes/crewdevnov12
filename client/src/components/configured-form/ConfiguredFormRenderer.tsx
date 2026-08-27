@@ -233,11 +233,7 @@ function SectionResponsibility({
     );
   }
 
-  return (
-    <p className="text-sm" data-testid={`responsible-not-applicable-${sectionId}`}>
-      No responsible party · Not applicable
-    </p>
-  );
+  return null;
 }
 
 function ConfiguredPoint({
@@ -582,8 +578,11 @@ function ConfiguredSection({
 }) {
   const sectionTitle = section.section_title.trim() || MISSING_SECTION_TITLE;
   const sectionCode = section.section_code.trim() || "Section code not configured";
+  const hasFooterContent = section.comment_box_required
+    || section.signature_required
+    || section.responsible_mode !== "not_applicable";
 
-  const footer = isApplicable && isExpanded ? (
+  const footer = isApplicable && isExpanded && hasFooterContent ? (
     <div className="mt-6 space-y-5 border-t pt-5" style={{ borderColor: sailDesignSystem.colors.border }} data-testid={`preview-section-footer-${sectionId}`}>
       {section.comment_box_required && (
         <div data-testid={`preview-section-comment-${sectionId}`}>
