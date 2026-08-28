@@ -482,7 +482,10 @@ function ConfiguredPoint({
       <tr className={tableClasses.row} data-testid={`preview-point-${questionId}`}>
         <td className={tableClasses.cell} data-testid={`preview-point-label-${questionId}`}>
           <SAILFormField label={question.question_code.trim() || "Point code not configured"}>
-            <span className="font-semibold" data-testid={!hasText ? `missing-point-text-${questionId}` : undefined}>
+            <span
+              className="ml-2 text-[#4f5863] text-[13px] font-normal"
+              data-testid={!hasText ? `missing-point-text-${questionId}` : undefined}
+            >
               {hasText ? question.question_text : MISSING_POINT_TEXT}
               {question.is_mandatory && (
                 <span className="ml-1 font-bold" style={{ color: sailDesignSystem.colors.accent }} aria-label="Mandatory" data-testid={`preview-required-${questionId}`}>
@@ -526,8 +529,8 @@ function ConfiguredMatrixPoint({
     <>
       <tr className={tableClasses.row} data-testid={`preview-matrix-point-${questionId}`}>
         <td className={`${tableClasses.cell} min-w-[220px]`}>
-          <span className="mr-2 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{question.question_code || "Point code not configured"}</span>
-          <span className="text-sm font-semibold">{question.question_text.trim() || MISSING_POINT_TEXT}</span>
+          <span className="mr-2 text-gray-600 text-xs font-normal">{question.question_code || "Point code not configured"}</span>
+          <span className="text-[#4f5863] text-[13px] font-normal">{question.question_text.trim() || MISSING_POINT_TEXT}</span>
           {question.is_mandatory && <span className="ml-1 font-bold" style={{ color: sailDesignSystem.colors.accent }} aria-label="Mandatory">*</span>}
         </td>
         {options.map((option, index) => {
@@ -587,11 +590,11 @@ function ConfiguredMatrixSection({
       <table className="min-w-max w-full border-collapse">
         <thead>
           <tr>
-            <th className={`${tableClasses.header} min-w-[220px] text-left`}>Point</th>
+            <th className={`${tableClasses.header} ${tableClasses.headerCell} min-w-[220px] text-left`}>Point</th>
             {options.map((option, index) => {
               const descriptor = endpointDescriptor(index, options, section.questions[0]?.low_end_label, section.questions[0]?.high_end_label);
               return (
-              <th className={`${tableClasses.header} min-w-[84px] text-center text-xs`} key={option.clientKey || option.option_uuid || `${sectionId}-header-${index}`}>
+              <th className={`${tableClasses.header} ${tableClasses.headerCell} min-w-[84px] text-center`} key={option.clientKey || option.option_uuid || `${sectionId}-header-${index}`}>
                 {optionLabel(option)}
                 {descriptor && (
                   <span className="mt-0.5 block text-[10px] font-normal leading-tight opacity-90" data-testid={`matrix-end-label-${sectionId}-${index === 0 ? "low" : "high"}`}>
@@ -601,7 +604,7 @@ function ConfiguredMatrixSection({
               </th>
               );
             })}
-            <th className={`${tableClasses.header} min-w-[56px] text-center`}>Comment</th>
+            <th className={`${tableClasses.header} ${tableClasses.headerCell} min-w-[56px] text-center`}>Comment</th>
           </tr>
         </thead>
         <tbody>

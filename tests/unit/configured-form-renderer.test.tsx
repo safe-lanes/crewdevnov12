@@ -451,6 +451,72 @@ describe("configured form renderer preview", () => {
     expect(screen.queryByTestId("preview-point-matrix-single")).toBeNull();
   });
 
+  it("uses regular Appraisal-style point text and shared header typography in list and matrix layouts", () => {
+    renderPreview();
+    click(screen.getByTestId("button-step-part-b"));
+
+    const listPoint = screen.getByTestId("preview-point-yes-no");
+    const listPointCell = listPoint.querySelector("td");
+    if (!listPointCell) throw new Error("List point cell did not render");
+    const listPointCode = listPointCell.querySelector("label");
+    if (!listPointCode) throw new Error("List point code did not render");
+    expect(listPointCode).toHaveClass("text-gray-500");
+    expect(listPointCode).not.toHaveClass("font-semibold", "font-bold");
+
+    const listPointText = Array.from(listPointCell.querySelectorAll("span"))
+      .find((span) => span.textContent?.includes("Is the vessel ready?"));
+    if (!listPointText) throw new Error("List point text did not render");
+    expect(listPointText).toHaveClass("text-[#4f5863]", "text-[13px]", "font-normal");
+    expect(listPointText).not.toHaveClass("font-semibold", "font-bold");
+
+    const listHeaders = Array.from(activeContainer?.querySelectorAll("th") || []);
+    expect(listHeaders).toHaveLength(3);
+    const listHeaderRow = activeContainer?.querySelector("thead");
+    if (!listHeaderRow) throw new Error("List header row did not render");
+    expect(listHeaderRow).toHaveClass("bg-gray-100");
+    for (const header of listHeaders) {
+      expect(header).toHaveClass("text-gray-600", "text-xs", "font-normal");
+      expect(header).not.toHaveClass("font-semibold", "font-bold");
+    }
+
+    const matrixSection: ConfiguredFormSection = {
+      ...configuredSection,
+      clientKey: "typography-matrix",
+      effectiveLayout: "matrix",
+      questions: [{
+        clientKey: "typography-matrix-question",
+        question_code: "B1.1",
+        question_text: "Rate readiness",
+        response_type: "single_select",
+        is_mandatory: false,
+        comment_enabled: false,
+        options: [
+          { clientKey: "one", option_label: "1", option_value: "1" },
+          { clientKey: "two", option_label: "2", option_value: "2" },
+        ],
+      }],
+    };
+    renderPreview([matrixSection]);
+    click(screen.getByTestId("button-step-part-b"));
+
+    const matrixPoint = screen.getByTestId("preview-matrix-point-typography-matrix-question");
+    const matrixPointSpans = Array.from(matrixPoint.querySelectorAll("span"));
+    const matrixPointCode = matrixPointSpans.find((span) => span.textContent === "B1.1");
+    const matrixPointText = matrixPointSpans.find((span) => span.textContent === "Rate readiness");
+    if (!matrixPointCode || !matrixPointText) throw new Error("Matrix point typography did not render");
+    expect(matrixPointCode).toHaveClass("text-gray-600", "text-xs", "font-normal");
+    expect(matrixPointCode).not.toHaveClass("font-semibold", "font-bold");
+    expect(matrixPointText).toHaveClass("text-[#4f5863]", "text-[13px]", "font-normal");
+    expect(matrixPointText).not.toHaveClass("font-semibold", "font-bold");
+
+    const matrixHeaders = Array.from(activeContainer?.querySelectorAll("th") || []);
+    expect(matrixHeaders).toHaveLength(4);
+    for (const header of matrixHeaders) {
+      expect(header).toHaveClass("bg-gray-100", "text-gray-600", "text-xs", "font-normal");
+      expect(header).not.toHaveClass("font-semibold", "font-bold");
+    }
+  });
+
   it("shows numeric-scale endpoint descriptors separately from matrix headers and list choices", () => {
     const scale = [
       { clientKey: "one", option_label: "1", option_value: "1" },
