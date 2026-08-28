@@ -799,48 +799,57 @@ export function ConfiguredFormRenderer({
           </SAILFormField>
         </div>
 
-        {!selectedPart ? (
-          <InlineMissing testId="preview-no-form-parts">No form parts are configured.</InlineMissing>
-        ) : selectedPart.partType === "fixed" ? (
-          <FixedPartPlaceholder part={selectedPart} />
-        ) : (
-          <div className="space-y-5">
-            {selectedVessel !== "all" && (
-              <p className="text-xs">
-                Sections restricted to another vessel type remain marked as not applicable for {selectedVesselLabel}.
-              </p>
-            )}
-            {selectedSections.length === 0 && (
-              <InlineMissing testId={`preview-no-sections-${selectedPart.partCode}`}>
-                No sections configured for this part.
-              </InlineMissing>
-            )}
-            {selectedSections.map((section, sectionIndex) => {
-              const sectionId = section.clientKey || section.section_uuid || `${selectedPart.formPartUuid}-section-${sectionIndex + 1}`;
-              const isApplicable = selectedVessel === "all"
-                || section.applicable_vessel_types.length === 0
-                || section.applicable_vessel_types.includes(selectedVessel);
-              return (
-                <ConfiguredSection
-                  key={sectionId}
-                  section={section}
-                  sectionId={sectionId}
-                  roles={roles}
-                  departments={departments}
-                  vesselTypeLabel={selectedVesselLabel}
-                  isApplicable={isApplicable}
-                  isExpanded={internalExpandedSections[sectionId] !== false}
-                  onToggleExpanded={() => setInternalExpandedSections((current) => ({
-                    ...current,
-                    [sectionId]: !(current[sectionId] !== false),
-                  }))}
-                  answers={answers}
-                  setAnswer={setAnswer}
-                />
-              );
-            })}
-          </div>
-        )}
+        <div
+          style={{ marginTop: sailDesignSystem.spacing.sectionSpacing }}
+          data-testid="configured-form-content"
+        >
+          {!selectedPart ? (
+            <InlineMissing testId="preview-no-form-parts">No form parts are configured.</InlineMissing>
+          ) : selectedPart.partType === "fixed" ? (
+            <FixedPartPlaceholder part={selectedPart} />
+          ) : (
+            <div
+              className="flex flex-col"
+              style={{ gap: sailDesignSystem.spacing.sectionSpacing }}
+              data-testid="configured-section-stack"
+            >
+              {selectedVessel !== "all" && (
+                <p className="text-xs">
+                  Sections restricted to another vessel type remain marked as not applicable for {selectedVesselLabel}.
+                </p>
+              )}
+              {selectedSections.length === 0 && (
+                <InlineMissing testId={`preview-no-sections-${selectedPart.partCode}`}>
+                  No sections configured for this part.
+                </InlineMissing>
+              )}
+              {selectedSections.map((section, sectionIndex) => {
+                const sectionId = section.clientKey || section.section_uuid || `${selectedPart.formPartUuid}-section-${sectionIndex + 1}`;
+                const isApplicable = selectedVessel === "all"
+                  || section.applicable_vessel_types.length === 0
+                  || section.applicable_vessel_types.includes(selectedVessel);
+                return (
+                  <ConfiguredSection
+                    key={sectionId}
+                    section={section}
+                    sectionId={sectionId}
+                    roles={roles}
+                    departments={departments}
+                    vesselTypeLabel={selectedVesselLabel}
+                    isApplicable={isApplicable}
+                    isExpanded={internalExpandedSections[sectionId] !== false}
+                    onToggleExpanded={() => setInternalExpandedSections((current) => ({
+                      ...current,
+                      [sectionId]: !(current[sectionId] !== false),
+                    }))}
+                    answers={answers}
+                    setAnswer={setAnswer}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
       </>
     );
   };

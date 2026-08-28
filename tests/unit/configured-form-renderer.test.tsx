@@ -6,6 +6,7 @@ import {
   type ConfiguredFormPart,
   type ConfiguredFormSection,
 } from "../../client/src/components/configured-form/ConfiguredFormRenderer";
+import { sailDesignSystem } from "../../client/src/config/sailDesignSystem";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -167,6 +168,19 @@ afterEach(() => {
 });
 
 describe("configured form renderer preview", () => {
+  it("separates the preview banner from content using section spacing", () => {
+    renderPreview();
+    click(screen.getByTestId("button-step-part-b"));
+
+    const banner = screen.getByTestId("preview-only-banner");
+    const content = screen.getByTestId("configured-form-content");
+    const sectionStack = screen.getByTestId("configured-section-stack");
+
+    expect(banner.nextElementSibling).toBe(content);
+    expect(content.style.marginTop).toBe(sailDesignSystem.spacing.sectionSpacing);
+    expect(sectionStack.style.gap).toBe(sailDesignSystem.spacing.sectionSpacing);
+  });
+
   it("navigates every part and renders a fixed-part placeholder", () => {
     renderPreview();
 
