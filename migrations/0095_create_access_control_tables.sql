@@ -1,5 +1,8 @@
 -- Migration 0095: Create Access Control tables
 -- Tables: adm_menumaster_ac, adm_rolemaster_ac, adm_roleaccess_ac
+--
+-- WARNING: Manually replaying this migration creates duplicate role names.
+-- The seed generates fresh ruid values, so ON CONFLICT (ruid) never fires.
 
 -- 1. Menu Master table
 CREATE TABLE IF NOT EXISTS adm_menumaster_ac (
