@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, serial, text, timestamp, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { admFormVersionsV2, admFormsV2, admRoleMasterAc } from "../admin/schema";
@@ -140,6 +140,102 @@ export const frmQuestions = pgTable(
   }),
 );
 
+export const crewBriefingSubmissions = pgTable(
+  "crew_briefing_submissions",
+  {
+    id: serial("id").primaryKey(),
+    briefingSubmissionUuid: text("briefing_submission_uuid").notNull().unique(),
+    crewUuid: text("crew_uuid").notNull(),
+    vesselUuid: text("vessel_uuid"),
+    vesselTypeUuid: text("vessel_type_uuid"),
+    formUuid: text("form_uuid")
+      .notNull()
+      .references(() => admFormsV2.formUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    formVersionUuid: text("form_version_uuid")
+      .notNull()
+      .references(() => admFormVersionsV2.fvUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    status: text("status").notNull().default("in_progress"),
+    completedAt: timestamp("completed_at"),
+    ...auditColumns,
+  },
+  (table) => ({
+    crewUuidIdx: index("idx_crew_briefing_submissions_crew_uuid").on(table.crewUuid),
+    vesselUuidIdx: index("idx_crew_briefing_submissions_vessel_uuid").on(table.vesselUuid),
+    vesselTypeUuidIdx: index("idx_crew_briefing_submissions_vessel_type_uuid").on(table.vesselTypeUuid),
+    formUuidIdx: index("idx_crew_briefing_submissions_form_uuid").on(table.formUuid),
+    formVersionUuidIdx: index("idx_crew_briefing_submissions_form_version_uuid").on(table.formVersionUuid),
+  }),
+);
+
+export const frmSectionStates = pgTable(
+  "frm_section_states",
+  {
+    id: serial("id").primaryKey(),
+    sectionStateUuid: text("section_state_uuid").notNull().unique(),
+    submissionUuid: text("submission_uuid").notNull(),
+    sectionUuid: text("section_uuid")
+      .notNull()
+      .references(() => frmSections.sectionUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    status: text("status").notNull().default("not_started"),
+    sectionComment: text("section_comment"),
+    submittedByUuid: text("submitted_by_uuid"),
+    submittedByName: text("submitted_by_name"),
+    submittedAt: timestamp("submitted_at"),
+    signatureAttUuid: text("signature_att_uuid").references(
+      (): AnyPgColumn => frmSignatureAttachments.sigAttUuid,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    signatureName: text("signature_name"),
+    signedByUuid: text("signed_by_uuid"),
+    signedAt: timestamp("signed_at"),
+    ...auditColumns,
+  },
+  (table) => ({
+    submissionUuidIdx: index("idx_frm_section_states_submission_uuid").on(table.submissionUuid),
+    sectionUuidIdx: index("idx_frm_section_states_section_uuid").on(table.sectionUuid),
+    submittedByUuidIdx: index("idx_frm_section_states_submitted_by_uuid").on(table.submittedByUuid),
+    signatureAttUuidIdx: index("idx_frm_section_states_signature_att_uuid").on(table.signatureAttUuid),
+  }),
+);
+
+export const frmAnswers = pgTable(
+  "frm_answers",
+  {
+    id: serial("id").primaryKey(),
+    answerUuid: text("answer_uuid").notNull().unique(),
+    submissionUuid: text("submission_uuid").notNull(),
+    questionUuid: text("question_uuid")
+      .notNull()
+      .references(() => frmQuestions.questionUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    answerValue: text("answer_value"),
+    answerComment: text("answer_comment"),
+    ...auditColumns,
+  },
+  (table) => ({
+    submissionUuidIdx: index("idx_frm_answers_submission_uuid").on(table.submissionUuid),
+    questionUuidIdx: index("idx_frm_answers_question_uuid").on(table.questionUuid),
+  }),
+);
+
+export const frmSignatureAttachments = pgTable(
+  "frm_signature_attachments",
+  {
+    id: serial("id").primaryKey(),
+    sigAttUuid: text("sig_att_uuid").notNull().unique(),
+    sectionStateUuid: text("section_state_uuid")
+      .notNull()
+      .references(() => frmSectionStates.sectionStateUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    fileName: text("file_name"),
+    fileType: text("file_type"),
+    fileSize: text("file_size"),
+    filePath: text("file_path").notNull(),
+    ...auditColumns,
+  },
+  (table) => ({
+    sectionStateUuidIdx: index("idx_frm_signature_attachments_section_state_uuid").on(table.sectionStateUuid),
+  }),
+);
+
 const insertAuditOmit = {
   id: true,
   sortOrder: true,
@@ -156,6 +252,10 @@ export const insertFrmSectionSchema = createInsertSchema(frmSections).omit(inser
 export const insertFrmQuestionSchema = createInsertSchema(frmQuestions).omit(insertAuditOmit);
 export const insertFrmOptionSetSchema = createInsertSchema(frmOptionSets).omit(insertAuditOmit);
 export const insertFrmOptionSchema = createInsertSchema(frmOptions).omit(insertAuditOmit);
+export const insertCrewBriefingSubmissionSchema = createInsertSchema(crewBriefingSubmissions).omit(insertAuditOmit);
+export const insertFrmSectionStateSchema = createInsertSchema(frmSectionStates).omit(insertAuditOmit);
+export const insertFrmAnswerSchema = createInsertSchema(frmAnswers).omit(insertAuditOmit);
+export const insertFrmSignatureAttachmentSchema = createInsertSchema(frmSignatureAttachments).omit(insertAuditOmit);
 
 const rowUuidSchema = z.string().uuid();
 
@@ -295,3 +395,11 @@ export type InsertFrmOptionSet = z.infer<typeof insertFrmOptionSetSchema>;
 export type FrmOptionSet = typeof frmOptionSets.$inferSelect;
 export type InsertFrmOption = z.infer<typeof insertFrmOptionSchema>;
 export type FrmOption = typeof frmOptions.$inferSelect;
+export type InsertCrewBriefingSubmission = z.infer<typeof insertCrewBriefingSubmissionSchema>;
+export type CrewBriefingSubmission = typeof crewBriefingSubmissions.$inferSelect;
+export type InsertFrmSectionState = z.infer<typeof insertFrmSectionStateSchema>;
+export type FrmSectionState = typeof frmSectionStates.$inferSelect;
+export type InsertFrmAnswer = z.infer<typeof insertFrmAnswerSchema>;
+export type FrmAnswer = typeof frmAnswers.$inferSelect;
+export type InsertFrmSignatureAttachment = z.infer<typeof insertFrmSignatureAttachmentSchema>;
+export type FrmSignatureAttachment = typeof frmSignatureAttachments.$inferSelect;
