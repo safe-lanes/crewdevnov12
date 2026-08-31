@@ -1,0 +1,110 @@
+MIGRATION SCHEMA COMPARISON
+===========================
+Schema identical: NO
+
+SCHEMA DIFFERENCES
+------------------
+tables: 2 difference(s)
+  [missing-from-fresh] drizzle.__drizzle_migrations
+    development: {"persistence":"p","relkind":"r","schema_name":"drizzle","table_name":"__drizzle_migrations"}
+  [missing-from-fresh] public.promotion_forms
+    development: {"persistence":"p","relkind":"r","schema_name":"public","table_name":"promotion_forms"}
+
+columns: 19 difference(s)
+  [missing-from-fresh] drizzle.__drizzle_migrations.created_at
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"created_at","data_type":"bigint","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":64,"numeric_scale":0,"table_name":"__drizzle_migrations","table_schema":"drizzle","udt_name":"int8","udt_schema":"pg_catalog"}
+  [missing-from-fresh] drizzle.__drizzle_migrations.hash
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"hash","data_type":"text","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"NO","numeric_precision":null,"numeric_scale":null,"table_name":"__drizzle_migrations","table_schema":"drizzle","udt_name":"text","udt_schema":"pg_catalog"}
+  [missing-from-fresh] drizzle.__drizzle_migrations.id
+    development: {"character_maximum_length":null,"column_default":"nextval('drizzle.__drizzle_migrations_id_seq'::regclass)","column_name":"id","data_type":"integer","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"NO","numeric_precision":32,"numeric_scale":0,"table_name":"__drizzle_migrations","table_schema":"drizzle","udt_name":"int4","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.master_data_entries.officerMatrixLabel
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"officerMatrixLabel","data_type":"text","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":null,"numeric_scale":null,"table_name":"master_data_entries","table_schema":"public","udt_name":"text","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.appraisal_result_id
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"appraisal_result_id","data_type":"integer","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":32,"numeric_scale":0,"table_name":"promotion_forms","table_schema":"public","udt_name":"int4","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.created_at
+    development: {"character_maximum_length":null,"column_default":"now()","column_name":"created_at","data_type":"timestamp without time zone","datetime_precision":6,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"timestamp","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.crew_member_id
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"crew_member_id","data_type":"text","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"NO","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"text","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.current_rank
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"current_rank","data_type":"text","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"NO","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"text","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.effective_date
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"effective_date","data_type":"text","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"text","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.id
+    development: {"character_maximum_length":null,"column_default":"nextval('promotion_forms_id_seq'::regclass)","column_name":"id","data_type":"integer","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"NO","numeric_precision":32,"numeric_scale":0,"table_name":"promotion_forms","table_schema":"public","udt_name":"int4","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.justification
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"justification","data_type":"text","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"text","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.proposed_rank
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"proposed_rank","data_type":"text","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"NO","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"text","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.reviewed_at
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"reviewed_at","data_type":"timestamp without time zone","datetime_precision":6,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"timestamp","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.reviewed_by
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"reviewed_by","data_type":"text","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"text","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.reviewer_comments
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"reviewer_comments","data_type":"text","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"text","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.status
+    development: {"character_maximum_length":null,"column_default":"'draft'::text","column_name":"status","data_type":"text","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"NO","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"text","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.submitted_at
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"submitted_at","data_type":"timestamp without time zone","datetime_precision":6,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"timestamp","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.submitted_by
+    development: {"character_maximum_length":null,"column_default":null,"column_name":"submitted_by","data_type":"text","datetime_precision":null,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"text","udt_schema":"pg_catalog"}
+  [missing-from-fresh] public.promotion_forms.updated_at
+    development: {"character_maximum_length":null,"column_default":"now()","column_name":"updated_at","data_type":"timestamp without time zone","datetime_precision":6,"domain_name":null,"domain_schema":null,"is_nullable":"YES","numeric_precision":null,"numeric_scale":null,"table_name":"promotion_forms","table_schema":"public","udt_name":"timestamp","udt_schema":"pg_catalog"}
+
+constraints: 3 difference(s)
+  [missing-from-fresh] drizzle.__drizzle_migrations.__drizzle_migrations_pkey
+    development: {"constraint_name":"__drizzle_migrations_pkey","constraint_type":"p","deferrable":false,"definition":"PRIMARY KEY (id)","initially_deferred":false,"schema_name":"drizzle","table_name":"__drizzle_migrations","validated":true}
+  [missing-from-fresh] public.promotion_forms.promotion_forms_crew_member_id_crew_members_id_fk
+    development: {"constraint_name":"promotion_forms_crew_member_id_crew_members_id_fk","constraint_type":"f","deferrable":false,"definition":"FOREIGN KEY (crew_member_id) REFERENCES crew_members(id)","initially_deferred":false,"schema_name":"public","table_name":"promotion_forms","validated":true}
+  [missing-from-fresh] public.promotion_forms.promotion_forms_pkey
+    development: {"constraint_name":"promotion_forms_pkey","constraint_type":"p","deferrable":false,"definition":"PRIMARY KEY (id)","initially_deferred":false,"schema_name":"public","table_name":"promotion_forms","validated":true}
+
+indexes: 6 difference(s)
+  [missing-from-fresh] drizzle.__drizzle_migrations.__drizzle_migrations_pkey
+    development: {"definition":"CREATE UNIQUE INDEX __drizzle_migrations_pkey ON drizzle.__drizzle_migrations USING btree (id)","index_name":"__drizzle_migrations_pkey","is_primary":true,"is_unique":true,"is_valid":true,"schema_name":"drizzle","table_name":"__drizzle_migrations"}
+  [missing-from-fresh] public.master_data_entries.idx_master_data_entries_master_id
+    development: {"definition":"CREATE INDEX idx_master_data_entries_master_id ON public.master_data_entries USING btree (master_id)","index_name":"idx_master_data_entries_master_id","is_primary":false,"is_unique":false,"is_valid":true,"schema_name":"public","table_name":"master_data_entries"}
+  [missing-from-fresh] public.promotion_forms.idx_promotion_forms_appraisal_result_id
+    development: {"definition":"CREATE INDEX idx_promotion_forms_appraisal_result_id ON public.promotion_forms USING btree (appraisal_result_id)","index_name":"idx_promotion_forms_appraisal_result_id","is_primary":false,"is_unique":false,"is_valid":true,"schema_name":"public","table_name":"promotion_forms"}
+  [missing-from-fresh] public.promotion_forms.idx_promotion_forms_crew_member_id
+    development: {"definition":"CREATE INDEX idx_promotion_forms_crew_member_id ON public.promotion_forms USING btree (crew_member_id)","index_name":"idx_promotion_forms_crew_member_id","is_primary":false,"is_unique":false,"is_valid":true,"schema_name":"public","table_name":"promotion_forms"}
+  [missing-from-fresh] public.promotion_forms.idx_promotion_forms_status
+    development: {"definition":"CREATE INDEX idx_promotion_forms_status ON public.promotion_forms USING btree (status)","index_name":"idx_promotion_forms_status","is_primary":false,"is_unique":false,"is_valid":true,"schema_name":"public","table_name":"promotion_forms"}
+  [missing-from-fresh] public.promotion_forms.promotion_forms_pkey
+    development: {"definition":"CREATE UNIQUE INDEX promotion_forms_pkey ON public.promotion_forms USING btree (id)","index_name":"promotion_forms_pkey","is_primary":true,"is_unique":true,"is_valid":true,"schema_name":"public","table_name":"promotion_forms"}
+
+views: 0 difference(s)
+
+enum-types: 0 difference(s)
+
+sequences: 2 difference(s)
+  [missing-from-fresh] drizzle.__drizzle_migrations_id_seq
+    development: {"cache_value":"1","cycle":false,"data_type":"integer","increment_value":"1","maximum_value":"2147483647","minimum_value":"1","schema_name":"drizzle","sequence_name":"__drizzle_migrations_id_seq","start_value":"1"}
+  [missing-from-fresh] public.promotion_forms_id_seq
+    development: {"cache_value":"1","cycle":false,"data_type":"integer","increment_value":"1","maximum_value":"2147483647","minimum_value":"1","schema_name":"public","sequence_name":"promotion_forms_id_seq","start_value":"1"}
+
+Total schema differences: 32
+
+SEED DATA ONBOARDING CHECKLIST
+==============================
+Counts are exact row counts read independently from each database.
+
+table | development rows | fresh rows | status | onboarding guidance
+----- | ----------------- | ---------- | ------ | -------------------
+adm_menumaster_ac | 81 | 81 | Sufficient baseline for a new client | The access-control menu catalogue must exist before users can navigate the application.
+adm_rolemaster_ac | 51 | 15 | Sufficient baseline for a new client | Roles must exist before authenticated users can resolve permissions.
+adm_roleaccess_ac | 1383 | 225 | Sufficient baseline for a new client | Role grants must exist for the seeded roles to reach application modules.
+master_vessel_types | 19 | 0 | Must populate during onboarding | Baseline vessel types support vessel and crew validation; add client-specific types during onboarding. The fresh chain has no usable baseline rows.
+master_users | 24 | 0 | Must populate during onboarding | Users are tenant-specific and must be provisioned during onboarding; fresh-chain rows must not be treated as client users. The fresh chain has no usable baseline rows.
+master_vessels | 10 | 0 | Must populate during onboarding | Vessels are tenant-specific and must be populated during onboarding. The fresh chain has no usable baseline rows.
+adm_forms_v2 | 7 | 3 | Sufficient baseline for a new client | Form definitions are needed for the configured-form workflows.
+adm_rank_groups_v2 | 49 | 0 | Must populate during onboarding | Rank groups connect forms to the ranks that can use them. The fresh chain has no usable baseline rows.
+adm_form_versions_v2 | 44 | 0 | Must populate during onboarding | Released or draft form versions provide the runnable form configuration. The fresh chain has no usable baseline rows.
+frm_form_parts | 9 | 9 | Sufficient baseline for a new client | Form parts are required for a form skeleton to render.
+frm_option_sets | 22 | 0 | Conditional; populate during onboarding when the selected forms require it | Reusable option sets are conditional; populate them during onboarding when a form uses them.
+frm_options | 84 | 0 | Conditional; populate during onboarding when the selected forms require it | Option values are conditional; populate them during onboarding when a form uses option sets.
+frm_sections | 13 | 0 | Must populate during onboarding | Form sections are required for a form skeleton to render. The fresh chain has no usable baseline rows.
+frm_questions | 41 | 0 | Must populate during onboarding | Form questions are required for a form skeleton to render. The fresh chain has no usable baseline rows.
+master_nationalities | 243 | 0 | Must populate during onboarding | Nationality master data is used by crew and recruitment validation. The fresh chain has no usable baseline rows.
+master_data_entries | 0 | 25 | Sufficient baseline for a new client | Shared master entries provide baseline lookup values used by application workflows.
+
+This checklist describes what a new client receives from the migration chain and what onboarding must provide; it is not a defect list.
