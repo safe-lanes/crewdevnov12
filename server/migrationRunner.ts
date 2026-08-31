@@ -12,6 +12,8 @@ interface MigrationRecord {
   applied_at: Date;
 }
 
+const MIGRATION_FILENAME_PATTERN = /^\d{4}_.+\.sql$/;
+
 async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied: number; skipped: number; total: number }> {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -35,7 +37,7 @@ async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied
   }
 
   const sqlFiles = files
-    .filter(f => f.endsWith('.sql'))
+    .filter(f => MIGRATION_FILENAME_PATTERN.test(f))
     .sort();
 
   if (sqlFiles.length === 0) {

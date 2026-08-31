@@ -1,0 +1,248 @@
+Fresh-tenant migration verification
+Date: 2026-08-31
+
+Automatic discovery rule
+------------------------
+Only SQL filenames matching NNNN_description.sql are included.
+The existing lexicographic sort is unchanged.
+
+Excluded historical/manual SQL files
+------------------------------------
+PHASE2_DATABASE_MIGRATION.sql
+add_is_delete_column.sql
+
+Fresh disposable database
+-------------------------
+Eligible numbered files: 204
+First run applied: 204
+First run ledger count: 204
+Second run applied: 0
+Second run ledger count: 204
+PHASE2_DATABASE_MIGRATION.sql ledger rows: 0
+add_is_delete_column.sql ledger rows: 0
+Compatibility migration ledger rows: 1
+Legacy training-matrix tables after 0094: 0
+Final applied migration: 0203_add_crew_briefing_signature_attachment_fk.sql
+
+Existing development tenant
+---------------------------
+Ledger count before restart: 208
+Ledger count after restart: 209
+Newly recorded migration: 0037_z_create_legacy_training_matrix_tables.sql
+PHASE2_DATABASE_MIGRATION.sql ledger rows before/after: 1 / 1
+Legacy training-matrix tables before/after: 0 / 0
+Application workflow: running on port 5000
+
+Validation
+----------
+Backend production bundle: passed
+Full TypeScript check: pre-existing baseline failed with 225 errors in 40 unrelated files
+Previously tracked SQL migrations modified: none
+PHASE2_DATABASE_MIGRATION.sql modified: no
+
+Fresh first-run migrations in exact order
+-----------------------------------------
+0000_stiff_archangel.sql
+0001_add_is_delete_to_recruitment_candidates.sql
+0002_add_handover_fields_to_vessel_planning.sql
+0003_set_default_crew_status_primary.sql
+0004_add_performance_indexes.sql
+0005_add_rotation_archive_table.sql
+0006_add_vessel_crew_archive_fields.sql
+0007_add_vessel_type_hierarchy.sql
+0008_add_crew_status_fields.sql
+0009_add_sign_off_reason.sql
+0010_add_oil_chemical_tanker.sql
+0011_add_license_dce_master.sql
+0012_add_dce_support_licenses.sql
+0013_add_uploaded_photo_column.sql
+0014_consolidate_sign_on_date.sql
+0015_add_reliever_sign_on_date.sql
+0016_backfill_crew_sign_on_date.sql
+0017_add_forms_shared_config.sql
+0017_allow_null_file_no.sql
+0018_add_is_system_rank_column.sql
+0018_remove_redundant_vessel_name_columns.sql
+0019_starter_pack_ranks.sql
+0020_sync_vessel_actual_manning.sql
+0021_consolidate_vessel_planning_rank_ids.sql
+0022_update_english_proficiency_values.sql
+0023_add_oil_major_rules_table.sql
+0024_training_master_seed.sql
+0025_add_company_trainings_table.sql
+0026_backfill_company_trainings.sql
+0027_update_company_trainings_data.sql
+0028_align_company_training_sort_order.sql
+0029_fix_company_training_sort_order.sql
+0030_add_company_training_groups.sql
+0031_add_company_training_requirements.sql
+0032_update_sc001_add_sc008.sql
+0033_sync_sc001_label_to_company.sql
+0034_add_fleet_group_ports_language_masters.sql
+0035_add_country_master.sql
+0036_add_crew_pool_master.sql
+0037_add_crew_pool_column.sql
+0037_z_create_legacy_training_matrix_tables.sql
+0038_migrate_vessel_ids_to_external_api.sql
+0039_add_rank_groups_archived_at.sql
+0040_add_form_versions_table.sql
+0041_add_appraisal_type_master.sql
+0042_add_rank_group_configuration.sql
+0043_add_rank_group_id_to_form_versions.sql
+0044_add_promotion_reviews_table.sql
+0045_add_criteria_meets_status.sql
+0046_add_users_master.sql
+0047_add_handover_attachments.sql
+0048_add_selected_approvers_for_submission.sql
+0049_add_gender_field.sql
+0050_add_checklist_progress_data.sql
+0051_add_promotion_review_unique_index.sql
+0052_add_rest_hours_daily_records_unique_constraint.sql
+0053_add_drug_alcohol_test_status.sql
+0054_add_external_master_data_tables.sql
+0055_add_reliever_contract_fields.sql
+0056_rename_master_uuid_columns.sql
+0064_rollback_recruitment_v2.sql
+0065_recruitment_v2_tables.sql
+0066_fix_v2_schema_alignment.sql
+0067_align_v2_with_specification.sql
+0068_add_suitability_sort_order.sql
+0069_create_crew_pool_v2_tables.sql
+0070_make_vessel_fields_nullable.sql
+0071_add_crew_visas_country_column.sql
+0072_add_missing_v2_crew_columns.sql
+0073_add_native_language_column.sql
+0074_create_vessel_planning_v2.sql
+0075_create_vessel_planning_attachments_v2.sql
+0076_create_rotation_drafts_v2.sql
+0077_create_rotation_draft_vessels_v2.sql
+0078_create_rotation_draft_ranks_v2.sql
+0079_create_rotation_entries_v2.sql
+0080_create_rotation_archive_v2.sql
+0081_make_rotation_draft_created_by_nullable.sql
+0082_add_selected_approver_uuids_to_b8.sql
+0083_create_rest_hours_v2_tables.sql
+0084_align_variable_tasks_v2_with_v1.sql
+0085_add_nc_reports_v2_missing_columns.sql
+0086_create_drugs_alcohol_v2_tables.sql
+0087_create_admin_v2_tables.sql
+0088_create_admin_v2_extended_tables.sql
+0089_backfill_admin_v2_tables.sql
+0090_create_highlighted_master_tables.sql
+0091_create_promotions_v2_tables.sql
+0092_add_checklist_progress_columns.sql
+0093_create_appraisal_v2_tables.sql
+0094_drop_legacy_v1_tables.sql
+0095_add_previous_plan_status_to_rotation_drafts.sql
+0095_create_access_control_tables.sql
+0096_seed_access_control_menus.sql
+0097_add_vessel_appraisal_handover_menus.sql
+0098_update_rolemaster_ac.sql
+0099_add_is_locked_to_rh_vessel_records.sql
+0100_add_is_reliever_archived.sql
+0100_add_rh_lock_unlock_menus.sql
+0101_rename_violation_codes_to_letters.sql
+0102_split_ef_violation_codes.sql
+0103_add_crew_pool_section_menus.sql
+0104_add_promotion_section_menus.sql
+0105_add_appraisal_section_menus.sql
+0106_seed_vessel_org_chart.sql
+0107_update_manning_agent_names.sql
+0108_add_flag_to_master_vessels.sql
+0109_add_watchkeeper_to_rh_daily_records_v2.sql
+0110_create_training_needs_other.sql
+0110_seed_initial_released_form_versions.sql
+0111_create_training_needs_source_overlay.sql
+0111_reset_crew_appraisal_form_versions.sql
+0113_add_form_version_to_appraisal_results_v2.sql
+0114_cleanup_appraisal_corresponding_in_db_placeholder.sql
+0115_add_crew_terminations.sql
+0116_crew_terminations_fk.sql
+0117_add_phase1_rbac_menus.sql
+0118_add_promo_suitability_tables.sql
+0119_add_promo_suitability_master_uuids.sql
+0120_consolidate_promo_suitability.sql
+0121_cleanup_stale_a3_training_defaults.sql
+0122_backfill_f2_recommendation_answers.sql
+0123_appraisal_lock_form.sql
+0124_appraisal_training_needs_source.sql
+0125_appraisal_training_needs_corresponding_in_db.sql
+0126_backfill_appraisal_vessel_uuid.sql
+0127_backfill_promotion_vessel_uuid.sql
+0128_add_recruitment_date.sql
+0129_add_screening_date_to_recruitment_candidates_v2.sql
+0130_add_is_lock_form_to_promotion_reviews_v2.sql
+0131_create_briefing_debriefing_v2_tables.sql
+0132_create_test_cases_v2_table.sql
+0133_test_cases_v2_area_feature_constraints_menu.sql
+0134_test_cases_v2_pms_fields.sql
+0135_test_cases_v2_deregister_menu.sql
+0136_add_promo_execution_ledger.sql
+0137_create_alerts_v2_tables.sql
+0138_rh_records_per_rank_promotion.sql
+0139_add_admin_accept_to_vessel_planning.sql
+0140_create_accounts_v2_tables.sql
+0141_add_account_rbac_menus.sql
+0142_seed_accounts_pay_elements.sql
+0143_accounts_unique_constraints.sql
+0144_create_accounts_payruns_v2.sql
+0145_seed_accounts_dummy_data.sql
+0146_fix_accounts_dummy_contract_values.sql
+0147_create_promo_checklist_attachments_table.sql
+0148_migrate_promotions_json_to_table.sql
+0149_rename_da_filename_to_file_name.sql
+0150_add_updated_at_triggers.sql
+0151_add_da_lock_unlock.sql
+0152_rename_da_lock_unlock_display.sql
+0153_create_master_training_status.sql
+0154_add_training_status_master_entry.sql
+0155_create_master_training_category.sql
+0156_add_training_category_master_entry.sql
+0157_add_status_to_b7_training_items.sql
+0158_add_corresponding_in_db_to_overlay.sql
+0159_add_identified_by_uuid_to_training_needs.sql
+0160_add_da_history_menu.sql
+0161_add_sign_off_reason_to_sea_service.sql
+0162_accounts_schema_rebuild.sql
+0163_accounts_amendments.sql
+0164_accounts_rbac_reconcile.sql
+0165_accounts_engine_prep.sql
+0166_accounts_payroll_run_prep.sql
+0167_accounts_payroll_rbac.sql
+0168_accounts_settlements.sql
+0169_accounts_settlements_rbac.sql
+0170_vessel_submission_ctm.sql
+0171_vessel_portage_rbac.sql
+0172_allotments_cash_bond.sql
+0173_allotments_cash_bond_rbac.sql
+0174_gl_wages_payable_code.sql
+0175_accounts_reports_rbac.sql
+0176_add_attachment_ref.sql
+0177_add_source_to_b7_training_items.sql
+0178_add_source_to_cand_visas.sql
+0178_backfill_wage_scale_vessel_type_uuid.sql
+0179_add_appr_reviewers_v2.sql
+0180_add_user_uuid_is_assigned_to_office_reviews.sql
+0181_add_email_sent_at_to_office_reviews.sql
+0182_unique_live_engagement_per_assignment.sql
+0183_ctm_opening_carried_from_period.sql
+0184_seniority_anchor_confirmed.sql
+0185_vessel_portage_category_tabs.sql
+0186_allotments_cash_menu_merge.sql
+0187_contracts_menu_and_manual_end_date.sql
+0188_add_travel_payroll_date_columns.sql
+0189_add_form_version_to_promotion_reviews_v2.sql
+0190_unpin_unsubmitted_promotion_reviews.sql
+0191_add_vessel_api_fields_and_cache.sql
+0192_add_is_active_is_deleted_to_master_vessels.sql
+0193_add_vessel_ids_to_master_users.sql
+0194_compliance_screening.sql
+0195_add_selected_position_to_promotion_reviews_v2.sql
+0196_enforce_form_version_pin_contract.sql
+0197_create_shared_configurable_forms_tables.sql
+0198_seed_shared_configurable_forms.sql
+0199_correct_shared_configurable_form_parts.sql
+0200_form_version_option_sets.sql
+0201_option_set_endpoint_labels.sql
+0202_create_crew_briefing_submission_tables.sql
+0203_add_crew_briefing_signature_attachment_fk.sql

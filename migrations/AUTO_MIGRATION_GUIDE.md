@@ -7,7 +7,7 @@ When you run `npm run dev`, migrations are applied **automatically** before the 
 ### Migration Process
 
 1. **Startup**: Application starts with `npm run dev`
-2. **Check**: System reads all `.sql` files from `migrations/` folder
+2. **Check**: System reads numbered `.sql` files matching `NNNN_description.sql` from the `migrations/` folder
 3. **Track**: Compares with `schema_migrations` table in database
 4. **Apply**: Runs only new migrations that haven't been applied
 5. **Skip**: Ignores already-applied migrations
@@ -40,6 +40,8 @@ Create a new `.sql` file in the `migrations/` folder:
 ```bash
 # File: migrations/0002_add_new_column.sql
 ```
+
+The non-numbered `PHASE2_DATABASE_MIGRATION.sql` and `add_is_delete_column.sql` files remain in the repository for historical/manual reference and are not part of the automatic chain.
 
 **File Naming Convention:**
 - Use sequential numbers: `0001_`, `0002_`, `0003_`, etc.

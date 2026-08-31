@@ -39,10 +39,10 @@ npm run dev
 
 ### Phase 2 Migrations
 - **PHASE2_DATABASE_MIGRATION.sql** (2025-11-17)
-  - Creates: company_processing, promotion_forms tables
-  - Inserts: 8 rank_groups records
-  - Indexes: 6 indexes for performance
-  - Foreign Keys: 2 relationships
+  - Historical record only; retained in the repository but excluded from the automatic migration runner
+  - Its legacy `company_processing`, `promotion_forms`, and `rank_groups` changes are obsolete for fresh-tenant provisioning
+
+The automatic runner includes only files matching the numbered migration convention (`NNNN_description.sql`) before applying the existing lexicographic sort. This excludes both historical/manual helpers, `PHASE2_DATABASE_MIGRATION.sql` and `add_is_delete_column.sql`. Neither file is deleted and no existing `schema_migrations` rows are removed; tenants that already recorded Phase 2 as applied remain unchanged.
 
 ### Soft Delete Feature
 - **0001_add_is_delete_to_recruitment_candidates.sql** (2025-11-19)

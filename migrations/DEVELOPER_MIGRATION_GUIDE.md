@@ -13,7 +13,7 @@ This guide explains the database migration system for the SAIL Crewing system an
 migrations/
 ├── 0000_stiff_archangel.sql              # Initial schema (Drizzle auto-generated)
 ├── 0001_add_is_delete_to_recruitment_candidates.sql  # Soft delete feature
-├── PHASE2_DATABASE_MIGRATION.sql         # Phase 2 tables
+├── PHASE2_DATABASE_MIGRATION.sql         # Historical record; excluded by automatic runner
 ├── apply_all_migrations.sh               # Automated migration script
 └── meta/                                 # Drizzle ORM metadata
 ```
@@ -29,10 +29,7 @@ Examples:
 ```
 
 ### Migration Order
-Migrations must be applied in sequence:
-1. `0000_stiff_archangel.sql` - Base schema
-2. `PHASE2_DATABASE_MIGRATION.sql` - Phase 2 additions
-3. `0001_add_is_delete_to_recruitment_candidates.sql` - Soft delete
+Files matching the numbered convention (`NNNN_description.sql`) are discovered and applied in lexicographic filename order. Non-numbered historical/manual helpers, including `PHASE2_DATABASE_MIGRATION.sql` and `add_is_delete_column.sql`, remain in the repository but are outside the automatic chain. Existing tenant migration-ledger rows are not removed.
 
 ---
 
