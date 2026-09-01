@@ -729,7 +729,7 @@ export class MastersRepository {
       console.log(`[MastersRepository] syncMasterData(${masterType}): ${insertData.length} rows to sync, truncating and inserting`);
 
       await db.execute(
-        sql.raw(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`)
+        sql.raw(`TRUNCATE TABLE ${tableName} RESTART IDENTITY`)
       );
 
       const BATCH_SIZE = 1000;
