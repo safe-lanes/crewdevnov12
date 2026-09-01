@@ -4,21 +4,19 @@
 
 The complete numbered migration directory successfully provisioned a disposable PostgreSQL database from empty state:
 
-- Migrations applied: **205**
+- Migrations applied: **207**
 - Migrations skipped: **0**
 - Migration-runner failures: **0**
 - Schema objects compared: tables, columns, constraints, indexes, views, enum types, and sequences
-- Object-level schema differences: **32**
-- Development-only differences requiring a forward migration: **2**
+- Object-level schema differences: **30**
+- Development-only differences requiring a forward migration: **0**
 - Development-only obsolete leftovers that should not be reproduced: **30**
 - Fresh-only differences showing development is behind: **0**
 
-The migration directory therefore does **not** exactly reproduce the development schema. The two genuine gaps are:
-
-1. `public.master_data_entries.officerMatrixLabel`
-2. `public.master_data_entries.idx_master_data_entries_master_id`
-
-No corrective migration or data population was performed as part of this proof.
+The migration directory now reproduces all current, migration-relevant development
+schema objects. The two genuine gaps identified by the original parity proof are
+provided by forward migrations 0205 and 0206. The remaining differences are
+obsolete development-only leftovers.
 
 ## Classification rules
 
@@ -30,12 +28,14 @@ No corrective migration or data population was performed as part of this proof.
 
 Every difference from `reports/schema-diff.json` is listed below.
 
-### A — Genuine forward-migration gaps (2)
+### A — Genuine forward-migration gaps (0)
 
-| Object category | Object | Evidence |
-| --- | --- | --- |
-| Column | `public.master_data_entries.officerMatrixLabel` | Declared by the current Drizzle schema and used by the License & DCE / officer-matrix application model, but no numbered migration creates it. |
-| Index | `public.master_data_entries.idx_master_data_entries_master_id` | Development has a valid non-unique B-tree index on `master_id`; the migration chain does not create it, while current master-data access filters by `master_id`. |
+The original two gaps are now supplied by forward migrations:
+
+- `public.master_data_entries.officerMatrixLabel`
+- `public.master_data_entries.idx_master_data_entries_master_id`
+
+The post-fix comparison reports neither object as missing from fresh.
 
 ### B — Obsolete development leftovers (30)
 
@@ -99,7 +99,7 @@ Counts are exact independent `COUNT(*)` results from development and the freshly
 | `master_vessel_types` | 19 | 0 | Populate during onboarding | Add baseline and client-specific vessel types before vessel and crew validation workflows are used. |
 | `master_users` | 24 | 0 | Populate during onboarding | Provision tenant users; development users must not be copied as client users. |
 | `master_vessels` | 10 | 0 | Populate during onboarding | Add the client's vessel fleet. |
-| `adm_forms_v2` | 7 | 3 | Sufficient baseline | The fresh chain supplies baseline form definitions; onboard additional required forms. |
+| `adm_forms_v2` | 7 | 5 | Sufficient baseline | The fresh chain supplies all five expected parent form skeletons; configure rank groups, versions, sections, questions, and options during onboarding. |
 | `adm_rank_groups_v2` | 49 | 0 | Populate during onboarding | Configure the rank groups that connect forms to eligible ranks. |
 | `adm_form_versions_v2` | 44 | 0 | Populate during onboarding | Create or import runnable form versions. |
 | `frm_form_parts` | 9 | 9 | Sufficient baseline | Baseline form parts are present. |
@@ -113,7 +113,8 @@ Counts are exact independent `COUNT(*)` results from development and the freshly
 ## Safety and reproducibility notes
 
 - Development was queried read-only by the comparator.
-- All migration execution targeted a newly created disposable database.
+- All fresh migration execution targeted a newly created disposable database.
+- The post-fix comparison included migrations 0205 and 0206; no development data was populated by the validation run.
 - The disposable database was dropped by a shell cleanup trap after each run.
 - `server/migrationRunner.ts` and `package.json` were not modified.
 - Raw human-readable output: `reports/schema-diff.txt`
