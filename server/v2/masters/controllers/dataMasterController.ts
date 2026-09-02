@@ -56,6 +56,39 @@ const API_KEY_MAP: Record<string, string> = {
   'roles': 'roles',
 };
 
+const NO_REMOVAL_MASTER_TYPES = new Set([
+  'additionalGroups',
+  'fleetGroups',
+  'users',
+]);
+
+type SyncResult = {
+  synced: number;
+  inserted: number;
+  updated: number;
+  softDeleted: number;
+  unchanged: number;
+  removalSupported: boolean;
+  note?: string;
+  error?: string;
+};
+
+function emptySyncResult(type: string, error?: string): SyncResult {
+  const removalSupported = !NO_REMOVAL_MASTER_TYPES.has(type);
+  return {
+    synced: 0,
+    inserted: 0,
+    updated: 0,
+    softDeleted: 0,
+    unchanged: 0,
+    removalSupported,
+    ...(NO_REMOVAL_MASTER_TYPES.has(type)
+      ? { note: `Removal not supported for ${type}; rows absent from the payload are left untouched.` }
+      : {}),
+    ...(error ? { error } : {}),
+  };
+}
+
 export const dataMasterController = {
   async listMasters(req: Request, res: Response) {
     try {
@@ -301,7 +334,7 @@ export const dataMasterController = {
 
       console.log(`[Sync All] Fetching all master data from external API: ${apiBaseUrl}`);
 
-      const results: Record<string, { synced: number; error?: string }> = {};
+      const results: Record<string, SyncResult> = {};
 
       console.log(`[Sync All] Fetching main data from: ${apiBaseUrl}`);
       const mainResponse = await fetch(`${apiBaseUrl}?domain=${domain}`);
@@ -316,15 +349,23 @@ export const dataMasterController = {
           const typeData = externalData[apiKey];
           if (typeData && Array.isArray(typeData)) {
             const result = await mastersRepo.syncMasterData(type, typeData);
-            results[type] = { synced: result.count };
+            results[type] = {
+              synced: result.count,
+              inserted: result.inserted,
+              updated: result.updated,
+              softDeleted: result.softDeleted,
+              unchanged: result.unchanged,
+              removalSupported: result.removalSupported,
+              ...(result.note ? { note: result.note } : {}),
+            };
           } else {
-            results[type] = { synced: 0, error: `No data for key: ${apiKey}` };
+            results[type] = emptySyncResult(type, `No data for key: ${apiKey}`);
           }
         } catch (typeError) {
-          results[type] = {
-            synced: 0,
-            error: typeError instanceof Error ? typeError.message : 'Unknown error'
-          };
+          results[type] = emptySyncResult(
+            type,
+            typeError instanceof Error ? typeError.message : 'Unknown error',
+          );
         }
       }
 

@@ -35,6 +35,75 @@ const MASTER_TABLE_MAP: Record<string, any> = {
   roles: admRoleMasterAc,
 };
 
+type MasterSyncAudit = {
+  count: number;
+  inserted: number;
+  updated: number;
+  softDeleted: number;
+  unchanged: number;
+  removalSupported: boolean;
+  note?: string;
+};
+
+type MasterSyncConfig = {
+  table: any;
+  keyField: string;
+  supportsSoftDelete: boolean;
+};
+
+const MASTER_SYNC_CONFIG: Record<string, MasterSyncConfig> = {
+  nationalities: {
+    table: masterNationalities,
+    keyField: 'natUuid',
+    supportsSoftDelete: true,
+  },
+  vessels: {
+    table: masterVessels,
+    keyField: 'vesselUuid',
+    supportsSoftDelete: true,
+  },
+  vesselTypes: {
+    table: masterVesselTypes,
+    keyField: 'vtUuid',
+    supportsSoftDelete: true,
+  },
+  additionalGroups: {
+    table: masterAdditionalGroups,
+    keyField: 'agUuid',
+    supportsSoftDelete: false,
+  },
+  ports: {
+    table: masterPorts,
+    keyField: 'portUuid',
+    supportsSoftDelete: true,
+  },
+  fleetGroups: {
+    table: masterFleetGroups,
+    keyField: 'fgUuid',
+    supportsSoftDelete: false,
+  },
+  languages: {
+    table: masterLanguages,
+    keyField: 'langUuid',
+    supportsSoftDelete: true,
+  },
+  countries: {
+    table: masterCountries,
+    keyField: 'countryUuid',
+    supportsSoftDelete: true,
+  },
+  users: {
+    table: masterUsers,
+    keyField: 'userUuid',
+    supportsSoftDelete: false,
+  },
+  roles: {
+    table: admRoleMasterAc,
+    keyField: 'ruid',
+    supportsSoftDelete: true,
+  },
+};
+
 const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
   nationalities: {
     id: 'id',
@@ -164,6 +233,49 @@ function buildVesselClassification(item: any): string | null {
   if (item.dry === true || item.dry === 1) classifications.push('Dry');
   if (item.container === true || item.container === 1) classifications.push('Container');
   return classifications.length > 0 ? classifications.join(', ') : null;
+}
+
+function normalizeBusinessKey(value: unknown): string {
+  return value === null || value === undefined ? '' : String(value).trim();
+}
+
+function parseBooleanField(value: unknown, masterType: string, field: string, rowNumber: number): boolean {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (value === 1 || (typeof value === 'string' && value.trim().toLowerCase() === 'true') || value === '1') {
+    return true;
+  }
+  if (value === 0 || (typeof value === 'string' && value.trim().toLowerCase() === 'false') || value === '0') {
+    return false;
+  }
+  throw new Error(
+    `[MastersRepository] Invalid ${masterType} payload: ${field} must be a boolean at row ${rowNumber}`,
+  );
+}
+
+function valuesEqual(left: unknown, right: unknown): boolean {
+  if (left === right) {
+    return true;
+  }
+  if (left instanceof Date || right instanceof Date) {
+    const leftTime = left instanceof Date ? left.getTime() : new Date(String(left)).getTime();
+    const rightTime = right instanceof Date ? right.getTime() : new Date(String(right)).getTime();
+    return leftTime === rightTime;
+  }
+  if (
+    (typeof left === 'string' || typeof left === 'number') &&
+    (typeof right === 'string' || typeof right === 'number')
+  ) {
+    return String(left).trim() === String(right).trim();
+  }
+  return false;
+}
+
+function hasChangedFields(existing: Record<string, any>, incoming: Record<string, any>): boolean {
+  return Object.entries(incoming)
+    .filter(([field]) => field !== 'id')
+    .some(([field, value]) => !valuesEqual(existing[field], value));
 }
 
 export class MastersRepository {
@@ -685,75 +797,180 @@ export class MastersRepository {
     return true;
   }
 
-  async syncMasterData(masterType: string, data: any[]): Promise<{ count: number }> {
+  async syncMasterData(masterType: string, data: any[]): Promise<MasterSyncAudit> {
+    const config = MASTER_SYNC_CONFIG[masterType];
+    const removalSupported = config?.supportsSoftDelete ?? false;
+    const removalNote = removalSupported
+      ? undefined
+      : `Removal not supported for ${masterType}; rows absent from the payload are left untouched.`;
+
     if (!data || data.length === 0) {
       console.log(`[MastersRepository] syncMasterData(${masterType}): No data`);
-      return { count: 0 };
+      return {
+        count: 0,
+        inserted: 0,
+        updated: 0,
+        softDeleted: 0,
+        unchanged: 0,
+        removalSupported,
+        ...(removalNote ? { note: removalNote } : {}),
+      };
     }
 
-    const table = MASTER_TABLE_MAP[masterType];
+    const table = config?.table || MASTER_TABLE_MAP[masterType];
     const mapping = FIELD_MAPPINGS[masterType];
 
-    if (!table || !mapping) {
+    if (!config || !table || !mapping) {
       console.warn(`[MastersRepository] Unknown master type: ${masterType}`);
-      return { count: 0 };
+      return {
+        count: 0,
+        inserted: 0,
+        updated: 0,
+        softDeleted: 0,
+        unchanged: 0,
+        removalSupported: false,
+      };
     }
 
     try {
       const db = getDb();
       const tableName = getTableName(table);
 
-      console.log(`[MastersRepository] syncMasterData(${masterType}): tableName=${tableName}`);
+      console.log(
+        `[MastersRepository] syncMasterData(${masterType}): ` +
+        `tableName=${tableName} businessKey=${config.keyField}`,
+      );
 
-      const insertData = data.map((item) => {
+      const insertData = data.map((item, index) => {
+        if (!item || typeof item !== 'object') {
+          throw new Error(`[MastersRepository] Invalid ${masterType} payload: every row must be an object`);
+        }
         const row: any = {};
         for (const [apiField, schemaField] of Object.entries(mapping)) {
           if (item[apiField] !== undefined && item[apiField] !== null) {
             let value = item[apiField];
             if (BOOLEAN_FIELDS.has(apiField)) {
-              value = Boolean(value);
+              value = parseBooleanField(value, masterType, apiField, index + 1);
             } else if (TIMESTAMP_FIELDS.has(apiField)) {
               value = typeof value === 'string' ? new Date(value) : value;
             }
             row[schemaField] = value;
           }
         }
+        if (config.supportsSoftDelete && !Object.prototype.hasOwnProperty.call(row, 'isDeleted')) {
+          row.isDeleted = false;
+        }
         return row;
       });
 
       if (insertData.length === 0) {
-        console.log(`[MastersRepository] syncMasterData(${masterType}): No valid data to insert, skipping truncate`);
-        return { count: 0 };
+        console.log(`[MastersRepository] syncMasterData(${masterType}): No valid data to insert`);
+        return {
+          count: 0,
+          inserted: 0,
+          updated: 0,
+          softDeleted: 0,
+          unchanged: 0,
+          removalSupported: config.supportsSoftDelete,
+          ...(removalNote ? { note: removalNote } : {}),
+        };
       }
 
-      console.log(`[MastersRepository] syncMasterData(${masterType}): ${insertData.length} rows to sync, truncating and inserting`);
-
-      await db.execute(
-        sql.raw(`TRUNCATE TABLE ${tableName} RESTART IDENTITY`)
-      );
-
-      const BATCH_SIZE = 1000;
-      let totalInserted = 0;
-
-      for (let i = 0; i < insertData.length; i += BATCH_SIZE) {
-        const batch = insertData.slice(i, i + BATCH_SIZE);
-        await db.insert(table).values(batch);
-        totalInserted += batch.length;
-        console.log(`[MastersRepository] Inserted batch ${Math.floor(i / BATCH_SIZE) + 1}: ${totalInserted}/${insertData.length} rows`);
-      }
-      console.log(`[MastersRepository] Successfully inserted ${totalInserted} rows into ${masterType}`);
-
-      // Reset the serial sequence to MAX(id) for tables where we inserted explicit IDs
-      // from the API. Without this, the sequence stays at 1 after TRUNCATE RESTART IDENTITY
-      // and future auto-inserts would collide with the explicit IDs.
-      if (Object.values(mapping).includes('id')) {
-        await db.execute(
-          sql.raw(`SELECT setval(pg_get_serial_sequence('${tableName}', 'id'), COALESCE(MAX(id), 1)) FROM ${tableName}`)
+      const payloadKeys = insertData.map((row) => normalizeBusinessKey(row[config.keyField]));
+      const emptyKeyIndex = payloadKeys.findIndex((key) => key.length === 0);
+      if (emptyKeyIndex !== -1) {
+        throw new Error(
+          `[MastersRepository] Invalid ${masterType} payload: ${config.keyField} is required for every row (row ${emptyKeyIndex + 1})`,
         );
-        console.log(`[MastersRepository] Reset serial sequence for ${tableName}`);
+      }
+      if (new Set(payloadKeys).size !== payloadKeys.length) {
+        throw new Error(`[MastersRepository] Invalid ${masterType} payload: duplicate ${config.keyField} values`);
       }
 
-      return { count: insertData.length };
+      const audit = await db.transaction(async (tx: any): Promise<MasterSyncAudit> => {
+        await tx.execute(sql.raw(`LOCK TABLE ${tableName} IN SHARE ROW EXCLUSIVE MODE`));
+        const existingRows = await tx.select().from(table);
+        const existingByKey = new Map<string, Record<string, any>[]>();
+        for (const existingRow of existingRows as Record<string, any>[]) {
+          const key = normalizeBusinessKey(existingRow[config.keyField]);
+          const matches = existingByKey.get(key) || [];
+          matches.push(existingRow);
+          existingByKey.set(key, matches);
+        }
+
+        const result: MasterSyncAudit = {
+          count: insertData.length,
+          inserted: 0,
+          updated: 0,
+          softDeleted: 0,
+          unchanged: 0,
+          removalSupported: config.supportsSoftDelete,
+          ...(removalNote ? { note: removalNote } : {}),
+        };
+
+        for (const incomingRow of insertData as Record<string, any>[]) {
+          const key = normalizeBusinessKey(incomingRow[config.keyField]);
+          const matches = existingByKey.get(key) || [];
+
+          if (matches.length === 0) {
+            await tx.insert(table).values(incomingRow);
+            result.inserted++;
+            continue;
+          }
+
+          const updateRow = { ...incomingRow };
+          delete updateRow.id;
+          for (const existingRow of matches) {
+            if (hasChangedFields(existingRow, incomingRow)) {
+              await tx
+                .update(table)
+                .set(updateRow)
+                .where(eq(table.id, existingRow.id));
+              result.updated++;
+            } else {
+              result.unchanged++;
+            }
+          }
+        }
+
+        const incomingKeySet = new Set(payloadKeys);
+        for (const existingRow of existingRows as Record<string, any>[]) {
+          const key = normalizeBusinessKey(existingRow[config.keyField]);
+          if (incomingKeySet.has(key)) {
+            continue;
+          }
+
+          if (config.supportsSoftDelete && existingRow.isDeleted !== true) {
+            await tx
+              .update(table)
+              .set({ isDeleted: true })
+              .where(eq(table.id, existingRow.id));
+            result.softDeleted++;
+          } else {
+            result.unchanged++;
+          }
+        }
+
+        // Parent-supplied numeric IDs are preserved for new rows. Keep the
+        // sequence above the highest explicit ID for future local inserts.
+        if (Object.values(mapping).includes('id')) {
+          await tx.execute(
+            sql.raw(
+              `SELECT setval(pg_get_serial_sequence('${tableName}', 'id'), COALESCE((SELECT MAX(id) FROM ${tableName}), 1))`,
+            ),
+          );
+        }
+
+        return result;
+      });
+
+      console.log(
+        `[MastersRepository] syncMasterData(${masterType}): ` +
+        `inserted=${audit.inserted} updated=${audit.updated} ` +
+        `soft_deleted=${audit.softDeleted} unchanged=${audit.unchanged}` +
+        (audit.note ? ` note="${audit.note}"` : ''),
+      );
+      return audit;
     } catch (error) {
       console.error(`[MastersRepository] Error syncing ${masterType}:`, error);
       throw error;
