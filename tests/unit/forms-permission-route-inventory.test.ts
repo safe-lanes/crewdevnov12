@@ -77,7 +77,17 @@ const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
     action: "view",
   },
   { key: "GET /rank-groups/:id", menuName: "Forms", action: "view" },
+  {
+    key: "GET /rank-groups/:id/copy-sources",
+    menuName: "Forms",
+    action: "view",
+  },
   { key: "POST /rank-groups", menuName: "Forms", action: "create" },
+  {
+    key: "POST /rank-groups/:id/copy-configuration",
+    menuName: "Forms",
+    action: "create",
+  },
   { key: "PUT /rank-groups/:id", menuName: "Forms", action: "edit" },
   {
     key: "PUT /rank-groups/:id/configuration",

@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter, Archive, RotateCcw, Network, Search as SearchIcon, Upload } from "lucide-react";
+import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter, Archive, RotateCcw, Network, Search as SearchIcon, Upload, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarchyDialog";
@@ -125,7 +125,7 @@ import {
 import type { TrainingMaster, InsertTrainingMaster, UpdateTrainingMaster, CompanyTraining, CompanyTrainingRequirement } from "@shared/schema";
 import { useSyncAllMasterData, useLocalMasterData } from "@/hooks/useLocalMasterApi";
 import { useLicensesDceV2, useManningAgentsV2, useCrewPoolsV2, useAppraisalTypesV2 } from "@/hooks/v2/useMasterDataV2";
-import { useTrainingMastersV2, useCreateTrainingMasterV2, useUpdateTrainingMasterV2, useDeleteTrainingMasterV2, useReorderTrainingMastersV2, useCompanyTrainingGroupsV2, useUpdateCompanyTrainingGroupV2, useCompanyTrainingsV2, useUpdateCompanyTrainingV2, useDeleteCompanyTrainingV2, useReorderCompanyTrainingsV2, useCompanyTrainingRequirementsV2, useUpsertCompanyTrainingRequirementsV2, useCompanyRanksV2, useSaveCompanyRanksV2, useAvailableRanksV2, useCreateAvailableRankV2, useUpdateAvailableRankV2, useDeleteAvailableRankV2, useDeleteAllAvailableRanksV2, useVesselGroupsV2, useCreateVesselGroupV2, useUpdateVesselGroupV2, useDeleteVesselGroupV2, useVesselDraftsByVesselV2, useUpsertVesselDraftV2, useMasterDataV2, useImportCompanyTrainingsV2 } from './hooks/useAdminV2';
+import { useTrainingMastersV2, useCreateTrainingMasterV2, useUpdateTrainingMasterV2, useDeleteTrainingMasterV2, useReorderTrainingMastersV2, useCompanyTrainingGroupsV2, useUpdateCompanyTrainingGroupV2, useCompanyTrainingsV2, useUpdateCompanyTrainingV2, useDeleteCompanyTrainingV2, useReorderCompanyTrainingsV2, useCompanyTrainingRequirementsV2, useUpsertCompanyTrainingRequirementsV2, useCompanyRanksV2, useSaveCompanyRanksV2, useAvailableRanksV2, useCreateAvailableRankV2, useUpdateAvailableRankV2, useDeleteAvailableRankV2, useDeleteAllAvailableRanksV2, useVesselGroupsV2, useCreateVesselGroupV2, useUpdateVesselGroupV2, useDeleteVesselGroupV2, useVesselDraftsByVesselV2, useUpsertVesselDraftV2, useMasterDataV2, useImportCompanyTrainingsV2, useFormCopySourcesV2, useCopyFormConfigurationV2 } from './hooks/useAdminV2';
 
 const V2_KEY = '/api/v2/admin';
 
@@ -563,16 +563,21 @@ const AdminModuleInner = (): JSX.Element => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [editingForm, setEditingForm] = useState<Form | null>(null);
   const [editingRankGroup, setEditingRankGroup] = useState<string | null>(null);
+  const [editingRankGroupId, setEditingRankGroupId] = useState<number | null>(null);
   const [isAddRankGroupOpen, setIsAddRankGroupOpen] = useState(false);
   const [selectedFormForRankGroup, setSelectedFormForRankGroup] = useState<string | null>(null);
   const [editingRankGroupData, setEditingRankGroupData] = useState<RankGroup | null>(null);
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [pendingArchiveRankGroup, setPendingArchiveRankGroup] = useState<{id: number; name: string} | null>(null);
+  const [copyTargetRankGroup, setCopyTargetRankGroup] = useState<RankGroup | null>(null);
+  const [selectedCopySourceUuid, setSelectedCopySourceUuid] = useState("");
   const [showCreateFormDialog, setShowCreateFormDialog] = useState(false);
   const [newFormName, setNewFormName] = useState("");
   const [newFormCategory, setNewFormCategory] = useState<"appraisal" | "promotion">("appraisal");
   const [createFormType, setCreateFormType] = useState<"template" | "blank">("template");
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  const { data: copySourcesData, isLoading: copySourcesLoading, error: copySourcesError } = useFormCopySourcesV2(copyTargetRankGroup?.id ?? null);
+  const copyFormConfigurationMutation = useCopyFormConfigurationV2();
 
   // Rank Master data from shared hook (for initialization)
   // PERFORMANCE: Only fetch when on rank-admin tab
@@ -3408,18 +3413,14 @@ const AdminModuleInner = (): JSX.Element => {
   const expandedFormsData = useMemo(() => {
     if (!formsData) return [];
 
-    const getActiveRankGroupsForForm = (formId: number): string[] => {
+    const getActiveRankGroupsForForm = (formId: number): RankGroup[] => {
       return allRankGroups
-        .filter(rg => rg.formId === formId && rg.archivedAt == null)
-        .map(rg => rg.name)
-        .filter((name): name is string => !!name && name.trim().length > 0);
+        .filter(rg => rg.formId === formId && rg.archivedAt == null && !!rg.name && rg.name.trim().length > 0);
     };
 
-    const getLatestVersionForRankGroup = (rankGroupName: string, formId: number): { versionNo: string; versionDate: string } | null => {
-      const rg = allRankGroups.find(r => r.name === rankGroupName && r.formId === formId);
-      if (!rg) return null;
+    const getLatestVersionForRankGroup = (rankGroupId: number, formId: number): { versionNo: string; versionDate: string } | null => {
       const versions = allFormVersions.filter(
-        v => v.formId === formId && v.rankGroupId === rg.id && v.status === 'released'
+        v => v.formId === formId && v.rankGroupId === rankGroupId && v.status === 'released'
       );
       if (versions.length === 0) return null;
       const latest = versions.reduce((max, v) => {
@@ -3434,11 +3435,9 @@ const AdminModuleInner = (): JSX.Element => {
     // (either a real in-progress draft exists, OR the rank group has nothing
     // saved at all — in which case the Form Editor synthesizes a v00 Draft
     // placeholder). Keeps this list consistent with the editor's state.
-    const hasDraftForRankGroup = (rankGroupName: string, formId: number): boolean => {
-      const rg = allRankGroups.find(r => r.name === rankGroupName && r.formId === formId);
-      if (!rg) return false;
+    const hasDraftForRankGroup = (rankGroupId: number, formId: number): boolean => {
       const rgVersions = allFormVersions.filter(
-        v => v.formId === formId && v.rankGroupId === rg.id
+        v => v.formId === formId && v.rankGroupId === rankGroupId
       );
       const hasRealDraft = rgVersions.some(v => v.status === 'draft');
       const hasReleased = rgVersions.some(v => v.status === 'released');
@@ -3464,6 +3463,7 @@ const AdminModuleInner = (): JSX.Element => {
       isFirstInCategory?: boolean;
       isPlaceholderRow?: boolean;
       hasDraft?: boolean;
+      rankGroupId?: number;
     }> = [];
 
     // Process every category returned by the API. Preserve the established
@@ -3494,14 +3494,15 @@ const AdminModuleInner = (): JSX.Element => {
         const activeRankGroups = getActiveRankGroupsForForm(form.id);
         if (activeRankGroups.length > 0) {
           activeRankGroups.forEach((rankGroup, index) => {
-              const rgVersion = getLatestVersionForRankGroup(rankGroup, form.id);
-              const hasDraft = hasDraftForRankGroup(rankGroup, form.id);
+              const rgVersion = getLatestVersionForRankGroup(rankGroup.id, form.id);
+              const hasDraft = hasDraftForRankGroup(rankGroup.id, form.id);
               expanded.push({
                 ...form,
                 id: form.id * 1000 + index,
                 originalFormId: form.id,
-                expandedRankGroup: rankGroup,
-                rankGroup: rankGroup,
+                expandedRankGroup: rankGroup.name,
+                rankGroup: rankGroup.name,
+                rankGroupId: rankGroup.id,
                 versionNo: rgVersion?.versionNo || '00',
                 versionDate: rgVersion?.versionDate || (() => {
                   const d = new Date();
@@ -3696,6 +3697,7 @@ const AdminModuleInner = (): JSX.Element => {
   const handleEditClick = (form: Form) => {
     setEditingForm(form);
     setEditingRankGroup(form.rankGroup || ""); // Use the actual rank group from the form
+    setEditingRankGroupId((form as Form & { rankGroupId?: number }).rankGroupId ?? null);
   };
 
   const handleAddRankGroup = (formName: string) => {
@@ -3719,6 +3721,49 @@ const AdminModuleInner = (): JSX.Element => {
     if (rankGroup) {
       setPendingArchiveRankGroup({ id: rankGroup.id, name: rankGroupName });
       setArchiveConfirmOpen(true);
+    }
+  };
+
+  const handleOpenCopyDialog = (rankGroupId: number) => {
+    const rankGroup = allRankGroups.find(rg => rg.id === rankGroupId);
+    if (!rankGroup) return;
+    setSelectedCopySourceUuid("");
+    setCopyTargetRankGroup(rankGroup);
+  };
+
+  const handleCopyConfiguration = async () => {
+    if (!copyTargetRankGroup || !selectedCopySourceUuid || !copySourcesData) return;
+    const hasExistingContent = copySourcesData.target.sections > 0
+      || copySourcesData.target.questions > 0
+      || copySourcesData.target.optionSets > 0
+      || copySourcesData.target.options > 0;
+    try {
+      await copyFormConfigurationMutation.mutateAsync({
+        targetRankGroupId: copyTargetRankGroup.id,
+        sourceFormVersionUuid: selectedCopySourceUuid,
+        confirmReplace: hasExistingContent,
+      });
+      const copiedTarget = copyTargetRankGroup;
+      setCopyTargetRankGroup(null);
+      setSelectedCopySourceUuid("");
+      toast({
+        title: "Configuration copied",
+        description: `The copied draft for ${copiedTarget.name} is ready to edit.`,
+      });
+      const formRow = expandedFormsData.find(
+        row => row.rankGroupId === copiedTarget.id,
+      );
+      if (formRow) {
+        setEditingForm(formRow);
+        setEditingRankGroup(copiedTarget.name);
+        setEditingRankGroupId(copiedTarget.id);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Copy failed",
+        description: error?.message || "Failed to copy form configuration.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -3913,9 +3958,7 @@ const AdminModuleInner = (): JSX.Element => {
     }
     if (!formData.formId) return;
 
-    const rankGroup = allRankGroups.find(
-      rg => rg.name === editingRankGroup && rg.formId === formData.formId
-    );
+    const rankGroup = allRankGroups.find(rg => rg.id === editingRankGroupId);
 
     // Check if this is a Promotion form (has pre-serialized configuration)
     if (formData.configuration && typeof formData.configuration === 'string') {
@@ -3954,6 +3997,7 @@ const AdminModuleInner = (): JSX.Element => {
   const handleCloseEditor = () => {
     setEditingForm(null);
     setEditingRankGroup(null);
+    setEditingRankGroupId(null);
   };
 
   // Render functions for each tab to isolate JSX structure
@@ -8494,6 +8538,26 @@ const AdminModuleInner = (): JSX.Element => {
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>
+                              {(permissions.length === 0 || canCreate("Forms")) && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0"
+                                        onClick={() => form.rankGroupId && handleOpenCopyDialog(form.rankGroupId)}
+                                        data-testid={`button-copy-rankgroup-${form.id}`}
+                                      >
+                                        <Copy className="h-4 w-4 text-gray-500" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Copy configuration from another rank group</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -8611,11 +8675,10 @@ const AdminModuleInner = (): JSX.Element => {
           formName={editingForm.name}
           form={editingForm}
           rankGroupName={editingRankGroup || undefined}
+          rankGroupId={editingRankGroupId || undefined}
           configurableParts={formPartsByFormId[('originalFormId' in editingForm ? (editingForm as any).originalFormId : editingForm.id)] || []}
           rankGroupConfig={(() => {
-            const rg = allRankGroups.find(
-              r => r.name === editingRankGroup && r.formId === ('originalFormId' in editingForm ? (editingForm as any).originalFormId : editingForm.id)
-            );
+            const rg = allRankGroups.find(r => r.id === editingRankGroupId);
             if (rg?.configuration) {
               try {
                 return JSON.parse(rg.configuration);
@@ -8677,6 +8740,89 @@ const AdminModuleInner = (): JSX.Element => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={copyTargetRankGroup !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCopyTargetRankGroup(null);
+            setSelectedCopySourceUuid("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg" data-testid="dialog-copy-form-configuration">
+          <DialogHeader>
+            <DialogTitle>Copy configuration from…</DialogTitle>
+            <DialogDescription>
+              Copy another rank group’s draft or released configuration into {copyTargetRankGroup?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {copySourcesLoading ? (
+              <p className="text-sm text-muted-foreground">Loading compatible configurations…</p>
+            ) : copySourcesError ? (
+              <p className="text-sm text-red-600">Unable to load compatible configurations.</p>
+            ) : copySourcesData?.target.targetStatus === "released" ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" data-testid="copy-target-released-warning">
+                This rank group only has released version v{copySourcesData.target.releasedVersionNo}. Create a draft before copying into it.
+              </div>
+            ) : copySourcesData?.sources.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No other rank group in this form has configured content to copy.</p>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" htmlFor="copy-source-version">Source configuration</label>
+                  <Select value={selectedCopySourceUuid} onValueChange={setSelectedCopySourceUuid}>
+                    <SelectTrigger id="copy-source-version" data-testid="select-copy-source-version">
+                      <SelectValue placeholder="Choose a rank group and version" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {copySourcesData?.sources.map((source) => (
+                        <SelectItem
+                          key={source.sourceFormVersionUuid}
+                          value={source.sourceFormVersionUuid}
+                          data-testid={`copy-source-${source.sourceFormVersionUuid}`}
+                        >
+                          {source.sourceRankGroupName} · v{source.versionNo} {source.status} · {source.sections} sections · {source.questions} points
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {copySourcesData && (copySourcesData.target.sections > 0 || copySourcesData.target.questions > 0) && (
+                  <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700" data-testid="copy-replacement-warning">
+                    This will discard {copySourcesData.target.sections} sections and {copySourcesData.target.questions} points from draft v{copySourcesData.target.draftVersionNo}, then replace them with the selected configuration.
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCopyTargetRankGroup(null)}
+              data-testid="button-cancel-copy-configuration"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCopyConfiguration}
+              disabled={
+                !selectedCopySourceUuid
+                || copyFormConfigurationMutation.isPending
+                || copySourcesData?.target.targetStatus === "released"
+              }
+              data-testid="button-confirm-copy-configuration"
+            >
+              {copyFormConfigurationMutation.isPending
+                ? "Copying…"
+                : (copySourcesData?.target.sections || copySourcesData?.target.questions)
+                  ? "Replace and copy"
+                  : "Copy configuration"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Vessel Group Modal */}
       <Dialog open={isVesselGroupModalOpen} onOpenChange={(open) => {

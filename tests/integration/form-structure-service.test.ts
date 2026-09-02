@@ -421,7 +421,7 @@ describe.sequential("form structure service integration", () => {
     }]);
   });
 
-  it("requires a released source and a draft target before writing any structure", async () => {
+  it("accepts draft or released sources but still requires a draft target", async () => {
     const { form, rankGroup, partUuid } = await createFormFixture(`Structure guarded copy ${uuidv4()}`);
     const sourceDraft = await formsService.createVersionByFormId(form.id, {
       rankGroupId: rankGroup.id,
@@ -440,8 +440,8 @@ describe.sequential("form structure service integration", () => {
       configuration: "{}",
     }).returning();
     await expect(copyFormVersionStructure(sourceDraft.fvUuid, draftTarget.fvUuid))
-      .rejects.toThrow("source status must be exactly released");
-    expect((await formStructureService.getStructure(draftTarget.fvUuid, partUuid)).sections).toEqual([]);
+      .resolves.toMatchObject({ sections: 1, questions: 1, options: 2 });
+    expect((await formStructureService.getStructure(draftTarget.fvUuid, partUuid)).sections).toHaveLength(1);
 
     const source = await formsService.releaseVersionById(sourceDraft.id);
     const [target] = await getDb().insert(admFormVersionsV2).values({
@@ -458,6 +458,205 @@ describe.sequential("form structure service integration", () => {
     await expect(copyFormVersionStructure(source.fvUuid, target.fvUuid))
       .rejects.toThrow("target status must be exactly draft");
     expect((await formStructureService.getStructure(target.fvUuid, partUuid)).sections).toEqual([]);
+  });
+
+  it("copies between same-form rank groups, creates v01, confirms replacement, and rejects released-only or cross-form targets", async () => {
+    const { form, rankGroup: sourceGroup, partUuid } = await createFormFixture(`Rank group copy ${uuidv4()}`);
+    const db = getDb();
+    const [targetGroup] = await db.insert(admRankGroupsV2).values({
+      rgUuid: uuidv4(),
+      formId: form.id,
+      name: "Copy target",
+      ranks: "[]",
+    }).returning();
+    const [releasedOnlyGroup] = await db.insert(admRankGroupsV2).values({
+      rgUuid: uuidv4(),
+      formId: form.id,
+      name: "Released-only target",
+      ranks: "[]",
+    }).returning();
+    await db.insert(admFormVersionsV2).values({
+      fvUuid: uuidv4(),
+      formId: form.id,
+      rankGroupId: releasedOnlyGroup.id,
+      versionNo: "01",
+      versionDate: "24-Aug-2026",
+      status: "released",
+      configuration: "{}",
+      releasedAt: new Date(),
+    });
+    const sourceDraft = await formsService.createVersionByFormId(form.id, {
+      rankGroupId: sourceGroup.id,
+      configuration: "{\"source\":true}",
+      sharedConfig: "{}",
+      versionDate: "24-Aug-2026",
+    } as any);
+    const sourceSetUuid = uuidv4();
+    const sourceTree = await formStructureService.replaceStructure(sourceDraft.fvUuid, partUuid, {
+      option_sets: [{
+        option_set_uuid: sourceSetUuid,
+        option_set_name: "Copy scale",
+        options: [
+          { option_label: "Yes", option_value: "yes" },
+          { option_label: "No", option_value: "no" },
+        ],
+      }],
+      sections: [{
+        section_code: "B1",
+        section_title: "First briefing point",
+        applicable_vessel_types: [],
+        responsible_mode: "not_applicable",
+        comment_box_required: false,
+        signature_required: false,
+        default_option_set_uuid: sourceSetUuid,
+        questions: [{
+          question_code: "B1Q1",
+          question_text: "Is this understood?",
+          response_type: "single_select",
+          is_mandatory: true,
+          comment_enabled: true,
+          option_set_uuid: sourceSetUuid,
+          options: [],
+        }],
+      }],
+    }, null);
+
+    const candidates = await rankGroupsService.getCopySources(targetGroup.id);
+    expect(candidates.target).toMatchObject({ targetStatus: "empty", sections: 0, questions: 0 });
+    expect(candidates.sources).toContainEqual(expect.objectContaining({
+      sourceRankGroupId: sourceGroup.id,
+      sourceFormVersionUuid: sourceDraft.fvUuid,
+      status: "draft",
+      sections: 1,
+      questions: 1,
+    }));
+
+    const copied = await rankGroupsService.copyFormConfiguration(
+      targetGroup.id,
+      sourceDraft.fvUuid,
+      false,
+      null,
+    );
+    expect(copied).toMatchObject({
+      targetVersionNo: "01",
+      targetRankGroupId: targetGroup.id,
+      sourceStatus: "draft",
+      copied: { sections: 1, questions: 1, options: 2, optionSets: 1 },
+    });
+    const targetTree = await formStructureService.getStructure(copied.targetFormVersionUuid, partUuid);
+    expect(targetTree.sections).toHaveLength(1);
+    expect(targetTree.sections[0].section_uuid).not.toBe(sourceTree.sections[0].section_uuid);
+    expect(targetTree.sections[0].questions[0].question_uuid).not.toBe(sourceTree.sections[0].questions[0].question_uuid);
+    expect(targetTree.sections[0].default_option_set_uuid).not.toBe(sourceTree.sections[0].default_option_set_uuid);
+    expect(targetTree.sections[0].questions[0].option_set_uuid).not.toBe(sourceTree.sections[0].questions[0].option_set_uuid);
+
+    await expect(rankGroupsService.copyFormConfiguration(
+      targetGroup.id,
+      sourceDraft.fvUuid,
+      false,
+      null,
+    )).rejects.toMatchObject({
+      statusCode: 409,
+      details: {
+        reason: "confirmation_required",
+        discarded: { sections: 1, questions: 1, optionSets: 1, options: 2 },
+      },
+    });
+    await expect(rankGroupsService.copyFormConfiguration(
+      targetGroup.id,
+      sourceDraft.fvUuid,
+      true,
+      null,
+    )).resolves.toMatchObject({
+      discarded: { sections: 1, questions: 1, optionSets: 1, options: 2 },
+      copied: { sections: 1, questions: 1, options: 2, optionSets: 1 },
+    });
+    expect(await formStructureRepository.getStructureSummary(copied.targetFormVersionUuid)).toEqual({
+      sections: 1,
+      questions: 1,
+      optionSets: 1,
+      options: 2,
+    });
+
+    await expect(rankGroupsService.copyFormConfiguration(
+      releasedOnlyGroup.id,
+      sourceDraft.fvUuid,
+      false,
+      null,
+    )).rejects.toMatchObject({
+      statusCode: 409,
+      details: { reason: "released_target_only" },
+    });
+
+    const foreign = await createFormFixture(`Foreign copy ${uuidv4()}`);
+    await expect(rankGroupsService.copyFormConfiguration(
+      foreign.rankGroup.id,
+      sourceDraft.fvUuid,
+      false,
+      null,
+    )).rejects.toMatchObject({
+      statusCode: 409,
+      message: "Source and target rank groups must belong to the same form.",
+    });
+    const emptySource = await formsService.createVersionByFormId(foreign.form.id, {
+      rankGroupId: foreign.rankGroup.id,
+      configuration: "{}",
+      sharedConfig: "{}",
+      versionDate: "24-Aug-2026",
+    } as any);
+    const [emptyTarget] = await db.insert(admRankGroupsV2).values({
+      rgUuid: uuidv4(),
+      formId: foreign.form.id,
+      name: "Empty-source target",
+      ranks: "[]",
+    }).returning();
+    await expect(rankGroupsService.copyFormConfiguration(
+      emptyTarget.id,
+      emptySource.fvUuid,
+      false,
+      null,
+    )).rejects.toMatchObject({
+      statusCode: 400,
+      message: "The selected source version has no configured content to copy.",
+    });
+
+    const [detachedSource] = await db.insert(admFormVersionsV2).values({
+      fvUuid: uuidv4(),
+      formId: foreign.form.id,
+      rankGroupId: null,
+      versionNo: "97",
+      versionDate: "24-Aug-2026",
+      status: "draft",
+      configuration: "{}",
+    }).returning();
+    await expect(rankGroupsService.copyFormConfiguration(
+      emptyTarget.id,
+      detachedSource.fvUuid,
+      false,
+      null,
+    )).rejects.toMatchObject({
+      statusCode: 400,
+      message: "The selected source version is not assigned to a rank group.",
+    });
+
+    const [archivedSourceTarget] = await db.insert(admRankGroupsV2).values({
+      rgUuid: uuidv4(),
+      formId: form.id,
+      name: "Archived-source target",
+      ranks: "[]",
+    }).returning();
+    await db.update(admRankGroupsV2)
+      .set({ archivedAt: new Date() })
+      .where(eq(admRankGroupsV2.id, sourceGroup.id));
+    await expect(rankGroupsService.copyFormConfiguration(
+      archivedSourceTarget.id,
+      sourceDraft.fvUuid,
+      false,
+      null,
+    )).rejects.toMatchObject({
+      statusCode: 400,
+      message: "The selected source rank group is no longer active.",
+    });
   });
 
   it("handles the acceptance-sized source through both draft-copy paths without mutating the released source", async () => {

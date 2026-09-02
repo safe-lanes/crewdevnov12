@@ -61,6 +61,8 @@ router.get("/rank-groups", requirePermission("Forms", "view"), rankGroupsControl
 router.get("/rank-groups/check-assignment", requirePermission("Forms", "view"), rankGroupsController.checkAssignment);
 router.get("/rank-groups/form/:formId", requirePermission("Forms", "view"), rankGroupsController.getByFormId);
 router.get("/rank-groups/form/:formId/rank-conflicts", requirePermission("Forms", "view"), rankGroupsController.getRankConflicts);
+router.get("/rank-groups/:id/copy-sources", requirePermission("Forms", "view"), rankGroupsController.getCopySources);
+router.post("/rank-groups/:id/copy-configuration", requirePermission("Forms", "create"), rankGroupsController.copyConfiguration);
 router.get("/rank-groups/:id", requirePermission("Forms", "view"), rankGroupsController.getById);
 router.post("/rank-groups", requirePermission("Forms", "create"), rankGroupsController.create);
 router.put("/rank-groups/:id", requirePermission("Forms", "edit"), rankGroupsController.update);

@@ -4,6 +4,44 @@ import { insertAdmRankGroupV2Schema } from "../../../../shared/v2/admin/types";
 import { z } from "zod";
 
 export const rankGroupsController = {
+  async getCopySources(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid rank group ID" });
+      const result = await rankGroupsService.getCopySources(id);
+      res.json(result);
+    } catch (error: any) {
+      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message, details: error.details });
+      console.error("Error fetching form copy sources:", error);
+      res.status(500).json({ error: "Failed to fetch form copy sources" });
+    }
+  },
+
+  async copyConfiguration(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid rank group ID" });
+      const result = z.object({
+        sourceFormVersionUuid: z.string().uuid(),
+        confirmReplace: z.boolean().default(false),
+      }).safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid copy request", details: result.error.issues });
+      }
+      const copied = await rankGroupsService.copyFormConfiguration(
+        id,
+        result.data.sourceFormVersionUuid,
+        result.data.confirmReplace,
+        req.body?.auditUserUuid ?? null,
+      );
+      res.json(copied);
+    } catch (error: any) {
+      if (error.statusCode) return res.status(error.statusCode).json({ error: error.message, details: error.details });
+      console.error("Error copying form configuration:", error);
+      res.status(500).json({ error: "Failed to copy form configuration" });
+    }
+  },
+
   async getAll(req: Request, res: Response) {
     try {
       const includeArchived = req.query.includeArchived !== "false";

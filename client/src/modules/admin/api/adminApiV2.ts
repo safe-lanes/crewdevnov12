@@ -83,6 +83,20 @@ export const adminApiV2 = {
     return res.json();
   },
 
+  async getFormCopySources(id: number) {
+    const res = await fetch(`${V2_BASE}/rank-groups/${id}/copy-sources`);
+    if (!res.ok) throw new Error('Failed to fetch form copy sources');
+    return res.json();
+  },
+
+  async copyFormConfiguration(
+    id: number,
+    data: { sourceFormVersionUuid: string; confirmReplace: boolean },
+  ) {
+    const res = await apiRequest('POST', `${V2_BASE}/rank-groups/${id}/copy-configuration`, data);
+    return res.json();
+  },
+
   async createRankGroup(data: any) {
     const res = await apiRequest('POST', `${V2_BASE}/rank-groups`, data);
     return res.json();

@@ -56,6 +56,7 @@ interface GenericFormEditorProps {
   form: Form & { originalFormId?: number };
   formName: string;
   rankGroupName?: string;
+  rankGroupId?: number;
   rankGroupConfig?: unknown;
   configurableParts?: ConfigurableFormPart[];
   onClose: () => void;
@@ -523,6 +524,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   form,
   formName,
   rankGroupName,
+  rankGroupId: providedRankGroupId,
   rankGroupConfig,
   configurableParts: partsFromParent = [],
   onClose,
@@ -614,8 +616,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   });
 
   const rankGroupId = useMemo(
-    () => rankGroups.find((group) => group.name === rankGroupName)?.id ?? null,
-    [rankGroups, rankGroupName],
+    () => providedRankGroupId ?? rankGroups.find((group) => group.name === rankGroupName)?.id ?? null,
+    [providedRankGroupId, rankGroups, rankGroupName],
   );
 
   const { data: versions = [], isLoading: isLoadingVersions, refetch: refetchVersions } = useQuery<VersionRow[]>({

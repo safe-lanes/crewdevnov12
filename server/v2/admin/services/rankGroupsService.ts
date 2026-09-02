@@ -1,4 +1,4 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { admFormVersionsV2, admFormsV2, admRankGroupsV2 } from "../../../../shared/v2/admin/schema";
@@ -9,10 +9,229 @@ import { applyAuditUser } from "../utils/auditUser";
 import { copyFormVersionStructure, formStructureService } from "./formStructureService";
 import type { AdmRankGroupV2, InsertAdmRankGroupV2 } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
+import { formStructureRepository } from "../repositories/formStructureRepository";
 
 const rankGroupsRepo = new RankGroupsRepository();
 const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
+
+class CopyFormConfigurationError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode: 400 | 404 | 409,
+    public readonly details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "CopyFormConfigurationError";
+  }
+}
+
+function versionDateToday(): string {
+  return new Date().toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).replace(/ /g, "-");
+}
+
+async function getCopySourcesForRankGroup(rankGroupId: number) {
+  const target = await rankGroupsRepo.findById(rankGroupId);
+  if (!target) throw new CopyFormConfigurationError(`Rank group not found: ${rankGroupId}`, 404);
+  const groups = await rankGroupsRepo.findByFormId(target.formId, false);
+  const versions = [];
+  for (const group of groups) {
+    const groupVersions = await formVersionsRepo.findByFormId(target.formId, group.id);
+    for (const version of groupVersions.filter((item) => item.status === "draft" || item.status === "released")) {
+      const counts = await formStructureRepository.getStructureSummary(version.fvUuid);
+      if (group.id !== target.id && (counts.sections > 0 || counts.questions > 0 || counts.optionSets > 0 || counts.options > 0)) {
+        versions.push({
+          sourceRankGroupId: group.id,
+          sourceRankGroupName: group.name,
+          sourceFormVersionUuid: version.fvUuid,
+          versionNo: version.versionNo,
+          status: version.status,
+          ...counts,
+        });
+      }
+    }
+  }
+  const targetDraft = await formVersionsRepo.findDraftByRankGroupId(target.id);
+  const targetReleased = await formVersionsRepo.findLatestReleasedByRankGroupId(target.id);
+  const targetVersion = targetDraft ?? targetReleased;
+  return {
+    target: {
+      rankGroupId: target.id,
+      rankGroupName: target.name,
+      formId: target.formId,
+      draftVersionUuid: targetDraft?.fvUuid ?? null,
+      draftVersionNo: targetDraft?.versionNo ?? null,
+      releasedVersionNo: targetReleased?.versionNo ?? null,
+      targetStatus: targetDraft ? "draft" : targetReleased ? "released" : "empty",
+      ...(targetVersion ? await formStructureRepository.getStructureSummary(targetVersion.fvUuid) : {
+        sections: 0,
+        questions: 0,
+        optionSets: 0,
+        options: 0,
+      }),
+    },
+    sources: versions,
+  };
+}
+
+async function copyFormConfiguration(
+  targetRankGroupId: number,
+  sourceFormVersionUuid: string,
+  confirmReplace: boolean,
+  auditUserUuid: string | null = null,
+) {
+  const db = getDb();
+  return db.transaction(async (tx: any) => {
+    const targetRows = await tx
+      .select()
+      .from(admRankGroupsV2)
+      .where(and(
+        eq(admRankGroupsV2.id, targetRankGroupId),
+        eq(admRankGroupsV2.isDeleted, false),
+        isNull(admRankGroupsV2.archivedAt),
+      ))
+      .for("update");
+    const targetGroup = targetRows[0];
+    if (!targetGroup) {
+      throw new CopyFormConfigurationError(`Rank group not found: ${targetRankGroupId}`, 404);
+    }
+
+    const sourceRows = await tx
+      .select()
+      .from(admFormVersionsV2)
+      .where(and(
+        eq(admFormVersionsV2.fvUuid, sourceFormVersionUuid),
+        eq(admFormVersionsV2.isDeleted, false),
+      ));
+    const sourceVersion = sourceRows[0];
+    if (!sourceVersion) {
+      throw new CopyFormConfigurationError(`Source form version not found: ${sourceFormVersionUuid}`, 404);
+    }
+    if (sourceVersion.status !== "draft" && sourceVersion.status !== "released") {
+      throw new CopyFormConfigurationError("Only draft or released form versions can be copied.", 400);
+    }
+    if (sourceVersion.formId !== targetGroup.formId) {
+      throw new CopyFormConfigurationError("Source and target rank groups must belong to the same form.", 409);
+    }
+    if (sourceVersion.rankGroupId == null) {
+      throw new CopyFormConfigurationError("The selected source version is not assigned to a rank group.", 400);
+    }
+    if (sourceVersion.rankGroupId === targetGroup.id) {
+      throw new CopyFormConfigurationError("Choose a source from another rank group.", 400);
+    }
+    const sourceGroupRows = await tx
+      .select({ id: admRankGroupsV2.id })
+      .from(admRankGroupsV2)
+      .where(and(
+        eq(admRankGroupsV2.id, sourceVersion.rankGroupId),
+        eq(admRankGroupsV2.formId, targetGroup.formId),
+        eq(admRankGroupsV2.isDeleted, false),
+        isNull(admRankGroupsV2.archivedAt),
+      ))
+      .limit(1);
+    if (!sourceGroupRows[0]) {
+      throw new CopyFormConfigurationError("The selected source rank group is no longer active.", 400);
+    }
+    const sourceCounts = await formStructureRepository.getStructureSummary(sourceVersion.fvUuid, tx);
+    if (sourceCounts.sections === 0 && sourceCounts.questions === 0 && sourceCounts.optionSets === 0 && sourceCounts.options === 0) {
+      throw new CopyFormConfigurationError("The selected source version has no configured content to copy.", 400);
+    }
+
+    const targetDraftRows = await tx
+      .select()
+      .from(admFormVersionsV2)
+      .where(and(
+        eq(admFormVersionsV2.formId, targetGroup.formId),
+        eq(admFormVersionsV2.rankGroupId, targetGroup.id),
+        eq(admFormVersionsV2.status, "draft"),
+        eq(admFormVersionsV2.isDeleted, false),
+      ))
+      .orderBy(desc(admFormVersionsV2.createdAt))
+      .limit(1);
+    let targetVersion = targetDraftRows[0];
+    if (!targetVersion) {
+      const releasedRows = await tx
+        .select()
+        .from(admFormVersionsV2)
+        .where(and(
+          eq(admFormVersionsV2.formId, targetGroup.formId),
+          eq(admFormVersionsV2.rankGroupId, targetGroup.id),
+          eq(admFormVersionsV2.status, "released"),
+          eq(admFormVersionsV2.isDeleted, false),
+        ));
+      if (releasedRows.length > 0) {
+        throw new CopyFormConfigurationError(
+          `Rank group "${targetGroup.name}" only has a released version. Create a draft before copying into it.`,
+          409,
+          { reason: "released_target_only" },
+        );
+      }
+      const activeVersions = await tx
+        .select({ versionNo: admFormVersionsV2.versionNo })
+        .from(admFormVersionsV2)
+        .where(and(
+          eq(admFormVersionsV2.formId, targetGroup.formId),
+          eq(admFormVersionsV2.rankGroupId, targetGroup.id),
+          eq(admFormVersionsV2.isDeleted, false),
+        ));
+      const maxVersionNo = activeVersions.reduce((max: number, row: { versionNo: string }) => {
+        const value = parseInt(row.versionNo, 10);
+        return Number.isNaN(value) ? max : Math.max(max, value);
+      }, 0);
+      targetVersion = await formVersionsRepo.create(applyAuditUser({
+        formId: targetGroup.formId,
+        rankGroupId: targetGroup.id,
+        versionNo: String(maxVersionNo + 1).padStart(2, "0"),
+        versionDate: versionDateToday(),
+        status: "draft",
+        configuration: sourceVersion.configuration ?? null,
+        sharedConfig: sourceVersion.sharedConfig ?? null,
+        releasedAt: null,
+        auditUserUuid,
+      }, true), tx);
+    } else {
+      await tx
+        .update(admFormVersionsV2)
+        .set({
+          configuration: sourceVersion.configuration ?? null,
+          sharedConfig: sourceVersion.sharedConfig ?? null,
+          updatedAt: new Date(),
+          updatedByUuid: auditUserUuid,
+        })
+        .where(eq(admFormVersionsV2.fvUuid, targetVersion.fvUuid));
+    }
+
+    const discarded = await formStructureRepository.getStructureSummary(targetVersion.fvUuid, tx);
+    const hasExistingContent = discarded.sections > 0 || discarded.questions > 0 || discarded.optionSets > 0 || discarded.options > 0;
+    if (hasExistingContent && !confirmReplace) {
+      throw new CopyFormConfigurationError(
+        `Copying will replace ${discarded.sections} sections and ${discarded.questions} points in draft v${targetVersion.versionNo}. Confirm to continue.`,
+        409,
+        { reason: "confirmation_required", discarded, targetVersionUuid: targetVersion.fvUuid },
+      );
+    }
+    await formStructureRepository.deleteStructure(targetVersion.fvUuid, tx);
+    const copied = await copyFormVersionStructure(sourceVersion.fvUuid, targetVersion.fvUuid, tx);
+    return {
+      targetFormVersionUuid: targetVersion.fvUuid,
+      targetVersionNo: targetVersion.versionNo,
+      targetRankGroupId: targetGroup.id,
+      targetRankGroupName: targetGroup.name,
+      sourceFormVersionUuid: sourceVersion.fvUuid,
+      sourceStatus: sourceVersion.status,
+      sourceCounts,
+      copied: {
+        ...copied,
+        optionSets: (await formStructureRepository.getStructureSummary(targetVersion.fvUuid, tx)).optionSets,
+      },
+      discarded,
+    };
+  });
+}
 
 async function syncFormRankGroup(formId: number): Promise<void> {
   const activeGroups = await rankGroupsRepo.findByFormId(formId, false);
@@ -180,6 +399,19 @@ function checkRankConflicts(
 }
 
 export const rankGroupsService = {
+  async getCopySources(rankGroupId: number) {
+    return getCopySourcesForRankGroup(rankGroupId);
+  },
+
+  async copyFormConfiguration(
+    targetRankGroupId: number,
+    sourceFormVersionUuid: string,
+    confirmReplace: boolean,
+    auditUserUuid: string | null = null,
+  ) {
+    return copyFormConfiguration(targetRankGroupId, sourceFormVersionUuid, confirmReplace, auditUserUuid);
+  },
+
   async getAll(): Promise<AdmRankGroupV2[]> {
     return rankGroupsRepo.findAll();
   },

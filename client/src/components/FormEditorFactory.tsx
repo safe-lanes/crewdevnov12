@@ -15,6 +15,7 @@ interface FormEditorFactoryProps {
   formName: string;
   form: Form;
   rankGroupName?: string;
+  rankGroupId?: number;
   rankGroupConfig?: any;
   configurableParts?: ConfigurableFormPart[];
   useV2?: boolean;
@@ -26,6 +27,7 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
   formName,
   form,
   rankGroupName,
+  rankGroupId,
   rankGroupConfig,
   configurableParts = [],
   useV2,
@@ -62,6 +64,7 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
       form={form}
       formName={formName}
       rankGroupName={rankGroupName}
+      rankGroupId={rankGroupId}
       rankGroupConfig={rankGroupConfig}
       configurableParts={configurableParts}
       useV2={useV2}

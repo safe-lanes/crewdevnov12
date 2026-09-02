@@ -142,6 +142,74 @@ export function useRankGroupByUuidV2(rgUuid: string | null) {
   });
 }
 
+export type FormCopySource = {
+  sourceRankGroupId: number;
+  sourceRankGroupName: string;
+  sourceFormVersionUuid: string;
+  versionNo: string;
+  status: 'draft' | 'released';
+  sections: number;
+  questions: number;
+  optionSets: number;
+  options: number;
+};
+
+export type FormCopySourcesResponse = {
+  target: {
+    rankGroupId: number;
+    rankGroupName: string;
+    formId: number;
+    draftVersionUuid: string | null;
+    draftVersionNo: string | null;
+    releasedVersionNo: string | null;
+    targetStatus: 'draft' | 'released' | 'empty';
+    sections: number;
+    questions: number;
+    optionSets: number;
+    options: number;
+  };
+  sources: FormCopySource[];
+};
+
+export function useFormCopySourcesV2(rankGroupId: number | null) {
+  return useQuery<FormCopySourcesResponse>({
+    queryKey: [V2_KEY, 'rank-groups', rankGroupId, 'copy-sources'],
+    queryFn: () => rankGroupId
+      ? adminApiV2.getFormCopySources(rankGroupId)
+      : Promise.reject('No rank group'),
+    enabled: rankGroupId !== null,
+    staleTime: 0,
+  });
+}
+
+export function useCopyFormConfigurationV2() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      targetRankGroupId,
+      sourceFormVersionUuid,
+      confirmReplace,
+    }: {
+      targetRankGroupId: number;
+      sourceFormVersionUuid: string;
+      confirmReplace: boolean;
+    }) => adminApiV2.copyFormConfiguration(targetRankGroupId, {
+      sourceFormVersionUuid,
+      confirmReplace,
+    }),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: [V2_KEY, 'rank-groups', variables.targetRankGroupId, 'copy-sources'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/forms'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/admin/rank-groups'] });
+      queryClient.invalidateQueries({ predicate: (query) => {
+        const key = query.queryKey[0];
+        return key === '/api/v2/admin/form-versions-all'
+          || (typeof key === 'string' && key.startsWith('/api/v2/admin/forms/'));
+      }});
+    },
+  });
+}
+
 export function useCreateRankGroupV2() {
   const queryClient = useQueryClient();
   return useMutation({

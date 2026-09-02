@@ -388,8 +388,8 @@ export class FormStructureRepository {
       const source = sourceRows[0];
       const target = targetRows[0];
       if (!source || !target) throw new Error("Source or target form version not found");
-      if (source.status !== "released") {
-        throw new Error(`Cannot copy form structure from version ${sourceFvUuid}: source status must be exactly released (current status: ${source.status})`);
+      if (source.status !== "released" && source.status !== "draft") {
+        throw new Error(`Cannot copy form structure from version ${sourceFvUuid}: source status must be draft or released (current status: ${source.status})`);
       }
       if (target.status !== "draft") {
         throw new Error(`Cannot copy form structure to version ${destinationFvUuid}: target status must be exactly draft (current status: ${target.status})`);
@@ -502,6 +502,76 @@ export class FormStructureRepository {
       };
     };
     return executor ? copyWithExecutor(executor) : getDb().transaction(copyWithExecutor);
+  }
+
+  async getStructureSummary(
+    formVersionUuid: string,
+    executor: Executor = getDb(),
+  ): Promise<{ sections: number; questions: number; optionSets: number; options: number }> {
+    const sections = await executor
+      .select({ sectionUuid: frmSections.sectionUuid })
+      .from(frmSections)
+      .where(and(
+        eq(frmSections.formVersionUuid, formVersionUuid),
+        eq(frmSections.isDeleted, false),
+      ));
+    const optionSets = await executor
+      .select({ optionSetUuid: frmOptionSets.optionSetUuid })
+      .from(frmOptionSets)
+      .where(and(
+        eq(frmOptionSets.formVersionUuid, formVersionUuid),
+        eq(frmOptionSets.isDeleted, false),
+      ));
+    const sectionUuids = sections.map((row: { sectionUuid: string }) => row.sectionUuid);
+    const optionSetUuids = optionSets.map((row: { optionSetUuid: string }) => row.optionSetUuid);
+    const questions = sectionUuids.length === 0
+      ? []
+      : await executor
+        .select({ questionUuid: frmQuestions.questionUuid })
+        .from(frmQuestions)
+        .where(and(
+          inArray(frmQuestions.sectionUuid, sectionUuids),
+          eq(frmQuestions.isDeleted, false),
+        ));
+    const options = optionSetUuids.length === 0
+      ? []
+      : await executor
+        .select({ optionUuid: frmOptions.optionUuid })
+        .from(frmOptions)
+        .where(and(
+          inArray(frmOptions.optionSetUuid, optionSetUuids),
+          eq(frmOptions.isDeleted, false),
+        ));
+    return {
+      sections: sections.length,
+      questions: questions.length,
+      optionSets: optionSets.length,
+      options: options.length,
+    };
+  }
+
+  async deleteStructure(
+    formVersionUuid: string,
+    executor: Executor = getDb(),
+  ): Promise<void> {
+    const sections = await executor
+      .select({ sectionUuid: frmSections.sectionUuid })
+      .from(frmSections)
+      .where(eq(frmSections.formVersionUuid, formVersionUuid));
+    const optionSets = await executor
+      .select({ optionSetUuid: frmOptionSets.optionSetUuid })
+      .from(frmOptionSets)
+      .where(eq(frmOptionSets.formVersionUuid, formVersionUuid));
+    const sectionUuids = sections.map((row: { sectionUuid: string }) => row.sectionUuid);
+    const optionSetUuids = optionSets.map((row: { optionSetUuid: string }) => row.optionSetUuid);
+    if (sectionUuids.length > 0) {
+      await executor.delete(frmQuestions).where(inArray(frmQuestions.sectionUuid, sectionUuids));
+      await executor.delete(frmSections).where(inArray(frmSections.sectionUuid, sectionUuids));
+    }
+    if (optionSetUuids.length > 0) {
+      await executor.delete(frmOptions).where(inArray(frmOptions.optionSetUuid, optionSetUuids));
+      await executor.delete(frmOptionSets).where(inArray(frmOptionSets.optionSetUuid, optionSetUuids));
+    }
   }
 
   async hasStructureForForm(formUuid: string, executor: Executor = getDb()): Promise<boolean> {
