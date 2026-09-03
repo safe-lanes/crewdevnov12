@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { mastersController, dataMasterController, trainingStatusController, trainingCategoryController } from "./controllers";
+import { requirePermission } from "../../middleware/requirePermission";
 
 const router = Router();
 
@@ -46,31 +47,31 @@ router.get("/appraisal-types", mastersController.getAppraisalTypes);
 router.get("/appraisal-types/:id", mastersController.getAppraisalTypeById);
 
 router.get("/training-statuses", trainingStatusController.list);
-router.post("/training-statuses", trainingStatusController.create);
-router.put("/training-statuses/group", trainingStatusController.groupUpdate);
-router.put("/training-statuses/:uuid", trainingStatusController.updateRow);
-router.delete("/training-statuses/:uuid", trainingStatusController.deleteRow);
+router.post("/training-statuses", requirePermission("Masters", "create"), trainingStatusController.create);
+router.put("/training-statuses/group", requirePermission("Masters", "edit"), trainingStatusController.groupUpdate);
+router.put("/training-statuses/:uuid", requirePermission("Masters", "edit"), trainingStatusController.updateRow);
+router.delete("/training-statuses/:uuid", requirePermission("Masters", "delete"), trainingStatusController.deleteRow);
 
 router.get("/training-categories", trainingCategoryController.list);
-router.post("/training-categories", trainingCategoryController.create);
-router.put("/training-categories/group", trainingCategoryController.groupUpdate);
-router.put("/training-categories/:uuid", trainingCategoryController.updateRow);
-router.delete("/training-categories/:uuid", trainingCategoryController.deleteRow);
+router.post("/training-categories", requirePermission("Masters", "create"), trainingCategoryController.create);
+router.put("/training-categories/group", requirePermission("Masters", "edit"), trainingCategoryController.groupUpdate);
+router.put("/training-categories/:uuid", requirePermission("Masters", "edit"), trainingCategoryController.updateRow);
+router.delete("/training-categories/:uuid", requirePermission("Masters", "delete"), trainingCategoryController.deleteRow);
 
 router.get("/data", dataMasterController.listMasters);
 router.get("/data/:id", dataMasterController.getMaster);
-router.post("/data", dataMasterController.createMaster);
-router.put("/data/:id", dataMasterController.updateMaster);
-router.delete("/data/:id", dataMasterController.deleteMaster);
+router.post("/data", requirePermission("Masters", "create"), dataMasterController.createMaster);
+router.put("/data/:id", requirePermission("Masters", "edit"), dataMasterController.updateMaster);
+router.delete("/data/:id", requirePermission("Masters", "delete"), dataMasterController.deleteMaster);
 
 router.get("/data/:id/entries", dataMasterController.getMasterEntries);
-router.post("/data/:id/entries", dataMasterController.createMasterEntry);
+router.post("/data/:id/entries", requirePermission("Masters", "create"), dataMasterController.createMasterEntry);
 
 router.get("/data-entries/:id", dataMasterController.getMasterEntry);
-router.put("/data-entries/:id", dataMasterController.updateMasterEntry);
-router.delete("/data-entries/:id", dataMasterController.deleteMasterEntry);
+router.put("/data-entries/:id", requirePermission("Masters", "edit"), dataMasterController.updateMasterEntry);
+router.delete("/data-entries/:id", requirePermission("Masters", "delete"), dataMasterController.deleteMasterEntry);
 
 router.get("/external/:type", dataMasterController.getExternalMasterData);
-router.post("/external/sync-all", dataMasterController.syncAllExternalMasterData);
+router.post("/external/sync-all", requirePermission("Masters", "edit"), dataMasterController.syncAllExternalMasterData);
 
 export default router;

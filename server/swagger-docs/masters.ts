@@ -443,21 +443,7 @@
  *   post:
  *     tags: [Masters - External Sync]
  *     summary: Sync all master data from external API
- *     description: Fetches and syncs all 9 master data types from SAIL ERP in a single request
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [apiBaseUrl, domain]
- *             properties:
- *               apiBaseUrl:
- *                 type: string
- *                 description: External API base URL
- *               domain:
- *                 type: string
- *                 description: Company domain identifier
+ *     description: Fetches and syncs all master data types from the server-configured SAIL ERP endpoint. Requires Masters edit permission; the tenant domain comes from authenticated server context.
  *     responses:
  *       200:
  *         description: Sync results for all master types

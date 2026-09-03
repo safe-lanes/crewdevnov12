@@ -1,6 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { API_BASE_URL } from "@/config/api";
-import { getResolvedDomain } from "@/lib/encryptionService";
 
 const V2_BASE = '/api/v2/masters';
 
@@ -53,14 +51,10 @@ export function useSyncAllMasterData() {
 
   return useMutation<SyncAllResponse, Error>({
     mutationFn: async () => {
-      const domain = getResolvedDomain();
-      const DEFAULT_API_BASE_URL = `${API_BASE_URL}/crewmasterdata/getallmasterdata`;
-      const apiBaseUrl = DEFAULT_API_BASE_URL;
-      
       const response = await fetch(`${V2_BASE}/external/sync-all`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiBaseUrl, domain }),
+        body: JSON.stringify({}),
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

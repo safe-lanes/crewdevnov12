@@ -7,6 +7,11 @@ import {
   validateMasterSpecificEntry
 } from "../../../vesselMasterSafety";
 import { MastersRepository } from "../repositories/mastersRepository";
+import { tenantConnectionManager } from "../../../utils/tenantConnectionManager";
+import {
+  OutboundUrlValidationError,
+  validateMasterDataUrl,
+} from "../../../utils/outboundUrlSafety";
 
 const mastersRepo = new MastersRepository();
 
@@ -324,20 +329,29 @@ export const dataMasterController = {
 
   async syncAllExternalMasterData(req: Request, res: Response) {
     try {
-      const { apiBaseUrl, domain } = req.body;
-
-      if (!apiBaseUrl || !domain) {
-        return res.status(400).json({
-          error: "Missing required parameters: apiBaseUrl and domain are required"
+      const domain =
+        tenantConnectionManager.getCurrentDomain() ??
+        req.jwtDomain ??
+        (typeof req.user?.domain === "string" ? req.user.domain.trim() : "");
+      if (!domain) {
+        return res.status(500).json({
+          error: "Authenticated tenant domain is unavailable.",
         });
       }
 
-      console.log(`[Sync All] Fetching all master data from external API: ${apiBaseUrl}`);
+      const apiUrl = await validateMasterDataUrl(
+        process.env.MASTER_DATA_API_URL,
+        process.env.MASTER_DATA_API_ALLOWED_HOSTS,
+      );
+      apiUrl.searchParams.set("domain", domain);
 
       const results: Record<string, SyncResult> = {};
 
-      console.log(`[Sync All] Fetching main data from: ${apiBaseUrl}`);
-      const mainResponse = await fetch(`${apiBaseUrl}?domain=${domain}`);
+      console.log(`[Sync All] Fetching master data from configured upstream host: ${apiUrl.hostname}`);
+      const mainResponse = await fetch(apiUrl, { redirect: "manual" });
+      if (mainResponse.status >= 300 && mainResponse.status < 400) {
+        throw new Error("External API redirects are not allowed.");
+      }
       if (!mainResponse.ok) {
         throw new Error(`External API responded with status ${mainResponse.status}`);
       }
@@ -380,7 +394,7 @@ export const dataMasterController = {
       });
     } catch (error) {
       console.error(`Error syncing all master data:`, error);
-      res.status(500).json({
+      res.status(error instanceof OutboundUrlValidationError ? 503 : 502).json({
         error: "Failed to sync master data from external API",
         details: error instanceof Error ? error.message : 'Unknown error'
       });
