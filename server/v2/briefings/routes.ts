@@ -5,6 +5,7 @@ import { briefingController } from "./controller";
 const router = Router();
 const uuid = z.string().uuid();
 const create = z.object({ formUuid: uuid, crewUuid: uuid, vesselUuid: uuid.nullable().optional(), vesselTypeUuid: uuid.nullable().optional() }).strict();
+const resolveCreation = z.object({ formUuid: uuid, crewUuid: uuid }).strict();
 const answerValue = z.union([z.string().max(10000),z.array(z.string().max(500)).max(100),z.boolean(),z.null()]);
 const answerItem = z.object({
   questionUuid: uuid,
@@ -25,6 +26,8 @@ const signature = z.object({ data:z.string().max(7_000_000), name:z.string().tri
 const submit = z.object({ comment:z.string().max(10000).nullable().optional() }).strict();
 function body(schema: z.ZodTypeAny, action: any) { return (req:any,res:any,next:any) => { const parsed=schema.safeParse(req.body); if(!parsed.success) return res.status(400).json({error:"Invalid request",details:parsed.error.issues}); req.body=parsed.data; return action(req,res,next); }; }
 function params(keys: string[], action: any) { return (req:any,res:any,next:any) => { const parsed=z.object(Object.fromEntries(keys.map(k=>[k,uuid]))).safeParse(req.params); if(!parsed.success) return res.status(400).json({error:"Invalid UUID",details:parsed.error.issues}); return action(req,res,next); }; }
+function query(schema: z.ZodTypeAny, action: any) { return (req:any,res:any,next:any) => { const parsed=schema.safeParse(req.query); if(!parsed.success) return res.status(400).json({error:"Invalid query",details:parsed.error.issues}); req.query=parsed.data; return action(req,res,next); }; }
+router.get("/resolve-creation", query(resolveCreation, briefingController.resolveCreation));
 router.post("/submissions", body(create, briefingController.create));
 router.get("/submissions/crew/:crewUuid", params(["crewUuid"], briefingController.list));
 router.get("/submissions/:uuid", params(["uuid"], briefingController.get));

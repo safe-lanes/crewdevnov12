@@ -4,6 +4,8 @@ import { getDb } from "../db";
 import { masterUsers } from "../../../shared/schema";
 import { resolveRequestRole } from "../auth/roleResolutionService";
 import { fileStorageService, MAX_ATTACHMENT_BYTES } from "../shared/fileStorageService";
+import { formsService } from "../admin/services/formsService";
+import { crewMembersService } from "../crew-pool/services/crewMembersService";
 import { crewBriefingSubmissions, frmAnswers, frmSectionStates, frmSignatureAttachments } from "../../../shared/v2/forms-engine/schema";
 import { briefingRepository } from "./repository";
 import type { Request } from "express";
@@ -15,6 +17,66 @@ export function isBriefingSectionApplicable(raw: string | null, vesselType: stri
   return types.length === 0 || (!!vesselType && types.includes(vesselType));
 }
 const valueIsPresent = (v: string | null) => v !== null && v.trim() !== "";
+
+export type BriefingCreationTarget = {
+  formUuid: string;
+  formVersionId: number;
+  formVersionUuid: string;
+  rank: string;
+  rankGroupName: string;
+};
+
+export async function resolveBriefingCreationTarget(input: {
+  formUuid: string;
+  crewUuid: string;
+}): Promise<BriefingCreationTarget> {
+  let crew;
+  try {
+    crew = await crewMembersService.getByUuid(input.crewUuid);
+  } catch {
+    throw new BriefingError("Crew member not found", 404);
+  }
+
+  const rank = (crew.presentRank ?? "").trim();
+  if (!rank) {
+    throw new BriefingError(
+      "The selected crew member has no current rank. Set the current rank before creating a Briefing submission.",
+      400,
+    );
+  }
+
+  const formForRank = await formsService.getFormForRank(rank, "briefing");
+  const rankGroupName = formForRank?.rankGroupName?.trim();
+  const resolvedFormUuid = formForRank?.formUuid;
+
+  if (!rankGroupName || resolvedFormUuid !== input.formUuid) {
+    throw new BriefingError(
+      `No Briefing Rank Group assigned from Admin Module for rank ${rank}. Please configure rank groups in Admin > Forms Configuration.`,
+      404,
+    );
+  }
+
+  const formVersionId = formForRank?.formVersionId;
+  const formVersionUuid = formForRank?.formVersionUuid;
+  if (
+    formForRank.noReleasedVersion ||
+    !Number.isInteger(formVersionId) ||
+    !formVersionUuid
+  ) {
+    throw new BriefingError(
+      `No released Briefing form version exists for rank group ${rankGroupName} (rank ${rank}). Please release a version in Admin > Forms Configuration.`,
+      404,
+    );
+  }
+
+  return {
+    formUuid: resolvedFormUuid,
+    formVersionId,
+    formVersionUuid,
+    rank,
+    rankGroupName,
+  };
+}
 
 export function isMandatoryBriefingAnswerPresent(
   responseType: string,
@@ -81,20 +143,26 @@ async function lockWritableSection(tx: any, submissionUuid: string, sectionUuid:
 }
 
 export const briefingService = {
+  async resolveCreation(input: { formUuid: string; crewUuid: string }) {
+    return resolveBriefingCreationTarget(input);
+  },
+
   async create(input: { formUuid: string; crewUuid: string; vesselUuid?: string | null; vesselTypeUuid?: string | null }, req: Request) {
     if (!req.user) throw new BriefingError("Authentication required", 403);
-    const found = await briefingRepository.releasedVersion(input.formUuid);
-    if (!found) throw new BriefingError("No released form version is available", 404);
-    const tree = await briefingRepository.structure(found.version.fvUuid);
+    const target = await resolveBriefingCreationTarget(input);
+    const tree = await briefingRepository.structure(target.formVersionUuid);
     const id = uuid(), db = getDb();
     await db.transaction(async (tx: any) => {
-      await tx.insert(crewBriefingSubmissions).values({ briefingSubmissionUuid: id, crewUuid: input.crewUuid, vesselUuid: input.vesselUuid ?? null, vesselTypeUuid: input.vesselTypeUuid ?? null, formUuid: found.form.formUuid, formVersionUuid: found.version.fvUuid, createdByUuid: String(req.user!.id), isSync: false });
+      await tx.insert(crewBriefingSubmissions).values({ briefingSubmissionUuid: id, crewUuid: input.crewUuid, vesselUuid: input.vesselUuid ?? null, vesselTypeUuid: input.vesselTypeUuid ?? null, formUuid: target.formUuid, formVersionUuid: target.formVersionUuid, createdByUuid: String(req.user!.id), isSync: false });
       if (tree.sections.length) await tx.insert(frmSectionStates).values(tree.sections.map((section: any) => ({ sectionStateUuid: uuid(), submissionUuid: id, sectionUuid: section.sectionUuid, status: isBriefingSectionApplicable(section.applicableVesselTypes, input.vesselTypeUuid ?? null) ? "not_started" : "not_applicable", createdByUuid: String(req.user!.id), isSync: false })));
     });
     return {
       briefing_submission_uuid: id,
-      form_uuid: found.form.formUuid,
-      form_version_uuid: found.version.fvUuid,
+      form_uuid: target.formUuid,
+      form_version_uuid: target.formVersionUuid,
+      form_version_id: target.formVersionId,
+      rank: target.rank,
+      rank_group_name: target.rankGroupName,
       status: "in_progress",
     };
   },

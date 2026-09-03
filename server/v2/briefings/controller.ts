@@ -7,6 +7,7 @@ function fail(res: Response, error: unknown, fallback: string) {
   console.error(fallback, error); return res.status(500).json({ error: fallback });
 }
 export const briefingController = {
+  async resolveCreation(req: Request, res: Response) { try { res.json(await briefingService.resolveCreation(req.query as { formUuid: string; crewUuid: string })); } catch (e) { fail(res,e,"Failed to resolve briefing form version"); } },
   async create(req: Request, res: Response) { try { res.status(201).json(await briefingService.create(req.body, req)); } catch (e) { fail(res,e,"Failed to create briefing submission"); } },
   async get(req: Request, res: Response) { try { res.json(await briefingService.read(req.params.uuid, req)); } catch (e) { fail(res,e,"Failed to fetch briefing submission"); } },
   async list(req: Request, res: Response) { try { res.json(await briefingService.list(req.params.crewUuid, req)); } catch (e) { fail(res,e,"Failed to list briefing submissions"); } },

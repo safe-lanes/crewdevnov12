@@ -19,8 +19,14 @@ export const ownershipFor = (section: Pick<ConfiguredFormSection, "responsible_m
     : { ownerLabel: "Assigned role (not your role)", canEdit: false };
   return { ownerLabel: section.responsible_department ? `Department: ${section.responsible_department} (identity unavailable)` : "Department owner not configured", canEdit: false };
 };
-async function getJson(url: string) { const response = await fetch(url); if (!response.ok) throw new Error(`Request failed (${response.status})`); return response.json(); }
-const crewName = (crew: any) => crew.fullName || crew.fullname || [crew.firstName, crew.lastName].filter(Boolean).join(" ") || crew.name || crew.crewUuid;
+async function getJson(url: string) {
+  const response = await fetch(url);
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(body?.error || `Request failed (${response.status})`);
+  return body;
+}
+const crewName = (crew: any) => crew.fullName || crew.fullname || [crew.firstName, crew.lastName || crew.familyName].filter(Boolean).join(" ") || crew.name || crew.crewUuid;
+const crewRank = (crew: any) => String(crew.presentRank || "").trim();
 const layout = (section: any, questions: any[]) => {
   const optionIds = new Set(questions.map(q => q.option_set_uuid || section.default_option_set_uuid || ""));
   const options = questions[0]?.options || [];
@@ -50,6 +56,12 @@ export default function BriefingLiveAdmin() {
   const formsQuery = useQuery<any[]>({ queryKey: ["/api/v2/admin/forms"], queryFn: () => getJson("/api/v2/admin/forms") });
   const listQuery = useQuery<any[]>({ queryKey: [BASE, "list", crewUuid], queryFn: () => getJson(`${BASE}/submissions/crew/${crewUuid}`), enabled: !!crewUuid });
   const readQuery = useQuery<any>({ queryKey: [BASE, submissionUuid], queryFn: () => getJson(`${BASE}/submissions/${submissionUuid}`), enabled: !!submissionUuid });
+  const resolutionQuery = useQuery<any>({
+    queryKey: [BASE, "resolve-creation", crewUuid, formUuid],
+    queryFn: () => getJson(`${BASE}/resolve-creation?${new URLSearchParams({ crewUuid, formUuid })}`),
+    enabled: !!crewUuid && !!formUuid,
+    retry: false,
+  });
   const selectedVessel = vessels.find((v: any) => (v.vesselUuid || v.uuid) === vesselUuid);
   const create = useMutation({
     mutationFn: async () => (await apiRequest("POST", `${BASE}/submissions`, { formUuid, crewUuid, vesselUuid: vesselUuid || null, vesselTypeUuid: selectedVessel?.vtUuid || selectedVessel?.vtuid || selectedVessel?.vesselTypeUuid || null })).json(),
@@ -126,11 +138,22 @@ export default function BriefingLiveAdmin() {
     <header><h1 className="text-xl font-semibold">Temporary Admin-only: Live Briefing submissions</h1><p className="text-sm text-muted-foreground">This temporary integration uses the released Briefing API. Section authorization remains server-enforced.</p></header>
     {errors.map((error, i) => <p key={i} className="text-sm text-destructive">{error instanceof Error ? error.message : String(error)}</p>)}
     <div className="grid gap-3 md:grid-cols-4">
-      <Select value={crewUuid} onValueChange={setCrewUuid}><SelectTrigger><SelectValue placeholder="Choose crew" /></SelectTrigger><SelectContent>{crew.map((c: any) => <SelectItem key={c.crewUuid} value={c.crewUuid}>{crewName(c)}</SelectItem>)}</SelectContent></Select>
+      <Select value={crewUuid} onValueChange={setCrewUuid}><SelectTrigger><SelectValue placeholder="Choose crew" /></SelectTrigger><SelectContent>{crew.map((c: any) => <SelectItem key={c.crewUuid} value={c.crewUuid}>{crewName(c)} — {crewRank(c) || "Rank not set"}</SelectItem>)}</SelectContent></Select>
       <Select value={vesselUuid} onValueChange={setVesselUuid}><SelectTrigger><SelectValue placeholder="Choose vessel" /></SelectTrigger><SelectContent>{vessels.map((v: any) => <SelectItem key={v.vesselUuid || v.uuid} value={v.vesselUuid || v.uuid}>{v.vessel || v.name}</SelectItem>)}</SelectContent></Select>
-      <div className="space-y-1"><Select value={formUuid} onValueChange={setFormUuid}><SelectTrigger><SelectValue placeholder="Choose briefing form" /></SelectTrigger><SelectContent>{briefingForms.map((f: any) => <SelectItem key={f.formUuid || f.form_uuid} value={f.formUuid || f.form_uuid}>{f.formName || f.name || f.formUuid}</SelectItem>)}</SelectContent></Select><p className="text-xs text-muted-foreground">Release status is not exposed by the forms-list API; creation validates that a released version exists.</p></div>
-      <Button disabled={!crewUuid || !formUuid || create.isPending} onClick={() => create.mutate()}>{create.isPending ? "Creating…" : "Create submission"}</Button>
+      <div className="space-y-1"><Select value={formUuid} onValueChange={setFormUuid}><SelectTrigger><SelectValue placeholder="Choose briefing form" /></SelectTrigger><SelectContent>{briefingForms.map((f: any) => <SelectItem key={f.formUuid || f.form_uuid} value={f.formUuid || f.form_uuid}>{f.formName || f.name || f.formUuid}</SelectItem>)}</SelectContent></Select><p className="text-xs text-muted-foreground">The selected crew member's current rank determines the rank group and released form version.</p></div>
+      <Button disabled={!crewUuid || !formUuid || create.isPending || resolutionQuery.isFetching || !resolutionQuery.data} onClick={() => create.mutate()}>{create.isPending ? "Creating…" : "Create submission"}</Button>
     </div>
+    {crewUuid && formUuid && (
+      <div className="text-sm">
+        {resolutionQuery.isFetching && <p className="text-muted-foreground">Resolving rank group and released version…</p>}
+        {resolutionQuery.error && <p className="text-destructive">{resolutionQuery.error instanceof Error ? resolutionQuery.error.message : String(resolutionQuery.error)}</p>}
+        {resolutionQuery.data && (
+          <p className="text-emerald-700" data-testid="briefing-resolution">
+            Resolved for rank {resolutionQuery.data.rank}: {resolutionQuery.data.rankGroupName} · version ID {resolutionQuery.data.formVersionId} · {resolutionQuery.data.formVersionUuid}
+          </p>
+        )}
+      </div>
+    )}
     {crewUuid && <div className="flex flex-wrap gap-2">{listQuery.isLoading ? "Loading submissions…" : listQuery.data?.map((s: any) => <Button key={s.briefing_submission_uuid} size="sm" variant="outline" onClick={() => setSubmissionUuid(s.briefing_submission_uuid)}>Open {s.status} · {s.created_at ? new Date(s.created_at).toLocaleDateString() : s.briefing_submission_uuid.slice(0, 8)}</Button>)}</div>}
     {model && <><p className={`text-sm ${saveState === "error" ? "text-destructive" : ""}`}>{saveState === "saving" ? "Saving draft…" : saveState === "error" ? "Draft save failed; retry with Save draft." : "Draft saved"}</p><ConfiguredFormRenderer mode="live" embedded parts={[{ formPartUuid: "briefing", partCode: "B", partTitle: "Briefing", partType: "configurable" }]} selectedPartUuid="briefing" structures={{ briefing: model.sections }} selectedVesselTypeUuid={model.submission.vessel_type_uuid || "all"} live={{ answers: draftAnswers, answerComments: draftComments, sectionComments: draftSectionComments, onSectionCommentChange: (section, comment) => { draftSectionCommentsRef.current = { ...draftSectionCommentsRef.current, [section]: comment }; setDraftSectionComments(draftSectionCommentsRef.current); queueSectionComment(section, comment); }, sectionStates: model.states, sectionOwnership: model.ownership, onSaveDraft: flush, onAnswerChange: (q, value) => { draftAnswersRef.current = { ...draftAnswersRef.current, [q]: value }; setDraftAnswers(draftAnswersRef.current); queueQuestion(q, value, draftCommentsRef.current[q] ?? null); }, onAnswerCommentChange: (q, comment) => { draftCommentsRef.current = { ...draftCommentsRef.current, [q]: comment }; setDraftComments(draftCommentsRef.current); queueQuestion(q, draftAnswersRef.current[q] ?? null, comment); }, onSignatureChange: async (section, data, name) => { await flush(); await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${section}/signature`, { data, name }); await queryClient.invalidateQueries({ queryKey: [BASE, submissionUuid] }); }, onSubmitSection: async (section, comment) => { await flush(); await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${section}/submit`, { comment: comment || null }); await queryClient.invalidateQueries({ queryKey: [BASE, submissionUuid] }); } }} /></>}
   </div>;
