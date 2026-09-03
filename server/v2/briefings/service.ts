@@ -198,37 +198,89 @@ export const briefingService = {
     }
     throw new BriefingError("You are not responsible for this section", 403);
   },
-  async saveAnswer(submissionUuid: string, sectionUuid: string, questionUuid: string, value: string | string[] | boolean | null, comment: string | null | undefined, req: Request) {
-    const { submission } = await this.writable(submissionUuid, sectionUuid); const tree = await briefingRepository.structure(submission.formVersionUuid);
-    const section = tree.sections.find((s: any) => s.sectionUuid === sectionUuid), question = tree.questions.find((q: any) => q.questionUuid === questionUuid);
-    if (!section || !question || question.sectionUuid !== sectionUuid) throw new BriefingError("Question does not belong to this pinned section", 400);
+  async saveAnswers(
+    submissionUuid: string,
+    sectionUuid: string,
+    rawAnswers: Array<{ questionUuid: string; value: string | string[] | boolean | null; comment?: string | null }>
+      | Record<string, { value: string | string[] | boolean | null; comment?: string | null }>,
+    sectionComment: string | null | undefined,
+    req: Request,
+  ) {
+    const answerItems = Array.isArray(rawAnswers)
+      ? rawAnswers
+      : Object.entries(rawAnswers).map(([questionUuid, answer]) => ({ questionUuid, ...answer }));
+    const { submission } = await this.writable(submissionUuid, sectionUuid);
+    const tree = await briefingRepository.structure(submission.formVersionUuid);
+    const section = tree.sections.find((candidate: any) => candidate.sectionUuid === sectionUuid);
+    if (!section) throw new BriefingError("Section not found", 404);
     await this.assertOwner(req, section);
-    const type = question.responseType; let stored: string | null;
-    if (value === null) stored = null; else if (type === "yes_no" && (typeof value !== "string" || !["yes","no"].includes(value.toLowerCase()))) throw new BriefingError("Expected yes or no");
-    else if (type === "yes_no_na" && (typeof value !== "string" || !["yes","no","na"].includes(value.toLowerCase()))) throw new BriefingError("Expected yes, no, or na");
-    else if (type === "checkbox" && typeof value !== "boolean") throw new BriefingError("Expected a boolean");
-    else if (type === "multi_select" && !Array.isArray(value)) throw new BriefingError("Expected an array");
-    else if (["free_text","date","number","single_select","info_only"].includes(type) && typeof value !== "string") throw new BriefingError("Expected a string");
-    else stored = Array.isArray(value) ? JSON.stringify(value) : String(value);
-    if (type === "info_only" && value !== null) throw new BriefingError("Informational questions cannot be answered");
-    if (type === "number" && value !== null && !Number.isFinite(Number(value))) throw new BriefingError("Expected a finite number");
-    if (type === "date" && value !== null && Number.isNaN(Date.parse(String(value)))) throw new BriefingError("Expected a valid date");
-    if (!question.commentEnabled && valueIsPresent(comment ?? null)) throw new BriefingError("Comments are not enabled for this question");
-    if (["single_select","multi_select"].includes(type) && stored !== null) {
-      const allowed = new Set(tree.options.filter((o: any) => o.optionSetUuid === (question.optionSetUuid ?? section.defaultOptionSetUuid)).map((o: any) => o.optionValue));
-      const values = Array.isArray(value) ? value : [value]; if (values.some(v => typeof v !== "string" || !allowed.has(v))) throw new BriefingError("Answer contains an option outside this question's option set");
-    }
+
+    const validatedAnswers = answerItems.map((item) => {
+      const question = tree.questions.find((candidate: any) => candidate.questionUuid === item.questionUuid);
+      if (!question || question.sectionUuid !== sectionUuid) {
+        throw new BriefingError("Question does not belong to this pinned section", 400);
+      }
+
+      const value = item.value;
+      const type = question.responseType;
+      let stored: string | null = null;
+      if (value !== null) {
+        if (type === "yes_no" && (typeof value !== "string" || !["yes", "no"].includes(value.toLowerCase()))) throw new BriefingError("Expected yes or no");
+        if (type === "yes_no_na" && (typeof value !== "string" || !["yes", "no", "na"].includes(value.toLowerCase()))) throw new BriefingError("Expected yes, no, or na");
+        if (type === "checkbox" && typeof value !== "boolean") throw new BriefingError("Expected a boolean");
+        if (type === "multi_select" && !Array.isArray(value)) throw new BriefingError("Expected an array");
+        if (["free_text", "date", "number", "single_select", "info_only"].includes(type) && typeof value !== "string") throw new BriefingError("Expected a string");
+        stored = Array.isArray(value) ? JSON.stringify(value) : String(value);
+      }
+      if (type === "info_only" && value !== null) throw new BriefingError("Informational questions cannot be answered");
+      if (type === "number" && value !== null && !Number.isFinite(Number(value))) throw new BriefingError("Expected a finite number");
+      if (type === "date" && value !== null && Number.isNaN(Date.parse(String(value)))) throw new BriefingError("Expected a valid date");
+      if (!question.commentEnabled && valueIsPresent(item.comment ?? null)) throw new BriefingError("Comments are not enabled for this question");
+      if (["single_select", "multi_select"].includes(type) && stored !== null) {
+        const allowed = new Set(tree.options
+          .filter((option: any) => option.optionSetUuid === (question.optionSetUuid ?? section.defaultOptionSetUuid))
+          .map((option: any) => option.optionValue));
+        const values = Array.isArray(value) ? value : [value];
+        if (values.some((candidate) => typeof candidate !== "string" || !allowed.has(candidate))) {
+          throw new BriefingError("Answer contains an option outside this question's option set");
+        }
+      }
+      return { questionUuid: item.questionUuid, answerValue: stored, answerComment: item.comment ?? null };
+    });
+
     const db = getDb();
-    const row = { answerValue: stored!, answerComment: comment ?? null, updatedByUuid: String(req.user!.id), updatedAt: new Date() };
     await db.transaction(async (tx: any) => {
       await lockWritableSection(tx, submissionUuid, sectionUuid);
-      await tx.insert(frmAnswers).values({
-        answerUuid: uuid(), submissionUuid, questionUuid, ...row,
-        createdByUuid: String(req.user!.id), isSync: false,
-      }).onConflictDoUpdate({
-        target: [frmAnswers.submissionUuid, frmAnswers.questionUuid],
-        set: row,
-      });
+      for (const answer of validatedAnswers) {
+        const row = {
+          answerValue: answer.answerValue,
+          answerComment: answer.answerComment,
+          updatedByUuid: String(req.user!.id),
+          updatedAt: new Date(),
+        };
+        await tx.insert(frmAnswers).values({
+          answerUuid: uuid(),
+          submissionUuid,
+          questionUuid: answer.questionUuid,
+          ...row,
+          createdByUuid: String(req.user!.id),
+          isSync: false,
+        }).onConflictDoUpdate({
+          target: [frmAnswers.submissionUuid, frmAnswers.questionUuid],
+          set: row,
+        });
+      }
+      if (sectionComment !== undefined) {
+        await tx.update(frmSectionStates).set({
+          sectionComment,
+          updatedByUuid: String(req.user!.id),
+          updatedAt: new Date(),
+        }).where(and(
+          eq(frmSectionStates.submissionUuid, submissionUuid),
+          eq(frmSectionStates.sectionUuid, sectionUuid),
+          eq(frmSectionStates.isDeleted, false),
+        ));
+      }
     });
   },
   async uploadSignature(submissionUuid: string, sectionUuid: string, dataUrl: string, name: string | null | undefined, req: Request) {
