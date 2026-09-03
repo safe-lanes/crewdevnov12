@@ -14,6 +14,11 @@ const LAST_VESSEL_KEY = "devLastVesselId";
 const DEV_PERSONA_MASTER_USER_IDS: Readonly<Record<string, number>> = {
   "sail-admin": 1,
   admin: 24,
+  "crewing-executive": 2,
+  "crewing-manager": 3,
+  dpa: 11,
+  "marine-superintendent": 5,
+  "technical-superintendent": 6,
   "vessel-admin": 7,
   "vessel-user": 8,
 };
