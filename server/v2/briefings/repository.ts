@@ -1,0 +1,69 @@
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { getDb } from "../db";
+import { admFormsV2, admFormVersionsV2 } from "../../../shared/v2/admin/schema";
+import {
+  crewBriefingSubmissions, frmAnswers, frmOptions, frmQuestions, frmSectionStates,
+  frmSections, frmSignatureAttachments,
+} from "../../../shared/v2/forms-engine/schema";
+
+export const briefingRepository = {
+  async releasedVersion(formUuid: string) {
+    const releases = await getDb().select({ form: admFormsV2, version: admFormVersionsV2 })
+      .from(admFormsV2).innerJoin(admFormVersionsV2, eq(admFormVersionsV2.formId, admFormsV2.id))
+      .where(and(eq(admFormsV2.formUuid, formUuid), eq(admFormsV2.isDeleted, false),
+        sql`lower(btrim(${admFormsV2.category})) = 'briefing'`,
+        eq(admFormVersionsV2.isDeleted, false), eq(admFormVersionsV2.status, "released")));
+    // version_no is text in the legacy schema. Sort numerically when possible,
+    // then use release/create timestamps for a deterministic tie-break.
+    return releases.sort((a: any, b: any) => {
+      const aVersion = Number.parseInt(a.version.versionNo ?? "", 10);
+      const bVersion = Number.parseInt(b.version.versionNo ?? "", 10);
+      if (Number.isFinite(aVersion) && Number.isFinite(bVersion) && aVersion !== bVersion) return bVersion - aVersion;
+      if (Number.isFinite(aVersion) !== Number.isFinite(bVersion)) return Number.isFinite(bVersion) ? 1 : -1;
+      const aDate = new Date(a.version.releasedAt ?? a.version.createdAt ?? 0).getTime();
+      const bDate = new Date(b.version.releasedAt ?? b.version.createdAt ?? 0).getTime();
+      return bDate - aDate || String(b.version.fvUuid).localeCompare(String(a.version.fvUuid));
+    })[0];
+  },
+  async submission(uuid: string) {
+    return (await getDb().select().from(crewBriefingSubmissions).where(and(
+      eq(crewBriefingSubmissions.briefingSubmissionUuid, uuid), eq(crewBriefingSubmissions.isDeleted, false),
+    )))[0];
+  },
+  async state(submissionUuid: string, sectionUuid: string) {
+    return (await getDb().select().from(frmSectionStates).where(and(
+      eq(frmSectionStates.submissionUuid, submissionUuid), eq(frmSectionStates.sectionUuid, sectionUuid),
+      eq(frmSectionStates.isDeleted, false),
+    )))[0];
+  },
+  async signature(uuid: string) {
+    return (await getDb().select().from(frmSignatureAttachments).where(and(
+      eq(frmSignatureAttachments.sigAttUuid, uuid), eq(frmSignatureAttachments.isDeleted, false),
+    )))[0];
+  },
+  async structure(versionUuid: string, includeDeleted = false) {
+    const db = getDb();
+    const sections = await db.select().from(frmSections).where(and(
+      eq(frmSections.formVersionUuid, versionUuid),
+      ...(includeDeleted ? [] : [eq(frmSections.isDeleted, false)]),
+    )).orderBy(asc(frmSections.sortOrder));
+    const ids = sections.map((x: any) => x.sectionUuid);
+    const questions = ids.length ? await db.select().from(frmQuestions).where(and(
+      inArray(frmQuestions.sectionUuid, ids),
+      ...(includeDeleted ? [] : [eq(frmQuestions.isDeleted, false)]),
+    )).orderBy(asc(frmQuestions.sortOrder)) : [];
+    const setIds = [...new Set([...sections.map((x: any) => x.defaultOptionSetUuid), ...questions.map((x: any) => x.optionSetUuid)].filter((x: any): x is string => !!x))];
+    const options = setIds.length ? await db.select().from(frmOptions).where(and(
+      inArray(frmOptions.optionSetUuid, setIds),
+      ...(includeDeleted ? [] : [eq(frmOptions.isDeleted, false)]),
+    )).orderBy(asc(frmOptions.sortOrder)) : [];
+    return { sections, questions, options };
+  },
+  async readData(submissionUuid: string) {
+    const db = getDb();
+    const states = await db.select().from(frmSectionStates).where(and(eq(frmSectionStates.submissionUuid, submissionUuid), eq(frmSectionStates.isDeleted, false)));
+    const answers = await db.select().from(frmAnswers).where(and(eq(frmAnswers.submissionUuid, submissionUuid), eq(frmAnswers.isDeleted, false)));
+    const signatures = states.length ? await db.select().from(frmSignatureAttachments).where(and(inArray(frmSignatureAttachments.sectionStateUuid, states.map((x: any) => x.sectionStateUuid)), eq(frmSignatureAttachments.isDeleted, false))) : [];
+    return { states, answers, signatures };
+  },
+};

@@ -17,6 +17,7 @@ import reportsV2Routes from "./v2/reports/routes";
 import testCasesV2Routes from "./v2/test-cases/routes";
 import alertsV2Routes from "./v2/alerts/routes";
 import accountsV2Routes from "./v2/accounts/routes";
+import { briefingsV2Routes } from "./v2/briefings";
 import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
 import { setupSwagger } from "./swagger";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
@@ -117,6 +118,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount v2 accounts (payroll) routes
   app.use("/api/v2/accounts", accountsV2Routes);
+
+  // Configurable crew briefing submissions are isolated from form configuration.
+  app.use("/api/v2/briefings", briefingsV2Routes);
 
   // Start crewing alert background scanner (multi-tenant only)
   if (tenantConnectionManager.isMultiTenantEnabled) {

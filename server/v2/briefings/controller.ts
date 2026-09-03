@@ -1,0 +1,24 @@
+import type { Request, Response } from "express";
+import { fileStorageService } from "../shared/fileStorageService";
+import { BriefingError, briefingService } from "./service";
+
+function fail(res: Response, error: unknown, fallback: string) {
+  if (error instanceof BriefingError) return res.status(error.statusCode).json({ error: error.message });
+  console.error(fallback, error); return res.status(500).json({ error: fallback });
+}
+export const briefingController = {
+  async create(req: Request, res: Response) { try { res.status(201).json(await briefingService.create(req.body, req)); } catch (e) { fail(res,e,"Failed to create briefing submission"); } },
+  async get(req: Request, res: Response) { try { res.json(await briefingService.read(req.params.uuid, req)); } catch (e) { fail(res,e,"Failed to fetch briefing submission"); } },
+  async list(req: Request, res: Response) { try { res.json(await briefingService.list(req.params.crewUuid, req)); } catch (e) { fail(res,e,"Failed to list briefing submissions"); } },
+  async answer(req: Request, res: Response) { try { await briefingService.saveAnswer(req.params.uuid,req.params.sectionUuid,req.params.questionUuid,req.body.value,req.body.comment,req); res.status(204).end(); } catch(e) { fail(res,e,"Failed to save briefing answer"); } },
+  async signature(req: Request, res: Response) { try { res.status(201).json({ sig_att_uuid: await briefingService.uploadSignature(req.params.uuid,req.params.sectionUuid,req.body.data,req.body.name,req) }); } catch(e) { fail(res,e,"Failed to save signature"); } },
+  async submit(req: Request, res: Response) { try { res.json(await briefingService.submit(req.params.uuid,req.params.sectionUuid,req.body.comment,req)); } catch(e) { fail(res,e,"Failed to submit briefing section"); } },
+  async deleteSignature(req: Request, res: Response) { try { await briefingService.deleteSignature(req.params.uuid, req.params.sectionUuid, req); res.status(204).end(); } catch(e) { fail(res,e,"Failed to delete signature"); } },
+  async rawSignature(req: Request, res: Response) {
+    try {
+      const att = await briefingService.rawSignature(req.params.sigAttUuid, req);
+      const { stream, mimeType } = await fileStorageService.readAttachment(att.filePath);
+      res.type(mimeType); stream.pipe(res);
+    } catch(e) { fail(res,e,"Failed to read signature"); }
+  },
+};
