@@ -542,6 +542,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [optionSets, setOptionSets] = useState<Record<string, OptionSetModel[]>>({});
   const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isReleasing, setIsReleasing] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [selectedSection, setSelectedSection] = useState<{ partUuid: string; index: number } | null>(null);
   const [settingsDialog, setSettingsDialog] = useState<"vessel" | "responsible" | "comment" | "signature" | null>(null);
@@ -563,6 +564,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [scaleError, setScaleError] = useState("");
   const [bulkResponseTypes, setBulkResponseTypes] = useState<Record<string, string>>({});
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [releaseConfirmOpen, setReleaseConfirmOpen] = useState(false);
   const [pendingVersionUuid, setPendingVersionUuid] = useState<string | null>(null);
   const baselineRef = useRef<string | null>(null);
   const treeLoadGenerationRef = useRef(0);
@@ -577,12 +579,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     settingsDialog: typeof settingsDialog;
     confirmDelete: typeof confirmDelete;
     showLeaveDialog: boolean;
+    releaseConfirmOpen: boolean;
     handleClose: () => void;
   }>({
     isPreview: false,
     settingsDialog: null,
     confirmDelete: null,
     showLeaveDialog: false,
+    releaseConfirmOpen: false,
     handleClose: () => undefined,
   });
 
@@ -659,10 +663,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   });
 
   const availableVersions = useMemo(() => {
-    if (!authoritativeVersion || versions.some((version) => version.fvUuid === authoritativeVersion.fvUuid)) {
+    if (!authoritativeVersion) {
       return versions;
     }
-    return [authoritativeVersion, ...versions];
+    const hasAuthoritativeVersion = versions.some((version) => version.fvUuid === authoritativeVersion.fvUuid);
+    if (!hasAuthoritativeVersion) return [authoritativeVersion, ...versions];
+    return versions.map((version) => (
+      version.fvUuid === authoritativeVersion.fvUuid ? authoritativeVersion : version
+    ));
   }, [authoritativeVersion, versions]);
   const sortedVersions = useMemo(
     () => [...availableVersions].sort((a, b) => {
@@ -1233,13 +1241,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     return null;
   };
 
-  const save = async () => {
-    if (!canEdit || saveTransitionRef.current) return;
+  const save = async (): Promise<VersionRow | null> => {
+    if (!canEdit || saveTransitionRef.current) return null;
     const validationError = validateTrees();
     if (validationError) {
       setSaveError(validationError);
       toast({ title: "Check the highlighted entry", description: validationError, variant: "destructive" });
-      return;
+      return null;
     }
     setIsSaving(true);
     setSaveError("");
@@ -1298,14 +1306,72 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       });
       toast({ title: "Draft saved", description: "The complete form structure has been saved." });
       await refetchVersions();
+      return draft;
     } catch (error: any) {
       const message = error?.message || "Failed to save form structure";
       setSaveError(message);
       toast({ title: "Unable to save form", description: message, variant: "destructive" });
+      return null;
     } finally {
       saveTransitionRef.current = false;
       setIsSaving(false);
     }
+  };
+
+  const releaseSelectedVersion = async () => {
+    const versionToRelease = selectedVersion;
+    if (
+      isReleasing
+      || isSaving
+      || !versionToRelease?.id
+      || versionToRelease.status !== "draft"
+    ) {
+      return;
+    }
+
+    setIsReleasing(true);
+    setSaveError("");
+    try {
+      const draft = isDirty ? await save() : versionToRelease;
+      if (!draft) return;
+
+      const response = await apiRequest(
+        "POST",
+        `/api/v2/admin/form-versions/${draft.id}/release`,
+      );
+      const releasedVersion = await response.json() as VersionRow;
+      const released = {
+        ...draft,
+        ...releasedVersion,
+        status: "released",
+      };
+      setAuthoritativeVersion(released);
+      setSelectedVersionUuid(released.fvUuid);
+      setIsEditing(false);
+      await refetchVersions();
+      toast({
+        title: "Version released",
+        description: "The version has been released successfully.",
+      });
+    } catch (error: any) {
+      const message = error?.message || "Failed to release form version";
+      setSaveError(message);
+      toast({ title: "Unable to release form", description: message, variant: "destructive" });
+    } finally {
+      setIsReleasing(false);
+    }
+  };
+
+  const requestRelease = () => {
+    if (
+      isReleasing
+      || isSaving
+      || !selectedVersion?.id
+      || selectedVersion.status !== "draft"
+    ) {
+      return;
+    }
+    setReleaseConfirmOpen(true);
   };
 
   const handleClose = () => {
@@ -1321,6 +1387,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     settingsDialog,
     confirmDelete,
     showLeaveDialog,
+    releaseConfirmOpen,
     handleClose,
   };
 
@@ -1427,7 +1494,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   useEffect(() => {
     const focusEditor = () => {
       const lifecycle = focusLifecycleRef.current;
-      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog) return;
+      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog || lifecycle.releaseConfirmOpen) return;
       const editor = editorDialogRef.current;
       if (!editor) return;
       const [firstFocusable] = getFocusableElements(editor);
@@ -1436,7 +1503,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     const focusTimer = window.setTimeout(focusEditor, 0);
     const handleConfigureKeys = (event: KeyboardEvent) => {
       const lifecycle = focusLifecycleRef.current;
-      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog) return;
+      if (lifecycle.settingsDialog || lifecycle.confirmDelete || lifecycle.showLeaveDialog || lifecycle.releaseConfirmOpen) return;
       const editor = editorDialogRef.current;
       if (!editor) return;
       if (hasOpenPortalledListbox()) return;
@@ -1575,6 +1642,15 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                        </div>
                      </div>
                      <div className="flex items-center gap-2">
+                   <Button
+                     onClick={requestRelease}
+                     className="bg-green-600 hover:bg-green-700 text-white"
+                     size="sm"
+                     disabled={!selectedVersion || selectedVersion.status !== "draft" || isSaving || isReleasing}
+                     data-testid="button-release-version"
+                   >
+                     Release Ver
+                   </Button>
                    {viewMode === "configure" && !canEdit && (
                     <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800" data-testid="released-read-only-message">
                       <AlertCircle className="h-4 w-4" />
@@ -2064,6 +2140,30 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => { confirmDelete?.onConfirm(); setConfirmDelete(null); }} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={releaseConfirmOpen} onOpenChange={setReleaseConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Release this version permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This version will become permanent and cannot be edited. Any future changes will require creating a new draft.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setReleaseConfirmOpen(false);
+                void releaseSelectedVersion();
+              }}
+              className="bg-green-600 hover:bg-green-700"
+              data-testid="button-confirm-release"
+            >
+              Release Ver
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
