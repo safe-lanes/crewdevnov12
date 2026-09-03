@@ -1,4 +1,4 @@
-import { File, UserPlus, Users, AlignJustify, Grid3x3, ShieldCheck, Network } from 'lucide-react';
+import { File, UserPlus, Users, AlignJustify, Grid3x3, ShieldCheck, Network, ClipboardPenLine } from 'lucide-react';
 import React from 'react'
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -46,6 +46,11 @@ const sideBarList: { name: string; icon: React.ReactNode; page: string }[] = [
         name: "Approval Workflow",
         icon: <Network size={20} className='text-white' />,
         page: "approval-workflow"
+    },
+    {
+        name: "Temporary Briefings",
+        icon: <ClipboardPenLine size={20} className='text-white' />,
+        page: "briefing-live"
     }
 ]
 

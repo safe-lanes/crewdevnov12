@@ -649,7 +649,7 @@ describe("configured form renderer preview", () => {
     expect(onAnswerChange).toHaveBeenCalledWith("live-single", "1");
   });
 
-  it("omits the responsibility line and empty footer for live sections without a responsible party", () => {
+  it("keeps live save and submit actions available without optional footer content", () => {
     const onAnswerChange = vi.fn();
     const liveSection: ConfiguredFormSection = {
       ...configuredSection,
@@ -682,6 +682,30 @@ describe("configured form renderer preview", () => {
 
     expect(screen.getByTestId("configured-form-live")).toBeInTheDocument();
     expect(screen.queryByTestId("responsible-not-applicable-live-no-responsibility")).toBeNull();
-    expect(screen.queryByTestId("preview-section-footer-live-no-responsibility")).toBeNull();
+    expect(screen.getByTestId("preview-section-footer-live-no-responsibility")).toBeInTheDocument();
+    expect(screen.getByText("Save draft")).toBeInTheDocument();
+    expect(screen.getByText("Submit")).toBeInTheDocument();
+  });
+
+  it("disables every matrix response for a live section the user does not own", () => {
+    const onAnswerChange = vi.fn();
+    const section: ConfiguredFormSection = {
+      ...configuredSection,
+      clientKey: "readonly-live",
+      effectiveLayout: "matrix",
+      questions: [{
+        clientKey: "readonly-question",
+        question_code: "B1.1",
+        question_text: "Rate readiness",
+        response_type: "single_select",
+        is_mandatory: false,
+        comment_enabled: false,
+        options: [{ clientKey: "one", option_label: "1", option_value: "1" }],
+      }],
+    };
+    render(<ConfiguredFormRenderer mode="live" embedded parts={[parts[1]]} structures={{ "part-b": [section] }} selectedPartUuid="part-b" live={{ answers: {}, onAnswerChange, sectionOwnership: { "readonly-live": { ownerLabel: "Other role", canEdit: false } } }} />);
+    const option = screen.getByTestId("matrix-option-readonly-question-1") as HTMLInputElement;
+    expect(option.disabled).toBe(true);
+    expect(screen.queryByText("Submit")).toBeNull();
   });
 });

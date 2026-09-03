@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
 import { AlertCircle, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -103,7 +103,16 @@ export type ConfiguredFormAnswerValue = string | string[] | boolean;
 export interface ConfiguredFormLiveProps {
   answers: Record<string, ConfiguredFormAnswerValue>;
   onAnswerChange: (questionId: string, value: ConfiguredFormAnswerValue) => void;
+  answerComments?: Record<string, string | null>;
+  onAnswerCommentChange?: (questionId: string, comment: string) => void;
+  sectionComments?: Record<string, string>;
+  onSectionCommentChange?: (sectionId: string, comment: string) => void;
   sectionOwnership?: Record<string, { ownerLabel: string; canEdit: boolean }>;
+  sectionStates?: Record<string, { status: "not_started" | "submitted" | "not_applicable"; sectionComment?: string | null; submittedByName?: string | null; submittedAt?: string | null; signatureAttUuid?: string | null; signatureName?: string | null; signatureUrl?: string | null }>;
+  onSaveDraft?: (sectionId: string) => void | Promise<void>;
+  onSubmitSection?: (sectionId: string, comment: string) => void | Promise<void>;
+  onSignatureChange?: (sectionId: string, pngDataUrl: string, name: string) => void | Promise<void>;
+  onDeleteSignature?: (sectionId: string) => void | Promise<void>;
   isLocked?: boolean;
   onSubmit?: () => void | Promise<void>;
 }
@@ -198,11 +207,18 @@ type QuestionCommentState = {
   finishEditing: () => void;
 };
 
-function useQuestionComment(): QuestionCommentState {
-  const [text, setText] = useState("");
+function useQuestionComment(initial = ""): QuestionCommentState {
+  const [text, setText] = useState(initial);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const hasComment = text.trim().length > 0;
+  const hydrated = useRef(initial);
+  useEffect(() => {
+    if (!isEditing && initial !== hydrated.current) {
+      hydrated.current = initial;
+      setText(initial);
+    }
+  }, [initial, isEditing]);
 
   return {
     text,
@@ -219,6 +235,33 @@ function useQuestionComment(): QuestionCommentState {
     },
     finishEditing: () => setIsEditing(false),
   };
+}
+
+function SignaturePad({ sectionId, name, onSave, disabled }: { sectionId: string; name?: string | null; onSave: (data: string, name: string) => void; disabled: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const [hasInk, setHasInk] = useState(false);
+  const [signer, setSigner] = useState(name || "");
+  const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    return { x: (event.clientX - rect.left) * (canvas.width / rect.width), y: (event.clientY - rect.top) * (canvas.height / rect.height) };
+  };
+  const start = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (disabled) return; const canvas = canvasRef.current; const p = point(event); if (!canvas || !p) return;
+    drawing.current = true; canvas.setPointerCapture?.(event.pointerId);
+    const context = canvas.getContext("2d"); context?.beginPath(); context?.moveTo(p.x, p.y);
+  };
+  const move = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawing.current || disabled) return; const p = point(event); const context = canvasRef.current?.getContext("2d"); if (!p || !context) return;
+    context.lineTo(p.x, p.y); context.strokeStyle = "#172033"; context.lineWidth = 2; context.lineCap = "round"; context.stroke(); setHasInk(true);
+  };
+  const clear = () => { const canvas = canvasRef.current; const context = canvas?.getContext("2d"); if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height); setHasInk(false); };
+  return <div className="space-y-2" data-testid={`live-signature-${sectionId}`}>
+    <SAILInput value={signer} onChange={(event) => setSigner(event.target.value)} disabled={disabled} placeholder="Signer name" data-testid={`live-signature-name-${sectionId}`} />
+    <canvas ref={canvasRef} width={700} height={180} className="h-32 w-full touch-none rounded border bg-white" onPointerDown={start} onPointerMove={move} onPointerUp={() => { drawing.current = false; }} onPointerCancel={() => { drawing.current = false; }} aria-label="Signature canvas" />
+    {!disabled && <div className="flex gap-2"><Button type="button" variant="outline" size="sm" onClick={clear}>Clear</Button><Button type="button" size="sm" disabled={!hasInk || !signer.trim()} onClick={() => { const png = canvasRef.current?.toDataURL("image/png"); if (png) onSave(png, signer.trim()); }}>Save signature</Button></div>}
+  </div>;
 }
 
 function QuestionCommentControl({
@@ -249,10 +292,12 @@ function QuestionCommentRow({
   questionId,
   colSpan,
   comment,
+  onChange,
 }: {
   questionId: string;
   colSpan: number;
   comment: QuestionCommentState;
+  onChange?: (value: string) => void;
 }) {
   if (!comment.isExpanded) return null;
 
@@ -262,7 +307,7 @@ function QuestionCommentRow({
         {comment.isEditing ? (
           <Textarea
             value={comment.text}
-            onChange={(event) => comment.setText(event.target.value)}
+            onChange={(event) => { comment.setText(event.target.value); onChange?.(event.target.value); }}
             onBlur={comment.finishEditing}
             placeholder="Comment: Add your observations here..."
             className="text-blue-600 italic border-blue-200"
@@ -339,19 +384,24 @@ function ConfiguredPoint({
   questionId,
   answers,
   setAnswer,
+  live,
+  readOnly: sectionReadOnly,
 }: {
   question: ConfiguredFormQuestion;
   questionId: string;
   answers: Record<string, ConfiguredFormAnswerValue>;
   setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
+  live?: ConfiguredFormLiveProps;
+  readOnly?: boolean;
 }) {
-  const comment = useQuestionComment();
+  const comment = useQuestionComment(live?.answerComments?.[questionId] || "");
   const answer = answers[questionId];
   const hasText = question.question_text.trim().length > 0;
   const labels = question.response_type === "yes_no_na" ? ["Yes", "No", "NA"] : ["Yes", "No"];
   const options = question.options || [];
   const selectedOptions = Array.isArray(answer) ? answer : [];
   const tableClasses = getTableClasses();
+  const readOnly = !!live?.isLocked || !!sectionReadOnly;
 
   const responseControl = (() => {
     switch (question.response_type) {
@@ -360,7 +410,7 @@ function ConfiguredPoint({
         return (
           <RadioGroup
             value={typeof answer === "string" ? answer : ""}
-            onValueChange={(value) => setAnswer(questionId, value)}
+            onValueChange={(value) => !readOnly && setAnswer(questionId, value)}
             className="flex flex-wrap gap-4"
             data-testid={`preview-response-${questionId}`}
           >
@@ -380,7 +430,7 @@ function ConfiguredPoint({
           <div data-testid={`preview-response-${questionId}`}>
             <SAILSelect
               value={typeof answer === "string" ? answer : ""}
-              onValueChange={(value) => setAnswer(questionId, value)}
+                    onValueChange={(value) => !readOnly && setAnswer(questionId, value)}
               placeholder="Choose an option"
             >
               {options.map((option, index) => (
@@ -404,7 +454,7 @@ function ConfiguredPoint({
                 <label key={option.clientKey || option.option_uuid || `${questionId}-option-${index}`} className="flex items-center gap-2 text-sm">
                   <Checkbox
                     checked={selectedOptions.includes(value)}
-                    onCheckedChange={(checked) => setAnswer(
+                    disabled={readOnly} onCheckedChange={(checked) => setAnswer(
                       questionId,
                       checked === true
                         ? [...selectedOptions, value]
@@ -421,7 +471,7 @@ function ConfiguredPoint({
         return (
           <Textarea
             value={typeof answer === "string" ? answer : ""}
-            onChange={(event) => setAnswer(questionId, event.target.value)}
+            readOnly={readOnly} onChange={(event) => setAnswer(questionId, event.target.value)}
             placeholder="Enter a response"
             className="min-h-[74px] max-w-2xl resize-y"
             data-testid={`preview-response-${questionId}`}
@@ -432,7 +482,7 @@ function ConfiguredPoint({
           <SAILInput
             type="date"
             value={typeof answer === "string" ? answer : ""}
-            onChange={(event) => setAnswer(questionId, event.target.value)}
+            readOnly={readOnly} onChange={(event) => setAnswer(questionId, event.target.value)}
             className="max-w-xs"
             data-testid={`preview-response-${questionId}`}
           />
@@ -442,7 +492,7 @@ function ConfiguredPoint({
           <SAILInput
             type="number"
             value={typeof answer === "string" ? answer : ""}
-            onChange={(event) => setAnswer(questionId, event.target.value)}
+            readOnly={readOnly} onChange={(event) => setAnswer(questionId, event.target.value)}
             placeholder="Enter a number"
             className="max-w-xs"
             data-testid={`preview-response-${questionId}`}
@@ -453,7 +503,7 @@ function ConfiguredPoint({
           <label className="flex items-center gap-2 text-sm" data-testid={`preview-response-${questionId}`}>
             <Checkbox
               checked={answer === true}
-              onCheckedChange={(checked) => setAnswer(questionId, checked === true)}
+              disabled={readOnly} onCheckedChange={(checked) => setAnswer(questionId, checked === true)}
             />
             Confirm
           </label>
@@ -497,12 +547,12 @@ function ConfiguredPoint({
         </td>
         <td className={tableClasses.cell}>{responseControl}</td>
         <td className={`${tableClasses.cell} text-center`}>
-          {question.comment_enabled && (
+          {question.comment_enabled && !readOnly && (
             <QuestionCommentControl questionId={questionId} comment={comment} />
           )}
         </td>
       </tr>
-      {question.comment_enabled && <QuestionCommentRow questionId={questionId} colSpan={3} comment={comment} />}
+      {question.comment_enabled && <QuestionCommentRow questionId={questionId} colSpan={3} comment={comment} onChange={(value) => live?.onAnswerCommentChange?.(questionId, value)} />}
     </>
   );
 }
@@ -513,14 +563,18 @@ function ConfiguredMatrixPoint({
   options,
   answers,
   setAnswer,
+  live,
+  readOnly,
 }: {
   question: ConfiguredFormQuestion;
   questionId: string;
   options: ConfiguredFormOption[];
   answers: Record<string, ConfiguredFormAnswerValue>;
   setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
+  live?: ConfiguredFormLiveProps;
+  readOnly?: boolean;
 }) {
-  const comment = useQuestionComment();
+  const comment = useQuestionComment(live?.answerComments?.[questionId] || "");
   const answer = answers[questionId];
   const selectedOptions = Array.isArray(answer) ? answer : [];
   const tableClasses = getTableClasses();
@@ -544,6 +598,7 @@ function ConfiguredMatrixPoint({
                 type={isSingle ? "radio" : "checkbox"}
                 name={`matrix-${questionId}`}
                 checked={checked}
+                disabled={!!live?.isLocked || !!readOnly}
                 onChange={(event) => setAnswer(
                   questionId,
                   isSingle
@@ -559,13 +614,13 @@ function ConfiguredMatrixPoint({
           );
         })}
         <td className={`${tableClasses.cell} min-w-[56px] text-center`}>
-          {question.comment_enabled && (
+          {question.comment_enabled && !live?.isLocked && !readOnly && (
             <QuestionCommentControl questionId={questionId} comment={comment} />
           )}
         </td>
       </tr>
       {question.comment_enabled && (
-        <QuestionCommentRow questionId={questionId} colSpan={options.length + 2} comment={comment} />
+        <QuestionCommentRow questionId={questionId} colSpan={options.length + 2} comment={comment} onChange={(value) => live?.onAnswerCommentChange?.(questionId, value)} />
       )}
     </>
   );
@@ -576,11 +631,15 @@ function ConfiguredMatrixSection({
   sectionId,
   answers,
   setAnswer,
+  live,
+  readOnly,
 }: {
   section: ConfiguredFormSection;
   sectionId: string;
   answers: Record<string, ConfiguredFormAnswerValue>;
   setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
+  live?: ConfiguredFormLiveProps;
+  readOnly?: boolean;
 }) {
   const options = section.questions[0]?.options || [];
   const tableClasses = getTableClasses();
@@ -610,7 +669,7 @@ function ConfiguredMatrixSection({
         <tbody>
           {section.questions.map((question, questionIndex) => {
             const questionId = question.clientKey || question.question_uuid || `${sectionId}-point-${questionIndex + 1}`;
-            return <ConfiguredMatrixPoint key={questionId} question={question} questionId={questionId} options={options} answers={answers} setAnswer={setAnswer} />;
+            return <ConfiguredMatrixPoint key={questionId} question={question} questionId={questionId} options={options} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} />;
           })}
         </tbody>
       </table>
@@ -629,6 +688,8 @@ function ConfiguredSection({
   onToggleExpanded,
   answers,
   setAnswer,
+  live,
+  mode,
 }: {
   section: ConfiguredFormSection;
   sectionId: string;
@@ -640,19 +701,43 @@ function ConfiguredSection({
   onToggleExpanded: () => void;
   answers: Record<string, ConfiguredFormAnswerValue>;
   setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
+  live?: ConfiguredFormLiveProps;
+  mode: ConfiguredFormMode;
 }) {
   const sectionTitle = section.section_title.trim() || MISSING_SECTION_TITLE;
   const sectionCode = section.section_code.trim() || "Section code not configured";
   const hasFooterContent = section.comment_box_required
     || section.signature_required
     || section.responsible_mode !== "not_applicable";
+  const state = live?.sectionStates?.[sectionId];
+  const readOnly = !!live?.isLocked || state?.status === "submitted" || state?.status === "not_applicable" || live?.sectionOwnership?.[sectionId]?.canEdit === false;
+  const [sectionComment, setSectionComment] = useState(state?.sectionComment || "");
+  const currentSectionComment = live?.sectionComments?.[sectionId] ?? sectionComment;
+  const submitSection = () => {
+    const missing = section.questions.find((question, index) => {
+      if (!question.is_mandatory || question.response_type === "info_only") return false;
+      const id = question.clientKey || question.question_uuid || `${sectionId}-point-${index + 1}`;
+      const value = answers[id];
+      return value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
+    });
+    if (missing) {
+      const questionId = missing.clientKey || missing.question_uuid;
+      const selector = questionId ? `[data-testid="preview-point-${questionId}"] input, [data-testid="preview-point-${questionId}"] textarea, [data-testid="preview-matrix-point-${questionId}"] input` : "";
+      document.querySelector<HTMLElement>(selector)?.focus();
+      window.alert(`Please answer mandatory point ${missing.question_code || missing.question_text}.`);
+      return;
+    }
+    if (section.comment_box_required && !currentSectionComment.trim()) { window.alert("A section comment is required."); return; }
+    if (section.signature_required && !state?.signatureAttUuid) { window.alert("A signature is required."); return; }
+    if (window.confirm("Submit this section? Submitted sections cannot be changed.")) void live?.onSubmitSection?.(sectionId, currentSectionComment);
+  };
 
-  const footer = isApplicable && isExpanded && hasFooterContent ? (
+  const footer = isApplicable && isExpanded && (hasFooterContent || mode === "live") ? (
     <div className="mt-6 space-y-5 border-t pt-5" style={{ borderColor: sailDesignSystem.colors.border }} data-testid={`preview-section-footer-${sectionId}`}>
       {section.comment_box_required && (
         <div data-testid={`preview-section-comment-${sectionId}`}>
           <SAILFormField label="Section comment">
-            <Textarea placeholder="Preview comment — not saved" data-testid={`preview-section-comment-input-${sectionId}`} />
+            <Textarea value={mode === "live" ? currentSectionComment : undefined} onChange={(event) => { setSectionComment(event.target.value); live?.onSectionCommentChange?.(sectionId, event.target.value); }} readOnly={readOnly} placeholder={mode === "live" ? "Add section comment" : "Preview comment — not saved"} data-testid={`preview-section-comment-input-${sectionId}`} />
           </SAILFormField>
         </div>
       )}
@@ -664,10 +749,11 @@ function ConfiguredSection({
             <SAILFormField label="Signature"><SAILInput readOnly placeholder="Signature" data-testid={`preview-signature-mark-${sectionId}`} /></SAILFormField>
             <SAILFormField label="Date"><SAILInput readOnly placeholder="Date" data-testid={`preview-signature-date-${sectionId}`} /></SAILFormField>
           </div>
-          <p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>
+           {mode === "live" && readOnly && state?.signatureUrl ? <img src={state.signatureUrl} alt={`Signature of ${state.signatureName || "submitter"}`} className="max-h-32 rounded border bg-white" /> : mode === "live" ? <SignaturePad sectionId={sectionId} name={state?.signatureName} disabled={readOnly} onSave={(data, name) => live?.onSignatureChange?.(sectionId, data, name)} /> : <p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>}
         </div>
       )}
       <SectionResponsibility section={section} roles={roles} departments={departments} sectionId={sectionId} />
+       {mode === "live" && <div className="flex flex-wrap items-center gap-2 border-t pt-3"><Badge variant="outline">{state?.status === "submitted" ? "Submitted" : state?.status === "not_applicable" ? "Not applicable" : "In progress"}</Badge>{live?.sectionOwnership?.[sectionId] && <span className="text-xs">Owner: {live.sectionOwnership[sectionId].ownerLabel}</span>}{state?.submittedByName && <span className="text-xs">Submitted by {state.submittedByName}</span>}{!readOnly && <><Button type="button" variant="outline" size="sm" onClick={() => void live?.onSaveDraft?.(sectionId)}>Save draft</Button><Button type="button" size="sm" onClick={submitSection}>Submit</Button></>}</div>}
     </div>
   ) : undefined;
 
@@ -676,8 +762,8 @@ function ConfiguredSection({
       <FormSection
         title={`${sectionCode} ${sectionTitle}`}
         headerActions={
-          <SAILButton type="button" variant="secondary" className="h-8 px-3 text-xs" onClick={onToggleExpanded} aria-expanded={isExpanded} data-testid={`button-preview-section-toggle-${sectionId}`}>
-            {isExpanded ? "Collapse" : "Expand"}
+          <SAILButton type="button" variant="secondary" className="h-8 px-3 text-xs" onClick={onToggleExpanded} aria-expanded={isExpanded} disabled={mode === "live" && !isApplicable} data-testid={`button-preview-section-toggle-${sectionId}`}>
+            {!isApplicable && mode === "live" ? "Not applicable" : isExpanded ? "Collapse" : "Expand"}
           </SAILButton>
         }
         headerNotice={!section.section_title.trim() && (
@@ -694,12 +780,12 @@ function ConfiguredSection({
         ) : section.questions.length === 0 ? (
           <InlineMissing testId={`preview-no-points-${sectionId}`}>No points configured.</InlineMissing>
         ) : section.effectiveLayout === "matrix" ? (
-          <ConfiguredMatrixSection section={section} sectionId={sectionId} answers={answers} setAnswer={setAnswer} />
+          <ConfiguredMatrixSection section={section} sectionId={sectionId} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} />
         ) : (
           <FormTable headers={["Point", "Response", "Comment"]}>
             {section.questions.map((question, questionIndex) => {
               const questionId = question.clientKey || question.question_uuid || `${sectionId}-point-${questionIndex + 1}`;
-              return <ConfiguredPoint key={questionId} question={question} questionId={questionId} answers={answers} setAnswer={setAnswer} />;
+              return <ConfiguredPoint key={questionId} question={question} questionId={questionId} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} />;
             })}
           </FormTable>
         )}
@@ -781,6 +867,14 @@ export function ConfiguredFormRenderer({
   const renderFormContent = (activeSection: string) => {
     const selectedPart = parts.find((part) => part.formPartUuid === activeSection);
     const selectedSections = selectedPart ? structures[selectedPart.formPartUuid] || [] : [];
+    const applicableSections = selectedSections.filter((section, index) => {
+      const id = section.clientKey || section.section_uuid || `${selectedPart?.formPartUuid}-section-${index + 1}`;
+      return live?.sectionStates?.[id]?.status !== "not_applicable";
+    });
+    const submittedCount = applicableSections.filter((section, index) => {
+      const id = section.clientKey || section.section_uuid || `${selectedPart?.formPartUuid}-section-${index + 1}`;
+      return live?.sectionStates?.[id]?.status === "submitted";
+    }).length;
 
     return (
       <>
@@ -788,6 +882,7 @@ export function ConfiguredFormRenderer({
           <div>
             <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{mode === "preview" ? "Preview only" : "Configured form"}</p>
             <p className="text-xs">{mode === "preview" ? "Inputs are interactive for review, but nothing is saved." : "Responses are managed by the live form host."}</p>
+            {mode === "live" && <p className="mt-1 text-xs font-medium" data-testid="live-progress">{submittedCount === applicableSections.length && applicableSections.length > 0 ? "Complete" : `${submittedCount} of ${applicableSections.length} applicable sections submitted`}</p>}
           </div>
           <SAILFormField label="Vessel type" className="min-w-[210px]" >
             <div data-testid="select-preview-vessel-type">
@@ -825,7 +920,9 @@ export function ConfiguredFormRenderer({
               )}
               {selectedSections.map((section, sectionIndex) => {
                 const sectionId = section.clientKey || section.section_uuid || `${selectedPart.formPartUuid}-section-${sectionIndex + 1}`;
-                const isApplicable = selectedVessel === "all"
+                const isApplicable = live?.sectionStates?.[sectionId]?.status === "not_applicable"
+                  ? false
+                  : selectedVessel === "all"
                   || section.applicable_vessel_types.length === 0
                   || section.applicable_vessel_types.includes(selectedVessel);
                 return (
@@ -837,13 +934,15 @@ export function ConfiguredFormRenderer({
                     departments={departments}
                     vesselTypeLabel={selectedVesselLabel}
                     isApplicable={isApplicable}
-                    isExpanded={internalExpandedSections[sectionId] !== false}
+                    isExpanded={mode === "live" && live?.sectionStates?.[sectionId]?.status === "not_applicable" ? false : internalExpandedSections[sectionId] !== false}
                     onToggleExpanded={() => setInternalExpandedSections((current) => ({
                       ...current,
                       [sectionId]: !(current[sectionId] !== false),
                     }))}
                     answers={answers}
                     setAnswer={setAnswer}
+                    live={live}
+                    mode={mode}
                   />
                 );
               })}
