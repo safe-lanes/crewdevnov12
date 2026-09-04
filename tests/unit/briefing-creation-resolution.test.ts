@@ -1,12 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getCrewByUuid, getFormForRank } = vi.hoisted(() => ({
-  getCrewByUuid: vi.fn(),
+const { getFormForRank } = vi.hoisted(() => ({
   getFormForRank: vi.fn(),
-}));
-
-vi.mock("@server/v2/crew-pool/services/crewMembersService", () => ({
-  crewMembersService: { getByUuid: getCrewByUuid },
 }));
 
 vi.mock("@server/v2/admin/services/formsService", () => ({
@@ -37,8 +32,7 @@ function resolvedForm(
 describe("briefing creation rank resolution", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("resolves a Master through formsService and returns its released rank-group version", async () => {
-    getCrewByUuid.mockResolvedValue({ presentRank: "Master" });
+  it("resolves the G1 joining rank through formsService and returns its released rank-group version", async () => {
     getFormForRank.mockResolvedValue(
       resolvedForm(
         "Senior Deck Officers",
@@ -48,7 +42,7 @@ describe("briefing creation rank resolution", () => {
     );
 
     await expect(
-      resolveBriefingCreationTarget({ formUuid: FORM_UUID, crewUuid: "crew-master" }),
+      resolveBriefingCreationTarget({ joiningRank: "Master" }),
     ).resolves.toEqual({
       formUuid: FORM_UUID,
       formVersionId: 42,
@@ -60,7 +54,6 @@ describe("briefing creation rank resolution", () => {
   });
 
   it("rejects a rank not covered by a rank group and names the rank", async () => {
-    getCrewByUuid.mockResolvedValue({ presentRank: "Unassigned Rank" });
     getFormForRank.mockResolvedValue({
       formUuid: FORM_UUID,
       rankGroupName: null,
@@ -68,7 +61,7 @@ describe("briefing creation rank resolution", () => {
     });
 
     await expect(
-      resolveBriefingCreationTarget({ formUuid: FORM_UUID, crewUuid: "crew-unassigned" }),
+      resolveBriefingCreationTarget({ joiningRank: "Unassigned Rank" }),
     ).rejects.toMatchObject<Partial<BriefingError>>({
       statusCode: 404,
       message: "No Briefing Rank Group assigned from Admin Module for rank Unassigned Rank. Please configure rank groups in Admin > Forms Configuration.",
@@ -76,7 +69,6 @@ describe("briefing creation rank resolution", () => {
   });
 
   it("rejects a matching rank group that has no released version", async () => {
-    getCrewByUuid.mockResolvedValue({ presentRank: "Chief Officer" });
     getFormForRank.mockResolvedValue({
       formUuid: FORM_UUID,
       rankGroupName: "Deck Officers",
@@ -86,7 +78,7 @@ describe("briefing creation rank resolution", () => {
     });
 
     await expect(
-      resolveBriefingCreationTarget({ formUuid: FORM_UUID, crewUuid: "crew-chief" }),
+      resolveBriefingCreationTarget({ joiningRank: "Chief Officer" }),
     ).rejects.toMatchObject<Partial<BriefingError>>({
       statusCode: 404,
       message: "No released Briefing form version exists for rank group Deck Officers (rank Chief Officer). Please release a version in Admin > Forms Configuration.",
@@ -94,9 +86,6 @@ describe("briefing creation rank resolution", () => {
   });
 
   it("resolves differently configured ranks to different groups and versions", async () => {
-    getCrewByUuid
-      .mockResolvedValueOnce({ presentRank: "Master" })
-      .mockResolvedValueOnce({ presentRank: "Chief Engineer" });
     getFormForRank
       .mockResolvedValueOnce(
         resolvedForm(
@@ -114,12 +103,10 @@ describe("briefing creation rank resolution", () => {
       );
 
     const master = await resolveBriefingCreationTarget({
-      formUuid: FORM_UUID,
-      crewUuid: "crew-master",
+      joiningRank: "Master",
     });
     const engineer = await resolveBriefingCreationTarget({
-      formUuid: FORM_UUID,
-      crewUuid: "crew-engineer",
+      joiningRank: "Chief Engineer",
     });
 
     expect(master).toMatchObject({
@@ -132,19 +119,13 @@ describe("briefing creation rank resolution", () => {
     });
   });
 
-  it("never accepts a version resolved from another briefing form", async () => {
-    getCrewByUuid.mockResolvedValue({ presentRank: "Master" });
-    getFormForRank.mockResolvedValue({
-      ...resolvedForm(
-        "Other Form Group",
-        99,
-        "20000000-0000-4000-8000-000000000099",
-      ),
-      formUuid: "10000000-0000-4000-8000-000000000099",
-    });
-
+  it("rejects a G1 row with no joining rank and never falls back to present rank", async () => {
     await expect(
-      resolveBriefingCreationTarget({ formUuid: FORM_UUID, crewUuid: "crew-master" }),
-    ).rejects.toThrow("No Briefing Rank Group assigned from Admin Module for rank Master.");
+      resolveBriefingCreationTarget({ joiningRank: null }),
+    ).rejects.toMatchObject<Partial<BriefingError>>({
+      statusCode: 400,
+      message: "The selected G1 row has no joining rank. Set the joining rank before creating a Briefing submission.",
+    });
+    expect(getFormForRank).not.toHaveBeenCalled();
   });
 });

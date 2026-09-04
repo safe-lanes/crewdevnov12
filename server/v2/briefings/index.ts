@@ -4,4 +4,5 @@ export {
   authorizeBriefingRead,
   isBriefingSectionApplicable,
   isMandatoryBriefingAnswerPresent,
+  formatBriefingDate,
 } from "./service";

@@ -1,7 +1,8 @@
-import { boolean, index, integer, pgTable, serial, text, timestamp, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, pgTable, serial, text, timestamp, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { admFormVersionsV2, admFormsV2, admRoleMasterAc } from "../admin/schema";
+import { crewBriefings } from "../crew-pool/schema";
 
 const auditColumns = {
   sortOrder: integer("sort_order").notNull().default(0),
@@ -146,6 +147,9 @@ export const crewBriefingSubmissions = pgTable(
   {
     id: serial("id").primaryKey(),
     briefingSubmissionUuid: text("briefing_submission_uuid").notNull().unique(),
+    briefingUuid: text("briefing_uuid")
+      .unique()
+      .references(() => crewBriefings.briefingUuid, { onDelete: "restrict", onUpdate: "cascade" }),
     crewUuid: text("crew_uuid").notNull(),
     vesselUuid: text("vessel_uuid"),
     vesselTypeUuid: text("vessel_type_uuid"),
@@ -157,6 +161,12 @@ export const crewBriefingSubmissions = pgTable(
       .references(() => admFormVersionsV2.fvUuid, { onDelete: "restrict", onUpdate: "cascade" }),
     status: text("status").notNull().default("in_progress"),
     completedAt: timestamp("completed_at"),
+    dateOfBriefing: date("date_of_briefing"),
+    modeOfBriefing: text("mode_of_briefing"),
+    officeReviewComments: text("office_review_comments"),
+    officeReviewedByUuid: text("office_reviewed_by_uuid"),
+    officeReviewedByName: text("office_reviewed_by_name"),
+    officeReviewedAt: timestamp("office_reviewed_at"),
     ...auditColumns,
   },
   (table) => ({

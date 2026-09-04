@@ -1,12 +1,19 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { admFormsV2, admFormVersionsV2 } from "../../../shared/v2/admin/schema";
+import { crewBriefings } from "../../../shared/v2/crew-pool/schema";
 import {
   crewBriefingSubmissions, frmAnswers, frmOptions, frmQuestions, frmSectionStates,
   frmSections, frmSignatureAttachments, frmSectionSignatures,
 } from "../../../shared/v2/forms-engine/schema";
 
 export const briefingRepository = {
+  async g1(uuid: string) {
+    return (await getDb().select().from(crewBriefings).where(and(
+      eq(crewBriefings.briefingUuid, uuid),
+      eq(crewBriefings.isDeleted, false),
+    )).limit(1))[0];
+  },
   async releasedVersion(formUuid: string) {
     const releases = await getDb().select({ form: admFormsV2, version: admFormVersionsV2 })
       .from(admFormsV2).innerJoin(admFormVersionsV2, eq(admFormVersionsV2.formId, admFormsV2.id))

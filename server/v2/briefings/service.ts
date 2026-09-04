@@ -1,13 +1,14 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import { getDb } from "../db";
-import { masterUsers } from "../../../shared/schema";
+import { masterNationalities, masterUsers, masterVessels, masterVesselTypes } from "../../../shared/schema";
 import { resolveRequestRole } from "../auth/roleResolutionService";
 import { fileStorageService, MAX_ATTACHMENT_BYTES } from "../shared/fileStorageService";
 import { formsService } from "../admin/services/formsService";
 import { crewMembersService } from "../crew-pool/services/crewMembersService";
 import { crewBriefingSubmissions, frmAnswers, frmSectionStates, frmSignatureAttachments, frmSectionSignatures } from "../../../shared/v2/forms-engine/schema";
 import { admRoleMasterAc } from "../../../shared/v2/admin/schema";
+import { crewBriefings } from "../../../shared/v2/crew-pool/schema";
 import { briefingRepository } from "./repository";
 import type { Request } from "express";
 
@@ -28,20 +29,12 @@ export type BriefingCreationTarget = {
 };
 
 export async function resolveBriefingCreationTarget(input: {
-  formUuid: string;
-  crewUuid: string;
+  joiningRank: string | null | undefined;
 }): Promise<BriefingCreationTarget> {
-  let crew;
-  try {
-    crew = await crewMembersService.getByUuid(input.crewUuid);
-  } catch {
-    throw new BriefingError("Crew member not found", 404);
-  }
-
-  const rank = (crew.presentRank ?? "").trim();
+  const rank = (input.joiningRank ?? "").trim();
   if (!rank) {
     throw new BriefingError(
-      "The selected crew member has no current rank. Set the current rank before creating a Briefing submission.",
+      "The selected G1 row has no joining rank. Set the joining rank before creating a Briefing submission.",
       400,
     );
   }
@@ -50,7 +43,7 @@ export async function resolveBriefingCreationTarget(input: {
   const rankGroupName = formForRank?.rankGroupName?.trim();
   const resolvedFormUuid = formForRank?.formUuid;
 
-  if (!rankGroupName || resolvedFormUuid !== input.formUuid) {
+  if (!rankGroupName || !resolvedFormUuid) {
     throw new BriefingError(
       `No Briefing Rank Group assigned from Admin Module for rank ${rank}. Please configure rank groups in Admin > Forms Configuration.`,
       404,
@@ -77,6 +70,35 @@ export async function resolveBriefingCreationTarget(input: {
     rank,
     rankGroupName,
   };
+}
+
+export function formatBriefingDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (
+    date.getUTCFullYear() !== Number(match[1]) ||
+    date.getUTCMonth() !== Number(match[2]) - 1 ||
+    date.getUTCDate() !== Number(match[3])
+  ) return null;
+  const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getUTCMonth()];
+  return `${String(date.getUTCDate()).padStart(2, "0")}-${month}-${date.getUTCFullYear()}`;
+}
+
+async function lockWritableSubmission(tx: any, submissionUuid: string) {
+  await tx.execute(sql`
+    SELECT 1 FROM crew_briefing_submissions
+    WHERE briefing_submission_uuid = ${submissionUuid} AND COALESCE(is_deleted, false) = false
+    FOR UPDATE
+  `);
+  const submission = (await tx.select().from(crewBriefingSubmissions).where(and(
+    eq(crewBriefingSubmissions.briefingSubmissionUuid, submissionUuid),
+    eq(crewBriefingSubmissions.isDeleted, false),
+  )).limit(1))[0];
+  if (!submission) throw new BriefingError("Briefing submission not found", 404);
+  if (submission.status === "completed") throw new BriefingError("Completed Briefing submissions are read-only", 409);
+  return submission;
 }
 
 export function isMandatoryBriefingAnswerPresent(
@@ -144,21 +166,56 @@ async function lockWritableSection(tx: any, submissionUuid: string, sectionUuid:
 }
 
 export const briefingService = {
-  async resolveCreation(input: { formUuid: string; crewUuid: string }) {
-    return resolveBriefingCreationTarget(input);
+  async resolveCreation(input: { briefingUuid: string }) {
+    const g1 = await briefingRepository.g1(input.briefingUuid);
+    if (!g1) throw new BriefingError("G1 Briefing row not found", 404);
+    return resolveBriefingCreationTarget({ joiningRank: g1.joiningRank });
   },
 
-  async create(input: { formUuid: string; crewUuid: string; vesselUuid?: string | null; vesselTypeUuid?: string | null }, req: Request) {
+  async create(input: { briefingUuid: string }, req: Request) {
     if (!req.user) throw new BriefingError("Authentication required", 403);
-    const target = await resolveBriefingCreationTarget(input);
-    const tree = await briefingRepository.structure(target.formVersionUuid);
     const id = uuid(), db = getDb();
-    await db.transaction(async (tx: any) => {
-      await tx.insert(crewBriefingSubmissions).values({ briefingSubmissionUuid: id, crewUuid: input.crewUuid, vesselUuid: input.vesselUuid ?? null, vesselTypeUuid: input.vesselTypeUuid ?? null, formUuid: target.formUuid, formVersionUuid: target.formVersionUuid, createdByUuid: String(req.user!.id), isSync: false });
-      if (tree.sections.length) await tx.insert(frmSectionStates).values(tree.sections.map((section: any) => ({ sectionStateUuid: uuid(), submissionUuid: id, sectionUuid: section.sectionUuid, status: isBriefingSectionApplicable(section.applicableVesselTypes, input.vesselTypeUuid ?? null) ? "not_started" : "not_applicable", createdByUuid: String(req.user!.id), isSync: false })));
+    const target = await db.transaction(async (tx: any) => {
+      await tx.execute(sql`SELECT 1 FROM crew_briefings WHERE briefing_uuid = ${input.briefingUuid} FOR UPDATE`);
+      const g1 = (await tx.select().from(crewBriefings).where(and(
+        eq(crewBriefings.briefingUuid, input.briefingUuid),
+        eq(crewBriefings.isDeleted, false),
+      )).limit(1))[0];
+      if (!g1) throw new BriefingError("G1 Briefing row not found", 404);
+      const existing = (await tx.select({ id: crewBriefingSubmissions.id }).from(crewBriefingSubmissions).where(and(
+        eq(crewBriefingSubmissions.briefingUuid, input.briefingUuid),
+      )).limit(1))[0];
+      if (existing) throw new BriefingError("This G1 row already has a Briefing submission", 409);
+      const resolvedTarget = await resolveBriefingCreationTarget({ joiningRank: g1.joiningRank });
+      const tree = await briefingRepository.structure(resolvedTarget.formVersionUuid);
+      let vesselTypeUuid: string | null = null;
+      if (g1.vesselUuid) {
+        const vessel = (await tx.select({ vesselType: masterVessels.vesselType }).from(masterVessels)
+          .where(and(
+            eq(masterVessels.vesselUuid, g1.vesselUuid),
+            sql`COALESCE(${masterVessels.isDeleted}, false) = false`,
+            sql`COALESCE(${masterVessels.isActive}, true) = true`,
+          )).limit(1))[0];
+        if (vessel?.vesselType) {
+          const vesselType = (await tx.select({ uuid: masterVesselTypes.vtUuid }).from(masterVesselTypes)
+            .where(and(
+              or(
+                eq(masterVesselTypes.vtUuid, vessel.vesselType),
+                sql`lower(btrim(${masterVesselTypes.vesselType})) = lower(btrim(${vessel.vesselType}))`,
+              ),
+              sql`COALESCE(${masterVesselTypes.isDeleted}, false) = false`,
+              sql`COALESCE(${masterVesselTypes.isActive}, true) = true`,
+            )).limit(1))[0];
+          vesselTypeUuid = vesselType?.uuid ?? null;
+        }
+      }
+      await tx.insert(crewBriefingSubmissions).values({ briefingSubmissionUuid: id, briefingUuid: input.briefingUuid, crewUuid: g1.crewUuid, vesselUuid: g1.vesselUuid ?? null, vesselTypeUuid, formUuid: resolvedTarget.formUuid, formVersionUuid: resolvedTarget.formVersionUuid, createdByUuid: String(req.user!.id), isSync: false });
+      if (tree.sections.length) await tx.insert(frmSectionStates).values(tree.sections.map((section: any) => ({ sectionStateUuid: uuid(), submissionUuid: id, sectionUuid: section.sectionUuid, status: isBriefingSectionApplicable(section.applicableVesselTypes, vesselTypeUuid) ? "not_started" : "not_applicable", createdByUuid: String(req.user!.id), isSync: false })));
+      return resolvedTarget;
     });
     return {
       briefing_submission_uuid: id,
+      briefing_uuid: input.briefingUuid,
       form_uuid: target.formUuid,
       form_version_uuid: target.formVersionUuid,
       form_version_id: target.formVersionId,
@@ -170,7 +227,11 @@ export const briefingService = {
   async read(submissionUuid: string, req: Request) {
     await authorizeBriefingRead(req);
     const submission = await briefingRepository.submission(submissionUuid); if (!submission) throw new BriefingError("Briefing submission not found", 404);
-    const [structure, data] = await Promise.all([briefingRepository.structure(submission.formVersionUuid), briefingRepository.readData(submissionUuid)]);
+    const [structure, data, g1] = await Promise.all([
+      briefingRepository.structure(submission.formVersionUuid),
+      briefingRepository.readData(submissionUuid),
+      submission.briefingUuid ? briefingRepository.g1(submission.briefingUuid) : Promise.resolve(null),
+    ]);
     const responsibleRoleUuids = Array.from(new Set<string>(
       structure.sections.flatMap((section: any) =>
         section.responsibleMode === "role" && section.responsibleRoleUuid
@@ -196,6 +257,16 @@ export const briefingService = {
     const crewName = [crew.firstName, crew.middleName, crew.familyName]
       .filter((part: unknown) => typeof part === "string" && part.trim())
       .join(" ").trim();
+    const nationality = crew.nationalityUuid
+      ? (await getDb().select({ name: masterNationalities.nationality }).from(masterNationalities)
+          .where(eq(masterNationalities.natUuid, crew.nationalityUuid)).limit(1))[0]?.name ?? null
+      : null;
+    let resolvedVesselName = g1?.vesselName?.trim() || null;
+    if (!resolvedVesselName && g1?.vesselUuid) {
+      const vessel = (await getDb().select({ name: masterVessels.vessel }).from(masterVessels)
+        .where(eq(masterVessels.vesselUuid, g1.vesselUuid)).limit(1))[0];
+      resolvedVesselName = vessel?.name ?? null;
+    }
     const officer = (await getDb().select().from(masterUsers)
       .where(eq(masterUsers.id, req.user!.id)).limit(1))[0];
     const officerName = officer?.fullname ?? officer?.displayName ??
@@ -220,6 +291,7 @@ export const briefingService = {
     return {
       submission: {
         briefing_submission_uuid: submission.briefingSubmissionUuid,
+        briefing_uuid: submission.briefingUuid,
         crew_uuid: submission.crewUuid,
         vessel_uuid: submission.vesselUuid,
         vessel_type_uuid: submission.vesselTypeUuid,
@@ -227,6 +299,21 @@ export const briefingService = {
         form_version_uuid: submission.formVersionUuid,
         status: submission.status,
         completed_at: submission.completedAt,
+      },
+      partA: {
+        seafarer_name: crewName || null,
+        rank: g1?.joiningRank ?? null,
+        nationality,
+        vessel_name: resolvedVesselName,
+        sign_on_date: formatBriefingDate(g1?.dateSignOn),
+        date_of_briefing: submission.dateOfBriefing,
+        mode_of_briefing: submission.modeOfBriefing,
+      },
+      partC: {
+        office_review_comments: submission.officeReviewComments,
+        office_reviewed_by_uuid: submission.officeReviewedByUuid,
+        office_reviewed_by_name: submission.officeReviewedByName,
+        office_reviewed_at: submission.officeReviewedAt,
       },
       structure: {
         sections: structure.sections.map((section: any) => ({
@@ -279,7 +366,7 @@ export const briefingService = {
       })),
       seafarer_default: {
         signer_name: crewName || null,
-        signer_rank: crew.presentRank ?? null,
+        signer_rank: g1?.joiningRank ?? null,
       },
       officer_default: {
         signer_name: officerName,
@@ -311,6 +398,46 @@ export const briefingService = {
       form_version_uuid: submission.formVersionUuid, status: submission.status,
       completed_at: submission.completedAt, created_at: submission.createdAt,
     }));
+  },
+  async savePartA(submissionUuid: string, input: { dateOfBriefing: string | null; modeOfBriefing: "company_office" | "manning_agent" | "video_call" | null }, req: Request) {
+    if (!req.user) throw new BriefingError("Authentication required", 403);
+    const db = getDb();
+    await db.transaction(async (tx: any) => {
+      await lockWritableSubmission(tx, submissionUuid);
+      await tx.update(crewBriefingSubmissions).set({
+        dateOfBriefing: input.dateOfBriefing,
+        modeOfBriefing: input.modeOfBriefing,
+        updatedByUuid: String(req.user!.id),
+        updatedAt: new Date(),
+      }).where(eq(crewBriefingSubmissions.briefingSubmissionUuid, submissionUuid));
+    });
+    return { date_of_briefing: input.dateOfBriefing, mode_of_briefing: input.modeOfBriefing };
+  },
+  async savePartC(submissionUuid: string, input: { officeReviewComments: string | null }, req: Request) {
+    await authorizeBriefingRead(req);
+    const user = (await getDb().select().from(masterUsers).where(eq(masterUsers.id, req.user!.id)).limit(1))[0];
+    if (!user) throw new BriefingError("Authenticated user not found", 403);
+    const reviewerName = user.fullname ?? user.displayName ??
+      (`${user.firstname ?? ""} ${user.lastname ?? ""}`.trim() || null);
+    const reviewedAt = new Date();
+    const db = getDb();
+    await db.transaction(async (tx: any) => {
+      await lockWritableSubmission(tx, submissionUuid);
+      await tx.update(crewBriefingSubmissions).set({
+        officeReviewComments: input.officeReviewComments,
+        officeReviewedByUuid: user.userUuid ?? String(user.id),
+        officeReviewedByName: reviewerName,
+        officeReviewedAt: reviewedAt,
+        updatedByUuid: String(req.user!.id),
+        updatedAt: reviewedAt,
+      }).where(eq(crewBriefingSubmissions.briefingSubmissionUuid, submissionUuid));
+    });
+    return {
+      office_review_comments: input.officeReviewComments,
+      office_reviewed_by_uuid: user.userUuid ?? String(user.id),
+      office_reviewed_by_name: reviewerName,
+      office_reviewed_at: reviewedAt,
+    };
   },
   async writable(submissionUuid: string, sectionUuid: string) {
     const [submission, state] = await Promise.all([briefingRepository.submission(submissionUuid), briefingRepository.state(submissionUuid, sectionUuid)]);

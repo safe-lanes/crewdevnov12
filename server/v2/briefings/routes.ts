@@ -4,8 +4,13 @@ import { briefingController } from "./controller";
 
 const router = Router();
 const uuid = z.string().uuid();
-const create = z.object({ formUuid: uuid, crewUuid: uuid, vesselUuid: uuid.nullable().optional(), vesselTypeUuid: uuid.nullable().optional() }).strict();
-const resolveCreation = z.object({ formUuid: uuid, crewUuid: uuid }).strict();
+const create = z.object({ briefingUuid: uuid }).strict();
+const resolveCreation = z.object({ briefingUuid: uuid }).strict();
+const partA = z.object({
+  dateOfBriefing: z.string().date().nullable(),
+  modeOfBriefing: z.enum(["company_office", "manning_agent", "video_call"]).nullable(),
+}).strict();
+const partC = z.object({ officeReviewComments: z.string().max(10000).nullable() }).strict();
 const answerValue = z.union([z.string().max(10000),z.array(z.string().max(500)).max(100),z.boolean(),z.null()]);
 const answerItem = z.object({
   questionUuid: uuid,
@@ -39,6 +44,8 @@ router.get("/resolve-creation", query(resolveCreation, briefingController.resolv
 router.post("/submissions", body(create, briefingController.create));
 router.get("/submissions/crew/:crewUuid", params(["crewUuid"], briefingController.list));
 router.get("/submissions/:uuid", params(["uuid"], briefingController.get));
+router.put("/submissions/:uuid/part-a", params(["uuid"], body(partA, briefingController.partA)));
+router.put("/submissions/:uuid/part-c", params(["uuid"], body(partC, briefingController.partC)));
 router.put("/submissions/:uuid/sections/:sectionUuid/answers", params(["uuid","sectionUuid"], body(answers, briefingController.answers)));
 router.post("/submissions/:uuid/sections/:sectionUuid/signature", params(["uuid","sectionUuid"], body(signature, briefingController.signature)));
 router.delete("/submissions/:uuid/sections/:sectionUuid/signature/:type", params(["uuid","sectionUuid","type"], briefingController.deleteSignature));

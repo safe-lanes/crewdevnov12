@@ -9,6 +9,7 @@ import {
   BriefingError,
   isBriefingSectionApplicable,
   isMandatoryBriefingAnswerPresent,
+  formatBriefingDate,
 } from "@server/v2/briefings/service";
 
 function request(userType: string): Request {
@@ -66,5 +67,16 @@ describe("mandatory briefing answer presence", () => {
 
   it("keeps false as a valid checkbox answer", () => {
     expect(isMandatoryBriefingAnswerPresent("checkbox", "false")).toBe(true);
+  });
+});
+
+describe("briefing date presentation", () => {
+  it("renders an ISO G1 text date as DD-MMM-YYYY", () => {
+    expect(formatBriefingDate("2026-05-31")).toBe("31-May-2026");
+  });
+
+  it("does not guess malformed or impossible G1 dates", () => {
+    expect(formatBriefingDate("31/05/2026")).toBeNull();
+    expect(formatBriefingDate("2026-02-31")).toBeNull();
   });
 });
