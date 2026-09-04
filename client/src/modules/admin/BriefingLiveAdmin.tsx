@@ -7,16 +7,18 @@ import { useCrewListV2 } from "@/modules/crew-pool/hooks/useCrewPoolV2";
 import { useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 import { usePermissions } from "@/contexts/PermissionsContext";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 const BASE = "/api/v2/briefings";
 export type Ownership = { ownerLabel: string; canEdit: boolean };
-export const ownershipFor = (section: Pick<ConfiguredFormSection, "responsible_mode" | "responsible_role_uuid" | "responsible_department">, actor: { roleName: string | null; roleId: string | null; userType: string | null }): Ownership => {
+export const ownershipFor = (section: Pick<ConfiguredFormSection, "responsible_mode" | "responsible_role_uuid" | "responsible_role_name" | "responsible_department">, actor: { roleName: string | null; roleId: string | null; userType: string | null }): Ownership => {
   const isAdmin = actor.roleName?.trim().toLowerCase() === "admin";
+  if (section.responsible_mode === "role") return {
+    ownerLabel: section.responsible_role_name?.trim() || "Responsible role no longer exists",
+    canEdit: isAdmin || section.responsible_role_uuid === actor.roleId,
+  };
   if (isAdmin) return { ownerLabel: "Administrator", canEdit: true };
   if (section.responsible_mode === "not_applicable") return { ownerLabel: "Any authenticated user", canEdit: true };
-  if (section.responsible_mode === "role") return section.responsible_role_uuid === actor.roleId
-    ? { ownerLabel: actor.roleName || "Your assigned role", canEdit: true }
-    : { ownerLabel: "Assigned role (not your role)", canEdit: false };
   return { ownerLabel: section.responsible_department ? `Department: ${section.responsible_department} (identity unavailable)` : "Department owner not configured", canEdit: false };
 };
 async function getJson(url: string) {
@@ -37,6 +39,7 @@ const layout = (section: any, questions: any[]) => {
 /** Explicitly temporary, Office-only integration surface for the Briefing API. */
 export default function BriefingLiveAdmin() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { roleName, roleId, userType } = usePermissions();
   const { data: crew = [], error: crewError } = useCrewListV2();
   const { data: vessels = [], error: vesselError } = useVesselsV2();
@@ -66,6 +69,15 @@ export default function BriefingLiveAdmin() {
   const create = useMutation({
     mutationFn: async () => (await apiRequest("POST", `${BASE}/submissions`, { formUuid, crewUuid, vesselUuid: vesselUuid || null, vesselTypeUuid: selectedVessel?.vtUuid || selectedVessel?.vtuid || selectedVessel?.vesselTypeUuid || null })).json(),
     onSuccess: x => { setSubmissionUuid(x.briefing_submission_uuid); void queryClient.invalidateQueries({ queryKey: [BASE, "list", crewUuid] }); },
+  });
+  const saveSignature = useMutation({
+    mutationFn: async ({ section, data }: { section: string; data: string }) => {
+      await flush();
+      await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${section}/signature`, { data });
+      await queryClient.invalidateQueries({ queryKey: [BASE, submissionUuid] });
+    },
+    onSuccess: () => toast({ title: "Signature saved", description: "The signature and signing date have been recorded." }),
+    onError: (error) => toast({ title: "Signature save failed", description: error instanceof Error ? error.message : String(error), variant: "destructive" }),
   });
   const flush = async () => {
     if (!pending.current.size || !readQuery.data) return;
@@ -128,7 +140,7 @@ export default function BriefingLiveAdmin() {
     data.structure.options.forEach((o: any) => options.set(o.option_set_uuid, [...(options.get(o.option_set_uuid) || []), o]));
     data.structure.questions.forEach((q: any) => grouped.set(q.section_uuid, [...(grouped.get(q.section_uuid) || []), { ...q, options: options.get(q.option_set_uuid) || [] }]));
     const sections: ConfiguredFormSection[] = data.structure.sections.map((s: any) => { const qs = grouped.get(s.section_uuid) || []; return { ...s, applicable_vessel_types: (() => { try { return JSON.parse(s.applicable_vessel_types || "[]"); } catch { return []; } })(), questions: qs, effectiveLayout: layout(s, qs) }; });
-    const states = Object.fromEntries(data.section_states.map((s: any) => [s.section_uuid, { status: s.status, sectionComment: s.section_comment, submittedByName: s.submitted_by_name, submittedAt: s.submitted_at, signatureAttUuid: s.signature_att_uuid, signatureName: s.signature_name, signatureUrl: s.signature_att_uuid ? `${BASE}/signatures/${s.signature_att_uuid}/raw` : null }]));
+    const states = Object.fromEntries(data.section_states.map((s: any) => [s.section_uuid, { status: s.status, sectionComment: s.section_comment, submittedByName: s.submitted_by_name, submittedAt: s.submitted_at, signatureAttUuid: s.signature_att_uuid, signatureName: s.signature_name, signedAt: s.signed_at, signatureUrl: s.signature_att_uuid ? `${BASE}/signatures/${s.signature_att_uuid}/raw` : null }]));
     const ownership = Object.fromEntries(sections.map(s => [s.section_uuid!, ownershipFor(s, { roleName, roleId, userType })]));
     return { sections, states, ownership, submission: data.submission };
   }, [readQuery.data, roleName, roleId, userType]);
@@ -155,6 +167,6 @@ export default function BriefingLiveAdmin() {
       </div>
     )}
     {crewUuid && <div className="flex flex-wrap gap-2">{listQuery.isLoading ? "Loading submissions…" : listQuery.data?.map((s: any) => <Button key={s.briefing_submission_uuid} size="sm" variant="outline" onClick={() => setSubmissionUuid(s.briefing_submission_uuid)}>Open {s.status} · {s.created_at ? new Date(s.created_at).toLocaleDateString() : s.briefing_submission_uuid.slice(0, 8)}</Button>)}</div>}
-    {model && <><p className={`text-sm ${saveState === "error" ? "text-destructive" : ""}`}>{saveState === "saving" ? "Saving draft…" : saveState === "error" ? "Draft save failed; retry with Save draft." : "Draft saved"}</p><ConfiguredFormRenderer mode="live" embedded parts={[{ formPartUuid: "briefing", partCode: "B", partTitle: "Briefing", partType: "configurable" }]} selectedPartUuid="briefing" structures={{ briefing: model.sections }} selectedVesselTypeUuid={model.submission.vessel_type_uuid || "all"} live={{ answers: draftAnswers, answerComments: draftComments, sectionComments: draftSectionComments, onSectionCommentChange: (section, comment) => { draftSectionCommentsRef.current = { ...draftSectionCommentsRef.current, [section]: comment }; setDraftSectionComments(draftSectionCommentsRef.current); queueSectionComment(section, comment); }, sectionStates: model.states, sectionOwnership: model.ownership, onSaveDraft: flush, onAnswerChange: (q, value) => { draftAnswersRef.current = { ...draftAnswersRef.current, [q]: value }; setDraftAnswers(draftAnswersRef.current); queueQuestion(q, value, draftCommentsRef.current[q] ?? null); }, onAnswerCommentChange: (q, comment) => { draftCommentsRef.current = { ...draftCommentsRef.current, [q]: comment }; setDraftComments(draftCommentsRef.current); queueQuestion(q, draftAnswersRef.current[q] ?? null, comment); }, onSignatureChange: async (section, data, name) => { await flush(); await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${section}/signature`, { data, name }); await queryClient.invalidateQueries({ queryKey: [BASE, submissionUuid] }); }, onSubmitSection: async (section, comment) => { await flush(); await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${section}/submit`, { comment: comment || null }); await queryClient.invalidateQueries({ queryKey: [BASE, submissionUuid] }); } }} /></>}
+    {model && <><p className={`text-sm ${saveState === "error" ? "text-destructive" : ""}`}>{saveState === "saving" ? "Saving draft…" : saveState === "error" ? "Draft save failed; retry with Save draft." : "Draft saved"}</p><ConfiguredFormRenderer mode="live" embedded parts={[{ formPartUuid: "briefing", partCode: "B", partTitle: "Briefing", partType: "configurable" }]} selectedPartUuid="briefing" structures={{ briefing: model.sections }} selectedVesselTypeUuid={model.submission.vessel_type_uuid || "all"} live={{ answers: draftAnswers, answerComments: draftComments, sectionComments: draftSectionComments, onSectionCommentChange: (section, comment) => { draftSectionCommentsRef.current = { ...draftSectionCommentsRef.current, [section]: comment }; setDraftSectionComments(draftSectionCommentsRef.current); queueSectionComment(section, comment); }, sectionStates: model.states, sectionOwnership: model.ownership, onSaveDraft: flush, onAnswerChange: (q, value) => { draftAnswersRef.current = { ...draftAnswersRef.current, [q]: value }; setDraftAnswers(draftAnswersRef.current); queueQuestion(q, value, draftCommentsRef.current[q] ?? null); }, onAnswerCommentChange: (q, comment) => { draftCommentsRef.current = { ...draftCommentsRef.current, [q]: comment }; setDraftComments(draftCommentsRef.current); queueQuestion(q, draftAnswersRef.current[q] ?? null, comment); }, onSignatureChange: async (section, data) => saveSignature.mutateAsync({ section, data }), onSubmitSection: async (section, comment) => { await flush(); await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${section}/submit`, { comment: comment || null }); await queryClient.invalidateQueries({ queryKey: [BASE, submissionUuid] }); } }} /></>}
   </div>;
 }

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import { getDb } from "../db";
 import { masterUsers } from "../../../shared/schema";
@@ -7,6 +7,7 @@ import { fileStorageService, MAX_ATTACHMENT_BYTES } from "../shared/fileStorageS
 import { formsService } from "../admin/services/formsService";
 import { crewMembersService } from "../crew-pool/services/crewMembersService";
 import { crewBriefingSubmissions, frmAnswers, frmSectionStates, frmSignatureAttachments } from "../../../shared/v2/forms-engine/schema";
+import { admRoleMasterAc } from "../../../shared/v2/admin/schema";
 import { briefingRepository } from "./repository";
 import type { Request } from "express";
 
@@ -170,6 +171,22 @@ export const briefingService = {
     await authorizeBriefingRead(req);
     const submission = await briefingRepository.submission(submissionUuid); if (!submission) throw new BriefingError("Briefing submission not found", 404);
     const [structure, data] = await Promise.all([briefingRepository.structure(submission.formVersionUuid), briefingRepository.readData(submissionUuid)]);
+    const responsibleRoleUuids = Array.from(new Set<string>(
+      structure.sections.flatMap((section: any) =>
+        section.responsibleMode === "role" && section.responsibleRoleUuid
+          ? [String(section.responsibleRoleUuid)]
+          : [],
+      ),
+    ));
+    const responsibleRoles = responsibleRoleUuids.length
+      ? await getDb().select({
+          ruid: admRoleMasterAc.ruid,
+          assignedRole: admRoleMasterAc.assignedRole,
+        }).from(admRoleMasterAc).where(inArray(admRoleMasterAc.ruid, responsibleRoleUuids))
+      : [];
+    const responsibleRoleNames = new Map(
+      responsibleRoles.map((role: { ruid: string; assignedRole: string }) => [role.ruid, role.assignedRole]),
+    );
     return {
       submission: {
         briefing_submission_uuid: submission.briefingSubmissionUuid,
@@ -190,6 +207,9 @@ export const briefingService = {
           applicable_vessel_types: section.applicableVesselTypes,
           responsible_mode: section.responsibleMode,
           responsible_role_uuid: section.responsibleRoleUuid,
+          responsible_role_name: section.responsibleMode === "role"
+            ? responsibleRoleNames.get(section.responsibleRoleUuid) ?? null
+            : null,
           responsible_department: section.responsibleDepartment,
           comment_box_required: section.commentBoxRequired,
           signature_required: section.signatureRequired,
@@ -351,8 +371,8 @@ export const briefingService = {
       }
     });
   },
-  async uploadSignature(submissionUuid: string, sectionUuid: string, dataUrl: string, name: string | null | undefined, req: Request) {
-    const { state, submission } = await this.writable(submissionUuid, sectionUuid); const section = (await briefingRepository.structure(submission.formVersionUuid)).sections.find((s: any) => s.sectionUuid === sectionUuid); if (!section) throw new BriefingError("Section not found", 404); await this.assertOwner(req, section);
+  async uploadSignature(submissionUuid: string, sectionUuid: string, dataUrl: string, req: Request) {
+    const { state, submission } = await this.writable(submissionUuid, sectionUuid); const section = (await briefingRepository.structure(submission.formVersionUuid)).sections.find((s: any) => s.sectionUuid === sectionUuid); if (!section) throw new BriefingError("Section not found", 404); const user = await this.assertOwner(req, section);
     const match = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl); if (!match || dataUrl.length > Math.ceil(MAX_ATTACHMENT_BYTES * 4 / 3) + 100) throw new BriefingError("Signature must be a PNG base64 data URL");
     const bytes = Buffer.from(match[1], "base64"); if (bytes.length > MAX_ATTACHMENT_BYTES || fileStorageService.detectMimeBySignature(bytes) !== "image/png") throw new BriefingError("Signature must be a PNG within the size limit");
     const path = await fileStorageService.writeAttachment("briefings/signatures", "signature.png", bytes);
@@ -369,7 +389,8 @@ export const briefingService = {
         }
         await tx.insert(frmSignatureAttachments).values({ sigAttUuid: att, sectionStateUuid: locked.state.sectionStateUuid, fileName: "signature.png", fileType: "image/png", fileSize: String(bytes.length), filePath: path, createdByUuid: String(req.user!.id), isSync: false });
         // Change the FK before deleting its prior target (RESTRICT safe).
-        await tx.update(frmSectionStates).set({ signatureAttUuid: att, signatureName: name ?? null, signedByUuid: String(req.user!.id), signedAt: new Date(), updatedByUuid: String(req.user!.id), updatedAt: new Date() }).where(eq(frmSectionStates.sectionStateUuid, locked.state.sectionStateUuid));
+        const signerName = user.fullname ?? user.displayName ?? (`${user.firstname ?? ""} ${user.lastname ?? ""}`.trim() || null);
+        await tx.update(frmSectionStates).set({ signatureAttUuid: att, signatureName: signerName, signedByUuid: String(req.user!.id), signedAt: new Date(), updatedByUuid: String(req.user!.id), updatedAt: new Date() }).where(eq(frmSectionStates.sectionStateUuid, locked.state.sectionStateUuid));
         if (priorAttUuid) await tx.delete(frmSignatureAttachments).where(eq(frmSignatureAttachments.sigAttUuid, priorAttUuid));
       });
     } catch (error) {

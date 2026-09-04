@@ -22,7 +22,7 @@ const answers = z.object({
   ]),
   sectionComment: z.string().max(10000).nullable().optional(),
 }).strict();
-const signature = z.object({ data:z.string().max(7_000_000), name:z.string().trim().max(500).nullable().optional() }).strict();
+const signature = z.object({ data:z.string().max(7_000_000) }).strict();
 const submit = z.object({ comment:z.string().max(10000).nullable().optional() }).strict();
 function body(schema: z.ZodTypeAny, action: any) { return (req:any,res:any,next:any) => { const parsed=schema.safeParse(req.body); if(!parsed.success) return res.status(400).json({error:"Invalid request",details:parsed.error.issues}); req.body=parsed.data; return action(req,res,next); }; }
 function params(keys: string[], action: any) { return (req:any,res:any,next:any) => { const parsed=z.object(Object.fromEntries(keys.map(k=>[k,uuid]))).safeParse(req.params); if(!parsed.success) return res.status(400).json({error:"Invalid UUID",details:parsed.error.issues}); return action(req,res,next); }; }

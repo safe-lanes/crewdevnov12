@@ -17,6 +17,7 @@ import {
   BaseSubmoduleForm,
 } from "@/components/BaseSubmoduleForm";
 import { getTableClasses, sailDesignSystem } from "@/config/sailDesignSystem";
+import { apiRequest } from "@/lib/queryClient";
 
 export type ConfiguredFormMode = "preview" | "live";
 
@@ -57,6 +58,7 @@ export interface ConfiguredFormSection {
   applicable_vessel_types: string[];
   responsible_mode: "role" | "department" | "not_applicable";
   responsible_role_uuid: string | null;
+  responsible_role_name?: string | null;
   responsible_department: string | null;
   comment_box_required: boolean;
   signature_required: boolean;
@@ -108,10 +110,10 @@ export interface ConfiguredFormLiveProps {
   sectionComments?: Record<string, string>;
   onSectionCommentChange?: (sectionId: string, comment: string) => void;
   sectionOwnership?: Record<string, { ownerLabel: string; canEdit: boolean }>;
-  sectionStates?: Record<string, { status: "not_started" | "submitted" | "not_applicable"; sectionComment?: string | null; submittedByName?: string | null; submittedAt?: string | null; signatureAttUuid?: string | null; signatureName?: string | null; signatureUrl?: string | null }>;
+  sectionStates?: Record<string, { status: "not_started" | "submitted" | "not_applicable"; sectionComment?: string | null; submittedByName?: string | null; submittedAt?: string | null; signatureAttUuid?: string | null; signatureName?: string | null; signedAt?: string | null; signatureUrl?: string | null }>;
   onSaveDraft?: (sectionId: string) => void | Promise<void>;
   onSubmitSection?: (sectionId: string, comment: string) => void | Promise<void>;
-  onSignatureChange?: (sectionId: string, pngDataUrl: string, name: string) => void | Promise<void>;
+  onSignatureChange?: (sectionId: string, pngDataUrl: string) => void | Promise<void>;
   onDeleteSignature?: (sectionId: string) => void | Promise<void>;
   isLocked?: boolean;
   onSubmit?: () => void | Promise<void>;
@@ -237,31 +239,77 @@ function useQuestionComment(initial = ""): QuestionCommentState {
   };
 }
 
-function SignaturePad({ sectionId, name, onSave, disabled }: { sectionId: string; name?: string | null; onSave: (data: string, name: string) => void; disabled: boolean }) {
+function SignaturePad({ sectionId, onSave }: { sectionId: string; onSave: (data: string) => void | Promise<void> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [hasInk, setHasInk] = useState(false);
-  const [signer, setSigner] = useState(name || "");
+  const [saveState, setSaveState] = useState<"idle" | "pending" | "success" | "error">("idle");
   const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current; if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     return { x: (event.clientX - rect.left) * (canvas.width / rect.width), y: (event.clientY - rect.top) * (canvas.height / rect.height) };
   };
   const start = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (disabled) return; const canvas = canvasRef.current; const p = point(event); if (!canvas || !p) return;
+    if (saveState === "pending") return; const canvas = canvasRef.current; const p = point(event); if (!canvas || !p) return;
     drawing.current = true; canvas.setPointerCapture?.(event.pointerId);
     const context = canvas.getContext("2d"); context?.beginPath(); context?.moveTo(p.x, p.y);
   };
   const move = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!drawing.current || disabled) return; const p = point(event); const context = canvasRef.current?.getContext("2d"); if (!p || !context) return;
+    if (!drawing.current || saveState === "pending") return; const p = point(event); const context = canvasRef.current?.getContext("2d"); if (!p || !context) return;
     context.lineTo(p.x, p.y); context.strokeStyle = "#172033"; context.lineWidth = 2; context.lineCap = "round"; context.stroke(); setHasInk(true);
   };
   const clear = () => { const canvas = canvasRef.current; const context = canvas?.getContext("2d"); if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height); setHasInk(false); };
+  const save = async () => {
+    const png = canvasRef.current?.toDataURL("image/png");
+    if (!png) return;
+    setSaveState("pending");
+    try {
+      await onSave(png);
+      setSaveState("success");
+    } catch {
+      setSaveState("error");
+    }
+  };
   return <div className="space-y-2" data-testid={`live-signature-${sectionId}`}>
-    <SAILInput value={signer} onChange={(event) => setSigner(event.target.value)} disabled={disabled} placeholder="Signer name" data-testid={`live-signature-name-${sectionId}`} />
     <canvas ref={canvasRef} width={700} height={180} className="h-32 w-full touch-none rounded border bg-white" onPointerDown={start} onPointerMove={move} onPointerUp={() => { drawing.current = false; }} onPointerCancel={() => { drawing.current = false; }} aria-label="Signature canvas" />
-    {!disabled && <div className="flex gap-2"><Button type="button" variant="outline" size="sm" onClick={clear}>Clear</Button><Button type="button" size="sm" disabled={!hasInk || !signer.trim()} onClick={() => { const png = canvasRef.current?.toDataURL("image/png"); if (png) onSave(png, signer.trim()); }}>Save signature</Button></div>}
+    <div className="flex items-center gap-2"><Button type="button" variant="outline" size="sm" disabled={saveState === "pending"} onClick={clear}>Clear</Button><Button type="button" size="sm" disabled={!hasInk || saveState === "pending"} onClick={() => void save()}>{saveState === "pending" ? "Saving signature…" : "Save signature"}</Button></div>
+    {saveState === "success" && <p className="text-sm text-emerald-700" role="status">Signature saved.</p>}
+    {saveState === "error" && <p className="text-sm text-destructive" role="alert">Signature could not be saved. Please try again.</p>}
   </div>;
+}
+
+function AuthenticatedSignatureImage({ url, signerName }: { url: string; signerName?: string | null }) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    let active = true;
+    let createdUrl: string | null = null;
+    setObjectUrl(null);
+    setError(false);
+    void apiRequest("GET", url)
+      .then((response) => response.blob())
+      .then((blob) => {
+        if (!active) return;
+        createdUrl = URL.createObjectURL(blob);
+        setObjectUrl(createdUrl);
+      })
+      .catch(() => { if (active) setError(true); });
+    return () => {
+      active = false;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [url]);
+  if (error) return <p className="text-sm text-destructive" role="alert">Signature image could not be loaded.</p>;
+  if (!objectUrl) return <p className="text-sm text-muted-foreground">Loading signature…</p>;
+  return <img src={objectUrl} alt={`Signature of ${signerName || "submitter"}`} className="max-h-32 rounded border bg-white" />;
+}
+
+function formatSignatureDate(value?: string | null) {
+  if (!value) return "Auto-filled when signed";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Signing date unavailable";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${String(date.getDate()).padStart(2, "0")}-${months[date.getMonth()]}-${date.getFullYear()}`;
 }
 
 function QuestionCommentControl({
@@ -346,14 +394,15 @@ function SectionResponsibility({
       return <InlineMissing testId={`missing-responsible-${sectionId}`}>{MISSING_RESPONSIBLE}</InlineMissing>;
     }
     const role = roles.find((candidate) => candidate.ruid === section.responsible_role_uuid);
-    if (!role) {
+    const resolvedRoleName = section.responsible_role_name?.trim() || (role ? roleName(role) : "");
+    if (!resolvedRoleName) {
       return <InlineMissing testId={`missing-responsible-${sectionId}`}>Responsible role not found</InlineMissing>;
     }
     return (
       <div className="flex flex-wrap items-center gap-2" data-testid={`responsible-role-${sectionId}`}>
-        <p className="text-sm font-semibold">To be completed by: {roleName(role)}</p>
-        {role.isDeleted && <Badge variant="outline">Deleted role</Badge>}
-        {!role.isDeleted && role.isActive === false && (
+        <p className="text-sm font-semibold">To be completed by: {resolvedRoleName}</p>
+        {role?.isDeleted && <Badge variant="outline">Deleted role</Badge>}
+        {!role?.isDeleted && role?.isActive === false && (
           <Badge variant="outline">Inactive role</Badge>
         )}
       </div>
@@ -737,19 +786,25 @@ function ConfiguredSection({
       {section.comment_box_required && (
         <div data-testid={`preview-section-comment-${sectionId}`}>
           <SAILFormField label="Section comment">
-            <Textarea value={mode === "live" ? currentSectionComment : undefined} onChange={(event) => { setSectionComment(event.target.value); live?.onSectionCommentChange?.(sectionId, event.target.value); }} readOnly={readOnly} placeholder={mode === "live" ? "Add section comment" : "Preview comment — not saved"} data-testid={`preview-section-comment-input-${sectionId}`} />
+            {mode === "live" && readOnly
+              ? <p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground" data-testid={`preview-section-comment-readonly-${sectionId}`}>{currentSectionComment || "No section comment"}</p>
+              : <Textarea value={mode === "live" ? currentSectionComment : undefined} onChange={(event) => { setSectionComment(event.target.value); live?.onSectionCommentChange?.(sectionId, event.target.value); }} placeholder={mode === "live" ? "Add section comment" : "Preview comment — not saved"} data-testid={`preview-section-comment-input-${sectionId}`} />}
           </SAILFormField>
         </div>
       )}
       {section.signature_required && (
         <div className="space-y-4 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={`preview-signature-${sectionId}`}>
           <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Signature</p>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <SAILFormField label="Name"><SAILInput readOnly placeholder="Name" data-testid={`preview-signature-name-${sectionId}`} /></SAILFormField>
-            <SAILFormField label="Signature"><SAILInput readOnly placeholder="Signature" data-testid={`preview-signature-mark-${sectionId}`} /></SAILFormField>
-            <SAILFormField label="Date"><SAILInput readOnly placeholder="Date" data-testid={`preview-signature-date-${sectionId}`} /></SAILFormField>
-          </div>
-           {mode === "live" && readOnly && state?.signatureUrl ? <img src={state.signatureUrl} alt={`Signature of ${state.signatureName || "submitter"}`} className="max-h-32 rounded border bg-white" /> : mode === "live" ? <SignaturePad sectionId={sectionId} name={state?.signatureName} disabled={readOnly} onSave={(data, name) => live?.onSignatureChange?.(sectionId, data, name)} /> : <p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>}
+          {mode === "live" && state?.signatureUrl
+            ? <AuthenticatedSignatureImage url={state.signatureUrl} signerName={state.signatureName} />
+            : mode === "live" && readOnly
+              ? <p className="text-sm text-muted-foreground">Awaiting signature</p>
+              : mode === "live"
+                ? <SignaturePad sectionId={sectionId} onSave={(data) => live?.onSignatureChange?.(sectionId, data)} />
+                : <p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>}
+          <SAILFormField label="Date">
+            <p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm" data-testid={`preview-signature-date-${sectionId}`}>{formatSignatureDate(state?.signedAt)}</p>
+          </SAILFormField>
         </div>
       )}
       <SectionResponsibility section={section} roles={roles} departments={departments} sectionId={sectionId} />

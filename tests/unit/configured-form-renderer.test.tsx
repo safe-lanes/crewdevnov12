@@ -319,7 +319,8 @@ describe("configured form renderer preview", () => {
     expect(screen.getByTestId("preview-comment-row-yes-no").previousElementSibling).toBe(screen.getByTestId("preview-point-yes-no"));
     expect(screen.getByTestId("preview-section-comment-section-one")).toBeInTheDocument();
     expect(screen.getByTestId("preview-signature-section-one")).toHaveTextContent("Signature placeholder");
-    expect(screen.getByTestId("preview-signature-name-section-one")).toHaveAttribute("placeholder", "Name");
+    expect(screen.queryByTestId("preview-signature-name-section-one")).toBeNull();
+    expect(screen.getByTestId("preview-signature-date-section-one")).toHaveTextContent("Auto-filled when signed");
     expect(screen.getByTestId("preview-section-footer-section-one")).toHaveTextContent("To be completed by: Master");
     expect(screen.getByTestId("preview-required-yes-no")).toHaveTextContent("*");
     expect(fetchSpy).not.toHaveBeenCalled();
@@ -692,6 +693,7 @@ describe("configured form renderer preview", () => {
     const section: ConfiguredFormSection = {
       ...configuredSection,
       clientKey: "readonly-live",
+      responsible_role_name: "Marine Superintendent",
       effectiveLayout: "matrix",
       questions: [{
         clientKey: "readonly-question",
@@ -706,6 +708,11 @@ describe("configured form renderer preview", () => {
     render(<ConfiguredFormRenderer mode="live" embedded parts={[parts[1]]} structures={{ "part-b": [section] }} selectedPartUuid="part-b" live={{ answers: {}, onAnswerChange, sectionOwnership: { "readonly-live": { ownerLabel: "Other role", canEdit: false } } }} />);
     const option = screen.getByTestId("matrix-option-readonly-question-1") as HTMLInputElement;
     expect(option.disabled).toBe(true);
+    expect(screen.getByTestId("responsible-role-readonly-live")).toHaveTextContent("To be completed by: Marine Superintendent");
+    expect(screen.getByTestId("preview-section-comment-readonly-readonly-live")).toHaveTextContent("No section comment");
+    expect(screen.queryByTestId("preview-section-comment-input-readonly-live")).toBeNull();
+    expect(screen.getByTestId("preview-signature-readonly-live")).toHaveTextContent("Awaiting signature");
+    expect(activeContainer?.querySelector('canvas[aria-label="Signature canvas"]')).toBeNull();
     expect(screen.queryByText("Submit")).toBeNull();
   });
 });

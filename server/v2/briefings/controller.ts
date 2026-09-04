@@ -12,7 +12,7 @@ export const briefingController = {
   async get(req: Request, res: Response) { try { res.json(await briefingService.read(req.params.uuid, req)); } catch (e) { fail(res,e,"Failed to fetch briefing submission"); } },
   async list(req: Request, res: Response) { try { res.json(await briefingService.list(req.params.crewUuid, req)); } catch (e) { fail(res,e,"Failed to list briefing submissions"); } },
   async answers(req: Request, res: Response) { try { await briefingService.saveAnswers(req.params.uuid, req.params.sectionUuid, req.body.answers, req.body.sectionComment, req); res.status(204).end(); } catch(e) { fail(res,e,"Failed to save briefing answers"); } },
-  async signature(req: Request, res: Response) { try { res.status(201).json({ sig_att_uuid: await briefingService.uploadSignature(req.params.uuid,req.params.sectionUuid,req.body.data,req.body.name,req) }); } catch(e) { fail(res,e,"Failed to save signature"); } },
+  async signature(req: Request, res: Response) { try { res.status(201).json({ sig_att_uuid: await briefingService.uploadSignature(req.params.uuid,req.params.sectionUuid,req.body.data,req) }); } catch(e) { fail(res,e,"Failed to save signature"); } },
   async submit(req: Request, res: Response) { try { res.json(await briefingService.submit(req.params.uuid,req.params.sectionUuid,req.body.comment,req)); } catch(e) { fail(res,e,"Failed to submit briefing section"); } },
   async deleteSignature(req: Request, res: Response) { try { await briefingService.deleteSignature(req.params.uuid, req.params.sectionUuid, req); res.status(204).end(); } catch(e) { fail(res,e,"Failed to delete signature"); } },
   async rawSignature(req: Request, res: Response) {
