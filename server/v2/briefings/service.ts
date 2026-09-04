@@ -6,7 +6,7 @@ import { resolveRequestRole } from "../auth/roleResolutionService";
 import { fileStorageService, MAX_ATTACHMENT_BYTES } from "../shared/fileStorageService";
 import { formsService } from "../admin/services/formsService";
 import { crewMembersService } from "../crew-pool/services/crewMembersService";
-import { crewBriefingSubmissions, frmAnswers, frmSectionStates, frmSignatureAttachments } from "../../../shared/v2/forms-engine/schema";
+import { crewBriefingSubmissions, frmAnswers, frmSectionStates, frmSignatureAttachments, frmSectionSignatures } from "../../../shared/v2/forms-engine/schema";
 import { admRoleMasterAc } from "../../../shared/v2/admin/schema";
 import { briefingRepository } from "./repository";
 import type { Request } from "express";
@@ -187,6 +187,36 @@ export const briefingService = {
     const responsibleRoleNames = new Map(
       responsibleRoles.map((role: { ruid: string; assignedRole: string }) => [role.ruid, role.assignedRole]),
     );
+    let crew: any;
+    try {
+      crew = await crewMembersService.getByUuid(submission.crewUuid);
+    } catch {
+      throw new BriefingError("Submission crew member not found", 404);
+    }
+    const crewName = [crew.firstName, crew.middleName, crew.familyName]
+      .filter((part: unknown) => typeof part === "string" && part.trim())
+      .join(" ").trim();
+    const officer = (await getDb().select().from(masterUsers)
+      .where(eq(masterUsers.id, req.user!.id)).limit(1))[0];
+    const officerName = officer?.fullname ?? officer?.displayName ??
+      (`${officer?.firstname ?? ""} ${officer?.lastname ?? ""}`.trim() || null);
+    const witnessUuids = Array.from(new Set<string>(
+      data.signatures.map((signature: any) => signature.signedByUuid).filter(Boolean),
+    ));
+    const witnesses = witnessUuids.length
+      ? await getDb().select({
+          userUuid: masterUsers.userUuid,
+          fullname: masterUsers.fullname,
+          displayName: masterUsers.displayName,
+          firstname: masterUsers.firstname,
+          lastname: masterUsers.lastname,
+        }).from(masterUsers).where(inArray(masterUsers.userUuid, witnessUuids))
+      : [];
+    const witnessNames = new Map(witnesses.map((witness: any) => [
+      witness.userUuid,
+      witness.fullname ?? witness.displayName ??
+        (`${witness.firstname ?? ""} ${witness.lastname ?? ""}`.trim() || null),
+    ]));
     return {
       submission: {
         briefing_submission_uuid: submission.briefingSubmissionUuid,
@@ -212,7 +242,8 @@ export const briefingService = {
             : null,
           responsible_department: section.responsibleDepartment,
           comment_box_required: section.commentBoxRequired,
-          signature_required: section.signatureRequired,
+          signature_officer_required: section.signatureOfficerRequired,
+          signature_seafarer_required: section.signatureSeafarerRequired,
           default_option_set_uuid: section.defaultOptionSetUuid,
           layout_preference: section.layoutPreference,
           sort_order: section.sortOrder,
@@ -240,18 +271,33 @@ export const briefingService = {
         section_state_uuid: state.sectionStateUuid, section_uuid: state.sectionUuid,
         status: state.status, section_comment: state.sectionComment,
         submitted_by_uuid: state.submittedByUuid, submitted_by_name: state.submittedByName,
-        submitted_at: state.submittedAt, signature_att_uuid: state.signatureAttUuid,
-        signature_name: state.signatureName, signed_by_uuid: state.signedByUuid,
-        signed_at: state.signedAt,
+        submitted_at: state.submittedAt,
       })),
       answers: data.answers.map((answer: any) => ({
         answer_uuid: answer.answerUuid, question_uuid: answer.questionUuid,
         answer_value: answer.answerValue, answer_comment: answer.answerComment,
       })),
+      seafarer_default: {
+        signer_name: crewName || null,
+        signer_rank: crew.presentRank ?? null,
+      },
+      officer_default: {
+        signer_name: officerName,
+        signer_rank: officer?.designation ?? null,
+      },
       signatures: data.signatures.map((signature: any) => ({
-        sig_att_uuid: signature.sigAttUuid, section_state_uuid: signature.sectionStateUuid,
-        file_name: signature.fileName, file_type: signature.fileType,
-        file_size: signature.fileSize,
+        section_signature_uuid: signature.sectionSignatureUuid,
+        signature_type: signature.signatureType,
+        sig_att_uuid: signature.signatureAttUuid,
+        section_state_uuid: signature.sectionStateUuid,
+        signer_name: signature.signerName,
+        signer_rank: signature.signerRank,
+        signed_at: signature.signedAt,
+        signed_by_uuid: signature.signedByUuid,
+        witnessed_by_name: witnessNames.get(signature.signedByUuid) ?? null,
+        signature_method: signature.signatureMethod,
+        file_name: signature.attachment.fileName, file_type: signature.attachment.fileType,
+        file_size: signature.attachment.fileSize,
       })),
     };
   },
@@ -371,9 +417,17 @@ export const briefingService = {
       }
     });
   },
-  async uploadSignature(submissionUuid: string, sectionUuid: string, dataUrl: string, req: Request) {
+  async uploadSignature(
+    submissionUuid: string,
+    sectionUuid: string,
+    input: { type: "officer" | "seafarer"; data: string; signerName?: string; signerRank?: string },
+    req: Request,
+  ) {
+    // Both signature types are recorded by the authenticated office witness.
+    // The officer type additionally derives its displayed identity from this session.
+    await authorizeBriefingRead(req);
     const { state, submission } = await this.writable(submissionUuid, sectionUuid); const section = (await briefingRepository.structure(submission.formVersionUuid)).sections.find((s: any) => s.sectionUuid === sectionUuid); if (!section) throw new BriefingError("Section not found", 404); const user = await this.assertOwner(req, section);
-    const match = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl); if (!match || dataUrl.length > Math.ceil(MAX_ATTACHMENT_BYTES * 4 / 3) + 100) throw new BriefingError("Signature must be a PNG base64 data URL");
+    const match = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(input.data); if (!match || input.data.length > Math.ceil(MAX_ATTACHMENT_BYTES * 4 / 3) + 100) throw new BriefingError("Signature must be a PNG base64 data URL");
     const bytes = Buffer.from(match[1], "base64"); if (bytes.length > MAX_ATTACHMENT_BYTES || fileStorageService.detectMimeBySignature(bytes) !== "image/png") throw new BriefingError("Signature must be a PNG within the size limit");
     const path = await fileStorageService.writeAttachment("briefings/signatures", "signature.png", bytes);
     const db = getDb(), att = uuid();
@@ -381,16 +435,27 @@ export const briefingService = {
     try {
       await db.transaction(async (tx: any) => {
         const locked = await lockWritableSection(tx, submissionUuid, sectionUuid);
-        const priorAttUuid = locked.state.signatureAttUuid;
+        const priorSignature = (await tx.select().from(frmSectionSignatures).where(and(
+          eq(frmSectionSignatures.sectionStateUuid, locked.state.sectionStateUuid),
+          eq(frmSectionSignatures.signatureType, input.type),
+          eq(frmSectionSignatures.isDeleted, false),
+        )).limit(1))[0];
+        const priorAttUuid = priorSignature?.signatureAttUuid;
         if (priorAttUuid) {
-          const prior = await tx.select().from(frmSignatureAttachments)
-            .where(eq(frmSignatureAttachments.sigAttUuid, priorAttUuid)).limit(1);
+          const prior = await tx.select().from(frmSignatureAttachments).where(eq(frmSignatureAttachments.sigAttUuid, priorAttUuid)).limit(1);
           priorPath = prior[0]?.filePath ?? null;
         }
-        await tx.insert(frmSignatureAttachments).values({ sigAttUuid: att, sectionStateUuid: locked.state.sectionStateUuid, fileName: "signature.png", fileType: "image/png", fileSize: String(bytes.length), filePath: path, createdByUuid: String(req.user!.id), isSync: false });
-        // Change the FK before deleting its prior target (RESTRICT safe).
-        const signerName = user.fullname ?? user.displayName ?? (`${user.firstname ?? ""} ${user.lastname ?? ""}`.trim() || null);
-        await tx.update(frmSectionStates).set({ signatureAttUuid: att, signatureName: signerName, signedByUuid: String(req.user!.id), signedAt: new Date(), updatedByUuid: String(req.user!.id), updatedAt: new Date() }).where(eq(frmSectionStates.sectionStateUuid, locked.state.sectionStateUuid));
+        await tx.insert(frmSignatureAttachments).values({ sigAttUuid: att, fileName: "signature.png", fileType: "image/png", fileSize: String(bytes.length), filePath: path, createdByUuid: String(req.user!.id), isSync: false });
+        const signerName = input.type === "seafarer"
+          ? input.signerName!.trim()
+          : (user.fullname ?? user.displayName ?? (`${user.firstname ?? ""} ${user.lastname ?? ""}`.trim() || "Officer"));
+        const signerRank = input.type === "seafarer" ? input.signerRank!.trim() : null;
+        const values = { signatureAttUuid: att, signerName, signerRank, signedAt: new Date(), signedByUuid: user.userUuid ?? String(req.user!.id), signatureMethod: input.type === "officer" ? "officer" : "witnessed", updatedByUuid: String(req.user!.id), updatedAt: new Date(), isDeleted: false };
+        if (priorSignature) {
+          await tx.update(frmSectionSignatures).set(values).where(eq(frmSectionSignatures.sectionSignatureUuid, priorSignature.sectionSignatureUuid));
+        } else {
+          await tx.insert(frmSectionSignatures).values({ sectionSignatureUuid: uuid(), sectionStateUuid: locked.state.sectionStateUuid, signatureType: input.type, ...values, createdByUuid: String(req.user!.id), isSync: false });
+        }
         if (priorAttUuid) await tx.delete(frmSignatureAttachments).where(eq(frmSignatureAttachments.sigAttUuid, priorAttUuid));
       });
     } catch (error) {
@@ -416,7 +481,15 @@ export const briefingService = {
     }));
     if (missing.length) throw new BriefingError(`Mandatory questions unanswered: ${missing.map((x: any) => x.question_text).join(", ")}`);
     if (section.commentBoxRequired && !valueIsPresent(comment ?? null)) throw new BriefingError("A section comment is required");
-    if (section.signatureRequired && !state.signatureAttUuid) throw new BriefingError("A signature is required");
+    const requiredTypes = [
+      ...(section.signatureOfficerRequired ? ["officer"] : []),
+      ...(section.signatureSeafarerRequired ? ["seafarer"] : []),
+    ];
+    const presentTypes = new Set(data.signatures
+      .filter((signature: any) => signature.sectionStateUuid === state.sectionStateUuid)
+      .map((signature: any) => signature.signatureType));
+    const missingSignatureType = requiredTypes.find((type) => !presentTypes.has(type));
+    if (missingSignatureType) throw new BriefingError(`A ${missingSignatureType} signature is required`);
     const db = getDb();
     await db.transaction(async (tx: any) => {
       const locked = await lockWritableSection(tx, submissionUuid, sectionUuid);
@@ -438,9 +511,13 @@ export const briefingService = {
       if (transactionMissing.length) {
         throw new BriefingError(`Mandatory questions unanswered: ${transactionMissing.map((question: any) => question.questionText).join(", ")}`);
       }
-      if (section.signatureRequired && !locked.state.signatureAttUuid) {
-        throw new BriefingError("A signature is required");
-      }
+      const transactionSignatures = await tx.select().from(frmSectionSignatures).where(and(
+        eq(frmSectionSignatures.sectionStateUuid, locked.state.sectionStateUuid),
+        eq(frmSectionSignatures.isDeleted, false),
+      ));
+      const transactionTypes = new Set(transactionSignatures.map((signature: any) => signature.signatureType));
+      const missingType = requiredTypes.find((type) => !transactionTypes.has(type));
+      if (missingType) throw new BriefingError(`A ${missingType} signature is required`);
       await tx.update(frmSectionStates).set({ status:"submitted", sectionComment:comment ?? null, submittedByUuid: user.userUuid ?? String(user.id), submittedByName:user.fullname ?? user.displayName ?? `${user.firstname ?? ""} ${user.lastname ?? ""}`.trim(), submittedAt:new Date(), updatedByUuid: String(req.user!.id), updatedAt: new Date() }).where(eq(frmSectionStates.sectionStateUuid, locked.state.sectionStateUuid));
       const states = await tx.select({ status: frmSectionStates.status }).from(frmSectionStates).where(and(eq(frmSectionStates.submissionUuid, submissionUuid), eq(frmSectionStates.isDeleted, false)));
       if (states.every((item: { status: string }) => item.status === "submitted" || item.status === "not_applicable")) {
@@ -450,12 +527,13 @@ export const briefingService = {
     return { missing_questions: missing };
   },
   async rawSignature(attUuid: string, req: Request) {
-    const att = await briefingRepository.signature(attUuid); if (!att) throw new BriefingError("Signature not found", 404);
-    const state = (await getDb().select().from(frmSectionStates).where(eq(frmSectionStates.sectionStateUuid, att.sectionStateUuid)).limit(1))[0]; if (!state) throw new BriefingError("Signature parent not found", 404);
-    if (!await briefingRepository.submission(state.submissionUuid)) throw new BriefingError("Signature parent submission not found", 404);
-    await authorizeBriefingRead(req); return att;
+    await authorizeBriefingRead(req);
+    const parent = await briefingRepository.signatureParent(attUuid);
+    if (!parent) throw new BriefingError("Signature parent not found", 404);
+    return parent.attachment;
   },
-  async deleteSignature(submissionUuid: string, sectionUuid: string, req: Request) {
+  async deleteSignature(submissionUuid: string, sectionUuid: string, type: "officer" | "seafarer", req: Request) {
+    await authorizeBriefingRead(req);
     const { state, submission } = await this.writable(submissionUuid, sectionUuid);
     const section = (await briefingRepository.structure(submission.formVersionUuid)).sections.find((s: any) => s.sectionUuid === sectionUuid);
     if (!section) throw new BriefingError("Section not found", 404);
@@ -464,12 +542,17 @@ export const briefingService = {
     const db = getDb();
     await db.transaction(async (tx: any) => {
       const locked = await lockWritableSection(tx, submissionUuid, sectionUuid);
-      const priorAttUuid = locked.state.signatureAttUuid;
-      if (!priorAttUuid) return;
+      const signature = (await tx.select().from(frmSectionSignatures).where(and(
+        eq(frmSectionSignatures.sectionStateUuid, locked.state.sectionStateUuid),
+        eq(frmSectionSignatures.signatureType, type),
+        eq(frmSectionSignatures.isDeleted, false),
+      )).limit(1))[0];
+      const priorAttUuid = signature?.signatureAttUuid;
+      if (!signature || !priorAttUuid) return;
       const prior = await tx.select().from(frmSignatureAttachments)
         .where(eq(frmSignatureAttachments.sigAttUuid, priorAttUuid)).limit(1);
       priorPath = prior[0]?.filePath ?? null;
-      await tx.update(frmSectionStates).set({ signatureAttUuid: null, signatureName: null, signedByUuid: null, signedAt: null, updatedByUuid: String(req.user!.id), updatedAt: new Date() }).where(eq(frmSectionStates.sectionStateUuid, locked.state.sectionStateUuid));
+      await tx.delete(frmSectionSignatures).where(eq(frmSectionSignatures.sectionSignatureUuid, signature.sectionSignatureUuid));
       await tx.delete(frmSignatureAttachments).where(eq(frmSignatureAttachments.sigAttUuid, priorAttUuid));
     });
     if (priorPath) await fileStorageService.deleteAttachment(priorPath);

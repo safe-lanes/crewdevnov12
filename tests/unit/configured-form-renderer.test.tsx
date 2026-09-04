@@ -733,11 +733,44 @@ describe("configured form renderer preview", () => {
     expect(createObjectURL).toHaveBeenCalledOnce();
   });
 
+  it("renders independent officer and seafarer signature blocks with live crew defaults", () => {
+    const section: ConfiguredFormSection = {
+      ...configuredSection,
+      clientKey: "dual-signatures",
+      signature_required: false,
+      signature_officer_required: true,
+      signature_seafarer_required: true,
+    };
+    render(
+      <ConfiguredFormRenderer
+        mode="live"
+        embedded
+        parts={[parts[1]]}
+        structures={{ "part-b": [section] }}
+        selectedPartUuid="part-b"
+        live={{
+          answers: {},
+          onAnswerChange: vi.fn(),
+          signatureDefaults: {
+            officer: { name: "Captain Example", rank: "Master" },
+            seafarer: { name: "Alex Seafarer", rank: "Able Seaman" },
+          },
+        }}
+      />,
+    );
+    expect(screen.getByTestId("preview-signature-officer-dual-signatures")).toHaveTextContent("Officer signature");
+    expect(screen.getByTestId("preview-signature-seafarer-dual-signatures")).toHaveTextContent("Seafarer signature");
+    expect(screen.getByTestId("signature-seafarer-name-dual-signatures")).toHaveValue("Alex Seafarer");
+    expect(screen.getByTestId("signature-seafarer-rank-dual-signatures")).toHaveValue("Able Seaman");
+  });
+
   it("disables every matrix response for a live section the user does not own", () => {
     const onAnswerChange = vi.fn();
     const section: ConfiguredFormSection = {
       ...configuredSection,
       clientKey: "readonly-live",
+      signature_officer_required: true,
+      signature_seafarer_required: false,
       responsible_role_name: "Marine Superintendent",
       effectiveLayout: "matrix",
       questions: [{
@@ -756,7 +789,7 @@ describe("configured form renderer preview", () => {
     expect(screen.getByTestId("responsible-role-readonly-live")).toHaveTextContent("To be completed by: Marine Superintendent");
     expect(screen.getByTestId("preview-section-comment-readonly-readonly-live")).toHaveTextContent("No section comment");
     expect(screen.queryByTestId("preview-section-comment-input-readonly-live")).toBeNull();
-    expect(screen.getByTestId("preview-signature-readonly-live")).toHaveTextContent("Awaiting signature");
+    expect(screen.getByTestId("preview-signature-officer-readonly-live")).toHaveTextContent("Awaiting signature");
     expect(activeContainer?.querySelector('canvas[aria-label="Signature canvas"]')).toBeNull();
     expect(screen.queryByText("Submit")).toBeNull();
   });

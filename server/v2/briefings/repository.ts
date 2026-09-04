@@ -3,7 +3,7 @@ import { getDb } from "../db";
 import { admFormsV2, admFormVersionsV2 } from "../../../shared/v2/admin/schema";
 import {
   crewBriefingSubmissions, frmAnswers, frmOptions, frmQuestions, frmSectionStates,
-  frmSections, frmSignatureAttachments,
+  frmSections, frmSignatureAttachments, frmSectionSignatures,
 } from "../../../shared/v2/forms-engine/schema";
 
 export const briefingRepository = {
@@ -41,6 +41,26 @@ export const briefingRepository = {
       eq(frmSignatureAttachments.sigAttUuid, uuid), eq(frmSignatureAttachments.isDeleted, false),
     )))[0];
   },
+  async signatureParent(uuid: string) {
+    const db = getDb();
+    const rows = await db.select({
+      attachment: frmSignatureAttachments,
+      signature: frmSectionSignatures,
+      state: frmSectionStates,
+      submission: crewBriefingSubmissions,
+    }).from(frmSignatureAttachments)
+      .innerJoin(frmSectionSignatures, eq(frmSectionSignatures.signatureAttUuid, frmSignatureAttachments.sigAttUuid))
+      .innerJoin(frmSectionStates, eq(frmSectionStates.sectionStateUuid, frmSectionSignatures.sectionStateUuid))
+      .innerJoin(crewBriefingSubmissions, eq(crewBriefingSubmissions.briefingSubmissionUuid, frmSectionStates.submissionUuid))
+      .where(and(
+        eq(frmSignatureAttachments.sigAttUuid, uuid),
+        eq(frmSignatureAttachments.isDeleted, false),
+        eq(frmSectionSignatures.isDeleted, false),
+        eq(frmSectionStates.isDeleted, false),
+        eq(crewBriefingSubmissions.isDeleted, false),
+      )).limit(1);
+    return rows[0];
+  },
   async structure(versionUuid: string, includeDeleted = false) {
     const db = getDb();
     const sections = await db.select().from(frmSections).where(and(
@@ -63,7 +83,21 @@ export const briefingRepository = {
     const db = getDb();
     const states = await db.select().from(frmSectionStates).where(and(eq(frmSectionStates.submissionUuid, submissionUuid), eq(frmSectionStates.isDeleted, false)));
     const answers = await db.select().from(frmAnswers).where(and(eq(frmAnswers.submissionUuid, submissionUuid), eq(frmAnswers.isDeleted, false)));
-    const signatures = states.length ? await db.select().from(frmSignatureAttachments).where(and(inArray(frmSignatureAttachments.sectionStateUuid, states.map((x: any) => x.sectionStateUuid)), eq(frmSignatureAttachments.isDeleted, false))) : [];
+    const stateUuids = states.map((x: any) => x.sectionStateUuid);
+    const signatureRows = stateUuids.length ? await db.select().from(frmSectionSignatures).where(and(
+      inArray(frmSectionSignatures.sectionStateUuid, stateUuids),
+      eq(frmSectionSignatures.isDeleted, false),
+    )) : [];
+    const attachmentUuids = signatureRows.map((x: any) => x.signatureAttUuid);
+    const attachments = attachmentUuids.length ? await db.select().from(frmSignatureAttachments).where(and(
+      inArray(frmSignatureAttachments.sigAttUuid, attachmentUuids),
+      eq(frmSignatureAttachments.isDeleted, false),
+    )) : [];
+    const attachmentByUuid = new Map(attachments.map((x: any) => [x.sigAttUuid, x]));
+    const signatures = signatureRows.map((signature: any) => ({
+      ...signature,
+      attachment: attachmentByUuid.get(signature.signatureAttUuid) ?? null,
+    })).filter((signature: any) => signature.attachment);
     return { states, answers, signatures };
   },
 };

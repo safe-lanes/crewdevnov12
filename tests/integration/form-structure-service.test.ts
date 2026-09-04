@@ -34,7 +34,8 @@ function testStructure(): FormStructureInput {
       applicable_vessel_types: [],
       responsible_mode: "not_applicable",
       comment_box_required: false,
-      signature_required: false,
+      signature_officer_required: true,
+      signature_seafarer_required: false,
       questions: [{
         question_code: "B1Q1",
         question_text: "Is this understood?",
@@ -60,7 +61,8 @@ function acceptanceSizedStructure(): FormStructureInput {
         applicable_vessel_types: [],
         responsible_mode: "not_applicable" as const,
         comment_box_required: false,
-        signature_required: false,
+        signature_officer_required: false,
+        signature_seafarer_required: false,
         questions: Array.from({ length: 10 }, (_, questionIndex) => {
           const isSelect = questionIndex === 0;
           return {
@@ -172,6 +174,10 @@ describe.sequential("form structure service integration", () => {
       null,
     );
     expect(saved.sections).toHaveLength(1);
+    expect(saved.sections[0]).toMatchObject({
+      signature_officer_required: true,
+      signature_seafarer_required: false,
+    });
     expect(saved.sections[0].questions[0].options).toHaveLength(2);
     expect(saved.option_sets).toHaveLength(1);
 
@@ -188,7 +194,8 @@ describe.sequential("form structure service integration", () => {
         applicable_vessel_types: [],
         responsible_mode: "not_applicable",
         comment_box_required: false,
-        signature_required: false,
+        signature_officer_required: false,
+        signature_seafarer_required: false,
         questions: [{
           question_uuid: savedQuestionUuid,
           question_code: "B1Q1",
@@ -227,6 +234,10 @@ describe.sequential("form structure service integration", () => {
     } as any);
     const copiedTree = await formStructureService.getStructure(copiedDraft.fvUuid, partUuid);
     expect(copiedTree.sections).toHaveLength(1);
+    expect(copiedTree.sections[0]).toMatchObject({
+      signature_officer_required: false,
+      signature_seafarer_required: false,
+    });
     expect(copiedTree.sections[0].questions).toHaveLength(1);
     expect(copiedTree.sections[0].questions[0].options).toHaveLength(2);
     expect(copiedTree.sections[0].section_uuid).not.toBe(savedSectionUuid);
@@ -265,7 +276,8 @@ describe.sequential("form structure service integration", () => {
         applicable_vessel_types: [],
         responsible_mode: "not_applicable",
         comment_box_required: false,
-        signature_required: false,
+        signature_officer_required: false,
+        signature_seafarer_required: false,
         default_option_set_uuid: setUuid,
         layout_preference: "auto",
         questions: [
@@ -369,7 +381,8 @@ describe.sequential("form structure service integration", () => {
         applicable_vessel_types: [],
         responsible_mode: "not_applicable",
         comment_box_required: false,
-        signature_required: false,
+        signature_officer_required: false,
+        signature_seafarer_required: false,
         default_option_set_uuid: setUuid,
         layout_preference: "auto",
         questions: [{
@@ -507,7 +520,8 @@ describe.sequential("form structure service integration", () => {
         applicable_vessel_types: [],
         responsible_mode: "not_applicable",
         comment_box_required: false,
-        signature_required: false,
+        signature_officer_required: false,
+        signature_seafarer_required: false,
         default_option_set_uuid: sourceSetUuid,
         questions: [{
           question_code: "B1Q1",

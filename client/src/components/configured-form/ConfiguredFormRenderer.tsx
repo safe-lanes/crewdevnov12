@@ -61,7 +61,10 @@ export interface ConfiguredFormSection {
   responsible_role_name?: string | null;
   responsible_department: string | null;
   comment_box_required: boolean;
-  signature_required: boolean;
+  /** @deprecated retained only so older released structures remain readable. */
+  signature_required?: boolean;
+  signature_officer_required?: boolean;
+  signature_seafarer_required?: boolean;
   default_option_set_uuid?: string | null;
   layout_preference?: "auto" | "list" | "matrix";
   effectiveLayout?: "list" | "matrix";
@@ -96,6 +99,15 @@ export interface ConfiguredFormVesselType {
 }
 
 export type ConfiguredFormAnswerValue = string | string[] | boolean;
+export type ConfiguredSignatureType = "officer" | "seafarer";
+export interface ConfiguredSignature {
+  signatureAttUuid?: string | null;
+  signatureName?: string | null;
+  signatureRank?: string | null;
+  witnessedByName?: string | null;
+  signedAt?: string | null;
+  signatureUrl?: string | null;
+}
 
 /**
  * Phase 3 contract. Preview deliberately does not consume these values: live
@@ -110,11 +122,12 @@ export interface ConfiguredFormLiveProps {
   sectionComments?: Record<string, string>;
   onSectionCommentChange?: (sectionId: string, comment: string) => void;
   sectionOwnership?: Record<string, { ownerLabel: string; canEdit: boolean }>;
-  sectionStates?: Record<string, { status: "not_started" | "submitted" | "not_applicable"; sectionComment?: string | null; submittedByName?: string | null; submittedAt?: string | null; signatureAttUuid?: string | null; signatureName?: string | null; signedAt?: string | null; signatureUrl?: string | null }>;
+  sectionStates?: Record<string, { status: "not_started" | "submitted" | "not_applicable"; sectionComment?: string | null; submittedByName?: string | null; submittedAt?: string | null; signatures?: Partial<Record<ConfiguredSignatureType, ConfiguredSignature>>; /** Legacy single signature state. */ signatureAttUuid?: string | null; signatureName?: string | null; signedAt?: string | null; signatureUrl?: string | null }>;
+  signatureDefaults?: Partial<Record<ConfiguredSignatureType, { name?: string | null; rank?: string | null }>>;
   onSaveDraft?: (sectionId: string) => void | Promise<void>;
   onSubmitSection?: (sectionId: string, comment: string) => void | Promise<void>;
-  onSignatureChange?: (sectionId: string, pngDataUrl: string) => void | Promise<void>;
-  onDeleteSignature?: (sectionId: string) => void | Promise<void>;
+  onSignatureChange?: (sectionId: string, type: ConfiguredSignatureType, pngDataUrl: string, signerName?: string, signerRank?: string) => void | Promise<void>;
+  onDeleteSignature?: (sectionId: string, type: ConfiguredSignatureType) => void | Promise<void>;
   isLocked?: boolean;
   onSubmit?: () => void | Promise<void>;
 }
@@ -239,7 +252,7 @@ function useQuestionComment(initial = ""): QuestionCommentState {
   };
 }
 
-function SignaturePad({ sectionId, onSave }: { sectionId: string; onSave: (data: string) => void | Promise<void> }) {
+function SignaturePad({ sectionId, type, onSave }: { sectionId: string; type: ConfiguredSignatureType; onSave: (data: string) => void | Promise<void> }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [hasInk, setHasInk] = useState(false);
@@ -270,11 +283,47 @@ function SignaturePad({ sectionId, onSave }: { sectionId: string; onSave: (data:
       setSaveState("error");
     }
   };
-  return <div className="space-y-2" data-testid={`live-signature-${sectionId}`}>
+  return <div className="space-y-2" data-testid={`live-signature-${type}-${sectionId}`}>
     <canvas ref={canvasRef} width={700} height={180} className="h-32 w-full touch-none rounded border bg-white" onPointerDown={start} onPointerMove={move} onPointerUp={() => { drawing.current = false; }} onPointerCancel={() => { drawing.current = false; }} aria-label="Signature canvas" />
     <div className="flex items-center gap-2"><Button type="button" variant="outline" size="sm" disabled={saveState === "pending"} onClick={clear}>Clear</Button><Button type="button" size="sm" disabled={!hasInk || saveState === "pending"} onClick={() => void save()}>{saveState === "pending" ? "Saving signature…" : "Save signature"}</Button></div>
     {saveState === "success" && <p className="text-sm text-emerald-700" role="status">Signature saved.</p>}
     {saveState === "error" && <p className="text-sm text-destructive" role="alert">Signature could not be saved. Please try again.</p>}
+  </div>;
+}
+
+function SignatureBlock({
+  sectionId, type, state, live, readOnly, legacy = false,
+}: {
+  sectionId: string;
+  type: ConfiguredSignatureType;
+  state?: ConfiguredSignature;
+  live?: ConfiguredFormLiveProps;
+  readOnly: boolean;
+  legacy?: boolean;
+}) {
+  const defaults = live?.signatureDefaults?.[type];
+  const [name, setName] = useState(defaults?.name || "");
+  const [rank, setRank] = useState(defaults?.rank || "");
+  useEffect(() => { setName(defaults?.name || ""); setRank(defaults?.rank || ""); }, [defaults?.name, defaults?.rank]);
+  const label = legacy ? "Signature" : type === "officer" ? "Officer signature" : "Seafarer signature";
+  if (state?.signatureUrl) {
+    return <div className="flex flex-wrap items-center gap-2 text-sm" data-testid={legacy ? `preview-signature-${sectionId}` : `preview-signature-${type}-${sectionId}`}>
+      <span className="font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{label}:</span>
+      <AuthenticatedSignatureImage url={state.signatureUrl} signerName={state.signatureName} compact />
+      <span className="whitespace-nowrap">{state.signatureName || "Signer name unavailable"}{type === "seafarer" && state.signatureRank ? ` · ${state.signatureRank}` : ""}</span>
+      {type === "seafarer" && <span className="whitespace-nowrap text-muted-foreground">Signed in the presence of {state.witnessedByName || "the witnessing officer"}</span>}
+      <span className="ml-1 whitespace-nowrap font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Date:</span>
+      <span className="whitespace-nowrap" data-testid={legacy ? `preview-signature-date-${sectionId}` : undefined}>{formatSignatureDate(state.signedAt)}</span>
+    </div>;
+  }
+  return <div className="space-y-3 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={`preview-signature-${type}-${sectionId}`}>
+    <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{label}</p>
+    {type === "seafarer" && <div className="grid gap-3 sm:grid-cols-2">
+      <SAILInput value={name} onChange={(event) => setName(event.target.value)} readOnly={readOnly} placeholder="NAME" aria-label="Seafarer name" data-testid={`signature-seafarer-name-${sectionId}`} />
+      <SAILInput value={rank} onChange={(event) => setRank(event.target.value)} readOnly={readOnly} placeholder="RANK" aria-label="Seafarer rank" data-testid={`signature-seafarer-rank-${sectionId}`} />
+    </div>}
+    {readOnly ? <p className="text-sm text-muted-foreground">Awaiting signature</p> : <SignaturePad sectionId={sectionId} type={type} onSave={(data) => live?.onSignatureChange?.(sectionId, type, data, type === "seafarer" ? name : defaults?.name || undefined, type === "seafarer" ? rank : defaults?.rank || undefined)} />}
+    <SAILFormField label="Date"><p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm">{formatSignatureDate(state?.signedAt)}</p></SAILFormField>
   </div>;
 }
 
@@ -761,8 +810,12 @@ function ConfiguredSection({
 }) {
   const sectionTitle = section.section_title.trim() || MISSING_SECTION_TITLE;
   const sectionCode = section.section_code.trim() || "Section code not configured";
+  // signature_required is intentionally a read-only legacy fallback. New
+  // structures independently declare the officer and seafarer requirements.
+  const officerSignatureRequired = !!section.signature_officer_required || (!!section.signature_required && !section.signature_seafarer_required);
+  const seafarerSignatureRequired = !!section.signature_seafarer_required;
   const hasFooterContent = section.comment_box_required
-    || section.signature_required
+    || officerSignatureRequired || seafarerSignatureRequired
     || section.responsible_mode !== "not_applicable";
   const state = live?.sectionStates?.[sectionId];
   const readOnly = !!live?.isLocked || state?.status === "submitted" || state?.status === "not_applicable" || live?.sectionOwnership?.[sectionId]?.canEdit === false;
@@ -783,7 +836,13 @@ function ConfiguredSection({
       return;
     }
     if (section.comment_box_required && !currentSectionComment.trim()) { window.alert("A section comment is required."); return; }
-    if (section.signature_required && !state?.signatureAttUuid) { window.alert("A signature is required."); return; }
+    const signatures = state?.signatures || {};
+    const missingSignature = (officerSignatureRequired && !(signatures.officer?.signatureAttUuid || state?.signatureAttUuid))
+      ? "Officer"
+      : seafarerSignatureRequired && !signatures.seafarer?.signatureAttUuid
+        ? "Seafarer"
+        : null;
+    if (missingSignature) { window.alert(`A ${missingSignature.toLowerCase()} signature is required.`); return; }
     if (window.confirm("Submit this section? Submitted sections cannot be changed.")) void live?.onSubmitSection?.(sectionId, currentSectionComment);
   };
 
@@ -798,29 +857,18 @@ function ConfiguredSection({
           </SAILFormField>
         </div>
       )}
-      {section.signature_required && mode === "live" && state?.signatureUrl ? (
-        <div
-          className="flex flex-nowrap items-center gap-2 text-sm"
-          style={{ color: sailDesignSystem.colors.textPrimary }}
-          data-testid={`preview-signature-${sectionId}`}
-        >
-          <span className="font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Signature:</span>
-          <AuthenticatedSignatureImage url={state.signatureUrl} signerName={state.signatureName} compact />
-          <span className="ml-1 whitespace-nowrap font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Date:</span>
-          <span className="whitespace-nowrap" data-testid={`preview-signature-date-${sectionId}`}>{formatSignatureDate(state.signedAt)}</span>
+      {officerSignatureRequired && (
+        <div>
+          {mode === "preview" ? <div className="space-y-4 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={section.signature_required ? `preview-signature-${sectionId}` : `preview-signature-officer-${sectionId}`}>
+            <p className="text-sm font-semibold">Officer signature</p><p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>
+            <SAILFormField label="Date"><p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm" data-testid={section.signature_required ? `preview-signature-date-${sectionId}` : undefined}>Auto-filled when signed</p></SAILFormField>
+          </div> : <SignatureBlock sectionId={sectionId} type="officer" readOnly={readOnly} live={live} legacy={!!section.signature_required} state={state?.signatures?.officer || (state?.signatureAttUuid ? { signatureAttUuid: state.signatureAttUuid, signatureName: state.signatureName, signedAt: state.signedAt, signatureUrl: state.signatureUrl } : undefined)} />}
         </div>
-      ) : section.signature_required && (
-        <div className="space-y-4 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={`preview-signature-${sectionId}`}>
-          <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Signature</p>
-          {mode === "live" && readOnly
-            ? <p className="text-sm text-muted-foreground">Awaiting signature</p>
-            : mode === "live"
-              ? <SignaturePad sectionId={sectionId} onSave={(data) => live?.onSignatureChange?.(sectionId, data)} />
-              : <p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>}
-          <SAILFormField label="Date">
-            <p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm" data-testid={`preview-signature-date-${sectionId}`}>{formatSignatureDate(state?.signedAt)}</p>
-          </SAILFormField>
-        </div>
+      )}
+      {seafarerSignatureRequired && (
+        mode === "preview"
+          ? <div className="space-y-4 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={`preview-signature-seafarer-${sectionId}`}><p className="text-sm font-semibold">Seafarer signature</p><p className="text-xs">Signature placeholder — live signing is not available in Preview.</p><SAILFormField label="Date"><p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm">Auto-filled when signed</p></SAILFormField></div>
+          : <SignatureBlock sectionId={sectionId} type="seafarer" readOnly={readOnly} live={live} state={state?.signatures?.seafarer} />
       )}
       <SectionResponsibility section={section} roles={roles} departments={departments} sectionId={sectionId} />
        {mode === "live" && <div className="flex flex-wrap items-center gap-2 border-t pt-3"><Badge variant="outline">{state?.status === "submitted" ? "Submitted" : state?.status === "not_applicable" ? "Not applicable" : "In progress"}</Badge>{live?.sectionOwnership?.[sectionId] && <span className="text-xs">Owner: {live.sectionOwnership[sectionId].ownerLabel}</span>}{state?.submittedByName && <span className="text-xs">Submitted by {state.submittedByName}</span>}{!readOnly && <><Button type="button" variant="outline" size="sm" onClick={() => void live?.onSaveDraft?.(sectionId)}>Save draft</Button><Button type="button" size="sm" onClick={submitSection}>Submit</Button></>}</div>}

@@ -156,7 +156,10 @@ interface SectionModel {
   responsible_role_uuid: string | null;
   responsible_department: string | null;
   comment_box_required: boolean;
-  signature_required: boolean;
+  /** @deprecated only accepted by test/legacy callers; new payloads never write it. */
+  signature_required?: boolean;
+  signature_officer_required?: boolean;
+  signature_seafarer_required?: boolean;
   default_option_set_uuid: string | null;
   layout_preference: "auto" | "list" | "matrix";
   effectiveLayout?: "list" | "matrix";
@@ -320,7 +323,8 @@ function emptySection(partCode: string, sectionIndex: number): SectionModel {
     responsible_role_uuid: null,
     responsible_department: null,
     comment_box_required: false,
-    signature_required: false,
+    signature_officer_required: false,
+    signature_seafarer_required: false,
     default_option_set_uuid: null,
     layout_preference: "auto",
     questions: [],
@@ -377,7 +381,8 @@ function normalizeTree(
     responsible_role_uuid: section.responsible_role_uuid ?? null,
     responsible_department: section.responsible_department ?? null,
     comment_box_required: !!section.comment_box_required,
-    signature_required: !!section.signature_required,
+    signature_officer_required: !!section.signature_officer_required,
+    signature_seafarer_required: !!section.signature_seafarer_required,
     default_option_set_uuid: section.default_option_set_uuid ?? null,
     layout_preference: section.layout_preference || "auto",
     effectiveLayout: section.effectiveLayout,
@@ -434,7 +439,8 @@ function toPayload(sections: SectionModel[], optionSets: OptionSetModel[] = []) 
       responsible_role_uuid: section.responsible_mode === "role" ? section.responsible_role_uuid : null,
       responsible_department: section.responsible_mode === "department" ? section.responsible_department : null,
       comment_box_required: section.comment_box_required,
-      signature_required: section.signature_required,
+      signature_officer_required: !!section.signature_officer_required,
+      signature_seafarer_required: !!section.signature_seafarer_required,
       default_option_set_uuid: section.default_option_set_uuid,
       layout_preference: section.layout_preference,
       questions: section.questions.map((question) => ({
@@ -552,7 +558,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     responsibleRoleUuid: "",
     responsibleDepartment: "",
     commentRequired: false,
-    signatureRequired: false,
+    officerSignatureRequired: false,
+    seafarerSignatureRequired: false,
   });
   const [confirmDelete, setConfirmDelete] = useState<{
     title: string;
@@ -792,7 +799,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       responsibleRoleUuid: section.responsible_role_uuid || "",
       responsibleDepartment: section.responsible_department || "",
       commentRequired: section.comment_box_required,
-      signatureRequired: section.signature_required,
+      officerSignatureRequired: !!section.signature_officer_required,
+      seafarerSignatureRequired: !!section.signature_seafarer_required,
     });
   }, [selectedSection, trees]);
 
@@ -1439,7 +1447,11 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     } else if (settingsDialog === "comment") {
       updateSection(partUuid, index, (section) => ({ ...section, comment_box_required: settingsValues.commentRequired }));
     } else if (settingsDialog === "signature") {
-      updateSection(partUuid, index, (section) => ({ ...section, signature_required: settingsValues.signatureRequired }));
+      updateSection(partUuid, index, (section) => ({
+        ...section,
+        signature_officer_required: settingsValues.officerSignatureRequired,
+        signature_seafarer_required: settingsValues.seafarerSignatureRequired,
+      }));
     }
     setSettingsDialog(null);
   };
@@ -1820,7 +1832,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                    </Badge>
                                  )}
                                  {section.comment_box_required && <Badge variant="outline" className="text-[10px] font-normal">Comment required</Badge>}
-                                 {section.signature_required && <Badge variant="outline" className="text-[10px] font-normal">Signature required</Badge>}
+                                  {section.signature_officer_required && <Badge variant="outline" className="text-[10px] font-normal">Officer signature required</Badge>}
+                                  {section.signature_seafarer_required && <Badge variant="outline" className="text-[10px] font-normal">Seafarer signature required</Badge>}
                                   {section.default_option_set_uuid && <Badge variant="outline" className="text-[10px] font-normal">Default: {optionSetFor(selectedPart.formPartUuid, section.default_option_set_uuid)?.option_set_name || "Custom set"}</Badge>}
                                   <Badge variant="outline" className="text-[10px] font-normal">Layout: {section.layout_preference}</Badge>
                                </div>
@@ -2089,10 +2102,22 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
             </RadioGroup>
           )}
           {settingsDialog === "signature" && (
-            <RadioGroup value={settingsValues.signatureRequired ? "required" : "not_required"} onValueChange={(value) => setSettingsValues((current) => ({ ...current, signatureRequired: value === "required" }))}>
-              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="required" /> Required</label>
-              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_required" /> Not Required</label>
-            </RadioGroup>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Officer signature</p>
+                <RadioGroup value={settingsValues.officerSignatureRequired ? "required" : "not_required"} onValueChange={(value) => setSettingsValues((current) => ({ ...current, officerSignatureRequired: value === "required" }))}>
+                  <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="required" /> Required</label>
+                  <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_required" /> Not Required</label>
+                </RadioGroup>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Seafarer signature</p>
+                <RadioGroup value={settingsValues.seafarerSignatureRequired ? "required" : "not_required"} onValueChange={(value) => setSettingsValues((current) => ({ ...current, seafarerSignatureRequired: value === "required" }))}>
+                  <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="required" /> Required</label>
+                  <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_required" /> Not Required</label>
+                </RadioGroup>
+              </div>
+            </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setSettingsDialog(null)} data-testid="button-cancel-section-settings">Cancel</Button>

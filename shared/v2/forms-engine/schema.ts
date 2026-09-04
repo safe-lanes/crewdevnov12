@@ -68,7 +68,8 @@ export const frmSections = pgTable(
     }),
     responsibleDepartment: text("responsible_department"),
     commentBoxRequired: boolean("comment_box_required").notNull().default(false),
-    signatureRequired: boolean("signature_required").notNull().default(false),
+    signatureOfficerRequired: boolean("signature_officer_required").notNull().default(false),
+    signatureSeafarerRequired: boolean("signature_seafarer_required").notNull().default(false),
     defaultOptionSetUuid: text("default_option_set_uuid"),
     layoutPreference: text("layout_preference").notNull().default("auto"),
     ...auditColumns,
@@ -181,20 +182,12 @@ export const frmSectionStates = pgTable(
     submittedByUuid: text("submitted_by_uuid"),
     submittedByName: text("submitted_by_name"),
     submittedAt: timestamp("submitted_at"),
-    signatureAttUuid: text("signature_att_uuid").references(
-      (): AnyPgColumn => frmSignatureAttachments.sigAttUuid,
-      { onDelete: "restrict", onUpdate: "cascade" },
-    ),
-    signatureName: text("signature_name"),
-    signedByUuid: text("signed_by_uuid"),
-    signedAt: timestamp("signed_at"),
     ...auditColumns,
   },
   (table) => ({
     submissionUuidIdx: index("idx_frm_section_states_submission_uuid").on(table.submissionUuid),
     sectionUuidIdx: index("idx_frm_section_states_section_uuid").on(table.sectionUuid),
     submittedByUuidIdx: index("idx_frm_section_states_submitted_by_uuid").on(table.submittedByUuid),
-    signatureAttUuidIdx: index("idx_frm_section_states_signature_att_uuid").on(table.signatureAttUuid),
   }),
 );
 
@@ -222,17 +215,36 @@ export const frmSignatureAttachments = pgTable(
   {
     id: serial("id").primaryKey(),
     sigAttUuid: text("sig_att_uuid").notNull().unique(),
-    sectionStateUuid: text("section_state_uuid")
-      .notNull()
-      .references(() => frmSectionStates.sectionStateUuid, { onDelete: "restrict", onUpdate: "cascade" }),
     fileName: text("file_name"),
     fileType: text("file_type"),
     fileSize: text("file_size"),
     filePath: text("file_path").notNull(),
     ...auditColumns,
   },
+);
+
+export const frmSectionSignatures = pgTable(
+  "frm_section_signatures",
+  {
+    id: serial("id").primaryKey(),
+    sectionSignatureUuid: text("section_signature_uuid").notNull().unique(),
+    sectionStateUuid: text("section_state_uuid")
+      .notNull()
+      .references(() => frmSectionStates.sectionStateUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    signatureType: text("signature_type").notNull(),
+    signatureAttUuid: text("signature_att_uuid")
+      .notNull()
+      .references(() => frmSignatureAttachments.sigAttUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    signerName: text("signer_name").notNull(),
+    signerRank: text("signer_rank"),
+    signedAt: timestamp("signed_at").notNull(),
+    signedByUuid: text("signed_by_uuid").notNull(),
+    signatureMethod: text("signature_method").notNull(),
+    ...auditColumns,
+  },
   (table) => ({
-    sectionStateUuidIdx: index("idx_frm_signature_attachments_section_state_uuid").on(table.sectionStateUuid),
+    sectionStateUuidIdx: index("idx_frm_section_signatures_section_state_uuid").on(table.sectionStateUuid),
+    signatureAttUuidIdx: index("idx_frm_section_signatures_signature_att_uuid").on(table.signatureAttUuid),
   }),
 );
 
@@ -256,6 +268,7 @@ export const insertCrewBriefingSubmissionSchema = createInsertSchema(crewBriefin
 export const insertFrmSectionStateSchema = createInsertSchema(frmSectionStates).omit(insertAuditOmit);
 export const insertFrmAnswerSchema = createInsertSchema(frmAnswers).omit(insertAuditOmit);
 export const insertFrmSignatureAttachmentSchema = createInsertSchema(frmSignatureAttachments).omit(insertAuditOmit);
+export const insertFrmSectionSignatureSchema = createInsertSchema(frmSectionSignatures).omit(insertAuditOmit);
 
 const rowUuidSchema = z.string().uuid();
 
@@ -310,7 +323,8 @@ export const formStructureSectionInputSchema = z.object({
   responsible_role_uuid: rowUuidSchema.nullable().optional(),
   responsible_department: z.string().trim().max(500).nullable().optional(),
   comment_box_required: z.boolean().default(false),
-  signature_required: z.boolean().default(false),
+  signature_officer_required: z.boolean().default(false),
+  signature_seafarer_required: z.boolean().default(false),
   default_option_set_uuid: rowUuidSchema.nullable().optional(),
   layout_preference: z.enum(SECTION_LAYOUT_PREFERENCES).default("auto"),
   effectiveLayout: z.enum(["list", "matrix"]).optional(),
@@ -403,3 +417,5 @@ export type InsertFrmAnswer = z.infer<typeof insertFrmAnswerSchema>;
 export type FrmAnswer = typeof frmAnswers.$inferSelect;
 export type InsertFrmSignatureAttachment = z.infer<typeof insertFrmSignatureAttachmentSchema>;
 export type FrmSignatureAttachment = typeof frmSignatureAttachments.$inferSelect;
+export type InsertFrmSectionSignature = z.infer<typeof insertFrmSectionSignatureSchema>;
+export type FrmSectionSignature = typeof frmSectionSignatures.$inferSelect;

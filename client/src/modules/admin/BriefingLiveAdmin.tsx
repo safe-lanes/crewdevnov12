@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ConfiguredFormRenderer, type ConfiguredFormAnswerValue, type ConfiguredFormSection } from "@/components/configured-form/ConfiguredFormRenderer";
+import { ConfiguredFormRenderer, type ConfiguredFormAnswerValue, type ConfiguredFormSection, type ConfiguredSignatureType } from "@/components/configured-form/ConfiguredFormRenderer";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCrewListV2 } from "@/modules/crew-pool/hooks/useCrewPoolV2";
@@ -71,9 +71,9 @@ export default function BriefingLiveAdmin() {
     onSuccess: x => { setSubmissionUuid(x.briefing_submission_uuid); void queryClient.invalidateQueries({ queryKey: [BASE, "list", crewUuid] }); },
   });
   const saveSignature = useMutation({
-    mutationFn: async ({ section, data }: { section: string; data: string }) => {
+    mutationFn: async ({ section, type, data, signerName, signerRank }: { section: string; type: ConfiguredSignatureType; data: string; signerName?: string; signerRank?: string }) => {
       await flush();
-      await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${section}/signature`, { data });
+      await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${section}/signature`, { type, data, ...(signerName ? { signerName } : {}), ...(signerRank ? { signerRank } : {}) });
       await queryClient.invalidateQueries({ queryKey: [BASE, submissionUuid] });
     },
     onSuccess: () => toast({ title: "Signature saved", description: "The signature and signing date have been recorded." }),
@@ -140,9 +140,24 @@ export default function BriefingLiveAdmin() {
     data.structure.options.forEach((o: any) => options.set(o.option_set_uuid, [...(options.get(o.option_set_uuid) || []), o]));
     data.structure.questions.forEach((q: any) => grouped.set(q.section_uuid, [...(grouped.get(q.section_uuid) || []), { ...q, options: options.get(q.option_set_uuid) || [] }]));
     const sections: ConfiguredFormSection[] = data.structure.sections.map((s: any) => { const qs = grouped.get(s.section_uuid) || []; return { ...s, applicable_vessel_types: (() => { try { return JSON.parse(s.applicable_vessel_types || "[]"); } catch { return []; } })(), questions: qs, effectiveLayout: layout(s, qs) }; });
-    const states = Object.fromEntries(data.section_states.map((s: any) => [s.section_uuid, { status: s.status, sectionComment: s.section_comment, submittedByName: s.submitted_by_name, submittedAt: s.submitted_at, signatureAttUuid: s.signature_att_uuid, signatureName: s.signature_name, signedAt: s.signed_at, signatureUrl: s.signature_att_uuid ? `${BASE}/signatures/${s.signature_att_uuid}/raw` : null }]));
+    const signaturesByState = new Map<string, any[]>();
+    (data.signatures || []).forEach((signature: any) => signaturesByState.set(signature.section_state_uuid, [...(signaturesByState.get(signature.section_state_uuid) || []), signature]));
+    const states = Object.fromEntries(data.section_states.map((s: any) => {
+      const signatures = Object.fromEntries((signaturesByState.get(s.section_state_uuid) || []).map((signature: any) => [signature.signature_type, {
+        signatureAttUuid: signature.sig_att_uuid,
+        signatureName: signature.signer_name,
+        signatureRank: signature.signer_rank,
+        witnessedByName: signature.witnessed_by_name,
+        signedAt: signature.signed_at,
+        signatureUrl: signature.sig_att_uuid ? `${BASE}/signatures/${signature.sig_att_uuid}/raw` : null,
+      }]));
+      return [s.section_uuid, { status: s.status, sectionComment: s.section_comment, submittedByName: s.submitted_by_name, submittedAt: s.submitted_at, signatures }];
+    }));
     const ownership = Object.fromEntries(sections.map(s => [s.section_uuid!, ownershipFor(s, { roleName, roleId, userType })]));
-    return { sections, states, ownership, submission: data.submission };
+    return { sections, states, ownership, submission: data.submission, signatureDefaults: {
+      seafarer: { name: data.seafarer_default?.signer_name, rank: data.seafarer_default?.signer_rank },
+      officer: { name: data.officer_default?.signer_name, rank: data.officer_default?.signer_rank },
+    } };
   }, [readQuery.data, roleName, roleId, userType]);
   const briefingForms = (formsQuery.data || []).filter((form: any) => String(form.category || form.formCategory || "").toLowerCase() === "briefing");
   const errors = [formsQuery.error, crewError, vesselError, listQuery.error, readQuery.error, create.error].filter(Boolean);
@@ -167,6 +182,6 @@ export default function BriefingLiveAdmin() {
       </div>
     )}
     {crewUuid && <div className="flex flex-wrap gap-2">{listQuery.isLoading ? "Loading submissions…" : listQuery.data?.map((s: any) => <Button key={s.briefing_submission_uuid} size="sm" variant="outline" onClick={() => setSubmissionUuid(s.briefing_submission_uuid)}>Open {s.status} · {s.created_at ? new Date(s.created_at).toLocaleDateString() : s.briefing_submission_uuid.slice(0, 8)}</Button>)}</div>}
-    {model && <><p className={`text-sm ${saveState === "error" ? "text-destructive" : ""}`}>{saveState === "saving" ? "Saving draft…" : saveState === "error" ? "Draft save failed; retry with Save draft." : "Draft saved"}</p><ConfiguredFormRenderer mode="live" embedded parts={[{ formPartUuid: "briefing", partCode: "B", partTitle: "Briefing", partType: "configurable" }]} selectedPartUuid="briefing" structures={{ briefing: model.sections }} selectedVesselTypeUuid={model.submission.vessel_type_uuid || "all"} live={{ answers: draftAnswers, answerComments: draftComments, sectionComments: draftSectionComments, onSectionCommentChange: (section, comment) => { draftSectionCommentsRef.current = { ...draftSectionCommentsRef.current, [section]: comment }; setDraftSectionComments(draftSectionCommentsRef.current); queueSectionComment(section, comment); }, sectionStates: model.states, sectionOwnership: model.ownership, onSaveDraft: flush, onAnswerChange: (q, value) => { draftAnswersRef.current = { ...draftAnswersRef.current, [q]: value }; setDraftAnswers(draftAnswersRef.current); queueQuestion(q, value, draftCommentsRef.current[q] ?? null); }, onAnswerCommentChange: (q, comment) => { draftCommentsRef.current = { ...draftCommentsRef.current, [q]: comment }; setDraftComments(draftCommentsRef.current); queueQuestion(q, draftAnswersRef.current[q] ?? null, comment); }, onSignatureChange: async (section, data) => saveSignature.mutateAsync({ section, data }), onSubmitSection: async (section, comment) => { await flush(); await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${section}/submit`, { comment: comment || null }); await queryClient.invalidateQueries({ queryKey: [BASE, submissionUuid] }); } }} /></>}
+    {model && <><p className={`text-sm ${saveState === "error" ? "text-destructive" : ""}`}>{saveState === "saving" ? "Saving draft…" : saveState === "error" ? "Draft save failed; retry with Save draft." : "Draft saved"}</p><ConfiguredFormRenderer mode="live" embedded parts={[{ formPartUuid: "briefing", partCode: "B", partTitle: "Briefing", partType: "configurable" }]} selectedPartUuid="briefing" structures={{ briefing: model.sections }} selectedVesselTypeUuid={model.submission.vessel_type_uuid || "all"} live={{ answers: draftAnswers, answerComments: draftComments, sectionComments: draftSectionComments, signatureDefaults: model.signatureDefaults, onSectionCommentChange: (section, comment) => { draftSectionCommentsRef.current = { ...draftSectionCommentsRef.current, [section]: comment }; setDraftSectionComments(draftSectionCommentsRef.current); queueSectionComment(section, comment); }, sectionStates: model.states, sectionOwnership: model.ownership, onSaveDraft: flush, onAnswerChange: (q, value) => { draftAnswersRef.current = { ...draftAnswersRef.current, [q]: value }; setDraftAnswers(draftAnswersRef.current); queueQuestion(q, value, draftCommentsRef.current[q] ?? null); }, onAnswerCommentChange: (q, comment) => { draftCommentsRef.current = { ...draftCommentsRef.current, [q]: comment }; setDraftComments(draftCommentsRef.current); queueQuestion(q, draftAnswersRef.current[q] ?? null, comment); }, onSignatureChange: async (section, type, data, signerName, signerRank) => saveSignature.mutateAsync({ section, type, data, signerName, signerRank }), onSubmitSection: async (section, comment) => { await flush(); await apiRequest("POST", `${BASE}/submissions/${submissionUuid}/sections/${section}/submit`, { comment: comment || null }); await queryClient.invalidateQueries({ queryKey: [BASE, submissionUuid] }); } }} /></>}
   </div>;
 }
