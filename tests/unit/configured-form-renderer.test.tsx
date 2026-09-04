@@ -688,6 +688,51 @@ describe("configured form renderer preview", () => {
     expect(screen.getByText("Submit")).toBeInTheDocument();
   });
 
+  it("renders a stored signature and date as one compact footer row", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(new Response(new Blob(["signature"], { type: "image/png" })));
+    const createObjectURL = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:signature");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+
+    render(
+      <ConfiguredFormRenderer
+        mode="live"
+        embedded
+        parts={[parts[1]]}
+        structures={{ "part-b": [configuredSection] }}
+        selectedPartUuid="part-b"
+        roles={[{ ruid: "master", assignedRole: "Master", isActive: true, isDeleted: false }]}
+        live={{
+          answers: {},
+          onAnswerChange: vi.fn(),
+          sectionStates: {
+            "section-one": {
+              status: "submitted",
+              signatureAttUuid: "signature-att",
+              signatureName: "Captain Example",
+              signatureUrl: "/api/v2/briefings/signatures/signature-att/raw",
+              signedAt: "2026-09-04T06:56:19.000Z",
+            },
+          },
+        }}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const row = screen.getByTestId("preview-signature-section-one");
+    expect(row).toHaveClass("flex", "items-center");
+    expect(row).not.toHaveClass("border", "border-dashed");
+    expect(row).toHaveTextContent("Signature:");
+    expect(row).toHaveTextContent("Date:");
+    expect(screen.getByTestId("preview-signature-date-section-one")).toHaveTextContent("04-Sep-2026");
+    const image = row.querySelector("img");
+    expect(image).toHaveClass("h-auto", "max-h-10", "w-auto", "max-w-[min(14rem,35vw)]", "object-contain");
+    expect(createObjectURL).toHaveBeenCalledOnce();
+  });
+
   it("disables every matrix response for a live section the user does not own", () => {
     const onAnswerChange = vi.fn();
     const section: ConfiguredFormSection = {

@@ -278,7 +278,7 @@ function SignaturePad({ sectionId, onSave }: { sectionId: string; onSave: (data:
   </div>;
 }
 
-function AuthenticatedSignatureImage({ url, signerName }: { url: string; signerName?: string | null }) {
+function AuthenticatedSignatureImage({ url, signerName, compact = false }: { url: string; signerName?: string | null; compact?: boolean }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -301,7 +301,13 @@ function AuthenticatedSignatureImage({ url, signerName }: { url: string; signerN
   }, [url]);
   if (error) return <p className="text-sm text-destructive" role="alert">Signature image could not be loaded.</p>;
   if (!objectUrl) return <p className="text-sm text-muted-foreground">Loading signature…</p>;
-  return <img src={objectUrl} alt={`Signature of ${signerName || "submitter"}`} className="max-h-32 rounded border bg-white" />;
+  return (
+    <img
+      src={objectUrl}
+      alt={`Signature of ${signerName || "submitter"}`}
+      className={compact ? "h-auto max-h-10 w-auto max-w-[min(14rem,35vw)] shrink object-contain" : "max-h-32 rounded border bg-white"}
+    />
+  );
 }
 
 function formatSignatureDate(value?: string | null) {
@@ -792,16 +798,25 @@ function ConfiguredSection({
           </SAILFormField>
         </div>
       )}
-      {section.signature_required && (
+      {section.signature_required && mode === "live" && state?.signatureUrl ? (
+        <div
+          className="flex flex-nowrap items-center gap-2 text-sm"
+          style={{ color: sailDesignSystem.colors.textPrimary }}
+          data-testid={`preview-signature-${sectionId}`}
+        >
+          <span className="font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Signature:</span>
+          <AuthenticatedSignatureImage url={state.signatureUrl} signerName={state.signatureName} compact />
+          <span className="ml-1 whitespace-nowrap font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Date:</span>
+          <span className="whitespace-nowrap" data-testid={`preview-signature-date-${sectionId}`}>{formatSignatureDate(state.signedAt)}</span>
+        </div>
+      ) : section.signature_required && (
         <div className="space-y-4 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={`preview-signature-${sectionId}`}>
           <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Signature</p>
-          {mode === "live" && state?.signatureUrl
-            ? <AuthenticatedSignatureImage url={state.signatureUrl} signerName={state.signatureName} />
-            : mode === "live" && readOnly
-              ? <p className="text-sm text-muted-foreground">Awaiting signature</p>
-              : mode === "live"
-                ? <SignaturePad sectionId={sectionId} onSave={(data) => live?.onSignatureChange?.(sectionId, data)} />
-                : <p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>}
+          {mode === "live" && readOnly
+            ? <p className="text-sm text-muted-foreground">Awaiting signature</p>
+            : mode === "live"
+              ? <SignaturePad sectionId={sectionId} onSave={(data) => live?.onSignatureChange?.(sectionId, data)} />
+              : <p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>}
           <SAILFormField label="Date">
             <p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm" data-testid={`preview-signature-date-${sectionId}`}>{formatSignatureDate(state?.signedAt)}</p>
           </SAILFormField>
