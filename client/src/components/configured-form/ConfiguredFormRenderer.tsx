@@ -8,6 +8,16 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SelectItem } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   FormSection,
   FormTable,
   SAILButton,
@@ -820,6 +830,11 @@ function ConfiguredSection({
   const state = live?.sectionStates?.[sectionId];
   const readOnly = !!live?.isLocked || state?.status === "submitted" || state?.status === "not_applicable" || live?.sectionOwnership?.[sectionId]?.canEdit === false;
   const [sectionComment, setSectionComment] = useState(state?.sectionComment || "");
+  const [sectionDialog, setSectionDialog] = useState<{
+    kind: "validation" | "submit";
+    title: string;
+    description: string;
+  } | null>(null);
   const currentSectionComment = live?.sectionComments?.[sectionId] ?? sectionComment;
   const submitSection = () => {
     const missing = section.questions.find((question, index) => {
@@ -832,18 +847,40 @@ function ConfiguredSection({
       const questionId = missing.clientKey || missing.question_uuid;
       const selector = questionId ? `[data-testid="preview-point-${questionId}"] input, [data-testid="preview-point-${questionId}"] textarea, [data-testid="preview-matrix-point-${questionId}"] input` : "";
       document.querySelector<HTMLElement>(selector)?.focus();
-      window.alert(`Please answer mandatory point ${missing.question_code || missing.question_text}.`);
+      setSectionDialog({
+        kind: "validation",
+        title: "Complete this section before submitting",
+        description: `Please answer mandatory point ${missing.question_code || missing.question_text}.`,
+      });
       return;
     }
-    if (section.comment_box_required && !currentSectionComment.trim()) { window.alert("A section comment is required."); return; }
+    if (section.comment_box_required && !currentSectionComment.trim()) {
+      setSectionDialog({
+        kind: "validation",
+        title: "Complete this section before submitting",
+        description: "A section comment is required.",
+      });
+      return;
+    }
     const signatures = state?.signatures || {};
     const missingSignature = (officerSignatureRequired && !(signatures.officer?.signatureAttUuid || state?.signatureAttUuid))
       ? "Officer"
       : seafarerSignatureRequired && !signatures.seafarer?.signatureAttUuid
         ? "Seafarer"
         : null;
-    if (missingSignature) { window.alert(`A ${missingSignature.toLowerCase()} signature is required.`); return; }
-    if (window.confirm("Submit this section? Submitted sections cannot be changed.")) void live?.onSubmitSection?.(sectionId, currentSectionComment);
+    if (missingSignature) {
+      setSectionDialog({
+        kind: "validation",
+        title: "Complete this section before submitting",
+        description: `A ${missingSignature.toLowerCase()} signature is required.`,
+      });
+      return;
+    }
+    setSectionDialog({
+      kind: "submit",
+      title: `Submit ${sectionCode} ${sectionTitle}?`,
+      description: "Submitted sections cannot be changed. This action is permanent.",
+    });
   };
 
   const footer = isApplicable && isExpanded && (hasFooterContent || mode === "live") ? (
@@ -908,6 +945,27 @@ function ConfiguredSection({
           </FormTable>
         )}
       </FormSection>
+      <AlertDialog open={sectionDialog !== null} onOpenChange={(open) => !open && setSectionDialog(null)}>
+        <AlertDialogContent data-testid={`briefing-section-dialog-${sectionId}`}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{sectionDialog?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{sectionDialog?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {sectionDialog?.kind === "submit" && <AlertDialogCancel>Cancel</AlertDialogCancel>}
+            <AlertDialogAction
+              onClick={() => {
+                if (sectionDialog?.kind === "submit") {
+                  void live?.onSubmitSection?.(sectionId, currentSectionComment);
+                }
+                setSectionDialog(null);
+              }}
+            >
+              {sectionDialog?.kind === "submit" ? "Submit" : "OK"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
