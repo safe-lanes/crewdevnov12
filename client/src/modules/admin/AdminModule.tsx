@@ -114,6 +114,7 @@ import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionConte
 import AccessControlPage from "./AccessControlPage";
 import ApprovalWorkflowPage from "./ApprovalWorkflowPage";
 import BriefingLiveAdmin from "./BriefingLiveAdmin";
+import { canAccessTemporaryBriefings } from "./temporaryBriefingsAccess";
 import TrainingStatusPage from "./TrainingStatusPage";
 import TrainingCategoryPage from "./TrainingCategoryPage";
 import { 
@@ -545,14 +546,14 @@ interface SeafarerData {
 // Inner AdminModule component (uses EditSessionContext)
 const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
-  const { canView, canCreate, canEdit, canDelete, permissions, roleName } = usePermissions();
+  const { canView, canCreate, canEdit, canDelete, permissions, userType } = usePermissions();
   const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow", "briefing-live": "Forms" };
   const adminAllowedPages = useMemo(() => {
     const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow", "briefing-live"];
-    const isAdmin = roleName?.trim().toLowerCase() === "admin";
+    const isOfficeUser = canAccessTemporaryBriefings(userType);
     const standardPages = permissions.length === 0 ? all : all.filter(p => canView(adminPageToMenu[p] || p));
-    return standardPages.filter(p => p !== "briefing-live" || isAdmin);
-  }, [permissions, canView, roleName]);
+    return standardPages.filter(p => p !== "briefing-live" || isOfficeUser);
+  }, [permissions, canView, userType]);
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
   const [isVesselZipUploadOpen, setIsVesselZipUploadOpen] = useState(false);

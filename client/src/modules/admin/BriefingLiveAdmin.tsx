@@ -34,7 +34,7 @@ const layout = (section: any, questions: any[]) => {
   return section.layout_preference === "list" || !eligible ? "list" : "matrix";
 };
 
-/** Explicitly temporary, Admin-only integration surface for the Briefing API. */
+/** Explicitly temporary, Office-only integration surface for the Briefing API. */
 export default function BriefingLiveAdmin() {
   const queryClient = useQueryClient();
   const { roleName, roleId, userType } = usePermissions();
@@ -135,7 +135,7 @@ export default function BriefingLiveAdmin() {
   const briefingForms = (formsQuery.data || []).filter((form: any) => String(form.category || form.formCategory || "").toLowerCase() === "briefing");
   const errors = [formsQuery.error, crewError, vesselError, listQuery.error, readQuery.error, create.error].filter(Boolean);
   return <div className="space-y-5" data-testid="temporary-admin-briefings">
-    <header><h1 className="text-xl font-semibold">Temporary Admin-only: Live Briefing submissions</h1><p className="text-sm text-muted-foreground">This temporary integration uses the released Briefing API. Section authorization remains server-enforced.</p></header>
+    <header><h1 className="text-xl font-semibold">Temporary Office-only: Live Briefing submissions</h1><p className="text-sm text-muted-foreground">This temporary integration uses the released Briefing API. Section authorization remains server-enforced.</p></header>
     {errors.map((error, i) => <p key={i} className="text-sm text-destructive">{error instanceof Error ? error.message : String(error)}</p>)}
     <div className="grid gap-3 md:grid-cols-4">
       <Select value={crewUuid} onValueChange={setCrewUuid}><SelectTrigger><SelectValue placeholder="Choose crew" /></SelectTrigger><SelectContent>{crew.map((c: any) => <SelectItem key={c.crewUuid} value={c.crewUuid}>{crewName(c)} — {crewRank(c) || "Rank not set"}</SelectItem>)}</SelectContent></Select>
