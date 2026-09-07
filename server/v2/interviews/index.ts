@@ -1,0 +1,1 @@
+export { default as interviewsV2Routes } from "./routes";

@@ -178,6 +178,34 @@ export const crewBriefingSubmissions = pgTable(
   }),
 );
 
+/** Pinned configurable-form detail for a recruitment B6 interview item. */
+export const crewInterviewSubmissions = pgTable(
+  "crew_interview_submissions",
+  {
+    id: serial("id").primaryKey(),
+    interviewSubmissionUuid: text("interview_submission_uuid").notNull().unique(),
+    recCanUuid: text("rec_can_uuid").notNull(),
+    // Nullable so historical submissions survive a subsequently soft-deleted
+    // B6 row; this table deliberately does not FK the mutable B6 gate row.
+    interviewItemUuid: text("interview_item_uuid").unique(),
+    formUuid: text("form_uuid").notNull()
+      .references(() => admFormsV2.formUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    formVersionUuid: text("form_version_uuid").notNull()
+      .references(() => admFormVersionsV2.fvUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    status: text("status").notNull().default("in_progress"),
+    completedAt: timestamp("completed_at"),
+    interviewCategory: text("interview_category"),
+    interviewStage: text("interview_stage"),
+    interviewerComments: text("interviewer_comments"),
+    ...auditColumns,
+  },
+  (table) => ({
+    candidateIdx: index("idx_crew_interview_submissions_rec_can_uuid").on(table.recCanUuid),
+    formUuidIdx: index("idx_crew_interview_submissions_form_uuid").on(table.formUuid),
+    formVersionUuidIdx: index("idx_crew_interview_submissions_form_version_uuid").on(table.formVersionUuid),
+  }),
+);
+
 export const frmSectionStates = pgTable(
   "frm_section_states",
   {
@@ -275,6 +303,7 @@ export const insertFrmQuestionSchema = createInsertSchema(frmQuestions).omit(ins
 export const insertFrmOptionSetSchema = createInsertSchema(frmOptionSets).omit(insertAuditOmit);
 export const insertFrmOptionSchema = createInsertSchema(frmOptions).omit(insertAuditOmit);
 export const insertCrewBriefingSubmissionSchema = createInsertSchema(crewBriefingSubmissions).omit(insertAuditOmit);
+export const insertCrewInterviewSubmissionSchema = createInsertSchema(crewInterviewSubmissions).omit(insertAuditOmit);
 export const insertFrmSectionStateSchema = createInsertSchema(frmSectionStates).omit(insertAuditOmit);
 export const insertFrmAnswerSchema = createInsertSchema(frmAnswers).omit(insertAuditOmit);
 export const insertFrmSignatureAttachmentSchema = createInsertSchema(frmSignatureAttachments).omit(insertAuditOmit);
@@ -421,6 +450,8 @@ export type InsertFrmOption = z.infer<typeof insertFrmOptionSchema>;
 export type FrmOption = typeof frmOptions.$inferSelect;
 export type InsertCrewBriefingSubmission = z.infer<typeof insertCrewBriefingSubmissionSchema>;
 export type CrewBriefingSubmission = typeof crewBriefingSubmissions.$inferSelect;
+export type InsertCrewInterviewSubmission = z.infer<typeof insertCrewInterviewSubmissionSchema>;
+export type CrewInterviewSubmission = typeof crewInterviewSubmissions.$inferSelect;
 export type InsertFrmSectionState = z.infer<typeof insertFrmSectionStateSchema>;
 export type FrmSectionState = typeof frmSectionStates.$inferSelect;
 export type InsertFrmAnswer = z.infer<typeof insertFrmAnswerSchema>;
