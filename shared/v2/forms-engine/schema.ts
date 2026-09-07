@@ -197,6 +197,9 @@ export const crewInterviewSubmissions = pgTable(
     interviewCategory: text("interview_category"),
     interviewStage: text("interview_stage"),
     interviewerComments: text("interviewer_comments"),
+    officeReviewedByUuid: text("office_reviewed_by_uuid"),
+    officeReviewedByName: text("office_reviewed_by_name"),
+    officeReviewedAt: timestamp("office_reviewed_at"),
     ...auditColumns,
   },
   (table) => ({

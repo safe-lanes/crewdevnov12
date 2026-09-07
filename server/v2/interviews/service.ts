@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { v4 as uuid } from "uuid";
 import type { Request } from "express";
 import { getDb } from "../db";
@@ -28,6 +28,15 @@ export function serializeInterviewStructure(tree: any, responsibleRoleNames = ne
     questions: tree.questions.map((question: any) => ({ question_uuid:question.questionUuid, section_uuid:question.sectionUuid, question_code:question.questionCode, question_text:question.questionText, response_type:question.responseType, is_mandatory:question.isMandatory, comment_enabled:question.commentEnabled, option_set_uuid:question.optionSetUuid, sort_order:question.sortOrder })),
     options: tree.options.map((option: any) => ({ option_uuid:option.optionUuid, option_set_uuid:option.optionSetUuid, option_label:option.optionLabel, option_value:option.optionValue, sort_order:option.sortOrder })),
   };
+}
+export function resolveInterviewInterviewerName(interviewerReference: string | null | undefined, users: any[]) {
+  if (!interviewerReference) return null;
+  // Prefer a canonical UUID hit when a legacy display name happens to collide.
+  const user = users.find((candidate: any) => candidate.userUuid === interviewerReference)
+    ?? users.find((candidate: any) => candidate.fullname === interviewerReference || candidate.displayName === interviewerReference);
+  if (!user) return null;
+  return user.fullname ?? user.displayName ??
+    (`${user.firstname ?? ""} ${user.lastname ?? ""}`.trim() || null);
 }
 export async function authorizeInterviewRead(req: Request) {
   if (!req.user) throw new InterviewError("Office access is required", 403);
@@ -107,8 +116,15 @@ export const interviewService = {
     const b6 = submission.interviewItemUuid ? await interviewRepository.item(submission.interviewItemUuid) : null;
     const candidate = b6?.candidate;
     const nationality = candidate?.nationalityUuid ? (await getDb().select({ name: masterNationalities.nationality }).from(masterNationalities).where(eq(masterNationalities.natUuid, candidate.nationalityUuid)).limit(1))[0]?.name ?? null : null;
-    const interviewer = b6?.item.interviewerUuid ? (await getDb().select().from(masterUsers).where(eq(masterUsers.userUuid, b6.item.interviewerUuid)).limit(1))[0] : null;
-    const interviewerName = interviewer ? (interviewer.fullname ?? interviewer.displayName ?? (`${interviewer.firstname ?? ""} ${interviewer.lastname ?? ""}`.trim() || null)) : null;
+    const interviewerReference = b6?.item.interviewerUuid ?? null;
+    const interviewers = interviewerReference
+      ? await getDb().select().from(masterUsers).where(or(
+        eq(masterUsers.userUuid, interviewerReference),
+        eq(masterUsers.fullname, interviewerReference),
+        eq(masterUsers.displayName, interviewerReference),
+      ))
+      : [];
+    const interviewerName = resolveInterviewInterviewerName(interviewerReference, interviewers);
     const responsibleIds: string[] = Array.from(new Set<string>(tree.sections.filter((section: any) => section.responsibleMode === "role" && section.responsibleRoleUuid).map((section: any) => String(section.responsibleRoleUuid))));
     const roles = responsibleIds.length ? await getDb().select({ ruid: admRoleMasterAc.ruid, assignedRole: admRoleMasterAc.assignedRole }).from(admRoleMasterAc).where(inArray(admRoleMasterAc.ruid, responsibleIds)) : [];
     const roleNames = new Map<string, string>(roles.map((role: any) => [String(role.ruid), String(role.assignedRole)]));
@@ -120,7 +136,14 @@ export const interviewService = {
     return { submission: { interview_submission_uuid: submission.interviewSubmissionUuid, interview_item_uuid: submission.interviewItemUuid, rec_can_uuid: submission.recCanUuid, form_uuid: submission.formUuid, form_version_uuid: submission.formVersionUuid, status: submission.status, completed_at: submission.completedAt },
       b6_data_available: !!b6,
       partA: { candidate_name: candidateName, rank: candidate?.rankAppliedFor ?? null, nationality, interview_date: b6?.item.interviewDate ?? null, interviewer_name: interviewerName, interview_category: submission.interviewCategory, interview_stage: submission.interviewStage },
-      partC: { status: b6?.item.status ?? null, result: b6?.item.result ?? null, interviewer_comments: submission.interviewerComments },
+      partC: {
+        status: b6?.item.status ?? null,
+        result: b6?.item.result ?? null,
+        interviewer_comments: submission.interviewerComments,
+        office_reviewed_by_uuid: submission.officeReviewedByUuid,
+        office_reviewed_by_name: submission.officeReviewedByName,
+        office_reviewed_at: submission.officeReviewedAt,
+      },
       parts: serializeInterviewFormParts(parts), structure: serializeInterviewStructure(tree, roleNames),
       section_states: data.states.map((state:any) => ({ section_state_uuid:state.sectionStateUuid, section_uuid:state.sectionUuid, status:state.status, section_comment:state.sectionComment, submitted_by_uuid:state.submittedByUuid, submitted_by_name:state.submittedByName, submitted_at:state.submittedAt })),
       answers: data.answers.map((answer:any) => ({ answer_uuid:answer.answerUuid, question_uuid:answer.questionUuid, answer_value:answer.answerValue, answer_comment:answer.answerComment })),
@@ -133,7 +156,30 @@ export const interviewService = {
     await authorizeInterviewRead(req); await getDb().transaction(async (tx: any) => { await writable(tx, uuid); await tx.update(crewInterviewSubmissions).set({ interviewCategory: input.interviewCategory, interviewStage: input.interviewStage, updatedByUuid: String(req.user!.id) }).where(eq(crewInterviewSubmissions.interviewSubmissionUuid, uuid)); }); return input;
   },
   async savePartC(uuid: string, input: { interviewerComments: string|null }, req: Request) {
-    await authorizeInterviewRead(req); await getDb().transaction(async (tx: any) => { await writable(tx, uuid); await tx.update(crewInterviewSubmissions).set({ interviewerComments: input.interviewerComments, updatedByUuid: String(req.user!.id) }).where(eq(crewInterviewSubmissions.interviewSubmissionUuid, uuid)); }); return input;
+    await authorizeInterviewRead(req);
+    const user = (await getDb().select().from(masterUsers).where(eq(masterUsers.id, req.user!.id)).limit(1))[0];
+    if (!user) throw new InterviewError("Authenticated user not found", 403);
+    const reviewerName = user.fullname ?? user.displayName ??
+      (`${user.firstname ?? ""} ${user.lastname ?? ""}`.trim() || null);
+    const reviewedAt = new Date();
+    const reviewerUuid = user.userUuid ?? String(user.id);
+    await getDb().transaction(async (tx: any) => {
+      await writable(tx, uuid);
+      await tx.update(crewInterviewSubmissions).set({
+        interviewerComments: input.interviewerComments,
+        officeReviewedByUuid: reviewerUuid,
+        officeReviewedByName: reviewerName,
+        officeReviewedAt: reviewedAt,
+        updatedByUuid: String(req.user!.id),
+        updatedAt: reviewedAt,
+      }).where(eq(crewInterviewSubmissions.interviewSubmissionUuid, uuid));
+    });
+    return {
+      interviewer_comments: input.interviewerComments,
+      office_reviewed_by_uuid: reviewerUuid,
+      office_reviewed_by_name: reviewerName,
+      office_reviewed_at: reviewedAt,
+    };
   },
   async saveAnswers(submissionUuid: string, sectionUuid: string, answers: any[], sectionComment: string|null|undefined, req: Request) {
     await authorizeInterviewRead(req);

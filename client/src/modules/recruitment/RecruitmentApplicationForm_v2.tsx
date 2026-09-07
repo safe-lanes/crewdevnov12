@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, FileText, Info, MessageSquare, ChevronDown, Lock, Database, Ship } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, FileText, Info, MessageSquare, ChevronDown, Lock, Database, Ship, ClipboardPenLine } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -185,6 +185,7 @@ import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplate
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 import { resolveCountryUuidToName } from '@/utils/data/visaCountryTemplates';
 import { VesselSearchDialog, type VesselSearchResult } from './VesselSearchDialog';
+import InterviewLiveSubmissionHost, { openOrCreateInterview } from './components/InterviewLiveSubmissionHost';
 
 interface RecruitmentApplicationFormV2Props {
   candidate: V2CandidateListItem | null;
@@ -556,6 +557,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [activeSection, setActiveSection] = useState<SectionType>('A1');
   const [activeContinuousSection, setActiveContinuousSection] = useState<SectionType>('A1');
   const [recCanUuid, setRecCanUuid] = useState<string | null>(candidate?.recCanUuid || null);
+  const [activeInterviewSubmissionUuid, setActiveInterviewSubmissionUuid] = useState<string | null>(null);
+  const { data: interviewSubmissions = [] } = useQuery<any[]>({
+    queryKey: ['/api/v2/interviews/submissions/candidate', recCanUuid],
+    enabled: !!recCanUuid,
+    queryFn: async () => {
+      const response = await fetch(`/api/v2/interviews/submissions/candidate/${recCanUuid}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Interview submissions unavailable');
+      return response.json();
+    },
+  });
   const [formData, setFormData] = useState<LocalFormData>(getInitialFormData);
   const [editingSections, setEditingSections] = useState<{[key: string]: boolean}>({
     'A1.1': false,
@@ -8183,6 +8194,28 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                     <SelectItem value="assess-further">Assess Further</SelectItem>
                                   </SelectContent>
                                 </Select>
+                                {(() => {
+                                  const interviewItemUuid = interview.id;
+                                  const isPersistedUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(interviewItemUuid);
+                                  const existing = interviewSubmissions.find((submission: any) => submission.interview_item_uuid === interviewItemUuid);
+                                  const ready = !!recCanUuid && isPersistedUuid && !!interview.date && !!interview.interviewer && !!interview.status && !!interview.result;
+                                  return <span className="inline-flex" title={!ready ? "Save the B6 row with date, interviewer, status, and result before opening the Crew Interview." : existing ? "Reopen Crew Interview" : "Create Crew Interview"}>
+                                  <Button type="button" variant={existing ? "secondary" : "outline"} size="sm"
+                                    className={`h-10 w-10 p-0 ${existing ? "border-[#16569e] text-[#16569e]" : "border-gray-300"}`}
+                                    disabled={!ready}
+                                    aria-label={existing ? "Reopen Crew Interview" : "Create Crew Interview"}
+                                    onClick={async () => {
+                                      try {
+                                        const submissionUuid = await openOrCreateInterview(interviewItemUuid, existing?.interview_submission_uuid);
+                                        setActiveInterviewSubmissionUuid(submissionUuid);
+                                      } catch (error) {
+                                        toast({ title: existing ? "Interview could not be opened" : "Interview could not be created", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+                                      }
+                                    }}
+                                    data-testid={`button-b6-interview-live-${index}`}>
+                                    <ClipboardPenLine className="h-4 w-4" />
+                                  </Button></span>;
+                                })()}
                                 {index === formData.b6Interviews.length - 1 && (
                                   <Button
                                     type="button"
@@ -9346,6 +9379,16 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         );
     }
   };
+
+  if (activeInterviewSubmissionUuid) {
+    return <InterviewLiveSubmissionHost
+      submissionUuid={activeInterviewSubmissionUuid}
+      onBack={() => {
+        void queryClient.invalidateQueries({ queryKey: ['/api/v2/interviews/submissions/candidate', recCanUuid] });
+        setActiveInterviewSubmissionUuid(null);
+      }}
+    />;
+  }
 
   return (
     <StandardFormPopup
