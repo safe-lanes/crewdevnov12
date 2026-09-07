@@ -159,6 +159,7 @@ export interface ConfiguredFormRendererProps {
   expandedSections?: Record<string, boolean>;
   onExpandedSectionsChange?: (value: Record<string, boolean>) => void;
   live?: ConfiguredFormLiveProps;
+  fixedParts?: { partA?: React.ReactNode; partC?: React.ReactNode };
   className?: string;
 }
 
@@ -970,14 +971,11 @@ function ConfiguredSection({
   );
 }
 
-function FixedPartPlaceholder({ part }: { part: ConfiguredFormPart }) {
+function FixedPartRenderer({ part, fixedParts }: { part: ConfiguredFormPart; fixedParts?: ConfiguredFormRendererProps["fixedParts"] }) {
+  const content = part.partCode.toUpperCase() === "A" ? fixedParts?.partA : part.partCode.toUpperCase() === "C" ? fixedParts?.partC : null;
   return (
     <div data-testid={`preview-fixed-part-${part.partCode}`}>
-      <FormSection title={`${part.partCode} ${part.partTitle.trim() || `Part ${part.partCode}`}`}>
-        <InlineMissing testId={`preview-fixed-part-message-${part.partCode}`}>
-          This part is purpose-built and is not yet implemented in the shared configurable-form renderer.
-        </InlineMissing>
-      </FormSection>
+      {content || <FormSection title={`${part.partCode} ${part.partTitle.trim() || `Part ${part.partCode}`}`}><InlineMissing testId={`preview-fixed-part-message-${part.partCode}`}>This fixed part is not configured for this form.</InlineMissing></FormSection>}
     </div>
   );
 }
@@ -996,6 +994,7 @@ export function ConfiguredFormRenderer({
   embedded = false,
   selectedPartUuid,
   live,
+  fixedParts,
   className = "",
 }: ConfiguredFormRendererProps) {
   const [internalVesselTypeUuid, setInternalVesselTypeUuid] = useState("all");
@@ -1077,7 +1076,7 @@ export function ConfiguredFormRenderer({
           {!selectedPart ? (
             <InlineMissing testId="preview-no-form-parts">No form parts are configured.</InlineMissing>
           ) : selectedPart.partType === "fixed" ? (
-            <FixedPartPlaceholder part={selectedPart} />
+            <FixedPartRenderer part={selectedPart} fixedParts={fixedParts} />
           ) : (
             <div
               className="flex flex-col"

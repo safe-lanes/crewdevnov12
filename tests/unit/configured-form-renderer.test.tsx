@@ -181,14 +181,35 @@ describe("configured form renderer preview", () => {
     expect(sectionStack.style.gap).toBe(sailDesignSystem.spacing.sectionSpacing);
   });
 
-  it("navigates every part and renders a fixed-part placeholder", () => {
+  it("navigates every part and renders a fixed-part fallback when no component is supplied", () => {
     renderPreview();
 
-    expect(screen.getByTestId("preview-fixed-part-A")).toHaveTextContent("purpose-built");
+    expect(screen.getByTestId("preview-fixed-part-A")).toHaveTextContent("not configured");
     click(screen.getByTestId("button-step-part-b"));
     expect(screen.getByTestId("preview-section-section-one")).toBeInTheDocument();
     click(screen.getByTestId("button-step-part-c"));
-    expect(screen.getByTestId("preview-fixed-part-C")).toHaveTextContent("purpose-built");
+    expect(screen.getByTestId("preview-fixed-part-C")).toHaveTextContent("not configured");
+  });
+
+  it("dispatches supplied Part A and Part C components only through the fixed-part path", () => {
+    render(
+      <ConfiguredFormRenderer
+        mode="preview"
+        formTitle="Crew Briefing"
+        parts={parts}
+        structures={{ "part-b": [configuredSection] }}
+        fixedParts={{
+          partA: <div data-testid="real-part-a">Resolved Part A</div>,
+          partC: <div data-testid="real-part-c">Office Part C</div>,
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("real-part-a")).toHaveTextContent("Resolved Part A");
+    click(screen.getByTestId("button-step-part-b"));
+    expect(screen.getByTestId("preview-section-section-one")).toBeInTheDocument();
+    click(screen.getByTestId("button-step-part-c"));
+    expect(screen.getByTestId("real-part-c")).toHaveTextContent("Office Part C");
   });
 
   it("PASS: Preview stepper controls switch between configured and fixed parts", () => {

@@ -113,8 +113,6 @@ import {
 import { EditSessionProvider, useEditSession } from "@/contexts/EditSessionContext";
 import AccessControlPage from "./AccessControlPage";
 import ApprovalWorkflowPage from "./ApprovalWorkflowPage";
-import BriefingLiveAdmin from "./BriefingLiveAdmin";
-import { canAccessTemporaryBriefings } from "./temporaryBriefingsAccess";
 import TrainingStatusPage from "./TrainingStatusPage";
 import TrainingCategoryPage from "./TrainingCategoryPage";
 import { 
@@ -547,12 +545,11 @@ interface SeafarerData {
 const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
   const { canView, canCreate, canEdit, canDelete, permissions, userType } = usePermissions();
-  const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow", "briefing-live": "Forms" };
+  const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
   const adminAllowedPages = useMemo(() => {
-    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow", "briefing-live"];
-    const isOfficeUser = canAccessTemporaryBriefings(userType);
+    const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow"];
     const standardPages = permissions.length === 0 ? all : all.filter(p => canView(adminPageToMenu[p] || p));
-    return standardPages.filter(p => p !== "briefing-live" || isOfficeUser);
+    return standardPages;
   }, [permissions, canView, userType]);
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
@@ -8663,7 +8660,6 @@ const AdminModuleInner = (): JSX.Element => {
             {selectedAdminPage === "training-matrix" && renderTrainingMatrixModule()}
             {selectedAdminPage === "access-control" && <AccessControlPage />}
             {selectedAdminPage === "approval-workflow" && renderApprovalWorkflowModule()}
-            {selectedAdminPage === "briefing-live" && <BriefingLiveAdmin />}
           </>
         )}
       </MainLayout>

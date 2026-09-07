@@ -49,6 +49,7 @@ import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 import { TimelineCard } from './components/TimelineCard';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { generateCrewInfoPDF, type CrewInfoFormData } from '@/lib/generateCrewInfoPDF';
+import BriefingLiveSubmissionHost from './components/BriefingLiveSubmissionHost';
 import { crewPoolApiV2 } from './api/crewPoolApiV2';
 import { 
   useCreateCrewV2, 
@@ -410,6 +411,84 @@ interface Briefing {
   attachments?: FileAttachment[];
 }
 
+async function findBriefingSubmission(crewUuid: string, briefingUuid?: string): Promise<any | null> {
+  if (!crewUuid || !briefingUuid) return null;
+  const listResponse = await fetch(`/api/v2/briefings/submissions/crew/${crewUuid}`);
+  if (!listResponse.ok) throw new Error("Could not check existing Briefings");
+  const rows = await listResponse.json();
+  const details = await Promise.all(
+    (Array.isArray(rows) ? rows : []).map(async (row: any) => {
+      const response = await fetch(`/api/v2/briefings/submissions/${row.briefing_submission_uuid}`);
+      return response.ok ? response.json() : null;
+    }),
+  );
+  const found = details.find((detail: any) => detail?.submission?.briefing_uuid === briefingUuid);
+  return found?.submission || null;
+}
+
+function BriefingSubmissionAction({ crewUuid, briefing, onOpen }: { crewUuid: string; briefing: Briefing; onOpen: (uuid: string) => void }) {
+  const { toast } = useToast();
+  const { userType } = usePermissions();
+  const [submission, setSubmission] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const isOfficeUser = userType?.trim().toLowerCase() === "office";
+  const missing = [
+    !briefing.briefingUuid ? "saved G1 row" : "",
+    !briefing.vesselCode ? "vessel" : "",
+    !briefing.joiningRank ? "joining rank" : "",
+    !briefing.dateSignOn ? "sign-on date" : "",
+  ].filter(Boolean);
+
+  useEffect(() => {
+    let active = true;
+    setSubmission(null);
+    if (!isOfficeUser || !crewUuid || !briefing.briefingUuid) {
+      setResolving(false);
+      return () => { active = false; };
+    }
+    setResolving(true);
+    void findBriefingSubmission(crewUuid, briefing.briefingUuid)
+      .then((found) => { if (active) setSubmission(found); })
+      .catch(() => undefined)
+      .finally(() => { if (active) setResolving(false); });
+    return () => { active = false; };
+  }, [crewUuid, briefing.briefingUuid, isOfficeUser]);
+
+  const action = async () => {
+    if (!isOfficeUser || missing.length || busy || resolving) return;
+    if (submission?.briefing_submission_uuid) { onOpen(submission.briefing_submission_uuid); return; }
+    setBusy(true);
+    try {
+      const response = await apiRequest("POST", "/api/v2/briefings/submissions", { briefingUuid: briefing.briefingUuid });
+      const created = await response.json();
+      if (created?.briefing_submission_uuid) onOpen(created.briefing_submission_uuid);
+    } catch (error) {
+      const existing = await findBriefingSubmission(crewUuid, briefing.briefingUuid).catch(() => null);
+      if (existing?.briefing_submission_uuid) {
+        setSubmission(existing);
+        onOpen(existing.briefing_submission_uuid);
+      } else {
+        toast({
+          title: "Briefing could not be created",
+          description: error instanceof Error ? error.message : "Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally { setBusy(false); }
+  };
+  const label = !isOfficeUser
+    ? "Office access is required"
+    : missing.length
+      ? `Missing ${missing.join(", ")}`
+      : resolving
+        ? "Checking Briefing link"
+        : submission
+          ? "Open briefing"
+          : "Create briefing";
+  return <TooltipProvider><Tooltip><TooltipTrigger asChild><span><Button type="button" variant="ghost" size="icon" disabled={!isOfficeUser || !!missing.length || busy || resolving} onClick={() => void action()} className={`h-6 w-6 ${submission ? "text-[#16569e] hover:text-[#0e417a]" : "text-gray-400 hover:text-[#16569e]"}`} aria-label={label} data-testid={`button-briefing-submission-${briefing.id}`}><FileText className="h-3 w-3" /></Button></span></TooltipTrigger><TooltipContent>{label}</TooltipContent></Tooltip></TooltipProvider>;
+}
+
 interface Debriefing {
   id: string;
   debriefingUuid?: string;
@@ -424,6 +503,7 @@ interface Debriefing {
 
 export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange, initialSection, highlightDocUuid, highlightVisaUuid }) => {
   const { toast } = useToast();
+  const [briefingSubmissionUuid, setBriefingSubmissionUuid] = useState<string | null>(null);
   
   // Helper function to determine expiry date text color
   const getExpiryColorClass = (dateString: string): string => {
@@ -6124,6 +6204,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       {canEditSection('G') && (
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                           <div className="flex gap-1">
+                            <BriefingSubmissionAction crewUuid={crewMember?.crewUuid || crewMember?.id || ''} briefing={briefing} onOpen={setBriefingSubmissionUuid} />
                             <Button
                               type="button"
                               variant="ghost"
@@ -8583,6 +8664,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   }, [isOpen, initialSection, highlightDocUuid, highlightVisaUuid]);
 
   if (!isOpen) return null;
+  if (briefingSubmissionUuid) {
+    return <div className="fixed inset-0 z-[100] overflow-auto bg-background">
+      <BriefingLiveSubmissionHost submissionUuid={briefingSubmissionUuid} onBack={() => setBriefingSubmissionUuid(null)} />
+    </div>;
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-2 sm:p-4">
