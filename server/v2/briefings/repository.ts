@@ -3,7 +3,7 @@ import { getDb } from "../db";
 import { admFormsV2, admFormVersionsV2 } from "../../../shared/v2/admin/schema";
 import { crewBriefings } from "../../../shared/v2/crew-pool/schema";
 import {
-  crewBriefingSubmissions, frmAnswers, frmOptions, frmQuestions, frmSectionStates,
+  crewBriefingSubmissions, frmAnswers, frmFormParts, frmOptions, frmQuestions, frmSectionStates,
   frmSections, frmSignatureAttachments, frmSectionSignatures,
 } from "../../../shared/v2/forms-engine/schema";
 
@@ -85,6 +85,12 @@ export const briefingRepository = {
       ...(includeDeleted ? [] : [eq(frmOptions.isDeleted, false)]),
     )).orderBy(asc(frmOptions.sortOrder)) : [];
     return { sections, questions, options };
+  },
+  async formParts(formUuid: string) {
+    return getDb().select().from(frmFormParts).where(and(
+      eq(frmFormParts.formUuid, formUuid),
+      eq(frmFormParts.isDeleted, false),
+    )).orderBy(asc(frmFormParts.sortOrder), asc(frmFormParts.id));
   },
   async readData(submissionUuid: string) {
     const db = getDb();

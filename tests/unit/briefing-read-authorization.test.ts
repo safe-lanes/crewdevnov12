@@ -10,6 +10,7 @@ import {
   isBriefingSectionApplicable,
   isMandatoryBriefingAnswerPresent,
   formatBriefingDate,
+  serializeFormParts,
 } from "@server/v2/briefings/service";
 
 function request(userType: string): Request {
@@ -78,5 +79,25 @@ describe("briefing date presentation", () => {
   it("does not guess malformed or impossible G1 dates", () => {
     expect(formatBriefingDate("31/05/2026")).toBeNull();
     expect(formatBriefingDate("2026-02-31")).toBeNull();
+  });
+});
+
+describe("briefing form-parts response", () => {
+  it("serializes general form metadata without Briefing-specific fields", () => {
+    expect(serializeFormParts([{
+      formPartUuid: "11111111-1111-4111-8111-111111111111",
+      partCode: "D",
+      partTitle: "Additional review",
+      partType: "fixed",
+      isOfficeOnly: true,
+      sortOrder: 4,
+    }])).toEqual([{
+      form_part_uuid: "11111111-1111-4111-8111-111111111111",
+      part_code: "D",
+      part_title: "Additional review",
+      part_type: "fixed",
+      is_office_only: true,
+      sort_order: 4,
+    }]);
   });
 });

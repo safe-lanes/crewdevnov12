@@ -191,16 +191,18 @@ describe("configured form renderer preview", () => {
     expect(screen.getByTestId("preview-fixed-part-C")).toHaveTextContent("not configured");
   });
 
-  it("dispatches supplied Part A and Part C components only through the fixed-part path", () => {
+  it("dispatches supplied fixed components by part code, case-insensitively", () => {
+    const partsWithD = [...parts, { formPartUuid: "part-d", partCode: "d", partTitle: "Additional review", partType: "fixed" }];
     render(
       <ConfiguredFormRenderer
         mode="preview"
         formTitle="Crew Briefing"
-        parts={parts}
+        parts={partsWithD}
         structures={{ "part-b": [configuredSection] }}
         fixedParts={{
-          partA: <div data-testid="real-part-a">Resolved Part A</div>,
-          partC: <div data-testid="real-part-c">Office Part C</div>,
+          A: <div data-testid="real-part-a">Resolved Part A</div>,
+          C: <div data-testid="real-part-c">Office Part C</div>,
+          d: <div data-testid="real-part-d">Additional Part D</div>,
         }}
       />,
     );
@@ -210,6 +212,29 @@ describe("configured form renderer preview", () => {
     expect(screen.getByTestId("preview-section-section-one")).toBeInTheDocument();
     click(screen.getByTestId("button-step-part-c"));
     expect(screen.getByTestId("real-part-c")).toHaveTextContent("Office Part C");
+    click(screen.getByTestId("button-step-part-d"));
+    expect(screen.getByTestId("real-part-d")).toHaveTextContent("Additional Part D");
+  });
+
+  it("keeps sections from two configurable parts under their own navigator parts", () => {
+    const secondSection = { ...configuredSection, clientKey: "section-two", section_code: "D1", section_title: "Second configurable part" };
+    render(
+      <ConfiguredFormRenderer
+        mode="live"
+        formTitle="Multi-part form"
+        parts={[
+          { formPartUuid: "config-one", partCode: "B", partTitle: "First", partType: "configurable" },
+          { formPartUuid: "config-two", partCode: "D", partTitle: "Second", partType: "configurable" },
+        ]}
+        structures={{ "config-one": [configuredSection], "config-two": [secondSection] }}
+      />,
+    );
+
+    expect(screen.getByText("Safety readiness")).toBeInTheDocument();
+    expect(screen.queryByText("Second configurable part")).toBeNull();
+    click(screen.getByTestId("button-step-config-two"));
+    expect(screen.getByText("Second configurable part")).toBeInTheDocument();
+    expect(screen.queryByText("Safety readiness")).toBeNull();
   });
 
   it("PASS: Preview stepper controls switch between configured and fixed parts", () => {

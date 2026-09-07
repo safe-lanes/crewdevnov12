@@ -86,6 +86,17 @@ export function formatBriefingDate(value: string | null | undefined): string | n
   return `${String(date.getUTCDate()).padStart(2, "0")}-${month}-${date.getUTCFullYear()}`;
 }
 
+export function serializeFormParts(parts: any[]) {
+  return parts.map((part: any) => ({
+    form_part_uuid: part.formPartUuid,
+    part_code: part.partCode,
+    part_title: part.partTitle,
+    part_type: part.partType,
+    is_office_only: part.isOfficeOnly,
+    sort_order: part.sortOrder,
+  }));
+}
+
 async function lockWritableSubmission(tx: any, submissionUuid: string) {
   await tx.execute(sql`
     SELECT 1 FROM crew_briefing_submissions
@@ -227,10 +238,11 @@ export const briefingService = {
   async read(submissionUuid: string, req: Request) {
     await authorizeBriefingRead(req);
     const submission = await briefingRepository.submission(submissionUuid); if (!submission) throw new BriefingError("Briefing submission not found", 404);
-    const [structure, data, g1] = await Promise.all([
+    const [structure, data, g1, formParts] = await Promise.all([
       briefingRepository.structure(submission.formVersionUuid),
       briefingRepository.readData(submissionUuid),
       submission.briefingUuid ? briefingRepository.g1(submission.briefingUuid) : Promise.resolve(null),
+      briefingRepository.formParts(submission.formUuid),
     ]);
     const responsibleRoleUuids = Array.from(new Set<string>(
       structure.sections.flatMap((section: any) =>
@@ -315,6 +327,7 @@ export const briefingService = {
         office_reviewed_by_name: submission.officeReviewedByName,
         office_reviewed_at: submission.officeReviewedAt,
       },
+      parts: serializeFormParts(formParts),
       structure: {
         sections: structure.sections.map((section: any) => ({
           section_uuid: section.sectionUuid,

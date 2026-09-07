@@ -88,3 +88,15 @@ export function BriefingPartC({ submissionUuid, data, completed, onSaved }: { su
     <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground"><span>{record?.office_reviewed_by_name ? `Reviewed by ${record.office_reviewed_by_name}` : "Not yet reviewed"}{record?.office_reviewed_at ? ` · ${displayDate(record.office_reviewed_at)}` : ""}</span>{!complete && <Button size="sm" onClick={() => void save()} disabled={saving}>{saving ? "Saving…" : "Save review"}</Button>}</div>
   </section>;
 }
+
+export function briefingFixedParts(
+  submissionUuid: string,
+  data: BriefingFixedData,
+  completed: boolean,
+  onSaved: () => void,
+): Record<string, React.ReactNode> {
+  return {
+    A: <BriefingPartA submissionUuid={submissionUuid} data={data.partA} completed={completed} onSaved={onSaved} />,
+    C: <BriefingPartC submissionUuid={submissionUuid} data={data.partC} completed={completed} onSaved={onSaved} />,
+  };
+}

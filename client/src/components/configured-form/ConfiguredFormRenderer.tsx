@@ -159,7 +159,7 @@ export interface ConfiguredFormRendererProps {
   expandedSections?: Record<string, boolean>;
   onExpandedSectionsChange?: (value: Record<string, boolean>) => void;
   live?: ConfiguredFormLiveProps;
-  fixedParts?: { partA?: React.ReactNode; partC?: React.ReactNode };
+  fixedParts?: Record<string, React.ReactNode>;
   className?: string;
 }
 
@@ -972,7 +972,8 @@ function ConfiguredSection({
 }
 
 function FixedPartRenderer({ part, fixedParts }: { part: ConfiguredFormPart; fixedParts?: ConfiguredFormRendererProps["fixedParts"] }) {
-  const content = part.partCode.toUpperCase() === "A" ? fixedParts?.partA : part.partCode.toUpperCase() === "C" ? fixedParts?.partC : null;
+  const normalizedCode = part.partCode.trim().toUpperCase();
+  const content = Object.entries(fixedParts || {}).find(([code]) => code.trim().toUpperCase() === normalizedCode)?.[1];
   return (
     <div data-testid={`preview-fixed-part-${part.partCode}`}>
       {content || <FormSection title={`${part.partCode} ${part.partTitle.trim() || `Part ${part.partCode}`}`}><InlineMissing testId={`preview-fixed-part-message-${part.partCode}`}>This fixed part is not configured for this form.</InlineMissing></FormSection>}
