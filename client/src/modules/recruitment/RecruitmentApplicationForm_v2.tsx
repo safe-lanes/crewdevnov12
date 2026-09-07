@@ -185,7 +185,7 @@ import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplate
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 import { resolveCountryUuidToName } from '@/utils/data/visaCountryTemplates';
 import { VesselSearchDialog, type VesselSearchResult } from './VesselSearchDialog';
-import InterviewLiveSubmissionHost, { openOrCreateInterview } from './components/InterviewLiveSubmissionHost';
+import InterviewLiveSubmissionHost, { interviewCreationErrorMessage, isPersistedInterviewItemUuid, openOrCreateInterview, reconcileSavedInterviewItem } from './components/InterviewLiveSubmissionHost';
 
 interface RecruitmentApplicationFormV2Props {
   candidate: V2CandidateListItem | null;
@@ -3717,6 +3717,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             } as any,
           }));
         } else if (!serverB6InterviewMap.has(interview.id) && currentB6Uuid && (interview.date || interview.interviewer || interview.status || interview.result)) {
+          const temporaryId = interview.id;
           bItemSavePromises.push(createB6InterviewItemMutation.mutateAsync({
             b6Uuid: currentB6Uuid,
             data: {
@@ -3727,6 +3728,14 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               comments: interview.comments || null,
               sortOrder: index,
             } as any,
+          }).then((created: any) => {
+            if (created?.intUuid) {
+              setFormData(prev => ({
+                ...prev,
+                b6Interviews: reconcileSavedInterviewItem(prev.b6Interviews, temporaryId, created),
+              }));
+            }
+            return created;
           }));
         }
       }
@@ -8196,10 +8205,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                 </Select>
                                 {(() => {
                                   const interviewItemUuid = interview.id;
-                                  const isPersistedUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(interviewItemUuid);
+                                  const isPersistedUuid = isPersistedInterviewItemUuid(interviewItemUuid);
                                   const existing = interviewSubmissions.find((submission: any) => submission.interview_item_uuid === interviewItemUuid);
-                                  const ready = !!recCanUuid && isPersistedUuid && !!interview.date && !!interview.interviewer && !!interview.status && !!interview.result;
-                                  return <span className="inline-flex" title={!ready ? "Save the B6 row with date, interviewer, status, and result before opening the Crew Interview." : existing ? "Reopen Crew Interview" : "Create Crew Interview"}>
+                                  const ready = isPersistedUuid;
+                                  return <span className="inline-flex" title={!ready ? "Save this interview row before opening the form." : existing ? "Reopen Crew Interview" : "Create Crew Interview"}>
                                   <Button type="button" variant={existing ? "secondary" : "outline"} size="sm"
                                     className={`h-10 w-10 p-0 ${existing ? "border-[#16569e] text-[#16569e]" : "border-gray-300"}`}
                                     disabled={!ready}
@@ -8209,7 +8218,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                                         const submissionUuid = await openOrCreateInterview(interviewItemUuid, existing?.interview_submission_uuid);
                                         setActiveInterviewSubmissionUuid(submissionUuid);
                                       } catch (error) {
-                                        toast({ title: existing ? "Interview could not be opened" : "Interview could not be created", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
+                                        toast({ title: existing ? "Interview could not be opened" : "Interview could not be created", description: interviewCreationErrorMessage(error), variant: "destructive" });
                                       }
                                     }}
                                     data-testid={`button-b6-interview-live-${index}`}>

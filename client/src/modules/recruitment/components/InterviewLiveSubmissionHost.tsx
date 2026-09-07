@@ -17,6 +17,24 @@ const ownershipFor = (section: any, actor: any) => {
   return { ownerLabel: section.responsible_department ? `Department: ${section.responsible_department} (identity unavailable)` : "Department owner not configured", canEdit: false };
 };
 export const groupInterviewSectionsByPart = (parts: any[], sections: ConfiguredFormSection[]) => Object.fromEntries(parts.map(part => [part.form_part_uuid, sections.filter(section => (section as any).form_part_uuid === part.form_part_uuid)]));
+export const isPersistedInterviewItemUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+export const reconcileSavedInterviewItem = <T extends { id: string; serverId?: number }>(
+  rows: T[],
+  temporaryId: string,
+  created: { intUuid?: string; id?: number },
+) => created.intUuid
+  ? rows.map(row => row.id === temporaryId ? { ...row, id: created.intUuid!, serverId: created.id } : row)
+  : rows;
+export const interviewCreationErrorMessage = (error: unknown) => {
+  const raw = error instanceof Error ? error.message : String(error);
+  const payload = raw.replace(/^\d{3}:\s*/, "");
+  try {
+    const parsed = JSON.parse(payload);
+    return parsed.error || parsed.message || raw;
+  } catch {
+    return raw;
+  }
+};
 const layout = (section: any, questions: any[]) => {
   const optionSets = new Set(questions.map(question => question.option_set_uuid || section.default_option_set_uuid || ""));
   const options = questions[0]?.options || [];
