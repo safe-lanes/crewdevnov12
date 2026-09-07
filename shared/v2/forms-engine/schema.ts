@@ -2,7 +2,7 @@ import { boolean, date, index, integer, pgTable, serial, text, timestamp, type A
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { admFormVersionsV2, admFormsV2, admRoleMasterAc } from "../admin/schema";
-import { crewBriefings } from "../crew-pool/schema";
+import { crewBriefings, crewDebriefings } from "../crew-pool/schema";
 
 const auditColumns = {
   sortOrder: integer("sort_order").notNull().default(0),
@@ -209,6 +209,38 @@ export const crewInterviewSubmissions = pgTable(
   }),
 );
 
+/** Pinned configurable-form detail for a read-only crew debriefing G2 row. */
+export const crewDebriefingSubmissions = pgTable(
+  "crew_debriefing_submissions",
+  {
+    id: serial("id").primaryKey(),
+    debriefingSubmissionUuid: text("debriefing_submission_uuid").notNull().unique(),
+    // Nullable so an existing submission remains available after its mutable G2
+    // source has been soft-deleted; the source itself is never changed here.
+    debriefingUuid: text("debriefing_uuid").unique()
+      .references(() => crewDebriefings.debriefingUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    crewUuid: text("crew_uuid").notNull(),
+    formUuid: text("form_uuid").notNull()
+      .references(() => admFormsV2.formUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    formVersionUuid: text("form_version_uuid").notNull()
+      .references(() => admFormVersionsV2.fvUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    status: text("status").notNull().default("in_progress"),
+    completedAt: timestamp("completed_at"),
+    debriefingDate: date("debriefing_date"),
+    modeOfDebriefing: text("mode_of_debriefing"),
+    officeReviewComments: text("office_review_comments"),
+    officeReviewedByUuid: text("office_reviewed_by_uuid"),
+    officeReviewedByName: text("office_reviewed_by_name"),
+    officeReviewedAt: timestamp("office_reviewed_at"),
+    ...auditColumns,
+  },
+  (table) => ({
+    crewUuidIdx: index("idx_crew_debriefing_submissions_crew_uuid").on(table.crewUuid),
+    formUuidIdx: index("idx_crew_debriefing_submissions_form_uuid").on(table.formUuid),
+    formVersionUuidIdx: index("idx_crew_debriefing_submissions_form_version_uuid").on(table.formVersionUuid),
+  }),
+);
+
 export const frmSectionStates = pgTable(
   "frm_section_states",
   {
@@ -307,6 +339,7 @@ export const insertFrmOptionSetSchema = createInsertSchema(frmOptionSets).omit(i
 export const insertFrmOptionSchema = createInsertSchema(frmOptions).omit(insertAuditOmit);
 export const insertCrewBriefingSubmissionSchema = createInsertSchema(crewBriefingSubmissions).omit(insertAuditOmit);
 export const insertCrewInterviewSubmissionSchema = createInsertSchema(crewInterviewSubmissions).omit(insertAuditOmit);
+export const insertCrewDebriefingSubmissionSchema = createInsertSchema(crewDebriefingSubmissions).omit(insertAuditOmit);
 export const insertFrmSectionStateSchema = createInsertSchema(frmSectionStates).omit(insertAuditOmit);
 export const insertFrmAnswerSchema = createInsertSchema(frmAnswers).omit(insertAuditOmit);
 export const insertFrmSignatureAttachmentSchema = createInsertSchema(frmSignatureAttachments).omit(insertAuditOmit);
@@ -455,6 +488,8 @@ export type InsertCrewBriefingSubmission = z.infer<typeof insertCrewBriefingSubm
 export type CrewBriefingSubmission = typeof crewBriefingSubmissions.$inferSelect;
 export type InsertCrewInterviewSubmission = z.infer<typeof insertCrewInterviewSubmissionSchema>;
 export type CrewInterviewSubmission = typeof crewInterviewSubmissions.$inferSelect;
+export type InsertCrewDebriefingSubmission = z.infer<typeof insertCrewDebriefingSubmissionSchema>;
+export type CrewDebriefingSubmission = typeof crewDebriefingSubmissions.$inferSelect;
 export type InsertFrmSectionState = z.infer<typeof insertFrmSectionStateSchema>;
 export type FrmSectionState = typeof frmSectionStates.$inferSelect;
 export type InsertFrmAnswer = z.infer<typeof insertFrmAnswerSchema>;
