@@ -133,6 +133,7 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+  const [isDownloadingWorkbook, setIsDownloadingWorkbook] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
@@ -170,6 +171,7 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
     setStage2Status("idle");
     setStage2Result(null);
     setErrorMessage(null);
+    setIsDownloadingWorkbook(false);
     onClose();
   };
 
@@ -204,6 +206,54 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
       });
     } finally {
       setIsDownloadingTemplate(false);
+    }
+  };
+
+  // Download one consolidated workbook after all crew batches are imported.
+  // This is intentionally sourced from the database rather than the currently
+  // selected file so every batch is represented in one review/import workbook.
+  const handleDownloadWorkbook = async () => {
+    setIsDownloadingWorkbook(true);
+    setErrorMessage(null);
+    try {
+      const response = await fetch("/api/v2/vessel/import/generate-workbook-from-db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        let message = `Server error: ${response.status}`;
+        try {
+          const data = await response.json();
+          if (data?.error) message = data.error;
+        } catch {
+          // Keep the status-based message when the response is not JSON.
+        }
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "vessel_crew_import.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({
+        title: "Consolidated workbook downloaded",
+        description: "Review the complete workbook, then import Section 1 and Section 2 once.",
+      });
+    } catch (err: any) {
+      const message = err.message || "Failed to generate vessel import workbook";
+      setErrorMessage(message);
+      toast({
+        variant: "destructive",
+        title: "Workbook download failed",
+        description: message,
+      });
+    } finally {
+      setIsDownloadingWorkbook(false);
     }
   };
 
@@ -351,6 +401,39 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
             <Users className="h-4 w-4 text-[#5dc86f]" />
             Section 2: Crew Assignment Import
           </button>
+        </div>
+
+        {/* Consolidated workbook download — available before a file is selected */}
+        <div
+          className="rounded-lg border border-blue-200 bg-blue-50 p-3 mb-4"
+          data-testid="consolidated-workbook-download-card"
+        >
+          <div className="flex items-start gap-2.5">
+            <FileSpreadsheet className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-blue-900">
+                Download one consolidated workbook
+              </p>
+              <p className="text-xs text-blue-700 mt-0.5 leading-relaxed">
+                Import all crew Excel batches first. Then download the complete workbook once to review and import Section 1 and Section 2 without duplicate rows.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                className="mt-2 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                onClick={handleDownloadWorkbook}
+                disabled={isDownloadingWorkbook}
+                data-testid="button-download-consolidated-workbook"
+              >
+                {isDownloadingWorkbook ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                {isDownloadingWorkbook ? "Generating…" : "Download Consolidated Workbook"}
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Hidden File Input */}
