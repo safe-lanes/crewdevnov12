@@ -21,7 +21,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PeriodFilter, type PeriodFilterValue } from "@/components/filters/PeriodFilter";
 import { useCompanyRanks } from "@/hooks/useCompanyRanks";
-import { useCrewPoolsV2, useManningAgentsV2 } from "@/hooks/v2/useMasterDataV2";
+import { useCrewPoolsV2, useManningAgentsWithActiveCrewV2 } from "@/hooks/v2/useMasterDataV2";
 import { cn } from "@/lib/utils";
 
 interface ChipMultiSelectProps {
@@ -291,7 +291,7 @@ export const Retention = (): JSX.Element => {
 
   const { rankOptions } = useCompanyRanks();
   const { data: crewPoolsData } = useCrewPoolsV2();
-  const { data: manningAgentsData } = useManningAgentsV2();
+  const { data: manningAgentsData } = useManningAgentsWithActiveCrewV2();
 
   const rankList = useMemo(() => rankOptions.map((r) => r.label), [rankOptions]);
 

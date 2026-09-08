@@ -15,7 +15,7 @@ import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import {
   useNationalitiesV2,
   useCrewPoolsV2,
-  useManningAgentsV2,
+  useManningAgentsWithActiveCrewV2,
 } from "@/hooks/v2/useMasterDataV2";
 
 interface MultiSelectProps {
@@ -127,7 +127,7 @@ export const ManagementFilterBar = ({
   const { rankLabels } = useCompanyRanks();
   const { data: nationalitiesData = [] } = useNationalitiesV2();
   const { data: crewPoolsData = [] } = useCrewPoolsV2();
-  const { data: manningAgentsData = [] } = useManningAgentsV2();
+  const { data: manningAgentsData = [] } = useManningAgentsWithActiveCrewV2();
 
   const rankOptions = useMemo(
     () => Array.from(new Set(rankLabels.filter(Boolean))),

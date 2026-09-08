@@ -70,6 +70,7 @@ import {
   type LegacyBriefing,
   type LegacyDebriefing,
 } from '../mappers/v2ToLegacyMapper';
+import { MANNING_AGENTS_WITH_ACTIVE_CREW_KEY } from '@/hooks/v2/useMasterDataV2';
 
 const V2_QUERY_KEY = '/api/v2/crew-pool';
 const V2_STALE_TIME = 60 * 1000; // 1 minute
@@ -116,6 +117,7 @@ export function useTerminateEmploymentV2() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+      queryClient.invalidateQueries({ queryKey: [MANNING_AGENTS_WITH_ACTIVE_CREW_KEY] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid, 'full-profile'] });
       // Per-crew dashboard cache (exact key used by crew dashboard widgets).
@@ -165,6 +167,7 @@ export function useCreateCrewV2() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+      queryClient.invalidateQueries({ queryKey: [MANNING_AGENTS_WITH_ACTIVE_CREW_KEY] });
     },
     onError: (error) => {
       console.error('[V2] Failed to create crew:', error);
@@ -182,6 +185,7 @@ export function useUpdateCrewV2() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+      queryClient.invalidateQueries({ queryKey: [MANNING_AGENTS_WITH_ACTIVE_CREW_KEY] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid, 'full-profile'] });
     },
@@ -197,6 +201,7 @@ export function useDeleteCrewV2() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
+      queryClient.invalidateQueries({ queryKey: [MANNING_AGENTS_WITH_ACTIVE_CREW_KEY] });
     },
   });
 }
@@ -211,6 +216,7 @@ export function useSavePersonalDetailsV2() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
+      queryClient.invalidateQueries({ queryKey: [MANNING_AGENTS_WITH_ACTIVE_CREW_KEY] });
       queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid, 'full-profile'] });
     },
   });

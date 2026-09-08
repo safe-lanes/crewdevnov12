@@ -21,6 +21,10 @@ import {
   type InsertMasterDataEntry,
   type MasterDataEntry,
 } from "../../../../shared/schema";
+import {
+  crewMembersV2,
+  crewPersonalDetails,
+} from "../../../../shared/v2/crew-pool/schema";
 
 const MASTER_TABLE_MAP: Record<string, any> = {
   nationalities: masterNationalities,
@@ -55,6 +59,9 @@ const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
     imoNumber: 'imoNumber',
     flag: 'flag',
     vesselType: 'vesselType',
+    yearBuilt: 'yearBuilt',
+    deadWeightSummer: 'deadWeight',
+    vesselOwner: 'vesselOwner',
     isActive: 'isActive',
     isDeleted: 'isDeleted',
   },
@@ -418,6 +425,53 @@ export class MastersRepository {
       .from(masterManningAgents)
       .where(and(eq(masterManningAgents.isDeleted, false), eq(masterManningAgents.isActive, true)))
       .orderBy(asc(masterManningAgents.sortOrder));
+  }
+
+  async findManningAgentsWithActiveCrew() {
+    const db = getDb();
+    return db
+      .selectDistinct({
+        id: masterManningAgents.id,
+        name: masterManningAgents.name,
+        country: masterManningAgents.country,
+        email: masterManningAgents.email,
+        phone: masterManningAgents.phone,
+        address: masterManningAgents.address,
+        contactPerson: masterManningAgents.contactPerson,
+        sortOrder: masterManningAgents.sortOrder,
+        isActive: masterManningAgents.isActive,
+        isDeleted: masterManningAgents.isDeleted,
+        createdAt: masterManningAgents.createdAt,
+        updatedAt: masterManningAgents.updatedAt,
+      })
+      .from(masterManningAgents)
+      .innerJoin(
+        crewPersonalDetails,
+        sql`(
+          lower(trim(${crewPersonalDetails.manningAgent})) = lower(trim(${masterManningAgents.name}))
+          OR trim(${crewPersonalDetails.manningAgent}) = (${masterManningAgents.id})::text
+        )`,
+      )
+      .innerJoin(
+        crewMembersV2,
+        eq(crewMembersV2.crewUuid, crewPersonalDetails.crewUuid),
+      )
+      .where(and(
+        eq(masterManningAgents.isDeleted, false),
+        eq(masterManningAgents.isActive, true),
+        eq(crewPersonalDetails.isDeleted, false),
+        eq(crewMembersV2.isDeleted, false),
+        eq(crewMembersV2.isActive, true),
+        sql`${crewMembersV2.archivedAt} IS NULL`,
+        sql`lower(trim(coalesce(${crewMembersV2.status}, ''))) NOT IN (
+          'inactive',
+          'terminated',
+          'terminated - nfr',
+          'terminated employment',
+          'terminated employment - nfr'
+        )`,
+      ))
+      .orderBy(asc(masterManningAgents.sortOrder), asc(masterManningAgents.name));
   }
 
   async findManningAgentById(id: string) {

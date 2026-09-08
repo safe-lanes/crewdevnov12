@@ -253,6 +253,16 @@ export const mastersController = {
     }
   },
 
+  async getManningAgentsWithActiveCrew(req: Request, res: Response) {
+    try {
+      const data = await mastersService.getManningAgentsWithActiveCrew();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching manning agents with active crew:", error);
+      res.status(500).json({ error: "Failed to fetch manning agents with active crew" });
+    }
+  },
+
   async getManningAgentById(req: Request, res: Response) {
     try {
       const data = await mastersService.getManningAgentById(req.params.id);

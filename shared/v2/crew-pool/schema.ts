@@ -356,6 +356,8 @@ export const crewSeaService = pgTable("crew_sea_service", {
   vesselName: text("vessel_name"),
   vesselUuid: text("vessel_uuid"),
   vesselTypeUuid: text("vessel_type_uuid"),
+  imoNumber: text("imo_number"),
+  yearBuilt: text("year_built"),
   deadweight: text("deadweight"),
   engineTypePower: text("engine_type_power"),
   ownerOperator: text("owner_operator"),
