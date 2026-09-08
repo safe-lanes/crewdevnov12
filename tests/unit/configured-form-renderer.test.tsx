@@ -216,6 +216,39 @@ describe("configured form renderer preview", () => {
     expect(screen.getByTestId("real-part-d")).toHaveTextContent("Additional Part D");
   });
 
+  it("renders populated fixed parts directly and keeps the shared card/progress presentation on Part B only", () => {
+    render(
+      <ConfiguredFormRenderer
+        mode="live"
+        formTitle="Crew Briefing"
+        parts={parts}
+        structures={{ "part-b": [configuredSection] }}
+        fixedParts={{
+          A: <article data-testid="fixed-card-a"><h3>Part A: Preparation</h3></article>,
+          C: <article data-testid="fixed-card-c"><h3>Part C: Office review</h3></article>,
+        }}
+        live={{
+          answers: {},
+          onAnswerChange: vi.fn(),
+          sectionStates: { "section-one": { status: "not_started" } },
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("fixed-card-a")).toBeInTheDocument();
+    expect(screen.queryByTestId("configured-part-card-A")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("live-progress")).not.toBeInTheDocument();
+
+    click(screen.getByTestId("button-step-part-b"));
+    expect(screen.getByTestId("configured-part-card-B")).toBeInTheDocument();
+    expect(screen.getByTestId("live-progress")).toHaveTextContent("0 of 1 applicable sections submitted");
+
+    click(screen.getByTestId("button-step-part-c"));
+    expect(screen.getByTestId("fixed-card-c")).toBeInTheDocument();
+    expect(screen.queryByTestId("configured-part-card-C")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("live-progress")).not.toBeInTheDocument();
+  });
+
   it("keeps sections from two configurable parts under their own navigator parts", () => {
     const secondSection = { ...configuredSection, clientKey: "section-two", section_code: "D1", section_title: "Second configurable part" };
     render(

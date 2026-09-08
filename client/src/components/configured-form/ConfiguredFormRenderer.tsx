@@ -971,19 +971,73 @@ function ConfiguredSection({
   );
 }
 
-function FixedPartRenderer({ part, fixedParts }: { part: ConfiguredFormPart; fixedParts?: ConfiguredFormRendererProps["fixedParts"] }) {
+function fixedPartContent(part: ConfiguredFormPart, fixedParts?: ConfiguredFormRendererProps["fixedParts"]) {
   const normalizedCode = part.partCode.trim().toUpperCase();
-  const content = Object.entries(fixedParts || {}).find(([code]) => code.trim().toUpperCase() === normalizedCode)?.[1];
+  return Object.entries(fixedParts || {}).find(([code]) => code.trim().toUpperCase() === normalizedCode)?.[1];
+}
+
+function FixedPartRenderer({ part, fixedParts }: { part: ConfiguredFormPart; fixedParts?: ConfiguredFormRendererProps["fixedParts"] }) {
+  const content = fixedPartContent(part, fixedParts);
   return (
     <div data-testid={`preview-fixed-part-${part.partCode}`}>
-      {content || <FormSection title={`${part.partCode} ${part.partTitle.trim() || `Part ${part.partCode}`}`}><InlineMissing testId={`preview-fixed-part-message-${part.partCode}`}>This fixed part is not configured for this form.</InlineMissing></FormSection>}
+      {content || <InlineMissing testId={`preview-fixed-part-message-${part.partCode}`}>This fixed part is not configured for this form.</InlineMissing>}
     </div>
+  );
+}
+
+function PartCard({
+  part,
+  subtitle,
+  progress,
+  children,
+}: {
+  part: ConfiguredFormPart;
+  subtitle: React.ReactNode;
+  progress?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const code = part.partCode.trim() || "—";
+  const title = part.partTitle.trim() || `Part ${code}`;
+
+  return (
+    <section
+      className="min-w-0"
+      style={{
+        backgroundColor: sailDesignSystem.components.card.background,
+        border: `1px solid ${sailDesignSystem.colors.border}`,
+        borderRadius: sailDesignSystem.components.card.borderRadius,
+        boxShadow: sailDesignSystem.components.card.shadow,
+        padding: sailDesignSystem.components.card.padding,
+      }}
+      data-testid={`configured-part-card-${part.partCode}`}
+    >
+      <header className="pb-4 mb-6">
+        <h3
+          className="text-xl font-semibold mb-2"
+          style={{ color: sailDesignSystem.colors.headerText }}
+        >
+          Part {code}: {title}
+        </h3>
+        <div
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+          style={{ color: sailDesignSystem.colors.textSecondary }}
+        >
+          <span>{subtitle}</span>
+          {progress}
+        </div>
+        <div
+          className="w-full h-0.5 mt-2"
+          style={{ backgroundColor: sailDesignSystem.colors.headerText }}
+        />
+      </header>
+      {children}
+    </section>
   );
 }
 
 export function ConfiguredFormRenderer({
   mode,
-  formTitle = "Configured form",
+  formTitle = "Form",
   parts,
   structures,
   roles = [],
@@ -1052,14 +1106,19 @@ export function ConfiguredFormRenderer({
       return live?.sectionStates?.[id]?.status === "submitted";
     }).length;
 
+    const isPartB = selectedPart?.partCode.trim().toUpperCase() === "B";
+    const partSubtitle = mode === "preview"
+      ? "Inputs are interactive for review, but nothing is saved."
+      : "Complete each section as applicable.";
+    const progressCaption = mode === "live" && isPartB ? (
+      <span data-testid="live-progress">
+        {submittedCount === applicableSections.length && applicableSections.length > 0 ? "Complete" : `${submittedCount} of ${applicableSections.length} applicable sections submitted`}
+      </span>
+    ) : undefined;
+
     return (
       <>
-        <div className="flex flex-wrap items-end justify-between gap-4" data-testid={mode === "preview" ? "preview-only-banner" : "configured-form-live-banner"}>
-          <div>
-            <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{mode === "preview" ? "Preview only" : "Configured form"}</p>
-            <p className="text-xs">{mode === "preview" ? "Inputs are interactive for review, but nothing is saved." : "Responses are managed by the live form host."}</p>
-            {mode === "live" && <p className="mt-1 text-xs font-medium" data-testid="live-progress">{submittedCount === applicableSections.length && applicableSections.length > 0 ? "Complete" : `${submittedCount} of ${applicableSections.length} applicable sections submitted`}</p>}
-          </div>
+        <div className="flex flex-wrap items-end justify-end gap-4" data-testid={mode === "preview" ? "preview-only-banner" : "configured-form-live-banner"}>
           <SAILFormField label="Vessel type" className="min-w-[210px]" >
             <div data-testid="select-preview-vessel-type">
               <SAILSelect value={selectedVessel} onValueChange={setVesselType} placeholder="All vessel types">
@@ -1077,52 +1136,63 @@ export function ConfiguredFormRenderer({
           {!selectedPart ? (
             <InlineMissing testId="preview-no-form-parts">No form parts are configured.</InlineMissing>
           ) : selectedPart.partType === "fixed" ? (
-            <FixedPartRenderer part={selectedPart} fixedParts={fixedParts} />
+            fixedPartContent(selectedPart, fixedParts) ? (
+              <FixedPartRenderer part={selectedPart} fixedParts={fixedParts} />
+            ) : (
+              <PartCard part={selectedPart} subtitle={partSubtitle}>
+                <FixedPartRenderer part={selectedPart} fixedParts={fixedParts} />
+              </PartCard>
+            )
           ) : (
-            <div
-              className="flex flex-col"
-              style={{ gap: sailDesignSystem.spacing.sectionSpacing }}
-              data-testid="configured-section-stack"
-            >
-              {selectedVessel !== "all" && (
-                <p className="text-xs">
-                  Sections restricted to another vessel type remain marked as not applicable for {selectedVesselLabel}.
-                </p>
-              )}
-              {selectedSections.length === 0 && (
-                <InlineMissing testId={`preview-no-sections-${selectedPart.partCode}`}>
-                  No sections configured for this part.
-                </InlineMissing>
-              )}
-              {selectedSections.map((section, sectionIndex) => {
-                const sectionId = section.clientKey || section.section_uuid || `${selectedPart.formPartUuid}-section-${sectionIndex + 1}`;
-                const isApplicable = live?.sectionStates?.[sectionId]?.status === "not_applicable"
-                  ? false
-                  : selectedVessel === "all"
-                  || section.applicable_vessel_types.length === 0
-                  || section.applicable_vessel_types.includes(selectedVessel);
-                return (
-                  <ConfiguredSection
-                    key={sectionId}
-                    section={section}
-                    sectionId={sectionId}
-                    roles={roles}
-                    departments={departments}
-                    vesselTypeLabel={selectedVesselLabel}
-                    isApplicable={isApplicable}
-                    isExpanded={mode === "live" && live?.sectionStates?.[sectionId]?.status === "not_applicable" ? false : internalExpandedSections[sectionId] !== false}
-                    onToggleExpanded={() => setInternalExpandedSections((current) => ({
-                      ...current,
-                      [sectionId]: !(current[sectionId] !== false),
-                    }))}
-                    answers={answers}
-                    setAnswer={setAnswer}
-                    live={live}
-                    mode={mode}
-                  />
-                );
-              })}
-            </div>
+            <PartCard part={selectedPart} subtitle={partSubtitle} progress={progressCaption}>
+              <div
+                className="flex flex-col"
+                style={{ gap: sailDesignSystem.spacing.sectionSpacing }}
+                data-testid="configured-section-stack"
+              >
+                {selectedSections.length === 0 && (
+                  <InlineMissing testId={`preview-no-sections-${selectedPart.partCode}`}>
+                    No sections configured for this part.
+                  </InlineMissing>
+                )}
+                {selectedSections.map((section, sectionIndex) => {
+                  const sectionId = section.clientKey || section.section_uuid || `${selectedPart.formPartUuid}-section-${sectionIndex + 1}`;
+                  const isApplicable = live?.sectionStates?.[sectionId]?.status === "not_applicable"
+                    ? false
+                    : selectedVessel === "all"
+                    || section.applicable_vessel_types.length === 0
+                    || section.applicable_vessel_types.includes(selectedVessel);
+                  return (
+                    <div
+                      key={sectionId}
+                      className="rounded-md p-4"
+                      style={{
+                        backgroundColor: sailDesignSystem.colors.tableHeader,
+                        border: `1px solid ${sailDesignSystem.colors.border}`,
+                      }}
+                    >
+                      <ConfiguredSection
+                        section={section}
+                        sectionId={sectionId}
+                        roles={roles}
+                        departments={departments}
+                        vesselTypeLabel={selectedVesselLabel}
+                        isApplicable={isApplicable}
+                        isExpanded={mode === "live" && live?.sectionStates?.[sectionId]?.status === "not_applicable" ? false : internalExpandedSections[sectionId] !== false}
+                        onToggleExpanded={() => setInternalExpandedSections((current) => ({
+                          ...current,
+                          [sectionId]: !(current[sectionId] !== false),
+                        }))}
+                        answers={answers}
+                        setAnswer={setAnswer}
+                        live={live}
+                        mode={mode}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </PartCard>
           )}
         </div>
       </>
