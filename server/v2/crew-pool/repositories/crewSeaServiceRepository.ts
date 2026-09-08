@@ -62,6 +62,8 @@ export class CrewSeaServiceRepository {
         vesselName: crewSeaService.vesselName,
         vesselTypeUuid: crewSeaService.vesselTypeUuid,
         resolvedVesselTypeName: masterVesselTypes.vesselType,
+        imoNumber: crewSeaService.imoNumber,
+        yearBuilt: crewSeaService.yearBuilt,
         serviceType: crewSeaService.serviceType,
         fromDate: crewSeaService.fromDate,
         toDate: crewSeaService.toDate,

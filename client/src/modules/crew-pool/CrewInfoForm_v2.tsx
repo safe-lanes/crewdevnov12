@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown, Pencil, FileText } from 'lucide-react';
+import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown, Pencil, FileText, Database } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@share
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
+import { VesselSearchDialog, type VesselSearchResult } from '@/modules/recruitment/VesselSearchDialog';
 import { useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useAllVesselsV2, useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
 import { LicenseSelectionDialog } from './LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from './TrainingCourseSelectionDialog';
@@ -111,6 +112,7 @@ import {
   mapLegacyLicenseToV2,
   mapLegacyTrainingCourseToV2,
   mapLegacySeaServiceToV2,
+  matchVesselTypeToMaster,
   mapLegacyPreJoiningMedicalToV2,
   mapLegacyDoctorVisitToV2,
   mapLegacyBriefingToV2,
@@ -364,6 +366,8 @@ interface SeaService {
   vesselName: string;
   vesselCode: string;
   vesselType: string;
+  imoNumber?: string;
+  yearBuilt?: string;
   deadweight: string;
   engineTypePower: string;
   ownerOperator: string;
@@ -720,6 +724,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [isTrainingDialogOpen, setIsTrainingDialogOpen] = useState(false);
   const [isTravelDocDialogOpen, setIsTravelDocDialogOpen] = useState(false);
   const [isVisaDialogOpen, setIsVisaDialogOpen] = useState(false);
+  const [isVesselSearchDialogOpen, setIsVesselSearchDialogOpen] = useState(false);
   
   // File attachment dialog state
   const [attachmentDialog, setAttachmentDialog] = useState<{
@@ -2320,6 +2325,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         vesselName: '',
         vesselCode: '',
         vesselType: '',
+        imoNumber: '',
+        yearBuilt: '',
         deadweight: '',
         engineTypePower: '',
         ownerOperator: '',
@@ -2327,6 +2334,29 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         from: '',
         to: '',
         periodMonths: ''
+      };
+      return { ...prev, externalSeaService: [newService, ...prev.externalSeaService] };
+    });
+  };
+
+  const addExternalSeaServiceFromVessel = (vessel: VesselSearchResult) => {
+    setFormData(prev => {
+      const matchedVesselType = matchVesselTypeToMaster(vessel.vesselType, vesselTypeMasterData);
+      const newService: SeaService = {
+        id: getNextId(prev.externalSeaService, 'SEA-E'),
+        vesselName: vessel.name || '',
+        vesselCode: '',
+        vesselType: matchedVesselType,
+        imoNumber: vessel.imo || '',
+        yearBuilt: vessel.yearBuilt || '',
+        deadweight: vessel.deadweightTonnage || '',
+        engineTypePower: vessel.engineTypePower || '',
+        ownerOperator: vessel.ownerName || vessel.managerName || '',
+        rank: '',
+        from: '',
+        to: '',
+        periodMonths: '',
+        attachments: [],
       };
       return { ...prev, externalSeaService: [newService, ...prev.externalSeaService] };
     });
@@ -5483,27 +5513,42 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-base font-medium" style={{ color: '#16569e' }}>E2. Details of Sea Service (External)</h3>
           {canEditSection('E') && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={addExternalSeaService}
-            className="flex items-center gap-2"
-            data-testid="button-add-external-service"
-          >
-            <Plus className="h-4 w-4" />
-            ADD
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsVesselSearchDialogOpen(true)}
+              className="text-[#16569e] border-[#16569e] hover:bg-blue-50"
+              data-testid="button-add-external-service-from-database"
+            >
+              <Database className="h-4 w-4 mr-2" />
+              ADD FROM DATABASE
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addExternalSeaService}
+              className="flex items-center gap-2"
+              data-testid="button-add-external-service"
+            >
+              <Plus className="h-4 w-4" />
+              ADD
+            </Button>
+          </div>
           )}
         </div>
         
         <div className="border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
+            <table className="w-full min-w-[1250px]">
               <thead className="bg-gray-100">
                 <tr>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name <span className="text-red-500">*</span></th>
+                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">IMO Number</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Type <span className="text-red-500">*</span></th>
+                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Year Built</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Deadweight</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Engine Type/ Power</th>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Owner / operator</th>
@@ -5518,7 +5563,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               <tbody>
                 {formData.externalSeaService.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="p-8 text-center text-gray-500">
+                    <td colSpan={canEditSection('E') ? 13 : 12} className="p-8 text-center text-gray-500">
                       No external sea service records added yet. Click "ADD" to get started.
                     </td>
                   </tr>
@@ -5542,6 +5587,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         />
                         {seaServiceRequiredErrors[service.id]?.vesselName && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].vesselName}</p>}
                       </td>
+                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                         <Input
+                           value={service.imoNumber || ''}
+                           onChange={(e) => updateExternalSeaService(service.id, 'imoNumber', e.target.value)}
+                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                           placeholder="Enter IMO number"
+                           maxLength={10}
+                         />
+                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Select
                           value={service.vesselType}
@@ -5560,6 +5614,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         </Select>
                         {seaServiceRequiredErrors[service.id]?.vesselType && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].vesselType}</p>}
                       </td>
+                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
+                         <Input
+                           value={service.yearBuilt || ''}
+                           onChange={(e) => updateExternalSeaService(service.id, 'yearBuilt', e.target.value)}
+                           className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
+                           placeholder="Enter year"
+                           maxLength={4}
+                         />
+                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
                           value={service.deadweight}
@@ -6403,7 +6466,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const isEduBlank = (edu: typeof formData.education[0]) => !(edu.qualifications || '').trim() && !(edu.subjectsField || '').trim() && !(edu.schoolCollegeUniversity || '').trim() && !(edu.dateOfCompletion || '').trim() && !hasAttachments(edu.attachments);
     const isLicBlank = (lic: typeof formData.licenses[0]) => !(lic.certificateDocument || '').trim() && !(lic.abbr || '').trim() && !(lic.requirement || '').trim() && !(lic.certificateNo || '').trim() && !(lic.issuingAuthority || '').trim() && !(lic.issued || '').trim() && !(lic.expiry || '').trim() && !hasAttachments(lic.attachments);
     const isTrainBlank = (t: typeof formData.trainingCourses[0]) => !(t.trainingCourse || '').trim() && !(t.abbr || '').trim() && !(t.requirement || '').trim() && !(t.certificateNo || '').trim() && !(t.issuingAuthority || '').trim() && !(t.issued || '').trim() && !(t.expiry || '').trim() && !hasAttachments(t.attachments);
-    const isSeaServiceBlank = (sea: any) => !(sea.vesselName || '').trim() && !(sea.vesselType || '').trim() && !(sea.rank || '').trim() && !(sea.from || sea.fromDate || '').trim() && !(sea.to || sea.toDate || '').trim() && !(sea.ownerOperator || '').trim() && !(sea.deadweight || '').trim() && !(sea.engineTypePower || '').trim();
+    const isSeaServiceBlank = (sea: any) => !(sea.vesselName || '').trim() && !(sea.vesselType || '').trim() && !(sea.imoNumber || '').trim() && !(sea.yearBuilt || '').trim() && !(sea.rank || '').trim() && !(sea.from || sea.fromDate || '').trim() && !(sea.to || sea.toDate || '').trim() && !(sea.ownerOperator || '').trim() && !(sea.deadweight || '').trim() && !(sea.engineTypePower || '').trim();
     const isMedicalBlank = (med: any) => !(med.vessel || '').trim() && !(med.dateOfMedical || '').trim() && !(med.bp || '').trim() && !(med.weight || '').trim() && !(med.fitnessForDuty || '').trim() && !(med.expiry || '').trim() && !(med.anyMedicationPrescribed || '').trim() && !hasAttachments(med.attachments);
     const isDoctorVisitBlank = (dv: any) => !(dv.vessel || '').trim() && !(dv.port || '').trim() && !(dv.date || '').trim() && !(dv.complaint || '').trim() && !(dv.doctorComments || '').trim() && !hasAttachments(dv.attachments);
 
@@ -7144,6 +7207,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 vesselName: sea.vesselName || '',
                 vesselCode: sea.vesselCode || '',
                 vesselType: sea.vesselType || '',
+                 imoNumber: sea.imoNumber || '',
+                 yearBuilt: sea.yearBuilt || '',
                 deadweight: sea.deadweight || '',
                 engineTypePower: sea.engineTypePower || '',
                 ownerOperator: sea.ownerOperator || '',
@@ -7674,6 +7739,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           vesselName: s.vesselName,
           vesselCode: s.vesselCode,
           vesselType: s.vesselType,
+          imoNumber: s.imoNumber,
+          yearBuilt: s.yearBuilt,
           deadweight: s.deadweight,
           engineTypePower: s.engineTypePower,
           ownerOperator: s.ownerOperator,
@@ -9298,6 +9365,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         onClose={() => setIsVisaDialogOpen(false)}
         onConfirm={addVisasFromDatabase}
         existingCountryIds={formData.visas.flatMap(v => [v.countryId, v.issuingCountry]).filter(Boolean)}
+      />
+
+      <VesselSearchDialog
+        open={isVesselSearchDialogOpen}
+        onOpenChange={setIsVesselSearchDialogOpen}
+        onSelectVessel={addExternalSeaServiceFromVessel}
       />
       
       {/* File Attachment Dialog */}

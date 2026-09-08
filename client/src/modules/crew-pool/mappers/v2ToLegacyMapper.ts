@@ -636,6 +636,8 @@ export interface LegacySeaService {
   vesselName: string;
   vesselCode: string;
   vesselType: string;
+  imoNumber?: string;
+  yearBuilt?: string;
   deadweight: string;
   engineTypePower: string;
   ownerOperator: string;
@@ -651,6 +653,18 @@ export interface LegacySeaService {
   sortOrder?: number;
 }
 
+export function matchVesselTypeToMaster(
+  apiVesselType: string | null | undefined,
+  masterVesselTypes: string[],
+): string {
+  const normalizedApiType = (apiVesselType || '').trim().toLocaleLowerCase();
+  if (!normalizedApiType) return '';
+
+  return masterVesselTypes.find(
+    type => type.trim().toLocaleLowerCase() === normalizedApiType,
+  ) || '';
+}
+
 export function mapV2SeaServiceToLegacy(v2: any): LegacySeaService {
   return {
     id: v2?.seaUuid || `SEA-${v2?.id || Math.random().toString(36).slice(2, 9)}`,
@@ -661,6 +675,8 @@ export function mapV2SeaServiceToLegacy(v2: any): LegacySeaService {
     vesselCode: v2?.vesselUuid || '',
     // Use resolved vessel type name if available, otherwise fall back to UUID
     vesselType: v2?.resolvedVesselTypeName || v2?.vesselTypeUuid || '',
+    imoNumber: v2?.imoNumber || '',
+    yearBuilt: v2?.yearBuilt || '',
     deadweight: v2?.deadweight || '',
     engineTypePower: v2?.engineTypePower || '',
     ownerOperator: v2?.ownerOperator || '',
@@ -692,6 +708,8 @@ export function mapLegacySeaServiceToV2(legacy: LegacySeaService): any {
     vesselName: legacy.vesselName || undefined,
     vesselUuid: legacy.vesselCode || undefined,
     vesselTypeUuid: legacy.vesselType || undefined,
+    imoNumber: legacy.imoNumber ?? undefined,
+    yearBuilt: legacy.yearBuilt ?? undefined,
     deadweight: legacy.deadweight ?? undefined,
     engineTypePower: legacy.engineTypePower ?? undefined,
     ownerOperator: legacy.ownerOperator ?? undefined,
