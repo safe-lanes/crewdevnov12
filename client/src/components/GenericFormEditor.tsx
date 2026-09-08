@@ -39,6 +39,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfiguredFormRenderer } from "@/components/configured-form/ConfiguredFormRenderer";
+import { getFixedParts } from "@/components/configured-form/fixedPartRegistry";
 import { SharedFormShell } from "@/components/SharedFormShell";
 import { FormTable } from "@/components/BaseSubmoduleForm";
 import { getTableClasses, sailDesignSystem } from "@/config/sailDesignSystem";
@@ -692,8 +693,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     [availableVersions, selectedVersionUuid, sortedVersions],
   );
   // Navigation includes every part. Only configurable parts have editable
-  // trees; fixed parts are rendered as their purpose-built placeholder in
-  // both Configure and Preview.
+  // trees; registered fixed parts reuse their feature-owned read-only preview.
   const selectedPart = allParts.find((part) => part.formPartUuid === selectedPartUuid) ?? configurableParts[0];
   const currentSections = selectedPart?.partType === "configurable"
     ? (trees[selectedPart.formPartUuid] || [])
@@ -707,6 +707,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const canEdit = isEditing && (!selectedVersion || selectedVersion.status === "draft");
   const canModify = canEdit && !isSaving;
   const isPreview = viewMode === "preview";
+  const previewFixedParts = getFixedParts(form.category, { readOnly: true });
 
   useEffect(() => {
     if (!selectedPartUuid && configurableParts[0]) {
@@ -1639,6 +1640,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 selectedPartUuid={selectedPart?.formPartUuid || selectedPartUuid}
                 selectedVesselTypeUuid={previewVesselTypeUuid}
                 onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
+                fixedParts={previewFixedParts}
               />
             ) : (
                <>
@@ -1781,6 +1783,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                       selectedPartUuid={selectedPart.formPartUuid}
                       selectedVesselTypeUuid={previewVesselTypeUuid}
                       onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
+                       fixedParts={previewFixedParts}
                     />
                   ) : (
                   <>

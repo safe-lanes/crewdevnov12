@@ -11,11 +11,12 @@ interface FormattedDateInputProps {
   min?: string;
   max?: string;
   placeholder?: string;
+  disabled?: boolean;
   "data-testid"?: string;
 }
 
 const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
-  ({ value, onChange, onBlur, className, min, max, placeholder, "data-testid": dataTestId }, ref) => {
+  ({ value, onChange, onBlur, className, min, max, placeholder, disabled = false, "data-testid": dataTestId }, ref) => {
     const inputRef = React.useRef<HTMLInputElement>(null);
     const formatted = value ? formatDate(value) : "";
 
@@ -23,10 +24,12 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
       <div
         ref={ref}
         className={cn(
-          "relative flex items-center h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm cursor-pointer whitespace-nowrap min-w-[5.5rem]",
+          "relative flex items-center h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm whitespace-nowrap min-w-[5.5rem]",
+          disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
           className
         )}
         onClick={() => {
+          if (disabled) return;
           try {
             inputRef.current?.showPicker?.();
           } catch {
@@ -48,8 +51,9 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
           onBlur={onBlur}
           min={min}
           max={max}
+          disabled={disabled}
           data-testid={dataTestId}
-          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+          className={cn("absolute inset-0 opacity-0 w-full h-full", disabled ? "cursor-not-allowed" : "cursor-pointer")}
           tabIndex={-1}
         />
       </div>
