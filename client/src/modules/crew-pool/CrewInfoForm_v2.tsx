@@ -50,6 +50,7 @@ import { TimelineCard } from './components/TimelineCard';
 import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAttachmentDialog';
 import { generateCrewInfoPDF, type CrewInfoFormData } from '@/lib/generateCrewInfoPDF';
 import BriefingLiveSubmissionHost from './components/BriefingLiveSubmissionHost';
+import DebriefingLiveSubmissionHost, { debriefingCreationErrorMessage, isPersistedDebriefingUuid, openOrCreateDebriefing } from './components/DebriefingLiveSubmissionHost';
 import { crewPoolApiV2 } from './api/crewPoolApiV2';
 import { 
   useCreateCrewV2, 
@@ -501,9 +502,83 @@ interface Debriefing {
   attachments?: FileAttachment[];
 }
 
+async function findDebriefingSubmission(crewUuid: string, debriefingUuid?: string): Promise<any | null> {
+  if (!crewUuid || !isPersistedDebriefingUuid(debriefingUuid)) return null;
+  const listResponse = await fetch(`/api/v2/debriefings/submissions/crew/${crewUuid}`);
+  if (!listResponse.ok) throw new Error(await listResponse.text() || "Could not check existing Debriefings");
+  const rows = await listResponse.json();
+  const details = await Promise.all(
+    (Array.isArray(rows) ? rows : []).map(async (row: any) => {
+      const response = await fetch(`/api/v2/debriefings/submissions/${row.debriefing_submission_uuid}`);
+      return response.ok ? response.json() : null;
+    }),
+  );
+  const found = details.find((detail: any) => detail?.submission?.debriefing_uuid === debriefingUuid);
+  return found?.submission || null;
+}
+
+function DebriefingSubmissionAction({ crewUuid, debriefing, onOpen }: { crewUuid: string; debriefing: Debriefing; onOpen: (uuid: string) => void }) {
+  const { toast } = useToast();
+  const { userType } = usePermissions();
+  const [submission, setSubmission] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [resolving, setResolving] = useState(false);
+  const isOfficeUser = userType?.trim().toLowerCase() === "office";
+  const persisted = isPersistedDebriefingUuid(debriefing.debriefingUuid);
+
+  useEffect(() => {
+    let active = true;
+    setSubmission(null);
+    if (!isOfficeUser || !crewUuid || !persisted) {
+      setResolving(false);
+      return () => { active = false; };
+    }
+    setResolving(true);
+    void findDebriefingSubmission(crewUuid, debriefing.debriefingUuid)
+      .then((found) => { if (active) setSubmission(found); })
+      .catch(() => undefined)
+      .finally(() => { if (active) setResolving(false); });
+    return () => { active = false; };
+  }, [crewUuid, debriefing.debriefingUuid, isOfficeUser, persisted]);
+
+  const action = async () => {
+    if (!isOfficeUser || !persisted || busy || resolving) return;
+    if (submission?.debriefing_submission_uuid) { onOpen(submission.debriefing_submission_uuid); return; }
+    setBusy(true);
+    try {
+      const submissionUuid = await openOrCreateDebriefing(debriefing.debriefingUuid!);
+      if (submissionUuid) onOpen(submissionUuid);
+      else throw new Error("The server did not return a debriefing submission.");
+    } catch (error) {
+      const existing = await findDebriefingSubmission(crewUuid, debriefing.debriefingUuid).catch(() => null);
+      if (existing?.debriefing_submission_uuid) {
+        setSubmission(existing);
+        onOpen(existing.debriefing_submission_uuid);
+      } else {
+        toast({
+          title: "Debriefing could not be created",
+          description: debriefingCreationErrorMessage(error),
+          variant: "destructive",
+        });
+      }
+    } finally { setBusy(false); }
+  };
+  const label = !isOfficeUser
+    ? "Office access is required"
+    : !persisted
+      ? "Save this G2 row before creating a Debriefing"
+      : resolving
+        ? "Checking Debriefing link"
+        : submission
+          ? "Open debriefing"
+          : "Create debriefing";
+  return <TooltipProvider><Tooltip><TooltipTrigger asChild><span><Button type="button" variant="ghost" size="icon" disabled={!isOfficeUser || !persisted || busy || resolving} onClick={() => void action()} className={`h-6 w-6 ${submission ? "text-[#16569e] hover:text-[#0e417a]" : "text-gray-400 hover:text-[#16569e]"}`} aria-label={label} data-testid={`button-debriefing-submission-${debriefing.id}`}><FileText className="h-3 w-3" /></Button></span></TooltipTrigger><TooltipContent className="max-w-[220px] whitespace-normal">{label}</TooltipContent></Tooltip></TooltipProvider>;
+}
+
 export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange, initialSection, highlightDocUuid, highlightVisaUuid }) => {
   const { toast } = useToast();
   const [briefingSubmissionUuid, setBriefingSubmissionUuid] = useState<string | null>(null);
+  const [debriefingSubmissionUuid, setDebriefingSubmissionUuid] = useState<string | null>(null);
   
   // Helper function to determine expiry date text color
   const getExpiryColorClass = (dateString: string): string => {
@@ -6375,6 +6450,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       {canEditSection('G') && (
                         <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                           <div className="flex gap-1">
+                            <DebriefingSubmissionAction crewUuid={crewMember?.crewUuid || crewMember?.id || ''} debriefing={debriefing} onOpen={setDebriefingSubmissionUuid} />
                             <Button
                               type="button"
                               variant="ghost"
@@ -8667,6 +8743,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   if (briefingSubmissionUuid) {
     return <div className="fixed inset-0 z-[100] overflow-auto bg-background">
       <BriefingLiveSubmissionHost submissionUuid={briefingSubmissionUuid} onBack={() => setBriefingSubmissionUuid(null)} />
+    </div>;
+  }
+  if (debriefingSubmissionUuid) {
+    return <div className="fixed inset-0 z-[100] overflow-auto bg-background">
+      <DebriefingLiveSubmissionHost submissionUuid={debriefingSubmissionUuid} onBack={() => setDebriefingSubmissionUuid(null)} />
     </div>;
   }
 
