@@ -180,6 +180,11 @@ export const mastersService = {
     return rows.map(addManningAgentAliases);
   },
 
+  async getManningAgentsWithActiveCrew() {
+    const rows = await mastersRepo.findManningAgentsWithActiveCrew();
+    return rows.map(addManningAgentAliases);
+  },
+
   async getManningAgentById(id: string) {
     const result = await mastersRepo.findManningAgentById(id);
     if (!result) throw new Error(`Manning agent not found: ${id}`);

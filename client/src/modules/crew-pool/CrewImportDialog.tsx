@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { crewPoolApiV2 } from "./api/crewPoolApiV2";
 import { useQueryClient } from "@tanstack/react-query";
+import { MANNING_AGENTS_WITH_ACTIVE_CREW_KEY } from "@/hooks/v2/useMasterDataV2";
 import {
   Upload,
   Download,
@@ -50,8 +51,6 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
   const [validationResult, setValidationResult] = useState<any>(null);
   const [importResult, setImportResult] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showWorkbookPrompt, setShowWorkbookPrompt] = useState(false);
-  const [isDownloadingWorkbook, setIsDownloadingWorkbook] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Attachment ZIP upload (second step of the import flow)
@@ -73,8 +72,6 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
     setValidationResult(null);
     setImportResult(null);
     setErrorMessage(null);
-    setShowWorkbookPrompt(false);
-    setIsDownloadingWorkbook(false);
     setZipFile(null);
     setAttachStatus("idle");
     setAttachResult(null);
@@ -221,9 +218,9 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
       setImportResult(res);
       if (res.success) {
         setStatus("success");
-        setShowWorkbookPrompt(true);
         // Refetch V2 lists so UI stays synced
         queryClient.invalidateQueries({ queryKey: ["v2", "crew-list"] });
+        queryClient.invalidateQueries({ queryKey: [MANNING_AGENTS_WITH_ACTIVE_CREW_KEY] });
         toast({
           title: "Import complete",
           description: `Successfully imported ${res.imported.crew} crew members.`,
@@ -239,43 +236,6 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
         title: "Import failed",
         description: err.message || "Failed to execute import",
       });
-    }
-  };
-
-  // Download vessel crew import workbook from DB after successful crew import
-  const handleDownloadWorkbook = async () => {
-    setIsDownloadingWorkbook(true);
-    try {
-      const response = await fetch("/api/v2/vessel/import/generate-workbook-from-db", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
-      }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "vessel_crew_import.xlsx";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      toast({
-        title: "Workbook downloaded",
-        description: "vessel_crew_import.xlsx is ready for Stage 1 & Stage 2 import.",
-      });
-      handleClose();
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Download failed",
-        description: err.message || "Failed to generate vessel import workbook",
-      });
-      // Keep the prompt open so the operator can retry
-    } finally {
-      setIsDownloadingWorkbook(false);
     }
   };
 
@@ -576,52 +536,24 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
                 })}
               </div>
 
-              {/* Vessel Workbook Download Prompt */}
-              {showWorkbookPrompt ? (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5 px-3 space-y-2">
-                  <div className="flex items-start gap-2.5">
-                    <FileSpreadsheet className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-blue-900">
-                        Download Vessel Crew Import sheet?
-                      </p>
-                      <p className="text-[11px] text-blue-700 leading-snug">
-                        Generate a pre-filled vessel import workbook from the crew now in your database — ready for Stage 1 &amp; Stage 2.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs px-2.5 border-blue-200 text-blue-700 hover:bg-blue-100"
-                      onClick={() => handleClose()}
-                      disabled={isDownloadingWorkbook}
-                    >
-                      No, close
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="h-7 text-xs px-2.5 bg-blue-600 hover:bg-blue-700 text-white"
-                      onClick={handleDownloadWorkbook}
-                      disabled={isDownloadingWorkbook}
-                    >
-                      {isDownloadingWorkbook ? (
-                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                      ) : (
-                        <Download className="h-3 w-3 mr-1" />
-                      )}
-                      {isDownloadingWorkbook ? "Generating…" : "Yes, download"}
-                    </Button>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-2.5 px-3">
+                <div className="flex items-start gap-2.5">
+                  <FileSpreadsheet className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-blue-900">
+                      Next step: finish all crew imports first
+                    </p>
+                    <p className="text-[11px] text-blue-700 leading-snug">
+                      After all Excel batches are imported, open Vessel Rank Hierarchy &amp; Crew Assignment Import to download one consolidated workbook for Section 1 and Section 2.
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <div className="text-center pt-1">
-                  <Button size="sm" className="h-8 text-xs px-4 bg-[#5dc86f] text-white hover:bg-[#218838]" onClick={handleClose}>
-                    Finish
-                  </Button>
-                </div>
-              )}
+              </div>
+              <div className="text-center pt-1">
+                <Button size="sm" className="h-8 text-xs px-4 bg-[#5dc86f] text-white hover:bg-[#218838]" onClick={handleClose}>
+                  Finish
+                </Button>
+              </div>
             </div>
           )}
         </div>

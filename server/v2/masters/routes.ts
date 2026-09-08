@@ -38,6 +38,7 @@ router.get("/licenses-dce", mastersController.getLicensesDce);
 router.get("/licenses-dce/:id", mastersController.getLicenseDceById);
 
 router.get("/manning-agents", mastersController.getManningAgents);
+router.get("/manning-agents/with-active-crew", mastersController.getManningAgentsWithActiveCrew);
 router.get("/manning-agents/:id", mastersController.getManningAgentById);
 
 router.get("/crew-pools", mastersController.getCrewPools);

@@ -200,6 +200,17 @@ export const useManningAgentsV2 = (options?: UseMasterOptions) => {
   });
 };
 
+export const MANNING_AGENTS_WITH_ACTIVE_CREW_KEY = `${V2_MASTERS_BASE}/manning-agents/with-active-crew`;
+
+export const useManningAgentsWithActiveCrewV2 = (options?: UseMasterOptions) => {
+  return useQuery<any[]>({
+    queryKey: [MANNING_AGENTS_WITH_ACTIVE_CREW_KEY],
+    staleTime: 60 * 1000,
+    retry: 2,
+    enabled: options?.enabled ?? true,
+  });
+};
+
 export const useManningAgentByIdV2 = (id: string | undefined) => {
   return useQuery<any>({
     queryKey: [`${V2_MASTERS_BASE}/manning-agents`, id],

@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EditIcon, Plus, Eye, Grip, Check, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, Settings, Filter, Archive, RotateCcw, Network, Search as SearchIcon, Upload, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAllVesselsV2 } from "@/hooks/v2/useMasterDataV2";
 import { UnsavedChangesDialog } from "@/components/dialogs/UnsavedChangesDialog";
 import { PromotionHierarchyDialog } from "@/components/dialogs/PromotionHierarchyDialog";
 import { VesselOrgChartDialog } from "@/components/dialogs/VesselOrgChartDialog";
@@ -62,7 +63,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Form, RankGroup, AvailableRank, InsertMasterDataEntry } from "@shared/schema";
 import { FormEditorFactory } from "@/components/FormEditorFactory";
 import type { ConfigurableFormPart } from "@/components/GenericFormEditor";
@@ -94,6 +95,7 @@ import {
   filterToSafeFields,
   type VesselMasterEntry
 } from "@/utils/vesselMasterMapping";
+import { isOperationalVessel, sortVesselOptionsByLabel } from "./utils/operationalVessels";
 // Vessel option interface for dropdown
 interface VesselOption {
   value: string;
@@ -1373,14 +1375,20 @@ const AdminModuleInner = (): JSX.Element => {
   // NEW: External vessel master data from API
   // PERFORMANCE: Only load when on masters or rank-admin tab
   const { 
-    data: externalVesselMasterData, 
-    isLoading: vesselMasterLoading,
-    error: vesselMasterError 
+    data: externalVesselMasterData,
   } = useMasterDataV2('vessels', { enabled: selectedAdminPage === "masters" || selectedAdminPage === "rank-admin" || selectedAdminPage === "training-matrix" });
 
   const vesselMasterData = Array.isArray(externalVesselMasterData) 
     ? externalVesselMasterData 
     : (externalVesselMasterData as any)?.vessels || [];
+
+  const {
+    data: allVesselMasterData = [],
+    isLoading: allVesselMasterLoading,
+    error: allVesselMasterError,
+  } = useAllVesselsV2({
+    enabled: selectedAdminPage === "masters" && selectedMaster === "014",
+  });
 
 
   // NEW: External nationality data from API
@@ -1643,13 +1651,17 @@ const AdminModuleInner = (): JSX.Element => {
   // Dynamic vessel data from Vessels Master (ID 014) and Vessel Groups
   const vesselOptions = useMemo((): VesselOption[] => {
     const idToUuidMap = new Map<string, string>();
-    const individualVessels = vesselMasterData.map((vessel: any): VesselOption => {
+    const activeVessels = vesselMasterData.filter((vessel: any) => isOperationalVessel(vessel));
+    const activeVesselValues = new Set<string>();
+    const individualVessels = activeVessels.map((vessel: any): VesselOption => {
       const isExternalData = !!vessel.vessel || !!vessel.vuid;
       const mappedVessel = isExternalData ? vessel : mapSafeFieldsToVesselData(vessel);
 
       const vesselValue = vessel.vesselUuid || vessel.entryId || vessel.vuid || `VSL-${String(vessel.id).padStart(3, '0')}`;
+      activeVesselValues.add(String(vesselValue));
 
       if (vessel.vesselUuid) {
+        activeVesselValues.add(String(vessel.vesselUuid));
         if (vessel.id) idToUuidMap.set(String(vessel.id), vessel.vesselUuid);
         if (vessel.entryId) idToUuidMap.set(String(vessel.entryId), vessel.vesselUuid);
         if (vessel.vuid) idToUuidMap.set(String(vessel.vuid), vessel.vesselUuid);
@@ -1669,10 +1681,7 @@ const AdminModuleInner = (): JSX.Element => {
       const rawIds = Array.isArray(parsed) ? parsed : (typeof parsed === 'string' ? (() => { try { return JSON.parse(parsed); } catch { return []; } })() : []);
       const mappedVesselIds = rawIds
         .map((vid: string) => idToUuidMap.get(vid) || vid)
-        .filter((vid: string) => {
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(vid);
-          return isUuid;
-        });
+        .filter((vid: string) => activeVesselValues.has(String(vid)));
       return {
         value: `group_${group.id}`,
         label: `${group.name}`,
@@ -1681,7 +1690,7 @@ const AdminModuleInner = (): JSX.Element => {
       };
     });
 
-    return [...vesselGroups, ...individualVessels];
+    return sortVesselOptionsByLabel([...vesselGroups, ...individualVessels]);
   }, [vesselMasterData, vesselGroupsData]);
 
   const rq = useQueryClient();
@@ -4879,9 +4888,10 @@ const AdminModuleInner = (): JSX.Element => {
                       <PopoverContent className={`${currentBreakpoint === 'mobile' ? 'w-[280px]' : 'w-[200px]'} p-0`}>
                         <Command>
                           <CommandInput placeholder="Search vessels..." className="h-9" />
-                          <CommandEmpty>No vessel found.</CommandEmpty>
-                          <CommandGroup>
-                            {vesselOptions.map((vessel: VesselOption) => (
+                          <CommandList data-testid="vessel-select-list">
+                            <CommandEmpty>No vessel found.</CommandEmpty>
+                            <CommandGroup>
+                              {vesselOptions.map((vessel: VesselOption) => (
                               <CommandItem
                                 key={vessel.value}
                                 value={`${vessel.label} ${vessel.value}`}
@@ -4945,8 +4955,9 @@ const AdminModuleInner = (): JSX.Element => {
                                   }`}
                                 />
                               </CommandItem>
-                            ))}
-                          </CommandGroup>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
                         </Command>
                       </PopoverContent>
                     </Popover>
@@ -6530,9 +6541,10 @@ const AdminModuleInner = (): JSX.Element => {
                   <PopoverContent className={`${currentBreakpoint === 'mobile' ? 'w-[280px]' : 'w-[200px]'} p-0`}>
                     <Command>
                       <CommandInput placeholder="Search vessels..." className="h-9" />
-                      <CommandEmpty>No vessel found.</CommandEmpty>
-                      <CommandGroup>
-                        {vesselOptions.map((vessel: VesselOption) => (
+                      <CommandList data-testid="tm-vessel-select-list">
+                        <CommandEmpty>No vessel found.</CommandEmpty>
+                        <CommandGroup>
+                          {vesselOptions.map((vessel: VesselOption) => (
                           <CommandItem
                             key={vessel.value}
                             value={`${vessel.label} ${vessel.value}`}
@@ -6589,8 +6601,9 @@ const AdminModuleInner = (): JSX.Element => {
                               }`}
                             />
                           </CommandItem>
-                        ))}
-                      </CommandGroup>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
                     </Command>
                   </PopoverContent>
                 </Popover>
@@ -7420,13 +7433,13 @@ const AdminModuleInner = (): JSX.Element => {
                       <div className="p-3 text-xs text-gray-500">No vessel types found</div>
                     )
                   ) : selectedMaster === "014" ? (
-                    // Vessel Master (014) - Use external vessel master data
-                    vesselMasterLoading ? (
+                    // Vessel Master (014) is the management exception and includes archived vessels.
+                    allVesselMasterLoading ? (
                       <div className="p-3 text-xs text-gray-500">Loading vessels...</div>
-                    ) : vesselMasterError ? (
-                      <div className="p-3 text-xs text-red-500">Error loading vessels: {(vesselMasterError as Error).message}</div>
-                    ) : vesselMasterData && vesselMasterData.length > 0 ? (
-                      vesselMasterData.map((item: any, index: number) => (
+                    ) : allVesselMasterError ? (
+                      <div className="p-3 text-xs text-red-500">Error loading vessels: {(allVesselMasterError as Error).message}</div>
+                    ) : allVesselMasterData.length > 0 ? (
+                      allVesselMasterData.map((item: any, index: number) => (
                         <div
                           key={item.vesselId || item.id || `vessel-${index}`}
                           className="grid grid-cols-5 gap-0 border-b border-gray-100 hover:bg-gray-50"
