@@ -34,7 +34,7 @@ import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { VesselSearchDialog, type VesselSearchResult } from '@/modules/recruitment/VesselSearchDialog';
-import { useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useAllVesselsV2, useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
+import { MANNING_AGENTS_WITH_ACTIVE_CREW_KEY, useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useAllVesselsV2, useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
 import { LicenseSelectionDialog } from './LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from './TrainingCourseSelectionDialog';
 import { validateMobileNumber, normalizeMobileInput, applyDialingCode, getDialingCode } from '../recruitment/countryDialingCodes';
@@ -8368,6 +8368,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     onSuccess: (_, variables) => {
       // V2: Invalidate V2 query keys
       queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew'] });
+      queryClient.invalidateQueries({ queryKey: [MANNING_AGENTS_WITH_ACTIVE_CREW_KEY] });
       queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool', 'crew', variables.id] });
       invalidateCrewData(variables.id);
       toast({

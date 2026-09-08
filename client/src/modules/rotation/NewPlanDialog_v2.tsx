@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
-import { useManningAgentsV2, useCrewPoolsV2, useVesselTypesV2, useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
+import { useManningAgentsWithActiveCrewV2, useCrewPoolsV2, useVesselTypesV2, useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
 import { ComplianceMatrixDialog_v2 as ComplianceMatrixDialog } from '@/modules/vessel/ComplianceMatrixDialog_v2';
 import { getCrewUserId } from '@/lib/crewUser';
 
@@ -584,7 +584,7 @@ function CrewColumn({
   }, [allProposals]);
 
   // Fetch Manning Agents from V2 dedicated table
-  const { data: manningAgentsData } = useManningAgentsV2();
+  const { data: manningAgentsData } = useManningAgentsWithActiveCrewV2();
 
   // Fetch Crew Pools from V2 dedicated table
   const { data: crewPoolsData } = useCrewPoolsV2();

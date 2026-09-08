@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { crewPoolApiV2 } from "./api/crewPoolApiV2";
 import { useQueryClient } from "@tanstack/react-query";
+import { MANNING_AGENTS_WITH_ACTIVE_CREW_KEY } from "@/hooks/v2/useMasterDataV2";
 import {
   Upload,
   Download,
@@ -219,6 +220,7 @@ export function CrewImportDialog({ isOpen, onClose }: CrewImportDialogProps) {
         setStatus("success");
         // Refetch V2 lists so UI stays synced
         queryClient.invalidateQueries({ queryKey: ["v2", "crew-list"] });
+        queryClient.invalidateQueries({ queryKey: [MANNING_AGENTS_WITH_ACTIVE_CREW_KEY] });
         toast({
           title: "Import complete",
           description: `Successfully imported ${res.imported.crew} crew members.`,
