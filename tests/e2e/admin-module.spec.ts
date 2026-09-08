@@ -111,7 +111,7 @@ test.describe('Admin Rank vessel selector', () => {
       vessel: `Active Vessel ${String(index + 1).padStart(2, '0')}`,
       isActive: true,
       isDeleted: false,
-    }));
+    })).reverse();
 
     await page.route('**/api/v2/masters/external/vessels', async route => {
       await route.fulfill({
@@ -151,6 +151,15 @@ test.describe('Admin Rank vessel selector', () => {
     await expect(list.getByText('Archived Vessel', { exact: true })).toHaveCount(0);
     await expect(list.getByText('Deleted Vessel', { exact: true })).toHaveCount(0);
 
+    const rankVesselLabels = (await list.locator('[role="option"]').allTextContents())
+      .map(label => label.trim())
+      .filter(label => label.startsWith('Active Vessel'));
+    expect(rankVesselLabels.slice(0, 3)).toEqual([
+      'Active Vessel 01',
+      'Active Vessel 02',
+      'Active Vessel 03',
+    ]);
+
     const dimensions = await list.evaluate(element => ({
       clientHeight: element.clientHeight,
       scrollHeight: element.scrollHeight,
@@ -160,5 +169,17 @@ test.describe('Admin Rank vessel selector', () => {
     await list.hover();
     await page.mouse.wheel(0, 5000);
     await expect(list.getByText('Active Vessel 80', { exact: true })).toBeVisible();
+
+    await page.goto('/admin/training-matrix');
+    await expect(page.getByTestId('title-training-matrix')).toBeVisible();
+    await page.getByTestId('tab-training-vessel').click();
+    await page.getByTestId('tm-vessel-select').click();
+
+    const trainingList = page.getByTestId('tm-vessel-select-list');
+    await expect(trainingList).toBeVisible();
+    const trainingVesselLabels = (await trainingList.locator('[role="option"]').allTextContents())
+      .map(label => label.trim())
+      .filter(label => label.startsWith('Active Vessel'));
+    expect(trainingVesselLabels).toEqual(rankVesselLabels);
   });
 });

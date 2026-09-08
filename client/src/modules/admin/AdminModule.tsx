@@ -94,7 +94,7 @@ import {
   filterToSafeFields,
   type VesselMasterEntry
 } from "@/utils/vesselMasterMapping";
-import { isOperationalVessel } from "./utils/operationalVessels";
+import { isOperationalVessel, sortVesselOptionsByLabel } from "./utils/operationalVessels";
 // Vessel option interface for dropdown
 interface VesselOption {
   value: string;
@@ -1684,7 +1684,7 @@ const AdminModuleInner = (): JSX.Element => {
       };
     });
 
-    return [...vesselGroups, ...individualVessels];
+    return sortVesselOptionsByLabel([...vesselGroups, ...individualVessels]);
   }, [vesselMasterData, vesselGroupsData]);
 
   const rq = useQueryClient();

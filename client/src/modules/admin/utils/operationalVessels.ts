@@ -1,6 +1,10 @@
 const TRUE_VALUES = new Set(["true", "1", "yes", "active"]);
 const FALSE_VALUES = new Set(["false", "0", "no", "inactive"]);
 const NON_OPERATIONAL_STATUSES = new Set(["archived", "deleted", "inactive"]);
+const VESSEL_LABEL_COLLATOR = new Intl.Collator("en", {
+  sensitivity: "base",
+  numeric: true,
+});
 
 function readBoolean(value: unknown): boolean | undefined {
   if (typeof value === "boolean") return value;
@@ -23,4 +27,12 @@ export function isOperationalVessel(vessel: Record<string, unknown>): boolean {
   if (deleted === true || archived === true || archivedAt != null) return false;
   if (active === false || NON_OPERATIONAL_STATUSES.has(status)) return false;
   return active === true || status === "active";
+}
+
+export function sortVesselOptionsByLabel<T extends { label: string }>(
+  options: readonly T[],
+): T[] {
+  return [...options].sort((left, right) =>
+    VESSEL_LABEL_COLLATOR.compare(left.label, right.label),
+  );
 }

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { isOperationalVessel } from "../../../../client/src/modules/admin/utils/operationalVessels";
+import {
+  isOperationalVessel,
+  sortVesselOptionsByLabel,
+} from "../../../../client/src/modules/admin/utils/operationalVessels";
 
 describe("isOperationalVessel", () => {
   it("keeps active, non-deleted vessels", () => {
@@ -29,5 +32,49 @@ describe("isOperationalVessel", () => {
   it("accepts supported active aliases", () => {
     expect(isOperationalVessel({ active: "yes", deleted: "no" })).toBe(true);
     expect(isOperationalVessel({ status: "Active" })).toBe(true);
+  });
+});
+
+describe("sortVesselOptionsByLabel", () => {
+  it("sorts labels case-insensitively with natural number ordering", () => {
+    const options = [
+      { value: "10", label: "Vessel 10" },
+      { value: "2", label: "vessel 2" },
+      { value: "alpha", label: "Alpha" },
+      { value: "1", label: "Vessel 1" },
+    ];
+
+    expect(sortVesselOptionsByLabel(options).map(option => option.value)).toEqual([
+      "alpha",
+      "1",
+      "2",
+      "10",
+    ]);
+  });
+
+  it("does not mutate the source option array", () => {
+    const options = [
+      { value: "b", label: "Bravo" },
+      { value: "a", label: "Alpha" },
+    ];
+
+    const sorted = sortVesselOptionsByLabel(options);
+
+    expect(sorted).not.toBe(options);
+    expect(options.map(option => option.value)).toEqual(["b", "a"]);
+  });
+
+  it("sorts vessel groups and individual vessels by the same displayed label", () => {
+    const options = [
+      { value: "vessel-z", label: "Zulu", type: "vessel" },
+      { value: "group-b", label: "Bravo Group", type: "group" },
+      { value: "vessel-a", label: "Alpha", type: "vessel" },
+    ];
+
+    expect(sortVesselOptionsByLabel(options).map(option => option.value)).toEqual([
+      "vessel-a",
+      "group-b",
+      "vessel-z",
+    ]);
   });
 });
