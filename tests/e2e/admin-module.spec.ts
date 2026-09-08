@@ -102,3 +102,63 @@ test.describe('Admin Module', () => {
     }
   });
 });
+
+test.describe('Admin Rank vessel selector', () => {
+  test('excludes archived vessels and scrolls through a long active list', async ({ page }) => {
+    const activeVessels = Array.from({ length: 80 }, (_, index) => ({
+      id: index + 1,
+      vesselUuid: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      vessel: `Active Vessel ${String(index + 1).padStart(2, '0')}`,
+      isActive: true,
+      isDeleted: false,
+    }));
+
+    await page.route('**/api/v2/masters/external/vessels', async route => {
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          type: 'vessels',
+          count: activeVessels.length + 2,
+          data: [
+            ...activeVessels,
+            {
+              id: 81,
+              vesselUuid: '00000000-0000-4000-8000-000000000081',
+              vessel: 'Archived Vessel',
+              isActive: false,
+              isDeleted: false,
+            },
+            {
+              id: 82,
+              vesselUuid: '00000000-0000-4000-8000-000000000082',
+              vessel: 'Deleted Vessel',
+              isActive: true,
+              isDeleted: true,
+            },
+          ],
+        }),
+      });
+    });
+
+    await page.goto('/admin/rank-admin');
+    await expect(page.getByRole('heading', { name: 'Rank Administration' })).toBeVisible();
+    await page.getByRole('button', { name: 'Vessel', exact: true }).click();
+    await page.getByTestId('vessel-select').click();
+
+    const list = page.getByTestId('vessel-select-list');
+    await expect(list).toBeVisible();
+    await expect(list.getByText('Active Vessel 01', { exact: true })).toBeVisible();
+    await expect(list.getByText('Archived Vessel', { exact: true })).toHaveCount(0);
+    await expect(list.getByText('Deleted Vessel', { exact: true })).toHaveCount(0);
+
+    const dimensions = await list.evaluate(element => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+    }));
+    expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.clientHeight);
+
+    await list.hover();
+    await page.mouse.wheel(0, 5000);
+    await expect(list.getByText('Active Vessel 80', { exact: true })).toBeVisible();
+  });
+});
