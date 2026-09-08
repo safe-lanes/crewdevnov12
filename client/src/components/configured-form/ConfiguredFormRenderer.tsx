@@ -915,15 +915,21 @@ function ConfiguredSection({
 
   return (
     <div
-      className="[&>div]:bg-gray-100 [&>div]:shadow-none"
+      className={[
+        "[&>div]:bg-white [&>div]:border-[#EAEBEF] [&>div]:rounded-lg [&>div]:shadow-none",
+        "[&>div>div]:p-4",
+        "[&>div>div>div:first-child]:mb-4 [&>div>div>div:first-child]:pb-0",
+        "[&>div>div>div:first-child_h3]:mb-0 [&>div>div>div:first-child_h3]:text-base [&>div>div>div:first-child_h3]:font-medium",
+        "[&>div>div>div:first-child>div:last-child]:hidden",
+      ].join(" ")}
       data-testid={`preview-section-${sectionId}`}
     >
       <FormSection
         title={`${sectionCode} ${sectionTitle}`}
         headerActions={
-          <SAILButton type="button" variant="secondary" className="h-8 px-3 text-xs" onClick={onToggleExpanded} aria-expanded={isExpanded} disabled={mode === "live" && !isApplicable} data-testid={`button-preview-section-toggle-${sectionId}`}>
+          <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs font-normal text-gray-500 hover:bg-gray-100 hover:text-gray-700" onClick={onToggleExpanded} aria-expanded={isExpanded} disabled={mode === "live" && !isApplicable} data-testid={`button-preview-section-toggle-${sectionId}`}>
             {!isApplicable && mode === "live" ? "Not applicable" : isExpanded ? "Collapse" : "Expand"}
-          </SAILButton>
+          </Button>
         }
         headerNotice={!section.section_title.trim() && (
           <p className="mt-1 text-sm" style={{ color: sailDesignSystem.colors.accent }} data-testid={`missing-section-title-${sectionId}`}>

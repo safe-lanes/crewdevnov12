@@ -181,17 +181,31 @@ describe("configured form renderer preview", () => {
     expect(sectionStack.style.gap).toBe(sailDesignSystem.spacing.sectionSpacing);
   });
 
-  it("renders each configured section as a grey panel directly inside the white Part B card", () => {
+  it("renders each configured section like an Appraisal F white outlined panel", () => {
     renderPreview();
     click(screen.getByTestId("button-step-part-b"));
 
     const partCard = screen.getByTestId("configured-part-card-B");
     const sectionStack = screen.getByTestId("configured-section-stack");
     const section = screen.getByTestId("preview-section-section-one");
+    const sectionHeading = section.querySelector("h3");
+    const toggle = screen.getByTestId("button-preview-section-toggle-section-one");
 
     expect(partCard.style.backgroundColor).toBe(sailDesignSystem.components.card.background);
     expect(section.parentElement).toBe(sectionStack);
-    expect(section).toHaveClass("[&>div]:bg-gray-100", "[&>div]:shadow-none");
+    expect(section).toHaveClass(
+      "[&>div]:bg-white",
+      "[&>div]:border-[#EAEBEF]",
+      "[&>div]:rounded-lg",
+      "[&>div]:shadow-none",
+      "[&>div>div]:p-4",
+      "[&>div>div>div:first-child_h3]:text-base",
+      "[&>div>div>div:first-child_h3]:font-medium",
+      "[&>div>div>div:first-child>div:last-child]:hidden",
+    );
+    expect(sectionHeading).toHaveStyle({ color: sailDesignSystem.colors.headerText });
+    expect(toggle).toHaveClass("text-gray-500", "font-normal");
+    expect(toggle).not.toHaveClass("bg-blue-600");
   });
 
   it("navigates every part and renders a fixed-part fallback when no component is supplied", () => {
