@@ -181,6 +181,19 @@ describe("configured form renderer preview", () => {
     expect(sectionStack.style.gap).toBe(sailDesignSystem.spacing.sectionSpacing);
   });
 
+  it("renders each configured section as a grey panel directly inside the white Part B card", () => {
+    renderPreview();
+    click(screen.getByTestId("button-step-part-b"));
+
+    const partCard = screen.getByTestId("configured-part-card-B");
+    const sectionStack = screen.getByTestId("configured-section-stack");
+    const section = screen.getByTestId("preview-section-section-one");
+
+    expect(partCard.style.backgroundColor).toBe(sailDesignSystem.components.card.background);
+    expect(section.parentElement).toBe(sectionStack);
+    expect(section).toHaveClass("[&>div]:bg-gray-100", "[&>div]:shadow-none");
+  });
+
   it("navigates every part and renders a fixed-part fallback when no component is supplied", () => {
     renderPreview();
 

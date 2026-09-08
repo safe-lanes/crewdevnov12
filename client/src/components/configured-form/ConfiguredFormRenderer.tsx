@@ -914,7 +914,10 @@ function ConfiguredSection({
   ) : undefined;
 
   return (
-    <div data-testid={`preview-section-${sectionId}`}>
+    <div
+      className="[&>div]:bg-gray-100 [&>div]:shadow-none"
+      data-testid={`preview-section-${sectionId}`}
+    >
       <FormSection
         title={`${sectionCode} ${sectionTitle}`}
         headerActions={
@@ -1163,32 +1166,24 @@ export function ConfiguredFormRenderer({
                     || section.applicable_vessel_types.length === 0
                     || section.applicable_vessel_types.includes(selectedVessel);
                   return (
-                    <div
+                    <ConfiguredSection
                       key={sectionId}
-                      className="rounded-md p-4"
-                      style={{
-                        backgroundColor: sailDesignSystem.colors.tableHeader,
-                        border: `1px solid ${sailDesignSystem.colors.border}`,
-                      }}
-                    >
-                      <ConfiguredSection
-                        section={section}
-                        sectionId={sectionId}
-                        roles={roles}
-                        departments={departments}
-                        vesselTypeLabel={selectedVesselLabel}
-                        isApplicable={isApplicable}
-                        isExpanded={mode === "live" && live?.sectionStates?.[sectionId]?.status === "not_applicable" ? false : internalExpandedSections[sectionId] !== false}
-                        onToggleExpanded={() => setInternalExpandedSections((current) => ({
-                          ...current,
-                          [sectionId]: !(current[sectionId] !== false),
-                        }))}
-                        answers={answers}
-                        setAnswer={setAnswer}
-                        live={live}
-                        mode={mode}
-                      />
-                    </div>
+                      section={section}
+                      sectionId={sectionId}
+                      roles={roles}
+                      departments={departments}
+                      vesselTypeLabel={selectedVesselLabel}
+                      isApplicable={isApplicable}
+                      isExpanded={mode === "live" && live?.sectionStates?.[sectionId]?.status === "not_applicable" ? false : internalExpandedSections[sectionId] !== false}
+                      onToggleExpanded={() => setInternalExpandedSections((current) => ({
+                        ...current,
+                        [sectionId]: !(current[sectionId] !== false),
+                      }))}
+                      answers={answers}
+                      setAnswer={setAnswer}
+                      live={live}
+                      mode={mode}
+                    />
                   );
                 })}
               </div>
