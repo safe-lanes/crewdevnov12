@@ -1227,6 +1227,9 @@ export const masterVessels = pgTable(
     imoNumber: text("imo_number"),
     flag: text("flag"),
     vesselType: text("vessel_type"),
+    yearBuilt: text("year_built"),
+    deadWeight: text("dead_weight"),
+    vesselOwner: text("vessel_owner"),
     // is_active / is_deleted added via migration 0186.
     // Populated by sync-all from the external master data API.
     isActive: boolean("is_active").default(true),
