@@ -1,4 +1,4 @@
-import { getDecryptedSessionStorageItem } from "./encryptionService";
+import { getDecryptedSessionStorageItem, deepParseJson } from "./encryptionService";
 import { getDevPersonaToken } from "./devPersona";
 
 const PARENT_LOGIN_URL = import.meta.env.VITE_PARENT_LOGIN_URL || "";
@@ -13,7 +13,15 @@ export function getAuthToken(): string | null {
   if (AUTH_BYPASS) return getDevPersonaToken();
   const decrypted = getDecryptedSessionStorageItem("credentials", true);
   if (typeof decrypted === "string" && decrypted.length > 0) {
-    return decrypted;
+    // The parent app's handoff double-JSON-encodes the token before
+    // encrypting it, so decryptData()'s single JSON.parse leaves a string
+    // that still has its own wrapping quotes (confirmed in production:
+    // Bearer "<jwt>" -> 401 invalid_token, Bearer <jwt> -> 200). Unwrap any
+    // extra stringification layers; no-op if the token is already bare.
+    const unwrapped = deepParseJson(decrypted);
+    return typeof unwrapped === "string" && unwrapped.length > 0
+      ? unwrapped
+      : decrypted;
   }
   return null;
 }
