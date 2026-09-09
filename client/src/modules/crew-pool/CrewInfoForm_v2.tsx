@@ -5153,8 +5153,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         </div>
         
         <div className="border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
+          <div className="w-full min-w-0 overflow-hidden [&_th]:px-1.5 [&_th]:text-[10px] [&_th]:leading-tight [&_td]:px-1.5 [&_td]:text-[11px] [&_input]:text-[11px]">
+            <table className="w-full table-fixed">
               <thead className="bg-gray-100">
                 <tr>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name <span className="text-red-500">*</span></th>
@@ -5535,8 +5535,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         </div>
         
         <div className="border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1250px]">
+          <div className="w-full min-w-0 overflow-hidden [&_th]:px-1 [&_th]:text-[10px] [&_th]:leading-tight [&_td]:px-1 [&_td]:text-[11px] [&_input]:text-[11px]">
+            <table className="w-full table-fixed">
               <thead className="bg-gray-100">
                 <tr>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name <span className="text-red-500">*</span></th>
@@ -8805,7 +8805,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
         <div className="flex h-full overflow-hidden bg-[#f9fafb]">
           {/* Left Sidebar - Photo + Enhanced Stepper (Hidden on Mobile) */}
-          <aside className="hidden sm:block sticky top-0 self-start basis-20 md:basis-48 lg:basis-52 shrink-0 bg-gray-50 border-r overflow-y-auto">
+          <aside className="hidden sm:block sticky top-0 self-start basis-16 md:basis-40 lg:basis-44 shrink-0 bg-gray-50 border-r overflow-y-auto">
             {/* Photo Upload Section */}
             <fieldset disabled={isCrewTerminated} className={isCrewTerminated ? 'terminated-lock' : ''}>
             {renderSidebarPhotoUpload()}
@@ -8842,7 +8842,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       <button
                         type="button"
                         onClick={() => scrollToSection(section.id)}
-                        className={`group flex items-center w-full px-3 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
+                        className={`group flex items-center w-full px-2 py-2 rounded-md transition-all border-l-4 min-h-[3rem] ${
                           isActive 
                             ? "bg-blue-50 border-blue-600 text-blue-700" 
                             : "border-transparent hover:bg-gray-100 text-gray-700"
@@ -8851,7 +8851,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         data-testid={`button-step-${section.id}`}
                       >
                         <span 
-                          className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shrink-0 ${
+                          className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold shrink-0 ${
                             isActive 
                               ? "bg-blue-600 text-white" 
                               : "bg-gray-600 text-white"
@@ -8860,13 +8860,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           {section.number}
                         </span>
                         <span 
-                          className="hidden xl:block ml-3 text-left text-sm leading-tight flex-1"
+                          className="hidden xl:block ml-2 text-left text-xs leading-tight flex-1"
                           data-testid={`text-step-title-${section.id}`}
                           title={section.title}
                           style={{ 
                             wordBreak: 'break-word',
                             lineHeight: '1.2',
-                            maxWidth: '8rem',
+                            maxWidth: '6.5rem',
                             display: '-webkit-box',
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: 'vertical',
@@ -8887,7 +8887,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           </aside>
           
           {/* Main Content Area - Continuous Scroll */}
-          <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 bg-[#f9fafb]">
+          <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-4 bg-[#f9fafb]">
             <fieldset disabled={isCrewTerminated} className={`space-y-6 ${isCrewTerminated ? 'terminated-lock' : ''}`}>
             {/* A - Dashboard */}
             {canViewSection('A') && (
@@ -8994,8 +8994,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
             {/* E - Sea Service */}
             {canViewSection('E') && (
-            <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionERef} data-section="E">
-              <CardContent className="p-3 sm:p-4 lg:p-6">
+            <Card className="min-w-0 bg-white border border-gray-200 shadow-sm" ref={sectionERef} data-section="E">
+              <CardContent className="min-w-0 p-3 sm:p-4">
                 <div className="pb-4 mb-6">
                   <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part E - Sea Service</h2>
                   <div style={{ color: '#16569e' }} className="text-sm">Add Sea service details, latest on top</div>
