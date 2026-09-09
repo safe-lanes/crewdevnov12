@@ -1230,6 +1230,10 @@ export const masterVessels = pgTable(
     yearBuilt: text("year_built"),
     deadWeight: text("dead_weight"),
     vesselOwner: text("vessel_owner"),
+    // Added via migration 0197. Not currently populated by sync-all — no
+    // upstream field for it yet — but Company sea service can auto-fill from
+    // it once the external master data API starts sending it.
+    engineTypePower: text("engine_type_power"),
     // is_active / is_deleted added via migration 0186.
     // Populated by sync-all from the external master data API.
     isActive: boolean("is_active").default(true),

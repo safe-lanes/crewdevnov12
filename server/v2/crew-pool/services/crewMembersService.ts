@@ -1176,17 +1176,34 @@ export const crewMembersService = {
       )
       .limit(1);
 
-    // Sea service with vessel and vessel type resolution
+    // Sea service with vessel and vessel type resolution. Company rows always
+    // read Deadweight/Engine Type/Owner-Operator from master_vessels, matched
+    // by vesselUuid first and by vesselName when vesselUuid didn't resolve
+    // (e.g. a bulk-import row for a vessel name master_vessels didn't have at
+    // import time) — same idiom as crewSeaServiceRepository/dashboardService.
+    // The write side is unchanged.
+    const seaServiceMasterVesselsByName = aliasedTable(masterVessels, "sea_mv_by_name");
     const seaServiceResults = await db
       .select({
         seaService: crewSeaService,
         resolvedVesselName: masterVessels.vessel,
         resolvedVesselTypeName: masterVesselTypes.vesselType,
+        masterVesselMatchUuid: sql<string | null>`COALESCE(${masterVessels.vesselUuid}, ${seaServiceMasterVesselsByName.vesselUuid})`,
+        resolvedDeadweight: sql<string | null>`COALESCE(${masterVessels.deadWeight}, ${seaServiceMasterVesselsByName.deadWeight})`,
+        resolvedEngineTypePower: sql<string | null>`COALESCE(${masterVessels.engineTypePower}, ${seaServiceMasterVesselsByName.engineTypePower})`,
+        resolvedOwnerOperator: sql<string | null>`COALESCE(${masterVessels.vesselOwner}, ${seaServiceMasterVesselsByName.vesselOwner})`,
       })
       .from(crewSeaService)
       .leftJoin(
         masterVessels,
         eq(crewSeaService.vesselUuid, masterVessels.vesselUuid)
+      )
+      .leftJoin(
+        seaServiceMasterVesselsByName,
+        and(
+          isNull(masterVessels.vesselUuid),
+          eq(crewSeaService.vesselName, seaServiceMasterVesselsByName.vessel)
+        )
       )
       .leftJoin(
         masterVesselTypes,
@@ -1350,12 +1367,22 @@ export const crewMembersService = {
       countryOfResidence: addressRow.countryOfResidence,
     }] : [];
 
-    // Merge resolved vessel and vessel type names into sea service
-    const seaService = seaServiceResults.map((row: { seaService: any; resolvedVesselName: string | null; resolvedVesselTypeName: string | null }) => ({
-      ...row.seaService,
-      resolvedVesselName: row.resolvedVesselName,
-      resolvedVesselTypeName: row.resolvedVesselTypeName,
-    }));
+    // Merge resolved vessel and vessel type names into sea service. Company
+    // rows override deadweight/engineTypePower/ownerOperator with the
+    // master_vessels-resolved value whenever a master vessel was matched
+    // (blank if master doesn't have that field); otherwise the row's own
+    // stored value is kept (e.g. a vessel master_vessels can't resolve at all).
+    const seaService = seaServiceResults.map((row: any) => {
+      const masterMatched = row.seaService.serviceType === "company" && row.masterVesselMatchUuid != null;
+      return {
+        ...row.seaService,
+        resolvedVesselName: row.resolvedVesselName,
+        resolvedVesselTypeName: row.resolvedVesselTypeName,
+        deadweight: masterMatched ? (row.resolvedDeadweight ?? null) : row.seaService.deadweight,
+        engineTypePower: masterMatched ? (row.resolvedEngineTypePower ?? null) : row.seaService.engineTypePower,
+        ownerOperator: masterMatched ? (row.resolvedOwnerOperator ?? null) : row.seaService.ownerOperator,
+      };
+    });
 
     // Merge resolved vessel names into medicals
     const medicals = medicalsWithVessel.map((row: { medical: any; resolvedVesselName: string | null }) => ({

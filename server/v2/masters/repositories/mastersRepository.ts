@@ -62,6 +62,7 @@ const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
     yearBuilt: 'yearBuilt',
     deadWeightSummer: 'deadWeight',
     vesselOwner: 'vesselOwner',
+    engineTypePower: 'engineTypePower',
     isActive: 'isActive',
     isDeleted: 'isDeleted',
   },

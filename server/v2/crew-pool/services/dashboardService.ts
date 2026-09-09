@@ -310,6 +310,11 @@ export const dashboardService = {
     const db = getDb();
     const mvtByUuid = masterVesselTypes;
     const mvtByName = aliasedTable(masterVesselTypes, "mvt_by_name");
+    // Company rows always read Deadweight/Engine Type from master_vessels, matched
+    // by vesselUuid first and by vesselName when vesselUuid didn't resolve — same
+    // idiom as the vessel-type join above. The write side is unchanged.
+    const mvByUuid = masterVessels;
+    const mvByName = aliasedTable(masterVessels, "mv_by_name");
 
     const result = await db
       .select({
@@ -329,6 +334,9 @@ export const dashboardService = {
         periodMonths: crewSeaService.periodMonths,
         deadweight: crewSeaService.deadweight,
         engineTypePower: crewSeaService.engineTypePower,
+        masterVesselMatchUuid: sql<string | null>`COALESCE(${mvByUuid.vesselUuid}, ${mvByName.vesselUuid})`,
+        resolvedDeadweight: sql<string | null>`COALESCE(${mvByUuid.deadWeight}, ${mvByName.deadWeight})`,
+        resolvedEngineTypePower: sql<string | null>`COALESCE(${mvByUuid.engineTypePower}, ${mvByName.engineTypePower})`,
       })
       .from(crewSeaService)
       .leftJoin(
@@ -342,6 +350,14 @@ export const dashboardService = {
           eq(crewSeaService.vesselTypeUuid, mvtByName.vesselType)
         )
       )
+      .leftJoin(mvByUuid, eq(crewSeaService.vesselUuid, mvByUuid.vesselUuid))
+      .leftJoin(
+        mvByName,
+        and(
+          isNull(mvByUuid.vesselUuid),
+          eq(crewSeaService.vesselName, mvByName.vessel)
+        )
+      )
       .where(
         and(
           eq(crewSeaService.crewUuid, crewUuid),
@@ -350,7 +366,15 @@ export const dashboardService = {
       )
       .orderBy(crewSeaService.fromDate);
 
-    return result;
+    return result.map((row: any) => {
+      const { masterVesselMatchUuid, resolvedDeadweight, resolvedEngineTypePower, ...rest } = row;
+      const masterMatched = rest.serviceType === "company" && masterVesselMatchUuid != null;
+      return {
+        ...rest,
+        deadweight: masterMatched ? (resolvedDeadweight ?? null) : rest.deadweight,
+        engineTypePower: masterMatched ? (resolvedEngineTypePower ?? null) : rest.engineTypePower,
+      };
+    });
   },
 
   async getLicenses(crewUuid: string) {
