@@ -18,6 +18,77 @@ function cleanString(str?: string | null): string {
   return (str || "").trim();
 }
 
+interface ResolvedRankPosition {
+  displayRank: string;
+  position: string;
+  isRankMatched: boolean;
+}
+
+/**
+ * Resolve each raw rank string (in the order given) to its display Rank and
+ * Position, using the company's Admin-defined position slots — the
+ * `Master_1` / `Master_2`-style role rows created via the "Multiple" button
+ * in Rank Admin (admCompanyRanksV2 rows with isRoleRow=true, linked back to
+ * their base rank row via originalRankId === baseRow.id).
+ *
+ * A rank only gets numbered positions if Admin has defined 2+ of these role
+ * rows for it; otherwise every crew member of that rank gets the plain rank
+ * name, regardless of how many are on the vessel.
+ */
+function resolveRankPositions(
+  rawRanks: string[],
+  allCompanyRanks: any[],
+): ResolvedRankPosition[] {
+  const baseRankByNameMap = new Map<string, any>();
+  for (const cr of allCompanyRanks) {
+    if (!cr.isRoleRow && cr.rank) {
+      baseRankByNameMap.set(norm(cr.rank), cr);
+    }
+  }
+
+  const roleRowsByBaseId = new Map<string, any[]>();
+  for (const cr of allCompanyRanks) {
+    if (cr.isRoleRow && cr.originalRankId) {
+      if (!roleRowsByBaseId.has(cr.originalRankId)) roleRowsByBaseId.set(cr.originalRankId, []);
+      roleRowsByBaseId.get(cr.originalRankId)!.push(cr);
+    }
+  }
+  for (const rows of roleRowsByBaseId.values()) {
+    rows.sort((a, b) => {
+      const na = parseInt(String(a.role || "").split("_").pop() || "0", 10) || 0;
+      const nb = parseInt(String(b.role || "").split("_").pop() || "0", 10) || 0;
+      return na - nb;
+    });
+  }
+
+  const instanceCounters = new Map<string, number>();
+
+  return rawRanks.map((rawRankInput) => {
+    const rawRank = cleanString(rawRankInput);
+    const baseRank = rawRank.replace(/_\d+$/, "");
+    const rankKey = norm(baseRank);
+
+    const baseRow = baseRankByNameMap.get(rankKey);
+    const displayRank = baseRow?.rank || baseRank;
+    const isRankMatched = !!baseRow;
+
+    const roleRows = baseRow ? (roleRowsByBaseId.get(baseRow.id) || []) : [];
+
+    const seenIndex = instanceCounters.get(rankKey) || 0;
+    instanceCounters.set(rankKey, seenIndex + 1);
+
+    let position: string;
+    if (roleRows.length >= 2) {
+      const slot = roleRows[seenIndex];
+      position = slot ? cleanString(slot.role) : `${displayRank}_${seenIndex + 1}`;
+    } else {
+      position = displayRank;
+    }
+
+    return { displayRank, position, isRankMatched };
+  });
+}
+
 export interface GeneratedWorkbookResult {
   buffer: Buffer;
   summary: {
@@ -707,7 +778,6 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
   ]);
 
   const scaffold = buildScaffold({ allVessels, allCompanyRanks, availableRanks, allPorts });
-  const { companyRankByNameMap } = scaffold;
 
   // ── Build crew lookup maps ───────────────────────────────────────────────────
   const crewByFnLnDobMap = new Map<string, any[]>();
@@ -787,38 +857,23 @@ export async function generateVesselImportWorkbook(docs: VesselCrewListDoc[]): P
     const shouldAddHierarchy = !writtenHierarchyVessels.has(vesselKey);
     if (shouldAddHierarchy) writtenHierarchyVessels.add(vesselKey);
 
-    const rankCounts = new Map<string, number>();
-    doc.entries.forEach((e: any) => {
-      const key = norm(e.rankOrRating);
-      rankCounts.set(key, (rankCounts.get(key) || 0) + 1);
-    });
-
-    const rankInstanceCounters = new Map<string, number>();
     const vesselActiveRanksSet = new Set<string>();
 
-    for (const entry of doc.entries) {
+    // Resolve Rank/Position from Admin's defined position slots (not by
+    // counting crew occurrences — see resolveRankPositions).
+    const resolvedPositions = resolveRankPositions(
+      doc.entries.map((e: any) => e.rankOrRating || ""),
+      allCompanyRanks,
+    );
+
+    for (let entryIdx = 0; entryIdx < doc.entries.length; entryIdx++) {
+      const entry = doc.entries[entryIdx];
       totalCrewEntries++;
-      const rawRank = cleanString(entry.rankOrRating);
-      const baseRank = rawRank.replace(/_\d+$/, "");
-      const rankKey = norm(baseRank);
+      const rankKey = norm(cleanString(entry.rankOrRating).replace(/_\d+$/, ""));
       vesselActiveRanksSet.add(rankKey);
 
-      const companyRank = companyRankByNameMap.get(rankKey) || companyRankByNameMap.get(norm(rawRank));
-      const isRankMatched = !!companyRank;
+      const { displayRank, position: positionValue, isRankMatched } = resolvedPositions[entryIdx];
       if (!isRankMatched) unmatchedRankCount++;
-
-      const displayRank = companyRank?.rank || baseRank;
-
-      const count = rankCounts.get(norm(rawRank)) || rankCounts.get(rankKey) || 1;
-      let positionValue = companyRank?.role || baseRank;
-      if (count > 1) {
-        const nextNum = (rankInstanceCounters.get(rankKey) || 0) + 1;
-        rankInstanceCounters.set(rankKey, nextNum);
-        const roleBase = (companyRank?.role || baseRank).replace(/_\d+$/, "");
-        positionValue = `${roleBase}_${nextNum}`;
-      } else {
-        positionValue = positionValue.replace(/_\d+$/, "");
-      }
 
       // Multi-strategy candidate crew lookup
       const gName = norm(entry.givenNames);
@@ -988,7 +1043,7 @@ export async function buildWorkbookFromDb(): Promise<GeneratedWorkbookResult> {
   }
 
   const scaffold = buildScaffold({ allVessels, allCompanyRanks, availableRanks, allPorts });
-  const { companyRankByNameMap, vesselByImoMap } = scaffold;
+  const { vesselByImoMap } = scaffold;
 
   // Build vessel IMO map by vesselUuid
   const vesselByUuidMap = new Map<string, any>();
@@ -1020,38 +1075,19 @@ export async function buildWorkbookFromDb(): Promise<GeneratedWorkbookResult> {
     );
     const imo = matchedVessel?.imoNumber || "";
 
-    // Count occurrences of each rank on this vessel (for position numbering)
-    const rankCounts = new Map<string, number>();
-    for (const s of services) {
-      const rankKey = norm((s.rank || "").replace(/_\d+$/, ""));
-      rankCounts.set(rankKey, (rankCounts.get(rankKey) || 0) + 1);
-    }
+    // Resolve Rank/Position from Admin's defined position slots (not by
+    // counting crew occurrences — see resolveRankPositions).
+    const resolvedPositions = resolveRankPositions(
+      services.map((s: any) => s.rank || ""),
+      allCompanyRanks,
+    );
 
-    const rankInstanceCounters = new Map<string, number>();
-
-    for (const s of services) {
+    for (let i = 0; i < services.length; i++) {
+      const s = services[i];
       totalCrewEntries++;
 
-      const rawRank = cleanString(s.rank || "");
-      const baseRank = rawRank.replace(/_\d+$/, "");
-      const rankKey = norm(baseRank);
-
-      const companyRank = companyRankByNameMap.get(rankKey) || companyRankByNameMap.get(norm(rawRank));
-      const isRankMatched = !!companyRank;
+      const { displayRank, position: positionValue, isRankMatched } = resolvedPositions[i];
       if (!isRankMatched) unmatchedRankCount++;
-
-      const displayRank = companyRank?.rank || baseRank;
-
-      const count = rankCounts.get(rankKey) || 1;
-      let positionValue = companyRank?.role || baseRank;
-      if (count > 1) {
-        const nextNum = (rankInstanceCounters.get(rankKey) || 0) + 1;
-        rankInstanceCounters.set(rankKey, nextNum);
-        const roleBase = (companyRank?.role || baseRank).replace(/_\d+$/, "");
-        positionValue = `${roleBase}_${nextNum}`;
-      } else {
-        positionValue = positionValue.replace(/_\d+$/, "");
-      }
 
       const empId = empIdByCrewUuid.get(s.crewUuid || "") || "";
       const signOnDate = s.fromDate || "";

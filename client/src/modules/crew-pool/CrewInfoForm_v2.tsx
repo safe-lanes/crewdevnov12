@@ -934,22 +934,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return DEFAULT_DROPDOWN_VESSEL_TYPES;
   }, [vesselTypeMasterDataRaw]);
 
-  // Create a lookup map from vtuid (vessel type unique ID) to vessel type name
-  // Supports both external API format (vesselType) and local DB format (name)
-  const vesselTypeIdToNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    vesselTypeMasterDataRaw.forEach((vt: any) => {
-      const typeName = vt.vesselType || vt.name;
-      if (vt.vtuid && typeName) {
-        map.set(vt.vtuid, typeName);
-      }
-      if (vt.entryId && typeName) {
-        map.set(vt.entryId, typeName);
-      }
-    });
-    return map;
-  }, [vesselTypeMasterDataRaw]);
-
   // Process vessels from external API for E1 Sea Service dropdown
   const vesselMasterData = useMemo(() => {
     if (externalVesselsData && Array.isArray(externalVesselsData) && externalVesselsData.length > 0) {
@@ -966,7 +950,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       .map((v: any) => ({
         code: v.vesselUuid || v.uuid,
         name: v.vessel || v.name,
-        vtuid: v.vtuid || null
+        // Vessel particulars from master_vessels, used to auto-bind E1
+        // Company sea service fields when a vessel is selected.
+        vesselType: v.vesselType || null,
+        deadWeight: v.deadWeight || null,
+        vesselOwner: v.vesselOwner || null,
+        engineTypePower: v.engineTypePower || null,
       }))
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [vesselMasterData]);
@@ -1144,10 +1133,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     return newErrors;
   }, [formData.currentCompanySeaService, formData.externalSeaService]);
 
+  // E1 Company's Vessel Type is locked to master_vessels (vesselCode is only ever
+  // set by the Company vessel dropdown) — a blank value with a vessel already
+  // selected means the vessel's master data doesn't resolve, not that nothing was
+  // picked yet, so it gets a more actionable message.
+  const getVesselTypeRequiredMessage = (service: any): string =>
+    service.vesselCode
+      ? "This vessel's Vessel Type isn't in the Vessel Type master. Ask an admin to fix master_vessels or add the type, then re-select the vessel."
+      : 'Vessel type is required.';
+
   const validateSeaServiceFieldOnBlur = useCallback((serviceId: string, service: any) => {
     const fieldErrors: Record<string, string> = {};
     if (!(service.vesselName || '').trim()) fieldErrors.vesselName = 'Vessel name is required.';
-    if (!(service.vesselType || '').trim()) fieldErrors.vesselType = 'Vessel type is required.';
+    if (!(service.vesselType || '').trim()) fieldErrors.vesselType = getVesselTypeRequiredMessage(service);
     if (!(service.rank || '').trim()) fieldErrors.rank = 'Rank is required.';
     if (!(service.from || service.fromDate || '').trim()) fieldErrors.from = 'From date is required.';
     if (!(service.to || service.toDate || '').trim()) fieldErrors.to = 'To date is required.';
@@ -5210,16 +5208,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             value={service.vesselCode}
                             onValueChange={(value) => {
                               const selectedVessel = vesselOptions.find(v => v.code === value);
+                              const matchedVesselType = selectedVessel?.vesselType
+                                ? matchVesselTypeToMaster(selectedVessel.vesselType, vesselTypeMasterData)
+                                : '';
                               updateCurrentCompanySeaService(service.id, 'vesselCode', value);
                               updateCurrentCompanySeaService(service.id, 'vesselName', selectedVessel?.name || '');
-                              if (selectedVessel?.vtuid) {
-                                const vesselTypeName = vesselTypeIdToNameMap.get(selectedVessel.vtuid);
-                                if (vesselTypeName) {
-                                  updateCurrentCompanySeaService(service.id, 'vesselType', vesselTypeName);
-                                }
-                              }
+                              // Vessel Type/Deadweight/Engine Type/Owner-Operator are locked to
+                              // master_vessels — always overwrite (including to blank) so a vessel
+                              // with incomplete master data doesn't leave the previous vessel's
+                              // values behind.
+                              updateCurrentCompanySeaService(service.id, 'vesselType', matchedVesselType);
+                              updateCurrentCompanySeaService(service.id, 'deadweight', selectedVessel?.deadWeight || '');
+                              updateCurrentCompanySeaService(service.id, 'engineTypePower', selectedVessel?.engineTypePower || '');
+                              updateCurrentCompanySeaService(service.id, 'ownerOperator', selectedVessel?.vesselOwner || '');
                               if (seaServiceRequiredErrors[service.id]?.vesselName && selectedVessel?.name) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselName: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; });
-                              setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselCode: value, vesselName: selectedVessel?.name || '', vesselType: selectedVessel?.vtuid ? (vesselTypeIdToNameMap.get(selectedVessel.vtuid) || service.vesselType) : service.vesselType }), 0);
+                              setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselCode: value, vesselName: selectedVessel?.name || '', vesselType: matchedVesselType || service.vesselType }), 0);
                             }}
                           >
                             <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.vesselName ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
@@ -5248,46 +5251,37 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         {isVesselSynced ? (
                           <span className="text-[13px] text-[#4f5863]">{service.vesselType || '—'}</span>
                         ) : (
-                          <Select
+                          <Input
                             value={service.vesselType}
-                            onValueChange={(value) => { updateCurrentCompanySeaService(service.id, 'vesselType', value); if (seaServiceRequiredErrors[service.id]?.vesselType) setSeaServiceRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { vesselType: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); setTimeout(() => validateSeaServiceFieldOnBlur(service.id, { ...service, vesselType: value }), 0); }}
-                          >
-                            <SelectTrigger className={`border ${seaServiceRequiredErrors[service.id]?.vesselType ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6`}>
-                              <SelectValue placeholder="Select vessel type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {vesselTypeMasterData.map((vesselType) => (
-                                <SelectItem key={vesselType} value={vesselType}>
-                                  {vesselType}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            disabled
+                            className={`border ${seaServiceRequiredErrors[service.id]?.vesselType ? 'border-red-500' : 'border-[#EAEBEF]'} bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6 disabled:opacity-100 disabled:cursor-not-allowed`}
+                            placeholder="Select a vessel"
+                          />
                         )}
                         {seaServiceRequiredErrors[service.id]?.vesselType && <p className="text-xs text-red-500 mt-1">{seaServiceRequiredErrors[service.id].vesselType}</p>}
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
                           value={service.deadweight}
-                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'deadweight', e.target.value)}
-                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          placeholder="Enter deadweight"
+                          disabled
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6 disabled:opacity-100 disabled:cursor-not-allowed"
+                          placeholder="—"
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
                           value={service.engineTypePower}
-                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'engineTypePower', e.target.value)}
-                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          placeholder="Enter engine type/power"
+                          disabled
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6 disabled:opacity-100 disabled:cursor-not-allowed"
+                          placeholder="—"
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
                         <Input
                           value={service.ownerOperator}
-                          onChange={(e) => updateCurrentCompanySeaService(service.id, 'ownerOperator', e.target.value)}
-                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6"
-                          placeholder="Enter owner/operator"
+                          disabled
+                          className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6 disabled:opacity-100 disabled:cursor-not-allowed"
+                          placeholder="—"
                         />
                       </td>
                       <td className="text-[#4f5863] text-[13px] font-normal py-2 px-2 sm:px-4">
@@ -6546,7 +6540,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         }
         const fieldErrors: Record<string, string> = {};
         if (!(sea.vesselName || '').trim()) fieldErrors.vesselName = 'Vessel name is required.';
-        if (!(sea.vesselType || '').trim()) fieldErrors.vesselType = 'Vessel type is required.';
+        if (!(sea.vesselType || '').trim()) fieldErrors.vesselType = getVesselTypeRequiredMessage(sea);
         if (!(sea.rank || '').trim()) fieldErrors.rank = 'Rank is required.';
         if (!from) fieldErrors.from = 'From date is required.';
         if (!to) fieldErrors.to = 'To date is required.';

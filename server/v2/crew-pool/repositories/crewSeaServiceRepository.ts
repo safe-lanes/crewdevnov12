@@ -1,4 +1,4 @@
-import { eq, and, inArray, asc } from "drizzle-orm";
+import { eq, and, inArray, asc, aliasedTable, isNull, sql } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   crewSeaService,
@@ -52,6 +52,12 @@ export class CrewSeaServiceRepository {
     crewUuid: string
   ): Promise<CrewSeaServiceWithAttachments[]> {
     const db = getDb();
+    // Company rows always read Vessel Type/Deadweight/Engine Type/Owner-Operator
+    // from master_vessels, matched by vesselUuid first and by vesselName when
+    // vesselUuid didn't resolve (e.g. a bulk-import row for a vessel name that
+    // wasn't in master_vessels at import time). The write side (create/update/
+    // reconcile/import) is unchanged — only the read direction shifts.
+    const masterVesselsByName = aliasedTable(masterVessels, "mv_by_name");
     const servicesWithJoins = await db
       .select({
         id: crewSeaService.id,
@@ -71,6 +77,10 @@ export class CrewSeaServiceRepository {
         deadweight: crewSeaService.deadweight,
         engineTypePower: crewSeaService.engineTypePower,
         ownerOperator: crewSeaService.ownerOperator,
+        masterVesselMatchUuid: sql<string | null>`COALESCE(${masterVessels.vesselUuid}, ${masterVesselsByName.vesselUuid})`,
+        resolvedDeadweight: sql<string | null>`COALESCE(${masterVessels.deadWeight}, ${masterVesselsByName.deadWeight})`,
+        resolvedEngineTypePower: sql<string | null>`COALESCE(${masterVessels.engineTypePower}, ${masterVesselsByName.engineTypePower})`,
+        resolvedOwnerOperator: sql<string | null>`COALESCE(${masterVessels.vesselOwner}, ${masterVesselsByName.vesselOwner})`,
         periodMonths: crewSeaService.periodMonths,
         experienceCategories: crewSeaService.experienceCategories,
         signOffReason: crewSeaService.signOffReason,
@@ -84,6 +94,13 @@ export class CrewSeaServiceRepository {
       })
       .from(crewSeaService)
       .leftJoin(masterVessels, eq(crewSeaService.vesselUuid, masterVessels.vesselUuid))
+      .leftJoin(
+        masterVesselsByName,
+        and(
+          isNull(masterVessels.vesselUuid),
+          eq(crewSeaService.vesselName, masterVesselsByName.vessel)
+        )
+      )
       .leftJoin(masterVesselTypes, eq(crewSeaService.vesselTypeUuid, masterVesselTypes.vtUuid))
       .where(
         and(
@@ -113,10 +130,23 @@ export class CrewSeaServiceRepository {
       attMap.set(att.seaUuid, existing);
     });
 
-    return servicesWithJoins.map((service: any) => ({
-      ...service,
-      attachments: attMap.get(service.seaUuid) || [],
-    }));
+    return servicesWithJoins.map((service: any) => {
+      const {
+        masterVesselMatchUuid,
+        resolvedDeadweight,
+        resolvedEngineTypePower,
+        resolvedOwnerOperator,
+        ...rest
+      } = service;
+      const masterMatched = rest.serviceType === "company" && masterVesselMatchUuid != null;
+      return {
+        ...rest,
+        deadweight: masterMatched ? (resolvedDeadweight ?? null) : rest.deadweight,
+        engineTypePower: masterMatched ? (resolvedEngineTypePower ?? null) : rest.engineTypePower,
+        ownerOperator: masterMatched ? (resolvedOwnerOperator ?? null) : rest.ownerOperator,
+        attachments: attMap.get(service.seaUuid) || [],
+      };
+    });
   }
 
   async findByUuid(seaUuid: string): Promise<CrewSeaService | undefined> {
