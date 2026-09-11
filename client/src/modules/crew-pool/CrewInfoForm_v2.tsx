@@ -5155,6 +5155,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <div className="border rounded-lg overflow-hidden">
           <div className="w-full min-w-0 overflow-hidden [&_th]:px-1.5 [&_th]:text-[10px] [&_th]:leading-tight [&_td]:px-1.5 [&_td]:text-[11px] [&_input]:text-[11px]">
             <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[8%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[8%]" />
+                <col className="w-[12.5%]" />
+                <col className="w-[12.5%]" />
+                <col className="w-[5.5%]" />
+                <col className="w-[5.5%]" />
+                <col className="w-[7%]" />
+                {canEditSection('E') && <col className="w-[5%]" />}
+              </colgroup>
               <thead className="bg-gray-100">
                 <tr>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name <span className="text-red-500">*</span></th>
@@ -5537,6 +5551,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <div className="border rounded-lg overflow-hidden">
           <div className="w-full min-w-0 overflow-hidden [&_th]:px-1 [&_th]:text-[10px] [&_th]:leading-tight [&_td]:px-1 [&_td]:text-[11px] [&_input]:text-[11px]">
             <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-[9%]" />
+                <col className="w-[7%]" />
+                <col className="w-[8%]" />
+                <col className="w-[5.5%]" />
+                <col className="w-[7%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[6%]" />
+                <col className="w-[11.5%]" />
+                <col className="w-[11.5%]" />
+                <col className="w-[5%]" />
+                <col className="w-[5%]" />
+                {canEditSection('E') && <col className="w-[7.5%]" />}
+              </colgroup>
               <thead className="bg-gray-100">
                 <tr>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name <span className="text-red-500">*</span></th>
