@@ -4192,12 +4192,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </div>
             
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth</Label>
               {isEditing ? (
                 <FormattedDateInput
                   value={formData.spouseDateOfBirth}
                   onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseDobError) setSpouseDobError(''); if (spouseValidationError) setSpouseValidationError(''); }}
-                  onBlur={() => { if (formData.maritalStatus === 'Married') { if (!(formData.spouseDateOfBirth || '').trim()) { setSpouseDobError('Spouse date of birth is required.'); } else if (formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); } else { setSpouseDobError(''); } } else { setSpouseDobError(''); } }}
+                  onBlur={() => { if (formData.spouseDateOfBirth && formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); } else { setSpouseDobError(''); } }}
                   className={`mt-1 ${spouseDobError ? 'border-red-500' : ''}`}
                   max={todayStr}
                   data-testid="input-spouse-dob"
@@ -6474,8 +6474,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (formData.maritalStatus === 'Married') {
       if (!(formData.spouseFirstName || '').trim()) { setSpouseFirstNameError('Spouse first name is required.'); hasErrors = true; } else { setSpouseFirstNameError(''); }
       if (!(formData.spouseFamilyName || '').trim()) { setSpouseFamilyNameError('Spouse family name is required.'); hasErrors = true; } else { setSpouseFamilyNameError(''); }
-      if (!(formData.spouseDateOfBirth || '').trim()) { setSpouseDobError('Spouse date of birth is required.'); hasErrors = true; }
-      else if (formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); hasErrors = true; }
+      if (formData.spouseDateOfBirth && formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); hasErrors = true; }
       else { setSpouseDobError(''); }
     } else {
       setSpouseFirstNameError(''); setSpouseFamilyNameError(''); setSpouseDobError('');

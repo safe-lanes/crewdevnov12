@@ -2570,7 +2570,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     if (formData.maritalStatus === 'Married') {
       if (!(formData.spouseFirstName || '').trim()) { newSpouseErrors.spouseFirstName = 'Spouse first name is required.'; firstErrorTestIds.push('input-spouse-first-name'); hasErrors = true; }
       if (!(formData.spouseFamilyName || '').trim()) { newSpouseErrors.spouseFamilyName = 'Spouse family name is required.'; firstErrorTestIds.push('input-spouse-family-name'); hasErrors = true; }
-      if (!(formData.spouseDateOfBirth || '').trim()) { newSpouseErrors.spouseDateOfBirth = 'Spouse date of birth is required.'; firstErrorTestIds.push('input-spouse-dob'); hasErrors = true; }
     }
     const spouseDobVal = (formData.spouseDateOfBirth || '').trim();
     if (spouseDobVal) {
@@ -5000,13 +4999,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               )}
             </div>
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth</Label>
               {isEditing ? (
                 <>
                   <FormattedDateInput
                     value={formData.spouseDateOfBirth}
                     onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseErrors.spouseDateOfBirth) setSpouseErrors(prev => { const { spouseDateOfBirth: _, ...rest } = prev; return rest; }); }}
-                    onBlur={() => { if (formData.maritalStatus === 'Married' && !(formData.spouseDateOfBirth || '').trim()) setSpouseErrors(prev => ({ ...prev, spouseDateOfBirth: 'Spouse date of birth is required.' })); }}
                     max={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()}
                     className={`mt-1 ${spouseErrors.spouseDateOfBirth ? 'border-red-500' : ''}`}
                     data-testid="input-spouse-dob"
