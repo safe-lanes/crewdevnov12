@@ -361,7 +361,11 @@ export default function CbaReferencePage() {
                 <SelectContent>
                   <SelectItem value={NONE}>None</SelectItem>
                   {elements.map((e: any) => (
-                    <SelectItem key={e.payElementUuid} value={e.payElementUuid}>
+                    <SelectItem
+                      key={e.payElementUuid}
+                      value={e.payElementUuid}
+                      disabled={e.status === "inactive"}
+                    >
                       {e.code} — {e.name}
                     </SelectItem>
                   ))}

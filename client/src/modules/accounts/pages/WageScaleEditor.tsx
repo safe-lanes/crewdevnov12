@@ -690,7 +690,7 @@ export default function WageScaleEditor({
                     <SelectItem
                       key={e.payElementUuid}
                       value={e.payElementUuid}
-                      disabled={!eligible}
+                      disabled={!eligible || e.status === "inactive"}
                       className={eligible ? "" : "opacity-50"}
                       data-testid={`option-add-column-${e.code}`}
                     >
