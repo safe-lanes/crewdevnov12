@@ -1,5 +1,14 @@
 import { Request, Response } from "express";
 import { mastersService } from "../services";
+import { EntryIdConflictError } from "../repositories/mastersRepository";
+import {
+  createMasterLicenseDceSchema,
+  updateMasterLicenseDceSchema,
+  createMasterCrewPoolSchema,
+  updateMasterCrewPoolSchema,
+  createMasterAppraisalTypeSchema,
+  updateMasterAppraisalTypeSchema,
+} from "../../../../shared/schema";
 
 export const mastersController = {
   async getNationalities(req: Request, res: Response) {
@@ -319,6 +328,144 @@ export const mastersController = {
       }
       console.error("Error fetching appraisal type:", error);
       res.status(500).json({ error: "Failed to fetch appraisal type" });
+    }
+  },
+
+  async createLicenseDce(req: Request, res: Response) {
+    try {
+      const parsed = createMasterLicenseDceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid license/DCE data", details: parsed.error.issues });
+      }
+      const data = await mastersService.createLicenseDce(parsed.data);
+      res.status(201).json(data);
+    } catch (error: any) {
+      if (error instanceof EntryIdConflictError) {
+        return res.status(409).json({ error: error.message });
+      }
+      console.error("Error creating license/DCE:", error);
+      res.status(500).json({ error: "Failed to create license/DCE" });
+    }
+  },
+
+  async updateLicenseDce(req: Request, res: Response) {
+    try {
+      const parsed = updateMasterLicenseDceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid license/DCE data", details: parsed.error.issues });
+      }
+      const data = await mastersService.updateLicenseDce(req.params.id, parsed.data);
+      res.json(data);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error updating license/DCE:", error);
+      res.status(500).json({ error: "Failed to update license/DCE" });
+    }
+  },
+
+  async deleteLicenseDce(req: Request, res: Response) {
+    try {
+      const data = await mastersService.deleteLicenseDce(req.params.id);
+      res.json(data);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error deleting license/DCE:", error);
+      res.status(500).json({ error: "Failed to delete license/DCE" });
+    }
+  },
+
+  async createCrewPool(req: Request, res: Response) {
+    try {
+      const parsed = createMasterCrewPoolSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid crew pool data", details: parsed.error.issues });
+      }
+      const data = await mastersService.createCrewPool(parsed.data);
+      res.status(201).json(data);
+    } catch (error) {
+      console.error("Error creating crew pool:", error);
+      res.status(500).json({ error: "Failed to create crew pool" });
+    }
+  },
+
+  async updateCrewPool(req: Request, res: Response) {
+    try {
+      const parsed = updateMasterCrewPoolSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid crew pool data", details: parsed.error.issues });
+      }
+      const data = await mastersService.updateCrewPool(req.params.id, parsed.data);
+      res.json(data);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error updating crew pool:", error);
+      res.status(500).json({ error: "Failed to update crew pool" });
+    }
+  },
+
+  async deleteCrewPool(req: Request, res: Response) {
+    try {
+      const data = await mastersService.deleteCrewPool(req.params.id);
+      res.json(data);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error deleting crew pool:", error);
+      res.status(500).json({ error: "Failed to delete crew pool" });
+    }
+  },
+
+  async createAppraisalType(req: Request, res: Response) {
+    try {
+      const parsed = createMasterAppraisalTypeSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid appraisal type data", details: parsed.error.issues });
+      }
+      const data = await mastersService.createAppraisalType(parsed.data);
+      res.status(201).json(data);
+    } catch (error: any) {
+      if (error instanceof EntryIdConflictError) {
+        return res.status(409).json({ error: error.message });
+      }
+      console.error("Error creating appraisal type:", error);
+      res.status(500).json({ error: "Failed to create appraisal type" });
+    }
+  },
+
+  async updateAppraisalType(req: Request, res: Response) {
+    try {
+      const parsed = updateMasterAppraisalTypeSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid appraisal type data", details: parsed.error.issues });
+      }
+      const data = await mastersService.updateAppraisalType(req.params.id, parsed.data);
+      res.json(data);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error updating appraisal type:", error);
+      res.status(500).json({ error: "Failed to update appraisal type" });
+    }
+  },
+
+  async deleteAppraisalType(req: Request, res: Response) {
+    try {
+      const data = await mastersService.deleteAppraisalType(req.params.id);
+      res.json(data);
+    } catch (error: any) {
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error("Error deleting appraisal type:", error);
+      res.status(500).json({ error: "Failed to delete appraisal type" });
     }
   },
 };

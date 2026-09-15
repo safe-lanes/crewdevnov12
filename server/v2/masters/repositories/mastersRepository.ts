@@ -20,6 +20,12 @@ import {
   type InsertDataMaster,
   type InsertMasterDataEntry,
   type MasterDataEntry,
+  type CreateMasterLicenseDce,
+  type UpdateMasterLicenseDce,
+  type CreateMasterCrewPool,
+  type UpdateMasterCrewPool,
+  type CreateMasterAppraisalType,
+  type UpdateMasterAppraisalType,
 } from "../../../../shared/schema";
 import {
   crewMembersV2,
@@ -162,6 +168,33 @@ const BOOLEAN_FIELDS = new Set([
 ]);
 
 const TIMESTAMP_FIELDS = new Set(['createdAt', 'updatedAt', 'synchedAt']);
+
+export class EntryIdConflictError extends Error {
+  constructor(entryId: string) {
+    super(`Entry ID "${entryId}" already exists`);
+    this.name = "EntryIdConflictError";
+  }
+}
+
+// Assigns the next id in a master's legacy prefix+sequence convention (e.g. "LIC017" -> "LIC018"),
+// used when the caller leaves entryId blank on create. Falls back to "<prefix>001" when no
+// existing id matches the pattern.
+function nextSequentialEntryId(existingIds: string[], prefix: string): string {
+  const pattern = new RegExp(`^${prefix}(\\d+)$`);
+  const max = existingIds.reduce((highest, id) => {
+    const match = pattern.exec(id);
+    return match ? Math.max(highest, parseInt(match[1], 10)) : highest;
+  }, 0);
+  return `${prefix}${String(max + 1).padStart(3, "0")}`;
+}
+
+// Computes the next sort_order for a master table (MAX(sort_order) + 1), used on create
+// so new rows don't all fall through to the column's default of 0.
+async function nextSortOrder(table: any, sortOrderColumn: any): Promise<number> {
+  const db = getDb();
+  const [result] = await db.select({ max: sql<number>`max(${sortOrderColumn})` }).from(table);
+  return (result?.max ?? 0) + 1;
+}
 
 function buildVesselClassification(item: any): string | null {
   const classifications: string[] = [];
@@ -488,6 +521,132 @@ export class MastersRepository {
       .from(masterAppraisalTypes)
       .where(and(eq(masterAppraisalTypes.entryId, entryId), eq(masterAppraisalTypes.isDeleted, false)));
     return results[0];
+  }
+
+  async createLicenseDce(data: CreateMasterLicenseDce) {
+    const db = getDb();
+    const { entryId: requestedEntryId, ...rest } = data;
+    const entryId = typeof requestedEntryId === "string" ? requestedEntryId.trim() : undefined;
+    let resolvedEntryId: string;
+    if (entryId) {
+      const existing = await db
+        .select({ id: masterLicensesDce.id })
+        .from(masterLicensesDce)
+        .where(eq(masterLicensesDce.entryId, entryId));
+      if (existing.length > 0) throw new EntryIdConflictError(entryId);
+      resolvedEntryId = entryId;
+    } else {
+      const rows = await db.select({ entryId: masterLicensesDce.entryId }).from(masterLicensesDce);
+      resolvedEntryId = nextSequentialEntryId(rows.map((r) => r.entryId), "LIC");
+    }
+    const [row] = await db
+      .insert(masterLicensesDce)
+      .values({
+        ...rest,
+        entryId: resolvedEntryId,
+        sortOrder: rest.sortOrder ?? (await nextSortOrder(masterLicensesDce, masterLicensesDce.sortOrder)),
+      })
+      .returning();
+    return row;
+  }
+
+  async updateLicenseDce(id: string, data: UpdateMasterLicenseDce) {
+    const db = getDb();
+    const [row] = await db
+      .update(masterLicensesDce)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(masterLicensesDce.id, id), eq(masterLicensesDce.isDeleted, false)))
+      .returning();
+    return row;
+  }
+
+  async deleteLicenseDce(id: string) {
+    const db = getDb();
+    const [row] = await db
+      .update(masterLicensesDce)
+      .set({ isDeleted: true, isActive: false, updatedAt: new Date() })
+      .where(and(eq(masterLicensesDce.id, id), eq(masterLicensesDce.isDeleted, false)))
+      .returning();
+    return row;
+  }
+
+  async createCrewPool(data: CreateMasterCrewPool) {
+    const db = getDb();
+    const [row] = await db
+      .insert(masterCrewPools)
+      .values({
+        ...data,
+        sortOrder: data.sortOrder ?? (await nextSortOrder(masterCrewPools, masterCrewPools.sortOrder)),
+      })
+      .returning();
+    return row;
+  }
+
+  async updateCrewPool(id: string, data: UpdateMasterCrewPool) {
+    const db = getDb();
+    const [row] = await db
+      .update(masterCrewPools)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(masterCrewPools.id, id), eq(masterCrewPools.isDeleted, false)))
+      .returning();
+    return row;
+  }
+
+  async deleteCrewPool(id: string) {
+    const db = getDb();
+    const [row] = await db
+      .update(masterCrewPools)
+      .set({ isDeleted: true, isActive: false, updatedAt: new Date() })
+      .where(and(eq(masterCrewPools.id, id), eq(masterCrewPools.isDeleted, false)))
+      .returning();
+    return row;
+  }
+
+  async createAppraisalType(data: CreateMasterAppraisalType) {
+    const db = getDb();
+    const { entryId: requestedEntryId, ...rest } = data;
+    const entryId = requestedEntryId?.trim();
+    let resolvedEntryId: string;
+    if (entryId) {
+      const existing = await db
+        .select({ id: masterAppraisalTypes.id })
+        .from(masterAppraisalTypes)
+        .where(eq(masterAppraisalTypes.entryId, entryId));
+      if (existing.length > 0) throw new EntryIdConflictError(entryId);
+      resolvedEntryId = entryId;
+    } else {
+      const rows = await db.select({ entryId: masterAppraisalTypes.entryId }).from(masterAppraisalTypes);
+      resolvedEntryId = nextSequentialEntryId(rows.map((r) => r.entryId), "AT");
+    }
+    const [row] = await db
+      .insert(masterAppraisalTypes)
+      .values({
+        ...rest,
+        entryId: resolvedEntryId,
+        sortOrder: rest.sortOrder ?? (await nextSortOrder(masterAppraisalTypes, masterAppraisalTypes.sortOrder)),
+      })
+      .returning();
+    return row;
+  }
+
+  async updateAppraisalType(id: string, data: UpdateMasterAppraisalType) {
+    const db = getDb();
+    const [row] = await db
+      .update(masterAppraisalTypes)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(masterAppraisalTypes.id, id), eq(masterAppraisalTypes.isDeleted, false)))
+      .returning();
+    return row;
+  }
+
+  async deleteAppraisalType(id: string) {
+    const db = getDb();
+    const [row] = await db
+      .update(masterAppraisalTypes)
+      .set({ isDeleted: true, isActive: false, updatedAt: new Date() })
+      .where(and(eq(masterAppraisalTypes.id, id), eq(masterAppraisalTypes.isDeleted, false)))
+      .returning();
+    return row;
   }
 
   async getMasterData(masterType: string): Promise<any[]> {

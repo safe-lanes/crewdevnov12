@@ -34,7 +34,7 @@ import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { VesselSearchDialog, type VesselSearchResult } from '@/modules/recruitment/VesselSearchDialog';
-import { MANNING_AGENTS_WITH_ACTIVE_CREW_KEY, useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useAllVesselsV2, useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
+import { MANNING_AGENTS_WITH_ACTIVE_CREW_KEY, useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useAllVesselsV2, useManningAgentsV2, useCrewPoolsV2, withLegacyCrewPool } from '@/hooks/v2/useMasterDataV2';
 import { LicenseSelectionDialog } from './LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from './TrainingCourseSelectionDialog';
 import { validateMobileNumber, normalizeMobileInput, applyDialingCode, getDialingCode } from '../recruitment/countryDialingCodes';
@@ -8848,7 +8848,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <SelectValue placeholder="Crew Pool" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
-                  {crewPoolOptions.map((pool: any) => (
+                  {withLegacyCrewPool(crewPoolOptions, formData.crewPool).map((pool: any) => (
                     <SelectItem key={pool.id} value={pool.name} data-testid={`crew-pool-option-${pool.id}`}>
                       {pool.name}
                     </SelectItem>

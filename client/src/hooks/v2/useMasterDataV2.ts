@@ -174,9 +174,36 @@ export const useUserByUuidV2 = (uuid: string | undefined) => {
   });
 };
 
+// Merges a legacy/deactivated value into an {id,name} options list, keyed by name — so a
+// record already set to a value that's since been deleted from the master list still shows
+// it as a selectable option instead of silently vanishing from the dropdown. Mirrors
+// withLegacyStatus/withLegacyCategory below, adapted for {id,name} option objects.
+function withLegacyNamedOption<T extends { id: string; name: string }>(
+  options: T[],
+  current?: string | null,
+): (T | { id: string; name: string })[] {
+  if (!current || options.some((o) => o.name === current)) return options;
+  return [...options, { id: current, name: current }];
+}
+
+export interface LicenseDceV2 {
+  id: string;
+  uuid: string;
+  entryId: string;
+  name: string;
+  description: string | null;
+  shortCode: string | null;
+  officerMatrixLabel: string | null;
+  sortOrder: number | null;
+  isActive: boolean;
+  isDeleted: boolean;
+}
+
+export const LICENSES_DCE_KEY = `${V2_MASTERS_BASE}/licenses-dce`;
+
 export const useLicensesDceV2 = (options?: UseMasterOptions) => {
-  return useQuery<any[]>({
-    queryKey: [`${V2_MASTERS_BASE}/licenses-dce`],
+  return useQuery<LicenseDceV2[]>({
+    queryKey: [LICENSES_DCE_KEY],
     staleTime: STALE_TIME,
     retry: 2,
     enabled: options?.enabled ?? true,
@@ -184,8 +211,8 @@ export const useLicensesDceV2 = (options?: UseMasterOptions) => {
 };
 
 export const useLicenseDceByIdV2 = (id: string | undefined) => {
-  return useQuery<any>({
-    queryKey: [`${V2_MASTERS_BASE}/licenses-dce`, id],
+  return useQuery<LicenseDceV2>({
+    queryKey: [LICENSES_DCE_KEY, id],
     enabled: !!id,
     staleTime: STALE_TIME,
   });
@@ -219,9 +246,21 @@ export const useManningAgentByIdV2 = (id: string | undefined) => {
   });
 };
 
+export interface CrewPoolV2 {
+  id: string;
+  uuid: string;
+  name: string;
+  description: string | null;
+  sortOrder: number | null;
+  isActive: boolean;
+  isDeleted: boolean;
+}
+
+export const CREW_POOLS_KEY = `${V2_MASTERS_BASE}/crew-pools`;
+
 export const useCrewPoolsV2 = (options?: UseMasterOptions) => {
-  return useQuery<any[]>({
-    queryKey: [`${V2_MASTERS_BASE}/crew-pools`],
+  return useQuery<CrewPoolV2[]>({
+    queryKey: [CREW_POOLS_KEY],
     staleTime: STALE_TIME,
     retry: 2,
     enabled: options?.enabled ?? true,
@@ -229,16 +268,34 @@ export const useCrewPoolsV2 = (options?: UseMasterOptions) => {
 };
 
 export const useCrewPoolByIdV2 = (id: string | undefined) => {
-  return useQuery<any>({
-    queryKey: [`${V2_MASTERS_BASE}/crew-pools`, id],
+  return useQuery<CrewPoolV2>({
+    queryKey: [CREW_POOLS_KEY, id],
     enabled: !!id,
     staleTime: STALE_TIME,
   });
 };
 
+// A crew member already assigned to a pool that's since been deleted still needs to see
+// that pool as a selectable option in their profile — otherwise editing anything else on
+// their profile forces an unrelated pool change just to save the form.
+export const withLegacyCrewPool = withLegacyNamedOption;
+
+export interface AppraisalTypeV2 {
+  id: string;
+  uuid: string;
+  entryId: string;
+  name: string;
+  description: string | null;
+  sortOrder: number | null;
+  isActive: boolean;
+  isDeleted: boolean;
+}
+
+export const APPRAISAL_TYPES_KEY = `${V2_MASTERS_BASE}/appraisal-types`;
+
 export const useAppraisalTypesV2 = (options?: UseMasterOptions) => {
-  return useQuery<any[]>({
-    queryKey: [`${V2_MASTERS_BASE}/appraisal-types`],
+  return useQuery<AppraisalTypeV2[]>({
+    queryKey: [APPRAISAL_TYPES_KEY],
     staleTime: STALE_TIME,
     retry: 2,
     enabled: options?.enabled ?? true,
@@ -246,12 +303,16 @@ export const useAppraisalTypesV2 = (options?: UseMasterOptions) => {
 };
 
 export const useAppraisalTypeByIdV2 = (id: string | undefined) => {
-  return useQuery<any>({
-    queryKey: [`${V2_MASTERS_BASE}/appraisal-types`, id],
+  return useQuery<AppraisalTypeV2>({
+    queryKey: [APPRAISAL_TYPES_KEY, id],
     enabled: !!id,
     staleTime: STALE_TIME,
   });
 };
+
+// Same rationale as withLegacyCrewPool: an appraisal record already set to a type that's
+// since been deleted from the master list still needs that value selectable in its dropdown.
+export const withLegacyAppraisalType = withLegacyNamedOption;
 
 // ---- Training Status master (per-module training-item statuses) ----
 
