@@ -5,11 +5,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover as DatePopover, PopoverContent as DatePopoverContent, PopoverTrigger as DatePopoverTrigger } from "@/components/ui/popover";
-import { ChevronDown, Calendar as CalendarIcon, Filter } from 'lucide-react';
+import { ChevronDown, Calendar as CalendarIcon, Filter, Search } from 'lucide-react';
 import { addMonths, differenceInDays, startOfMonth, endOfMonth, format } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -542,6 +543,7 @@ function CrewColumn({
   focusedVesselId: string; // UUID of the vessel currently radio-selected in the timeline
 }) {
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<CrewFilters>({
     pools: [],
     manningAgents: [],
@@ -648,6 +650,9 @@ function CrewColumn({
   // Apply filters to crew members
   const filteredCrewMembers = useMemo(() => {
     return crewMembers.filter(crew => {
+      // Search filter - match against crew full name
+      if (searchQuery.trim() && !crew.fullName.toLowerCase().includes(searchQuery.trim().toLowerCase())) return false;
+
       // Pool filter - check both pool and crewPool fields for compatibility
       if (filters.pools.length > 0 && !filters.pools.includes(crew.crewPool || crew.pool || '')) return false;
       
@@ -742,7 +747,7 @@ function CrewColumn({
       
       return true;
     });
-  }, [crewMembers, filters]);
+  }, [crewMembers, filters, searchQuery]);
 
   // ---------------------------------------------------------------------------
   // Compliance Check filter — Company / Oil-major rule evaluation against the
@@ -835,8 +840,10 @@ function CrewColumn({
   }, [complianceFilterActive, sortedComplianceVesselIds.length, complianceFilterResult]);
 
   const displayedCrewMembers = useMemo(() => {
-    if (!compliantCrewUuidSet) return filteredCrewMembers;
-    return filteredCrewMembers.filter((c) => compliantCrewUuidSet.has(c.crewUuid));
+    const base = compliantCrewUuidSet
+      ? filteredCrewMembers.filter((c) => compliantCrewUuidSet.has(c.crewUuid))
+      : filteredCrewMembers;
+    return [...base].sort((a, b) => a.fullName.localeCompare(b.fullName));
   }, [filteredCrewMembers, compliantCrewUuidSet]);
 
   // Get count of vessels crew is assigned to
@@ -1119,6 +1126,16 @@ function CrewColumn({
             <Filter className="h-4 w-4" />
           </button>
         </div>
+        <div className="p-2 border-t relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search crew..."
+            className="h-8 pl-8 text-sm"
+            data-testid={`input-search-crew-${rank}`}
+          />
+        </div>
         <div className="border-t">
           {complianceFilterSkippedNoVessel && (
             <div
@@ -1139,7 +1156,7 @@ function CrewColumn({
           )}
           {displayedCrewMembers.length === 0 ? (
             <div className="p-4 text-center text-gray-500 text-sm">
-              {hasActiveFilters ? 'No crew match the filters' : 'No crew available'}
+              {hasActiveFilters || searchQuery.trim() ? 'No crew match the filters' : 'No crew available'}
             </div>
           ) : (
             // Single TooltipProvider for the whole crew list. Previously each

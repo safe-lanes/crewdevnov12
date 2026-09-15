@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, FileText, Info, MessageSquare, ChevronDown, Lock, Database, Ship } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Save, Trash2, Upload, Paperclip, X, Camera, FileText, Info, MessageSquare, ChevronDown, ChevronUp, Lock, Database, Ship } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -649,6 +649,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const [licDateErrors, setLicDateErrors] = useState<Record<string, Record<string, string>>>({});
   const [trainingDateErrors, setTrainingDateErrors] = useState<Record<string, Record<string, string>>>({});
   const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, Record<string, string>>>({});
+  type TrainingSortColumn = 'courseId' | 'trainingCourse' | 'issued' | null;
+  type TrainingSortDirection = 'asc' | 'desc';
+  const [trainingSortColumn, setTrainingSortColumn] = useState<TrainingSortColumn>('trainingCourse');
+  const [trainingSortDirection, setTrainingSortDirection] = useState<TrainingSortDirection>('asc');
   const [b6InterviewerErrors, setB6InterviewerErrors] = useState<Record<string, string>>({});
   const [b7TrainingNameErrors, setB7TrainingNameErrors] = useState<Record<string, string>>({});
   const [isSavingPartA, setIsSavingPartA] = useState(false);
@@ -5484,6 +5488,36 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     );
   };
 
+  const handleTrainingSort = (column: TrainingSortColumn) => {
+    if (trainingSortColumn === column) {
+      setTrainingSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setTrainingSortColumn(column);
+      setTrainingSortDirection('asc');
+    }
+  };
+
+  const sortedTrainingCourses = useMemo(() => {
+    if (!trainingSortColumn) return formData.trainingCourses;
+    return [...formData.trainingCourses].sort((a, b) => {
+      const av = a[trainingSortColumn] || '', bv = b[trainingSortColumn] || '';
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      const cmp = trainingSortColumn === 'courseId'
+        ? av.localeCompare(bv, undefined, { numeric: true, sensitivity: 'base' })
+        : av.localeCompare(bv);
+      return trainingSortDirection === 'asc' ? cmp : -cmp;
+    });
+  }, [formData.trainingCourses, trainingSortColumn, trainingSortDirection]);
+
+  const TrainingSortIndicator = ({ column }: { column: TrainingSortColumn }) => {
+    if (trainingSortColumn !== column) {
+      return <span className="ml-1 opacity-0 group-hover:opacity-30"><ChevronUp className="h-3 w-3" /></span>;
+    }
+    return <span className="ml-1">{trainingSortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}</span>;
+  };
+
   const renderA33TrainingCourse = () => {
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
@@ -5502,19 +5536,25 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">ID</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training/Course <span className="text-red-500">*</span></TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 cursor-pointer group" onClick={() => handleTrainingSort('courseId')} data-testid="header-sort-training-id">
+                <div className="flex items-center">ID<TrainingSortIndicator column="courseId" /></div>
+              </TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 cursor-pointer group" onClick={() => handleTrainingSort('trainingCourse')} data-testid="header-sort-training-course">
+                <div className="flex items-center">Training/Course <span className="text-red-500">*</span><TrainingSortIndicator column="trainingCourse" /></div>
+              </TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 cursor-pointer group" onClick={() => handleTrainingSort('issued')} data-testid="header-sort-training-issued">
+                <div className="flex items-center">Issued<TrainingSortIndicator column="issued" /></div>
+              </TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {formData.trainingCourses.map((course) => (
+            {sortedTrainingCourses.map((course) => (
               <TableRow key={course.id} className="border-b border-gray-200">
                 <TableCell className="p-3 text-[13px]">{course.courseId || '-'}</TableCell>
                 <TableCell className="p-3">

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown, Pencil, FileText, Database } from 'lucide-react';
+import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown, ChevronUp, Pencil, FileText, Database } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -761,6 +761,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, string>>({});
   const [licRequiredErrors, setLicRequiredErrors] = useState<Record<string, string>>({});
   const [trainRequiredErrors, setTrainRequiredErrors] = useState<Record<string, string>>({});
+  type TrainingSortColumn = 'courseId' | 'trainingCourse' | 'issued' | null;
+  type TrainingSortDirection = 'asc' | 'desc';
+  const [trainingSortColumn, setTrainingSortColumn] = useState<TrainingSortColumn>('trainingCourse');
+  const [trainingSortDirection, setTrainingSortDirection] = useState<TrainingSortDirection>('asc');
   const [seaServiceRequiredErrors, setSeaServiceRequiredErrors] = useState<Record<string, Record<string, string>>>({});
   const [deletedChildUuids, setDeletedChildUuids] = useState<string[]>([]);
   
@@ -4970,6 +4974,36 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   // D3 Training Courses render function
+  const handleTrainingSort = (column: TrainingSortColumn) => {
+    if (trainingSortColumn === column) {
+      setTrainingSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setTrainingSortColumn(column);
+      setTrainingSortDirection('asc');
+    }
+  };
+
+  const sortedTrainingCourses = useMemo(() => {
+    if (!trainingSortColumn) return formData.trainingCourses;
+    return [...formData.trainingCourses].sort((a, b) => {
+      const av = a[trainingSortColumn] || '', bv = b[trainingSortColumn] || '';
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      const cmp = trainingSortColumn === 'courseId'
+        ? av.localeCompare(bv, undefined, { numeric: true, sensitivity: 'base' })
+        : av.localeCompare(bv);
+      return trainingSortDirection === 'asc' ? cmp : -cmp;
+    });
+  }, [formData.trainingCourses, trainingSortColumn, trainingSortDirection]);
+
+  const TrainingSortIndicator = ({ column }: { column: TrainingSortColumn }) => {
+    if (trainingSortColumn !== column) {
+      return <span className="ml-1 opacity-0 group-hover:opacity-30"><ChevronUp className="h-3 w-3" /></span>;
+    }
+    return <span className="ml-1">{trainingSortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}</span>;
+  };
+
   const renderA33TrainingCourse = () => {
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
@@ -5003,25 +5037,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Company ID</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training Course <span className="text-red-500">*</span></TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 cursor-pointer group" onClick={() => handleTrainingSort('courseId')} data-testid="header-sort-crew-training-id">
+                <div className="flex items-center">Company ID<TrainingSortIndicator column="courseId" /></div>
+              </TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 cursor-pointer group" onClick={() => handleTrainingSort('trainingCourse')} data-testid="header-sort-crew-training-course">
+                <div className="flex items-center">Training Course <span className="text-red-500">*</span><TrainingSortIndicator column="trainingCourse" /></div>
+              </TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 cursor-pointer group" onClick={() => handleTrainingSort('issued')} data-testid="header-sort-crew-training-issued">
+                <div className="flex items-center">Issued<TrainingSortIndicator column="issued" /></div>
+              </TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
               {canEditSection('D') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {[...formData.trainingCourses]
-              .sort((a, b) => {
-                const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
-                const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
-                return aOrder - bOrder;
-              })
-              .map((course) => (
+            {sortedTrainingCourses.map((course) => (
               <TableRow key={course.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   <div className="text-[#4f5863] text-[13px] font-mono">{course.courseId || '-'}</div>
