@@ -113,6 +113,11 @@ export default function ContractDetailPage({
   const { data: payElements = [] } = useQuery<any[]>({
     queryKey: [`${ACCOUNTS_BASE}/pay-elements`],
   });
+  const { data: tenantConfig, isSuccess: tenantConfigLoaded } = useQuery<{
+    allowManualSeniorityAnchor: boolean;
+  }>({
+    queryKey: [`${ACCOUNTS_BASE}/config`],
+  });
 
   const engagement = detail?.engagement ?? null;
   const frozen = !!detail?.frozen;
@@ -468,6 +473,10 @@ export default function ContractDetailPage({
               size="sm"
               variant="outline"
               onClick={openAnchor}
+              disabled={
+                !tenantConfigLoaded ||
+                tenantConfig?.allowManualSeniorityAnchor !== true
+              }
               data-testid="button-edit-anchor"
             >
               <Pencil size={14} className="mr-1" /> Edit

@@ -517,7 +517,11 @@ export default function PayElementsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {baseCandidates.map((e) => (
-                      <SelectItem key={e.payElementUuid} value={e.payElementUuid}>
+                      <SelectItem
+                        key={e.payElementUuid}
+                        value={e.payElementUuid}
+                        disabled={e.status === "inactive"}
+                      >
                         {e.code} — {e.name}
                       </SelectItem>
                     ))}

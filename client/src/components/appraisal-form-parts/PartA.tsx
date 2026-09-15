@@ -18,6 +18,7 @@ import {
 import { PartAProps } from "./types";
 import { RequiredMark } from "./RequiredMark";
 import { useCompanyRanks } from "@/hooks/useCompanyRanks";
+import { withLegacyAppraisalType } from "@/hooks/v2/useMasterDataV2";
 
 const PartAComponent: React.FC<PartAProps> = ({
   form,
@@ -169,7 +170,7 @@ const PartAComponent: React.FC<PartAProps> = ({
                       </FormControl>
                       <SelectContent>
                         {appraisalTypes.length > 0 ? (
-                          appraisalTypes.map((type) => (
+                          withLegacyAppraisalType(appraisalTypes, field.value).map((type) => (
                             <SelectItem key={type.id} value={type.name}>
                               {type.name}
                             </SelectItem>

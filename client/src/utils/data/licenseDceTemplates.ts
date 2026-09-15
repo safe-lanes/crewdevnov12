@@ -71,9 +71,9 @@ export function searchLicenseTemplates(searchTerm: string): LicenseTemplate[] {
 export function mapApiResponseToLicenseTemplates(apiData: Array<{
   entryId: string;
   name: string;
-  shortCode?: string;
-  description?: string;
-  officerMatrixLabel?: string;
+  shortCode?: string | null;
+  description?: string | null;
+  officerMatrixLabel?: string | null;
 }>): LicenseTemplate[] {
   return apiData.map(entry => ({
     id: entry.entryId,

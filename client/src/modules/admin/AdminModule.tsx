@@ -117,6 +117,9 @@ import AccessControlPage from "./AccessControlPage";
 import ApprovalWorkflowPage from "./ApprovalWorkflowPage";
 import TrainingStatusPage from "./TrainingStatusPage";
 import TrainingCategoryPage from "./TrainingCategoryPage";
+import LicenseDceMasterPage from "./LicenseDceMasterPage";
+import CrewPoolMasterPage from "./CrewPoolMasterPage";
+import AppraisalTypeMasterPage from "./AppraisalTypeMasterPage";
 import { 
   getCategoryLabel,
   getGroupLabel,
@@ -7242,6 +7245,18 @@ const AdminModuleInner = (): JSX.Element => {
                 ) : selectedMaster === "026" ? (
                   <div data-testid="training-category-master-pane">
                     <TrainingCategoryPage />
+                  </div>
+                ) : selectedMaster === "016" ? (
+                  <div data-testid="license-dce-master-pane">
+                    <LicenseDceMasterPage />
+                  </div>
+                ) : selectedMaster === "022" ? (
+                  <div data-testid="crew-pool-master-pane">
+                    <CrewPoolMasterPage />
+                  </div>
+                ) : selectedMaster === "023" ? (
+                  <div data-testid="appraisal-type-master-pane">
+                    <AppraisalTypeMasterPage />
                   </div>
                 ) : (
                 <>

@@ -1456,6 +1456,7 @@ export const masterLicensesDce = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     shortCode: text("short_code"),
+    officerMatrixLabel: text("officer_matrix_label"),
     sortOrder: integer("sort_order").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
     isDeleted: boolean("is_deleted").notNull().default(false),
@@ -1547,6 +1548,28 @@ export const insertMasterAppraisalTypeSchema = createInsertSchema(masterAppraisa
 });
 export type InsertMasterAppraisalType = z.infer<typeof insertMasterAppraisalTypeSchema>;
 export type MasterAppraisalType = typeof masterAppraisalTypes.$inferSelect;
+
+// CRUD payload schemas for the three "highlighted" masters (License & DCE / Crew Pool / Appraisal Type).
+// entryId is optional on create: caller may supply one, otherwise the repository assigns the next
+// sequential id in that master's legacy LIC.../AT... sequence.
+export const createMasterLicenseDceSchema = insertMasterLicenseDceSchema.extend({
+  entryId: z.string().trim().min(1).optional(),
+});
+export type CreateMasterLicenseDce = z.infer<typeof createMasterLicenseDceSchema>;
+export const updateMasterLicenseDceSchema = insertMasterLicenseDceSchema.omit({ entryId: true }).partial();
+export type UpdateMasterLicenseDce = z.infer<typeof updateMasterLicenseDceSchema>;
+
+export const createMasterCrewPoolSchema = insertMasterCrewPoolSchema;
+export type CreateMasterCrewPool = z.infer<typeof createMasterCrewPoolSchema>;
+export const updateMasterCrewPoolSchema = insertMasterCrewPoolSchema.partial();
+export type UpdateMasterCrewPool = z.infer<typeof updateMasterCrewPoolSchema>;
+
+export const createMasterAppraisalTypeSchema = insertMasterAppraisalTypeSchema.extend({
+  entryId: z.string().trim().min(1).optional(),
+});
+export type CreateMasterAppraisalType = z.infer<typeof createMasterAppraisalTypeSchema>;
+export const updateMasterAppraisalTypeSchema = insertMasterAppraisalTypeSchema.omit({ entryId: true }).partial();
+export type UpdateMasterAppraisalType = z.infer<typeof updateMasterAppraisalTypeSchema>;
 
 // Type exports
 export type CbaTable = typeof cbaTables.$inferSelect;

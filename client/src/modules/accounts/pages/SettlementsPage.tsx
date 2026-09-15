@@ -1219,7 +1219,11 @@ export default function SettlementsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {manualElements.map((e: any) => (
-                    <SelectItem key={e.payElementUuid} value={e.payElementUuid}>
+                    <SelectItem
+                      key={e.payElementUuid}
+                      value={e.payElementUuid}
+                      disabled={e.status === "inactive"}
+                    >
                       {e.code} — {e.name}
                     </SelectItem>
                   ))}

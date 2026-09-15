@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useLicensesDceV2 } from '@/hooks/v2/useMasterDataV2';
 import {
   Dialog,
   DialogContent,
@@ -70,21 +70,7 @@ export function LicenseSelectionDialog({
     newLicenseId: '',
   });
 
-  const { data: apiTemplates = [], isLoading } = useQuery<Array<{
-    entryId: string;
-    name: string;
-    shortCode?: string;
-    description?: string;
-    officerMatrixLabel?: string;
-  }>>({
-    queryKey: ['/api/v2/masters/data', '016', 'entries'],
-    queryFn: async () => {
-      const response = await fetch('/api/v2/masters/data/016/entries');
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return response.json();
-    },
-    enabled: open,
-  });
+  const { data: apiTemplates = [], isLoading } = useLicensesDceV2({ enabled: open });
 
   const templates = useMemo(() => {
     if (apiTemplates.length > 0) {

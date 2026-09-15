@@ -1,4 +1,12 @@
 import { MastersRepository } from "../repositories/mastersRepository";
+import type {
+  CreateMasterLicenseDce,
+  UpdateMasterLicenseDce,
+  CreateMasterCrewPool,
+  UpdateMasterCrewPool,
+  CreateMasterAppraisalType,
+  UpdateMasterAppraisalType,
+} from "../../../../shared/schema";
 
 const mastersRepo = new MastersRepository();
 
@@ -211,5 +219,56 @@ export const mastersService = {
     const result = await mastersRepo.findAppraisalTypeById(id);
     if (!result) throw new Error(`Appraisal type not found: ${id}`);
     return addAppraisalTypeAliases(result);
+  },
+
+  async createLicenseDce(data: CreateMasterLicenseDce) {
+    const row = await mastersRepo.createLicenseDce(data);
+    return addLicenseDceAliases(row);
+  },
+
+  async updateLicenseDce(id: string, data: UpdateMasterLicenseDce) {
+    const row = await mastersRepo.updateLicenseDce(id, data);
+    if (!row) throw new Error(`License/DCE not found: ${id}`);
+    return addLicenseDceAliases(row);
+  },
+
+  async deleteLicenseDce(id: string) {
+    const row = await mastersRepo.deleteLicenseDce(id);
+    if (!row) throw new Error(`License/DCE not found: ${id}`);
+    return addLicenseDceAliases(row);
+  },
+
+  async createCrewPool(data: CreateMasterCrewPool) {
+    const row = await mastersRepo.createCrewPool(data);
+    return addCrewPoolAliases(row);
+  },
+
+  async updateCrewPool(id: string, data: UpdateMasterCrewPool) {
+    const row = await mastersRepo.updateCrewPool(id, data);
+    if (!row) throw new Error(`Crew pool not found: ${id}`);
+    return addCrewPoolAliases(row);
+  },
+
+  async deleteCrewPool(id: string) {
+    const row = await mastersRepo.deleteCrewPool(id);
+    if (!row) throw new Error(`Crew pool not found: ${id}`);
+    return addCrewPoolAliases(row);
+  },
+
+  async createAppraisalType(data: CreateMasterAppraisalType) {
+    const row = await mastersRepo.createAppraisalType(data);
+    return addAppraisalTypeAliases(row);
+  },
+
+  async updateAppraisalType(id: string, data: UpdateMasterAppraisalType) {
+    const row = await mastersRepo.updateAppraisalType(id, data);
+    if (!row) throw new Error(`Appraisal type not found: ${id}`);
+    return addAppraisalTypeAliases(row);
+  },
+
+  async deleteAppraisalType(id: string) {
+    const row = await mastersRepo.deleteAppraisalType(id);
+    if (!row) throw new Error(`Appraisal type not found: ${id}`);
+    return addAppraisalTypeAliases(row);
   },
 };
