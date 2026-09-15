@@ -906,6 +906,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // historical sea service, medicals, briefings and de-briefings entries can reference
   // vessels that are no longer active. Other modules keep using useVesselsV2.
   const { data: externalVesselsData, isLoading: vesselsLoading } = useAllVesselsV2();
+  // Active-only choices for F1, G1 and G2.
+  // Keep the all-vessel source above unchanged for E1.
+  const {
+    data: activeVesselsData,
+    isLoading: activeVesselsLoading,
+    isError: activeVesselsError,
+  } = useVesselsV2();
   const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useNationalitiesV2();
   const { data: externalCountriesData, isLoading: countriesLoading } = useCountriesV2();
   const { data: externalLanguagesData, isLoading: languagesLoading } = useLanguagesV2();
@@ -963,6 +970,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       }))
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [vesselMasterData]);
+
+  const activeVesselOptions = useMemo(() => {
+    if (!Array.isArray(activeVesselsData)) {
+      return [];
+    }
+    return activeVesselsData
+      .filter(
+        (v: any) => (v.vessel || v.name) && (v.vesselUuid || v.uuid)
+      )
+      .map((v: any) => ({
+        code: v.vesselUuid || v.uuid,
+        name: v.vessel || v.name,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [activeVesselsData]);
 
   const NATIONALITIES = useMemo(() => {
     if (externalNationalitiesData && Array.isArray(externalNationalitiesData) && externalNationalitiesData.length > 0) {
@@ -5901,9 +5923,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Select
                           value={medical.vesselCode || ''}
                           onValueChange={(value) => {
-                            const selectedVessel = vesselOptions.find(v => v.code === value);
+                            if (activeVesselsLoading || activeVesselsError) return;
+                            const selectedVessel =
+                              activeVesselOptions.find(v => v.code === value);
+                            if (!selectedVessel) return;
                             updatePreJoiningMedical(medical.id, 'vesselCode', value);
-                            updatePreJoiningMedical(medical.id, 'vessel', selectedVessel?.name || '');
+                            updatePreJoiningMedical(
+                              medical.id,
+                              'vessel',
+                              selectedVessel.name
+                            );
                           }}
                         >
                           <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
@@ -5912,13 +5941,24 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {vesselsLoading ? (
-                              <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
-                            ) : vesselOptions.length === 0 ? (
-                              <SelectItem value="empty" disabled>No vessels available</SelectItem>
+                            {activeVesselsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading vessels...
+                              </SelectItem>
+                            ) : activeVesselsError ? (
+                              <SelectItem value="error" disabled>
+                                Unable to load vessels
+                              </SelectItem>
+                            ) : activeVesselOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>
+                                No vessels available
+                              </SelectItem>
                             ) : (
-                              vesselOptions.map((vessel) => (
-                                <SelectItem key={vessel.code} value={vessel.code}>
+                              activeVesselOptions.map((vessel) => (
+                                <SelectItem
+                                  key={vessel.code}
+                                  value={vessel.code}
+                                >
                                   {vessel.name}
                                 </SelectItem>
                               ))
@@ -6185,9 +6225,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Select
                           value={briefing.vesselCode || ''}
                           onValueChange={(value) => {
-                            const selectedVessel = vesselOptions.find(v => v.code === value);
+                            if (activeVesselsLoading || activeVesselsError) return;
+                            const selectedVessel =
+                              activeVesselOptions.find(v => v.code === value);
+                            if (!selectedVessel) return;
                             updateBriefing(briefing.id, 'vesselCode', value);
-                            updateBriefing(briefing.id, 'vessel', selectedVessel?.name || '');
+                            updateBriefing(
+                              briefing.id,
+                              'vessel',
+                              selectedVessel.name
+                            );
                           }}
                         >
                           <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-briefing-vessel-${briefing.id}`}>
@@ -6196,13 +6243,24 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {vesselsLoading ? (
-                              <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
-                            ) : vesselOptions.length === 0 ? (
-                              <SelectItem value="empty" disabled>No vessels available</SelectItem>
+                            {activeVesselsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading vessels...
+                              </SelectItem>
+                            ) : activeVesselsError ? (
+                              <SelectItem value="error" disabled>
+                                Unable to load vessels
+                              </SelectItem>
+                            ) : activeVesselOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>
+                                No vessels available
+                              </SelectItem>
                             ) : (
-                              vesselOptions.map((vessel) => (
-                                <SelectItem key={vessel.code} value={vessel.code}>
+                              activeVesselOptions.map((vessel) => (
+                                <SelectItem
+                                  key={vessel.code}
+                                  value={vessel.code}
+                                >
                                   {vessel.name}
                                 </SelectItem>
                               ))
@@ -6330,9 +6388,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Select
                           value={debriefing.vesselCode || ''}
                           onValueChange={(value) => {
-                            const selectedVessel = vesselOptions.find(v => v.code === value);
+                            if (activeVesselsLoading || activeVesselsError) return;
+                            const selectedVessel =
+                              activeVesselOptions.find(v => v.code === value);
+                            if (!selectedVessel) return;
                             updateDebriefing(debriefing.id, 'vesselCode', value);
-                            updateDebriefing(debriefing.id, 'vessel', selectedVessel?.name || '');
+                            updateDebriefing(
+                              debriefing.id,
+                              'vessel',
+                              selectedVessel.name
+                            );
                           }}
                         >
                           <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-debriefing-vessel-${debriefing.id}`}>
@@ -6341,13 +6406,24 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {vesselsLoading ? (
-                              <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
-                            ) : vesselOptions.length === 0 ? (
-                              <SelectItem value="empty" disabled>No vessels available</SelectItem>
+                            {activeVesselsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading vessels...
+                              </SelectItem>
+                            ) : activeVesselsError ? (
+                              <SelectItem value="error" disabled>
+                                Unable to load vessels
+                              </SelectItem>
+                            ) : activeVesselOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>
+                                No vessels available
+                              </SelectItem>
                             ) : (
-                              vesselOptions.map((vessel) => (
-                                <SelectItem key={vessel.code} value={vessel.code}>
+                              activeVesselOptions.map((vessel) => (
+                                <SelectItem
+                                  key={vessel.code}
+                                  value={vessel.code}
+                                >
                                   {vessel.name}
                                 </SelectItem>
                               ))
