@@ -34,6 +34,9 @@ router.get("/users/:uuid", mastersController.getUserByUuid);
 
 router.get("/licenses-dce", mastersController.getLicensesDce);
 router.get("/licenses-dce/:id", mastersController.getLicenseDceById);
+router.post("/licenses-dce", mastersController.createLicenseDce);
+router.put("/licenses-dce/:id", mastersController.updateLicenseDce);
+router.delete("/licenses-dce/:id", mastersController.deleteLicenseDce);
 
 router.get("/manning-agents", mastersController.getManningAgents);
 router.get("/manning-agents/with-active-crew", mastersController.getManningAgentsWithActiveCrew);
@@ -41,9 +44,15 @@ router.get("/manning-agents/:id", mastersController.getManningAgentById);
 
 router.get("/crew-pools", mastersController.getCrewPools);
 router.get("/crew-pools/:id", mastersController.getCrewPoolById);
+router.post("/crew-pools", mastersController.createCrewPool);
+router.put("/crew-pools/:id", mastersController.updateCrewPool);
+router.delete("/crew-pools/:id", mastersController.deleteCrewPool);
 
 router.get("/appraisal-types", mastersController.getAppraisalTypes);
 router.get("/appraisal-types/:id", mastersController.getAppraisalTypeById);
+router.post("/appraisal-types", mastersController.createAppraisalType);
+router.put("/appraisal-types/:id", mastersController.updateAppraisalType);
+router.delete("/appraisal-types/:id", mastersController.deleteAppraisalType);
 
 router.get("/training-statuses", trainingStatusController.list);
 router.post("/training-statuses", trainingStatusController.create);

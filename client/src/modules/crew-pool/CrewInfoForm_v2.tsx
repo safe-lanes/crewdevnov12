@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown, Pencil, FileText, Database } from 'lucide-react';
+import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown, ChevronUp, Pencil, FileText, Database } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,7 @@ import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { VesselSearchDialog, type VesselSearchResult } from '@/modules/recruitment/VesselSearchDialog';
-import { MANNING_AGENTS_WITH_ACTIVE_CREW_KEY, useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useAllVesselsV2, useManningAgentsV2, useCrewPoolsV2 } from '@/hooks/v2/useMasterDataV2';
+import { MANNING_AGENTS_WITH_ACTIVE_CREW_KEY, useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useAllVesselsV2, useManningAgentsV2, useCrewPoolsV2, withLegacyCrewPool } from '@/hooks/v2/useMasterDataV2';
 import { LicenseSelectionDialog } from './LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from './TrainingCourseSelectionDialog';
 import { validateMobileNumber, normalizeMobileInput, applyDialingCode, getDialingCode } from '../recruitment/countryDialingCodes';
@@ -761,6 +761,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const [eduRequiredErrors, setEduRequiredErrors] = useState<Record<string, string>>({});
   const [licRequiredErrors, setLicRequiredErrors] = useState<Record<string, string>>({});
   const [trainRequiredErrors, setTrainRequiredErrors] = useState<Record<string, string>>({});
+  type TrainingSortColumn = 'courseId' | 'trainingCourse' | 'issued' | null;
+  type TrainingSortDirection = 'asc' | 'desc';
+  const [trainingSortColumn, setTrainingSortColumn] = useState<TrainingSortColumn>('trainingCourse');
+  const [trainingSortDirection, setTrainingSortDirection] = useState<TrainingSortDirection>('asc');
   const [seaServiceRequiredErrors, setSeaServiceRequiredErrors] = useState<Record<string, Record<string, string>>>({});
   const [deletedChildUuids, setDeletedChildUuids] = useState<string[]>([]);
   
@@ -4192,12 +4196,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </div>
             
             <div>
-              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth {formData.maritalStatus === 'Married' && <span className="text-red-500">*</span>}</Label>
+              <Label className="text-xs text-gray-500 tracking-wide">Spouse Date of Birth</Label>
               {isEditing ? (
                 <FormattedDateInput
                   value={formData.spouseDateOfBirth}
                   onChange={(e) => { updateFormData('spouseDateOfBirth', e.target.value); if (spouseDobError) setSpouseDobError(''); if (spouseValidationError) setSpouseValidationError(''); }}
-                  onBlur={() => { if (formData.maritalStatus === 'Married') { if (!(formData.spouseDateOfBirth || '').trim()) { setSpouseDobError('Spouse date of birth is required.'); } else if (formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); } else { setSpouseDobError(''); } } else { setSpouseDobError(''); } }}
+                  onBlur={() => { if (formData.spouseDateOfBirth && formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); } else { setSpouseDobError(''); } }}
                   className={`mt-1 ${spouseDobError ? 'border-red-500' : ''}`}
                   max={todayStr}
                   data-testid="input-spouse-dob"
@@ -4970,6 +4974,36 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   // D3 Training Courses render function
+  const handleTrainingSort = (column: TrainingSortColumn) => {
+    if (trainingSortColumn === column) {
+      setTrainingSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setTrainingSortColumn(column);
+      setTrainingSortDirection('asc');
+    }
+  };
+
+  const sortedTrainingCourses = useMemo(() => {
+    if (!trainingSortColumn) return formData.trainingCourses;
+    return [...formData.trainingCourses].sort((a, b) => {
+      const av = a[trainingSortColumn] || '', bv = b[trainingSortColumn] || '';
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      const cmp = trainingSortColumn === 'courseId'
+        ? av.localeCompare(bv, undefined, { numeric: true, sensitivity: 'base' })
+        : av.localeCompare(bv);
+      return trainingSortDirection === 'asc' ? cmp : -cmp;
+    });
+  }, [formData.trainingCourses, trainingSortColumn, trainingSortDirection]);
+
+  const TrainingSortIndicator = ({ column }: { column: TrainingSortColumn }) => {
+    if (trainingSortColumn !== column) {
+      return <span className="ml-1 opacity-0 group-hover:opacity-30"><ChevronUp className="h-3 w-3" /></span>;
+    }
+    return <span className="ml-1">{trainingSortDirection === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}</span>;
+  };
+
   const renderA33TrainingCourse = () => {
     return (
       <div className="mb-6 border border-[#EAEBEF] rounded-lg p-4">
@@ -5003,25 +5037,25 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Company ID</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Training Course <span className="text-red-500">*</span></TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 cursor-pointer group" onClick={() => handleTrainingSort('courseId')} data-testid="header-sort-crew-training-id">
+                <div className="flex items-center">Company ID<TrainingSortIndicator column="courseId" /></div>
+              </TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 cursor-pointer group" onClick={() => handleTrainingSort('trainingCourse')} data-testid="header-sort-crew-training-course">
+                <div className="flex items-center">Training Course <span className="text-red-500">*</span><TrainingSortIndicator column="trainingCourse" /></div>
+              </TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Abbr</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Requirement</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Certificate No</TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issuing Authority</TableHead>
-              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Issued</TableHead>
+              <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 cursor-pointer group" onClick={() => handleTrainingSort('issued')} data-testid="header-sort-crew-training-issued">
+                <div className="flex items-center">Issued<TrainingSortIndicator column="issued" /></div>
+              </TableHead>
               <TableHead className="text-[#4f5863] text-[13px] font-medium p-3">Expiry</TableHead>
               {canEditSection('D') && <TableHead className="text-[#4f5863] text-[13px] font-medium p-3 w-24">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {[...formData.trainingCourses]
-              .sort((a, b) => {
-                const aOrder = a.sortOrder ?? Number.MAX_SAFE_INTEGER;
-                const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
-                return aOrder - bOrder;
-              })
-              .map((course) => (
+            {sortedTrainingCourses.map((course) => (
               <TableRow key={course.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   <div className="text-[#4f5863] text-[13px] font-mono">{course.courseId || '-'}</div>
@@ -5155,6 +5189,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <div className="border rounded-lg overflow-hidden">
           <div className="w-full min-w-0 overflow-hidden [&_th]:px-1.5 [&_th]:text-[10px] [&_th]:leading-tight [&_td]:px-1.5 [&_td]:text-[11px] [&_input]:text-[11px]">
             <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[8%]" />
+                <col className="w-[9%]" />
+                <col className="w-[9%]" />
+                <col className="w-[8%]" />
+                <col className="w-[12.5%]" />
+                <col className="w-[12.5%]" />
+                <col className="w-[5.5%]" />
+                <col className="w-[5.5%]" />
+                <col className="w-[7%]" />
+                {canEditSection('E') && <col className="w-[5%]" />}
+              </colgroup>
               <thead className="bg-gray-100">
                 <tr>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name <span className="text-red-500">*</span></th>
@@ -5537,6 +5585,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         <div className="border rounded-lg overflow-hidden">
           <div className="w-full min-w-0 overflow-hidden [&_th]:px-1 [&_th]:text-[10px] [&_th]:leading-tight [&_td]:px-1 [&_td]:text-[11px] [&_input]:text-[11px]">
             <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-[9%]" />
+                <col className="w-[7%]" />
+                <col className="w-[8%]" />
+                <col className="w-[5.5%]" />
+                <col className="w-[7%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[6%]" />
+                <col className="w-[11.5%]" />
+                <col className="w-[11.5%]" />
+                <col className="w-[5%]" />
+                <col className="w-[5%]" />
+                {canEditSection('E') && <col className="w-[7.5%]" />}
+              </colgroup>
               <thead className="bg-gray-100">
                 <tr>
                   <th className="text-gray-600 text-xs font-normal py-2 px-2 sm:px-4 text-left">Vessel Name <span className="text-red-500">*</span></th>
@@ -6445,8 +6508,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (formData.maritalStatus === 'Married') {
       if (!(formData.spouseFirstName || '').trim()) { setSpouseFirstNameError('Spouse first name is required.'); hasErrors = true; } else { setSpouseFirstNameError(''); }
       if (!(formData.spouseFamilyName || '').trim()) { setSpouseFamilyNameError('Spouse family name is required.'); hasErrors = true; } else { setSpouseFamilyNameError(''); }
-      if (!(formData.spouseDateOfBirth || '').trim()) { setSpouseDobError('Spouse date of birth is required.'); hasErrors = true; }
-      else if (formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); hasErrors = true; }
+      if (formData.spouseDateOfBirth && formData.spouseDateOfBirth > todayStr) { setSpouseDobError('Spouse date of birth cannot be a future date.'); hasErrors = true; }
       else { setSpouseDobError(''); }
     } else {
       setSpouseFirstNameError(''); setSpouseFamilyNameError(''); setSpouseDobError('');
@@ -8820,7 +8882,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   <SelectValue placeholder="Crew Pool" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
-                  {crewPoolOptions.map((pool: any) => (
+                  {withLegacyCrewPool(crewPoolOptions, formData.crewPool).map((pool: any) => (
                     <SelectItem key={pool.id} value={pool.name} data-testid={`crew-pool-option-${pool.id}`}>
                       {pool.name}
                     </SelectItem>
