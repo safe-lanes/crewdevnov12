@@ -113,6 +113,9 @@ export default function ContractDetailPage({
   const { data: payElements = [] } = useQuery<any[]>({
     queryKey: [`${ACCOUNTS_BASE}/pay-elements`],
   });
+  const { data: companyRanks = [] } = useQuery<any[]>({
+    queryKey: ["/api/v2/admin/company-ranks"],
+  });
   const { data: tenantConfig, isSuccess: tenantConfigLoaded } = useQuery<{
     allowManualSeniorityAnchor: boolean;
   }>({
@@ -139,6 +142,11 @@ export default function ContractDetailPage({
     for (const e of payElements) m.set(e.payElementUuid, e);
     return m;
   }, [payElements]);
+  const rankNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of companyRanks) m.set(r.rankId, r.rank);
+    return m;
+  }, [companyRanks]);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: detailKey });
@@ -411,7 +419,12 @@ export default function ContractDetailPage({
           </div>
           <div>
             <div className="text-xs text-muted-foreground">Rank at start</div>
-            <div>{engagement.rankIdAtStart ?? "—"}</div>
+            <div>
+              {engagement.rankIdAtStart
+                ? (rankNameById.get(engagement.rankIdAtStart) ??
+                  engagement.rankIdAtStart)
+                : "—"}
+            </div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">Vessel</div>

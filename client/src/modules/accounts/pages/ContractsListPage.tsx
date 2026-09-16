@@ -57,6 +57,14 @@ export default function ContractsListPage() {
   const listKey = [`${ACCOUNTS_BASE}/engagements${qs ? `?${qs}` : ""}`];
 
   const { data: rows = [], isLoading } = useQuery<any[]>({ queryKey: listKey });
+  const { data: companyRanks = [] } = useQuery<any[]>({
+    queryKey: ["/api/v2/admin/company-ranks"],
+  });
+  const rankNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of companyRanks) m.set(r.rankId, r.rank);
+    return m;
+  }, [companyRanks]);
 
   // Only unconfirmed rows among the selection are actionable.
   const selectedUnconfirmed = useMemo(
@@ -113,7 +121,14 @@ export default function ContractsListPage() {
         headerName: "",
       },
       { headerName: "Crew", field: "crewName", flex: 2, minWidth: 180 },
-      { headerName: "Rank", field: "rankIdAtStart", width: 100 },
+      {
+        headerName: "Rank",
+        field: "rankIdAtStart",
+        width: 100,
+        valueFormatter: (p: any) =>
+          p.value ? (rankNameById.get(p.value) ?? p.value) : "",
+        tooltipValueGetter: (p: any) => p.data?.rankIdAtStart ?? "",
+      },
       {
         headerName: "Vessel",
         flex: 2,
@@ -186,7 +201,7 @@ export default function ContractsListPage() {
         ),
       },
     ],
-    [],
+    [rankNameById],
   );
 
   return (
