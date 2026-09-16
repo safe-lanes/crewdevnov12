@@ -1178,6 +1178,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             id: c.crewUuid || c.id,
             employeeId: c.employeeId || c.empNo || '',
             firstName: c.firstName || '',
+            middleName: c.middleName || '',
             familyName: c.familyName || '',
             dob: c.dob || c.dateOfBirth || '',
             age: c.age ?? null,
@@ -1245,8 +1246,43 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             headerName: 'General Particulars of Seafarer',
             headerClass: 'center-group-header',
             children: [
-                { headerName: 'First\nName', field: 'firstName', width: viewportConfig.isDesktopOrLaptop ? undefined : 90, minWidth: 90, cellStyle: { fontSize: '13px', color: '#4f5863' }, filter: 'agTextColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, headerClass: 'ag-header-cell-text-wrap' },
-                { headerName: 'Family\nName', field: 'familyName', width: viewportConfig.isDesktopOrLaptop ? undefined : 95, minWidth: 95, cellStyle: { fontSize: '13px', color: '#4f5863' }, filter: 'agTextColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, headerClass: 'ag-header-cell-text-wrap' },
+                {
+                    headerName: 'Full Name',
+                    colId: 'fullName',
+                    initialHide: false,
+                    valueGetter: (params) =>
+                        [
+                            params.data?.firstName,
+                            params.data?.middleName,
+                            params.data?.familyName,
+                        ]
+                            .map((part) => (part ?? '').trim())
+                            .filter(Boolean)
+                            .join(' '),
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 160,
+                    minWidth: 160,
+                    cellStyle: { fontSize: '13px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    floatingFilter: viewportConfig.showFloatingFilters,
+                    sortable: true,
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
+                },
+                { headerName: 'First\nName', field: 'firstName', initialHide: true, width: viewportConfig.isDesktopOrLaptop ? undefined : 90, minWidth: 90, cellStyle: { fontSize: '13px', color: '#4f5863' }, filter: 'agTextColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, headerClass: 'ag-header-cell-text-wrap' },
+                {
+                    headerName: 'Middle\nName',
+                    field: 'middleName',
+                    initialHide: true,
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 90,
+                    minWidth: 90,
+                    cellStyle: { fontSize: '13px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    floatingFilter: viewportConfig.showFloatingFilters,
+                    sortable: true,
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
+                },
+                { headerName: 'Family\nName', field: 'familyName', initialHide: true, width: viewportConfig.isDesktopOrLaptop ? undefined : 95, minWidth: 95, cellStyle: { fontSize: '13px', color: '#4f5863' }, filter: 'agTextColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, headerClass: 'ag-header-cell-text-wrap' },
                 { headerName: 'DOB', field: 'dob', width: viewportConfig.isDesktopOrLaptop ? undefined : 90, minWidth: 90, cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' }, filter: 'agDateColumnFilter', filterParams: { comparator: dateFilterComparator }, floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, valueFormatter: (p: any) => formatCompactDate(p.value) },
                 { headerName: 'Age', field: 'age', width: viewportConfig.isDesktopOrLaptop ? undefined : 50, minWidth: 50, cellStyle: { fontSize: '13px', color: '#4f5863' }, filter: 'agNumberColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true },
                 { headerName: 'Rank', field: 'presentRank', width: viewportConfig.isDesktopOrLaptop ? undefined : 100, minWidth: 100, cellStyle: { fontSize: '13px', color: '#4f5863', lineHeight: '1.2' }, filter: 'agSetColumnFilter', floatingFilter: viewportConfig.showFloatingFilters, sortable: true, resizable: true, wrapText: true, autoHeight: true, headerClass: 'ag-header-cell-text-wrap' },
