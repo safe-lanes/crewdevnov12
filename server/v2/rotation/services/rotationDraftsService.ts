@@ -112,7 +112,7 @@ export const rotationDraftsService = {
         if (entry.crewUuid) {
           const crew = await crewMembersRepository.findByUuid(entry.crewUuid);
           if (crew) {
-            crewName = `${crew.firstName || ''} ${crew.familyName || ''}`.trim() || 'Unknown Crew';
+            crewName = [crew.firstName, crew.middleName, crew.familyName].filter(Boolean).join(' ').trim() || 'Unknown Crew';
           }
         }
         
@@ -563,7 +563,7 @@ export const rotationDraftsService = {
         if (entry.crewUuid) {
           const crew = await crewMembersRepository.findByUuid(entry.crewUuid);
           if (crew) {
-            crewName = `${crew.firstName || ''} ${crew.familyName || ''}`.trim() || 'Unknown Crew';
+            crewName = [crew.firstName, crew.middleName, crew.familyName].filter(Boolean).join(' ').trim() || 'Unknown Crew';
           }
         }
         
