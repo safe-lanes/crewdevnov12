@@ -266,8 +266,31 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
             headerClass: 'center-group-header',
             children: [
                 {
+                    headerName: 'Full Name',
+                    colId: 'fullName',
+                    initialHide: false,
+                    valueGetter: (params) =>
+                        [
+                            params.data?.firstName,
+                            params.data?.middleName,
+                            params.data?.familyName,
+                        ]
+                            .map((part) => (part ?? '').trim())
+                            .filter(Boolean)
+                            .join(' '),
+                    width: viewportConfig.isDesktopOrLaptop ? undefined : 160,
+                    minWidth: 160,
+                    cellStyle: { fontSize: '13px', color: '#4f5863' },
+                    filter: 'agTextColumnFilter',
+                    floatingFilter: viewportConfig.showFloatingFilters,
+                    sortable: true,
+                    resizable: true,
+                    headerClass: 'ag-header-cell-text-wrap'
+                },
+                {
                     headerName: 'First\nName',
                     field: 'firstName',
+                    initialHide: true,
                     width: viewportConfig.isDesktopOrLaptop ? undefined : 90,
                     minWidth: 90,
                     cellStyle: { fontSize: '13px', color: '#4f5863' },
@@ -288,11 +311,12 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                     sortable: true,
                     resizable: true,
                     headerClass: 'ag-header-cell-text-wrap',
-                    hide: true
+                    initialHide: true
                 },
                 {
                     headerName: 'Family\nName',
                     field: 'familyName',
+                    initialHide: true,
                     width: viewportConfig.isDesktopOrLaptop ? undefined : 95,
                     minWidth: 95,
                     cellStyle: { fontSize: '13px', color: '#4f5863' },
