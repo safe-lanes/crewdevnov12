@@ -8,8 +8,8 @@ if [[ -f .env ]]; then
   set +a
 fi
 
-export PORT=5000
-export MOBILE_PREVIEW_PORT=5005
+export PORT=5001
+export MOBILE_PREVIEW_PORT=5000
 export CREW_APP_TENANCY_MODE="${CREW_APP_TENANCY_MODE:-single}"
 export CREW_APP_SINGLE_TENANT_DOMAIN="${CREW_APP_SINGLE_TENANT_DOMAIN:-local}"
 
@@ -31,9 +31,9 @@ case "$CREW_APP_TENANCY_MODE" in
 esac
 
 if [[ -n "${REPLIT_DEV_DOMAIN:-}" ]]; then
-  export EXPO_PUBLIC_API_BASE_URL="${EXPO_PUBLIC_API_BASE_URL:-https://${REPLIT_DEV_DOMAIN}}"
+  export EXPO_PUBLIC_API_BASE_URL="${EXPO_PUBLIC_API_BASE_URL:-https://${REPLIT_DEV_DOMAIN}:3002}"
 else
-  export EXPO_PUBLIC_API_BASE_URL="${EXPO_PUBLIC_API_BASE_URL:-http://localhost:5000}"
+  export EXPO_PUBLIC_API_BASE_URL="${EXPO_PUBLIC_API_BASE_URL:-http://localhost:5001}"
 fi
 
 cleanup() {
