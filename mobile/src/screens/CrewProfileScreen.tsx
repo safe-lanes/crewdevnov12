@@ -1,0 +1,70 @@
+import React, { useCallback, useEffect, useState } from "react";
+import { Alert, ScrollView, Text, View } from "react-native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import { crewInformationApi, CrewInformationMasters } from "../api/crewInformationApi";
+import { Button, Field, MultiSelectField, palette, SelectField, StateView, styles } from "../components/CrewUI";
+
+function validationErrors(error: any): Record<string, string> {
+  const fields = error?.details?.fieldErrors;
+  if (!fields || typeof fields !== "object") return {};
+  return Object.fromEntries(Object.entries(fields).flatMap(([key, messages]) => {
+    const message = Array.isArray(messages) ? messages[0] : messages;
+    return typeof message === "string" ? [[key, message]] : [];
+  }));
+}
+
+function keyboardFor(field: string): any {
+  if (field === "email") return "email-address";
+  if (/mobile|telephone|landline/i.test(field)) return "phone-pad";
+  if (/height|weight|children/i.test(field)) return "numeric";
+  return "default";
+}
+
+const groups = [
+  ["Particulars", "particulars", ["firstName", "middleName", "familyName", "gender", "dob", "nationality"]],
+  ["Personal details", "personal", ["heightCm", "weightKg", "placeOfBirthCity", "placeOfBirthCountry", "nativeLanguageUuid", "foreignLanguages", "englishProficiency"]],
+  ["Address & contact", "contact", ["countryOfResidence", "nearestAirport", "addressLine1", "addressLine2", "contactLandline", "mobile", "email"]],
+  ["Family", "family", ["maritalStatus", "numDependentChildren", "fatherName", "motherName", "spouseFirstName", "spouseMiddleName", "spouseFamilyName", "spouseDob"]],
+  ["Next of kin", "next-of-kin", ["firstName", "middleName", "familyName", "telephone", "email", "address", "relationship"]],
+  ["Vessel types", "vessel-types", ["vesselTypeUuids"]],
+] as const;
+
+export default function CrewProfileScreen() {
+  const navigation = useNavigation<any>(); const route = useRoute<any>();
+  const [info, setInfo] = useState<any>(); const [masters, setMasters] = useState<CrewInformationMasters>(); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const load = useCallback(async () => { setLoading(true); setError(""); try { const [information, masterData] = await Promise.all([crewInformationApi.get(), crewInformationApi.getMasters()]); setInfo(information); setMasters(masterData); } catch (e: any) { setError(e.message); } finally { setLoading(false); } }, []);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+  const active = route.params?.section;
+  if (active) return <StateView loading={loading} error={error} retry={load}>{info && masters ? <ProfileEditor section={active} info={info} masters={masters} writable={info.permissions?.writableSingletons?.includes(active)} onDone={() => navigation.goBack()} /> : null}</StateView>;
+  const isPresent = (key: string) => key === "family" ? Boolean(info?.sections?.family?.info) : key === "next-of-kin" ? Boolean(info?.sections?.family?.nextOfKin) : key === "vessel-types" ? Boolean(info?.sections?.vesselTypes?.length) : Boolean(info?.sections?.[key]);
+  const completed = groups.filter(([, key]) => isPresent(key)).length + (info?.sections?.family?.children?.length ? 1 : 0);
+  return <ScrollView style={styles.screen} contentContainerStyle={styles.content}><Text style={styles.title}>My Profile</Text><Text style={styles.subtitle}>Keep the details your crew team relies on current.</Text><StateView loading={loading} error={error} retry={load}><View style={styles.card}><Text style={styles.cardTitle}>Profile progress</Text><Text style={styles.cardMeta}>{completed} of 7 sections have information</Text><View style={{ height: 7, borderRadius: 4, backgroundColor: palette.line, marginTop: 12 }}><View style={{ height: 7, borderRadius: 4, backgroundColor: palette.teal, width: `${(completed / 7) * 100}%` }} /></View></View>{groups.map(([label, key, fields]) => <View key={key} style={styles.card}><View style={styles.row}><View style={{ flex: 1 }}><Text style={styles.cardTitle}>{label}</Text><Text style={styles.cardMeta}>{isPresent(key) ? "Information added" : "Needs attention"}</Text></View><Button title="Open" secondary onPress={() => navigation.push("CrewProfile", { section: key })} /></View></View>)}<View style={styles.card}><View style={styles.row}><View><Text style={styles.cardTitle}>Children</Text><Text style={styles.cardMeta}>{info?.sections?.family?.children?.length ? `${info.sections.family.children.length} records` : "No records yet"}</Text></View><Button title="Open" secondary onPress={() => navigation.navigate("CrewCollection", { collection: "children" })} /></View></View></StateView></ScrollView>;
+}
+
+function ProfileEditor({ section, info, masters, writable, onDone }: { section: string; info: any; masters: CrewInformationMasters; writable: boolean; onDone: () => void }) {
+  const navigation = useNavigation<any>(); const group = groups.find(g => g[1] === section); const [form, setForm] = useState<any>({}); const [saving, setSaving] = useState(false); const [saved, setSaved] = useState(false); const [errors, setErrors] = useState<Record<string, string>>({}); const refs = React.useRef<Record<string, any>>({}); const actionLock = React.useRef(false); const completionTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const baseline = React.useRef("{}"); useEffect(() => { const source = section === "next-of-kin" ? info?.sections?.family?.nextOfKin : section === "family" ? info?.sections?.family?.info : info?.sections?.[section]; const raw = section === "vessel-types" ? { vesselTypeUuids: (Array.isArray(source) ? source : []).map((row: any) => row.vesselTypeUuid).filter(Boolean).join(", ") } : source; setForm(raw || {}); baseline.current = JSON.stringify(raw || {}); }, [info, section]);
+  if (!group) return null;
+  const dirty = JSON.stringify(form) !== baseline.current;
+  useEffect(() => () => { if (completionTimer.current) clearTimeout(completionTimer.current); }, []);
+  useEffect(() => { const unsub = navigation.addListener("beforeRemove", (event: any) => { if (!dirty || saving) return; event.preventDefault(); Alert.alert("Discard changes?", "Your entered data has not been saved.", [{ text: "Keep editing", style: "cancel" }, { text: "Discard", style: "destructive", onPress: () => navigation.dispatch(event.data.action) }]); }); return unsub; }, [dirty, saving, navigation]);
+  const save = async () => { if (!writable || actionLock.current || saving || saved) return; actionLock.current = true; setSaving(true); setSaved(false); setErrors({}); try { const clean: Record<string, any> = Object.fromEntries(group[2].map((key) => {
+    const value = form[key];
+    if (value !== undefined && value !== "") return [key, value];
+    const cannotClear = section === "particulars" && ["firstName", "familyName", "nationality"].includes(key);
+    return cannotClear ? [key, undefined] : [key, null];
+  }).filter(([, value]) => value !== undefined)); if (section === "particulars" && form.nationalityUuid) clean.nationalityUuid = form.nationalityUuid; if (section === "personal" && form.placeOfBirthCountryUuid) clean.placeOfBirthCountryUuid = form.placeOfBirthCountryUuid; if (section === "contact" && form.countryOfResidenceUuid) clean.countryOfResidenceUuid = form.countryOfResidenceUuid; const payload = section === "vessel-types" ? { vesselTypeUuids: String(form.vesselTypeUuids || "").split(",").map((v: string) => v.trim()).filter(Boolean) } : clean; await crewInformationApi.updateSection(section, payload); baseline.current = JSON.stringify(form); setSaved(true); completionTimer.current = setTimeout(() => { completionTimer.current = null; onDone(); }, 700); } catch (e: any) { actionLock.current = false; const nextErrors = validationErrors(e); setErrors(nextErrors); const first = Object.keys(nextErrors)[0]; if (first) requestAnimationFrame(() => refs.current[first]?.focus?.()); Alert.alert("Could not save", Object.keys(nextErrors).length ? "Check the highlighted fields and try again." : e.message); } finally { setSaving(false); } };
+  const display = section === "vessel-types" ? (Array.isArray(form.vesselTypeUuids) ? form.vesselTypeUuids.join(", ") : form.vesselTypeUuids) : undefined;
+  if (!writable) return <ScrollView style={styles.screen} contentContainerStyle={styles.content}><Text style={styles.title}>{group[0]}</Text><Text style={styles.subtitle}>This section is maintained by your crew team and is read only.</Text>{group[2].map((field) => <View key={field} style={styles.card}><Text style={styles.label}>{field.replace(/[A-Z]/g, m => ` ${m}`).replace(/^./, m => m.toUpperCase())}</Text><Text style={styles.cardMeta}>{String(form[field] ?? "Not provided")}</Text></View>)}<Button title="Back" secondary onPress={onDone} /></ScrollView>;
+  const change = (field: string, value: any) => { setErrors((current) => ({ ...current, [field]: "" })); setForm((current: any) => ({ ...current, [field]: value })); };
+  const renderField = (field: string) => {
+    if (field === "vesselTypeUuids") return <MultiSelectField key={field} label="Vessel types applied for" values={String(display || "").split(",").map((value) => value.trim()).filter(Boolean)} options={masters.vesselTypes} onChange={(values) => change(field, values.join(", "))} />;
+    if (field === "nationality") return <SelectField key={field} label="Nationality" value={String(form.nationalityUuid || "")} options={masters.nationalities} error={errors.nationalityUuid || errors.nationality} onChange={(value) => { const label = masters.nationalities.find((option) => option.value === value)?.label; change("nationalityUuid", value); if (label) change("nationality", label); }} />;
+    if (field === "placeOfBirthCountry") return <SelectField key={field} label="Place of birth country" value={String(form.placeOfBirthCountryUuid || "")} options={masters.countries} error={errors.placeOfBirthCountryUuid || errors.placeOfBirthCountry} onChange={(value) => { change("placeOfBirthCountryUuid", value); change("placeOfBirthCountry", masters.countries.find((option) => option.value === value)?.label || ""); }} />;
+    if (field === "countryOfResidence") return <SelectField key={field} label="Country of residence" value={String(form.countryOfResidenceUuid || "")} options={masters.countries} error={errors.countryOfResidenceUuid || errors.countryOfResidence} onChange={(value) => { change("countryOfResidenceUuid", value); change("countryOfResidence", masters.countries.find((option) => option.value === value)?.label || ""); }} />;
+    if (field === "nativeLanguageUuid") return <SelectField key={field} label="Native language" value={String(form[field] || "")} options={masters.languages} error={errors[field]} onChange={(value) => change(field, value)} />;
+    return <Field key={field} inputRef={(node: any) => { refs.current[field] = node; }} error={errors[field]} keyboardType={keyboardFor(field)} multiline={field === "address" || field === "foreignLanguages"} label={field.replace(/[A-Z]/g, m => ` ${m}`).replace(/^./, m => m.toUpperCase())} value={String(form[field] ?? "")} onChangeText={(value) => change(field, value)} />;
+  };
+  const exit = () => { if (completionTimer.current) { clearTimeout(completionTimer.current); completionTimer.current = null; } onDone(); };
+  return <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"><Text style={styles.title}>{group[0]}</Text><Text style={styles.subtitle}>Changes are saved securely to your crew record.</Text>{group[2].map(renderField)}{saved && <Text accessibilityLiveRegion="polite" style={{ color: "#0E8D8A", fontWeight: "800", marginTop: 12 }}>Saved</Text>}<Button testID="profile-save-button" title={saving ? "Saving..." : saved ? "Saved" : "Save changes"} onPress={save} disabled={saving || saved} /><Button testID="profile-back-button" title={saved ? "Continue" : "Cancel"} secondary onPress={exit} /></ScrollView>;
+}

@@ -9,6 +9,8 @@ import AdminNoticeEditScreen from "../screens/admin/AdminNoticeEditScreen";
 import MoreScreen from "../screens/MoreScreen";
 import ContentPageScreen from "../screens/ContentPageScreen";
 import AdminContentEditScreen from "../screens/admin/AdminContentEditScreen";
+import CrewProfileScreen from "../screens/CrewProfileScreen";
+import CrewCollectionScreen from "../screens/CrewCollectionScreen";
 
 const HomeStack = createNativeStackNavigator();
 function HomeStackNavigator() {
@@ -16,6 +18,8 @@ function HomeStackNavigator() {
     <HomeStack.Navigator>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} options={{ title: "Home", headerShown: false }} />
       <HomeStack.Screen name="Notifications" component={NotificationsScreen} options={{ title: "Notifications" }} />
+      <HomeStack.Screen name="CrewProfile" component={CrewProfileScreen} options={{ title: "My Profile" }} />
+      <HomeStack.Screen name="CrewCollection" component={CrewCollectionScreen} options={{ title: "Crew records" }} />
     </HomeStack.Navigator>
   );
 }
@@ -57,6 +61,7 @@ export default function MainTabs() {
     <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Home" component={HomeStackNavigator} />
       <Tab.Screen name="Notices" component={NoticesStackNavigator} />
+      <Tab.Screen name="NotificationsTab" component={NotificationsScreen} options={{ title: "Notifications" }} />
       <Tab.Screen name="More" component={MoreStackNavigator} />
     </Tab.Navigator>
   );

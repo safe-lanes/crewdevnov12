@@ -24,6 +24,9 @@ import {
   crewSeaServiceService,
   crewVisasService,
 } from "../../crew-pool/services";
+import { MastersRepository } from "../../masters/repositories/mastersRepository";
+
+const mastersRepository = new MastersRepository();
 
 const mobileAuditFields = {
   createdByUuid: true,
@@ -290,6 +293,32 @@ export async function getInformation(req: Request, res: Response): Promise<void>
         attachments: false,
       },
     });
+  } catch (error) {
+    sendError(res, error);
+  }
+}
+
+export async function getCrewInformationMasters(_req: Request, res: Response): Promise<void> {
+  try {
+    const definitions = [
+      ["nationalities", "natUuid", ["nationality", "countryName"]],
+      ["countries", "countryUuid", ["countryName"]],
+      ["languages", "langUuid", ["languageName", "nativeName"]],
+      ["vesselTypes", "vtUuid", ["vesselType"]],
+      ["vessels", "vesselUuid", ["vessel"]],
+    ] as const;
+    const rows = await Promise.all(definitions.map(([type]) => mastersRepository.getMasterData(type)));
+    const masters = Object.fromEntries(definitions.map(([type, valueKey, labelKeys], index) => [
+      type,
+      rows[index]
+        .filter((row: any) => !row.isDeleted && row.isActive !== false)
+        .map((row: any) => ({
+          value: String(row[valueKey] ?? ""),
+          label: String(labelKeys.map((key) => row[key]).find(Boolean) ?? ""),
+        }))
+        .filter((option) => option.value && option.label),
+    ]));
+    res.json(masters);
   } catch (error) {
     sendError(res, error);
   }
