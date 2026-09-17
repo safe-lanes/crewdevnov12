@@ -1,4 +1,7 @@
-// Point this at your dev machine's LAN IP (not localhost) when testing on a
-// physical device, e.g. "http://192.168.1.50:5000". localhost only works in
-// the iOS simulator / Android emulator with port forwarding set up.
-export const API_BASE_URL = "http://192.168.156.62:5000";
+import { Platform } from "react-native";
+
+// Set EXPO_PUBLIC_API_BASE_URL to the machine's LAN/HTTPS address for physical
+// devices. Web development uses the crew web app/API on port 5000.
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_BASE_URL ??
+  (Platform.OS === "web" ? "http://localhost:5000" : "http://192.168.156.62:5000");
