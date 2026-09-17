@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ -f .env.dev ]]; then
+if [[ -f .env ]]; then
   set -a
   # shellcheck disable=SC1091
-  source .env.dev
+  source .env
   set +a
 fi
 
