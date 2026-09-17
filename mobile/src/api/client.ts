@@ -16,7 +16,7 @@ export async function rawPost<T = any>(path: string, body: unknown): Promise<T> 
 
 let inFlightRefresh: Promise<boolean> | null = null;
 
-async function refreshTokens(): Promise<boolean> {
+async function performRefresh(): Promise<boolean> {
   const { refreshToken, domain, deviceId } = tokenStore.get();
   if (!refreshToken) return false;
   try {
@@ -32,6 +32,15 @@ async function refreshTokens(): Promise<boolean> {
     await tokenStore.clear();
     return false;
   }
+}
+
+export function refreshCrewSession(): Promise<boolean> {
+  if (!inFlightRefresh) {
+    inFlightRefresh = performRefresh().finally(() => {
+      inFlightRefresh = null;
+    });
+  }
+  return inFlightRefresh;
 }
 
 /**
@@ -58,12 +67,7 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
   let response = await doFetch();
 
   if (response.status === 401) {
-    if (!inFlightRefresh) {
-      inFlightRefresh = refreshTokens().finally(() => {
-        inFlightRefresh = null;
-      });
-    }
-    const refreshed = await inFlightRefresh;
+    const refreshed = await refreshCrewSession();
     if (refreshed) {
       response = await doFetch();
     }

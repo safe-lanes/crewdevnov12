@@ -25,6 +25,7 @@ import {
   crewVisasService,
 } from "../../crew-pool/services";
 import { MastersRepository } from "../../masters/repositories/mastersRepository";
+import { fileStorageService } from "../../shared/fileStorageService";
 
 const mastersRepository = new MastersRepository();
 
@@ -290,7 +291,13 @@ export async function getInformation(req: Request, res: Response): Promise<void>
       permissions: {
         writableSingletons: ["particulars", "personal", "contact", "family", "next-of-kin", "vessel-types"],
         writableCollections: ["children", "documents", "visas", "education", "licenses", "training", "sea-service"],
-        attachments: false,
+        attachments: true,
+        attachmentRules: {
+          readableCollections: ["documents", "visas", "education", "licenses", "training", "sea-service", "medicals", "doctor-visits", "briefings", "debriefings"],
+          writableCollections: ["documents", "visas", "education", "licenses", "training", "sea-service"],
+          allowedMimeTypes: ["application/pdf", "image/png", "image/jpeg"],
+          maxBytes: 5 * 1024 * 1024,
+        },
       },
     });
   } catch (error) {
@@ -383,6 +390,19 @@ function isCollectionName(value: string): value is CollectionName {
   return Object.prototype.hasOwnProperty.call(collections, value);
 }
 
+function collectionRecordUuid(name: CollectionName, row: any): string | undefined {
+  const keys: Record<CollectionName, string> = {
+    children: "childUuid",
+    documents: "docUuid",
+    visas: "visaUuid",
+    education: "eduUuid",
+    licenses: "licUuid",
+    training: "trainUuid",
+    "sea-service": "seaUuid",
+  };
+  return row?.[keys[name]];
+}
+
 export async function collectionHandler(req: Request, res: Response): Promise<void> {
   try {
     const name = req.params.collection;
@@ -421,7 +441,16 @@ export async function collectionHandler(req: Request, res: Response): Promise<vo
       return;
     }
     if (req.method === "DELETE") {
+      const fullTarget = (await adapter.list(crewUuid)).find(
+        (row) => collectionRecordUuid(name, row) === req.params.uuid,
+      );
       await adapter.remove(req.params.uuid);
+      await Promise.all((fullTarget?.attachments || []).map((attachment: any) => {
+        const path = attachment?.filePath;
+        return path && !path.startsWith("data:")
+          ? fileStorageService.deleteAttachment(path)
+          : Promise.resolve();
+      }));
       res.status(204).send();
       return;
     }

@@ -6,6 +6,15 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": ["**/*"],
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow SAIL Crew to select a crew photo or attachment."
+        }
+      ],
+      "expo-document-picker"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sail.crewapp"

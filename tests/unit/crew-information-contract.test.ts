@@ -27,6 +27,8 @@ const mocks = vi.hoisted(() => ({
   getDoctorVisits: vi.fn(),
   getBriefings: vi.fn(),
   getDebriefings: vi.fn(),
+  addDocumentAttachment: vi.fn(),
+  removeDocumentAttachment: vi.fn(),
 }));
 
 vi.mock("@server/v2/crew-app/auth", () => ({
@@ -72,6 +74,8 @@ vi.mock("@server/v2/crew-pool/services", () => ({
     getByUuid: mocks.getDocument,
     update: mocks.updateDocument,
     delete: mocks.deleteDocument,
+    addAttachment: mocks.addDocumentAttachment,
+    removeAttachment: mocks.removeDocumentAttachment,
   },
   crewVisasService: {
     getAll: mocks.getVisas,
@@ -79,6 +83,8 @@ vi.mock("@server/v2/crew-pool/services", () => ({
     getByUuid: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    addAttachment: vi.fn(),
+    removeAttachment: vi.fn(),
   },
   crewEducationService: {
     getAll: mocks.getEducation,
@@ -86,6 +92,8 @@ vi.mock("@server/v2/crew-pool/services", () => ({
     getByUuid: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    addAttachment: vi.fn(),
+    removeAttachment: vi.fn(),
   },
   crewCertificatesService: {
     getLicenses: mocks.getLicenses,
@@ -93,11 +101,15 @@ vi.mock("@server/v2/crew-pool/services", () => ({
     getLicenseByUuid: mocks.getLicense,
     updateLicense: mocks.updateLicense,
     deleteLicense: vi.fn(),
+    addLicenseAttachment: vi.fn(),
+    removeLicenseAttachment: vi.fn(),
     getTraining: mocks.getTraining,
     createTraining: vi.fn(),
     getTrainingByUuid: vi.fn(),
     updateTraining: vi.fn(),
     deleteTraining: vi.fn(),
+    addTrainingAttachment: vi.fn(),
+    removeTrainingAttachment: vi.fn(),
   },
   crewSeaServiceService: {
     getAll: mocks.getSeaService,
@@ -105,6 +117,8 @@ vi.mock("@server/v2/crew-pool/services", () => ({
     getByUuid: mocks.getSeaServiceRecord,
     update: mocks.updateSeaService,
     delete: vi.fn(),
+    addAttachment: vi.fn(),
+    removeAttachment: vi.fn(),
   },
   crewMedicalService: {
     getMedicals: mocks.getMedicals,
@@ -205,7 +219,7 @@ describe("crew-information self-service contract", () => {
     expect(routes).toContain("crewAuthMiddleware");
     expect(routes).toContain("requireCrewPasswordReset");
     expect(routes).toContain("requireCurrentCrew");
-    expect(routes.indexOf("requireCurrentCrew")).toBeLessThan(routes.indexOf("requireCrewPasswordReset"));
+    expect(routes).toContain("const auth = [crewAuthMiddleware, requireCurrentCrew, requireCrewPasswordReset]");
     expect(routes).not.toMatch(/:crewUuid|req\.(body|query)\.crewUuid/);
     expect(routes).toContain('"particulars", "personal", "contact", "family", "next-of-kin", "vessel-types"');
   });
@@ -289,6 +303,60 @@ describe("crew-information self-service contract", () => {
     ]));
     expect(payload.sections.particulars).toEqual({ empNo: "EMP-7" });
     expect(payload.sections.medicals[0]).toEqual({ medUuid: "med-1", readOnly: true });
+    expect(payload.permissions.attachments).toBe(true);
+    expect(payload.permissions.attachmentRules).toEqual(expect.objectContaining({
+      allowedMimeTypes: ["application/pdf", "image/png", "image/jpeg"],
+      maxBytes: 5 * 1024 * 1024,
+    }));
+  });
+
+  it("lists only attachments nested under an owned parent and never returns storage data", async () => {
+    mocks.getDocuments.mockResolvedValue([{
+      docUuid: "doc-1",
+      crewUuid: "11111111-1111-4111-8111-111111111111",
+      attachments: [{
+        attUuid: "att-1",
+        fileName: "passport.pdf",
+        fileType: "application/pdf",
+        fileSize: "123",
+        filePath: "tenant/private/passport.pdf",
+        fileData: "secret",
+        createdAt: new Date("2026-09-17T00:00:00.000Z"),
+      }],
+    }]);
+    const app = express();
+    app.use(crewInformationRoutes);
+
+    const owned = await supertest(app).get("/documents/doc-1/attachments").expect(200);
+    expect(owned.body).toEqual([{
+      attUuid: "att-1",
+      fileName: "passport.pdf",
+      fileType: "application/pdf",
+      fileSize: "123",
+      createdAt: "2026-09-17T00:00:00.000Z",
+      canDelete: true,
+    }]);
+    expect(JSON.stringify(owned.body)).not.toMatch(/filePath|fileData|tenant\/private/);
+    await supertest(app).get("/documents/doc-2/attachments").expect(404);
+  });
+
+  it("allows owned writable attachment deletion but rejects readonly sections", async () => {
+    mocks.getDocuments.mockResolvedValue([{
+      docUuid: "doc-1",
+      crewUuid: "11111111-1111-4111-8111-111111111111",
+      attachments: [{ attUuid: "att-1", fileName: "passport.pdf" }],
+    }]);
+    mocks.getMedicals.mockResolvedValue([{
+      medUuid: "med-1",
+      crewUuid: "11111111-1111-4111-8111-111111111111",
+      attachments: [{ attUuid: "att-med", fileName: "medical.pdf" }],
+    }]);
+    const app = express();
+    app.use(crewInformationRoutes);
+
+    await supertest(app).delete("/documents/doc-1/attachments/att-1").expect(204);
+    expect(mocks.removeDocumentAttachment).toHaveBeenCalledWith("att-1");
+    await supertest(app).delete("/medicals/med-1/attachments/att-med").expect(403);
   });
 
   it("strictly rejects a client-supplied crew UUID before creating", async () => {
