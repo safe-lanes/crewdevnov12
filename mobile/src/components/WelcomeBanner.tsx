@@ -29,8 +29,9 @@ export default function WelcomeBanner({ onPressBell }: WelcomeBannerProps) {
   return (
     <View style={styles.container}>
       <View>
-        <Text style={styles.welcome}>Welcome, {name}</Text>
-        <Text style={styles.dateTime}>{now.toLocaleString()}</Text>
+        <Text style={styles.kicker}>SAIL CREW / OPERATIONS</Text>
+        <Text style={styles.welcome}>Good to see you, {name}</Text>
+        <Text style={styles.dateTime}>{now.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</Text>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"} style={styles.bell} onPress={onPressBell} testID="notifications-bell">
         <View style={styles.bellDome} />
@@ -51,18 +52,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-    backgroundColor: "#082B49",
+    backgroundColor: "#12324A",
   },
-  welcome: { fontSize: 18, fontWeight: "600", color: "#fff" },
-  dateTime: { fontSize: 13, color: "#e6fff2", marginTop: 2 },
-  bell: { minWidth: 48, minHeight: 48, borderRadius: 14, backgroundColor: "#0B5681", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#3A7897" },
+  kicker: { fontSize: 10, letterSpacing: 1.2, fontWeight: "800", color: "#86D7D3", marginBottom: 5 },
+  welcome: { fontSize: 18, fontWeight: "800", color: "#FBFDFC" },
+  dateTime: { fontSize: 13, color: "#B8D2D8", marginTop: 3 },
+  bell: { minWidth: 48, minHeight: 48, borderRadius: 13, backgroundColor: "#1E6387", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#477F98" },
   bellDome: { width: 19, height: 19, borderWidth: 2, borderColor: "#FFF", borderTopLeftRadius: 10, borderTopRightRadius: 10, borderBottomLeftRadius: 4, borderBottomRightRadius: 4 },
   bellClapper: { width: 7, height: 3, borderRadius: 3, backgroundColor: "#FFF", marginTop: 2 },
   badge: {
     position: "absolute",
     top: 2,
     right: 2,
-    backgroundColor: "#c00",
+     backgroundColor: "#C98B35",
     borderRadius: 9,
     minWidth: 18,
     height: 18,
