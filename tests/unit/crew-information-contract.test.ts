@@ -302,6 +302,8 @@ describe("crew-information self-service contract", () => {
       "seaService", "medicals", "doctorVisits", "briefings", "debriefings",
     ]));
     expect(payload.sections.particulars).toEqual({ empNo: "EMP-7" });
+    expect(payload.sections.personal).toBeNull();
+    expect(payload.sections.contact).toBeNull();
     expect(payload.sections.medicals[0]).toEqual({ medUuid: "med-1", readOnly: true });
     expect(payload.permissions.attachments).toBe(true);
     expect(payload.permissions.attachmentRules).toEqual(expect.objectContaining({

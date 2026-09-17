@@ -82,6 +82,10 @@ const TUID_CACHE_MAX_SIZE = 500;
 const CIRCUIT_BREAKER_THRESHOLD = 3;
 const CIRCUIT_BREAKER_COOLDOWN_MS = 30 * 1000;
 
+export function isExplicitMultiTenantMode(value = process.env.CREW_APP_TENANCY_MODE): boolean {
+  return value?.trim().toLowerCase() === "multi";
+}
+
 class TenantConnectionManager {
   private masterPool: Pool | null = null;
   private masterDb: DrizzleInstance | null = null;
@@ -147,13 +151,16 @@ class TenantConnectionManager {
       this.evictionTimer = setInterval(() => this.evictIdlePools(), EVICTION_CHECK_INTERVAL_MS);
     } catch (err: any) {
       console.error("❌ Failed to connect to master database:", err.message);
-      console.log("🏠 Falling back to single-tenant mode");
       this._isMultiTenantEnabled = false;
       if (this.masterPool) {
         await this.masterPool.end().catch(() => { });
         this.masterPool = null;
       }
       this.masterDb = null;
+      if (isExplicitMultiTenantMode()) {
+        throw new Error("Multi-tenant mode requires a reachable master database");
+      }
+      console.log("🏠 Falling back to single-tenant mode");
     }
   }
 
@@ -403,6 +410,16 @@ class TenantConnectionManager {
 
   getCurrentDomain(): string | null {
     return this.tenantStorage.getStore()?.domain ?? null;
+  }
+
+  async checkMasterHealth(): Promise<boolean> {
+    if (!this._isMultiTenantEnabled || !this.masterPool) return false;
+    try {
+      await this.masterPool.query("SELECT 1");
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async getActiveTenants(): Promise<string[]> {

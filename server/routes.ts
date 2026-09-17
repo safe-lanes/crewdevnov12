@@ -30,6 +30,7 @@ import { setupSwagger } from "./swagger";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
 import { normalizeCrewMemberForTable, calculateCrewStatus } from "@shared/crew-mapping";
 import { tenantConnectionManager, TenantNotFoundError, TenantInactiveError } from "./utils/tenantConnectionManager";
+import { getDatabaseHealthStatus } from "./utils/healthStatus";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/v2/tenant/init", async (req, res) => {
@@ -195,10 +196,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (tenantConnectionManager.isMultiTenantEnabled) {
       tenantPoolMetrics = tenantConnectionManager.getPoolMetrics();
     }
+    const masterHealthy = tenantConnectionManager.isMultiTenantEnabled && !isConnected
+      ? await tenantConnectionManager.checkMasterHealth()
+      : null;
 
     const healthStatus = {
       server: "running",
-      database: isConnected ? "connected" : "disconnected",
+      database: getDatabaseHealthStatus(
+        isConnected,
+        tenantConnectionManager.isMultiTenantEnabled,
+        masterHealthy,
+      ),
       multiTenant: tenantConnectionManager.isMultiTenantEnabled,
       ...(tenantPoolMetrics && { tenantPoolMetrics }),
       ...(process.env.NODE_ENV === 'development' && (() => {
@@ -217,7 +225,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       timestamp: new Date().toISOString()
     };
 
-    if (isConnected) {
+    if (tenantConnectionManager.isMultiTenantEnabled && !isConnected) {
+      if (masterHealthy) {
+        res.status(200).json({
+          status: "healthy",
+          ...healthStatus,
+        });
+      } else {
+        res.status(500).json({
+          status: "unhealthy - master database query failed",
+          ...healthStatus,
+        });
+      }
+    } else if (isConnected) {
       try {
         // Test with actual query
         await storage.getCrewMembers();

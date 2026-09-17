@@ -273,8 +273,8 @@ export async function getInformation(req: Request, res: Response): Promise<void>
         assignment: profile.currentAssignment
           ? readonlyRecord(profile.currentAssignment, true)
           : null,
-        personal: sanitize(profile.personalDetails),
-        contact: sanitize(profile.address),
+        personal: sanitize(profile.personalDetails) ?? null,
+        contact: sanitize(profile.address) ?? null,
         family: sanitize(profile.family),
         vesselTypes: sanitize(profile.vesselTypes),
         travelDocuments: documents.map(row => readonlyRecord(row, false)),

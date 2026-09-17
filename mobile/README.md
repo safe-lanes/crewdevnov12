@@ -1,7 +1,8 @@
-# SAIL Crew — Mobile App (Phase 1: Auth)
+# SAIL Crew — Mobile App
 
-Bare Expo app proving the login/refresh/logout token round-trip against
-`server/v2/crew-app/auth`. No feature screens yet.
+Expo app for authenticated crew self-service on Android, iOS, and the managed
+web preview. It includes first-login password reset, notices, notifications,
+Crew Information editing, and authorized crew-file access.
 
 ## Setup
 
@@ -10,10 +11,9 @@ cd mobile
 npm install
 ```
 
-Edit `src/config.ts` and point `API_BASE_URL` at your dev machine's LAN IP
-(not `localhost`) if you're testing on a physical device via Expo Go —
-`localhost` only resolves correctly in a simulator/emulator with port
-forwarding.
+Set `EXPO_PUBLIC_API_BASE_URL` to your development API origin when testing on a
+physical device. Do not use `localhost` unless the simulator or emulator has
+port forwarding configured.
 
 ## Run
 
@@ -24,11 +24,12 @@ npx expo start
 Scan the QR code with Expo Go (Android/iOS), or press `a`/`i` for an
 emulator/simulator.
 
-## What's here
+## Main flows
 
-- `LoginScreen` → `SetPasswordScreen` (only shown when the server returns
-  `mustResetPassword: true`) → `LandingScreen`, switched purely on auth status
-  in `App.tsx` (no navigation library yet).
+- `LoginScreen` → `SetPasswordScreen` when the server requires a first-login
+  password change → authenticated bottom-tab navigation.
+- Home, notices, notifications, profile, Crew Information collections, and
+  permitted attachments are available from the authenticated navigation tree.
 - `src/auth/tokenStore.ts` — the source of truth for the current tokens,
   readable/writable outside the component tree so `src/api/client.ts`'s
   fetch interceptor can attach the access token and trigger a refresh

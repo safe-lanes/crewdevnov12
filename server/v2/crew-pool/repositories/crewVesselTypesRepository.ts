@@ -14,9 +14,9 @@ export class CrewVesselTypesRepository {
     const results = await db.execute(sql`
       SELECT 
         cvta.*,
-        mvt."vesselType" as "resolvedVesselTypeName"
+        mvt.vessel_type AS "resolvedVesselTypeName"
       FROM crew_vessel_types_applied cvta
-      LEFT JOIN master_vessel_types mvt ON cvta.vessel_type_uuid = mvt.vtuid
+      LEFT JOIN master_vessel_types mvt ON cvta.vessel_type_uuid = mvt.vt_uuid
       WHERE cvta.crew_uuid = ${crewUuid}
         AND cvta.is_deleted = false
       ORDER BY cvta.sort_order ASC

@@ -60,6 +60,7 @@ export default function LoginScreen() {
             <Text style={styles.label}>Emp No / Mobile / Email</Text>
             <TextInput
               style={styles.input}
+              accessibilityLabel="Employee number, mobile, or email"
               value={identifier}
               onChangeText={setIdentifier}
               autoCapitalize="none"
@@ -72,6 +73,7 @@ export default function LoginScreen() {
             <Text style={styles.label}>Password</Text>
             <TextInput
               style={styles.input}
+              accessibilityLabel="Password"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -83,6 +85,7 @@ export default function LoginScreen() {
             <Text style={styles.label}>Domain</Text>
             <TextInput
               style={styles.input}
+              accessibilityLabel="Company domain"
               value={domain}
               onChangeText={setDomain}
               autoCapitalize="none"
@@ -94,11 +97,14 @@ export default function LoginScreen() {
 
             {error ? (
               <View style={styles.errorContainer}>
-                <Text style={styles.error}>{error}</Text>
+                <Text accessibilityLiveRegion="assertive" role="alert" style={styles.error}>{error}</Text>
               </View>
             ) : null}
 
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={submitting ? "Logging in" : "Log in"}
+              accessibilityState={{ disabled: submitting, busy: submitting }}
               style={({ pressed }) => [
                 styles.button,
                 pressed && styles.buttonPressed,
