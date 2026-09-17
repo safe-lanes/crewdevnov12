@@ -75,6 +75,7 @@ type CrewLookup = {
   crewUuid: string;
   empNo: string;
   firstName: string | null;
+  middleName: string | null;
   familyName: string | null;
   presentRank: string | null;
   status: string | null;
@@ -752,7 +753,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
                   const c = crew.find((x) => x.empNo === v);
                   if (c) {
                     set("crewMemberId", c.empNo);
-                    set("name", `${c.firstName || ""} ${c.familyName || ""}`.trim());
+                    set("name", [c.firstName, c.middleName, c.familyName].filter(Boolean).join(" "));
                     set("rank", c.presentRank || "");
                   }
                 }}
@@ -766,7 +767,7 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
                     )
                     .map((c) => ({
                       value: c.empNo,
-                      label: `${`${c.firstName || ""} ${c.familyName || ""}`.trim()} (${c.empNo})`,
+                      label: `${[c.firstName, c.middleName, c.familyName].filter(Boolean).join(" ")} (${c.empNo})`,
                     })),
                 ]}
                 placeholder="Search crew..."
