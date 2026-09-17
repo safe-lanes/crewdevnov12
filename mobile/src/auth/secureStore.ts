@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 // Wrappers around expo-secure-store (NOT AsyncStorage — tokens must not sit
 // in plain, unencrypted storage on the device).
@@ -15,6 +16,29 @@ const KEYS = {
   familyName: "crew_family_name",
 } as const;
 
+const webMemoryStore = new Map<string, string>();
+
+async function getItem(key: string): Promise<string | null> {
+  if (Platform.OS === "web") return webMemoryStore.get(key) ?? null;
+  return SecureStore.getItemAsync(key);
+}
+
+async function setItem(key: string, value: string): Promise<void> {
+  if (Platform.OS === "web") {
+    webMemoryStore.set(key, value);
+    return;
+  }
+  await SecureStore.setItemAsync(key, value);
+}
+
+async function deleteItem(key: string): Promise<void> {
+  if (Platform.OS === "web") {
+    webMemoryStore.delete(key);
+    return;
+  }
+  await SecureStore.deleteItemAsync(key);
+}
+
 export type StoredAuthState = {
   accessToken: string | null;
   refreshToken: string | null;
@@ -29,14 +53,14 @@ export type StoredAuthState = {
 export async function readAuthState(): Promise<StoredAuthState> {
   const [accessToken, refreshToken, domain, mustResetPasswordRaw, crewUuid, userType, firstName, familyName] =
     await Promise.all([
-      SecureStore.getItemAsync(KEYS.accessToken),
-      SecureStore.getItemAsync(KEYS.refreshToken),
-      SecureStore.getItemAsync(KEYS.domain),
-      SecureStore.getItemAsync(KEYS.mustResetPassword),
-      SecureStore.getItemAsync(KEYS.crewUuid),
-      SecureStore.getItemAsync(KEYS.userType),
-      SecureStore.getItemAsync(KEYS.firstName),
-      SecureStore.getItemAsync(KEYS.familyName),
+      getItem(KEYS.accessToken),
+      getItem(KEYS.refreshToken),
+      getItem(KEYS.domain),
+      getItem(KEYS.mustResetPassword),
+      getItem(KEYS.crewUuid),
+      getItem(KEYS.userType),
+      getItem(KEYS.firstName),
+      getItem(KEYS.familyName),
     ]);
   return {
     accessToken,
@@ -55,7 +79,7 @@ export async function writeAuthState(state: StoredAuthState): Promise<void> {
     setOrDelete(KEYS.accessToken, state.accessToken),
     setOrDelete(KEYS.refreshToken, state.refreshToken),
     setOrDelete(KEYS.domain, state.domain),
-    SecureStore.setItemAsync(KEYS.mustResetPassword, String(state.mustResetPassword)),
+    setItem(KEYS.mustResetPassword, String(state.mustResetPassword)),
     setOrDelete(KEYS.crewUuid, state.crewUuid),
     setOrDelete(KEYS.userType, state.userType),
     setOrDelete(KEYS.firstName, state.firstName),
@@ -65,30 +89,30 @@ export async function writeAuthState(state: StoredAuthState): Promise<void> {
 
 export async function clearAuthState(): Promise<void> {
   await Promise.all([
-    SecureStore.deleteItemAsync(KEYS.accessToken),
-    SecureStore.deleteItemAsync(KEYS.refreshToken),
-    SecureStore.deleteItemAsync(KEYS.domain),
-    SecureStore.deleteItemAsync(KEYS.mustResetPassword),
-    SecureStore.deleteItemAsync(KEYS.crewUuid),
-    SecureStore.deleteItemAsync(KEYS.userType),
-    SecureStore.deleteItemAsync(KEYS.firstName),
-    SecureStore.deleteItemAsync(KEYS.familyName),
+    deleteItem(KEYS.accessToken),
+    deleteItem(KEYS.refreshToken),
+    deleteItem(KEYS.domain),
+    deleteItem(KEYS.mustResetPassword),
+    deleteItem(KEYS.crewUuid),
+    deleteItem(KEYS.userType),
+    deleteItem(KEYS.firstName),
+    deleteItem(KEYS.familyName),
   ]);
 }
 
 export async function getDeviceId(): Promise<string> {
-  const existing = await SecureStore.getItemAsync(KEYS.deviceId);
+  const existing = await getItem(KEYS.deviceId);
   if (existing) return existing;
   const { randomUUID } = await import("expo-crypto");
   const id = randomUUID();
-  await SecureStore.setItemAsync(KEYS.deviceId, id);
+  await setItem(KEYS.deviceId, id);
   return id;
 }
 
 async function setOrDelete(key: string, value: string | null): Promise<void> {
   if (value === null) {
-    await SecureStore.deleteItemAsync(key);
+    await deleteItem(key);
   } else {
-    await SecureStore.setItemAsync(key, value);
+    await setItem(key, value);
   }
 }
