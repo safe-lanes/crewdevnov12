@@ -4,6 +4,17 @@ import { getTenantId } from '@/lib/tenantStorage';
 
 const V2_BASE = '/api/v2/crew-pool';
 
+export type MobileAccountStatus = 'not_provisioned' | 'pending' | 'sent' | 'failed';
+
+export interface MobileAccountResponse {
+  status: MobileAccountStatus;
+  credentialExists: boolean;
+  email?: string;
+  lastSentAt?: string;
+  lastError?: string;
+  message?: string;
+}
+
 export const crewPoolApiV2 = {
   async getCrewList(params?: {
     search?: string;
@@ -45,6 +56,42 @@ export const crewPoolApiV2 = {
   async getCrewById(crewUuid: string) {
     const response = await fetch(`${V2_BASE}/crew/${crewUuid}`);
     if (!response.ok) throw new Error('Failed to fetch crew member');
+    return response.json();
+  },
+
+  async getMobileAccount(crewUuid: string): Promise<MobileAccountResponse> {
+    const response = await fetch(`${V2_BASE}/crew/${crewUuid}/mobile-account`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || error.error || 'Failed to fetch mobile account status');
+    }
+    return response.json();
+  },
+
+  async submitMobileApplication(crewUuid: string): Promise<MobileAccountResponse> {
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/submit-application`, {});
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || error.error || 'Failed to submit mobile application');
+    }
+    return response.json();
+  },
+
+  async retryMobileAccountEmail(crewUuid: string): Promise<MobileAccountResponse> {
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/mobile-account/retry-email`, {});
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || error.error || 'Failed to retry credential email');
+    }
+    return response.json();
+  },
+
+  async reissueMobileCredentials(crewUuid: string): Promise<MobileAccountResponse> {
+    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/mobile-account/reissue`, {});
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: response.statusText }));
+      throw new Error(error.message || error.error || 'Failed to reissue credentials');
+    }
     return response.json();
   },
 

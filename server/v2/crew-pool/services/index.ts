@@ -11,3 +11,4 @@ export { crewBriefingService } from "./crewBriefingService";
 export { crewTransferService } from "./crewTransferService";
 export { dashboardService } from "./dashboardService";
 export * from "./masterDataResolver";
+export { crewCredentialProvisioningService } from "./crewCredentialProvisioningService";

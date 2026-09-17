@@ -104,8 +104,82 @@ export class CrewCredentialsRepository {
     const db = getDb();
     await db
       .update(appCrewCredentials)
-      .set({ passwordHash, mustResetPassword: false })
+      .set({ passwordHash, mustResetPassword: false, temporaryPasswordConsumedAt: null })
       .where(eq(appCrewCredentials.id, id));
+  }
+
+  async consumeTemporaryPassword(id: number): Promise<boolean> {
+    const db = getDb();
+    const rows = await db.update(appCrewCredentials)
+      .set({ temporaryPasswordConsumedAt: new Date() })
+      .where(and(
+        eq(appCrewCredentials.id, id),
+        eq(appCrewCredentials.mustResetPassword, true),
+        sql`${appCrewCredentials.temporaryPasswordConsumedAt} IS NULL`,
+      ))
+      .returning({ id: appCrewCredentials.id });
+    return rows.length > 0;
+  }
+
+  async updateProvisioning(id: number, data: {
+    provisioningStatus: string;
+    lastSentAt?: Date | null;
+    lastError?: string | null;
+    passwordHash?: string;
+    mustResetPassword?: boolean;
+    email?: string | null;
+    mobile?: string | null;
+    empNo?: string | null;
+    temporaryPasswordConsumedAt?: Date | null;
+    provisioningOperationUuid?: string | null;
+  }): Promise<void> {
+    const db = getDb();
+    await db.update(appCrewCredentials).set(data).where(eq(appCrewCredentials.id, id));
+  }
+
+  async startProvisioningOperation(data: {
+    id: number;
+    operationUuid: string;
+    passwordHash: string;
+    email: string;
+    mobile?: string | null;
+    empNo: string;
+  }): Promise<boolean> {
+    const db = getDb();
+    const rows = await db.update(appCrewCredentials).set({
+      passwordHash: data.passwordHash,
+      email: data.email,
+      mobile: data.mobile ?? null,
+      empNo: data.empNo,
+      mustResetPassword: true,
+      temporaryPasswordConsumedAt: null,
+      provisioningStatus: "pending",
+      provisioningOperationUuid: data.operationUuid,
+      lastError: null,
+    }).where(and(
+      eq(appCrewCredentials.id, data.id),
+      sql`(
+        ${appCrewCredentials.provisioningStatus} <> 'pending'
+        OR ${appCrewCredentials.updatedAt} < NOW() - INTERVAL '10 minutes'
+      )`,
+    )).returning({ id: appCrewCredentials.id });
+    return rows.length > 0;
+  }
+
+  async markProvisioning(
+    id: number,
+    operationUuid: string,
+    provisioningStatus: string,
+    data: { lastSentAt?: Date | null; lastError?: string | null } = {},
+  ): Promise<boolean> {
+    const db = getDb();
+    const rows = await db.update(appCrewCredentials).set({
+      provisioningStatus, ...data,
+    }).where(and(
+      eq(appCrewCredentials.id, id),
+      eq(appCrewCredentials.provisioningOperationUuid, operationUuid),
+    )).returning({ id: appCrewCredentials.id });
+    return rows.length > 0;
   }
 
   /** All active credentials in the current tenant, regardless of domain — used by the

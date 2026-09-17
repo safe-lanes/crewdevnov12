@@ -18,6 +18,7 @@ import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogContent,
+  AlertDialogCancel,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
@@ -52,7 +53,7 @@ import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAtta
 import { generateCrewInfoPDF, type CrewInfoFormData } from '@/lib/generateCrewInfoPDF';
 import BriefingLiveSubmissionHost from './components/BriefingLiveSubmissionHost';
 import DebriefingLiveSubmissionHost, { debriefingCreationErrorMessage, isPersistedDebriefingUuid, openOrCreateDebriefing } from './components/DebriefingLiveSubmissionHost';
-import { crewPoolApiV2 } from './api/crewPoolApiV2';
+import { crewPoolApiV2, type MobileAccountResponse } from './api/crewPoolApiV2';
 import { 
   useCreateCrewV2, 
   useUpdateCrewV2, 
@@ -581,6 +582,7 @@ function DebriefingSubmissionAction({ crewUuid, debriefing, onOpen }: { crewUuid
 
 export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange, initialSection, highlightDocUuid, highlightVisaUuid }) => {
   const { toast } = useToast();
+  const { canView, canCreate, canEdit, permissions, roleName, userId, userType, manningAgent: userManningAgent } = usePermissions();
   const [briefingSubmissionUuid, setBriefingSubmissionUuid] = useState<string | null>(null);
   const [debriefingSubmissionUuid, setDebriefingSubmissionUuid] = useState<string | null>(null);
   
@@ -689,6 +691,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   // V2: Get crew UUID from crewMember (V2 uses crewUuid as primary identifier)
   const crewUuid = crewMember?.crewUuid || crewMember?.id || null;
+  const isOfficeUser = userType?.trim().toLowerCase() === 'office';
+  const canViewCrewDatabase = permissions.length === 0 || canView('Crew Database');
+  const canCreateCrewDatabase = permissions.length === 0 || canCreate('Crew Database');
+  const canEditCrewDatabase = permissions.length === 0 || canEdit('Crew Database');
   
   // V2: Full profile query (replaces dashboard + detailed data)
   const { data: v2FullProfile, isLoading: isV2ProfileLoading, error: v2ProfileError } = useCrewFullProfileV2(
@@ -801,6 +807,85 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     s === 'Terminated Employment' ||
     s === 'Terminated Employment - NFR';
   const isCrewTerminated = isTerminatedStatus(statusData?.status);
+  const mobileAccountCrewUuid = crewMember?.crewUuid || crewMember?.id || null;
+  const hasSavedCrewRecord = Boolean(crewMember && mobileAccountCrewUuid);
+  const mobileAccountQuery = useQuery<MobileAccountResponse>({
+    queryKey: ['/api/v2/crew-pool/crew', mobileAccountCrewUuid, 'mobile-account'],
+    queryFn: () => crewPoolApiV2.getMobileAccount(mobileAccountCrewUuid!),
+    enabled: isOpen && isOfficeUser && canViewCrewDatabase && hasSavedCrewRecord,
+  });
+  const [mobileAccountDialog, setMobileAccountDialog] = useState<'submit' | 'reissue' | null>(null);
+  const [mobileAccountBusy, setMobileAccountBusy] = useState(false);
+
+  const refreshMobileAccount = async (result: MobileAccountResponse, title: string) => {
+    await mobileAccountQuery.refetch();
+    toast({
+      title,
+      description: result.message || (result.status === 'failed'
+        ? result.lastError || 'The credential email could not be delivered.'
+        : `Credential status: ${result.status.replace('_', ' ')}.`),
+      variant: result.status === 'failed' ? 'destructive' : undefined,
+    });
+  };
+
+  const submitMobileApplication = async () => {
+    if (!mobileAccountCrewUuid || mobileAccountBusy) return;
+    const email = (mobileAccountQuery.data?.email || '').trim();
+    const emailError = !email ? 'Registered email is required before submitting.' : validateEmail(email);
+    if (emailError) {
+      setEmailError(emailError);
+      toast({ title: 'Email required', description: emailError, variant: 'destructive' });
+      return;
+    }
+    setEmailError('');
+    setMobileAccountBusy(true);
+    try {
+      const result = await crewPoolApiV2.submitMobileApplication(mobileAccountCrewUuid);
+      await refreshMobileAccount(result, 'Application submitted');
+      setMobileAccountDialog(null);
+    } catch (error) {
+      toast({ title: 'Application could not be submitted', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
+    } finally {
+      setMobileAccountBusy(false);
+    }
+  };
+
+  const openMobileApplicationDialog = () => {
+    const email = (mobileAccountQuery.data?.email || '').trim();
+    const emailError = !email ? 'Save a registered email before submitting.' : validateEmail(email);
+    if (emailError) {
+      toast({ title: 'Registered email required', description: emailError, variant: 'destructive' });
+      return;
+    }
+    setMobileAccountDialog('submit');
+  };
+
+  const reissueMobileCredentials = async () => {
+    if (!mobileAccountCrewUuid || mobileAccountBusy) return;
+    setMobileAccountBusy(true);
+    try {
+      const result = await crewPoolApiV2.reissueMobileCredentials(mobileAccountCrewUuid);
+      await refreshMobileAccount(result, 'Credentials reissued');
+      setMobileAccountDialog(null);
+    } catch (error) {
+      toast({ title: 'Credentials could not be reissued', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
+    } finally {
+      setMobileAccountBusy(false);
+    }
+  };
+
+  const retryMobileAccountEmail = async () => {
+    if (!mobileAccountCrewUuid || mobileAccountBusy) return;
+    setMobileAccountBusy(true);
+    try {
+      const result = await crewPoolApiV2.retryMobileAccountEmail(mobileAccountCrewUuid);
+      await refreshMobileAccount(result, 'Credential email retried');
+    } catch (error) {
+      toast({ title: 'Email could not be retried', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
+    } finally {
+      setMobileAccountBusy(false);
+    }
+  };
   const experienceData = dashboardData?.experience;
   const shipTypesData = dashboardData?.shipTypes;
   const rankExperienceData = dashboardData?.rankExperience;
@@ -925,7 +1010,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { canView, canEdit, permissions, roleName, userId, manningAgent: userManningAgent } = usePermissions();
   const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
 
   const submitter = useMemo<{ name: string; role: string; userId: string }>(() => {
@@ -1020,8 +1104,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (permissions.length === 0) return true;
     return canEdit(menuName);
   }, [permissions, canEdit]);
-
-  const canEditCrewDatabase = permissions.length === 0 || canEdit('Crew Database');
 
   const allSections = [
     { id: 'A', title: 'Dashboard', number: 'A' },
@@ -8060,7 +8142,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         mobile: formData.mobile,
         email: formData.email,
       };
-      saveAddressMutationV2.mutate({ crewUuid, data: addressData });
+      saveAddressMutationV2.mutate({ crewUuid, data: addressData }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewUuid, 'mobile-account'] });
+        },
+      });
     } else if (sectionId === 'B3') {
       let b3HasErrors = false;
       const familyInfoData = {
@@ -8495,7 +8581,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             };
             saveAddressMutationV2.mutate({ crewUuid, data: addressData }, {
               onError: (err) => console.error('[V2] Address chain save error:', err),
-              onSuccess: () => {},
+              onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', crewUuid, 'mobile-account'] });
+              },
             });
             
             // Family Info (A1.3 fields)
@@ -8728,7 +8816,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         mobile: formData.mobile,
         email: formData.email,
       };
-      saveAddressMutationV2.mutate({ crewUuid: existingUuid, data: addressData });
+      saveAddressMutationV2.mutate({ crewUuid: existingUuid, data: addressData }, {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['/api/v2/crew-pool/crew', existingUuid, 'mobile-account'] });
+        },
+      });
       
       // Family Info (A1.3 fields)
       const familyInfoData = {
@@ -9272,6 +9364,47 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             </Card>
             )}
             </fieldset>
+            {isOfficeUser && canViewCrewDatabase && hasSavedCrewRecord && (
+              <Card className="mt-4 border border-gray-200 shadow-sm">
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-semibold text-[#16569e]">Mobile account</h2>
+                    {mobileAccountQuery.isLoading ? (
+                      <p className="text-xs text-gray-500">Checking account status…</p>
+                    ) : mobileAccountQuery.error ? (
+                      <p className="text-xs text-red-600">Unable to check account status.</p>
+                    ) : (
+                      <p className="text-xs text-gray-600">
+                        {mobileAccountQuery.data?.status === 'not_provisioned'
+                          ? 'No account has been created.'
+                          : `Status: ${(mobileAccountQuery.data?.status || 'unknown').replace('_', ' ')}`}
+                        {mobileAccountQuery.data?.email ? ` · ${mobileAccountQuery.data.email}` : ''}
+                      </p>
+                    )}
+                    {mobileAccountQuery.data?.lastError && (
+                      <p className="mt-1 text-xs text-red-600">{mobileAccountQuery.data.lastError}</p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {canEditCrewDatabase && mobileAccountQuery.data?.status === 'failed' && (
+                      <Button type="button" size="sm" variant="outline" disabled={isSaving || mobileAccountBusy || isCrewTerminated} onClick={() => void retryMobileAccountEmail()} data-testid="button-retry-mobile-email">
+                        {mobileAccountBusy ? 'Retrying…' : 'Retry Email'}
+                      </Button>
+                    )}
+                    {canEditCrewDatabase && mobileAccountQuery.data?.status !== 'not_provisioned' && mobileAccountQuery.data?.credentialExists && (
+                      <Button type="button" size="sm" variant="outline" disabled={isSaving || mobileAccountBusy || isCrewTerminated} onClick={() => setMobileAccountDialog('reissue')} data-testid="button-reissue-mobile-credentials">
+                        Reissue Credentials
+                      </Button>
+                    )}
+                    {canCreateCrewDatabase && mobileAccountQuery.data?.status === 'not_provisioned' && (
+                      <Button type="button" size="sm" disabled={isSaving || mobileAccountBusy || isCrewTerminated || mobileAccountQuery.isLoading} onClick={openMobileApplicationDialog} data-testid="button-submit-mobile-application">
+                        Submit Application
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
@@ -9606,6 +9739,35 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         title="Manage Attachments"
         itemName={attachmentDialog.itemName}
       />
+
+      <AlertDialog open={mobileAccountDialog !== null} onOpenChange={(open) => { if (!open && !mobileAccountBusy) setMobileAccountDialog(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {mobileAccountDialog === 'reissue' ? 'Reissue mobile credentials?' : 'Submit mobile application?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {mobileAccountDialog === 'reissue'
+                ? 'This will invalidate the existing credentials, create new credentials, and send them to the registered email address.'
+                : `A mobile account will be created and credential instructions will be sent to ${mobileAccountQuery.data?.email || 'the registered email address'}.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={mobileAccountBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={mobileAccountBusy}
+              onClick={(event) => {
+                event.preventDefault();
+                if (mobileAccountDialog === 'reissue') void reissueMobileCredentials();
+                else void submitMobileApplication();
+              }}
+              data-testid={mobileAccountDialog === 'reissue' ? 'button-confirm-reissue-mobile' : 'button-confirm-submit-mobile'}
+            >
+              {mobileAccountBusy ? 'Processing…' : mobileAccountDialog === 'reissue' ? 'Reissue Credentials' : 'Submit Application'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

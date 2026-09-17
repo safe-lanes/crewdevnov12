@@ -1,4 +1,5 @@
 import { Router, raw } from "express";
+import { requirePermission } from "../../middleware/requirePermission";
 import {
   crewMembersController,
   crewAssignmentsController,
@@ -16,6 +17,7 @@ import {
   crewTransferController,
   dashboardController,
   crewImportController,
+  crewCredentialProvisioningController,
 } from "./controllers";
 
 const router = Router();
@@ -38,6 +40,26 @@ router.patch("/crew/:crewUuid/protected", crewMembersController.updateWithProtec
 router.delete("/crew/:crewUuid", crewMembersController.delete);
 router.post("/crew/:crewUuid/unarchive", crewMembersController.unarchive);
 router.post("/crew/:crewUuid/terminations", crewMembersController.terminateEmployment);
+router.get(
+  "/crew/:crewUuid/mobile-account",
+  requirePermission("Crew Database", "view"),
+  crewCredentialProvisioningController.getStatus,
+);
+router.post(
+  "/crew/:crewUuid/submit-application",
+  requirePermission("Crew Database", "create"),
+  crewCredentialProvisioningController.submitApplication,
+);
+router.post(
+  "/crew/:crewUuid/mobile-account/retry-email",
+  requirePermission("Crew Database", "edit"),
+  crewCredentialProvisioningController.retryEmail,
+);
+router.post(
+  "/crew/:crewUuid/mobile-account/reissue",
+  requirePermission("Crew Database", "edit"),
+  crewCredentialProvisioningController.reissue,
+);
 
 // ============================================
 // DASHBOARD (crew-pool charts)

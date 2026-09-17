@@ -48,6 +48,7 @@ interface CrewAccessTokenPayload {
   crewId: string;
   domain: string;
   userType: string;
+  mustResetPassword: boolean;
 }
 
 interface CrewRefreshTokenPayload extends CrewAccessTokenPayload {
@@ -70,6 +71,7 @@ async function issueTokenPair(
     crewId: credential.crewUuid,
     domain: credential.domain,
     userType: credential.userType,
+    mustResetPassword: credential.mustResetPassword ?? false,
   };
 
   const accessToken = jwt.sign(payload, ACCESS_TOKEN_SECRET!, { expiresIn: ACCESS_TOKEN_TTL });
@@ -133,6 +135,11 @@ export const crewAuthService = {
           throw new Error("Invalid credentials");
         }
 
+        if (credential.mustResetPassword) {
+          const consumed = await crewCredentialsRepository.consumeTemporaryPassword(credential.id);
+          if (!consumed) throw new Error("Invalid credentials");
+        }
+
         if (credential.failedLoginAttempts || credential.lockedUntil) {
           await crewCredentialsRepository.clearLockout(credential.id);
         }
@@ -177,6 +184,10 @@ export const crewAuthService = {
 
         const credential = await crewCredentialsRepository.findById(decoded.sub);
         if (!credential || credential.isActive === false) {
+          throw new Error("Invalid refresh token");
+        }
+        if (credential.mustResetPassword) {
+          await crewRefreshTokensRepository.revokeAllForCredential(credential.id);
           throw new Error("Invalid refresh token");
         }
 

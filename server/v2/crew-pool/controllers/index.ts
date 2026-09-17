@@ -14,3 +14,4 @@ export { crewBriefingController } from "./crewBriefingController";
 export { crewTransferController } from "./crewTransferController";
 export { dashboardController } from "./dashboardController";
 export { crewImportController } from "./crewImportController";
+export { crewCredentialProvisioningController } from "./crewCredentialProvisioningController";

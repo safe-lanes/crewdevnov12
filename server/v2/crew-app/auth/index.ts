@@ -4,4 +4,5 @@ export * from "./services";
 export * from "./repositories";
 export { crewAuthMiddleware } from "./crewAuthMiddleware";
 export type { CrewUser } from "./crewAuthMiddleware";
+export { requireCrewPasswordReset } from "./requireCrewPasswordReset";
 export { requireCrewAdmin } from "./requireCrewAdmin";

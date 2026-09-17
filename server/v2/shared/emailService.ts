@@ -41,11 +41,8 @@ export function logEmailEvent(level: 'INFO' | 'WARN' | 'ERROR', message: string,
 
 // Log initialization details
 logEmailEvent('INFO', 'EmailService Initializing', {
-  GMAIL_SUPPORT_EMAIL,
-  GMAIL_CLIENT_ID: GMAIL_CLIENT_ID ? GMAIL_CLIENT_ID.substring(0, 15) + '...' : 'undefined/empty',
-  GMAIL_REFRESH_TOKEN: GMAIL_REFRESH_TOKEN ? GMAIL_REFRESH_TOKEN.substring(0, 15) + '...' : 'undefined/empty',
-  EMAIL_API_URL,
-  EMAIL_CC
+  localGmailConfigured: Boolean(GMAIL_SUPPORT_EMAIL && GMAIL_CLIENT_ID && GMAIL_REFRESH_TOKEN),
+  externalApiConfigured: Boolean(EMAIL_API_URL),
 });
 
 
@@ -99,7 +96,7 @@ async function sendViaLocalGmail(
   cc?: string[],
   bcc?: string[]
 ): Promise<void> {
-  logEmailEvent('INFO', 'sendViaLocalGmail called with parameters', { to, subject });
+  logEmailEvent('INFO', 'sendViaLocalGmail started');
   await refreshAccessToken();
   logEmailEvent('INFO', 'Access token verification complete.');
 
@@ -113,7 +110,6 @@ async function sendViaLocalGmail(
 
   // Gmail API requires raw MIME email formatted as RFC 2822
   for (const recipient of to) {
-    logEmailEvent('INFO', `Formatting MIME message for recipient: ${recipient}`);
     const emailParts = [
       'Content-Type: text/html; charset="UTF-8"',
       'MIME-Version: 1.0',
@@ -140,7 +136,7 @@ async function sendViaLocalGmail(
         raw: encodedEmail,
       },
     });
-    logEmailEvent('INFO', `Email successfully sent directly via local Gmail API to ${recipient}`);
+    logEmailEvent('INFO', 'Email sent via local Gmail API');
   }
 }
 
@@ -154,7 +150,7 @@ async function sendViaExternalApi(
   cc?: string[],
   bcc?: string[]
 ): Promise<void> {
-  logEmailEvent('INFO', 'sendViaExternalApi called', { to, subject });
+  logEmailEvent('INFO', 'sendViaExternalApi started');
 
   if (!EMAIL_API_URL) {
     logEmailEvent('WARN', 'External API send aborted: EMAIL_API_URL is not defined in environment variables.');
@@ -189,8 +185,7 @@ async function sendViaExternalApi(
       throw new Error(`External API responded with status ${response.status}`);
     }
 
-    const result = await response.json();
-    logEmailEvent('INFO', 'Email successfully triggered via external API.', result);
+    logEmailEvent('INFO', `External email API completed (status ${response.status})`);
   } catch (error: any) {
     clearTimeout(timeoutId);
     logEmailEvent('ERROR', 'External API send failed.', error.message || error);
@@ -226,7 +221,7 @@ export function sendEmail(
     const ccParam = uniqueCc.length > 0 ? uniqueCc : undefined;
 
     try {
-      logEmailEvent('INFO', `Attempting to send email via External API. To: ${to.join(', ')} | CC: ${uniqueCc.join(', ')}`);
+      logEmailEvent('INFO', 'Attempting external email delivery');
       await sendViaExternalApi(to, subject, htmlBody, ccParam, bcc);
     } catch (externalApiError: any) {
       logEmailEvent('WARN', 'External API send failed. Falling back to Local Gmail API...', externalApiError.message || externalApiError);
@@ -237,6 +232,24 @@ export function sendEmail(
       }
     }
   })();
+}
+
+/** Awaitable counterpart for workflows which must record delivery outcome. */
+export async function sendEmailAwaitable(
+  to: string[],
+  subject: string,
+  htmlBody: string,
+  cc?: string[],
+  bcc?: string[],
+): Promise<void> {
+  const ccList = [...(cc ?? []), ...(EMAIL_CC ? EMAIL_CC.split(',').map(e => e.trim()).filter(Boolean) : [])];
+  const ccParam = Array.from(new Set(ccList));
+  try {
+    await sendViaExternalApi(to, subject, htmlBody, ccParam.length ? ccParam : undefined, bcc);
+  } catch (externalError: any) {
+    logEmailEvent('WARN', 'External API send failed. Falling back to Local Gmail API...', externalError?.message || externalError);
+    await sendViaLocalGmail(to, subject, htmlBody, ccParam.length ? ccParam : undefined, bcc);
+  }
 }
 
 
