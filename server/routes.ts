@@ -2,6 +2,10 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import recruitmentV2Routes from "./routes/v2/recruitment";
 import crewPoolV2Routes from "./v2/crew-pool/routes";
+import { crewAppAuthRoutes } from "./v2/crew-app/auth";
+import { crewContentRoutes } from "./v2/crew-app/content";
+import { crewNoticesRoutes } from "./v2/crew-app/notices";
+import { crewNotificationsRoutes, crewNotificationScanner } from "./v2/crew-app/notifications";
 import { vesselV2Routes } from "./v2/vessel";
 import { rotationV2Routes } from "./v2/rotation";
 import portsV2Routes from "./v2/ports/portsRoutes";
@@ -75,7 +79,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Mount v2 crew pool routes
   app.use("/api/v2/crew-pool", crewPoolV2Routes);
-  
+
+  // Mount crew mobile app auth routes — deliberately outside /api/v2/ so the
+  // legacy tenant+auth middleware (applied globally to /api/v2/*) never runs
+  // against them; this module has its own independent auth. See
+  // server/v2/crew-app/README.md.
+  app.use("/api/crew-app/auth", crewAppAuthRoutes);
+  app.use("/api/crew-app/content", crewContentRoutes);
+  app.use("/api/crew-app/notices", crewNoticesRoutes);
+  app.use("/api/crew-app/notifications", crewNotificationsRoutes);
+
   // Mount v2 vessel routes
   app.use("/api/v2/vessel", vesselV2Routes);
   
@@ -132,8 +145,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ? parseInt(process.env.ALERT_SCAN_INTERVAL_MS, 10)
       : undefined;
     crewingAlertEngine.start(scanIntervalMs);
+
+    const notificationScanIntervalMs = process.env.CREW_APP_NOTIFICATION_SCAN_INTERVAL_MS
+      ? parseInt(process.env.CREW_APP_NOTIFICATION_SCAN_INTERVAL_MS, 10)
+      : undefined;
+    crewNotificationScanner.start(notificationScanIntervalMs);
   } else {
     console.log('[CrewingAlertEngine] Skipped (multi-tenant mode not enabled)');
+    console.log('[CrewNotificationScanner] Skipped (multi-tenant mode not enabled)');
   }
 
   // Mount Swagger API documentation
