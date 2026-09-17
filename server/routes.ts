@@ -93,7 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const isReplitDevelopmentOrigin =
       process.env.NODE_ENV === "development" &&
       !!origin &&
-      /^https:\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)*\.replit\.dev$/i.test(origin);
+      /^https:\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)*\.replit\.dev(?::\d+)?$/i.test(origin);
     if (origin && (configuredOrigins.includes(origin) || isReplitDevelopmentOrigin)) {
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Vary", "Origin");
