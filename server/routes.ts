@@ -6,6 +6,7 @@ import { crewAppAuthRoutes } from "./v2/crew-app/auth";
 import { crewContentRoutes } from "./v2/crew-app/content";
 import { crewNoticesRoutes } from "./v2/crew-app/notices";
 import { crewNotificationsRoutes, crewNotificationScanner } from "./v2/crew-app/notifications";
+import { crewInformationRoutes } from "./v2/crew-app/crew-information";
 import { vesselV2Routes } from "./v2/vessel";
 import { rotationV2Routes } from "./v2/rotation";
 import portsV2Routes from "./v2/ports/portsRoutes";
@@ -107,6 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/crew-app/content", crewContentRoutes);
   app.use("/api/crew-app/notices", crewNoticesRoutes);
   app.use("/api/crew-app/notifications", crewNotificationsRoutes);
+  app.use("/api/crew-app/crew-information", crewInformationRoutes);
 
   // Mount v2 vessel routes
   app.use("/api/v2/vessel", vesselV2Routes);

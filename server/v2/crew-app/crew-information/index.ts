@@ -1,0 +1,1 @@
+export { default as crewInformationRoutes } from "./routes";
