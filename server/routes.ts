@@ -84,6 +84,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // legacy tenant+auth middleware (applied globally to /api/v2/*) never runs
   // against them; this module has its own independent auth. See
   // server/v2/crew-app/README.md.
+  app.use("/api/crew-app", (req, res, next) => {
+    const origin = req.headers.origin;
+    const configuredOrigins = (process.env.CREW_APP_ALLOWED_ORIGINS || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const isReplitDevelopmentOrigin =
+      process.env.NODE_ENV === "development" &&
+      !!origin &&
+      /^https:\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)*\.replit\.dev$/i.test(origin);
+    if (origin && (configuredOrigins.includes(origin) || isReplitDevelopmentOrigin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Vary", "Origin");
+      res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+    }
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+    next();
+  });
   app.use("/api/crew-app/auth", crewAppAuthRoutes);
   app.use("/api/crew-app/content", crewContentRoutes);
   app.use("/api/crew-app/notices", crewNoticesRoutes);

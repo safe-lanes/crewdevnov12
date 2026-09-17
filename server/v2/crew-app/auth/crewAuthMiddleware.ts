@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { tenantConnectionManager } from "../../../utils/tenantConnectionManager";
+import { runInCrewAppTenant } from "../tenantContext";
 
 // Fully independent of server/middleware/authMiddleware.ts and tenantMiddleware.ts —
 // this module must never import from either, and must never reference JWT_SECRET.
@@ -59,27 +59,19 @@ export function crewAuthMiddleware(req: Request, res: Response, next: NextFuncti
     return;
   }
 
-  tenantConnectionManager
-    .resolveTenant(decoded.domain)
-    .then(({ tuid }) => {
+  runInCrewAppTenant(decoded.domain, (tuid) => {
       req.crewUser = {
         credentialId: decoded.sub,
         crewUuid: decoded.crewId,
         domain: decoded.domain,
         userType: decoded.userType,
       };
-      req.crewTuid = tuid;
-
-      return tenantConnectionManager.runInTenantContext(
-        tuid,
-        () =>
-          new Promise<void>((resolve, reject) => {
-            res.on("finish", resolve);
-            res.on("error", reject);
-            next();
-          }),
-        decoded.domain,
-      );
+      if (tuid) req.crewTuid = tuid;
+      return new Promise<void>((resolve, reject) => {
+        res.on("finish", resolve);
+        res.on("error", reject);
+        next();
+      });
     })
     .catch((err: any) => {
       res.status(err?.status ?? 500).json({

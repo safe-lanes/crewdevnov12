@@ -15,6 +15,7 @@ import { randomBytes } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 import { tenantConnectionManager } from "../../../utils/tenantConnectionManager";
+import { runInCrewAppTenant } from "../tenantContext";
 import { getDb } from "../../db";
 import { crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { appCrewCredentials } from "../../../../shared/v2/crew-app/schema";
@@ -45,11 +46,7 @@ async function run() {
   }
 
   await tenantConnectionManager.init();
-  const { tuid } = await tenantConnectionManager.resolveTenant(DOMAIN!);
-
-  await tenantConnectionManager.runInTenantContext(
-    tuid,
-    async () => {
+  await runInCrewAppTenant(DOMAIN!, async () => {
       const db = getDb();
 
       const crewRows = await db
@@ -99,9 +96,7 @@ async function run() {
       }
 
       console.log(`${DRY_RUN ? "Would create" : "Created"} ${created} app_crew_credentials row(s).`);
-    },
-    DOMAIN,
-  );
+    });
 
   process.exit(0);
 }

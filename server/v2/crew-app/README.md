@@ -20,6 +20,9 @@ every `/api/v2/*` path in `server/index.ts`) never runs against them. See
 |---|---|
 | `CREW_APP_ACCESS_TOKEN_SECRET` | Signs the 15-minute access token. Must be distinct from `JWT_SECRET` and from the refresh secret below. |
 | `CREW_APP_REFRESH_TOKEN_SECRET` | Signs the 45-day refresh token. Must be distinct from both of the above. |
+| `CREW_APP_ACCESS_TOKEN_TTL` | Optional access-token lifetime; defaults to `15m`. |
+| `CREW_APP_TENANCY_MODE` | `single`, `multi`, or `auto`. Replit development defaults to `single`. |
+| `CREW_APP_SINGLE_TENANT_DOMAIN` | Required in single-tenant mode; only this login domain is accepted. |
 
 Both are required — the module throws at startup if either is missing (same
 fail-fast behavior as `authMiddleware.ts`'s `JWT_SECRET` check). There is no
@@ -104,3 +107,35 @@ the given tenant that doesn't have one yet, using `emp_no` as the login
 identifier and a random temporary password. `--verbose` prints each generated
 temp password once to the console (never run against retained/production
 logs) so it can be distributed to the crew member out of band.
+
+## Replit and local testing
+
+The managed development command starts the crew web app/API on port 5000 and
+Expo web on port 5005:
+
+```sh
+npm run dev:all
+```
+
+In Replit, the launcher supplies the HTTPS development domain to Expo so browser
+requests reach the API instead of the viewer's `localhost`. Locally it uses
+`http://localhost:5000`.
+
+For single-tenant testing:
+
+```sh
+CREW_APP_TENANCY_MODE=single
+CREW_APP_SINGLE_TENANT_DOMAIN=local
+NODE_ENV=development \
+CREW_APP_ALLOW_TEST_PROVISIONING=I_UNDERSTAND_THIS_RESETS_A_PASSWORD \
+npm run crew-app:provision-test -- --domain=local --confirm-development
+```
+
+The provisioning command creates or resets only the clearly labeled
+`REPLIT TEST` account, requires explicit development confirmation, forces a
+first-login password change, and prints the temporary password once.
+Resetting the account also revokes every previously issued refresh token.
+
+For multi-tenant testing, set `CREW_APP_TENANCY_MODE=multi` and provide a
+reachable `MASTER_DATABASE_URL`; use the desired master-record domain when
+provisioning and logging in.

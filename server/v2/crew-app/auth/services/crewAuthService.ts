@@ -1,9 +1,9 @@
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { createHash } from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
-import { tenantConnectionManager } from "../../../../utils/tenantConnectionManager";
+import { runInCrewAppTenant } from "../../tenantContext";
 import { getDb } from "../../../db";
 import { CrewCredentialsRepository, CrewRefreshTokensRepository } from "../repositories";
 import { crewMembersV2 } from "../../../../../shared/v2/crew-pool/schema";
@@ -38,7 +38,7 @@ if (!REFRESH_TOKEN_SECRET) {
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
-const ACCESS_TOKEN_TTL = "15m";
+const ACCESS_TOKEN_TTL = (process.env.CREW_APP_ACCESS_TOKEN_TTL || "15m") as SignOptions["expiresIn"];
 const REFRESH_TOKEN_TTL = "45d";
 const REFRESH_TOKEN_TTL_MS = 45 * 24 * 60 * 60 * 1000;
 const BCRYPT_SALT_ROUNDS = 12;
@@ -112,11 +112,7 @@ async function toCrewSummary(credential: AppCrewCredential) {
 export const crewAuthService = {
   async login(data: CrewLoginRequest) {
     const { identifier, password, domain, deviceId, deviceLabel } = data;
-    const { tuid } = await tenantConnectionManager.resolveTenant(domain);
-
-    return tenantConnectionManager.runInTenantContext(
-      tuid,
-      async () => {
+    return runInCrewAppTenant(domain, async () => {
         const credential = await crewCredentialsRepository.findByIdentifierAndDomain(identifier, domain);
 
         // Same generic error for "not found" and "wrong password" — no user enumeration.
@@ -150,9 +146,7 @@ export const crewAuthService = {
           mustResetPassword: credential.mustResetPassword ?? false,
           crew: await toCrewSummary(credential),
         };
-      },
-      domain,
-    );
+      });
   },
 
   async refresh(data: CrewRefreshRequest) {
@@ -165,11 +159,7 @@ export const crewAuthService = {
       throw new Error("Invalid refresh token");
     }
 
-    const { tuid } = await tenantConnectionManager.resolveTenant(decoded.domain);
-
-    return tenantConnectionManager.runInTenantContext(
-      tuid,
-      async () => {
+    return runInCrewAppTenant(decoded.domain, async () => {
         const tokenHash = hashToken(refreshToken);
         const consumed = await crewRefreshTokensRepository.consumeIfActive(tokenHash);
 
@@ -191,9 +181,7 @@ export const crewAuthService = {
         }
 
         return issueTokenPair(credential, deviceId ?? consumed.deviceId, consumed.deviceLabel);
-      },
-      decoded.domain,
-    );
+      });
   },
 
   /** Runs inside the tenant context already established by crewAuthMiddleware. */
