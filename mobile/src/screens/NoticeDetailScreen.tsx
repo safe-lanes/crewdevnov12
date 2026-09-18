@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet } from
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { noticesApi, Notice } from "../api/noticesApi";
 import { useAuth } from "../auth/AuthContext";
+import { palette } from "../components/CrewUI";
 
 export default function NoticeDetailScreen() {
   const route = useRoute<any>();
@@ -34,7 +35,7 @@ export default function NoticeDetailScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
+        <ActivityIndicator color={palette.teal} />
       </View>
     );
   }
@@ -55,6 +56,8 @@ export default function NoticeDetailScreen() {
 
       {isAdmin ? (
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Edit notice"
           style={styles.editButton}
           onPress={() => navigation.navigate("AdminNoticeEdit", { noticeUuid })}
         >
@@ -66,19 +69,20 @@ export default function NoticeDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  container: { padding: 20 },
-  title: { fontSize: 20, fontWeight: "700" },
-  date: { fontSize: 12, color: "#888", marginTop: 4 },
-  body: { fontSize: 15, lineHeight: 22, marginTop: 16, color: "#222" },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: palette.mist },
+  container: { padding: 20, backgroundColor: palette.mist, flexGrow: 1 },
+  title: { fontSize: 24, fontWeight: "800", color: palette.navy },
+  date: { fontSize: 12, color: palette.muted, marginTop: 6 },
+  body: { fontSize: 15, lineHeight: 22, marginTop: 18, color: palette.ink },
   editButton: {
     marginTop: 24,
     alignSelf: "flex-start",
     borderWidth: 1,
-    borderColor: "#0a5",
-    borderRadius: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    borderColor: palette.line,
+    backgroundColor: palette.white,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
   },
-  editButtonText: { color: "#0a5", fontWeight: "600" },
+  editButtonText: { color: palette.teal, fontWeight: "800" },
 });

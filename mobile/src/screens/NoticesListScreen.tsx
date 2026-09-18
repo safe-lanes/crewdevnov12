@@ -33,9 +33,7 @@ export default function NoticesListScreen() {
     <View style={styles.container}>
       {notices.length === 0 && !loading ? (
           <View style={styles.empty}>
-           <Text style={styles.emptyKicker}>NOTICEBOARD</Text>
            <Text style={styles.emptyTitle}>No notices published</Text>
-           <Text style={styles.emptyText}>Crew communications will appear here when they are ready.</Text>
         </View>
       ) : (
         <FlatList
@@ -60,6 +58,8 @@ export default function NoticesListScreen() {
 
       {isAdmin ? (
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="New notice"
           style={styles.fab}
           onPress={() => navigation.navigate("AdminNoticeEdit", {})}
           testID="new-notice-button"
@@ -74,9 +74,7 @@ export default function NoticesListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.mist },
   empty: { flex: 1, justifyContent: "center", alignItems: "center", padding: 28 },
-  emptyKicker: { color: palette.teal, fontSize: 10, letterSpacing: 1.2, fontWeight: "900" },
-  emptyTitle: { color: palette.navy, fontWeight: "800", fontSize: 18, marginTop: 10 },
-  emptyText: { color: palette.muted, textAlign: "center", lineHeight: 20, marginTop: 7 },
+  emptyTitle: { color: palette.navy, fontWeight: "800", fontSize: 18 },
   item: { marginHorizontal: 16, marginTop: 10, padding: 17, borderRadius: 13, backgroundColor: palette.white, borderWidth: 1, borderColor: palette.line, flexDirection: "row", alignItems: "center" },
   pressed: { opacity: .72, transform: [{ scale: .99 }] },
   title: { fontSize: 15, fontWeight: "800", color: palette.ink },

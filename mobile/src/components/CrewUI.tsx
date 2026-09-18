@@ -16,16 +16,16 @@ export const palette = {
 };
 
 export function StateView({ loading, error, retry, empty, children }: { loading?: boolean; error?: string; retry?: () => void; empty?: string; children?: React.ReactNode }) {
-  if (loading) return <View style={styles.state}><View style={styles.loadingMark}><ActivityIndicator color={palette.teal} /></View><Text style={styles.stateText}>Loading your records</Text></View>;
-  if (error) return <View style={styles.state}><Text style={styles.stateTitle}>We could not reach your records</Text><Text style={styles.stateText}>{error}</Text>{retry && <Button title="Try again" onPress={retry} />}</View>;
-  if (empty) return <View style={styles.empty}><Text style={styles.emptyTitle}>{empty}</Text><Text style={styles.stateText}>Your information will appear here when it is added.</Text></View>;
+  if (loading) return <View accessibilityLiveRegion="polite" accessibilityLabel="Loading your records" style={styles.state}><View style={styles.loadingMark}><ActivityIndicator color={palette.teal} /></View><Text style={styles.stateText}>Loading your records</Text></View>;
+  if (error) return <View accessibilityLiveRegion="assertive" style={styles.state}><Text accessibilityRole="alert" style={styles.stateTitle}>We could not reach your records</Text><Text style={styles.stateText}>{error}</Text>{retry && <Button title="Try again" onPress={retry} />}</View>;
+  if (empty) return <View style={styles.empty}><Text style={styles.emptyTitle}>{empty}</Text></View>;
   return <>{children}</>;
 }
 export function Button({ title, onPress, secondary, disabled, testID }: { title: string; onPress: () => void; secondary?: boolean; disabled?: boolean; testID?: string }) {
   return <Pressable testID={testID} accessibilityRole="button" accessibilityLabel={title} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.button, secondary && styles.secondary, disabled && styles.disabled, pressed && styles.pressed]}><Text style={[styles.buttonText, secondary && styles.secondaryText]}>{title}</Text></Pressable>;
 }
 export function Field({ label, value, onChangeText, keyboardType = "default", required, error, inputRef, multiline }: { label: string; value: string; onChangeText: (v: string) => void; keyboardType?: any; required?: boolean; error?: string; inputRef?: any; multiline?: boolean }) {
-  return <View style={styles.field}><Text style={styles.label}>{label}{required ? "  *" : ""}</Text><TextInput ref={inputRef} accessibilityLabel={label} accessibilityHint={error || undefined} value={value} onChangeText={onChangeText} keyboardType={keyboardType} autoCapitalize={keyboardType === "email-address" ? "none" : "sentences"} multiline={multiline} placeholder="Not provided" placeholderTextColor="#738894" style={[styles.input, multiline && { minHeight: 90, textAlignVertical: "top", paddingVertical: 12 }, error && { borderColor: "#B74646", borderWidth: 2 }]} />{error ? <Text accessibilityLiveRegion="polite" style={{ color: "#B74646", fontSize: 12, marginTop: 4 }}>{error}</Text> : null}</View>;
+  return <View style={styles.field}><Text style={styles.label}>{label}{required ? "  *" : ""}</Text><TextInput ref={inputRef} accessibilityLabel={label} accessibilityHint={error || undefined} value={value} onChangeText={onChangeText} keyboardType={keyboardType} autoCapitalize={keyboardType === "email-address" ? "none" : "sentences"} multiline={multiline} style={[styles.input, multiline && { minHeight: 90, textAlignVertical: "top", paddingVertical: 12 }, error && { borderColor: "#B74646", borderWidth: 2 }]} />{error ? <Text accessibilityLiveRegion="polite" style={{ color: "#B74646", fontSize: 12, marginTop: 4 }}>{error}</Text> : null}</View>;
 }
 export function SelectField({ label, value, options, onChange, error }: { label: string; value: string; options: MasterOption[]; onChange: (value: string) => void; error?: string }) {
   const [open, setOpen] = React.useState(false);

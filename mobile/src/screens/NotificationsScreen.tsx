@@ -61,7 +61,6 @@ export default function NotificationsScreen() {
       <View style={styles.empty}>
          <View style={styles.emptyMark}><BellMark /></View>
          <Text style={styles.emptyTitle}>All clear for now</Text>
-         <Text style={styles.emptyText}>Important record and operational updates will appear here.</Text>
       </View>
     );
   }
@@ -92,7 +91,6 @@ const styles = StyleSheet.create({
   bellBase: { width: 23, height: 2, borderRadius: 1, backgroundColor: palette.teal, marginBottom: 3 },
   bellClapper: { width: 6, height: 3, borderBottomLeftRadius: 3, borderBottomRightRadius: 3, backgroundColor: palette.teal },
   emptyTitle: { color: palette.navy, fontWeight: "800", fontSize: 18 },
-  emptyText: { color: palette.muted, textAlign: "center", lineHeight: 20, marginTop: 7 },
   item: { padding: 17, marginBottom: 10, borderRadius: 13, backgroundColor: palette.white, borderWidth: 1, borderColor: palette.line },
   unread: { borderLeftWidth: 4, borderLeftColor: palette.teal, backgroundColor: "#F4FBFB" },
   pressed: { opacity: .72, transform: [{ scale: .99 }] },

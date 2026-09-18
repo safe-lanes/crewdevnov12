@@ -54,19 +54,15 @@ export default function LoginScreen() {
         >
           <View style={styles.card}>
             <Text style={styles.eyebrow}>SAIL CREW</Text>
-            <Text style={styles.title}>Welcome aboard</Text>
-            <Text style={styles.subtitle}>Sign in to continue to your crew portal</Text>
 
-            <Text style={styles.label}>Emp No / Mobile / Email</Text>
+            <Text style={styles.label}>Crew ID</Text>
             <TextInput
               style={styles.input}
-              accessibilityLabel="Employee number, mobile, or email"
+              accessibilityLabel="Crew ID"
               value={identifier}
               onChangeText={setIdentifier}
               autoCapitalize="none"
               autoCorrect={false}
-              placeholder="K 1003"
-              placeholderTextColor="#718096"
               testID="login-identifier"
             />
 
@@ -77,8 +73,6 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              placeholder="Password"
-              placeholderTextColor="#718096"
               testID="login-password"
             />
 
@@ -90,8 +84,6 @@ export default function LoginScreen() {
               onChangeText={setDomain}
               autoCapitalize="none"
               autoCorrect={false}
-              placeholder="company domain"
-              placeholderTextColor="#718096"
               testID="login-domain"
             />
 
@@ -170,25 +162,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 7,
   },
-  title: {
-    color: "#073451",
-    fontSize: 27,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  subtitle: {
-    color: "#526575",
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 7,
-    marginBottom: 15,
-    textAlign: "center",
-  },
   label: {
     color: "#26495f",
     fontSize: 13,
     fontWeight: "600",
-    marginTop: 12,
+    marginTop: 14,
     marginBottom: 6,
   },
   input: {

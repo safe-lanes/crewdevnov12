@@ -4,6 +4,7 @@ import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/nativ
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { contentApi, ContentPage, ContentPageKey } from "../api/contentApi";
 import { useAuth } from "../auth/AuthContext";
+import { palette } from "../components/CrewUI";
 
 const TITLES: Record<ContentPageKey, string> = {
   about_us: "About Us",
@@ -49,6 +50,8 @@ export default function ContentPageScreen() {
       <Text style={styles.heading}>{TITLES[pageKey]}</Text>
       {isAdmin ? (
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Edit ${TITLES[pageKey]}`}
           style={styles.editButton}
           onPress={() => navigation.navigate("AdminContentEdit", { pageKey })}
           testID="edit-content-button"
@@ -57,26 +60,27 @@ export default function ContentPageScreen() {
         </Pressable>
       ) : null}
 
-      {loading ? <ActivityIndicator style={{ marginTop: 24 }} /> : null}
-      {!loading && error ? <Text style={styles.error}>{error}</Text> : null}
+      {loading ? <ActivityIndicator color={palette.teal} style={{ marginTop: 24 }} /> : null}
+      {!loading && error ? <Text accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       {!loading && page ? <Text style={styles.body}>{page.bodyHtml}</Text> : null}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20 },
-  heading: { fontSize: 22, fontWeight: "700", marginBottom: 12 },
+  container: { padding: 20, backgroundColor: palette.mist, flexGrow: 1 },
+  heading: { fontSize: 24, fontWeight: "800", color: palette.navy, marginBottom: 12 },
   editButton: {
     alignSelf: "flex-start",
     borderWidth: 1,
-    borderColor: "#0a5",
-    borderRadius: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    borderColor: palette.line,
+    backgroundColor: palette.white,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     marginBottom: 16,
   },
-  editButtonText: { color: "#0a5", fontWeight: "600" },
-  error: { color: "#666", marginTop: 16 },
-  body: { fontSize: 15, lineHeight: 22, color: "#222" },
+  editButtonText: { color: palette.teal, fontWeight: "800" },
+  error: { color: palette.muted, marginTop: 16 },
+  body: { fontSize: 15, lineHeight: 22, color: palette.ink },
 });

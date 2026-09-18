@@ -29,8 +29,7 @@ export default function WelcomeBanner({ onPressBell }: WelcomeBannerProps) {
   return (
     <View style={styles.container}>
       <View>
-        <Text style={styles.kicker}>SAIL CREW / OPERATIONS</Text>
-        <Text style={styles.welcome}>Good to see you, {name}</Text>
+        <Text style={styles.welcome}>{name}</Text>
         <Text style={styles.dateTime}>{now.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</Text>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel={unreadCount ? `Notifications, ${unreadCount} unread` : "Notifications"} style={styles.bell} onPress={onPressBell} testID="notifications-bell">
@@ -54,7 +53,6 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: "#12324A",
   },
-  kicker: { fontSize: 10, letterSpacing: 1.2, fontWeight: "800", color: "#86D7D3", marginBottom: 5 },
   welcome: { fontSize: 18, fontWeight: "800", color: "#FBFDFC" },
   dateTime: { fontSize: 13, color: "#B8D2D8", marginTop: 3 },
   bell: { minWidth: 48, minHeight: 48, borderRadius: 13, backgroundColor: "#1E6387", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#477F98" },
