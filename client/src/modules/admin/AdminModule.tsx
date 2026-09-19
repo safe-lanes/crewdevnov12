@@ -120,6 +120,7 @@ import TrainingCategoryPage from "./TrainingCategoryPage";
 import LicenseDceMasterPage from "./LicenseDceMasterPage";
 import CrewPoolMasterPage from "./CrewPoolMasterPage";
 import AppraisalTypeMasterPage from "./AppraisalTypeMasterPage";
+import TravelDocumentTypeMasterPage from "./TravelDocumentTypeMasterPage";
 import { 
   getCategoryLabel,
   getGroupLabel,
@@ -7133,7 +7134,7 @@ const AdminModuleInner = (): JSX.Element => {
               >
                 {syncAllMasterDataMutation.isPending ? "Syncing..." : "Sync All"}
               </Button>
-              {selectedMaster !== "025" && selectedMaster !== "026" && (permissions.length === 0 || canEdit("Masters")) && (
+              {selectedMaster !== "025" && selectedMaster !== "026" && selectedMaster !== "027" && (permissions.length === 0 || canEdit("Masters")) && (
               <Button
                 variant={isMasterInEditMode ? "default" : "outline"}
                 onClick={isMasterInEditMode ? handleSaveMaster : handleEditMaster}
@@ -7147,7 +7148,7 @@ const AdminModuleInner = (): JSX.Element => {
                 {isMasterInEditMode ? "Save" : "Edit Master"}
               </Button>
               )}
-              {selectedMaster !== "025" && selectedMaster !== "026" && (permissions.length === 0 || canCreate("Masters")) && (
+              {selectedMaster !== "025" && selectedMaster !== "026" && selectedMaster !== "027" && (permissions.length === 0 || canCreate("Masters")) && (
               <Button
                 onClick={handleNewEntry}
                 disabled={!isMasterInEditMode}
@@ -7257,6 +7258,10 @@ const AdminModuleInner = (): JSX.Element => {
                 ) : selectedMaster === "023" ? (
                   <div data-testid="appraisal-type-master-pane">
                     <AppraisalTypeMasterPage />
+                  </div>
+                ) : selectedMaster === "027" ? (
+                  <div data-testid="travel-document-type-master-pane">
+                    <TravelDocumentTypeMasterPage />
                   </div>
                 ) : (
                 <>

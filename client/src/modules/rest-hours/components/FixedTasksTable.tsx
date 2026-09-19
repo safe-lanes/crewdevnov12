@@ -545,7 +545,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
             
             return {
               crewMemberId: crew.empNo,
-              crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
+              crewName: [crew.firstName, crew.middleName, crew.familyName].filter(Boolean).join(' '),
               rank: (existingServer as any)?.rank || rankAsOfMonth[crew.empNo] || crew.presentRank || '',
               seaHours: parseHoursData(existingServer?.seaHours),
               portHours: parseHoursData(existingServer?.portHours),
@@ -575,7 +575,7 @@ export const FixedTasksTable = ({ vesselId, monthYear, isEditMode, setIsEditMode
       
       return {
         crewMemberId: crew.empNo,
-        crewName: `${crew.firstName} ${crew.familyName || ''}`.trim(),
+        crewName: [crew.firstName, crew.middleName, crew.familyName].filter(Boolean).join(' '),
         rank: (existingTask as any)?.rank || rankAsOfMonth[crew.empNo] || crew.presentRank || '',
         seaHours: parseHoursData(existingTask?.seaHours),
         portHours: parseHoursData(existingTask?.portHours),

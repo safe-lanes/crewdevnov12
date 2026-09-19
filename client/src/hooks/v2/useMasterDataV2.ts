@@ -336,6 +336,28 @@ export const useTrainingStatusesV2 = (options?: UseMasterOptions) => {
   });
 };
 
+// ---- Travel Document Type master (used by Crew Pool C1 / Recruitment A2.1 "Add from database") ----
+
+export interface TravelDocumentTypeV2 {
+  id: number;
+  mtdtUuid: string;
+  entryId: string;
+  name: string;
+  isActive: boolean;
+  sortOrder: number | null;
+}
+
+export const TRAVEL_DOCUMENT_TYPES_KEY = `${V2_MASTERS_BASE}/travel-document-types`;
+
+export const useTravelDocumentTypesV2 = (options?: UseMasterOptions) => {
+  return useQuery<TravelDocumentTypeV2[]>({
+    queryKey: [TRAVEL_DOCUMENT_TYPES_KEY],
+    staleTime: STALE_TIME,
+    retry: 2,
+    enabled: options?.enabled ?? true,
+  });
+};
+
 // Returns active status labels for a module, sorted by sortOrder.
 // Pass currentValue(s) so legacy/deactivated values on existing records
 // still render as a selectable option in their dropdown.

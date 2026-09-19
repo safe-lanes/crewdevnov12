@@ -1,4 +1,11 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { X, Edit, Camera, Plus, Trash2, Paperclip, Save, ArrowLeft, ChevronDown, ChevronUp, Pencil, FileText, Database } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -37,6 +44,22 @@ import { VesselSearchDialog, type VesselSearchResult } from '@/modules/recruitme
 import { MANNING_AGENTS_WITH_ACTIVE_CREW_KEY, useNationalitiesV2, useCountriesV2, useLanguagesV2, useVesselTypesV2, useVesselsV2, useAllVesselsV2, useManningAgentsV2, useCrewPoolsV2, withLegacyCrewPool } from '@/hooks/v2/useMasterDataV2';
 import { LicenseSelectionDialog } from './LicenseSelectionDialog';
 import { TrainingCourseSelectionDialog } from './TrainingCourseSelectionDialog';
+import {
+  useCompanyTrainingsV2,
+  useCompanyTrainingRequirementsV2,
+} from '@/modules/admin/hooks/useAdminV2';
+import {
+  D3_HYDRATION_COMMIT,
+  createD3Session,
+  createD3CreateRegistry,
+  loadD3Handoff,
+  d3CourseKey,
+  d3RankId,
+  missingD3Defaults,
+  mergeD3LocalRows,
+  d3RowsForSave,
+  type D3Session,
+} from './utils/d3MatrixDefaults';
 import { validateMobileNumber, normalizeMobileInput, applyDialingCode, getDialingCode } from '../recruitment/countryDialingCodes';
 import { TravelDocumentSelectionDialog } from './TravelDocumentSelectionDialog';
 import { VisaSelectionDialog } from './VisaSelectionDialog';
@@ -104,7 +127,8 @@ import {
 } from './hooks/useCrewPoolV2';
 import type { LegacySeaService, LegacyPreJoiningMedical, LegacyDoctorVisit, LegacyBriefing, LegacyDebriefing } from './mappers/v2ToLegacyMapper';
 import { 
-  mapLegacyCrewToV2, 
+  mapLegacyCrewToV2,
+  mapV2FullProfileToLegacy,
   mapLegacyPersonalDetailsToV2, 
   mapLegacyAddressToV2, 
   mapLegacyFamilyInfoToV2,
@@ -206,6 +230,8 @@ interface TerminationPayload {
 }
 
 interface FormData {
+  [D3_HYDRATION_COMMIT]?: object;
+
   // A1.1 General Particulars
   firstName: string;
   middleName: string;
@@ -349,6 +375,8 @@ interface License {
 
 interface TrainingCourse {
   id: string;
+  trainUuid?: string;
+  matrixDefault?: boolean;
   courseId?: string;
   companyId?: string;
   trainingCourse: string;
@@ -579,6 +607,13 @@ function DebriefingSubmissionAction({ crewUuid, debriefing, onOpen }: { crewUuid
   return <TooltipProvider><Tooltip><TooltipTrigger asChild><span><Button type="button" variant="ghost" size="icon" disabled={!isOfficeUser || !persisted || busy || resolving} onClick={() => void action()} className={`h-6 w-6 ${submission ? "text-[#16569e] hover:text-[#0e417a]" : "text-gray-400 hover:text-[#16569e]"}`} aria-label={label} data-testid={`button-debriefing-submission-${debriefing.id}`}><FileText className="h-3 w-3" /></Button></span></TooltipTrigger><TooltipContent className="max-w-[220px] whitespace-normal">{label}</TooltipContent></Tooltip></TooltipProvider>;
 }
 
+const d3FirstCreates = createD3CreateRegistry();
+
+type D3FirstCreateOperation = {
+  session: D3Session;
+  ticket: ReturnType<typeof d3FirstCreates.begin>;
+};
+
 export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange, initialSection, highlightDocUuid, highlightVisaUuid }) => {
   const { toast } = useToast();
   const [briefingSubmissionUuid, setBriefingSubmissionUuid] = useState<string | null>(null);
@@ -691,7 +726,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const crewUuid = crewMember?.crewUuid || crewMember?.id || null;
   
   // V2: Full profile query (replaces dashboard + detailed data)
-  const { data: v2FullProfile, isLoading: isV2ProfileLoading, error: v2ProfileError } = useCrewFullProfileV2(
+  const {
+    data: v2FullProfile,
+    isLoading: isV2ProfileLoading,
+    isFetching: isV2ProfileFetching,
+    error: v2ProfileError,
+  } = useCrewFullProfileV2(
     isOpen && crewUuid ? crewUuid : null
   );
   
@@ -766,7 +806,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const { data: companyRanks, isLoading: ranksLoading, rankOptions, error: ranksError } = useCompanyRanks();
   
   // Get rank normalization functions to convert positions to actual ranks
-  const { normalizeRank } = useRankNormalization();
+  const {
+    normalizeRank,
+    isLoading: rankNormalizationLoading,
+  } = useRankNormalization();
   
   // Sort crew members by rank hierarchy using company ranks sort order
   // Uses normalizeRank to convert positions (e.g., "OS_1") to actual ranks (e.g., "OS")
@@ -925,7 +968,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { canView, canEdit, permissions, roleName, userId, manningAgent: userManningAgent } = usePermissions();
+  const {
+    canView,
+    canEdit,
+    permissions,
+    roleName,
+    userId,
+    manningAgent: userManningAgent,
+    isLoading: permissionsLoading,
+  } = usePermissions();
   const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
 
   const submitter = useMemo<{ name: string; role: string; userId: string }>(() => {
@@ -1023,6 +1074,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   const canEditCrewDatabase = permissions.length === 0 || canEdit('Crew Database');
 
+  const canReadD3Defaults =
+    !permissionsLoading && canViewSection('D');
+
+  const canSaveD3Defaults =
+    canReadD3Defaults &&
+    canEditSection('D') &&
+    !isCrewTerminated;
+
+  const d3MastersQuery = useCompanyTrainingsV2({
+    enabled: isOpen && canReadD3Defaults,
+  });
+
+  const d3MatrixQuery = useCompanyTrainingRequirementsV2({
+    enabled: isOpen && canReadD3Defaults,
+  });
+
+  const d3Masters = d3MastersQuery.data || [];
+  const d3IdentityMasters = d3MastersQuery.data || adminCompanyTrainings;
+  const d3Requirements = d3MatrixQuery.data || [];
+
   const allSections = [
     { id: 'A', title: 'Dashboard', number: 'A' },
     { id: 'B', title: 'Seafarers\' Particulars', number: 'B' },
@@ -1050,6 +1121,100 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const deletingContextRef = useRef<{ crewId: string; count: number } | null>(null);
   const [isBatchSaving, setIsBatchSaving] = useState(false);
 
+  type D3Resume = {
+    session: D3Session;
+    profile: NonNullable<typeof detailedCrewData> | null;
+    token: object;
+  };
+
+  const d3SessionRef = useRef<D3Session | null>(null);
+  const [d3Session, setD3Session] = useState<D3Session | null>(null);
+
+  const firstCreateOwnerRef =
+    useRef<D3FirstCreateOperation | null>(null);
+
+  const createdCrewIdOwnerRef = useRef<D3Session | null>(null);
+
+  const d3HandoffNeededRef = useRef(
+    d3FirstCreates.pending().length > 0,
+  );
+
+  const [d3Resume, setD3Resume] = useState<D3Resume | null>(null);
+  const [d3HandoffError, setD3HandoffError] = useState<string | null>(null);
+  const [d3Retry, setD3Retry] = useState(0);
+  const [, renderD3State] = useState(0);
+  const [d3PendingDeleteCount, setD3PendingDeleteCount] = useState(0);
+
+  const isD3Blocked = () => {
+    const session = d3SessionRef.current;
+
+    return (
+      !isOpen ||
+      !session?.open ||
+      session.crewKey !== crewUuid ||
+      d3HandoffNeededRef.current ||
+      (
+        d3FirstCreates.pending().length > 0 &&
+        firstCreateOwnerRef.current?.session !== session
+      )
+    );
+  };
+
+  const armD3Handoff = () => {
+    const session = d3SessionRef.current;
+    if (session) session.open = false;
+
+    if (
+      !d3HandoffNeededRef.current &&
+      d3FirstCreates.pending().length === 0
+    ) {
+      return;
+    }
+
+    d3HandoffNeededRef.current = true;
+    createdCrewIdRef.current = null;
+    createdCrewIdOwnerRef.current = null;
+    setCreatedCrewId(null);
+    setD3Resume(null);
+    setD3HandoffError(null);
+    setIsTrainingDialogOpen(false);
+    setAttachmentDialog(previous => ({ ...previous, open: false }));
+    setEditingSections({ B1: false, B2: false, B3: false });
+    renderD3State(value => value + 1);
+  };
+
+  const handleD3Close = () => {
+    armD3Handoff();
+    onClose();
+  };
+
+  useLayoutEffect(() => {
+    if (d3FirstCreates.pending().length > 0) {
+      d3HandoffNeededRef.current = true;
+    }
+
+    const session = createD3Session(isOpen, crewUuid);
+
+    d3SessionRef.current = session;
+    setD3Session(session);
+    setD3Resume(null);
+    setD3HandoffError(null);
+    setD3PendingDeleteCount(0);
+
+    if (d3HandoffNeededRef.current) {
+      createdCrewIdRef.current = null;
+      createdCrewIdOwnerRef.current = null;
+      setCreatedCrewId(null);
+      setIsTrainingDialogOpen(false);
+      setAttachmentDialog(previous => ({ ...previous, open: false }));
+      setEditingSections({ B1: false, B2: false, B3: false });
+    }
+
+    return () => {
+      session.open = false;
+    };
+  }, [isOpen, crewUuid]);
+
   // Refs for click-outside detection on B1/B2/B3
   const sectionB1Ref = useRef<HTMLDivElement>(null);
   const sectionB2Ref = useRef<HTMLDivElement>(null);
@@ -1061,6 +1226,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // historical sea service, medicals, briefings and de-briefings entries can reference
   // vessels that are no longer active. Other modules keep using useVesselsV2.
   const { data: externalVesselsData, isLoading: vesselsLoading } = useAllVesselsV2();
+  // Active-only choices for F1, G1 and G2.
+  // Keep the all-vessel source above unchanged for E1.
+  const {
+    data: activeVesselsData,
+    isLoading: activeVesselsLoading,
+    isError: activeVesselsError,
+  } = useVesselsV2();
   const { data: externalNationalitiesData, isLoading: nationalitiesLoading } = useNationalitiesV2();
   const { data: externalCountriesData, isLoading: countriesLoading } = useCountriesV2();
   const { data: externalLanguagesData, isLoading: languagesLoading } = useLanguagesV2();
@@ -1118,6 +1290,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       }))
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [vesselMasterData]);
+
+  const activeVesselOptions = useMemo(() => {
+    if (!Array.isArray(activeVesselsData)) {
+      return [];
+    }
+    return activeVesselsData
+      .filter(
+        (v: any) => (v.vessel || v.name) && (v.vesselUuid || v.uuid)
+      )
+      .map((v: any) => ({
+        code: v.vesselUuid || v.uuid,
+        name: v.vessel || v.name,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [activeVesselsData]);
 
   const NATIONALITIES = useMemo(() => {
     if (externalNationalitiesData && Array.isArray(externalNationalitiesData) && externalNationalitiesData.length > 0) {
@@ -1331,24 +1518,163 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     }
   };
 
+  useEffect(() => {
+    const session = d3Session;
+
+    if (
+      !session?.open ||
+      !isOpen ||
+      session.crewKey !== crewUuid ||
+      !d3HandoffNeededRef.current
+    ) {
+      return;
+    }
+
+    let disposed = false;
+
+    const isCurrent = () =>
+      !disposed &&
+      session.open &&
+      d3SessionRef.current === session;
+
+    setD3HandoffError(null);
+    setD3Resume(null);
+
+    void (async () => {
+      try {
+        const result = await loadD3Handoff<
+          NonNullable<typeof detailedCrewData>
+        >(
+          d3FirstCreates,
+          session.crewKey,
+          isCurrent,
+          async selectedCrewUuid => {
+            const queryKey = [
+              V2_QUERY_KEY,
+              'crew',
+              selectedCrewUuid,
+              'full-profile',
+            ];
+
+            await queryClient.cancelQueries({
+              queryKey,
+              exact: true,
+            });
+
+            if (!isCurrent()) {
+              throw new Error('The selected crew changed.');
+            }
+
+            return queryClient.fetchQuery({
+              queryKey,
+              staleTime: 0,
+              queryFn: async () =>
+                mapV2FullProfileToLegacy(
+                  await crewPoolApiV2.getCrewFullProfile(selectedCrewUuid),
+                ),
+            });
+          },
+        );
+
+        if (!result || !isCurrent()) return;
+
+        setD3Resume({
+          session,
+          profile: result.profile,
+          token: {},
+        });
+      } catch (error) {
+        if (!isCurrent()) return;
+
+        setD3HandoffError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to load the selected crew profile.',
+        );
+      }
+    })();
+
+    return () => {
+      disposed = true;
+    };
+  }, [d3Session, d3Retry]);
+
+  useLayoutEffect(() => {
+    if (
+      !d3HandoffNeededRef.current ||
+      !d3Resume ||
+      !isOpen ||
+      !d3Resume.session.open ||
+      d3SessionRef.current !== d3Resume.session ||
+      d3Resume.session.crewKey !== crewUuid ||
+      formData[D3_HYDRATION_COMMIT] !== d3Resume.token
+    ) {
+      return;
+    }
+
+    d3HandoffNeededRef.current = false;
+    setD3HandoffError(null);
+    renderD3State(value => value + 1);
+  }, [formData, d3Resume, isOpen, crewUuid]);
+
   // Update form data when detailed crew data loads from API
   // V2: Check both crewUuid and id for compatibility
   useEffect(() => {
     if (isBatchSavingRef.current) return;
-    if (detailedCrewData && (crewMember?.crewUuid || crewMember?.id)) {
+
+    const session = d3SessionRef.current;
+    if (
+      !isOpen ||
+      !session?.open ||
+      session.crewKey !== crewUuid
+    ) {
+      return;
+    }
+
+    const resume = d3HandoffNeededRef.current ? d3Resume : null;
+
+    if (
+      d3HandoffNeededRef.current &&
+      (!resume || resume.session !== session)
+    ) {
+      return;
+    }
+
+    const profileToApply = resume ? resume.profile : detailedCrewData;
+
+    if (profileToApply && (crewMember?.crewUuid || crewMember?.id)) {
+      const detailedCrewData = profileToApply;
       const currentCrewId = crewMember?.crewUuid || crewMember?.id || '';
       const ctx = deletingContextRef.current;
-      const preserveLocalRows = !!(ctx && ctx.crewId === currentCrewId && ctx.count > 0);
+      const preserveLocalRows =
+        !resume &&
+        !!(ctx && ctx.crewId === currentCrewId && ctx.count > 0);
       if (preserveLocalRows) {
         clearDeletingForCrew();
       }
       setDeletedChildUuids([]);
       setFormData(prev => {
+        if (d3SessionRef.current !== session || !session.open) {
+          return prev;
+        }
+
         const localOnlyDocs = preserveLocalRows ? prev.documents.filter((d: any) => !d.docUuid) : [];
         const localOnlyVisas = preserveLocalRows ? prev.visas.filter((v: any) => !v.visaUuid) : [];
         const localOnlyEdu = preserveLocalRows ? prev.education.filter((e: any) => !e.eduUuid) : [];
         const localOnlyLicenses = preserveLocalRows ? prev.licenses.filter((l: any) => !l.licUuid) : [];
-        const localOnlyTraining = preserveLocalRows ? prev.trainingCourses.filter((t: any) => !t.trainUuid) : [];
+        const localOnlyTraining = resume
+          ? []
+          : prev.trainingCourses.filter(course =>
+              !course.trainUuid &&
+              (
+                course.matrixDefault
+                  ? (
+                      session.crewKey === currentCrewId &&
+                      course.id.startsWith(session.prefix)
+                    )
+                  : preserveLocalRows
+              ),
+            );
         const localOnlyCurrentSS = preserveLocalRows ? prev.currentCompanySeaService.filter((s: any) => !s.seaUuid) : [];
         const localOnlyExternalSS = preserveLocalRows ? prev.externalSeaService.filter((s: any) => !s.seaUuid) : [];
         const localOnlyMedicals = preserveLocalRows ? prev.preJoiningMedicals.filter((m: any) => !m.medUuid) : [];
@@ -1500,6 +1826,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
         return {
           ...prev,
+          [D3_HYDRATION_COMMIT]:
+            resume?.token ?? prev[D3_HYDRATION_COMMIT],
           // A1.1 General Particulars
           firstName: detailedCrewData.firstName || '',
           middleName: detailedCrewData.middleName || '',
@@ -1568,7 +1896,15 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           visas: [...withViewUrl(serverVisas, '/api/v2/crew-pool/visas/attachments'), ...localOnlyVisas],
           education: [...withViewUrl(serverEdu, '/api/v2/crew-pool/education/attachments'), ...localOnlyEdu],
           licenses: [...withViewUrl(serverLicenses, '/api/v2/crew-pool/licenses/attachments'), ...localOnlyLicenses],
-          trainingCourses: [...withViewUrl(serverTraining, '/api/v2/crew-pool/training/attachments'), ...localOnlyTraining],
+          trainingCourses: mergeD3LocalRows(
+            withViewUrl(
+              serverTraining,
+              '/api/v2/crew-pool/training/attachments',
+            ),
+            localOnlyTraining,
+            d3IdentityMasters,
+            session.deletedUuids,
+          ),
           currentCompanySeaService: [...withViewUrl(serverCurrentSS, '/api/v2/crew-pool/sea-service/attachments'), ...localOnlyCurrentSS],
           externalSeaService: [...withViewUrl(serverExternalSS, '/api/v2/crew-pool/sea-service/attachments'), ...localOnlyExternalSS],
           preJoiningMedicals: [...withViewUrl(serverMedicals, '/api/v2/crew-pool/medical/attachments'), ...localOnlyMedicals],
@@ -1581,7 +1917,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Also load the uploaded photo from crew data (or reset if no photo)
       setUploadedPhoto(detailedCrewData.uploadedPhoto || null);
     }
-  }, [detailedCrewData, crewMember?.crewUuid, crewMember?.id, adminCompanyTrainings]);
+  }, [
+    detailedCrewData,
+    crewMember?.crewUuid,
+    crewMember?.id,
+    adminCompanyTrainings,
+    d3Resume,
+  ]);
 
   // Mark E1 rows that were auto-generated via vessel sign-on as isVesselSynced
   useEffect(() => {
@@ -1648,7 +1990,21 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // This ensures the form starts with empty values instead of stale data from previous selection
   useEffect(() => {
     if (isOpen && !crewMember) {
+      const session = d3SessionRef.current;
+
+      if (
+        d3HandoffNeededRef.current &&
+        (
+          !d3Resume ||
+          d3Resume.session !== session ||
+          d3Resume.profile !== null
+        )
+      ) {
+        return;
+      }
+
       setFormData({
+        [D3_HYDRATION_COMMIT]: d3Resume?.token,
         // A1.1 General Particulars
         firstName: '',
         middleName: '',
@@ -1734,7 +2090,96 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       });
       setUploadedPhoto(null);
     }
-  }, [isOpen, crewMember]);
+  }, [isOpen, crewMember, d3Resume]);
+
+  const presentD3RankId = d3RankId(
+    formData.presentRank,
+    companyRanks,
+    normalizeRank,
+  );
+
+  const d3DataReady =
+    d3MastersQuery.isSuccess &&
+    d3MatrixQuery.isSuccess &&
+    !d3MastersQuery.isFetching &&
+    !d3MatrixQuery.isFetching &&
+    !ranksLoading &&
+    !ranksError &&
+    !rankNormalizationLoading &&
+    !isV2ProfileLoading &&
+    !isV2ProfileFetching &&
+    !v2ProfileError &&
+    !isD3Blocked() &&
+    (
+      !crewUuid ||
+      (detailedCrewData?.crewUuid || detailedCrewData?.id) === crewUuid
+    );
+
+  useEffect(() => {
+    const session = d3SessionRef.current;
+
+    if (
+      !isOpen ||
+      !canReadD3Defaults ||
+      !d3DataReady ||
+      isBatchSaving ||
+      !session?.open ||
+      session.pendingDeletes.size
+    ) {
+      return;
+    }
+
+    setFormData(previous => {
+      if (
+        d3SessionRef.current !== session ||
+        !session.open ||
+        isD3Blocked() ||
+        isBatchSavingRef.current ||
+        session.pendingDeletes.size
+      ) {
+        return previous;
+      }
+
+      const rankId = d3RankId(
+        previous.presentRank,
+        companyRanks,
+        normalizeRank,
+      );
+
+      if (rankId === null) return previous;
+
+      const additions = missingD3Defaults(
+        previous.trainingCourses,
+        d3Masters,
+        d3Requirements,
+        rankId,
+        session.suppressed,
+        session.prefix,
+      );
+
+      return additions.length
+        ? {
+            ...previous,
+            trainingCourses: [
+              ...previous.trainingCourses,
+              ...additions,
+            ],
+          }
+        : previous;
+    });
+  }, [
+    isOpen,
+    crewUuid,
+    canReadD3Defaults,
+    d3DataReady,
+    isBatchSaving,
+    presentD3RankId,
+    formData.presentRank,
+    formData.trainingCourses,
+    d3Masters,
+    d3Requirements,
+    d3PendingDeleteCount,
+  ]);
 
   // Click-outside detection for B1/B2/B3: auto-save and close editing section
   useEffect(() => {
@@ -2206,10 +2651,30 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Add training courses from database selection
   const addTrainingCoursesFromDatabase = (selectedTemplates: TrainingCourseTemplate[]) => {
+    if (isD3Blocked()) return;
+
     setFormData(prev => {
+      if (isD3Blocked()) return prev;
+
       const existingCourses = prev.trainingCourses.filter(c => c.trainingCourse.trim() !== '');
       const maxId = getMaxIdNum(prev.trainingCourses, 'TRN');
-      const newCourses: TrainingCourse[] = selectedTemplates.map((template, index) => ({
+
+      const existingKeys = new Set(
+        existingCourses.map(course =>
+          d3CourseKey(course, d3IdentityMasters),
+        ),
+      );
+
+      const missingTemplates = selectedTemplates.filter(template => {
+        const key = d3CourseKey(template, d3IdentityMasters);
+
+        if (key && existingKeys.has(key)) return false;
+        if (key) existingKeys.add(key);
+
+        return true;
+      });
+
+      const newCourses: TrainingCourse[] = missingTemplates.map((template, index) => ({
         id: `TRN-${maxId + index + 1}`,
         courseId: template.companyId,
         companyId: template.companyId,
@@ -2331,7 +2796,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Training course management
   const addTrainingCourse = () => {
+    if (isD3Blocked()) return;
+
     setFormData(prev => {
+      if (isD3Blocked()) return prev;
       const newCourse: TrainingCourse = {
         id: getNextId(prev.trainingCourses, 'TRN'),
         trainingCourse: '',
@@ -2346,45 +2814,113 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     });
   };
 
-  const updateTrainingCourse = (id: string, field: keyof TrainingCourse, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      trainingCourses: prev.trainingCourses.map(course => 
-        course.id === id ? { ...course, [field]: value } : course
-      )
-    }));
+  const updateTrainingCourse = (
+    id: string,
+    field: keyof TrainingCourse,
+    value: string,
+  ) => {
+    if (isD3Blocked()) return;
+
+    setFormData(previous => {
+      if (isD3Blocked()) return previous;
+
+      const row = previous.trainingCourses.find(course => course.id === id);
+
+      if (
+        row?.matrixDefault &&
+        (!canSaveD3Defaults || isBatchSavingRef.current)
+      ) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        trainingCourses: previous.trainingCourses.map(course =>
+          course.id === id ? { ...course, [field]: value } : course,
+        ),
+      };
+    });
   };
 
   const removeTrainingCourse = (id: string) => {
-    const course = formData.trainingCourses.find(c => c.id === id);
-    const trainUuid = (course as any)?.trainUuid;
-    const crewIdentifier = crewMember?.crewUuid || crewMember?.id;
-    
-    if (trainUuid && crewIdentifier) {
-      markDeletingForCrew(crewIdentifier);
-      deleteTrainingCourseMutationV2.mutate(
-        { crewUuid: crewIdentifier, trainUuid },
-        {
-          onSuccess: () => {
-            setFormData(prev => ({
-              ...prev,
-              trainingCourses: prev.trainingCourses.filter(c => c.id !== id)
-            }));
-            invalidateCrewDashboard(crewIdentifier);
-          },
-          onError: (error) => {
-            clearDeletingForCrew();
-            console.error('Failed to delete training course:', error);
-            toast({ title: 'Failed to delete training course', variant: 'destructive' });
-          }
-        }
+    if (isD3Blocked() || isBatchSavingRef.current) return;
+
+    const course = formData.trainingCourses.find(row => row.id === id);
+    if (!course || (course.matrixDefault && !canSaveD3Defaults)) return;
+
+    const session = d3SessionRef.current;
+    if (!session?.open) return;
+
+    const key = d3CourseKey(course, d3IdentityMasters);
+    const crewIdentifier = getEffectiveCrewUuid();
+
+    const removeLocally = () => {
+      if (d3SessionRef.current !== session || !session.open) return;
+
+      if (key) session.suppressed.add(key);
+      if (course.trainUuid) session.deletedUuids.add(course.trainUuid);
+
+      setFormData(previous =>
+        d3SessionRef.current === session && session.open
+          ? {
+              ...previous,
+              trainingCourses: previous.trainingCourses.filter(row =>
+                row.id !== id &&
+                (!course.trainUuid || row.trainUuid !== course.trainUuid),
+              ),
+            }
+          : previous,
       );
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        trainingCourses: prev.trainingCourses.filter(c => c.id !== id)
-      }));
+    };
+
+    if (!course.trainUuid) {
+      removeLocally();
+      return;
     }
+
+    if (!crewIdentifier) {
+      toast({
+        title: 'Could not identify the crew member. Please reopen the form.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const trainUuid = course.trainUuid;
+
+    if (session.pendingDeletes.has(trainUuid)) return;
+
+    session.pendingDeletes.add(trainUuid);
+    setD3PendingDeleteCount(session.pendingDeletes.size);
+    markDeletingForCrew(crewIdentifier);
+
+    void (async () => {
+      try {
+        await deleteTrainingCourseMutationV2.mutateAsync({
+          crewUuid: crewIdentifier,
+          trainUuid,
+        });
+
+        removeLocally();
+        invalidateCrewDashboard(crewIdentifier);
+      } catch (error) {
+        console.error('Failed to delete training course:', error);
+
+        if (d3SessionRef.current === session && session.open) {
+          clearDeletingForCrew();
+          toast({
+            title: 'Failed to delete training course',
+            variant: 'destructive',
+          });
+        }
+      } finally {
+        session.pendingDeletes.delete(trainUuid);
+
+        if (d3SessionRef.current === session && session.open) {
+          setD3PendingDeleteCount(session.pendingDeletes.size);
+        }
+      }
+    })();
   };
 
   const calculatePeriodMonths = (fromDate: string, toDate: string): string => {
@@ -2839,7 +3375,20 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const handleAttachmentClick = (section: typeof attachmentDialog.section, itemId: string, itemName: string) => {
-    const crewIdentifier = crewMember?.crewUuid || crewMember?.id || createdCrewId;
+    if (isD3Blocked()) return;
+
+    if (section === 'training') {
+      const row = formData.trainingCourses.find(course => course.id === itemId);
+
+      if (
+        row?.matrixDefault &&
+        (!canSaveD3Defaults || isBatchSavingRef.current)
+      ) {
+        return;
+      }
+    }
+
+    const crewIdentifier = getEffectiveCrewUuid();
     
     if (!crewIdentifier) {
       toast({
@@ -2896,9 +3445,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const updateAttachments = (attachments: FileAttachment[]) => {
+    if (isD3Blocked()) return;
+
     const { section, itemId } = attachmentDialog;
     
     setFormData(prev => {
+      if (isD3Blocked()) return prev;
       switch (section) {
         case 'document':
           return {
@@ -5189,6 +5741,36 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           )}
         </div>
         
+        {canReadD3Defaults && (
+          d3MastersQuery.isError ||
+          d3MatrixQuery.isError ||
+          ranksError ||
+          v2ProfileError
+        ) && (
+          <p role="alert" className="mb-3 text-sm text-red-600">
+            Training defaults could not be loaded. Existing courses have not been changed.
+          </p>
+        )}
+
+        {canReadD3Defaults &&
+          d3DataReady &&
+          formData.presentRank.trim() &&
+          presentD3RankId === null && (
+            <p role="alert" className="mb-3 text-sm text-red-600">
+              Present Rank could not be matched uniquely to the Training Matrix.
+            </p>
+          )}
+
+        {canSaveD3Defaults &&
+          formData.trainingCourses.some(
+            course => course.matrixDefault && !course.trainUuid,
+          ) && (
+            <p role="status" className="mb-3 text-sm text-amber-700">
+              Automatically added courses marked “Not saved” need Save.
+              Courses that appear after a Save need another Save.
+            </p>
+          )}
+
         <Table className="w-full">
           <TableHeader>
             <TableRow className="bg-gray-100">
@@ -5226,7 +5808,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       className={`text-[#4f5863] text-[13px] border ${trainRequiredErrors[course.id] ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}
                     />
                   )}
-                  {trainRequiredErrors[course.id] && <p className="text-xs text-red-500 mt-1">{trainRequiredErrors[course.id]}</p>}
+                    {course.matrixDefault && !course.trainUuid && (
+                      <span className="block text-xs text-amber-700 mt-1">
+                        Not saved
+                      </span>
+                    )}
+                    {trainRequiredErrors[course.id] && <p className="text-xs text-red-500 mt-1">{trainRequiredErrors[course.id]}</p>}
                 </TableCell>
                 <TableCell className="p-3">
                   {course.fromDatabase ? (
@@ -5253,6 +5840,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <TableCell className="p-3">
                   <Input
                     value={course.certificateNo}
+                      readOnly={Boolean(
+                        course.matrixDefault &&
+                        (!canSaveD3Defaults || isBatchSaving)
+                      )}
                     onChange={(e) => updateTrainingCourse(course.id, 'certificateNo', e.target.value)}
                     className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
@@ -5260,6 +5851,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <TableCell className="p-3">
                   <Input
                     value={course.issuingAuthority}
+                      readOnly={Boolean(
+                        course.matrixDefault &&
+                        (!canSaveD3Defaults || isBatchSaving)
+                      )}
                     onChange={(e) => updateTrainingCourse(course.id, 'issuingAuthority', e.target.value)}
                     className="text-[#4f5863] text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto"
                   />
@@ -5267,6 +5862,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <TableCell className="p-3">
                   <FormattedDateInput
                     value={course.issued}
+                      disabled={Boolean(
+                        course.matrixDefault &&
+                        (!canSaveD3Defaults || isBatchSaving)
+                      )}
                     onChange={(e) => { updateTrainingCourse(course.id, 'issued', e.target.value); if (trainDateErrors[course.id]?.issued) setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].issued; if (!n[course.id].expiry) delete n[course.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(course.issued); if (err) setTrainDateErrors(prev => ({...prev, [course.id]: {...(prev[course.id] || {}), issued: err}})); else setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].issued; if (!n[course.id].expiry) delete n[course.id]; } return n; }); }}
                     max={todayStr}
@@ -5277,6 +5876,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <TableCell className="p-3">
                   <FormattedDateInput
                     value={course.expiry}
+                      disabled={Boolean(
+                        course.matrixDefault &&
+                        (!canSaveD3Defaults || isBatchSaving)
+                      )}
                     onChange={(e) => { updateTrainingCourse(course.id, 'expiry', e.target.value); if (trainDateErrors[course.id]?.expiry) setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].expiry; if (!n[course.id].issued) delete n[course.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(course.expiry, course.issued); if (err) setTrainDateErrors(prev => ({...prev, [course.id]: {...(prev[course.id] || {}), expiry: err}})); else setTrainDateErrors(prev => { const n = {...prev}; if (n[course.id]) { delete n[course.id].expiry; if (!n[course.id].issued) delete n[course.id]; } return n; }); }}
                     min={course.issued || undefined}
@@ -5292,6 +5895,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       size="icon" 
                       className="h-6 w-6 text-gray-400 hover:text-blue-600 relative"
                       onClick={() => handleAttachmentClick('training', course.id, course.trainingCourse || 'Training')}
+                      disabled={Boolean(
+                        course.matrixDefault &&
+                        (!canSaveD3Defaults || isBatchSaving)
+                      )}
                       data-testid={`button-attach-training-${course.id}`}
                     >
                       <Paperclip className="h-3 w-3" />
@@ -5306,6 +5913,14 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       size="icon" 
                       className="h-6 w-6 text-gray-400 hover:text-red-600"
                       onClick={() => removeTrainingCourse(course.id)}
+                      disabled={
+                        isBatchSaving ||
+                        Boolean(course.matrixDefault && !canSaveD3Defaults) ||
+                        Boolean(
+                          course.trainUuid &&
+                          d3SessionRef.current?.pendingDeletes.has(course.trainUuid)
+                        )
+                      }
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -6056,9 +6671,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Select
                           value={medical.vesselCode || ''}
                           onValueChange={(value) => {
-                            const selectedVessel = vesselOptions.find(v => v.code === value);
+                            if (activeVesselsLoading || activeVesselsError) return;
+                            const selectedVessel =
+                              activeVesselOptions.find(v => v.code === value);
+                            if (!selectedVessel) return;
                             updatePreJoiningMedical(medical.id, 'vesselCode', value);
-                            updatePreJoiningMedical(medical.id, 'vessel', selectedVessel?.name || '');
+                            updatePreJoiningMedical(
+                              medical.id,
+                              'vessel',
+                              selectedVessel.name
+                            );
                           }}
                         >
                           <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6">
@@ -6067,13 +6689,24 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {vesselsLoading ? (
-                              <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
-                            ) : vesselOptions.length === 0 ? (
-                              <SelectItem value="empty" disabled>No vessels available</SelectItem>
+                            {activeVesselsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading vessels...
+                              </SelectItem>
+                            ) : activeVesselsError ? (
+                              <SelectItem value="error" disabled>
+                                Unable to load vessels
+                              </SelectItem>
+                            ) : activeVesselOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>
+                                No vessels available
+                              </SelectItem>
                             ) : (
-                              vesselOptions.map((vessel) => (
-                                <SelectItem key={vessel.code} value={vessel.code}>
+                              activeVesselOptions.map((vessel) => (
+                                <SelectItem
+                                  key={vessel.code}
+                                  value={vessel.code}
+                                >
                                   {vessel.name}
                                 </SelectItem>
                               ))
@@ -6340,9 +6973,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Select
                           value={briefing.vesselCode || ''}
                           onValueChange={(value) => {
-                            const selectedVessel = vesselOptions.find(v => v.code === value);
+                            if (activeVesselsLoading || activeVesselsError) return;
+                            const selectedVessel =
+                              activeVesselOptions.find(v => v.code === value);
+                            if (!selectedVessel) return;
                             updateBriefing(briefing.id, 'vesselCode', value);
-                            updateBriefing(briefing.id, 'vessel', selectedVessel?.name || '');
+                            updateBriefing(
+                              briefing.id,
+                              'vessel',
+                              selectedVessel.name
+                            );
                           }}
                         >
                           <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-briefing-vessel-${briefing.id}`}>
@@ -6351,13 +6991,24 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {vesselsLoading ? (
-                              <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
-                            ) : vesselOptions.length === 0 ? (
-                              <SelectItem value="empty" disabled>No vessels available</SelectItem>
+                            {activeVesselsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading vessels...
+                              </SelectItem>
+                            ) : activeVesselsError ? (
+                              <SelectItem value="error" disabled>
+                                Unable to load vessels
+                              </SelectItem>
+                            ) : activeVesselOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>
+                                No vessels available
+                              </SelectItem>
                             ) : (
-                              vesselOptions.map((vessel) => (
-                                <SelectItem key={vessel.code} value={vessel.code}>
+                              activeVesselOptions.map((vessel) => (
+                                <SelectItem
+                                  key={vessel.code}
+                                  value={vessel.code}
+                                >
                                   {vessel.name}
                                 </SelectItem>
                               ))
@@ -6486,9 +7137,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                         <Select
                           value={debriefing.vesselCode || ''}
                           onValueChange={(value) => {
-                            const selectedVessel = vesselOptions.find(v => v.code === value);
+                            if (activeVesselsLoading || activeVesselsError) return;
+                            const selectedVessel =
+                              activeVesselOptions.find(v => v.code === value);
+                            if (!selectedVessel) return;
                             updateDebriefing(debriefing.id, 'vesselCode', value);
-                            updateDebriefing(debriefing.id, 'vessel', selectedVessel?.name || '');
+                            updateDebriefing(
+                              debriefing.id,
+                              'vessel',
+                              selectedVessel.name
+                            );
                           }}
                         >
                           <SelectTrigger className="border border-[#EAEBEF] bg-transparent p-0 focus-visible:ring-0 text-[#4f5863] text-[13px] font-normal h-6" data-testid={`select-debriefing-vessel-${debriefing.id}`}>
@@ -6497,13 +7155,24 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {vesselsLoading ? (
-                              <SelectItem value="loading" disabled>Loading vessels...</SelectItem>
-                            ) : vesselOptions.length === 0 ? (
-                              <SelectItem value="empty" disabled>No vessels available</SelectItem>
+                            {activeVesselsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading vessels...
+                              </SelectItem>
+                            ) : activeVesselsError ? (
+                              <SelectItem value="error" disabled>
+                                Unable to load vessels
+                              </SelectItem>
+                            ) : activeVesselOptions.length === 0 ? (
+                              <SelectItem value="empty" disabled>
+                                No vessels available
+                              </SelectItem>
                             ) : (
-                              vesselOptions.map((vessel) => (
-                                <SelectItem key={vessel.code} value={vessel.code}>
+                              activeVesselOptions.map((vessel) => (
+                                <SelectItem
+                                  key={vessel.code}
+                                  value={vessel.code}
+                                >
                                   {vessel.name}
                                 </SelectItem>
                               ))
@@ -6612,8 +7281,26 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Save Draft functionality
   const handleSaveDraft = () => {
-    if (isCrewTerminated) return;
+    if (isCrewTerminated || isD3Blocked()) return;
     if (isBatchSavingRef.current) return;
+
+    if (d3SessionRef.current?.pendingDeletes.size) {
+      toast({
+        title: 'Please wait',
+        description: 'Finish deleting training courses before saving.',
+      });
+      return;
+    }
+
+    const defaultsPendingAtSave =
+      canSaveD3Defaults &&
+      Boolean(formData.presentRank.trim()) &&
+      !d3DataReady;
+
+    const saveTrainingCourses = d3RowsForSave(
+      formData.trainingCourses,
+      canSaveD3Defaults,
+    );
 
     let hasErrors = false;
 
@@ -6735,7 +7422,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     // D3: Training required + date validation
     const newTrainReqErrors: Record<string, string> = {};
     const newTrainDateErrors: Record<string, { issued?: string; expiry?: string }> = {};
-    formData.trainingCourses.forEach((t) => {
+    saveTrainingCourses.forEach((t) => {
       if (!isTrainBlank(t)) {
         if (!(t.trainingCourse || '').trim()) { newTrainReqErrors[t.id] = 'Training course is required.'; hasErrors = true; }
         const ie = validateIssuedDate(t.issued); if (ie) { newTrainDateErrors[t.id] = {...(newTrainDateErrors[t.id] || {}), issued: ie}; hasErrors = true; }
@@ -6817,7 +7504,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     const nonEmptyVisas = formData.visas.filter(visa => visa.visaUuid || !isVisaBlank(visa));
     const nonEmptyEducation = formData.education.filter(edu => (edu as any).eduUuid || !isEduBlank(edu));
     const nonEmptyLicenses = formData.licenses.filter(lic => (lic as any).licUuid || !isLicBlank(lic));
-    const nonEmptyTraining = formData.trainingCourses.filter(t => (t as any).trainUuid || !isTrainBlank(t));
+    const nonEmptyTraining = saveTrainingCourses.filter(
+      course => course.trainUuid || !isTrainBlank(course),
+    );
     const nonEmptyCurrentSea = formData.currentCompanySeaService.filter((sea: any) => sea.seaUuid || sea.isVesselSynced || !isSeaServiceBlank(sea));
     const nonEmptyExternalSea = formData.externalSeaService.filter((sea: any) => sea.seaUuid || !isSeaServiceBlank(sea));
     const nonEmptyMedicals = formData.preJoiningMedicals.filter((med: any) => med.medUuid || !isMedicalBlank(med));
@@ -6847,7 +7536,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       briefings: nonEmptyBriefings,
       debriefings: nonEmptyDebriefings,
     };
-    setFormData(cleanedFormData);
+    setFormData({
+      ...cleanedFormData,
+      trainingCourses: formData.trainingCourses.filter(
+        course => course.trainUuid || !isTrainBlank(course),
+      ),
+    });
 
     // Include the uploaded photo in the data to be saved — use cleaned data
     const dataWithPhoto = { ...cleanedFormData, uploadedPhoto: uploadedPhoto || null };
@@ -6855,7 +7549,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     // V2: Use crewUuid as primary identifier for updates
     // Also check createdCrewId — after first save of a new crew, crewMember is still null
     // but createdCrewId holds the UUID of the just-created record
-    const crewIdentifier = crewMember?.crewUuid || crewMember?.id || createdCrewId;
+    const crewIdentifier = getEffectiveCrewUuid();
     if (crewIdentifier) {
       isBatchSavingRef.current = true;
       setIsBatchSaving(true);
@@ -7795,7 +8489,9 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           } else {
             toast({
               title: "Saved",
-              description: "Crew member updated successfully.",
+              description: defaultsPendingAtSave
+                ? "Current rows saved. Any training defaults loaded afterward are not saved; click Save again to include them."
+                : "Crew member updated successfully.",
               duration: 3000,
             });
           }
@@ -7820,7 +8516,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       // Create new crew member - generate ID based on current date
       const newId = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
       const formDataWithId = { ...dataWithPhoto, id: newId };
-      createCrewMutation.mutate(formDataWithId);
+      createCrewMutation.mutate(formDataWithId, defaultsPendingAtSave);
     }
   };
 
@@ -8025,7 +8721,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Auto-save functionality — saves the specific section's data to the backend
   const handleSectionAutoSave = async (sectionId: string, crewUuidOverride?: string) => {
-    if (isCrewTerminated) return;
+    if (isCrewTerminated || isD3Blocked()) return;
     if (isBatchSavingRef.current) return;
     const crewUuid = crewUuidOverride || getEffectiveCrewUuid();
     if (!crewUuid) return;
@@ -8182,6 +8878,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Crew member selection handler
   const handleCrewMemberSelection = (selectedCrewMember: CrewMember) => {
+    const nextCrewUuid =
+      selectedCrewMember.crewUuid || selectedCrewMember.id || null;
+
+    if (nextCrewUuid === crewUuid) {
+      setShowCrewDropdown(false);
+      return;
+    }
+
+    armD3Handoff();
+
     // Update form data with selected crew member's basic information
     // presentRank is normalized to convert positions to actual ranks
     setFormData(prev => ({
@@ -8216,12 +8922,22 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
 
   // Get effective crew UUID (either from existing crew or newly created)
   const getEffectiveCrewUuid = (): string | null => {
-    return crewMember?.crewUuid || crewMember?.id || createdCrewId || createdCrewIdRef.current || null;
+    if (isD3Blocked()) return null;
+
+    const selectedUuid = crewMember?.crewUuid || crewMember?.id;
+    if (selectedUuid) return selectedUuid;
+
+    const owner = createdCrewIdOwnerRef.current;
+    if (owner && owner !== d3SessionRef.current) return null;
+
+    return createdCrewId || createdCrewIdRef.current || null;
   };
 
   // Ensure crew record exists before allowing section edits
   // This implements the "save-before-edit" pattern for new crew records
   const ensureCrewExists = async (recruitmentDateOverride?: string): Promise<string | null> => {
+    if (isD3Blocked() || firstCreateOwnerRef.current) return null;
+
     const existingUuid = getEffectiveCrewUuid();
     if (existingUuid) {
       return existingUuid;
@@ -8254,6 +8970,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       const newCrewUuid = result?.crewUuid;
       
       if (newCrewUuid) {
+        createdCrewIdOwnerRef.current = d3SessionRef.current;
         createdCrewIdRef.current = newCrewUuid;
         setCreatedCrewId(newCrewUuid);
         
@@ -8442,19 +9159,61 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   // Wrapper for create mutation with UI feedback
   // After parent record is created, chain saves for personal details, address, and family
   const createCrewMutation = {
-    mutate: (data: any) => {
-      createCrewMutationV2.mutate(data, {
-        onSuccess: (responseData: any) => {
+    mutate: (data: any, defaultsPendingAtSave = false) => {
+      if (isD3Blocked() || isBatchSavingRef.current) return;
+
+      const session = d3SessionRef.current;
+      if (!session?.open) return;
+
+      const isCurrentSession = () =>
+        d3SessionRef.current === session && session.open;
+
+      const pendingDefaults = d3RowsForSave<TrainingCourse>(
+        data.trainingCourses || [],
+        canSaveD3Defaults,
+      ).filter(course => course.matrixDefault && !course.trainUuid);
+
+      const operation: D3FirstCreateOperation | null =
+        pendingDefaults.length
+          ? { session, ticket: d3FirstCreates.begin() }
+          : null;
+
+      if (operation) {
+        firstCreateOwnerRef.current = operation;
+        isBatchSavingRef.current = true;
+        setIsBatchSaving(true);
+      }
+
+      void (async () => {
+        let parentCreated = false;
+        let createdUuid: string | null = null;
+
+        try {
+          const responseData: any =
+            await createCrewMutationV2.mutateAsync(data);
+
+          parentCreated = true;
+
           const crewUuid = responseData?.crewUuid;
-          const generatedEmpNo = responseData?.empNo || responseData?.employeeId;
+          createdUuid = crewUuid || null;
+
+          const generatedEmpNo =
+            responseData?.empNo || responseData?.employeeId;
           
-          if (generatedEmpNo) {
-            setFormData(prev => ({ ...prev, employeeId: generatedEmpNo }));
+          if (generatedEmpNo && isCurrentSession()) {
+            setFormData(previous =>
+              isCurrentSession()
+                ? { ...previous, employeeId: generatedEmpNo }
+                : previous,
+            );
           }
           
           if (crewUuid) {
-            createdCrewIdRef.current = crewUuid;
-            setCreatedCrewId(crewUuid);
+            if (isCurrentSession()) {
+              createdCrewIdOwnerRef.current = session;
+              createdCrewIdRef.current = crewUuid;
+              setCreatedCrewId(crewUuid);
+            }
             // NOTE: We intentionally do NOT call onCrewMemberChange here.
             // Calling it would update the `crewMember` prop from null to the new record,
             // which triggers the form-data load effect and overwrites the user's in-progress
@@ -8522,21 +9281,94 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               });
             }
           }
-          toast({
-            title: "Saved",
-            description: "Crew member created successfully. You can continue editing.",
-            duration: 3000,
-          });
-        },
-        onError: (error: any) => {
-          toast({
-            title: "Error",
-            description: `Failed to create crew member: ${error.message}`,
-            variant: "destructive",
-            duration: 5000,
-          });
-        },
-      });
+          let failedDefaults = 0;
+
+          for (const row of pendingDefaults) {
+            try {
+              if (!crewUuid) {
+                throw new Error('Missing crew UUID after creation');
+              }
+
+              const { attachments: _attachments, ...courseData } = row;
+
+              const saved = await crewPoolApiV2.createTrainingCourse(
+                crewUuid,
+                withAuditUser(mapLegacyTrainingCourseToV2(courseData)),
+              );
+
+              const trainUuid = saved?.trainUuid || saved?.train_uuid;
+
+              if (!trainUuid) {
+                throw new Error('Training save returned no UUID');
+              }
+
+              if (isCurrentSession()) {
+                setFormData(previous =>
+                  isCurrentSession()
+                    ? {
+                        ...previous,
+                        trainingCourses: previous.trainingCourses.map(
+                          course =>
+                            course.id === row.id
+                              ? { ...course, trainUuid }
+                              : course,
+                        ),
+                      }
+                    : previous,
+                );
+              }
+            } catch (error) {
+              failedDefaults++;
+              console.error('Failed to save Matrix training course:', error);
+            }
+          }
+
+          if (isCurrentSession()) {
+            toast({
+              title: failedDefaults ? 'Partially Saved' : 'Saved',
+              description: failedDefaults
+                ? `Crew member created, but ${failedDefaults} training course(s) failed. Click Save to retry.`
+                : defaultsPendingAtSave
+                  ? 'Current rows saved. Any training defaults loaded afterward are not saved; click Save again to include them.'
+                  : 'Crew member created successfully. You can continue editing.',
+              variant: failedDefaults ? 'destructive' : 'default',
+              duration: failedDefaults ? 6000 : 3000,
+            });
+          }
+        } catch (error: any) {
+          console.error('[V2] Crew Save failed:', error);
+
+          if (isCurrentSession()) {
+            toast({
+              title: 'Error',
+              description: parentCreated
+                ? 'Crew member was created, but saving did not finish. Please review and retry Save.'
+                : `Failed to create crew member: ${error.message}`,
+              variant: 'destructive',
+              duration: 5000,
+            });
+          }
+        } finally {
+          if (operation) {
+            try {
+              if (createdUuid) {
+                void queryClient.invalidateQueries({
+                  queryKey: [V2_QUERY_KEY, 'crew', createdUuid],
+                  refetchType: 'none',
+                });
+              }
+            } finally {
+              if (firstCreateOwnerRef.current === operation) {
+                firstCreateOwnerRef.current = null;
+                isBatchSavingRef.current = false;
+                setIsBatchSaving(false);
+              }
+
+              operation.ticket.finish();
+            }
+          }
+        }
+      })();
     },
     isPending: createCrewMutationV2.isPending,
   };
@@ -8686,12 +9518,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   const handleSave = () => {
-    
+    if (isD3Blocked() || isBatchSavingRef.current) return;
+
     // Include the uploaded photo in the data to be saved
     const dataWithPhoto = { ...formData, uploadedPhoto: uploadedPhoto || null };
     
     // V2 uses crewUuid, fallback to id for compatibility
-    const existingUuid = crewMember?.crewUuid || crewMember?.id || createdCrewId;
+    const existingUuid = getEffectiveCrewUuid();
     
     if (existingUuid) {
       // Update existing crew member via V2 API
@@ -8752,7 +9585,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     savePersonalDetailsMutationV2.isPending || saveAddressMutationV2.isPending || saveFamilyInfoMutationV2.isPending;
 
   const handleCancel = () => {
-    onClose();
+    handleD3Close();
   };
 
   // Enhanced scroll detection for continuous scroll layout
@@ -8875,13 +9708,83 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     </div>;
   }
 
+  if (isD3Blocked()) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
+        <div
+          className="bg-white rounded-lg w-full max-w-lg p-6 space-y-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Loading crew information"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold">Crew information</h2>
+            <Button
+              variant="outline"
+              onClick={handleD3Close}
+              data-testid="button-close"
+            >
+              Close
+            </Button>
+          </div>
+
+          <label className="block text-sm font-medium">
+            Selected crew
+            <select
+              className="mt-1 block w-full rounded-md border p-2"
+              value={crewUuid || ''}
+              onChange={event => {
+                const selected = allCrewMembers.find(
+                  member =>
+                    (member.crewUuid || member.id) === event.target.value,
+                );
+
+                if (selected) handleCrewMemberSelection(selected);
+              }}
+            >
+              <option value="" disabled>New crew member</option>
+              {allCrewMembers.map(member => (
+                <option
+                  key={member.crewUuid || member.id}
+                  value={member.crewUuid || member.id}
+                >
+                  {member.firstName} {member.familyName}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {d3HandoffError ? (
+            <>
+              <p role="alert" className="text-sm text-red-600">
+                {d3HandoffError}
+              </p>
+              <Button
+                onClick={() => setD3Retry(value => value + 1)}
+                data-testid="button-retry-crew-profile"
+              >
+                Retry profile load
+              </Button>
+            </>
+          ) : (
+            <p role="status" className="text-sm text-gray-600">
+              {d3FirstCreates.pending().length > 0
+                ? 'Finishing the previous Save before loading this crew.'
+                : 'Loading the selected crew profile.'}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-2 sm:p-4">
       <div className="bg-white rounded-lg w-full max-w-none 2xl:max-w-[95vw] h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b p-2 sm:p-3 lg:p-4 flex items-center justify-between">
           <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
-            <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-close">
+            <Button variant="ghost" size="icon" onClick={handleD3Close} data-testid="button-close">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="relative">
@@ -8979,7 +9882,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               className="items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs hidden sm:flex bg-[#5fa5fa]"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={handleSaveDraft}
-              disabled={isSaving || isCrewTerminated}
+              disabled={
+                isSaving ||
+                isCrewTerminated ||
+                isD3Blocked() ||
+                d3PendingDeleteCount > 0
+              }
               data-testid="button-save-draft"
             >
               <Save className="h-4 w-4 mr-2" />
@@ -8991,7 +9899,12 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               className="sm:hidden"
               onMouseDown={(e) => e.stopPropagation()}
               onClick={handleSaveDraft}
-              disabled={isSaving || isCrewTerminated}
+              disabled={
+                isSaving ||
+                isCrewTerminated ||
+                isD3Blocked() ||
+                d3PendingDeleteCount > 0
+              }
               data-testid="button-save-draft-mobile"
             >
               <Save className="h-4 w-4" />
@@ -9488,7 +10401,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   });
                   setIsTerminateOpen(false);
                   setTerminationDraft(initialTerminationDraft);
-                  onClose();
+                  handleD3Close();
                 } catch (err: any) {
                   toast({
                     title: "Failed to terminate employment",

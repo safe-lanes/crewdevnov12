@@ -110,10 +110,12 @@ export class VesselPlanningRepository {
       .select({
         planning: vesselPlanningV2,
         crewFirstName: crewMembersV2.firstName,
+        crewMiddleName: crewMembersV2.middleName,
         crewFamilyName: crewMembersV2.familyName,
         crewEmpNo: crewMembersV2.empNo,
         crewNationalityName: crewNationality.nationality,
         relieverFirstName: relieverCrew.firstName,
+        relieverMiddleName: relieverCrew.middleName,
         relieverFamilyName: relieverCrew.familyName,
         relieverNationalityName: relieverNationalityTable.nationality,
         signOffPortName: signOffPort.name,
@@ -195,10 +197,24 @@ export class VesselPlanningRepository {
 
     const mapped = validResults.map((row: any) => ({
       ...row.planning,
-      crewMemberName: [row.crewFirstName, row.crewFamilyName].filter(Boolean).join(' ') || null,
+      crewFirstName: row.crewFirstName ?? null,
+      crewMiddleName: row.crewMiddleName ?? null,
+      crewFamilyName: row.crewFamilyName ?? null,
+      crewMemberName:
+        [row.crewFirstName, row.crewMiddleName, row.crewFamilyName]
+          .map((part) => (part || '').trim())
+          .filter(Boolean)
+          .join(' ') || null,
       crewEmpNo: row.crewEmpNo,
       nationality: row.crewNationalityName || null,
-      relieverCrewName: [row.relieverFirstName, row.relieverFamilyName].filter(Boolean).join(' ') || null,
+      relieverFirstName: row.relieverFirstName ?? null,
+      relieverMiddleName: row.relieverMiddleName ?? null,
+      relieverFamilyName: row.relieverFamilyName ?? null,
+      relieverCrewName:
+        [row.relieverFirstName, row.relieverMiddleName, row.relieverFamilyName]
+          .map((part) => (part || '').trim())
+          .filter(Boolean)
+          .join(' ') || null,
       relieverNationality: row.relieverNationalityName || null,
       signOffPortName: row.signOffPortName || null,
       joiningPortName: row.joiningPortName || null,
@@ -235,10 +251,12 @@ export class VesselPlanningRepository {
       .select({
         planning: vesselPlanningV2,
         crewFirstName: crewMembersV2.firstName,
+        crewMiddleName: crewMembersV2.middleName,
         crewFamilyName: crewMembersV2.familyName,
         crewEmpNo: crewMembersV2.empNo,
         crewNationalityName: crewNationality.nationality,
         relieverFirstName: relieverCrew.firstName,
+        relieverMiddleName: relieverCrew.middleName,
         relieverFamilyName: relieverCrew.familyName,
         relieverNationalityName: relieverNationalityTable.nationality,
         signOffPortName: signOffPort.name,
@@ -280,10 +298,24 @@ export class VesselPlanningRepository {
 
     return {
       ...row.planning,
-      crewMemberName: [row.crewFirstName, row.crewFamilyName].filter(Boolean).join(' ') || null,
+      crewFirstName: row.crewFirstName ?? null,
+      crewMiddleName: row.crewMiddleName ?? null,
+      crewFamilyName: row.crewFamilyName ?? null,
+      crewMemberName:
+        [row.crewFirstName, row.crewMiddleName, row.crewFamilyName]
+          .map((part) => (part || '').trim())
+          .filter(Boolean)
+          .join(' ') || null,
       crewEmpNo: row.crewEmpNo,
       nationality: row.crewNationalityName || null,
-      relieverCrewName: [row.relieverFirstName, row.relieverFamilyName].filter(Boolean).join(' ') || null,
+      relieverFirstName: row.relieverFirstName ?? null,
+      relieverMiddleName: row.relieverMiddleName ?? null,
+      relieverFamilyName: row.relieverFamilyName ?? null,
+      relieverCrewName:
+        [row.relieverFirstName, row.relieverMiddleName, row.relieverFamilyName]
+          .map((part) => (part || '').trim())
+          .filter(Boolean)
+          .join(' ') || null,
       relieverNationality: row.relieverNationalityName || null,
       signOffPortName: row.signOffPortName || null,
       joiningPortName: row.joiningPortName || null,

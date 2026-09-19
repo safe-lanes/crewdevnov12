@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { mastersController, dataMasterController, trainingStatusController, trainingCategoryController } from "./controllers";
+import { mastersController, dataMasterController, trainingStatusController, trainingCategoryController, travelDocumentTypeController } from "./controllers";
 import { requirePermission } from "../../middleware/requirePermission";
 
 const router = Router();
@@ -67,6 +67,11 @@ router.post("/training-categories", requirePermission("Masters", "create"), trai
 router.put("/training-categories/group", requirePermission("Masters", "edit"), trainingCategoryController.groupUpdate);
 router.put("/training-categories/:uuid", requirePermission("Masters", "edit"), trainingCategoryController.updateRow);
 router.delete("/training-categories/:uuid", requirePermission("Masters", "delete"), trainingCategoryController.deleteRow);
+
+router.get("/travel-document-types", travelDocumentTypeController.list);
+router.post("/travel-document-types", travelDocumentTypeController.create);
+router.put("/travel-document-types/:uuid", travelDocumentTypeController.updateRow);
+router.delete("/travel-document-types/:uuid", travelDocumentTypeController.deleteRow);
 
 router.get("/data", dataMasterController.listMasters);
 router.get("/data/:id", dataMasterController.getMaster);
