@@ -11,6 +11,13 @@ export interface VesselPlanningV2 {
   rank: string;
   crewUuid: string | null;
   crewName?: string;
+  crewMemberName?: string | null;
+  crewFirstName?: string | null;
+  crewMiddleName?: string | null;
+  crewFamilyName?: string | null;
+  relieverFirstName?: string | null;
+  relieverMiddleName?: string | null;
+  relieverFamilyName?: string | null;
   crewStatus: string;
   signOnDate: string | null;
   reliefDue: string | null;
