@@ -1,32 +1,27 @@
-import { apiFetch } from "./client";
+import { z } from "zod";
+import { apiFetch, parseOrThrow } from "./client";
 
 export type ContentPageKey = "about_us" | "contact_us" | "forum";
 
-export interface ContentPage {
-  contentUuid: string;
-  pageKey: string;
-  title: string | null;
-  bodyHtml: string | null;
-  isPublished: boolean | null;
-}
-
-async function parseOrThrow<T>(res: Response, fallbackError: string): Promise<T> {
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || fallbackError);
-  }
-  return data as T;
-}
+const contentPageSchema = z.object({
+  contentUuid: z.string(),
+  pageKey: z.string(),
+  title: z.string().nullable(),
+  bodyHtml: z.string().nullable(),
+  isPublished: z.boolean().nullable(),
+});
+export type ContentPage = z.infer<typeof contentPageSchema>;
+const contentPageListSchema = z.array(contentPageSchema);
 
 export const contentApi = {
   async getPage(pageKey: ContentPageKey): Promise<ContentPage> {
     const res = await apiFetch(`/api/crew-app/content/${pageKey}`);
-    return parseOrThrow<ContentPage>(res, "Failed to load page");
+    return parseOrThrow(res, "Failed to load page", contentPageSchema);
   },
 
   async listAllForAdmin(): Promise<ContentPage[]> {
     const res = await apiFetch("/api/crew-app/content");
-    return parseOrThrow<ContentPage[]>(res, "Failed to load content pages");
+    return parseOrThrow(res, "Failed to load content pages", contentPageListSchema);
   },
 
   async upsertPage(
@@ -37,6 +32,6 @@ export const contentApi = {
       method: "PUT",
       body: JSON.stringify(body),
     });
-    return parseOrThrow<ContentPage>(res, "Failed to save page");
+    return parseOrThrow(res, "Failed to save page", contentPageSchema);
   },
 };

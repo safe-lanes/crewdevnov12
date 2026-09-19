@@ -1,0 +1,30 @@
+{
+  "cli": {
+    "version": ">= 13.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://REPLACE_WITH_DEV_API_ORIGIN"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://REPLACE_WITH_STAGING_API_ORIGIN"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://REPLACE_WITH_PRODUCTION_API_ORIGIN"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

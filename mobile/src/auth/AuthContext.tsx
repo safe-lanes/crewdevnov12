@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { tokenStore } from "./tokenStore";
 import { authApi } from "../api/authApi";
+import { queryClient } from "../queryClient";
 
 export type AuthStatus = "loading" | "loggedOut" | "mustResetPassword" | "loggedIn";
 
@@ -63,6 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { refreshToken } = tokenStore.get();
     await authApi.logout({ refreshToken: refreshToken ?? undefined });
     await tokenStore.clear();
+    // So the next login on this device (a different crew member) never sees
+    // this session's cached crew-information.
+    queryClient.clear();
   }, []);
 
   const setPassword = useCallback(async (currentPassword: string, newPassword: string) => {
@@ -70,23 +74,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await tokenStore.set({ mustResetPassword: false });
   }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        status,
-        crewUuid,
-        userType,
-        firstName,
-        familyName,
-        isAdmin: userType === "Admin",
-        login,
-        logout,
-        setPassword,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      status,
+      crewUuid,
+      userType,
+      firstName,
+      familyName,
+      isAdmin: userType === "Admin",
+      login,
+      logout,
+      setPassword,
+    }),
+    [status, crewUuid, userType, firstName, familyName, login, logout, setPassword],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

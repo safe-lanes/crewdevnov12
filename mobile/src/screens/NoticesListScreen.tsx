@@ -1,45 +1,37 @@
-import React, { useCallback, useState } from "react";
-import { View, Text, FlatList, Pressable, StyleSheet, RefreshControl } from "react-native";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { noticesApi, Notice } from "../api/noticesApi";
+import React, { useCallback } from "react";
+import { View, Text, FlatList, Pressable, StyleSheet, RefreshControl, ActivityIndicator } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { noticesApi } from "../api/noticesApi";
 import { useAuth } from "../auth/AuthContext";
-import { palette } from "../components/CrewUI";
+import { palette, StateView } from "../components/CrewUI";
+import { usePaginatedList } from "../hooks/usePaginatedList";
 
 export default function NoticesListScreen() {
   const navigation = useNavigation<any>();
   const { isAdmin } = useAuth();
-  const [notices, setNotices] = useState<Notice[]>([]);
-  const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = isAdmin ? await noticesApi.listAllForAdmin() : await noticesApi.list();
-      setNotices(data);
-    } catch {
-      // best-effort
-    } finally {
-      setLoading(false);
-    }
-  }, [isAdmin]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
+  const fetchPage = useCallback(
+    (limit: number, offset: number) =>
+      isAdmin ? noticesApi.listAllForAdmin({ limit, offset }) : noticesApi.list({ limit, offset }),
+    [isAdmin],
   );
+  const { items: notices, loading, loadingMore, error, retry: load, loadMore } = usePaginatedList(fetchPage, [isAdmin]);
 
   return (
     <View style={styles.container}>
-      {notices.length === 0 && !loading ? (
-          <View style={styles.empty}>
-           <Text style={styles.emptyTitle}>No notices published</Text>
-        </View>
-      ) : (
+      <StateView
+        loading={loading && notices.length === 0}
+        error={error}
+        retry={load}
+        empty={!error && notices.length === 0 ? "No notices published" : undefined}
+      >
         <FlatList
           data={notices}
           keyExtractor={(item) => item.noticeUuid}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+          onEndReachedThreshold={0.4}
+          onEndReached={loadMore}
+          ListFooterComponent={loadingMore ? <ActivityIndicator color={palette.teal} style={styles.footer} /> : null}
           renderItem={({ item }) => (
             <Pressable
               accessibilityRole="button"
@@ -54,7 +46,7 @@ export default function NoticesListScreen() {
             </Pressable>
           )}
         />
-      )}
+      </StateView>
 
       {isAdmin ? (
         <Pressable
@@ -79,6 +71,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: .72, transform: [{ scale: .99 }] },
   title: { fontSize: 15, fontWeight: "800", color: palette.ink },
   draft: { fontSize: 10, color: palette.amber, fontWeight: "900", letterSpacing: 1, marginTop: 5 },
+  footer: { marginVertical: 20 },
   fab: {
     position: "absolute",
     right: 16,

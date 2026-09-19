@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import WelcomeBanner from "../components/WelcomeBanner";
 import { noticesApi, Notice } from "../api/noticesApi";
-import { crewInformationApi } from "../api/crewInformationApi";
 import { palette, StateView } from "../components/CrewUI";
+import { useAsyncOnFocus } from "../hooks/useAsyncOnFocus";
+import { useCrewInformationQuery } from "../hooks/useCrewInformationQuery";
 
 const actions = [
   ["My Profile", "Crew details and family", "profile", "CrewProfile"],
@@ -27,22 +28,22 @@ function CrewIcon({ kind, label }: { kind: string; label: string }) {
   );
 }
 export default function HomeScreen() {
-  const navigation = useNavigation<any>(); const [notices, setNotices] = useState<Notice[]>([]); const [info, setInfo] = useState<any>(); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const navigation = useNavigation<any>(); const [notices, setNotices] = useState<Notice[]>([]);
+  const infoQuery = useCrewInformationQuery();
+  const info = infoQuery.data;
+  const { loading: noticesLoading, retry: retryNotices } = useAsyncOnFocus(async () => {
+    // Best-effort, same as before: a notices failure shouldn't block the
+    // rest of the dashboard — only crew-information (below) surfaces as
+    // a real error, notices just falls back to "No recent notices".
     try {
-      const [noticeResult, infoResult] = await Promise.allSettled([noticesApi.list(), crewInformationApi.get()]);
-      setNotices(noticeResult.status === "fulfilled" ? noticeResult.value.slice(0, 3) : []);
-      if (infoResult.status === "rejected") throw infoResult.reason;
-      setInfo(infoResult.value);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
+      setNotices((await noticesApi.list({ limit: 3 })).items);
+    } catch {
+      setNotices([]);
     }
   }, []);
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  const loading = infoQuery.isLoading || noticesLoading;
+  const error = infoQuery.error ? (infoQuery.error as Error).message : "";
+  const load = () => { infoQuery.refetch(); retryNotices(); };
   const sections = info?.sections || {};
   const profileMissing = ["particulars", "personal", "contact"].filter(key => !sections[key]).length;
   const expiryCount = ["travelDocuments", "visas", "licenses", "training"].flatMap(key => sections[key] || []).filter((row: any) => {

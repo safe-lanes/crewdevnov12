@@ -1,23 +1,25 @@
-import { rawPost, apiFetch } from "./client";
+import { z } from "zod";
+import { rawPost, apiFetch, parseOrThrow } from "./client";
 
-interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  mustResetPassword: boolean;
-  crew: {
-    crewUuid: string;
-    empNo: string | null;
-    mobile: string | null;
-    email: string | null;
-    userType: string;
-    firstName: string | null;
-    familyName: string | null;
-  };
-}
+const loginResponseSchema = z.object({
+  accessToken: z.string(),
+  refreshToken: z.string(),
+  mustResetPassword: z.boolean(),
+  crew: z.object({
+    crewUuid: z.string(),
+    empNo: z.string().nullable(),
+    mobile: z.string().nullable(),
+    email: z.string().nullable(),
+    userType: z.string(),
+    firstName: z.string().nullable(),
+    familyName: z.string().nullable(),
+  }),
+});
+type LoginResponse = z.infer<typeof loginResponseSchema>;
 
 export const authApi = {
   login(body: { identifier: string; password: string; domain: string; deviceId?: string; deviceLabel?: string }) {
-    return rawPost<LoginResponse>("/api/crew-app/auth/login", body);
+    return rawPost<LoginResponse>("/api/crew-app/auth/login", body, loginResponseSchema);
   },
 
   async logout(body: { refreshToken?: string; allDevices?: boolean }): Promise<void> {
@@ -30,9 +32,6 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify(body),
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.error || "Failed to set password");
-    }
+    await parseOrThrow(res, "Failed to set password");
   },
 };

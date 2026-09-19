@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { crewContentService } from "../services";
 import { contentPageKeySchema, upsertContentPageRequestSchema } from "@shared/v2/crew-app/types";
+import { sendCrewAppError } from "../../errors";
 
 export const crewContentController = {
   async getPage(req: Request, res: Response) {
@@ -13,11 +14,7 @@ export const crewContentController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation failed", details: error.errors });
       }
-      if (error?.message === "Content page not found") {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error fetching crew content page:", error);
-      res.status(500).json({ error: "Failed to fetch content page" });
+      sendCrewAppError(res, error, "Failed to fetch content page", "Error fetching crew content page");
     }
   },
 
@@ -26,8 +23,7 @@ export const crewContentController = {
       const pages = await crewContentService.listAllForAdmin(req.crewUser!.domain);
       res.json(pages);
     } catch (error) {
-      console.error("Error listing crew content pages:", error);
-      res.status(500).json({ error: "Failed to list content pages" });
+      sendCrewAppError(res, error, "Failed to list content pages", "Error listing crew content pages");
     }
   },
 
@@ -41,8 +37,7 @@ export const crewContentController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation failed", details: error.errors });
       }
-      console.error("Error upserting crew content page:", error);
-      res.status(500).json({ error: "Failed to save content page" });
+      sendCrewAppError(res, error, "Failed to save content page", "Error upserting crew content page");
     }
   },
 };

@@ -108,6 +108,10 @@ export const crewProfileService = {
     return crewFamilyRepository.findChildrenByCrewUuid(crewUuid);
   },
 
+  async getChildByUuid(childUuid: string): Promise<CrewChild | undefined> {
+    return crewFamilyRepository.findChildByUuid(childUuid);
+  },
+
   async getNextOfKin(crewUuid: string) {
     await crewMembersService.getByUuid(crewUuid);
     return crewFamilyRepository.findNextOfKinByCrewUuid(crewUuid);

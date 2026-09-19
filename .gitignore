@@ -32,3 +32,6 @@ replit.md
 .private/
 
 logs/
+
+# Env files (never commit secrets)
+.env*

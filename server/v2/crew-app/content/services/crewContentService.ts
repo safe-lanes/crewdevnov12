@@ -1,4 +1,5 @@
 import { CrewContentRepository } from "../repositories";
+import { notFound } from "../../errors";
 import type { ContentPageKey, UpsertContentPageRequest } from "../../../../../shared/v2/crew-app/types";
 
 const crewContentRepository = new CrewContentRepository();
@@ -8,7 +9,7 @@ export const crewContentService = {
   async getPage(domain: string, pageKey: ContentPageKey) {
     const page = await crewContentRepository.findByDomainAndKey(domain, pageKey);
     if (!page || page.isPublished === false) {
-      throw new Error("Content page not found");
+      throw notFound("Content page not found");
     }
     return page;
   },

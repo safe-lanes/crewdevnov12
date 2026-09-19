@@ -1,14 +1,19 @@
 import { Request, Response } from "express";
 import { crewNotificationsService } from "../services";
+import { parsePageParams } from "../../pagination";
+import { sendCrewAppError } from "../../errors";
 
 export const crewNotificationsController = {
   async list(req: Request, res: Response) {
     try {
-      const notifications = await crewNotificationsService.list(req.crewUser!.crewUuid, req.crewUser!.domain);
-      res.json(notifications);
+      const result = await crewNotificationsService.list(
+        req.crewUser!.crewUuid,
+        req.crewUser!.domain,
+        parsePageParams(req.query),
+      );
+      res.json(result);
     } catch (error) {
-      console.error("Error listing crew notifications:", error);
-      res.status(500).json({ error: "Failed to list notifications" });
+      sendCrewAppError(res, error, "Failed to list notifications", "Error listing crew notifications");
     }
   },
 
@@ -17,8 +22,7 @@ export const crewNotificationsController = {
       const count = await crewNotificationsService.unreadCount(req.crewUser!.crewUuid, req.crewUser!.domain);
       res.json({ count });
     } catch (error) {
-      console.error("Error getting unread notification count:", error);
-      res.status(500).json({ error: "Failed to get unread count" });
+      sendCrewAppError(res, error, "Failed to get unread count", "Error getting unread notification count");
     }
   },
 
@@ -27,11 +31,7 @@ export const crewNotificationsController = {
       await crewNotificationsService.markRead(req.params.notificationUuid, req.crewUser!.crewUuid);
       res.status(200).json({ success: true });
     } catch (error: any) {
-      if (error?.message === "Notification not found") {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error marking notification read:", error);
-      res.status(500).json({ error: "Failed to mark notification read" });
+      sendCrewAppError(res, error, "Failed to mark notification read", "Error marking notification read");
     }
   },
 
@@ -40,8 +40,7 @@ export const crewNotificationsController = {
       await crewNotificationsService.markAllRead(req.crewUser!.crewUuid, req.crewUser!.domain);
       res.status(200).json({ success: true });
     } catch (error) {
-      console.error("Error marking all notifications read:", error);
-      res.status(500).json({ error: "Failed to mark all notifications read" });
+      sendCrewAppError(res, error, "Failed to mark all notifications read", "Error marking all notifications read");
     }
   },
 };

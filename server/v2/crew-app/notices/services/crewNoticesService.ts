@@ -1,6 +1,8 @@
 import { CrewNoticesRepository } from "../repositories";
 import { CrewCredentialsRepository } from "../../auth/repositories";
 import { CrewNotificationsRepository } from "../../notifications/repositories";
+import { paginate, type PageParams } from "../../pagination";
+import { notFound } from "../../errors";
 import type { CreateNoticeRequest, UpdateNoticeRequest } from "../../../../../shared/v2/crew-app/types";
 
 const crewNoticesRepository = new CrewNoticesRepository();
@@ -23,18 +25,24 @@ async function fanOutNoticePublished(domain: string, noticeUuid: string, title: 
 }
 
 export const crewNoticesService = {
-  async listPublished(domain: string) {
-    return crewNoticesRepository.listPublishedByDomain(domain);
+  async listPublished(domain: string, page: PageParams) {
+    return paginate(page, (limit, offset) => crewNoticesRepository.listPublishedByDomain(domain, limit, offset));
   },
 
-  async listAllForAdmin(domain: string) {
-    return crewNoticesRepository.listAllByDomain(domain);
+  async listAllForAdmin(domain: string, page: PageParams) {
+    return paginate(page, (limit, offset) => crewNoticesRepository.listAllByDomain(domain, limit, offset));
   },
 
-  async getByUuid(noticeUuid: string, domain: string) {
+  /**
+   * `isAdmin` gates draft visibility, not existence/domain scoping (those
+   * are enforced by findByUuid regardless) — a non-admin fetching a draft's
+   * UUID directly (e.g. a stale link) gets the same "not found" as a truly
+   * nonexistent notice, matching listPublished's filter for everyone else.
+   */
+  async getByUuid(noticeUuid: string, domain: string, isAdmin: boolean) {
     const notice = await crewNoticesRepository.findByUuid(noticeUuid, domain);
-    if (!notice || notice.isDeleted) {
-      throw new Error("Notice not found");
+    if (!notice || notice.isDeleted || (!isAdmin && !notice.isPublished)) {
+      throw notFound("Notice not found");
     }
     return notice;
   },
@@ -50,7 +58,7 @@ export const crewNoticesService = {
   async update(noticeUuid: string, domain: string, data: UpdateNoticeRequest, adminCrewUuid: string) {
     const result = await crewNoticesRepository.update(noticeUuid, domain, data, adminCrewUuid);
     if (!result) {
-      throw new Error("Notice not found");
+      throw notFound("Notice not found");
     }
     if (result.justPublished) {
       await fanOutNoticePublished(domain, result.notice.noticeUuid, result.notice.title);

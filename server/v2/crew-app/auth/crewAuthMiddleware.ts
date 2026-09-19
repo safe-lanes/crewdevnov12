@@ -49,7 +49,7 @@ export function crewAuthMiddleware(req: Request, res: Response, next: NextFuncti
 
   let decoded: { sub: number; crewId: string; domain: string; userType: string };
   try {
-    decoded = jwt.verify(token, ACCESS_TOKEN_SECRET!) as unknown as typeof decoded;
+    decoded = jwt.verify(token, ACCESS_TOKEN_SECRET!, { algorithms: ["HS256"] }) as unknown as typeof decoded;
   } catch (err: any) {
     if (err?.name === "TokenExpiredError") {
       res.status(401).json({ error: "token_expired", message: "Access token has expired" });

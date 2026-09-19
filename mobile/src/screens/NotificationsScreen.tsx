@@ -1,8 +1,8 @@
-import React, { useCallback, useState } from "react";
-import { View, Text, FlatList, Pressable, StyleSheet, RefreshControl } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import React from "react";
+import { View, Text, FlatList, Pressable, StyleSheet, RefreshControl, Alert, ActivityIndicator } from "react-native";
 import { notificationsApi, AppNotification } from "../api/notificationsApi";
-import { palette } from "../components/CrewUI";
+import { palette, StateView } from "../components/CrewUI";
+import { usePaginatedList } from "../hooks/usePaginatedList";
 
 function typeLabel(type: string): string {
   if (type === "notice") return "Notice";
@@ -21,27 +21,18 @@ function BellMark() {
   );
 }
 
+const fetchPage = (limit: number, offset: number) => notificationsApi.list({ limit, offset });
+
 export default function NotificationsScreen() {
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await notificationsApi.list();
-      setNotifications(data);
-    } catch {
-      // best-effort — leave the previous list visible on failure
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  const {
+    items: notifications,
+    setItems: setNotifications,
+    loading,
+    loadingMore,
+    error,
+    retry: load,
+    loadMore,
+  } = usePaginatedList(fetchPage, []);
 
   const onPressItem = async (item: AppNotification) => {
     if (!item.isRead) {
@@ -51,34 +42,37 @@ export default function NotificationsScreen() {
           prev.map((n) => (n.notificationUuid === item.notificationUuid ? { ...n, isRead: true } : n)),
         );
       } catch {
-        // ignore — non-critical
+        Alert.alert("Could not mark as read", "Please try again.");
       }
     }
   };
 
-  if (notifications.length === 0 && !loading) {
-    return (
-      <View style={styles.empty}>
-         <View style={styles.emptyMark}><BellMark /></View>
-         <Text style={styles.emptyTitle}>All clear for now</Text>
-      </View>
-    );
-  }
-
   return (
-    <FlatList
-      contentContainerStyle={styles.list}
-      data={notifications}
-      keyExtractor={(item) => item.notificationUuid}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
-      renderItem={({ item }) => (
-        <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={({ pressed }) => [styles.item, !item.isRead && styles.unread, pressed && styles.pressed]} onPress={() => onPressItem(item)}>
-          <Text style={styles.type}>{typeLabel(item.notificationType)}</Text>
-          <Text style={styles.title}>{item.title}</Text>
-          {item.body ? <Text style={styles.body}>{item.body}</Text> : null}
-        </Pressable>
+    <StateView loading={loading && notifications.length === 0} error={error} retry={load}>
+      {notifications.length === 0 ? (
+        <View style={styles.empty}>
+          <View style={styles.emptyMark}><BellMark /></View>
+          <Text style={styles.emptyTitle}>All clear for now</Text>
+        </View>
+      ) : (
+        <FlatList
+          contentContainerStyle={styles.list}
+          data={notifications}
+          keyExtractor={(item) => item.notificationUuid}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+          onEndReachedThreshold={0.4}
+          onEndReached={loadMore}
+          ListFooterComponent={loadingMore ? <ActivityIndicator color={palette.teal} style={styles.footer} /> : null}
+          renderItem={({ item }) => (
+            <Pressable accessibilityRole="button" accessibilityLabel={`Open ${item.title}`} style={({ pressed }) => [styles.item, !item.isRead && styles.unread, pressed && styles.pressed]} onPress={() => onPressItem(item)}>
+              <Text style={styles.type}>{typeLabel(item.notificationType)}</Text>
+              <Text style={styles.title}>{item.title}</Text>
+              {item.body ? <Text style={styles.body}>{item.body}</Text> : null}
+            </Pressable>
+          )}
+        />
       )}
-    />
+    </StateView>
   );
 }
 
@@ -97,4 +91,5 @@ const styles = StyleSheet.create({
   type: { fontSize: 10, color: palette.teal, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase" },
   title: { fontSize: 15, fontWeight: "800", color: palette.ink, marginTop: 5 },
   body: { fontSize: 13, color: palette.muted, marginTop: 5, lineHeight: 19 },
+  footer: { marginVertical: 20 },
 });

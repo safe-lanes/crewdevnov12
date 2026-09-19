@@ -1,41 +1,37 @@
-import { apiFetch } from "./client";
+import { z } from "zod";
+import { apiFetch, parseOrThrow } from "./client";
+import { Page, pageQuery, pageSchema } from "./pagination";
 
-export interface Notice {
-  noticeUuid: string;
-  title: string;
-  body: string;
-  isPublished: boolean | null;
-  publishedAt: string | null;
-  createdAt: string | null;
-}
-
-async function parseOrThrow<T>(res: Response, fallbackError: string): Promise<T> {
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || fallbackError);
-  }
-  return data as T;
-}
+const noticeSchema = z.object({
+  noticeUuid: z.string(),
+  title: z.string(),
+  body: z.string(),
+  isPublished: z.boolean().nullable(),
+  publishedAt: z.string().nullable(),
+  createdAt: z.string().nullable(),
+});
+export type Notice = z.infer<typeof noticeSchema>;
+const noticePageSchema = pageSchema(noticeSchema);
 
 export const noticesApi = {
-  async list(): Promise<Notice[]> {
-    const res = await apiFetch("/api/crew-app/notices");
-    return parseOrThrow<Notice[]>(res, "Failed to load notices");
+  async list(page?: { limit?: number; offset?: number }): Promise<Page<Notice>> {
+    const res = await apiFetch(`/api/crew-app/notices${pageQuery(page)}`);
+    return parseOrThrow(res, "Failed to load notices", noticePageSchema);
   },
 
-  async listAllForAdmin(): Promise<Notice[]> {
-    const res = await apiFetch("/api/crew-app/notices/admin");
-    return parseOrThrow<Notice[]>(res, "Failed to load notices");
+  async listAllForAdmin(page?: { limit?: number; offset?: number }): Promise<Page<Notice>> {
+    const res = await apiFetch(`/api/crew-app/notices/admin${pageQuery(page)}`);
+    return parseOrThrow(res, "Failed to load notices", noticePageSchema);
   },
 
   async get(noticeUuid: string): Promise<Notice> {
     const res = await apiFetch(`/api/crew-app/notices/${noticeUuid}`);
-    return parseOrThrow<Notice>(res, "Failed to load notice");
+    return parseOrThrow(res, "Failed to load notice", noticeSchema);
   },
 
   async create(body: { title: string; body: string; isPublished?: boolean }): Promise<Notice> {
     const res = await apiFetch("/api/crew-app/notices", { method: "POST", body: JSON.stringify(body) });
-    return parseOrThrow<Notice>(res, "Failed to create notice");
+    return parseOrThrow(res, "Failed to create notice", noticeSchema);
   },
 
   async update(
@@ -46,7 +42,7 @@ export const noticesApi = {
       method: "PUT",
       body: JSON.stringify(body),
     });
-    return parseOrThrow<Notice>(res, "Failed to update notice");
+    return parseOrThrow(res, "Failed to update notice", noticeSchema);
   },
 
   async remove(noticeUuid: string): Promise<void> {

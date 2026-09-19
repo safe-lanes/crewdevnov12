@@ -42,6 +42,11 @@ const ACCESS_TOKEN_TTL = (process.env.CREW_APP_ACCESS_TOKEN_TTL || "15m") as Sig
 const REFRESH_TOKEN_TTL = "45d";
 const REFRESH_TOKEN_TTL_MS = 45 * 24 * 60 * 60 * 1000;
 const BCRYPT_SALT_ROUNDS = 12;
+// Computed once at startup, purely so the "identifier not found" login path
+// can burn a comparable amount of time to a real bcrypt.compare() below —
+// otherwise the two paths are timing-distinguishable, letting an attacker
+// enumerate valid identifiers even though both return the same error text.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("timing-equalization-only-never-a-real-password", BCRYPT_SALT_ROUNDS);
 
 interface CrewAccessTokenPayload {
   sub: number;
@@ -118,7 +123,10 @@ export const crewAuthService = {
         const credential = await crewCredentialsRepository.findByIdentifierAndDomain(identifier, domain);
 
         // Same generic error for "not found" and "wrong password" — no user enumeration.
+        // The dummy compare below equalizes timing with the real bcrypt.compare()
+        // further down, so the two cases aren't distinguishable by response latency.
         if (!credential || credential.isActive === false) {
+          await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
           throw new Error("Invalid credentials");
         }
 
@@ -161,7 +169,7 @@ export const crewAuthService = {
 
     let decoded: CrewRefreshTokenPayload;
     try {
-      decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET!) as unknown as CrewRefreshTokenPayload;
+      decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET!, { algorithms: ["HS256"] }) as unknown as CrewRefreshTokenPayload;
     } catch {
       throw new Error("Invalid refresh token");
     }
@@ -179,6 +187,16 @@ export const crewAuthService = {
         }
 
         if (consumed.expiresAt.getTime() < Date.now()) {
+          throw new Error("Invalid refresh token");
+        }
+
+        // The token was issued to a specific device. A refresh presented with a
+        // different (or missing) deviceId than the one on record means someone
+        // other than the original device has this refresh token — treat it the
+        // same as reuse/replay and kill the whole session family.
+        if (consumed.deviceId && consumed.deviceId !== deviceId) {
+          await crewRefreshTokensRepository.revokeAllForCredential(decoded.sub);
+          console.warn(`[crewAuthService] Refresh device mismatch for credential ${decoded.sub}`);
           throw new Error("Invalid refresh token");
         }
 

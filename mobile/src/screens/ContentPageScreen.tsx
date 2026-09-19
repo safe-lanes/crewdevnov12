@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet } from "react-native";
-import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { contentApi, ContentPage, ContentPageKey } from "../api/contentApi";
 import { useAuth } from "../auth/AuthContext";
 import { palette } from "../components/CrewUI";
+import { useAsyncOnFocus } from "../hooks/useAsyncOnFocus";
 
 const TITLES: Record<ContentPageKey, string> = {
   about_us: "About Us",
@@ -19,31 +20,15 @@ export default function ContentPageScreen() {
   const pageKey: ContentPageKey = route.params.pageKey;
 
   const [page, setPage] = useState<ContentPage | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const { loading, error } = useAsyncOnFocus(async () => {
     try {
       const data = await contentApi.getPage(pageKey);
       setPage(data);
     } catch (err: any) {
-      if (err?.message === "Content page not found") {
-        setError("This page hasn't been set up yet.");
-      } else {
-        setError(err?.message ?? "Failed to load page");
-      }
-    } finally {
-      setLoading(false);
+      throw new Error(err?.message === "Content page not found" ? "This page hasn't been set up yet." : err?.message);
     }
   }, [pageKey]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

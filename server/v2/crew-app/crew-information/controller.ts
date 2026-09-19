@@ -24,10 +24,37 @@ import {
   crewSeaServiceService,
   crewVisasService,
 } from "../../crew-pool/services";
+import {
+  CrewDocumentsRepository,
+  CrewVisasRepository,
+  CrewEducationRepository,
+  CrewLicensesRepository,
+  CrewTrainingRepository,
+  CrewSeaServiceRepository,
+  CrewMedicalRepository,
+  CrewBriefingRepository,
+} from "../../crew-pool/repositories";
 import { MastersRepository } from "../../masters/repositories/mastersRepository";
 import { fileStorageService } from "../../shared/fileStorageService";
 
 const mastersRepository = new MastersRepository();
+
+// Used by getInformation() below, to fetch each collection directly instead
+// of through its service's getAll()/getLicenses()/etc. — those each
+// redundantly re-verify the crew exists (crewMembersService.getByUuid) before
+// their real query. getFullProfile() already does that check once, as one of
+// the same Promise.all below, so 10 more identical existence-check queries
+// firing alongside it is pure waste on this app's most-loaded endpoint.
+// infoLicensesRepository/infoTrainingRepository are also reused by
+// attachmentsByCollection below (DELETE's per-record attachment lookup).
+const infoDocumentsRepository = new CrewDocumentsRepository();
+const infoVisasRepository = new CrewVisasRepository();
+const infoEducationRepository = new CrewEducationRepository();
+const infoLicensesRepository = new CrewLicensesRepository();
+const infoTrainingRepository = new CrewTrainingRepository();
+const infoSeaServiceRepository = new CrewSeaServiceRepository();
+const infoMedicalRepository = new CrewMedicalRepository();
+const infoBriefingRepository = new CrewBriefingRepository();
 
 const mobileAuditFields = {
   createdByUuid: true,
@@ -142,9 +169,8 @@ interface CollectionAdapter {
 const collections: Record<CollectionName, CollectionAdapter> = {
   children: {
     list: crewUuid => crewProfileService.getChildren(crewUuid),
-    get: async (recordUuid, crewUuid) => {
-      const children = await crewProfileService.getChildren(crewUuid);
-      const child = children.find(row => row.childUuid === recordUuid);
+    get: async (recordUuid) => {
+      const child = await crewProfileService.getChildByUuid(recordUuid);
       if (!child) throw new Error("Child not found");
       return child;
     },
@@ -255,16 +281,16 @@ export async function getInformation(req: Request, res: Response): Promise<void>
       medicals, doctorVisits, briefings, debriefings,
     ] = await Promise.all([
       crewProfileService.getFullProfile(crewUuid),
-      crewDocumentsService.getAll(crewUuid),
-      crewVisasService.getAll(crewUuid),
-      crewEducationService.getAll(crewUuid),
-      crewCertificatesService.getLicenses(crewUuid),
-      crewCertificatesService.getTraining(crewUuid),
-      crewSeaServiceService.getAll(crewUuid),
-      crewMedicalService.getMedicals(crewUuid),
-      crewMedicalService.getDoctorVisits(crewUuid),
-      crewBriefingService.getBriefings(crewUuid),
-      crewBriefingService.getDebriefings(crewUuid),
+      infoDocumentsRepository.findByCrewUuidWithAttachments(crewUuid),
+      infoVisasRepository.findByCrewUuidWithAttachments(crewUuid),
+      infoEducationRepository.findByCrewUuidWithAttachments(crewUuid),
+      infoLicensesRepository.findByCrewUuidWithAttachments(crewUuid),
+      infoTrainingRepository.findByCrewUuidWithAttachments(crewUuid),
+      infoSeaServiceRepository.findByCrewUuidWithAttachments(crewUuid),
+      infoMedicalRepository.findMedicalsByCrewUuidWithAttachments(crewUuid),
+      infoMedicalRepository.findVisitsByCrewUuidWithAttachments(crewUuid),
+      infoBriefingRepository.findBriefingsByCrewUuidWithAttachments(crewUuid),
+      infoBriefingRepository.findDebriefingsByCrewUuidWithAttachments(crewUuid),
     ]);
 
     res.json({
@@ -390,17 +416,22 @@ function isCollectionName(value: string): value is CollectionName {
   return Object.prototype.hasOwnProperty.call(collections, value);
 }
 
-function collectionRecordUuid(name: CollectionName, row: any): string | undefined {
-  const keys: Record<CollectionName, string> = {
-    children: "childUuid",
-    documents: "docUuid",
-    visas: "visaUuid",
-    education: "eduUuid",
-    licenses: "licUuid",
-    training: "trainUuid",
-    "sea-service": "seaUuid",
-  };
-  return row?.[keys[name]];
+// Fetches just the attachments for one record, for DELETE's cleanup step —
+// deliberately not adapter.list(), which would re-fetch the crew member's
+// entire collection (plus a second batched attachment query across all of
+// it) just to find the one record being deleted.
+const attachmentsByCollection: Partial<Record<CollectionName, (recordUuid: string) => Promise<any[]>>> = {
+  documents: recordUuid => crewDocumentsService.getAttachments(recordUuid),
+  visas: recordUuid => crewVisasService.getAttachments(recordUuid),
+  education: recordUuid => crewEducationService.getAttachments(recordUuid),
+  licenses: recordUuid => infoLicensesRepository.findAttachmentsByLicUuid(recordUuid),
+  training: recordUuid => infoTrainingRepository.findAttachmentsByTrainUuid(recordUuid),
+  "sea-service": recordUuid => crewSeaServiceService.getAttachments(recordUuid),
+};
+
+async function attachmentsForRecord(name: CollectionName, recordUuid: string): Promise<any[]> {
+  const fn = attachmentsByCollection[name];
+  return fn ? fn(recordUuid) : [];
 }
 
 export async function collectionHandler(req: Request, res: Response): Promise<void> {
@@ -441,11 +472,9 @@ export async function collectionHandler(req: Request, res: Response): Promise<vo
       return;
     }
     if (req.method === "DELETE") {
-      const fullTarget = (await adapter.list(crewUuid)).find(
-        (row) => collectionRecordUuid(name, row) === req.params.uuid,
-      );
+      const attachments = await attachmentsForRecord(name, req.params.uuid);
       await adapter.remove(req.params.uuid);
-      await Promise.all((fullTarget?.attachments || []).map((attachment: any) => {
+      await Promise.all(attachments.map((attachment: any) => {
         const path = attachment?.filePath;
         return path && !path.startsWith("data:")
           ? fileStorageService.deleteAttachment(path)

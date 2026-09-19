@@ -6,6 +6,12 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": ["**/*"],
+    "icon": "./assets/login-ocean.png",
+    "splash": {
+      "image": "./assets/login-ocean.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#12324A"
+    },
     "plugins": [
       [
         "expo-image-picker",
@@ -17,10 +23,16 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sail.crewapp"
+      "bundleIdentifier": "com.sail.crewapp",
+      "buildNumber": "1.0.0"
     },
     "android": {
-      "package": "com.sail.crewapp"
+      "package": "com.sail.crewapp",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/login-ocean.png",
+        "backgroundColor": "#12324A"
+      }
     }
   }
 }

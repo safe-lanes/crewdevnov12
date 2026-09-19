@@ -5,7 +5,7 @@ import { appCrewNotices } from "../../../../../shared/v2/crew-app/schema";
 import type { AppCrewNotice, CreateNoticeRequest, UpdateNoticeRequest } from "../../../../../shared/v2/crew-app/types";
 
 export class CrewNoticesRepository {
-  async listPublishedByDomain(domain: string): Promise<AppCrewNotice[]> {
+  async listPublishedByDomain(domain: string, limit: number, offset: number): Promise<AppCrewNotice[]> {
     const db = getDb();
     return db
       .select()
@@ -17,16 +17,20 @@ export class CrewNoticesRepository {
           eq(appCrewNotices.isDeleted, false),
         ),
       )
-      .orderBy(desc(appCrewNotices.publishedAt));
+      .orderBy(desc(appCrewNotices.publishedAt))
+      .limit(limit)
+      .offset(offset);
   }
 
-  async listAllByDomain(domain: string): Promise<AppCrewNotice[]> {
+  async listAllByDomain(domain: string, limit: number, offset: number): Promise<AppCrewNotice[]> {
     const db = getDb();
     return db
       .select()
       .from(appCrewNotices)
       .where(and(eq(appCrewNotices.domain, domain), eq(appCrewNotices.isDeleted, false)))
-      .orderBy(desc(appCrewNotices.createdAt));
+      .orderBy(desc(appCrewNotices.createdAt))
+      .limit(limit)
+      .offset(offset);
   }
 
   async findByUuid(noticeUuid: string, domain: string): Promise<AppCrewNotice | undefined> {

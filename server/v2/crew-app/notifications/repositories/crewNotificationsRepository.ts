@@ -15,7 +15,7 @@ export interface NewNotification {
 }
 
 export class CrewNotificationsRepository {
-  async listForCrew(crewUuid: string, domain: string): Promise<AppCrewNotification[]> {
+  async listForCrew(crewUuid: string, domain: string, limit: number, offset: number): Promise<AppCrewNotification[]> {
     const db = getDb();
     return db
       .select()
@@ -27,7 +27,9 @@ export class CrewNotificationsRepository {
           eq(appCrewNotifications.isDeleted, false),
         ),
       )
-      .orderBy(desc(appCrewNotifications.createdAt));
+      .orderBy(desc(appCrewNotifications.createdAt))
+      .limit(limit)
+      .offset(offset);
   }
 
   async unreadCountForCrew(crewUuid: string, domain: string): Promise<number> {

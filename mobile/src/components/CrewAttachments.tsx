@@ -11,8 +11,9 @@ import {
   LocalCrewFile,
 } from "../api/crewInformationApi";
 import { Button, palette, StateView, styles } from "./CrewUI";
+import { useCancelableTransfer } from "../hooks/useCancelableTransfer";
 
-const MAX_BYTES = 5 * 1024 * 1024;
+const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg"];
 
 function formatBytes(raw: string | null): string {
@@ -31,9 +32,9 @@ function typeFromName(name: string, declared?: string | null): string {
   return declared || "application/octet-stream";
 }
 
-function validateLocalFile(file: LocalCrewFile): string | null {
+function validateLocalFile(file: LocalCrewFile, maxBytes: number): string | null {
   if (!ALLOWED_TYPES.includes(file.type)) return "Only PDF, PNG, and JPEG files are allowed.";
-  if (file.size && file.size > MAX_BYTES) return "The selected file exceeds the 5 MB size limit.";
+  if (file.size && file.size > maxBytes) return `The selected file exceeds the ${Math.round(maxBytes / (1024 * 1024))} MB size limit.`;
   return null;
 }
 
@@ -41,10 +42,13 @@ export default function CrewAttachments({
   collection,
   parentUuid,
   writable,
+  maxBytes = DEFAULT_MAX_BYTES,
 }: {
   collection: string;
   parentUuid: string;
   writable: boolean;
+  /** From the server's attachmentRules.maxBytes — falls back to a sane default if the caller doesn't have it yet. */
+  maxBytes?: number;
 }) {
   const [attachments, setAttachments] = useState<CrewAttachment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,60 +57,38 @@ export default function CrewAttachments({
   const [status, setStatus] = useState<"idle" | "uploading" | "failed" | "success" | "downloading" | "cancelled">("idle");
   const [message, setMessage] = useState("");
   const retryFile = useRef<LocalCrewFile | null>(null);
-  const cancelTransfer = useRef<null | (() => void)>(null);
-  const transferLock = useRef(false);
-  const operationId = useRef(0);
-  const mounted = useRef(true);
   const retrySince = useRef<number | null>(null);
+  const transfer = useCancelableTransfer();
 
   const load = useCallback(async () => {
-    if (mounted.current) { setLoading(true); setError(""); }
+    if (transfer.isMounted()) { setLoading(true); setError(""); }
     try {
       const rows = await crewInformationApi.listAttachments(collection, parentUuid);
-      if (mounted.current) setAttachments(rows);
+      if (transfer.isMounted()) setAttachments(rows);
     } catch (reason: any) {
-      if (mounted.current) setError(reason.message);
+      if (transfer.isMounted()) setError(reason.message);
     } finally {
-      if (mounted.current) setLoading(false);
+      if (transfer.isMounted()) setLoading(false);
     }
-  }, [collection, parentUuid]);
+  }, [collection, parentUuid, transfer]);
 
-  useEffect(() => {
-    mounted.current = true;
-    load();
-    return () => {
-      mounted.current = false;
-      cancelTransfer.current?.();
-      operationId.current += 1;
-      cancelTransfer.current = null;
-      transferLock.current = false;
-    };
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   const startUpload = async (file: LocalCrewFile) => {
-    if (!mounted.current || transferLock.current) return;
-    const validation = validateLocalFile(file);
+    if (!transfer.isMounted() || transfer.isBusy()) return;
+    const validation = validateLocalFile(file, maxBytes);
     if (validation) {
       retryFile.current = null;
       setStatus("failed");
       setMessage(validation);
       return;
     }
-    transferLock.current = true;
-    const currentOperation = ++operationId.current;
-    let cancelUnderlying: null | (() => void) = null;
-    cancelTransfer.current = () => {
-      if (operationId.current !== currentOperation) return;
-      operationId.current += 1;
-      cancelUnderlying?.();
-      cancelTransfer.current = null;
-      transferLock.current = false;
-      if (mounted.current) {
-        setStatus("cancelled");
-        setMessage("Upload cancelled");
-        setTimeout(() => { if (mounted.current) load(); }, 500);
-      }
-    };
+    const handle = transfer.begin(() => {
+      setStatus("cancelled");
+      setMessage("Upload cancelled");
+      setTimeout(() => { if (transfer.isMounted()) load(); }, 500);
+    });
+    if (!handle) return;
     retryFile.current = file;
     setStatus("uploading");
     setMessage(`Uploading ${file.name}`);
@@ -116,7 +98,7 @@ export default function CrewAttachments({
       // Refresh an expired token before XHR starts; XHR is retained for native
       // upload progress and cancellation.
       const before = await crewInformationApi.listAttachments(collection, parentUuid);
-      if (operationId.current !== currentOperation || !mounted.current) return;
+      if (!handle.isCurrent()) return;
       if (retrySince.current) {
         const reconciled = before.find((item) =>
           (!file.size || item.fileSize === String(file.size)) &&
@@ -134,10 +116,10 @@ export default function CrewAttachments({
         }
       }
       startedAt = Date.now();
-      const transfer = crewInformationApi.uploadAttachment(collection, parentUuid, file, setProgress);
-      cancelUnderlying = transfer.cancel;
-      const uploaded = await transfer.promise;
-      if (operationId.current !== currentOperation || !mounted.current) return;
+      const xfer = crewInformationApi.uploadAttachment(collection, parentUuid, file, setProgress);
+      handle.setCancel(xfer.cancel);
+      const uploaded = await xfer.promise;
+      if (!handle.isCurrent()) return;
       retryFile.current = null;
       retrySince.current = null;
       setAttachments((current) => [...current, uploaded]);
@@ -145,7 +127,7 @@ export default function CrewAttachments({
       setProgress(100);
       setMessage(`${uploaded.fileName} uploaded`);
     } catch (reason: any) {
-      if (operationId.current !== currentOperation || !mounted.current) return;
+      if (!handle.isCurrent()) return;
       if (reason?.cancelled) {
         setStatus("cancelled");
         setMessage("Upload cancelled");
@@ -155,25 +137,26 @@ export default function CrewAttachments({
         setMessage(reason.message || "Upload failed");
       }
     } finally {
-      if (operationId.current === currentOperation) {
-        cancelTransfer.current = null;
-        transferLock.current = false;
-      }
+      handle.finish();
     }
   };
 
   const pickPhoto = async () => {
     if (Platform.OS !== "web") {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!mounted.current) return;
+      if (!transfer.isMounted()) return;
       if (!permission.granted) {
         setStatus("failed");
         setMessage("Photo access is required to choose an image.");
         return;
       }
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 1 });
-    if (!mounted.current || result.canceled) return;
+    // quality: 1 (no compression) routinely produces camera-roll photos over
+    // the 5MB cap, which the validation below then just rejects outright —
+    // 0.7 keeps images visually fine for document/certificate photos while
+    // giving most shots real headroom under the limit.
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.7 });
+    if (!transfer.isMounted() || result.canceled) return;
     const asset = result.assets[0];
     const name = asset.fileName || `crew-photo-${Date.now()}.jpg`;
     await startUpload({ uri: asset.uri, name, type: typeFromName(name, asset.mimeType), size: asset.fileSize, file: asset.file });
@@ -185,30 +168,20 @@ export default function CrewAttachments({
       copyToCacheDirectory: true,
       multiple: false,
     });
-    if (!mounted.current || result.canceled) return;
+    if (!transfer.isMounted() || result.canceled) return;
     const asset = result.assets[0];
     await startUpload({ uri: asset.uri, name: asset.name, type: typeFromName(asset.name, asset.mimeType), size: asset.size, file: asset.file });
   };
 
-  const cancel = () => cancelTransfer.current?.();
+  const cancel = () => transfer.cancel();
 
   const retry = () => {
     if (retryFile.current) startUpload(retryFile.current);
   };
 
   const openAttachment = async (attachment: CrewAttachment, download: boolean) => {
-    if (transferLock.current) return;
-    transferLock.current = true;
-    const currentOperation = ++operationId.current;
-    let cancelUnderlying: null | (() => void) = null;
-    cancelTransfer.current = () => {
-      if (operationId.current !== currentOperation) return;
-      operationId.current += 1;
-      cancelUnderlying?.();
-      cancelTransfer.current = null;
-      transferLock.current = false;
-      if (mounted.current) { setStatus("cancelled"); setMessage("Transfer cancelled"); }
-    };
+    const handle = transfer.begin(() => { setStatus("cancelled"); setMessage("Transfer cancelled"); });
+    if (!handle) return;
     setStatus("downloading");
     setProgress(0);
     setMessage(`${download ? "Downloading" : "Opening"} ${attachment.fileName}`);
@@ -216,11 +189,11 @@ export default function CrewAttachments({
       // Refreshes an expired token through the shared authenticated client and
       // confirms the attachment is still available before native download.
       await crewInformationApi.listAttachments(collection, parentUuid);
-      if (operationId.current !== currentOperation || !mounted.current) return;
+      if (!handle.isCurrent()) return;
       const path = crewInformationApi.attachmentPath(collection, parentUuid, attachment.attUuid);
       if (Platform.OS === "web") {
         const controller = new AbortController();
-        cancelUnderlying = () => controller.abort();
+        handle.setCancel(() => controller.abort());
         const response = await apiFetch(path, { signal: controller.signal });
         if (!response.ok) throw new Error("Unable to download this attachment");
         const blob = await response.blob();
@@ -238,7 +211,7 @@ export default function CrewAttachments({
         const safeName = attachment.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
         const destination = `${FileSystem.cacheDirectory}crew-${attachment.attUuid}-${safeName}`;
         const downloadNative = async (refreshed: boolean): Promise<string> => {
-          if (operationId.current !== currentOperation || !mounted.current) {
+          if (!handle.isCurrent()) {
             throw Object.assign(new Error("Download cancelled"), { cancelled: true });
           }
           const request = crewInformationApi.authorizedAttachmentUrl(collection, parentUuid, attachment.attUuid);
@@ -247,15 +220,15 @@ export default function CrewAttachments({
             destination,
             { headers: request.headers },
             ({ totalBytesWritten, totalBytesExpectedToWrite }) => {
-              if (operationId.current === currentOperation && totalBytesExpectedToWrite > 0) setProgress(Math.round((totalBytesWritten / totalBytesExpectedToWrite) * 100));
+              if (handle.isCurrent() && totalBytesExpectedToWrite > 0) setProgress(Math.round((totalBytesWritten / totalBytesExpectedToWrite) * 100));
             },
           );
-          cancelUnderlying = () => { void resumable.pauseAsync(); };
+          handle.setCancel(() => { void resumable.pauseAsync(); });
           const result = await resumable.downloadAsync();
           if (!result) throw Object.assign(new Error("Download cancelled"), { cancelled: true });
           if (result.status === 401 && !refreshed) {
             const didRefresh = await refreshCrewSession();
-            if (operationId.current !== currentOperation || !mounted.current) {
+            if (!handle.isCurrent()) {
               throw Object.assign(new Error("Download cancelled"), { cancelled: true });
             }
             if (didRefresh) return downloadNative(true);
@@ -265,27 +238,24 @@ export default function CrewAttachments({
         };
         try {
           const uri = await downloadNative(false);
-          if (operationId.current !== currentOperation || !mounted.current) return;
+          if (!handle.isCurrent()) return;
           if (!(await Sharing.isAvailableAsync())) throw new Error("No app is available to open this file.");
           await Sharing.shareAsync(uri, { mimeType: attachment.fileType || undefined, dialogTitle: download ? "Save attachment" : "Open attachment" });
         } finally {
           await FileSystem.deleteAsync(destination, { idempotent: true }).catch(() => {});
         }
       }
-      if (operationId.current !== currentOperation || !mounted.current) return;
+      if (!handle.isCurrent()) return;
       setStatus("success");
       setProgress(100);
       setMessage(`${attachment.fileName} is ready`);
     } catch (reason: any) {
-      if (operationId.current !== currentOperation || !mounted.current) return;
+      if (!handle.isCurrent()) return;
       const cancelled = reason?.cancelled || reason?.name === "AbortError";
       setStatus(cancelled ? "cancelled" : "failed");
       setMessage(cancelled ? "Transfer cancelled" : reason?.message || "Transfer failed");
     } finally {
-      if (operationId.current === currentOperation) {
-        cancelTransfer.current = null;
-        transferLock.current = false;
-      }
+      handle.finish();
     }
   };
 
@@ -295,9 +265,7 @@ export default function CrewAttachments({
       {
         text: "Delete",
         style: "destructive",
-        onPress: async () => {
-          if (transferLock.current) return;
-          transferLock.current = true;
+        onPress: () => transfer.withLock(async () => {
           try {
             await crewInformationApi.removeAttachment(collection, parentUuid, attachment.attUuid);
             setAttachments((current) => current.filter((item) => item.attUuid !== attachment.attUuid));
@@ -306,10 +274,8 @@ export default function CrewAttachments({
           } catch (reason: any) {
             setStatus("failed");
             setMessage(reason.message || "Could not delete attachment");
-          } finally {
-            transferLock.current = false;
           }
-        },
+        }),
       },
     ]);
   };
@@ -317,7 +283,7 @@ export default function CrewAttachments({
   const active = status === "uploading" || status === "downloading";
   return <View style={{ marginTop: 24 }}>
     <Text style={styles.sectionHeader}>Files</Text>
-    <Text style={styles.subtitle}>PDF, PNG, or JPEG. Maximum file size 5 MB.</Text>
+    <Text style={styles.subtitle}>PDF, PNG, or JPEG. Maximum file size {Math.round(maxBytes / (1024 * 1024))} MB.</Text>
     {writable ? <View style={{ flexDirection: "row", gap: 10 }}>
       <View style={{ flex: 1 }}><Button title="Choose photo" secondary disabled={active} onPress={pickPhoto} /></View>
       <View style={{ flex: 1 }}><Button title="Choose file" secondary disabled={active} onPress={pickDocument} /></View>

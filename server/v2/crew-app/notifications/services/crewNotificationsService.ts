@@ -6,6 +6,8 @@ import { CrewNotificationsRepository } from "../repositories";
 import type { NewNotification } from "../repositories";
 import { CrewCredentialsRepository } from "../../auth/repositories";
 import { crewVisas, crewDocuments } from "../../../../../shared/v2/crew-pool/schema";
+import { paginate, type PageParams } from "../../pagination";
+import { notFound } from "../../errors";
 
 const crewNotificationsRepository = new CrewNotificationsRepository();
 const crewCredentialsRepository = new CrewCredentialsRepository();
@@ -14,8 +16,8 @@ const EXPIRY_WARNING_DAYS = parseInt(process.env.CREW_APP_NOTIFICATION_EXPIRY_DA
 
 export const crewNotificationsService = {
   /** Runs inside the tenant context established by crewAuthMiddleware. */
-  async list(crewUuid: string, domain: string) {
-    return crewNotificationsRepository.listForCrew(crewUuid, domain);
+  async list(crewUuid: string, domain: string, page: PageParams) {
+    return paginate(page, (limit, offset) => crewNotificationsRepository.listForCrew(crewUuid, domain, limit, offset));
   },
 
   async unreadCount(crewUuid: string, domain: string) {
@@ -25,7 +27,7 @@ export const crewNotificationsService = {
   async markRead(notificationUuid: string, crewUuid: string) {
     const updated = await crewNotificationsRepository.markRead(notificationUuid, crewUuid);
     if (!updated) {
-      throw new Error("Notification not found");
+      throw notFound("Notification not found");
     }
   },
 

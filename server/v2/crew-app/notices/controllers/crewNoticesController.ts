@@ -2,38 +2,38 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { crewNoticesService } from "../services";
 import { createNoticeRequestSchema, updateNoticeRequestSchema } from "@shared/v2/crew-app/types";
+import { parsePageParams } from "../../pagination";
+import { sendCrewAppError } from "../../errors";
 
 export const crewNoticesController = {
   async list(req: Request, res: Response) {
     try {
-      const notices = await crewNoticesService.listPublished(req.crewUser!.domain);
-      res.json(notices);
+      const result = await crewNoticesService.listPublished(req.crewUser!.domain, parsePageParams(req.query));
+      res.json(result);
     } catch (error) {
-      console.error("Error listing crew notices:", error);
-      res.status(500).json({ error: "Failed to list notices" });
+      sendCrewAppError(res, error, "Failed to list notices", "Error listing crew notices");
     }
   },
 
   async listAllForAdmin(req: Request, res: Response) {
     try {
-      const notices = await crewNoticesService.listAllForAdmin(req.crewUser!.domain);
-      res.json(notices);
+      const result = await crewNoticesService.listAllForAdmin(req.crewUser!.domain, parsePageParams(req.query));
+      res.json(result);
     } catch (error) {
-      console.error("Error listing crew notices for admin:", error);
-      res.status(500).json({ error: "Failed to list notices" });
+      sendCrewAppError(res, error, "Failed to list notices", "Error listing crew notices for admin");
     }
   },
 
   async getByUuid(req: Request, res: Response) {
     try {
-      const notice = await crewNoticesService.getByUuid(req.params.noticeUuid, req.crewUser!.domain);
+      const notice = await crewNoticesService.getByUuid(
+        req.params.noticeUuid,
+        req.crewUser!.domain,
+        req.crewUser!.userType === "Admin",
+      );
       res.json(notice);
     } catch (error: any) {
-      if (error?.message === "Notice not found") {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error fetching crew notice:", error);
-      res.status(500).json({ error: "Failed to fetch notice" });
+      sendCrewAppError(res, error, "Failed to fetch notice", "Error fetching crew notice");
     }
   },
 
@@ -46,8 +46,7 @@ export const crewNoticesController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation failed", details: error.errors });
       }
-      console.error("Error creating crew notice:", error);
-      res.status(500).json({ error: "Failed to create notice" });
+      sendCrewAppError(res, error, "Failed to create notice", "Error creating crew notice");
     }
   },
 
@@ -65,11 +64,7 @@ export const crewNoticesController = {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation failed", details: error.errors });
       }
-      if (error?.message === "Notice not found") {
-        return res.status(404).json({ error: error.message });
-      }
-      console.error("Error updating crew notice:", error);
-      res.status(500).json({ error: "Failed to update notice" });
+      sendCrewAppError(res, error, "Failed to update notice", "Error updating crew notice");
     }
   },
 
@@ -78,8 +73,7 @@ export const crewNoticesController = {
       await crewNoticesService.remove(req.params.noticeUuid, req.crewUser!.domain, req.crewUser!.crewUuid);
       res.status(200).json({ success: true });
     } catch (error) {
-      console.error("Error deleting crew notice:", error);
-      res.status(500).json({ error: "Failed to delete notice" });
+      sendCrewAppError(res, error, "Failed to delete notice", "Error deleting crew notice");
     }
   },
 };

@@ -73,6 +73,20 @@ export class CrewFamilyRepository {
   }
 
   // ============ Children (1:N) ============
+  async findChildByUuid(childUuid: string): Promise<CrewChild | undefined> {
+    const db = getDb();
+    const results = await db
+      .select()
+      .from(crewChildren)
+      .where(
+        and(
+          eq(crewChildren.childUuid, childUuid),
+          eq(crewChildren.isDeleted, false)
+        )
+      );
+    return results[0];
+  }
+
   async findChildrenByCrewUuid(crewUuid: string): Promise<CrewChild[]> {
     const db = getDb();
     return db

@@ -19,3 +19,7 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+
+# Env files (never commit secrets)
+.env*
+!.env.example
