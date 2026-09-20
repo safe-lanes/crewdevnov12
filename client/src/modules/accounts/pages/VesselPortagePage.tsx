@@ -620,7 +620,7 @@ export default function VesselPortagePage() {
               isInfo: true,
             });
           }
-          cols.push({ id: "total", header: "Total", editable: false, isInfo: true });
+          cols.push({ id: "total", header: "Vessel Total", editable: false, isInfo: true });
           return cols;
         }
         case "allotment":

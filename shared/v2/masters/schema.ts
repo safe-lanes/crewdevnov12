@@ -133,3 +133,41 @@ export const groupUpdateTrainingCategorySchema = z.object({
   auditUserUuid: z.string().nullish(),
 });
 export type GroupUpdateTrainingCategory = z.infer<typeof groupUpdateTrainingCategorySchema>;
+
+export const masterTravelDocumentTypes = pgTable("master_travel_document_types", {
+  id: serial("id").primaryKey(),
+  mtdtUuid: text("mtdt_uuid").notNull().unique(),
+  entryId: text("entry_id").notNull().unique(),
+  name: text("name").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  ...auditColumns,
+});
+
+export const insertMasterTravelDocumentTypeSchema = createInsertSchema(masterTravelDocumentTypes).omit({
+  id: true,
+  mtdtUuid: true,
+  entryId: true,
+  createdAt: true,
+  updatedAt: true,
+  createdByUuid: true,
+  updatedByUuid: true,
+  isDeleted: true,
+  isSync: true,
+});
+
+export type InsertMasterTravelDocumentType = z.infer<typeof insertMasterTravelDocumentTypeSchema>;
+export type MasterTravelDocumentType = typeof masterTravelDocumentTypes.$inferSelect;
+
+// API payloads
+export const createTravelDocumentTypePayloadSchema = z.object({
+  name: z.string().trim().min(1, "Document type name is required"),
+  auditUserUuid: z.string().nullish(),
+});
+export type CreateTravelDocumentTypePayload = z.infer<typeof createTravelDocumentTypePayloadSchema>;
+
+export const updateTravelDocumentTypeRowSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  isActive: z.boolean().optional(),
+  auditUserUuid: z.string().nullish(),
+});
+export type UpdateTravelDocumentTypeRow = z.infer<typeof updateTravelDocumentTypeRowSchema>;

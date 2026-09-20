@@ -91,7 +91,7 @@ export class TrainingNeedsRepository {
         b7i.status,
         b7i.due_date AS target_date,
         b7i.comments,
-        TRIM(CONCAT_WS(' ', rc.first_name, rc.family_name)) AS name,
+        TRIM(CONCAT_WS(' ', rc.first_name, rc.middle_name, rc.family_name)) AS name,
         rc.present_rank AS rank,
         ov.status AS overlay_status,
         ov.comments AS overlay_comments,
@@ -121,7 +121,20 @@ export class TrainingNeedsRepository {
         tf.status,
         tf.target_date,
         tf.comment AS comments,
-        ar.seafarers_name AS name,
+        COALESCE(
+          (
+            SELECT MAX(NULLIF(TRIM(CONCAT_WS(' ', cm.first_name, cm.middle_name, cm.family_name)), ''))
+            FROM crew_members_v2 cm
+            WHERE cm.is_deleted = FALSE
+              AND (
+                cm.emp_no = ar.crew_member_id
+                OR cm.crew_uuid = ar.crew_member_id
+                OR cm.id::text = ar.crew_member_id
+              )
+            HAVING COUNT(*) = 1
+          ),
+          ar.seafarers_name
+        ) AS name,
         ar.seafarers_rank AS rank
       FROM appr_training_followups_v2 tf
       JOIN appraisal_results_v2 ar ON tf.appraisal_uuid = ar.appraisal_uuid AND ar.is_deleted = FALSE
@@ -139,7 +152,7 @@ export class TrainingNeedsRepository {
         tn.category,
         tn.status,
         tn.completion_date AS target_date,
-        TRIM(CONCAT_WS(' ', cm.first_name, cm.family_name)) AS name,
+        TRIM(CONCAT_WS(' ', cm.first_name, cm.middle_name, cm.family_name)) AS name,
         cm.present_rank AS rank,
         ov.status AS overlay_status,
         ov.comments AS overlay_comments
@@ -158,12 +171,22 @@ export class TrainingNeedsRepository {
     const otherRowsRaw = await db
       .select({
         row: trainingNeedsOtherV2,
+        resolvedName: sql<string | null>`(
+          SELECT NULLIF(TRIM(CONCAT_WS(' ', cm.first_name, cm.middle_name, cm.family_name)), '')
+          FROM crew_members_v2 cm
+          WHERE cm.emp_no = ${trainingNeedsOtherV2.crewMemberId}
+            AND cm.is_deleted = FALSE
+        )`,
         resolvedIdentifiedBy: sql<string | null>`COALESCE(${masterUsers.fullname}, ${masterUsers.displayName}, ${trainingNeedsOtherV2.identifiedBy})`,
       })
       .from(trainingNeedsOtherV2)
       .leftJoin(masterUsers, eq(masterUsers.userUuid, trainingNeedsOtherV2.identifiedByUuid))
       .where(eq(trainingNeedsOtherV2.isDeleted, false));
-    const otherRows = otherRowsRaw.map((r: { row: TrainingNeedOther; resolvedIdentifiedBy: string | null }) => ({ ...r.row, resolvedIdentifiedBy: r.resolvedIdentifiedBy }));
+    const otherRows = otherRowsRaw.map((r: { row: TrainingNeedOther; resolvedName: string | null; resolvedIdentifiedBy: string | null }) => ({
+      ...r.row,
+      resolvedName: r.resolvedName,
+      resolvedIdentifiedBy: r.resolvedIdentifiedBy,
+    }));
 
     const result: AggregatedTrainingNeed[] = [];
 
@@ -235,7 +258,7 @@ export class TrainingNeedsRepository {
       result.push({
         source: r.sourceLabel || "Others",
         sourceRefUuid: r.tnoUuid,
-        name: r.name,
+        name: r.resolvedName || r.name,
         rank: r.rank,
         training: r.training,
         correspondingInDb: r.correspondingInDb,

@@ -376,7 +376,7 @@ export function DrugAlcoholTestForm_v2({
         id: crew.crewUuid || crew.id || `crew-${Date.now()}-${Math.random()}`,
         crewId: crew.crewUuid || null,
         rank: crew.presentRank || '',
-        name: `${crew.firstName || ''} ${crew.familyName || ''}`.trim(),
+        name: [crew.firstName, crew.middleName, crew.familyName].filter(Boolean).join(' ').trim(),
         alcoholTest: { checked: false, date: '', time: '' },
         alcoholResults: '',
         alcoholViolation: false,
@@ -725,7 +725,7 @@ export function DrugAlcoholTestForm_v2({
 
         if (!crew) return witnessId;
 
-        const name = `${crew.firstName || ''} ${crew.familyName || ''}`.trim();
+        const name = [crew.firstName, crew.middleName, crew.familyName].filter(Boolean).join(' ').trim();
         const rank = crew.presentRank || '';
 
         return rank ? `${name}, ${rank}` : name;
@@ -1960,7 +1960,7 @@ export function DrugAlcoholTestForm_v2({
                                   const getCrewDisplayName = (crewId: string) => {
                                     const crew = vesselCrew.find((c: any) => c.crewUuid === crewId || c.id === crewId);
                                     if (!crew) return crewId;
-                                    const name = `${crew.firstName || ''} ${crew.familyName || ''}`.trim();
+                                    const name = [crew.firstName, crew.middleName, crew.familyName].filter(Boolean).join(' ').trim();
                                     const rank = crew.presentRank || '';
                                     return rank ? `${name}, ${rank}` : name;
                                   };
@@ -1984,7 +1984,7 @@ export function DrugAlcoholTestForm_v2({
                                           {vesselCrew.map((crew, crewIndex) => {
                                             const uniqueKey = crew.id || `crew-${crewIndex}-${crew.firstName}-${crew.familyName}`;
                                             const uniqueValue = crew.id || `crew-${crewIndex}`;
-                                            const name = `${crew.firstName || ''} ${crew.familyName || ''}`.trim();
+                                            const name = [crew.firstName, crew.middleName, crew.familyName].filter(Boolean).join(' ').trim();
                                             const rank = crew.presentRank || '';
                                             const displayText = rank ? `${name}, ${rank}` : name;
                                             return (

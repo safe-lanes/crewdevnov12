@@ -193,6 +193,18 @@ export default function PayElementsPage() {
       });
       return;
     }
+    if (
+      form.effectiveFrom &&
+      form.effectiveTo &&
+      form.effectiveTo < form.effectiveFrom
+    ) {
+      toast({
+        title: "Invalid effective dates",
+        description: "Effective to must be on or after effective from.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
       if (editingUuid) {
@@ -562,6 +574,7 @@ export default function PayElementsPage() {
               <Input
                 type="date"
                 value={form.effectiveTo}
+                min={form.effectiveFrom || undefined}
                 onChange={(e) => set("effectiveTo", e.target.value)}
                 data-testid="input-element-effective-to"
               />

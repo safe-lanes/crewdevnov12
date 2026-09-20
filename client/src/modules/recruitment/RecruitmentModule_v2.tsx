@@ -438,6 +438,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
       {
         headerName: 'First Name',
         field: 'firstName',
+        initialHide: true,
         flex: 1,
         minWidth: 100,
         cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
@@ -448,6 +449,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
       {
         headerName: 'Family Name',
         field: 'familyName',
+        initialHide: true,
         flex: 1,
         minWidth: 100,
         cellStyle: { fontSize: isPhone ? '11px' : '13px', color: '#4f5863' },
@@ -521,7 +523,7 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         filter: 'agTextColumnFilter',
         sortable: true,
         resizable: true,
-        hide: isTablet
+        initialHide: true
       });
     }
 
@@ -585,6 +587,30 @@ export const RecruitmentModuleV2 = (): JSX.Element => {
         enableRowGroup: false
       });
     }
+
+    baseColumns.splice(1, 0, {
+      headerName: 'Full Name',
+      colId: 'fullName',
+      initialHide: false,
+      valueGetter: (params) =>
+        [
+          params.data?.firstName,
+          params.data?.middleName,
+          params.data?.familyName,
+        ]
+          .map((part) => (part ?? '').trim())
+          .filter(Boolean)
+          .join(' '),
+      flex: 1,
+      minWidth: 160,
+      cellStyle: {
+        fontSize: isPhone ? '11px' : '13px',
+        color: '#4f5863',
+      },
+      filter: 'agTextColumnFilter',
+      sortable: true,
+      resizable: true,
+    });
 
     return baseColumns;
   }, [ActionsCellRenderer, normalizeRank, isPhone, isTablet, isSmallScreen, selectedRecruitmentPage]);

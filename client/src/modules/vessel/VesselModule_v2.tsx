@@ -514,10 +514,14 @@ const TravelEndDateArchivedCell: React.FC<{ planning: any }> = ({ planning }) =>
 
 const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
     const planningAny = planning as any;
-    const crewMemberName = planningAny.crewMemberName || planning.crewName;
-    const nameParts = crewMemberName ? crewMemberName.split(' ') : [];
-    const firstName = nameParts[0] || '';
-    const familyName = nameParts.slice(1).join(' ') || '';
+    const crewMemberName = planning.crewMemberName || planning.crewName;
+    const firstName = (planning.crewFirstName ?? '').trim();
+    const middleName = (planning.crewMiddleName ?? '').trim();
+    const familyName = (planning.crewFamilyName ?? '').trim();
+    const hasStructuredCrewName =
+        planning.crewFirstName !== undefined &&
+        planning.crewMiddleName !== undefined &&
+        planning.crewFamilyName !== undefined;
     
     return {
         id: planning.planUuid,
@@ -534,8 +538,10 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         crewMemberName: crewMemberName,
         onBoardCrewName: crewMemberName,
         firstName: firstName,
+        middleName: middleName,
         familyName: familyName,
         lastName: familyName,
+        hasStructuredCrewName: hasStructuredCrewName,
         crewEmpNo: planningAny.crewEmpNo || '',
         employeeId: planningAny.crewEmpNo || '',
         nationality: planningAny.nationality || '',
@@ -558,6 +564,9 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         relieverCrewId: planning.relieverCrewUuid,
         relieverCrewUuid: planning.relieverCrewUuid,
         relieverCrewName: planning.relieverCrewName,
+        relieverFirstName: (planning.relieverFirstName ?? '').trim(),
+        relieverMiddleName: (planning.relieverMiddleName ?? '').trim(),
+        relieverFamilyName: (planning.relieverFamilyName ?? '').trim(),
         relieverHasPriorJoiningPromotion: planningAny.relieverHasPriorJoiningPromotion,
         relieverPromotionToRank: planningAny.relieverPromotionToRank,
         relieverSignOnDate: planning.relieverSignOnDate,
@@ -1488,17 +1497,23 @@ export function VesselModule_v2(): JSX.Element {
             return;
         }
         
-        const nameParts = (crew.crewMemberName || '').split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
+        if (!buttonConfig.appraisalId && !crew.hasStructuredCrewName) {
+            toast({
+                title: "Crew name details are not loaded",
+                description:
+                    "Refresh the Vessel page and try again before creating a new appraisal.",
+                variant: "destructive",
+            });
+            return;
+        }
         
         const crewForAppraisal = {
             id: crew.crewMemberId || crew.crewUuid,
             employeeId: crew.crewEmpNo || crew.employeeId || '',
             name: {
-                first: crew.firstName || firstName,
-                middle: crew.middleName || '',
-                last: crew.familyName || crew.lastName || lastName
+                first: crew.firstName ?? '',
+                middle: crew.middleName ?? '',
+                last: crew.familyName ?? '',
             },
             rank: crewRank,
             nationality: crew.nationality || '',

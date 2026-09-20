@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -11,11 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Search, Loader2, CheckCircle2 } from 'lucide-react';
-import {
-  TRAVEL_DOCUMENT_TEMPLATES,
-  mapApiResponseToTravelDocumentTemplates,
-  type TravelDocumentTemplate,
-} from '@/utils/data/travelDocumentTemplates';
+import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
+import { useTravelDocumentTypesV2 } from '@/hooks/v2/useMasterDataV2';
 
 interface TravelDocumentSelectionDialogProps {
   open: boolean;
@@ -33,25 +29,11 @@ export function TravelDocumentSelectionDialog({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
 
-  const { data: apiTemplates = [], isLoading } = useQuery<Array<{
-    entryId: string;
-    name: string;
-  }>>({
-    queryKey: ['/api/v2/masters/data', '018', 'entries'],
-    queryFn: async () => {
-      const response = await fetch('/api/v2/masters/data/018/entries');
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      return response.json();
-    },
-    enabled: open,
-  });
-
-  const templates = useMemo(() => {
-    if (apiTemplates.length > 0) {
-      return mapApiResponseToTravelDocumentTemplates(apiTemplates);
-    }
-    return TRAVEL_DOCUMENT_TEMPLATES;
-  }, [apiTemplates]);
+  const { data: rows = [], isLoading } = useTravelDocumentTypesV2({ enabled: open });
+  const templates: TravelDocumentTemplate[] = useMemo(
+    () => rows.filter(r => r.isActive).map(r => ({ id: r.entryId, name: r.name })),
+    [rows],
+  );
 
   const filteredTemplates = useMemo(() => {
     if (!searchTerm) return templates;

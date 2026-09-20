@@ -202,7 +202,7 @@ export const VariableTaskForm = ({
       const crewItem = {
         id,
         rank: rankAsOfDate,
-        name: `${crew.firstName || ''} ${crew.familyName || crew.lastName || ''}`.trim(),
+        name: [crew.firstName, crew.middleName, crew.familyName || crew.lastName].filter(Boolean).join(' '),
         rankData,
       };
 
