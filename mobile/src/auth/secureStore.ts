@@ -1,4 +1,5 @@
 import * as SecureStore from "expo-secure-store";
+import { randomUUID } from "expo-crypto";
 import { Platform } from "react-native";
 
 // Wrappers around expo-secure-store (NOT AsyncStorage — tokens must not sit
@@ -103,7 +104,6 @@ export async function clearAuthState(): Promise<void> {
 export async function getDeviceId(): Promise<string> {
   const existing = await getItem(KEYS.deviceId);
   if (existing) return existing;
-  const { randomUUID } = await import("expo-crypto");
   const id = randomUUID();
   await setItem(KEYS.deviceId, id);
   return id;

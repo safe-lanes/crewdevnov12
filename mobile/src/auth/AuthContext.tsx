@@ -3,7 +3,9 @@ import { tokenStore } from "./tokenStore";
 import { authApi } from "../api/authApi";
 import { queryClient } from "../queryClient";
 
-export type AuthStatus = "loading" | "loggedOut" | "mustResetPassword" | "loggedIn";
+export type AuthStatus = "loading" | "loggedOut" | "mustResetPassword" | "loggedIn" | "error";
+
+const HYDRATION_ERROR_MESSAGE = "We couldn't start the app. Please check your connection and try again.";
 
 interface AuthContextValue {
   status: AuthStatus;
@@ -12,6 +14,8 @@ interface AuthContextValue {
   firstName: string | null;
   familyName: string | null;
   isAdmin: boolean;
+  hydrationError: string | null;
+  retryHydration: () => void;
   login: (identifier: string, password: string, domain: string) => Promise<void>;
   logout: () => Promise<void>;
   setPassword: (currentPassword: string, newPassword: string) => Promise<void>;
@@ -32,6 +36,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userType, setUserType] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string | null>(null);
   const [familyName, setFamilyName] = useState<string | null>(null);
+  const [hydrationError, setHydrationError] = useState<string | null>(null);
+
+  const runHydrate = useCallback(() => {
+    setStatus("loading");
+    setHydrationError(null);
+    tokenStore.hydrate().catch((err) => {
+      console.error("[AuthContext] Failed to hydrate auth state:", err);
+      setHydrationError(HYDRATION_ERROR_MESSAGE);
+      setStatus("error");
+    });
+  }, []);
 
   useEffect(() => {
     const unsubscribe = tokenStore.subscribe((s) => {
@@ -41,9 +56,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setFirstName(s.firstName);
       setFamilyName(s.familyName);
     });
-    tokenStore.hydrate();
+    runHydrate();
     return unsubscribe;
-  }, []);
+  }, [runHydrate]);
 
   const login = useCallback(async (identifier: string, password: string, domain: string) => {
     const { deviceId } = tokenStore.get();
@@ -82,11 +97,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       firstName,
       familyName,
       isAdmin: userType === "Admin",
+      hydrationError,
+      retryHydration: runHydrate,
       login,
       logout,
       setPassword,
     }),
-    [status, crewUuid, userType, firstName, familyName, login, logout, setPassword],
+    [status, crewUuid, userType, firstName, familyName, hydrationError, runHydrate, login, logout, setPassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -121,6 +121,28 @@ describe("AuthContext status machine", () => {
     await waitFor(() => expect(result.current.status).toBe("loggedOut"));
   });
 
+  test("a hydrate() failure surfaces status 'error' with a friendly message, not a stuck 'loading'", async () => {
+    (tokenStore.hydrate as jest.Mock).mockRejectedValueOnce(new Error("Requiring unknown module \"658\""));
+    const { result } = renderAuth();
+
+    await waitFor(() => expect(result.current.status).toBe("error"));
+    expect(result.current.hydrationError).toBeTruthy();
+    expect(result.current.hydrationError).not.toContain("658");
+  });
+
+  test("retryHydration() recovers from a prior hydrate() failure", async () => {
+    (tokenStore.hydrate as jest.Mock).mockRejectedValueOnce(new Error("boom"));
+    const { result } = renderAuth();
+    await waitFor(() => expect(result.current.status).toBe("error"));
+
+    await act(async () => {
+      result.current.retryHydration();
+    });
+
+    await waitFor(() => expect(result.current.status).toBe("loggedOut"));
+    expect(result.current.hydrationError).toBeNull();
+  });
+
   test("login() with mustResetPassword: true lands on mustResetPassword, not loggedIn", async () => {
     mockedAuthApi.login.mockResolvedValue(crewLoginResult({ mustResetPassword: true, crewUuid: "crew-2" }));
     const { result } = renderAuth();
