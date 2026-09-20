@@ -617,7 +617,7 @@ type D3FirstCreateOperation = {
 
 export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, crewMember, onCrewMemberChange, initialSection, highlightDocUuid, highlightVisaUuid }) => {
   const { toast } = useToast();
-  const { canView, canCreate, canEdit, permissions, roleName, userId, userType, manningAgent: userManningAgent } = usePermissions();
+  const { canView, canCreate, canEdit, permissions, roleName, userId, userType, manningAgent: userManningAgent, isLoading: permissionsLoading } = usePermissions();
   const [briefingSubmissionUuid, setBriefingSubmissionUuid] = useState<string | null>(null);
   const [debriefingSubmissionUuid, setDebriefingSubmissionUuid] = useState<string | null>(null);
   
@@ -1053,15 +1053,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
 
-  const {
-    canView,
-    canEdit,
-    permissions,
-    roleName,
-    userId,
-    manningAgent: userManningAgent,
-    isLoading: permissionsLoading,
-  } = usePermissions();
   const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
 
   const submitter = useMemo<{ name: string; role: string; userId: string }>(() => {
@@ -1156,8 +1147,6 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
     if (permissions.length === 0) return true;
     return canEdit(menuName);
   }, [permissions, canEdit]);
-
-  const canEditCrewDatabase = permissions.length === 0 || canEdit('Crew Database');
 
   const canReadD3Defaults =
     !permissionsLoading && canViewSection('D');
