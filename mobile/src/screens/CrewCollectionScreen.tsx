@@ -18,7 +18,7 @@ function validationErrors(error: any): Record<string, string> {
 function keyboardFor(field: string): any {
   if (field === "email") return "email-address";
   if (/mobile|telephone/i.test(field)) return "phone-pad";
-  if (/sortOrder|periodMonths|yearBuilt|deadweight/i.test(field)) return "numeric";
+  if (/periodMonths|yearBuilt|deadweight/i.test(field)) return "numeric";
   return "default";
 }
 
@@ -27,13 +27,13 @@ const qualificationTabs = ["education", "training", "licenses"];
 const medicalTabs = ["medicals", "doctorVisits"];
 const briefingTabs = ["briefings", "debriefings"];
 const config: Record<string, { title: string; description: string; fields: string[]; readonly?: boolean; tabs?: string[] }> = {
-  documents: { title: "Documents & Visas", description: "Travel documents and entry permissions.", fields: ["documentId", "documentName", "number", "issued", "expiry", "issuingAuthority", "issuingCountryUuid", "sortOrder"], tabs: documentsTabs },
-  visas: { title: "Documents & Visas", description: "Keep permission to travel visible and current.", fields: ["countryUuid", "country", "serialNo", "issued", "expiry", "visaType", "sortOrder"], tabs: documentsTabs },
-  education: { title: "Training & Licenses", description: "Your completed education and qualifications.", fields: ["dateOfCompletion", "institution", "subjectsField", "qualifications", "sortOrder"], tabs: qualificationTabs },
-  licenses: { title: "Training & Licenses", description: "Certificates and professional requirements.", fields: ["licenseId", "certificateDocument", "abbr", "requirement", "certificateNo", "issuingAuthority", "issuingCountryUuid", "issued", "expiry", "sortOrder"], tabs: qualificationTabs },
-  training: { title: "Training & Licenses", description: "Courses and professional certificates that keep you ready for sea.", fields: ["courseId", "trainingCourse", "abbr", "requirement", "certificateNo", "issuingAuthority", "issuingCountryUuid", "issued", "expiry", "sortOrder"], tabs: qualificationTabs },
-  "sea-service": { title: "Sea Service", description: "External service records you have supplied.", fields: ["vesselName", "vesselUuid", "vesselTypeUuid", "imoNumber", "yearBuilt", "deadweight", "engineTypePower", "ownerOperator", "rank", "fromDate", "toDate", "periodMonths", "experienceCategories", "signOffReason", "sortOrder"] },
-  children: { title: "Children", description: "Family details held on your crew profile.", fields: ["firstName", "middleName", "familyName", "dob", "gender", "sortOrder"] },
+  documents: { title: "Documents & Visas", description: "Travel documents and entry permissions.", fields: ["documentId", "documentName", "number", "issued", "expiry", "issuingAuthority", "issuingCountryUuid"], tabs: documentsTabs },
+  visas: { title: "Documents & Visas", description: "Keep permission to travel visible and current.", fields: ["countryUuid", "country", "serialNo", "issued", "expiry", "visaType"], tabs: documentsTabs },
+  education: { title: "Training & Licenses", description: "Your completed education and qualifications.", fields: ["dateOfCompletion", "institution", "subjectsField", "qualifications"], tabs: qualificationTabs },
+  licenses: { title: "Training & Licenses", description: "Certificates and professional requirements.", fields: ["licenseId", "certificateDocument", "abbr", "requirement", "certificateNo", "issuingAuthority", "issuingCountryUuid", "issued", "expiry"], tabs: qualificationTabs },
+  training: { title: "Training & Licenses", description: "Courses and professional certificates that keep you ready for sea.", fields: ["courseId", "trainingCourse", "abbr", "requirement", "certificateNo", "issuingAuthority", "issuingCountryUuid", "issued", "expiry"], tabs: qualificationTabs },
+  "sea-service": { title: "Sea Service", description: "External service records you have supplied.", fields: ["vesselName", "vesselUuid", "vesselTypeUuid", "imoNumber", "yearBuilt", "deadweight", "engineTypePower", "ownerOperator", "rank", "fromDate", "toDate", "periodMonths", "experienceCategories", "signOffReason"] },
+  children: { title: "Children", description: "Family details held on your crew profile.", fields: ["firstName", "middleName", "familyName", "dob", "gender"] },
   medicals: { title: "Medical", description: "Medical examinations provided by your crew team.", fields: ["vesselName", "examinationDate", "bp", "weight", "anyMedicationPrescribed", "clinicHospital", "fitForDuty", "expiryDate"], readonly: true, tabs: medicalTabs },
   doctorVisits: { title: "Medical", description: "Doctor visits recorded by your crew team.", fields: ["vessel", "port", "visitDate", "doctorName", "clinicHospital", "reason", "doctorComments", "diagnosis", "treatment", "followUpDate"], readonly: true, tabs: medicalTabs },
   briefings: { title: "Briefings & Debriefings", description: "Operational briefings assigned to you.", fields: ["vesselName", "joiningRank", "dateSignOn"], readonly: true, tabs: briefingTabs },
@@ -41,6 +41,24 @@ const config: Record<string, { title: string; description: string; fields: strin
 };
 
 const idOf = (row: any) => row?.recordUuid || row?.childUuid || row?.docUuid || row?.visaUuid || row?.eduUuid || row?.licUuid || row?.trainUuid || row?.seaUuid || row?.medUuid || row?.visitUuid || row?.briefingUuid || row?.debriefingUuid || row?.uuid;
+// Server enrichment columns (e.g. `resolvedVesselName`) shadow a genuine field
+// (`vesselName`) when one exists; otherwise they're the only human-readable
+// value available (e.g. `resolvedVesselTypeName` has no plain `vesselType`
+// counterpart) and are kept under a cleaned-up label instead.
+const baseOfResolvedField = (field: string) => { const rest = field.replace(/^resolved/, ""); return rest.charAt(0).toLowerCase() + rest.slice(1); };
+const detailFieldLabel = (field: string) => {
+  const unresolved = /^resolved/.test(field) ? baseOfResolvedField(field).replace(/Name$/, "") || baseOfResolvedField(field) : field;
+  return unresolved.replace(/[A-Z]/g, (m) => ` ${m}`).replace(/^./, (m) => m.toUpperCase());
+};
+const detailFieldsFor = (fields: string[], record: any): string[] => {
+  const genuine = new Set(fields);
+  const candidates = new Set([...fields, ...Object.keys(record).filter((key) => !["readOnly", "recordUuid", "id"].includes(key))]);
+  return Array.from(candidates).filter((field) => {
+    if (["readOnly", "recordUuid", "id", "sortOrder"].includes(field) || /uuid$/i.test(field)) return false;
+    if (/^resolved/.test(field) && genuine.has(baseOfResolvedField(field))) return false;
+    return record[field] !== undefined && record[field] !== null && record[field] !== "";
+  }).slice(0, 24);
+};
 export default function CrewCollectionScreen() {
   const route = useRoute<any>(); const navigation = useNavigation<any>(); const collection = route.params.collection as string; const c = config[collection];
   const infoQuery = useCrewInformationQuery(); const mastersQuery = useCrewInformationMastersQuery();
@@ -101,7 +119,6 @@ function RecordEditor({ collection, config: c, record, masters, attachmentRules,
   const save = async () => { if (actionLock.current || saving || saved || (!isNew && readOnly)) return; actionLock.current = true; const payload = Object.fromEntries(c.fields.flatMap((field: string) => {
     const value = form[field];
     if (value === undefined || value === "") return isNew ? [] : [[field, null]];
-    if (field === "sortOrder") return [[field, Number(value)]];
     if (field === "experienceCategories") return [[field, Array.isArray(value) ? value : String(value).split(",").map(item => item.trim()).filter(Boolean)]];
     return [[field, value]];
   })); setSaving(true); setSaved(false); setErrors({}); try { if (isNew) await crewInformationApi.create(collection, payload); else await crewInformationApi.update(collection, idOf(record), payload); invalidate(); setSaved(true); setTimeout(onDone, 700); } catch (e: any) { actionLock.current = false; const nextErrors = validationErrors(e); setErrors(nextErrors); const first = Object.keys(nextErrors)[0]; if (first) requestAnimationFrame(() => refs.current[first]?.focus?.()); Alert.alert("Could not save", Object.keys(nextErrors).length ? "Some fields need attention. Check the highlighted values and try again." : e.message); } finally { setSaving(false); } };
@@ -110,7 +127,7 @@ function RecordEditor({ collection, config: c, record, masters, attachmentRules,
   const parentUuid = idOf(record);
   const canReadFiles = Boolean(parentUuid && attachmentRules?.readableCollections.includes(attachmentCollection));
   const canWriteFiles = Boolean(canReadFiles && !readOnly && attachmentRules?.writableCollections.includes(attachmentCollection));
-  if (readOnly) { const detailFields = Array.from(new Set([...c.fields, ...Object.keys(record).filter((key) => !["readOnly", "recordUuid", "id"].includes(key) && !/uuid$/i.test(key))])).filter((field) => record[field] !== undefined && record[field] !== null && record[field] !== "").slice(0, 24); return <ScrollView style={styles.screen} contentContainerStyle={styles.content}><Text style={styles.title}>Record details</Text><Text style={styles.subtitle}>Read only</Text>{detailFields.map((field: string) => <View key={field} style={styles.card}><Text style={styles.label}>{field.replace(/[A-Z]/g, m => ` ${m}`).replace(/^./, m => m.toUpperCase())}</Text><Text style={styles.cardMeta}>{String(record[field])}</Text></View>)}{canReadFiles ? <CrewAttachments collection={attachmentCollection} parentUuid={parentUuid} writable={false} maxBytes={attachmentRules?.maxBytes} /> : null}<Button title="Back" secondary onPress={onDone} /></ScrollView>; }
+  if (readOnly) { const detailFields = detailFieldsFor(c.fields, record); return <ScrollView style={styles.screen} contentContainerStyle={styles.content}><Text style={styles.title}>Record details</Text><Text style={styles.subtitle}>Read only</Text>{detailFields.map((field: string) => <View key={field} style={styles.card}><Text style={styles.label}>{detailFieldLabel(field)}</Text><Text style={styles.cardMeta}>{String(record[field])}</Text></View>)}{canReadFiles ? <CrewAttachments collection={attachmentCollection} parentUuid={parentUuid} writable={false} maxBytes={attachmentRules?.maxBytes} /> : null}<Button title="Back" secondary onPress={onDone} /></ScrollView>; }
   const change = (field: string, value: any) => { setSaved(false); setErrors((current) => ({ ...current, [field]: "" })); setForm((current: any) => ({ ...current, [field]: value })); };
   const optionsFor = (field: string) => field === "vesselUuid" ? (masters.vessels || []) : field === "vesselTypeUuid" ? (masters.vesselTypes || []) : ["countryUuid", "issuingCountryUuid"].includes(field) ? (masters.countries || []) : null;
   const cancel = () => dirty ? Alert.alert("Discard changes?", "Your entered data has not been saved.", [{ text: "Keep editing", style: "cancel" }, { text: "Discard", style: "destructive", onPress: onDone }]) : onDone();
