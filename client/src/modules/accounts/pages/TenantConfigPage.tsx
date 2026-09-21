@@ -148,7 +148,7 @@ export default function TenantConfigPage() {
   });
   const bindableElements = payElements.filter(
     (e) =>
-      e.status === "active" &&
+      (e.status === "active" || e.status === "inactive") &&
       (e.calcMethod === "manual_entry" || e.calcMethod === "rate_times_qty"),
   );
 
@@ -432,6 +432,7 @@ export default function TenantConfigPage() {
                             <SelectItem
                               key={e.payElementUuid}
                               value={e.payElementUuid}
+                              disabled={e.status === "inactive"}
                             >
                               {e.code} — {e.name}
                             </SelectItem>
