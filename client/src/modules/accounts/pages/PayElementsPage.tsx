@@ -67,18 +67,18 @@ const emptyForm: ElementForm = {
   code: "",
   name: "",
   description: "",
-  type: "earning",
-  category: "basic",
-  calcMethod: "fixed_amount",
+  type: "",
+  category: "",
+  calcMethod: "",
   percentageBaseElementUuid: "",
   prorate: false,
-  roundingRule: "nearest",
+  roundingRule: "",
   nationalityConditional: false,
   applicableNationalityUuids: [],
   showsOnPayslip: true,
   showsOnPortage: true,
-  paymentTiming: "paid_on_board",
-  status: "active",
+  paymentTiming: "",
+  status: "",
   effectiveFrom: "",
   effectiveTo: "",
   glCode: "",
@@ -189,6 +189,22 @@ export default function PayElementsPage() {
       toast({
         title: "Missing fields",
         description: "Code and name are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      !form.type ||
+      !form.category ||
+      !form.calcMethod ||
+      !form.paymentTiming ||
+      !form.roundingRule ||
+      !form.status
+    ) {
+      toast({
+        title: "Missing fields",
+        description:
+          "Type, category, calculation method, payment timing, rounding rule, and status are required.",
         variant: "destructive",
       });
       return;
@@ -478,6 +494,7 @@ export default function PayElementsPage() {
 
             <DialogSelect
               label="Type"
+              placeholder="Select Type"
               value={form.type}
               options={PAY_ELEMENT_TYPES}
               onChange={(v) => set("type", v)}
@@ -485,6 +502,7 @@ export default function PayElementsPage() {
             />
             <DialogSelect
               label="Category"
+              placeholder="Select Category"
               value={form.category}
               options={PAY_ELEMENT_CATEGORIES}
               onChange={(v) => set("category", v)}
@@ -501,6 +519,7 @@ export default function PayElementsPage() {
             </div>
             <DialogSelect
               label="Calc method"
+              placeholder="Select Calculation Method"
               value={form.calcMethod}
               options={CALC_METHODS}
               onChange={(v) => set("calcMethod", v)}
@@ -508,6 +527,7 @@ export default function PayElementsPage() {
             />
             <DialogSelect
               label="Payment timing"
+              placeholder="Select Payment Timing"
               value={form.paymentTiming}
               options={PAYMENT_TIMINGS}
               onChange={(v) => set("paymentTiming", v)}
@@ -547,6 +567,7 @@ export default function PayElementsPage() {
 
             <DialogSelect
               label="Rounding rule"
+              placeholder="Select Rounding Rule"
               value={form.roundingRule}
               options={ROUNDING_RULES}
               onChange={(v) => set("roundingRule", v)}
@@ -554,6 +575,7 @@ export default function PayElementsPage() {
             />
             <DialogSelect
               label="Status"
+              placeholder="Select Status"
               value={form.status}
               options={PAY_ELEMENT_STATUSES}
               onChange={(v) => set("status", v)}
@@ -731,12 +753,14 @@ function FilterSelect({
 
 function DialogSelect({
   label,
+  placeholder,
   value,
   options,
   onChange,
   testId,
 }: {
   label: string;
+  placeholder: string;
   value: string;
   options: Option[];
   onChange: (v: string) => void;
@@ -746,8 +770,11 @@ function DialogSelect({
     <div className="flex flex-col gap-1.5">
       <Label>{label}</Label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-9" data-testid={testId}>
-          <SelectValue />
+        <SelectTrigger
+          className="h-9 data-[placeholder]:text-muted-foreground"
+          data-testid={testId}
+        >
+          <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
           {options.map((o) => (
