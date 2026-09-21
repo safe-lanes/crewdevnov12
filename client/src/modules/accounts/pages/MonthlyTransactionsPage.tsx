@@ -123,7 +123,7 @@ export default function MonthlyTransactionsPage() {
     () =>
       payElements.filter(
         (e) =>
-          e.status === "active" &&
+          (e.status === "active" || e.status === "inactive") &&
           ["manual_entry", "rate_times_qty"].includes(e.calcMethod),
       ),
     [payElements],
@@ -684,7 +684,11 @@ export default function MonthlyTransactionsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {manualElements.map((e) => (
-                    <SelectItem key={e.payElementUuid} value={e.payElementUuid}>
+                    <SelectItem
+                      key={e.payElementUuid}
+                      value={e.payElementUuid}
+                      disabled={e.status === "inactive"}
+                    >
                       {e.code} — {e.name} ({e.type})
                     </SelectItem>
                   ))}
