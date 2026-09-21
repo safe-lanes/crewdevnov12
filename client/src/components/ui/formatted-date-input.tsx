@@ -34,20 +34,20 @@ export function formatIsoDate(value: string): string {
 }
 
 /**
- * Parse DD-MMM-YYYY or DD-MM-YYYY into the application's canonical
+ * Parse DD-MM-YYYY, DD-MMM-YYYY, DD/MM/YYYY or DD/MMM/YYYY into the application's canonical
  * YYYY-MM-DD value. Parsing is explicit so impossible dates are rejected
  * instead of being rolled into the following month by the Date constructor.
  */
 export function parseManualDate(value: string): string | null {
-  const match = /^(\d{1,2})-([A-Za-z]{3}|\d{1,2})-(\d{4})$/.exec(value.trim());
+  const match = /^(\d{1,2})([-/])([A-Za-z]{3}|\d{1,2})\2(\d{4})$/.exec(value.trim());
   if (!match) return null;
 
   const day = Number(match[1]);
-  const monthToken = match[2];
+  const monthToken = match[3];
   const month = /^\d+$/.test(monthToken)
     ? Number(monthToken)
     : MONTH_INDEX.get(monthToken.toLowerCase());
-  const year = Number(match[3]);
+  const year = Number(match[4]);
 
   if (!month || !isRealDate(year, month, day)) return null;
 
@@ -72,12 +72,29 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
     const lastCanonicalValueRef = React.useRef(value);
     const valueRef = React.useRef(value);
     const openingCalendarRef = React.useRef(false);
+    const calendarChangedRef = React.useRef(false);
+    const errorId = React.useId();
+    const classes = className?.split(/\s+/).filter(Boolean) ?? [];
+    const isWidthClass = (name: string) => /(^|:)!?(?:w|min-w|max-w)-/.test(name);
+    const widthClasses = classes.filter(isWidthClass).join(" ");
+    const controlClasses = classes.filter((name) => !isWidthClass(name)).join(" ");
+
+    const isDraftInvalid = (text: string): boolean => {
+      if (!text.trim()) return false;
+      const canonicalValue = parseManualDate(text);
+      return !canonicalValue
+        || Boolean(min && canonicalValue < min)
+        || Boolean(max && canonicalValue > max);
+    };
 
     React.useEffect(() => {
+      const isOwnChange = value === lastCanonicalValueRef.current;
       valueRef.current = value;
       lastCanonicalValueRef.current = value;
       setDraft(formatIsoDate(value));
-      setIsInvalid(false);
+      setIsInvalid((wasInvalid) =>
+        isOwnChange && wasInvalid && isDraftInvalid(formatIsoDate(value)),
+      );
     }, [value]);
 
     const emitCanonicalChange = (
@@ -95,7 +112,7 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
     const handleManualChange = (event: React.ChangeEvent<HTMLInputElement>) => {
       const nextDraft = event.target.value;
       setDraft(nextDraft);
-      setIsInvalid(false);
+      setIsInvalid((wasInvalid) => wasInvalid && isDraftInvalid(nextDraft));
 
       if (!nextDraft.trim()) {
         emitCanonicalChange("", event);
@@ -113,10 +130,7 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
       if (openingCalendarRef.current) return;
 
       const canonicalValue = parseManualDate(draft);
-      const invalidDate = Boolean(draft.trim()) && !canonicalValue;
-      const outsideMinimum = Boolean(canonicalValue && min && canonicalValue < min);
-      const outsideMaximum = Boolean(canonicalValue && max && canonicalValue > max);
-      setIsInvalid(invalidDate || outsideMinimum || outsideMaximum);
+      setIsInvalid(isDraftInvalid(draft));
 
       if (canonicalValue) {
         setDraft(formatIsoDate(
@@ -136,6 +150,7 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
     };
 
     const handleCalendarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      calendarChangedRef.current = true;
       setDraft(formatIsoDate(event.target.value));
       setIsInvalid(false);
       lastCanonicalValueRef.current = event.target.value;
@@ -144,7 +159,12 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
 
     const handleCalendarBlur = (event: React.FocusEvent<HTMLInputElement>) => {
       openingCalendarRef.current = false;
-      setDraft(formatIsoDate(valueRef.current));
+      if (!calendarChangedRef.current && isDraftInvalid(draft)) {
+        setIsInvalid(true);
+      } else {
+        setDraft(formatIsoDate(valueRef.current));
+      }
+      calendarChangedRef.current = false;
       if (onBlur) {
         const input = event.currentTarget;
         const controlledValue = input.value;
@@ -156,6 +176,7 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
 
     const openCalendar = () => {
       if (disabled) return;
+      calendarChangedRef.current = false;
       openingCalendarRef.current = true;
       calendarInputRef.current?.focus();
       try {
@@ -176,14 +197,15 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
     };
 
     return (
+      <div className={cn("flex w-full min-w-[5.5rem] flex-col", widthClasses)}>
       <div
         ref={ref}
         className={cn(
-          "relative flex items-center h-9 w-full rounded-md border bg-transparent text-sm shadow-sm min-w-[5.5rem]",
+          "relative flex items-center h-9 w-full rounded-md border bg-transparent text-sm shadow-sm min-w-0",
           "focus-within:ring-1 focus-within:ring-ring",
-          isInvalid && "border-red-500",
           disabled && "cursor-not-allowed opacity-60",
-          className
+          controlClasses,
+          isInvalid && "border-red-500"
         )}
       >
         <input
@@ -197,6 +219,7 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
           autoComplete="off"
           aria-label="Date"
           aria-invalid={isInvalid}
+          aria-describedby={isInvalid ? errorId : undefined}
           data-testid={dataTestId ? `${dataTestId}-manual` : undefined}
           className="h-full min-w-0 flex-1 bg-transparent px-3 py-1 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
         />
@@ -226,6 +249,12 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
           className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0"
           tabIndex={-1}
         />
+      </div>
+      {isInvalid && (
+        <p id={errorId} role="alert" className="mt-1 text-xs leading-4 text-red-500">
+          Incorrect date/date format
+        </p>
+      )}
       </div>
     );
   }
