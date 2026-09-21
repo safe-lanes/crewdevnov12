@@ -120,6 +120,18 @@ export default function WageScalesPage() {
       });
       return;
     }
+    if (
+      form.effectiveFrom &&
+      form.effectiveTo &&
+      form.effectiveTo < form.effectiveFrom
+    ) {
+      toast({
+        title: "Invalid effective dates",
+        description: "Effective to must be on or after effective from.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const created = await accountsApiV2.wageScales.create({
@@ -429,6 +441,7 @@ export default function WageScalesPage() {
                 type="date"
                 value={form.effectiveTo}
                 onChange={(e) => set("effectiveTo", e.target.value)}
+                min={form.effectiveFrom || undefined}
                 data-testid="input-scale-effective-to"
               />
             </div>

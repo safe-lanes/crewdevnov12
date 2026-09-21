@@ -27,6 +27,15 @@ function conflictError(message: string): Error {
   return err;
 }
 
+function validateEffectiveDates(
+  effectiveFrom: string | null | undefined,
+  effectiveTo: string | null | undefined,
+): void {
+  if (effectiveFrom && effectiveTo && effectiveTo < effectiveFrom) {
+    throw validationError("Effective to must be on or after effective from");
+  }
+}
+
 /** A CBA floor violation for a single scale line. */
 export type FloorViolation = {
   scaleLineUuid: string;
@@ -144,6 +153,7 @@ export const wageScalesService = {
   ): Promise<AccWageScaleV2> {
     if (!data.scaleName) throw validationError("Scale name is required");
     if (!data.currency) throw validationError("Currency is required");
+    validateEffectiveDates(data.effectiveFrom, data.effectiveTo);
     const dataWithAudit = applyAuditUser({ ...data, status: "draft" }, true);
     return wageScalesRepository.create(dataWithAudit);
   },
@@ -166,6 +176,14 @@ export const wageScalesService = {
           "Only the effective dates can be edited once a scale is no longer a draft",
         );
       }
+    }
+    if (scale.status === "draft") {
+      validateEffectiveDates(
+        data.effectiveFrom === undefined
+          ? scale.effectiveFrom
+          : data.effectiveFrom,
+        data.effectiveTo === undefined ? scale.effectiveTo : data.effectiveTo,
+      );
     }
     const dataWithAudit = applyAuditUser(data, false);
     const updated = await wageScalesRepository.update(scaleUuid, dataWithAudit);
