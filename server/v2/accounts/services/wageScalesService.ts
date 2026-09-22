@@ -188,6 +188,26 @@ export const wageScalesService = {
         data.effectiveTo === undefined ? scale.effectiveTo : data.effectiveTo,
       );
     }
+    if (
+      data.effectiveFrom !== undefined ||
+      data.effectiveTo !== undefined
+    ) {
+      const predecessor =
+        await wageScalesRepository.findPredecessor(scaleUuid);
+      if (predecessor) {
+        const revisionFrom =
+          data.effectiveFrom === undefined
+            ? scale.effectiveFrom
+            : data.effectiveFrom;
+        const dateError = getRevisionDateError(
+          predecessor,
+          revisionFrom,
+        );
+        if (dateError) {
+          throw validationError(dateError);
+        }
+      }
+    }
     const dataWithAudit = applyAuditUser(data, false);
     const updated = await wageScalesRepository.update(scaleUuid, dataWithAudit);
     if (!updated) throw new Error(`Failed to update wage scale: ${scaleUuid}`);
