@@ -106,6 +106,14 @@ export default function WageScaleEditor({
       effTo !== (scale.effectiveTo ?? ""));
 
   const handleSaveDates = async () => {
+    if (isDraft && effFrom && effTo && effTo < effFrom) {
+      toast({
+        title: "Invalid effective dates",
+        description: "Effective to must be on or after effective from.",
+        variant: "destructive",
+      });
+      return;
+    }
     setDatesSaving(true);
     try {
       await accountsApiV2.wageScales.update(scaleUuid, {
@@ -629,6 +637,7 @@ export default function WageScaleEditor({
               type="date"
               value={effTo}
               onChange={(e) => setEffTo(e.target.value)}
+              min={isDraft ? effFrom || undefined : undefined}
               disabled={!mayEdit}
               className="h-8 w-40 text-xs"
               data-testid="input-editor-effective-to"

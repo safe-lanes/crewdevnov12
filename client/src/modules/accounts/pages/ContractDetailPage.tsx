@@ -600,9 +600,16 @@ export default function ContractDetailPage({
                   </SelectTrigger>
                   <SelectContent>
                     {payElements
-                      .filter((e) => e.status === "active")
+                      .filter(
+                        (e) =>
+                          e.status === "active" || e.status === "inactive",
+                      )
                       .map((e) => (
-                        <SelectItem key={e.payElementUuid} value={e.payElementUuid}>
+                        <SelectItem
+                          key={e.payElementUuid}
+                          value={e.payElementUuid}
+                          disabled={e.status === "inactive"}
+                        >
                           {e.code} — {e.name}
                         </SelectItem>
                       ))}
@@ -958,9 +965,16 @@ export default function ContractDetailPage({
                   </SelectTrigger>
                   <SelectContent>
                     {payElements
-                      .filter((e) => e.status === "active")
+                      .filter(
+                        (e) =>
+                          e.status === "active" || e.status === "inactive",
+                      )
                       .map((e) => (
-                        <SelectItem key={e.payElementUuid} value={e.payElementUuid}>
+                        <SelectItem
+                          key={e.payElementUuid}
+                          value={e.payElementUuid}
+                          disabled={e.status === "inactive"}
+                        >
                           {e.code} — {e.name}
                         </SelectItem>
                       ))}
