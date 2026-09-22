@@ -251,6 +251,7 @@ export default function WageScaleEditor({
       field: "__year__",
       pinned: "left",
       width: 150,
+      suppressSizeToFit: true,
       editable: false,
       sortable: false,
       filter: false,
@@ -277,6 +278,7 @@ export default function WageScaleEditor({
       field: "__total__",
       pinned: "right",
       width: 130,
+      suppressSizeToFit: true,
       editable: false,
       sortable: false,
       filter: false,
@@ -313,7 +315,6 @@ export default function WageScaleEditor({
   };
 
   // --- column management ---
-  const [colToAdd, setColToAdd] = useState("");
   const INELIGIBLE_HINTS: Record<string, string> = {
     fixed_amount: "Fixed amount — not a scale column",
     manual_entry: "Manual entry — entered as transactions",
@@ -322,9 +323,9 @@ export default function WageScaleEditor({
   const columnCandidates = elements.filter(
     (e: any) => !columns.some((c) => c.uuid === e.payElementUuid),
   );
-  const addColumn = () => {
-    const el = elementByUuid.get(colToAdd);
-    if (!el) return;
+  const addColumn = (uuid: string) => {
+    const el = elementByUuid.get(uuid);
+    if (!el || columns.some((c) => c.uuid === uuid)) return;
     setColumns((c) => [
       ...c,
       {
@@ -334,7 +335,6 @@ export default function WageScaleEditor({
         isRate: el.calcMethod === "rate_times_qty",
       },
     ]);
-    setColToAdd("");
     setDirty(true);
   };
   const removeColumn = (uuid: string) => {
@@ -685,7 +685,7 @@ export default function WageScaleEditor({
         ))}
         {editable && (
           <div className="flex items-center gap-1">
-            <Select value={colToAdd} onValueChange={setColToAdd}>
+            <Select value="" onValueChange={addColumn}>
               <SelectTrigger
                 className="h-7 w-[220px] text-xs"
                 data-testid="select-add-column"
@@ -714,16 +714,6 @@ export default function WageScaleEditor({
                 })}
               </SelectContent>
             </Select>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7"
-              onClick={addColumn}
-              disabled={!colToAdd}
-              data-testid="button-add-column"
-            >
-              <Plus size={13} />
-            </Button>
           </div>
         )}
       </div>
