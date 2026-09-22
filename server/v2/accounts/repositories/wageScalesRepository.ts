@@ -10,6 +10,10 @@ import type {
   AccWageScaleLineV2,
 } from "../../../../shared/v2/accounts/types";
 import { v4 as uuidv4 } from "uuid";
+import {
+  getRevisionDateError,
+  shiftIsoDate,
+} from "../../../../shared/v2/accounts/wageScaleRevisionDates";
 
 /** Shape accepted by the bulk line-upsert (uuid + scale set server-side). */
 export type WageScaleLineInput = {
@@ -191,19 +195,152 @@ export class WageScalesRepository {
     });
   }
 
+  async activateRevisionInTransaction(
+    expectedRevision: AccWageScaleV2,
+    predecessorUuid: string,
+    activationPatch: Partial<InsertAccWageScaleV2>,
+  ): Promise<AccWageScaleV2> {
+    const db = getDb();
+    return db.transaction(async (tx: any) => {
+      const [revision] = await tx
+        .select()
+        .from(accWageScalesV2)
+        .where(
+          and(
+            eq(
+              accWageScalesV2.scaleUuid,
+              expectedRevision.scaleUuid,
+            ),
+            eq(accWageScalesV2.isDeleted, false),
+          ),
+        )
+        .for("update");
+      if (!revision || revision.status !== "draft") {
+        throw Object.assign(
+          new Error("Only draft scales can be activated"),
+          { code: "VALIDATION" },
+        );
+      }
+      if (
+        revision.effectiveFrom !==
+          expectedRevision.effectiveFrom ||
+        revision.effectiveTo !==
+          expectedRevision.effectiveTo
+      ) {
+        throw Object.assign(
+          new Error(
+            "The revision's effective dates changed. Please refresh and activate again.",
+          ),
+          { code: "VALIDATION" },
+        );
+      }
+      const [predecessor] = await tx
+        .select()
+        .from(accWageScalesV2)
+        .where(
+          and(
+            eq(accWageScalesV2.scaleUuid, predecessorUuid),
+            eq(accWageScalesV2.isDeleted, false),
+          ),
+        )
+        .for("update");
+      if (
+        !predecessor ||
+        predecessor.supersededByScaleUuid !== revision.scaleUuid
+      ) {
+        throw Object.assign(
+          new Error(
+            "The superseded Wage Scale changed. Please refresh and activate again.",
+          ),
+          { code: "VALIDATION" },
+        );
+      }
+      const dateError = getRevisionDateError(
+        predecessor,
+        revision.effectiveFrom,
+      );
+      if (dateError) {
+        throw Object.assign(
+          new Error(dateError),
+          { code: "VALIDATION" },
+        );
+      }
+      if (predecessor.effectiveTo == null) {
+        await tx
+          .update(accWageScalesV2)
+          .set({
+            effectiveTo: shiftIsoDate(
+              revision.effectiveFrom,
+              -1,
+            ),
+            updatedByUuid:
+              activationPatch.updatedByUuid ?? null,
+            updatedAt: new Date(),
+          })
+          .where(
+            eq(
+              accWageScalesV2.scaleUuid,
+              predecessor.scaleUuid,
+            ),
+          );
+      }
+      const [updated] = await tx
+        .update(accWageScalesV2)
+        .set({
+          ...activationPatch,
+          updatedAt: new Date(),
+        })
+        .where(
+          eq(accWageScalesV2.scaleUuid, revision.scaleUuid),
+        )
+        .returning();
+      if (!updated) {
+        throw new Error(
+          "Failed to activate wage scale: " + revision.scaleUuid,
+        );
+      }
+      return updated;
+    });
+  }
+
   /**
    * Supersede an active scale in one transaction: create a new draft revision,
    * clone the original's live lines into it, and mark the original superseded.
    * Returns the freshly-created draft.
    */
   async supersedeInTransaction(
-    original: AccWageScaleV2,
-    effectiveTo: string,
+    source: AccWageScaleV2,
     revisionEffectiveFrom: string,
     auditUserUuid?: string,
   ): Promise<AccWageScaleV2> {
     const db = getDb();
     return db.transaction(async (tx: any) => {
+      const [original] = await tx
+        .select()
+        .from(accWageScalesV2)
+        .where(
+          and(
+            eq(accWageScalesV2.scaleUuid, source.scaleUuid),
+            eq(accWageScalesV2.isDeleted, false),
+          ),
+        )
+        .for("update");
+      if (!original || original.status !== "active") {
+        throw Object.assign(
+          new Error("Only active scales can be superseded"),
+          { code: "VALIDATION" },
+        );
+      }
+      const dateError = getRevisionDateError(
+        original,
+        revisionEffectiveFrom,
+      );
+      if (dateError) {
+        throw Object.assign(
+          new Error(dateError),
+          { code: "VALIDATION" },
+        );
+      }
       const newUuid = uuidv4();
       const [newDraft] = await tx
         .insert(accWageScalesV2)
@@ -255,7 +392,6 @@ export class WageScalesRepository {
         .set({
           status: "superseded",
           supersededByScaleUuid: newUuid,
-          effectiveTo,
           updatedByUuid: auditUserUuid ?? null,
           updatedAt: new Date(),
         })

@@ -10,6 +10,9 @@ import type {
   InsertAccWageScaleV2,
 } from "../../../../shared/v2/accounts/types";
 import { applyAuditUser } from "./auditUtils";
+import {
+  getRevisionDateError,
+} from "../../../../shared/v2/accounts/wageScaleRevisionDates";
 
 const wageScalesRepository = new WageScalesRepository();
 const cbaReferenceRepository = new CbaReferenceRepository();
@@ -315,6 +318,16 @@ export const wageScalesService = {
       );
     }
 
+    if (predecessor) {
+      const dateError = getRevisionDateError(
+        predecessor,
+        scale.effectiveFrom,
+      );
+      if (dateError) {
+        throw validationError(dateError);
+      }
+    }
+
     // NOTE: the DB partial-unique index guards one active scale per non-null
     // scope, but treats NULLs as distinct — so two fleet-wide (both scope
     // columns NULL) scales can race past this check. Acceptable for a low-
@@ -357,10 +370,20 @@ export const wageScalesService = {
     }
 
     try {
-      const updated = await wageScalesRepository.update(
-        scaleUuid,
-        applyAuditUser({ ...patch, auditUserUuid: opts.auditUserUuid }, false),
+      const activationPatch = applyAuditUser(
+        { ...patch, auditUserUuid: opts.auditUserUuid },
+        false,
       );
+      const updated = predecessor
+        ? await wageScalesRepository.activateRevisionInTransaction(
+            scale,
+            predecessor.scaleUuid,
+            activationPatch,
+          )
+        : await wageScalesRepository.update(
+            scaleUuid,
+            activationPatch,
+          );
       if (!updated) throw new Error(`Failed to activate wage scale: ${scaleUuid}`);
       return { scale: updated, violations };
     } catch (e: any) {
@@ -393,15 +416,15 @@ export const wageScalesService = {
         "Effective From is required for the new revision — without it, wage calculation can never switch to the revision.",
       );
     }
-    const effectiveTo = opts.effectiveTo ?? today();
-    if (opts.effectiveFrom < (scale.effectiveFrom ?? opts.effectiveFrom)) {
-      throw validationError(
-        "The revision's Effective From cannot be before the superseded scale's Effective From",
-      );
+    const dateError = getRevisionDateError(
+      scale,
+      opts.effectiveFrom,
+    );
+    if (dateError) {
+      throw validationError(dateError);
     }
     return wageScalesRepository.supersedeInTransaction(
       scale,
-      effectiveTo,
       opts.effectiveFrom,
       opts.auditUserUuid,
     );
