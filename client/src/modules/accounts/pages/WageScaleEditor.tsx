@@ -159,6 +159,7 @@ export default function WageScaleEditor({
   };
 
   const handleSaveDates = async () => {
+    if (!editable) return;
     if (isDraft && effFrom && effTo && effTo < effFrom) {
       toast({
         title: "Invalid effective dates",
@@ -682,7 +683,7 @@ export default function WageScaleEditor({
               value={effFrom}
               min={revisionDateLimit.min}
               onChange={(e) => setEffFrom(e.target.value)}
-              disabled={!mayEdit}
+              disabled={!editable}
               className="h-8 w-40 text-xs"
               data-testid="input-editor-effective-from"
             />
@@ -696,7 +697,7 @@ export default function WageScaleEditor({
               value={effTo}
               onChange={(e) => setEffTo(e.target.value)}
               min={isDraft ? effFrom || undefined : undefined}
-              disabled={!mayEdit}
+              disabled={!editable}
               className="h-8 w-40 text-xs"
               data-testid="input-editor-effective-to"
             />
@@ -707,7 +708,7 @@ export default function WageScaleEditor({
               variant="outline"
               className="h-8"
               onClick={handleSaveDates}
-              disabled={datesSaving || !datesDirty}
+              disabled={!editable || datesSaving || !datesDirty}
               data-testid="button-save-dates"
             >
               {datesSaving ? "Saving…" : "Save dates"}

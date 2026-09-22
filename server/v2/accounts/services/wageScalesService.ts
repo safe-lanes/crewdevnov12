@@ -167,9 +167,7 @@ export const wageScalesService = {
   ): Promise<AccWageScaleV2> {
     const scale = await this.getByUuidOrThrow(scaleUuid);
     if (scale.status !== "draft") {
-      // Task 148: effective dates stay editable after activation so a
-      // revision activated without an Effective From can be repaired —
-      // everything else on a non-draft scale is immutable.
+      // Preserve the existing non-date field restrictions for non-draft scales.
       const DATE_ONLY = new Set(["effectiveFrom", "effectiveTo", "auditUserUuid"]);
       const otherKeys = Object.keys(data).filter(
         (k) => !DATE_ONLY.has(k) && (data as Record<string, unknown>)[k] !== undefined,
@@ -179,6 +177,15 @@ export const wageScalesService = {
           "Only the effective dates can be edited once a scale is no longer a draft",
         );
       }
+    }
+    if (
+      scale.status === "active" &&
+      (data.effectiveFrom !== undefined ||
+        data.effectiveTo !== undefined)
+    ) {
+      throw validationError(
+        "Effective dates cannot be changed once a wage scale is active.",
+      );
     }
     if (scale.status === "draft") {
       validateEffectiveDates(
