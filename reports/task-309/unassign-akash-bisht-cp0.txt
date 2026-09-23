@@ -1,0 +1,32 @@
+CP0 — BASELINE
+crew_uuid: dd5b1145-4a99-42db-8fb2-077e828944a3
+vessel_uuid: 744535d0-841a-11ed-aa7c-7003bca91a86
+
+S1. SELECT * FROM crew_assignments WHERE crew_uuid = 'dd5b1145-4a99-42db-8fb2-077e828944a3' ORDER BY id;
+id,assign_uuid,crew_uuid,vessel_uuid,is_current,sign_on_date,sign_off_date,contract_period,relief_due,port_of_joining_uuid,port_of_leaving_uuid,assignment_type,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,last_vessel_uuid,reason
+
+
+S2. SELECT * FROM vessel_planning_v2 WHERE vessel_uuid = '744535d0-841a-11ed-aa7c-7003bca91a86' AND (crew_uuid = 'dd5b1145-4a99-42db-8fb2-077e828944a3' OR reliever_crew_uuid = 'dd5b1145-4a99-42db-8fb2-077e828944a3') ORDER BY id;
+id,plan_uuid,vessel_uuid,active_revision_uuid,rank_id,rank,crew_uuid,crew_status,sign_on_date,relief_due,sign_off_date,sign_off_port_uuid,sign_off_reason,relief_status,take_over_date,take_over_confirmation,hand_over_date,reliever_crew_uuid,reliever_sign_on_date,joining_port_uuid,joining_status,contract_period_months,contract_end_range_start_months,contract_end_range_end_months,reliever_contract_period_months,reliever_contract_end_range_start_months,reliever_contract_end_range_end_months,deployment_checklist_completed,applicable_docs_checked,is_archived,archived_date,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,is_reliever_archived,admin_accept,planned_confirmed_date,travel_start_date,travel_end_date
+
+
+S3. SELECT * FROM crew_sea_service WHERE crew_uuid = 'dd5b1145-4a99-42db-8fb2-077e828944a3' ORDER BY id;
+id,sea_uuid,crew_uuid,service_type,vessel_name,vessel_uuid,vessel_type_uuid,deadweight,engine_type_power,owner_operator,rank,from_date,to_date,period_months,experience_categories,sort_order,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,sign_off_reason,attachment_ref,imo_number,year_built
+434,4a980a7a-4cc3-4ef6-a947-7d9efd1a4af3,dd5b1145-4a99-42db-8fb2-077e828944a3,company,vessel 01,0f5e2ee3-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"58,500","MAN B&W 15,200 kW",Sovereign Gas Shipping Ltd.,Chief Officer,2025-05-01,2026-03-31,11.0,,7,2026-06-04T11:55:39.054Z,2026-06-04T12:05:12.236Z,,,f,f,,,,
+435,3ec415b9-0d02-42f6-be8c-3238fef066b8,dd5b1145-4a99-42db-8fb2-077e828944a3,company,vessel 02,0f5e739e-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"56,800","Wärtsilä 14,900 kW",Excellence Marine Services,Chief Officer,2024-09-01,2025-04-30,8.0,,6,2026-06-04T11:56:38.942Z,2026-06-04T12:05:12.236Z,,,f,f,,,,
+436,d9cca53b-0a6d-49e9-af3c-d05a086422c7,dd5b1145-4a99-42db-8fb2-077e828944a3,company,vessel 03,0f5eb6d5-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"60,200","MAN B&W 16,000 kW",Oceanic Gas Carriers,Chief Officer,2024-01-01,2024-08-31,8.0,,5,2026-06-04T11:58:19.816Z,2026-06-04T12:05:12.109Z,,,f,f,,,,
+437,a8633617-5ec8-4b27-9a4d-830625754695,dd5b1145-4a99-42db-8fb2-077e828944a3,company,vessel 04,744535d0-841a-11ed-aa7c-7003bca91a86,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"57,400","Mitsubishi 14,500 kW",Neptune Shipping Pvt. Ltd.,Chief Officer,2023-05-01,2023-12-31,8.0,,4,2026-06-04T11:59:24.611Z,2026-06-04T12:05:12.109Z,,,f,f,,,,
+438,b107ef97-1377-4dec-8898-63634a321d4e,dd5b1145-4a99-42db-8fb2-077e828944a3,company,vessel 05,0f5f2558-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"55,900","Hyundai 14,100 kW",Pioneer Tankers Ltd.,Chief Officer,2022-09-01,2023-04-30,8.0,,3,2026-06-04T12:00:33.900Z,2026-06-04T12:05:12.108Z,,,f,f,,,,
+439,047ce2cb-d494-4540-95fa-c3d6d6c0b9e9,dd5b1145-4a99-42db-8fb2-077e828944a3,company,vessel 07,0f5f8850-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"56,300","Wärtsilä 14,700 kW",Aurora Shipping Co.,2nd Officer,2021-05-01,2021-12-31,8.0,,2,2026-06-04T12:01:51.892Z,2026-06-04T12:05:12.004Z,,,f,f,,,,
+440,c82d6ce5-dcb7-450d-a528-cdca5ac0f281,dd5b1145-4a99-42db-8fb2-077e828944a3,company,vessel 08,0f5fbbcd-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"54,700","Sulzer 13,900 kW",Venture Marine Ltd,2nd Officer,2020-09-01,2021-04-30,8.0,,1,2026-06-04T12:02:53.886Z,2026-06-04T12:05:12.004Z,,,f,f,,,,
+441,c6b6d966-4fa8-486e-8012-602b75e7b2c2,dd5b1145-4a99-42db-8fb2-077e828944a3,company,vessel 09,0f5fed6a-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"53,900","MAN B&W 13,600 kW",Ocean Pride Shipping,2nd Officer,2020-01-01,2020-08-31,8.0,,0,2026-06-04T12:04:34.341Z,2026-06-04T12:05:11.997Z,,,f,f,,,,
+
+
+S4. SELECT COUNT(*) FROM crew_assignments; SELECT COUNT(*) FROM vessel_planning_v2; SELECT COUNT(*) FROM crew_sea_service;
+count
+63
+count
+81
+count
+472
+
