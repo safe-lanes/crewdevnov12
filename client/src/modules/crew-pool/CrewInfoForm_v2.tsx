@@ -9581,7 +9581,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   key={member.crewUuid || member.id}
                   value={member.crewUuid || member.id}
                 >
-                  {member.firstName} {member.familyName}
+                  {[member.firstName, member.middleName, member.familyName]
+                    .map((part) => (part ?? '').trim())
+                    .filter(Boolean)
+                    .join(' ')}
                 </option>
               ))}
             </select>
@@ -9639,9 +9642,16 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               >
                 <span>
                   {crewMember
-                    ? `${crewMember.firstName} ${crewMember.familyName}, ${normalizeRank(crewMember.presentRank || '') || 'Crew Member'}`
-                    : (formData.firstName || formData.familyName)
-                      ? `${formData.firstName || ''} ${formData.familyName || ''}`.trim() + (formData.presentRank ? `, ${normalizeRank(formData.presentRank) || formData.presentRank}` : '')
+                    ? [crewMember.firstName, crewMember.middleName, crewMember.familyName]
+                        .map((part) => (part ?? '').trim())
+                        .filter(Boolean)
+                        .join(' ') + `, ${normalizeRank(crewMember.presentRank || '') || 'Crew Member'}`
+                    : [formData.firstName, formData.middleName, formData.familyName]
+                        .some((part) => (part ?? '').trim().length > 0)
+                      ? [formData.firstName, formData.middleName, formData.familyName]
+                          .map((part) => (part ?? '').trim())
+                          .filter(Boolean)
+                          .join(' ') + (formData.presentRank ? `, ${normalizeRank(formData.presentRank) || formData.presentRank}` : '')
                       : 'Crew Member'}
                 </span>
                 <ChevronDown className="h-4 w-4 flex-shrink-0" />
@@ -9675,7 +9685,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                           <div className="flex justify-between items-center">
                             <div>
                               <div className="font-medium">
-                                {member.firstName} {member.familyName}
+                                {[member.firstName, member.middleName, member.familyName]
+                                  .map((part) => (part ?? '').trim())
+                                  .filter(Boolean)
+                                  .join(' ')}
                               </div>
                               <div className="text-sm text-gray-500">
                                 {normalizeRank(member.presentRank || '') || member.presentRank} • {member.empNo}

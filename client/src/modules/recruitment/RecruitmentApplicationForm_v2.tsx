@@ -9390,7 +9390,12 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
             </Button>
             <h1 className="text-sm sm:text-lg lg:text-xl font-bold truncate">
               <span className="hidden sm:inline">Recruitment Application - </span>
-              {candidate ? `${candidate.firstName} ${candidate.familyName}` : 'New Candidate'}
+              {candidate
+                ? [candidate.firstName, candidate.middleName, candidate.familyName]
+                    .map((part) => (part ?? '').trim())
+                    .filter(Boolean)
+                    .join(' ')
+                : 'New Candidate'}
             </h1>
           </div>
           <div className="flex gap-1 sm:gap-2">
