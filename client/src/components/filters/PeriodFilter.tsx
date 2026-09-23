@@ -2,7 +2,10 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Calendar, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FormattedDateInput } from '@/components/ui/formatted-date-input';
+import {
+  FormattedDateInput,
+  parseManualDate,
+} from '@/components/ui/formatted-date-input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -38,6 +41,8 @@ interface PeriodFilterProps {
 
 export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', placeholder }: PeriodFilterProps) => {
   const [open, setOpen] = useState(false);
+  const fullDateRangeRef = useRef<HTMLDivElement>(null);
+  const [dateRangeError, setDateRangeError] = useState<string | null>(null);
   const monthFromRef = useRef<HTMLInputElement>(null);
   const monthToRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<'year-period' | 'date-range'>(
@@ -96,6 +101,10 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
     }
   }, [value, currentYear, currentMonth]);
 
+  useEffect(() => {
+    setDateRangeError(null);
+  }, [open, mode, rangeMode, value]);
+
   const handleQuarterClick = (quarter: 1 | 2 | 3 | 4) => {
     if (selectedQuarter === quarter) {
       setSelectedQuarter(null);
@@ -115,6 +124,29 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
   };
 
   const handleApply = () => {
+    if (mode === 'date-range' && rangeMode === 'date') {
+      const inputs =
+        fullDateRangeRef.current?.querySelectorAll<HTMLInputElement>(
+          'input[type="text"]',
+        );
+      if (!inputs || inputs.length !== 2) {
+        setDateRangeError(
+          'Unable to check the dates. Please close and reopen the filter.',
+        );
+        return;
+      }
+      const invalidInput = Array.from(inputs).find(
+        (input) =>
+          input.value.trim() !== '' &&
+          parseManualDate(input.value) === null,
+      );
+      if (invalidInput) {
+        setDateRangeError('Correct the invalid date before applying.');
+        invalidInput.focus();
+        return;
+      }
+    }
+    setDateRangeError(null);
     if (mode === 'year-period') {
       if (selectedQuarter !== null) {
         onChange({
@@ -326,10 +358,15 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
           )}
 
           {mode === 'date-range' && rangeMode === 'date' && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-600 dark:text-gray-400">Date From</Label>
-                {placeholder ? (
+            <div
+              ref={fullDateRangeRef}
+              onChangeCapture={() => setDateRangeError(null)}
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600 dark:text-gray-400">
+                    Date From
+                  </Label>
                   <FormattedDateInput
                     value={dateFrom ? format(dateFrom, 'yyyy-MM-dd') : ''}
                     onChange={(e) => setDateFrom(parseDateInput(e.target.value))}
@@ -337,20 +374,11 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
                     className="h-9 text-xs"
                     data-testid="date-from-trigger"
                   />
-                ) : (
-                  <Input
-                    type="date"
-                    value={dateFrom ? format(dateFrom, 'yyyy-MM-dd') : ''}
-                    onChange={(e) => setDateFrom(parseDateInput(e.target.value))}
-                    className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
-                    data-testid="date-from-trigger"
-                  />
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-600 dark:text-gray-400">Date To</Label>
-                {placeholder ? (
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-gray-600 dark:text-gray-400">
+                    Date To
+                  </Label>
                   <FormattedDateInput
                     value={dateTo ? format(dateTo, 'yyyy-MM-dd') : ''}
                     onChange={(e) => setDateTo(parseDateInput(e.target.value))}
@@ -358,22 +386,20 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', p
                     className="h-9 text-xs"
                     data-testid="date-to-trigger"
                   />
-                ) : (
-                  <Input
-                    type="date"
-                    value={dateTo ? format(dateTo, 'yyyy-MM-dd') : ''}
-                    onChange={(e) => setDateTo(parseDateInput(e.target.value))}
-                    className="w-fit text-xs h-9 bg-white dark:bg-neutral-900"
-                    data-testid="date-to-trigger"
-                  />
-                )}
+                </div>
               </div>
+              {dateRangeError && (
+                <p role="alert" className="mt-2 text-xs text-red-500">
+                  {dateRangeError}
+                </p>
+              )}
             </div>
           )}
 
           {/* Apply Button */}
           <div className="flex justify-end pt-2">
             <Button
+              type="button"
               onClick={handleApply}
               className="bg-[#1e40af] hover:bg-[#1e3a8a] text-white px-8"
               data-testid="button-apply-period-filter"
