@@ -1,0 +1,38 @@
+CP3 — AFTER SIGN ON
+crew_uuid: f3011dfd-ed44-4020-b85f-b2d4216e62af
+vessel_uuid: 744535d0-841a-11ed-aa7c-7003bca91a86
+incumbent_crew_uuid: ace80e38-7e11-4ef1-8f36-8edd4b22db0e
+
+S1
+id,assign_uuid,crew_uuid,vessel_uuid,is_current,sign_on_date,sign_off_date,contract_period,relief_due,port_of_joining_uuid,port_of_leaving_uuid,assignment_type,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,last_vessel_uuid,reason
+265,28caf31d-d58c-4351-b706-25b341574aa0,f3011dfd-ed44-4020-b85f-b2d4216e62af,744535d0-841a-11ed-aa7c-7003bca91a86,t,2026-09-23,,4,2027-01-23,,,OnBoard,2026-09-23T05:06:17.156Z,2026-09-23T05:13:21.512Z,unknown,,f,f,,
+
+
+S2
+id,plan_uuid,vessel_uuid,active_revision_uuid,rank_id,rank,crew_uuid,crew_status,sign_on_date,relief_due,sign_off_date,sign_off_port_uuid,sign_off_reason,relief_status,take_over_date,take_over_confirmation,hand_over_date,reliever_crew_uuid,reliever_sign_on_date,joining_port_uuid,joining_status,contract_period_months,contract_end_range_start_months,contract_end_range_end_months,reliever_contract_period_months,reliever_contract_end_range_start_months,reliever_contract_end_range_end_months,deployment_checklist_completed,applicable_docs_checked,is_archived,archived_date,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,is_reliever_archived,admin_accept,planned_confirmed_date,travel_start_date,travel_end_date
+279,3b397bcb-8fa3-43eb-b257-912eeab5fe4a,744535d0-841a-11ed-aa7c-7003bca91a86,,R003,2nd Officer,f3011dfd-ed44-4020-b85f-b2d4216e62af,secondary,2026-09-23,2027-01-23,,,,,,f,,,,c6244ce5-6c65-11ec-a490-507b9da1cbd6,,4,,,,,,f,f,f,,2026-09-23T05:13:21.512Z,2026-09-23T05:13:21.512Z,,,f,f,f,t,2026-09-24,,
+
+
+S3
+id,sea_uuid,crew_uuid,service_type,vessel_name,vessel_uuid,vessel_type_uuid,deadweight,engine_type_power,owner_operator,rank,from_date,to_date,period_months,experience_categories,sort_order,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,sign_off_reason,attachment_ref,imo_number,year_built
+507,6024758f-fb6d-40be-a590-af681b993491,f3011dfd-ed44-4020-b85f-b2d4216e62af,company,vessel 04,744535d0-841a-11ed-aa7c-7003bca91a86,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,,,,2nd Officer,2026-09-23,,,,0,2026-09-23T05:13:21.881Z,2026-09-23T05:13:21.881Z,,,f,f,,,,
+
+
+S4
+count
+64
+count
+82
+count
+473
+
+
+INCUMBENT ASSIGNMENTS
+id,assign_uuid,crew_uuid,vessel_uuid,is_current,sign_on_date,sign_off_date,contract_period,relief_due,port_of_joining_uuid,port_of_leaving_uuid,assignment_type,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,last_vessel_uuid,reason
+103,d9e31259-c6e0-4543-9d82-8dc7f7b6ef08,ace80e38-7e11-4ef1-8f36-8edd4b22db0e,744535d0-841a-11ed-aa7c-7003bca91a86,t,2026-03-01,,6,2026-09-01,,,OnBoard,2026-04-10T04:59:47.724Z,2026-04-10T04:59:47.724Z,unknown,,f,f,,
+
+
+INCUMBENT PLANNING
+id,plan_uuid,vessel_uuid,active_revision_uuid,rank_id,rank,crew_uuid,crew_status,sign_on_date,relief_due,sign_off_date,sign_off_port_uuid,sign_off_reason,relief_status,take_over_date,take_over_confirmation,hand_over_date,reliever_crew_uuid,reliever_sign_on_date,joining_port_uuid,joining_status,contract_period_months,contract_end_range_start_months,contract_end_range_end_months,reliever_contract_period_months,reliever_contract_end_range_start_months,reliever_contract_end_range_end_months,deployment_checklist_completed,applicable_docs_checked,is_archived,archived_date,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,is_reliever_archived,admin_accept,planned_confirmed_date,travel_start_date,travel_end_date
+96,f42844f3-1451-4650-856c-f44af484be57,744535d0-841a-11ed-aa7c-7003bca91a86,,R003,2nd Officer,ace80e38-7e11-4ef1-8f36-8edd4b22db0e,primary,2026-03-01,2026-09-01,"","","","","",f,,,,,,6,5,7,,,,f,f,f,,2026-04-10T04:27:06.615Z,2026-09-23T05:13:21.512Z,,,f,f,f,t,,,
+

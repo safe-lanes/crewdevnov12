@@ -1,0 +1,67 @@
+CONTINUATION FIXTURE QUERY
+vessel_uuid,rank,plan_uuid,crew_uuid,crew_status,sign_on_date,reliever_crew_uuid,take_over_confirmation
+744535d0-841a-11ed-aa7c-7003bca91a86,2nd Officer,f42844f3-1451-4650-856c-f44af484be57,ace80e38-7e11-4ef1-8f36-8edd4b22db0e,primary,2026-03-01,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,3rd Officer,e966c59c-ea74-46a1-9895-ed10195411af,12bd6fa0-71af-4812-937f-c55974265140,primary,2026-03-01,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Chief Engineer,12c806b1-3542-48f2-ab1d-d049bfdf70ee,19bdecc8-1e14-4c65-a519-abf0792a89b3,primary,2026-03-01,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,3rd Engineer,acbc7aba-1698-4967-ba6b-4e7fd7e5b6f2,4a6dcf9d-8826-481c-a637-6ca325c26ad4,primary,2026-03-01,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,4th Engineer,95902956-1770-472f-894c-ca1f37b25079,1874bee1-bb0e-4f48-acc6-12c3801b0479,primary,2026-03-01,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Electrical Officer,c8c43b78-2386-40ae-91db-473d28be0e0a,abdf6fcf-b83c-41ea-86d7-0e0a854627b7,primary,2026-03-01,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Deck Cadet,09ad84d6-19c1-4c2e-85bc-4f68c45564bd,4c8c8ffc-7890-49aa-a495-87fcd24e9893,primary,2026-03-01,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Bosun,90a05953-3e1c-4cf8-917b-dc811b705d2d,adf61545-36df-43dc-8caa-40aa1b55065f,primary,2026-03-01,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Pumpman,44c98354-284c-4a98-80c9-280e58347900,0d8c21fd-0b27-4aa1-b6f6-d2eb8f06382d,primary,2026-03-07,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Motorman,ea1143c0-2c7d-422c-8887-f618daa83069,7cdc784b-d047-437d-a784-0904b1ae2c57,primary,2026-03-09,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Chief Cook,ff5dec6a-d0cb-4453-9ea2-8f3da634365c,a326a90f-690e-460b-ad3a-bd82e1f621f3,primary,2026-03-07,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Messman,d4309e29-b154-4cf9-aa26-0c7e577ccba5,a9b561c8-4c18-4303-b2a2-913b64ac3e13,primary,2026-03-09,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Oiler_1,6ad48919-8f60-474f-86b3-2bd69f336f27,702caa20-94eb-4cc8-89aa-be04afdb262c,primary,2026-03-09,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Fitter_1,61ae8da1-bbae-44ee-ac03-6618b7bcdea9,ae2f33c6-c870-49ca-a167-d50215dc31d1,primary,2026-03-09,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,OS_1,c0d7fb58-95e1-45fd-950e-33c734d56fe9,43aa5412-d422-41f7-9f8b-cf17ef3393a6,primary,2026-03-07,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,AB_3,87dfa68d-389f-4b3c-a115-99cbe8019dc8,5657d954-2f9d-4ab9-ae08-88d1d2f95c02,primary,2026-03-07,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,AB_2,639bbae1-917a-44bf-a185-f594be3395c8,2da5f5e7-e586-4efd-8738-69f9e7506a5b,primary,2026-03-07,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,AB_1,8c8b5ece-399b-4964-851b-6deba12546c5,2a4cab27-445b-41a8-8ee1-b01b7af8e3f4,primary,2026-03-07,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Oiler_3,e85b099f-3c56-425e-ab84-5869a0a426b6,ba2e1219-a0c1-4838-9945-670b662f96bf,primary,2025-07-04,,f
+744535d0-841a-11ed-aa7c-7003bca91a86,Master,66845d85-f5cb-41ef-ad04-257882e59f72,96abedc5-33b1-4112-b1a7-1ea856666f48,primary,2026-06-01,,t
+
+
+CHOSEN ROW
+vessel_uuid: 744535d0-841a-11ed-aa7c-7003bca91a86
+rank: 2nd Officer
+plan_uuid: f42844f3-1451-4650-856c-f44af484be57
+crew_uuid: ace80e38-7e11-4ef1-8f36-8edd4b22db0e
+crew_status: primary
+sign_on_date: 2026-03-01
+reliever_crew_uuid: NULL
+take_over_confirmation: false
+
+INCUMBENT CREW ROW
+Encountered an error executing SQL command: relation "crew" does not exist
+
+CP0 — CONTINUATION BASELINE
+
+S1
+id,assign_uuid,crew_uuid,vessel_uuid,is_current,sign_on_date,sign_off_date,contract_period,relief_due,port_of_joining_uuid,port_of_leaving_uuid,assignment_type,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,last_vessel_uuid,reason
+
+
+S2
+id,plan_uuid,vessel_uuid,active_revision_uuid,rank_id,rank,crew_uuid,crew_status,sign_on_date,relief_due,sign_off_date,sign_off_port_uuid,sign_off_reason,relief_status,take_over_date,take_over_confirmation,hand_over_date,reliever_crew_uuid,reliever_sign_on_date,joining_port_uuid,joining_status,contract_period_months,contract_end_range_start_months,contract_end_range_end_months,reliever_contract_period_months,reliever_contract_end_range_start_months,reliever_contract_end_range_end_months,deployment_checklist_completed,applicable_docs_checked,is_archived,archived_date,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,is_reliever_archived,admin_accept,planned_confirmed_date,travel_start_date,travel_end_date
+
+
+S3
+id,sea_uuid,crew_uuid,service_type,vessel_name,vessel_uuid,vessel_type_uuid,deadweight,engine_type_power,owner_operator,rank,from_date,to_date,period_months,experience_categories,sort_order,created_at,updated_at,created_by_uuid,updated_by_uuid,is_deleted,is_sync,sign_off_reason,attachment_ref,imo_number,year_built
+419,c1746749-a886-4796-a335-9162cd023ed6,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 01,0f5e2ee3-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"52,800","MAN B&W 13,500 kW",Emerald Gas Shipping Ltd.,Chief Officer,2025-05-01,2025-12-31,8.0,,7,2026-06-04T09:22:24.292Z,2026-06-04T11:53:24.907Z,,,f,f,,,,
+420,b25c50e4-b482-4b54-a94f-37ab61d76b3b,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 02,0f5e739e-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"48,600","Wärtsilä 12,800 kW",Horizon Marine Services,Chief Officer,2024-09-01,2025-04-30,8.0,,6,2026-06-04T09:23:37.801Z,2026-06-04T11:53:24.899Z,,,f,f,,,,
+421,7cd82ba3-33d7-4bf9-8699-dcc60aa07ce9,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 03,0f5eb6d5-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"56,200","MAN B&W 14,200 kW",Oceanic Gas Carriers,Chief Officer,2024-01-01,2024-08-31,8.0,,5,2026-06-04T09:56:46.306Z,2026-06-04T11:53:24.775Z,,,f,f,,,,
+422,94632c5f-1c20-4fae-9263-f99187b2d6db,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 03,0f5eb6d5-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"50,400","Mitsubishi 12,300 kW",Neptune Shipping Pvt. Ltd.,Chief Officer,2023-05-01,2023-12-31,8.0,,4,2026-06-04T09:57:41.370Z,2026-06-04T11:53:24.771Z,,,f,f,,,,
+423,8b63e993-1335-499b-aad1-80dbe2354e6a,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 04,744535d0-841a-11ed-aa7c-7003bca91a86,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"47,900","Hyundai 11,900 kW",Pioneer Tankers Ltd.,Chief Officer,2022-09-01,2023-04-30,8.0,,3,2026-06-04T10:02:22.218Z,2026-06-04T11:53:24.768Z,,,f,f,,,,
+424,4ab6f92e-f1a9-428e-8772-1521dfd154c3,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 05,0f5f2558-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"54,100","MAN B&W 13,800 kW",Crystal Marine Management,2nd Officer,2022-01-01,2022-08-31,8.0,,2,2026-06-04T10:04:36.179Z,2026-06-04T11:53:24.667Z,,,f,f,,,,
+425,047c4912-c90c-4016-baa4-257227081fd8,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 06,0f5f5592-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"51,700","Wärtsilä 13,100 kW",Aurora Shipping Co,2nd Officer,2021-05-01,2021-12-31,8.0,,1,2026-06-04T10:05:33.852Z,2026-06-04T11:53:24.662Z,,,f,f,,,,
+426,2852df66-8f0d-4753-8900-31541caaba50,2e33607d-3b2b-422e-943e-d25e86037d5f,company,vessel 07,0f5f8850-573c-11ed-8778-ec53d845cd37,A58B8ABD-DD34-4E44-8737-BA7E9AFD10A3,"49,500","Sulzer 12,500 kW",Venture Marine Ltd,2nd Officer,2020-09-01,2021-04-30,8.0,,0,2026-06-04T10:06:35.961Z,2026-06-04T11:53:24.646Z,,,f,f,,,,
+
+
+S4
+count
+63
+count
+81
+count
+472
+
