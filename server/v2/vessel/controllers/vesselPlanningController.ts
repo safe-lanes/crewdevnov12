@@ -11,6 +11,7 @@ import {
   decodeStoredFile,
 } from "../../shared/serveAttachmentHelper.js";
 import { resolveVesselFolderFromPlanUuid } from "../../shared/attachmentScope.js";
+import { getAuditUserUuid } from "../../accounts/controllers/_auth";
 
 /**
  * Normalize a stored attachment record for serving. Legacy rows written by the
@@ -132,7 +133,11 @@ export const vesselPlanningController = {
   async update(req: Request, res: Response) {
     try {
       const { planUuid } = req.params;
-      const planning = await vesselPlanningService.update(planUuid, req.body);
+      const planning = await vesselPlanningService.update(planUuid, {
+        ...req.body,
+        // Audit identity is server-derived and cannot be spoofed by the client.
+        auditUserUuid: getAuditUserUuid(req),
+      });
       res.json(planning);
     } catch (error: any) {
       if (error.message?.includes("not found")) {

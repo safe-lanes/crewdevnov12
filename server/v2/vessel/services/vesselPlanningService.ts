@@ -940,10 +940,91 @@ export const vesselPlanningService = {
     (resolvedData as any).isRelieverArchived = true;
   }
 
-  const updated = await vesselPlanningRepository.update(planUuid, resolvedData);
-
-  // --- NEW: keep crew_assignments in sync so the Crew Pool dashboard shows correct Relief Due ---
   const db = getDb();
+  const isRelieverClearRequest =
+    "relieverCrewUuid" in resolvedData &&
+    resolvedData.relieverCrewUuid === null;
+
+  let updated;
+  if (isRelieverClearRequest) {
+    updated = await db.transaction(async (tx: any) => {
+      const [lockedPlanning] = await tx
+        .select()
+        .from(vesselPlanningV2)
+        .where(
+          and(
+            eq(vesselPlanningV2.planUuid, planUuid),
+            eq(vesselPlanningV2.isDeleted, false),
+          ),
+        )
+        .for("update");
+
+      if (!lockedPlanning) {
+        throw new Error(`Planning record not found: ${planUuid}`);
+      }
+
+      const relieverCrewUuid = lockedPlanning.relieverCrewUuid;
+      if (relieverCrewUuid) {
+        const matchingAssignments = await tx
+          .select({ assignUuid: crewAssignments.assignUuid })
+          .from(crewAssignments)
+          .where(
+            and(
+              eq(crewAssignments.crewUuid, relieverCrewUuid),
+              eq(crewAssignments.vesselUuid, lockedPlanning.vesselUuid),
+              eq(crewAssignments.assignmentType, "Planned"),
+              eq(crewAssignments.isDeleted, false),
+            ),
+          )
+          .for("update");
+
+        if (matchingAssignments.length === 1) {
+          await tx
+            .update(crewAssignments)
+            .set({
+              assignmentType: "Cancelled",
+              isCurrent: false,
+              reason: "Unassigned before joining",
+              updatedByUuid: data.auditUserUuid || null,
+              updatedAt: sql`NOW()`,
+            })
+            .where(
+              eq(
+                crewAssignments.assignUuid,
+                matchingAssignments[0].assignUuid,
+              ),
+            );
+        } else if (matchingAssignments.length > 1) {
+          console.warn(
+            "Reliever unassign found multiple Planned assignments; none were cancelled",
+            {
+              planUuid,
+              crewUuid: relieverCrewUuid,
+              vesselUuid: lockedPlanning.vesselUuid,
+              assignUuids: matchingAssignments.map(
+                (assignment: { assignUuid: string }) =>
+                  assignment.assignUuid,
+              ),
+            },
+          );
+        }
+      }
+
+      const planning = await vesselPlanningRepository.update(
+        planUuid,
+        resolvedData,
+        tx,
+      );
+      if (!planning) {
+        throw new Error(`Planning record not found: ${planUuid}`);
+      }
+      return planning;
+    });
+  } else {
+    updated = await vesselPlanningRepository.update(planUuid, resolvedData);
+  }
+
+  // Keep crew_assignments in sync so the Crew Pool dashboard shows correct Relief Due.
 
   // resolve effective values (use incoming change, else fall back to existing planning row)
   const effectiveCrewUuid = (resolvedData as any).crewUuid ?? existing.crewUuid;

@@ -428,9 +428,12 @@ export class VesselPlanningRepository {
     return results[0];
   }
 
-  async update(planUuid: string, data: Partial<InsertVesselPlanningV2>): Promise<VesselPlanningV2 | undefined> {
-    const db = getDb();
-    const results = await db
+  async update(
+    planUuid: string,
+    data: Partial<InsertVesselPlanningV2>,
+    executor: any = getDb(),
+  ): Promise<VesselPlanningV2 | undefined> {
+    const results = await executor
       .update(vesselPlanningV2)
       .set({
         ...data,
