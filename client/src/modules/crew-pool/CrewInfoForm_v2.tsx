@@ -9619,11 +9619,11 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
       <div className="bg-white rounded-lg w-full max-w-none 2xl:max-w-[95vw] h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b p-2 sm:p-3 lg:p-4 flex items-center justify-between">
-          <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
-            <Button variant="ghost" size="icon" onClick={handleD3Close} data-testid="button-close">
+          <div className="flex min-w-0 items-center gap-1 sm:gap-2 lg:gap-4">
+            <Button variant="ghost" size="icon" onClick={handleD3Close} data-testid="button-close" className="shrink-0">
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="relative">
+            <div className="relative min-w-0">
               <button
                 type="button"
                 onClick={(e) => {
@@ -9637,10 +9637,10 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   setShowCrewDropdown(!showCrewDropdown);
                 }}
                 ref={dropdownButtonRef}
-                className="flex items-center gap-2 text-sm sm:text-lg lg:text-xl font-bold truncate hover:text-blue-600 transition-colors"
+                className="flex max-w-full items-center gap-2 text-sm sm:text-lg lg:text-xl font-bold truncate hover:text-blue-600 transition-colors"
                 data-testid="button-crew-dropdown"
               >
-                <span>
+                <span className="truncate">
                   {crewMember
                     ? [crewMember.firstName, crewMember.middleName, crewMember.familyName]
                         .map((part) => (part ?? '').trim())
@@ -9711,7 +9711,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               )}
             </div>
           </div>
-          <div className="flex gap-1 sm:gap-2">
+          <div className="flex shrink-0 gap-1 sm:gap-2">
             <Button 
               variant="outline" 
               size="sm"
