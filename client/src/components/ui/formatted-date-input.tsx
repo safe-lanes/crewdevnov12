@@ -1,6 +1,9 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 import { CalendarDays } from "lucide-react";
+import { Calendar } from "./calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
+import { useNavigation, type CaptionProps } from "react-day-picker";
 
 interface FormattedDateInputProps {
   value: string;
@@ -64,9 +67,105 @@ function isRealDate(year: number, month: number, day: number): boolean {
     && candidate.getUTCDate() === day;
 }
 
+function makeCalendarDate(year: number, month: number, day = 1): Date {
+  const date = new Date(0);
+  date.setHours(0, 0, 0, 0);
+  date.setFullYear(year, month, day);
+  return date;
+}
+function readCalendarDate(value: string): Date | undefined {
+  if (!formatIsoDate(value)) return undefined;
+  const [year, month, day] = value.split("-").map(Number);
+  return makeCalendarDate(year, month - 1, day);
+}
+function calendarDateValue(date: Date): string {
+  return [
+    String(date.getFullYear()).padStart(4, "0"),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function DateCalendarCaption({ displayMonth, id }: CaptionProps) {
+  const { goToMonth, previousMonth, nextMonth } = useNavigation();
+  const year = displayMonth.getFullYear();
+  const month = displayMonth.getMonth();
+  const [yearDraft, setYearDraft] = React.useState(String(year));
+  React.useEffect(() => {
+    setYearDraft(String(year));
+  }, [year]);
+  return (
+    <div id={id} className="flex items-center justify-between gap-2">
+      <button
+        type="button"
+        aria-label="Previous month"
+        disabled={!previousMonth}
+        onClick={() => previousMonth && goToMonth(previousMonth)}
+        className="h-8 w-8 rounded border disabled:opacity-50"
+      >
+        ‹
+      </button>
+      <select
+        aria-label="Calendar month"
+        value={month}
+        onChange={(event) =>
+          goToMonth(makeCalendarDate(year, Number(event.target.value)))
+        }
+        className="h-8 rounded border bg-background px-1 text-sm"
+      >
+        {MONTHS.map((name, index) => (
+          <option key={name} value={index}>
+            {name}
+          </option>
+        ))}
+      </select>
+      <input
+        type="number"
+        aria-label="Calendar year"
+        min={1}
+        max={9999}
+        value={yearDraft}
+        onChange={(event) => {
+          const text = event.target.value;
+          setYearDraft(text);
+          const nextYear = Number(text);
+          if (
+            /^\d{1,4}$/.test(text) &&
+            nextYear >= 1 &&
+            nextYear <= 9999
+          ) {
+            goToMonth(makeCalendarDate(nextYear, month));
+          }
+        }}
+        onBlur={() => setYearDraft(String(year))}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+        }}
+        className="h-8 w-20 rounded border bg-background px-2 text-sm"
+      />
+      <button
+        type="button"
+        aria-label="Next month"
+        disabled={!nextMonth}
+        onClick={() => nextMonth && goToMonth(nextMonth)}
+        className="h-8 w-8 rounded border disabled:opacity-50"
+      >
+        ›
+      </button>
+    </div>
+  );
+}
+
 const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
   ({ value, onChange, onBlur, className, min, max, placeholder, disabled = false, "data-testid": dataTestId }, ref) => {
     const calendarInputRef = React.useRef<HTMLInputElement>(null);
+    const [calendarOpen, setCalendarOpen] = React.useState(false);
+    const [calendarMonth, setCalendarMonth] = React.useState(
+      () => readCalendarDate(value) ?? new Date(),
+    );
     const [draft, setDraft] = React.useState(() => formatIsoDate(value));
     const [isInvalid, setIsInvalid] = React.useState(false);
     const lastCanonicalValueRef = React.useRef(value);
@@ -96,6 +195,14 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
         isOwnChange && wasInvalid && isDraftInvalid(formatIsoDate(value)),
       );
     }, [value]);
+
+    React.useEffect(() => {
+      if (disabled) {
+        setCalendarOpen(false);
+        openingCalendarRef.current = false;
+        calendarChangedRef.current = false;
+      }
+    }, [disabled]);
 
     const emitCanonicalChange = (
       canonicalValue: string,
@@ -174,21 +281,47 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
       }
     };
 
-    const openCalendar = () => {
-      if (disabled) return;
-      calendarChangedRef.current = false;
-      openingCalendarRef.current = true;
-      calendarInputRef.current?.focus();
-      try {
-        if (typeof calendarInputRef.current?.showPicker === "function") {
-          calendarInputRef.current.showPicker();
-        } else {
-          calendarInputRef.current?.click();
+    const handleCalendarOpenChange = (nextOpen: boolean) => {
+      if (nextOpen && disabled) return;
+      if (nextOpen) {
+        calendarChangedRef.current = false;
+        openingCalendarRef.current = true;
+        setCalendarMonth(readCalendarDate(valueRef.current) ?? new Date());
+      } else {
+        openingCalendarRef.current = false;
+        if (!calendarChangedRef.current) {
+          setIsInvalid(isDraftInvalid(draft));
         }
-      } catch {
-        // showPicker() can throw a SecurityError inside cross-origin iframes.
-        calendarInputRef.current?.click();
+        calendarChangedRef.current = false;
       }
+      setCalendarOpen(nextOpen);
+    };
+    const isCalendarDayDisabled = (day: Date): boolean => {
+      const nextValue = calendarDateValue(day);
+      return (
+        disabled ||
+        Boolean(min && nextValue < min) ||
+        Boolean(max && nextValue > max)
+      );
+    };
+    const handleCalendarSelect = (day: Date | undefined) => {
+      if (!day || isCalendarDayDisabled(day)) return;
+      const input = calendarInputRef.current;
+      if (!input) return;
+      const nextValue = calendarDateValue(day);
+      const nativeValueSetter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      if (!nativeValueSetter) return;
+      input.focus({ preventScroll: true });
+      // Reset React's tracked value without emitting an empty date.
+      // This also allows explicitly selecting the existing date again.
+      input.value = "";
+      nativeValueSetter.call(input, nextValue);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      openingCalendarRef.current = false;
+      setCalendarOpen(false);
     };
 
     const handleCalendarChangeAndBlur = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,18 +356,49 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
           data-testid={dataTestId ? `${dataTestId}-manual` : undefined}
           className="h-full min-w-0 flex-1 bg-transparent px-3 py-1 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
         />
-        <button
-          type="button"
-          onMouseDown={() => {
-            openingCalendarRef.current = true;
-          }}
-          onClick={openCalendar}
-          disabled={disabled}
-          aria-label="Choose date from calendar"
-          className="flex h-full w-9 flex-shrink-0 items-center justify-center rounded-r-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed"
+        <Popover
+          open={calendarOpen}
+          onOpenChange={handleCalendarOpenChange}
         >
-          <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              onMouseDown={() => {
+                openingCalendarRef.current = true;
+              }}
+              disabled={disabled}
+              aria-label="Choose date from calendar"
+              className="flex h-full w-9 flex-shrink-0 items-center justify-center rounded-r-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed"
+            >
+              <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            className="w-auto p-0"
+            onFocusOutside={(event) => {
+              if (
+                event.detail.originalEvent.target === calendarInputRef.current
+              ) {
+                event.preventDefault();
+              }
+            }}
+          >
+            <Calendar
+              mode="single"
+              required
+              selected={readCalendarDate(value)}
+              month={calendarMonth}
+              onMonthChange={setCalendarMonth}
+              onSelect={handleCalendarSelect}
+              disabled={isCalendarDayDisabled}
+              fromDate={makeCalendarDate(1, 0, 1)}
+              toDate={makeCalendarDate(9999, 11, 31)}
+              components={{ Caption: DateCalendarCaption }}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
         <input
           ref={calendarInputRef}
           type="date"
