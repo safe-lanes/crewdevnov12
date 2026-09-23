@@ -1,10 +1,11 @@
-import { eq, or } from "drizzle-orm";
+import { eq, or, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   masterNationalities,
   masterVesselTypes,
   masterVessels,
   masterCountries,
+  masterLanguages,
 } from "../../../../shared/schema";
 
 type MasterTableType = 'nationality' | 'vesselType' | 'country' | 'vessel';
@@ -137,4 +138,32 @@ export async function resolveVesselUuid(
   value: string | null | undefined
 ): Promise<string | null> {
   return resolveMasterDataUuid(value, 'vessel');
+}
+
+/**
+ * Batch-resolves a list of candidate master-data UUIDs to their display names,
+ * across countries/nationalities/vessel types/vessels/languages in one pass.
+ * Non-UUID values are ignored. Used by the crew-app review page to show
+ * readable names instead of raw UUIDs for reference fields (issuingCountryUuid,
+ * nationalityUuid, vesselTypeUuid, etc.) without needing per-field knowledge
+ * of which master table each field points to.
+ */
+export async function resolveMasterNames(values: (string | null | undefined)[]): Promise<Record<string, string>> {
+  const unique = Array.from(new Set(values.filter((v): v is string => Boolean(v) && isValidUuid(v!))));
+  if (!unique.length) return {};
+
+  const db = getDb();
+  const [countries, nationalities, vesselTypes, vessels, languages] = await Promise.all([
+    db.select({ uuid: masterCountries.countryUuid, name: masterCountries.countryName }).from(masterCountries).where(inArray(masterCountries.countryUuid, unique)),
+    db.select({ uuid: masterNationalities.natUuid, name: masterNationalities.nationality }).from(masterNationalities).where(inArray(masterNationalities.natUuid, unique)),
+    db.select({ uuid: masterVesselTypes.vtUuid, name: masterVesselTypes.vesselType }).from(masterVesselTypes).where(inArray(masterVesselTypes.vtUuid, unique)),
+    db.select({ uuid: masterVessels.vesselUuid, name: masterVessels.vessel }).from(masterVessels).where(inArray(masterVessels.vesselUuid, unique)),
+    db.select({ uuid: masterLanguages.langUuid, name: masterLanguages.languageName }).from(masterLanguages).where(inArray(masterLanguages.langUuid, unique)),
+  ]);
+
+  const map: Record<string, string> = {};
+  for (const row of [...countries, ...nationalities, ...vesselTypes, ...vessels, ...languages]) {
+    if (row.uuid && row.name) map[row.uuid] = row.name;
+  }
+  return map;
 }

@@ -86,3 +86,44 @@ export const appCrewNotifications = pgTable("app_crew_notifications", {
   readAt: timestamp("read_at", { withTimezone: true }),
   ...auditColumns,
 });
+
+// One row per section/collection edit a crew member submits via the app.
+// Canonical crew-pool tables (crewDocuments, crewVisas, crew profile
+// singletons, etc.) are only ever written to by the office-side "apply" step
+// once a row here is approved — every other module in the app keeps reading
+// those canonical tables exactly as before, unaware this table exists.
+export const appCrewPendingChanges = pgTable("app_crew_pending_changes", {
+  id: serial("id").primaryKey(),
+  pendingUuid: text("pending_uuid").notNull().unique(),
+  domain: varchar("domain", { length: 255 }).notNull(),
+  crewUuid: text("crew_uuid").notNull(),
+  // Matches the section/collection keys already used in
+  // crew-information/controller.ts (particulars, personal, ..., documents, visas, ...).
+  section: text("section").notNull(),
+  action: text("action").notNull(), // 'create' | 'update' | 'delete'
+  targetUuid: text("target_uuid"), // existing canonical record uuid; null for 'create'
+  payload: text("payload").notNull().default("{}"), // JSON string of the validated crew-submitted body
+  // JSON string array of {fileName, filePath, fileType, fileSize} — files a
+  // crew member attached while building a still-pending 'create'. Linked into
+  // the canonical record's attachments only once the create is approved.
+  stagedAttachments: text("staged_attachments").notNull().default("[]"),
+  status: text("status").notNull().default("pending"), // 'pending' | 'approved' | 'rejected'
+  reviewedByUuid: text("reviewed_by_uuid"),
+  reviewedByName: text("reviewed_by_name"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
+  ...auditColumns,
+});
+
+// One row per tenant domain. Absence of a row means the default (gate ON)
+// applies — see pendingChangesService.isVerificationRequired(). This is the
+// only per-client flexibility knob requirement 1 needs: a client that wants
+// crew entries to publish immediately just gets this row set to false, no
+// code change.
+export const appCrewAppSettings = pgTable("app_crew_app_settings", {
+  id: serial("id").primaryKey(),
+  settingUuid: text("setting_uuid").notNull().unique(),
+  domain: varchar("domain", { length: 255 }).notNull().unique(),
+  requireOfficeVerification: boolean("require_office_verification").notNull().default(true),
+  ...auditColumns,
+});

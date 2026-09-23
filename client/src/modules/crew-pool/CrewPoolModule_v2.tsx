@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CrewInfoForm_v2 } from './CrewInfoForm_v2';
+import CrewPortalSubmissionsPage from './CrewPortalSubmissionsPage';
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
@@ -116,9 +117,9 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
     const { canView, canCreate, canEdit, canDelete, permissions, roleName, manningAgent: userManningAgent, isLoading: permissionsLoading } = usePermissions();
     const isManningAgentUser = roleName === 'Manning Agent' && !!userManningAgent;
     const allowedPages = useMemo(() => {
-        const all = ["crew-database", "terminated"];
+        const all = ["crew-database", "terminated", "portal-submissions"];
         if (permissions.length === 0) return all;
-        const pageToMenu: Record<string, string> = { "crew-database": "Crew Database", "terminated": "Terminated" };
+        const pageToMenu: Record<string, string> = { "crew-database": "Crew Database", "terminated": "Terminated", "portal-submissions": "Crew Portal Submissions" };
         return all.filter(p => canView(pageToMenu[p] || p));
     }, [permissions, canView]);
 
@@ -649,6 +650,26 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
         if (crewParam) setPendingCrewUuid(crewParam);
     }, [searchString]);
 
+    // Deep-link entry: the "crew portal submission" alert links to
+    // /crew-pool?page=portal-submissions&pending=<uuid> — same single-route +
+    // query-param convention as the crew/section/doc/visa deep link above,
+    // since /crew-pool is the only registered route (see App.tsx).
+    const [deepLinkPendingUuid, setDeepLinkPendingUuid] = useState<string | null>(null);
+    useEffect(() => {
+        const params = new URLSearchParams(searchString);
+        const page = params.get("page");
+        if (page !== "portal-submissions") return;
+        setSelectedCrewPoolPage("portal-submissions");
+        setDeepLinkPendingUuid(params.get("pending"));
+        if (typeof window !== "undefined") {
+            const cleaned = new URLSearchParams(window.location.search);
+            cleaned.delete("page");
+            cleaned.delete("pending");
+            const qs = cleaned.toString();
+            window.history.replaceState({}, "", `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
+        }
+    }, [searchString]);
+
     useEffect(() => {
         if (!pendingCrewUuid) return;
         if (isCrewLoading) return;
@@ -688,6 +709,8 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
                 return "Crew Database";
             case "terminated":
                 return "Crew - Terminated & NFR";
+            case "portal-submissions":
+                return "Crew Portal Submissions";
             default:
                 return "Crew Database";
         }
@@ -1502,7 +1525,7 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
 
     const renderContent = () => {
         if (permissions.length > 0 && !allowedPages.includes(selectedCrewPoolPage)) {
-            const pageToMenu: Record<string, string> = { "crew-database": "Crew Database", "terminated": "Terminated" };
+            const pageToMenu: Record<string, string> = { "crew-database": "Crew Database", "terminated": "Terminated", "portal-submissions": "Crew Portal Submissions" };
             return <NoAccessPage menuName={pageToMenu[selectedCrewPoolPage] || "Crew Pool"} />;
         }
         if (selectedCrewPoolPage === "crew-database") {
@@ -1511,6 +1534,10 @@ export const CrewPoolModule_v2 = (): JSX.Element => {
 
         if (selectedCrewPoolPage === "terminated") {
             return <div className="flex flex-col flex-1" data-testid="page-terminated">{renderTerminatedFiltersAndTable()}</div>;
+        }
+
+        if (selectedCrewPoolPage === "portal-submissions") {
+            return <CrewPortalSubmissionsPage highlightPendingUuid={deepLinkPendingUuid} />;
         }
 
         return (

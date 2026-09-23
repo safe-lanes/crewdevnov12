@@ -1,4 +1,4 @@
-import { Search, UserX } from 'lucide-react';
+import { Search, UserX, ClipboardCheck } from 'lucide-react';
 import React from 'react';
 import { useViewport, getLayoutConfig } from '@/hooks/useViewport';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -19,6 +19,11 @@ const crewPoolSideBarList: { name: string; icon: React.ReactNode; page: string }
         name: "Terminated",
         icon: <UserX size={20} className='text-white' />,
         page: "terminated"
+    },
+    {
+        name: "Portal Submissions",
+        icon: <ClipboardCheck size={20} className='text-white' />,
+        page: "portal-submissions"
     }
 ];
 

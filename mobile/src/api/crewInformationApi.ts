@@ -19,8 +19,22 @@ export type AttachmentRules = z.infer<typeof attachmentRulesSchema>;
 // (sections/permissions missing or non-object entirely), just without
 // becoming a maintenance burden that breaks on every legitimate field the
 // server adds.
+const recentSubmissionSchema = z.object({
+  pendingUuid: z.string(),
+  section: z.string(),
+  action: z.string(),
+  status: z.string(),
+  rejectionReason: z.string().nullable().optional(),
+  submittedAt: z.string().nullable().optional(),
+  reviewedAt: z.string().nullable().optional(),
+});
+
 const crewInformationSchema = z.object({
   sections: z.record(z.string(), z.any()),
+  // Requirement 1, crew-facing visibility — what happened to this crew
+  // member's own recent app-portal submissions (see RecentSubmissions in
+  // CrewProfileScreen.tsx).
+  recentSubmissions: z.array(recentSubmissionSchema).optional(),
   permissions: z.object({
     writableSingletons: z.array(z.string()),
     writableCollections: z.array(z.string()),

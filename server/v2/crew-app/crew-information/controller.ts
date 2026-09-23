@@ -1,29 +1,15 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import {
-  insertCrewAddressSchema,
-  insertCrewChildSchema,
-  insertCrewDocumentSchema,
-  insertCrewEducationSchema,
-  insertCrewFamilyInfoSchema,
-  insertCrewLicenseSchema,
-  insertCrewNextOfKinSchema,
-  insertCrewPersonalDetailsSchema,
-  insertCrewSeaServiceSchema,
-  insertCrewTrainingCourseSchema,
-  insertCrewVisaSchema,
-} from "../../../../shared/v2/crew-pool/types";
-import {
-  crewBriefingService,
-  crewCertificatesService,
-  crewDocumentsService,
-  crewEducationService,
-  crewMedicalService,
-  crewMembersService,
-  crewProfileService,
-  crewSeaServiceService,
-  crewVisasService,
-} from "../../crew-pool/services";
+  collections,
+  collectionSchemas,
+  isCollectionName,
+  isReadonlyCollectionRecord,
+  isSingletonSection,
+  singletonSchemas,
+  type CollectionName,
+} from "./adapters";
+import { crewProfileService } from "../../crew-pool/services";
 import {
   CrewDocumentsRepository,
   CrewVisasRepository,
@@ -35,7 +21,9 @@ import {
   CrewBriefingRepository,
 } from "../../crew-pool/repositories";
 import { MastersRepository } from "../../masters/repositories/mastersRepository";
-import { fileStorageService } from "../../shared/fileStorageService";
+import { pendingChangesRepository } from "./pendingChangesRepository";
+import { stageChange } from "./pendingChangesService";
+import type { AppCrewPendingChange } from "../../../../shared/v2/crew-app/types";
 
 const mastersRepository = new MastersRepository();
 
@@ -55,172 +43,6 @@ const infoTrainingRepository = new CrewTrainingRepository();
 const infoSeaServiceRepository = new CrewSeaServiceRepository();
 const infoMedicalRepository = new CrewMedicalRepository();
 const infoBriefingRepository = new CrewBriefingRepository();
-
-const mobileAuditFields = {
-  createdByUuid: true,
-  updatedByUuid: true,
-  isDeleted: true,
-  isSync: true,
-} as const;
-
-const particularsSchema = z.object({
-  firstName: z.string().trim().min(1).max(200).optional(),
-  middleName: z.string().trim().max(200).nullable().optional(),
-  familyName: z.string().trim().min(1).max(200).optional(),
-  gender: z.string().trim().max(100).nullable().optional(),
-  dob: z.string().trim().max(30).nullable().optional(),
-  nationality: z.string().trim().min(1).max(200).optional(),
-  nationalityUuid: z.string().trim().min(1).max(200).nullable().optional(),
-  vesselTypeUuid: z.string().trim().min(1).max(200).nullable().optional(),
-}).strict();
-
-const personalSchema = insertCrewPersonalDetailsSchema.omit({
-  cpdUuid: true,
-  crewUuid: true,
-  ageInYears: true,
-  manningAgent: true,
-  crewPool: true,
-  availability: true,
-  nextAvailability: true,
-  ...mobileAuditFields,
-}).extend({
-  placeOfBirthCountry: z.string().trim().min(1).max(200).optional(),
-}).strict();
-
-const contactSchema = insertCrewAddressSchema.omit({
-  addrUuid: true,
-  crewUuid: true,
-  ...mobileAuditFields,
-}).extend({
-  countryOfResidence: z.string().trim().min(1).max(200).optional(),
-}).strict();
-
-const familyInfoSchema = insertCrewFamilyInfoSchema.omit({
-  famUuid: true,
-  crewUuid: true,
-  ...mobileAuditFields,
-}).strict();
-const nextOfKinSchema = insertCrewNextOfKinSchema.omit({
-  nokUuid: true,
-  crewUuid: true,
-  ...mobileAuditFields,
-}).strict();
-const childDataSchema = insertCrewChildSchema.omit({
-  childUuid: true,
-  crewUuid: true,
-  ...mobileAuditFields,
-}).strict();
-const vesselTypesSchema = z.object({
-  vesselTypeUuids: z.array(z.string().trim().min(1).max(200)).max(100),
-}).strict();
-
-const collectionSchemas = {
-  children: childDataSchema,
-  documents: insertCrewDocumentSchema.omit({
-    docUuid: true,
-    crewUuid: true,
-    attachmentRef: true,
-    ...mobileAuditFields,
-  }).strict(),
-  visas: insertCrewVisaSchema.omit({
-    visaUuid: true,
-    crewUuid: true,
-    attachmentRef: true,
-    ...mobileAuditFields,
-  }).strict(),
-  education: insertCrewEducationSchema.omit({
-    eduUuid: true,
-    crewUuid: true,
-    attachmentRef: true,
-    ...mobileAuditFields,
-  }).strict(),
-  licenses: insertCrewLicenseSchema.omit({
-    licUuid: true,
-    crewUuid: true,
-    attachmentRef: true,
-    archivedAt: true,
-    ...mobileAuditFields,
-  }).strict(),
-  training: insertCrewTrainingCourseSchema.omit({
-    trainUuid: true,
-    crewUuid: true,
-    attachmentRef: true,
-    ...mobileAuditFields,
-  }).strict(),
-  "sea-service": insertCrewSeaServiceSchema.omit({
-    seaUuid: true,
-    crewUuid: true,
-    attachmentRef: true,
-    serviceType: true,
-    ...mobileAuditFields,
-  }).strict(),
-} as const;
-
-type CollectionName = keyof typeof collectionSchemas;
-
-interface CollectionAdapter {
-  list: (crewUuid: string) => Promise<any[]>;
-  get: (recordUuid: string, crewUuid: string) => Promise<any>;
-  create: (crewUuid: string, data: any) => Promise<any>;
-  update: (recordUuid: string, data: any) => Promise<any>;
-  remove: (recordUuid: string) => Promise<any>;
-}
-
-const collections: Record<CollectionName, CollectionAdapter> = {
-  children: {
-    list: crewUuid => crewProfileService.getChildren(crewUuid),
-    get: async (recordUuid) => {
-      const child = await crewProfileService.getChildByUuid(recordUuid);
-      if (!child) throw new Error("Child not found");
-      return child;
-    },
-    create: (crewUuid, data) => crewProfileService.createChild(crewUuid, data),
-    update: (recordUuid, data) => crewProfileService.updateChild(recordUuid, data),
-    remove: recordUuid => crewProfileService.deleteChild(recordUuid),
-  },
-  documents: {
-    list: crewUuid => crewDocumentsService.getAll(crewUuid),
-    get: recordUuid => crewDocumentsService.getByUuid(recordUuid),
-    create: (crewUuid, data) => crewDocumentsService.create(crewUuid, data),
-    update: (recordUuid, data) => crewDocumentsService.update(recordUuid, data),
-    remove: recordUuid => crewDocumentsService.delete(recordUuid),
-  },
-  visas: {
-    list: crewUuid => crewVisasService.getAll(crewUuid),
-    get: recordUuid => crewVisasService.getByUuid(recordUuid),
-    create: (crewUuid, data) => crewVisasService.create(crewUuid, data),
-    update: (recordUuid, data) => crewVisasService.update(recordUuid, data),
-    remove: recordUuid => crewVisasService.delete(recordUuid),
-  },
-  education: {
-    list: crewUuid => crewEducationService.getAll(crewUuid),
-    get: recordUuid => crewEducationService.getByUuid(recordUuid),
-    create: (crewUuid, data) => crewEducationService.create(crewUuid, data),
-    update: (recordUuid, data) => crewEducationService.update(recordUuid, data),
-    remove: recordUuid => crewEducationService.delete(recordUuid),
-  },
-  licenses: {
-    list: crewUuid => crewCertificatesService.getLicenses(crewUuid),
-    get: recordUuid => crewCertificatesService.getLicenseByUuid(recordUuid),
-    create: (crewUuid, data) => crewCertificatesService.createLicense(crewUuid, data),
-    update: (recordUuid, data) => crewCertificatesService.updateLicense(recordUuid, data),
-    remove: recordUuid => crewCertificatesService.deleteLicense(recordUuid),
-  },
-  training: {
-    list: crewUuid => crewCertificatesService.getTraining(crewUuid),
-    get: recordUuid => crewCertificatesService.getTrainingByUuid(recordUuid),
-    create: (crewUuid, data) => crewCertificatesService.createTraining(crewUuid, data),
-    update: (recordUuid, data) => crewCertificatesService.updateTraining(recordUuid, data),
-    remove: recordUuid => crewCertificatesService.deleteTraining(recordUuid),
-  },
-  "sea-service": {
-    list: crewUuid => crewSeaServiceService.getAll(crewUuid),
-    get: recordUuid => crewSeaServiceService.getByUuid(recordUuid),
-    create: (crewUuid, data) => crewSeaServiceService.create(crewUuid, { ...data, serviceType: "external" }),
-    update: (recordUuid, data) => crewSeaServiceService.update(recordUuid, data),
-    remove: recordUuid => crewSeaServiceService.delete(recordUuid),
-  },
-};
 
 /** Remove fields which can disclose server identity, storage, or audit internals. */
 export function sanitize(value: any): any {
@@ -264,21 +86,64 @@ function sendError(res: Response, error: any): void {
   });
 }
 
-function readonlyRecord(row: any, readOnly: boolean): any {
-  return { ...sanitize(row), readOnly };
+function readonlyRecord(row: any, readOnly: boolean, hardReadOnly = false): any {
+  // `readOnly` blocks the whole record (field edits) — true for the
+  // pre-existing hard-readonly cases (archived license, company sea-service)
+  // AND whenever a submission is awaiting/pending office review.
+  // `hardReadOnly` is the narrower, pre-existing case only — attachments stay
+  // live-writable on an already-published record even while a *field* edit
+  // on it is pending review (see attachmentController.ts: attachment
+  // add/remove on an existing canonical record is intentionally not gated).
+  return { ...sanitize(row), readOnly, hardReadOnly };
 }
 
-function isReadonlyCollectionRecord(name: CollectionName, row: any): boolean {
-  return (name === "sea-service" && row?.serviceType === "company") ||
-    (name === "licenses" && Boolean(row?.archivedAt));
+/** Collection-row response helper: derives both readOnly flags from one place instead of repeating the isReadonlyCollectionRecord(...) || reviewStatus expression per collection. */
+function collectionRow(name: CollectionName, row: any): any {
+  const hard = isReadonlyCollectionRecord(name, row);
+  return readonlyRecord(row, hard || Boolean(row.reviewStatus), hard);
+}
+
+/**
+ * Overlays a crew member's own open (pending) submissions onto a canonical
+ * collection listing — a pending 'create' becomes a synthetic row keyed by
+ * its pendingUuid (so the mobile app's existing idOf()/attachment flow keeps
+ * working unchanged), a pending 'update'/'delete' flags the matching
+ * canonical row as awaiting review. Nothing here touches the canonical rows
+ * themselves — only what this crew member's own request sees.
+ */
+function overlayPending(name: CollectionName, canonicalRows: any[], pending: AppCrewPendingChange[]): any[] {
+  const primaryKey = collections[name].primaryKey;
+  const overlaid = canonicalRows.map(row => ({ ...row }));
+  const byTarget = new Map(overlaid.map(row => [row[primaryKey], row]));
+  const extra: any[] = [];
+
+  for (const change of pending) {
+    if (change.section !== name) continue;
+    if (change.action === "create") {
+      extra.push({
+        ...JSON.parse(change.payload || "{}"),
+        [primaryKey]: change.pendingUuid,
+        uuid: change.pendingUuid,
+        reviewStatus: "pending",
+        pendingUuid: change.pendingUuid,
+      });
+      continue;
+    }
+    const target = change.targetUuid ? byTarget.get(change.targetUuid) : undefined;
+    if (!target) continue;
+    target.reviewStatus = change.action === "delete" ? "pending_delete" : "pending";
+    target.pendingUuid = change.pendingUuid;
+  }
+  return [...overlaid, ...extra];
 }
 
 export async function getInformation(req: Request, res: Response): Promise<void> {
   try {
     const crewUuid = req.crewUser!.crewUuid;
+    const domain = req.crewUser!.domain;
     const [
       profile, documents, visas, education, licenses, training, seaService,
-      medicals, doctorVisits, briefings, debriefings,
+      medicals, doctorVisits, briefings, debriefings, openPending, recentSubmissions,
     ] = await Promise.all([
       crewProfileService.getFullProfile(crewUuid),
       infoDocumentsRepository.findByCrewUuidWithAttachments(crewUuid),
@@ -291,29 +156,68 @@ export async function getInformation(req: Request, res: Response): Promise<void>
       infoMedicalRepository.findVisitsByCrewUuidWithAttachments(crewUuid),
       infoBriefingRepository.findBriefingsByCrewUuidWithAttachments(crewUuid),
       infoBriefingRepository.findDebriefingsByCrewUuidWithAttachments(crewUuid),
+      // Open (pending) rows only — used below to overlay status onto the
+      // live sections. Kept separate from recentSubmissions (which also
+      // includes approved/rejected rows) so a stale rejected row can never
+      // shadow a fresh pending edit on the same record — see overlayPending.
+      pendingChangesRepository.listOpenForCrew(crewUuid, domain),
+      pendingChangesRepository.listRecentForCrew(crewUuid, domain),
     ]);
+
+    const pendingSingleton = (section: string) => openPending.find(p => p.section === section);
+    const singletonOverlay = (row: any, section: string) => {
+      const change = pendingSingleton(section);
+      return change ? { ...row, reviewStatus: "pending", pendingUuid: change.pendingUuid, pendingValues: sanitize(JSON.parse(change.payload || "{}")) } : row;
+    };
+    // "family" and "next-of-kin" are independently staged sections (each
+    // with its own dedup/apply), but the mobile app nests both under one
+    // `sections.family` object (`.info` / `.nextOfKin`) — so each is
+    // overlaid onto its own nested key rather than the shared parent.
+    const familyRow: any = sanitize(profile.family) ?? {};
+    const familyPending = pendingSingleton("family");
+    const nextOfKinPending = pendingSingleton("next-of-kin");
+    const familySection = {
+      ...familyRow,
+      ...(familyPending ? { info: singletonOverlay(familyRow.info, "family") } : {}),
+      ...(nextOfKinPending ? { nextOfKin: singletonOverlay(familyRow.nextOfKin, "next-of-kin") } : {}),
+    };
 
     res.json({
       sections: {
-        particulars: sanitize(profile.crew),
+        particulars: singletonOverlay(sanitize(profile.crew), "particulars"),
         assignment: profile.currentAssignment
           ? readonlyRecord(profile.currentAssignment, true)
           : null,
-        personal: sanitize(profile.personalDetails) ?? null,
-        contact: sanitize(profile.address) ?? null,
-        family: sanitize(profile.family),
+        personal: singletonOverlay(sanitize(profile.personalDetails) ?? null, "personal"),
+        contact: singletonOverlay(sanitize(profile.address) ?? null, "contact"),
+        family: familySection,
         vesselTypes: sanitize(profile.vesselTypes),
-        travelDocuments: documents.map(row => readonlyRecord(row, false)),
-        visas: visas.map(row => readonlyRecord(row, false)),
-        education: education.map(row => readonlyRecord(row, false)),
-        licenses: licenses.map(row => readonlyRecord(row, Boolean(row.archivedAt))),
-        training: training.map(row => readonlyRecord(row, false)),
-        seaService: seaService.map(row => readonlyRecord(row, row.serviceType === "company")),
+        travelDocuments: overlayPending("documents", documents, openPending).map(row => collectionRow("documents", row)),
+        visas: overlayPending("visas", visas, openPending).map(row => collectionRow("visas", row)),
+        education: overlayPending("education", education, openPending).map(row => collectionRow("education", row)),
+        licenses: overlayPending("licenses", licenses, openPending).map(row => collectionRow("licenses", row)),
+        training: overlayPending("training", training, openPending).map(row => collectionRow("training", row)),
+        seaService: overlayPending("sea-service", seaService, openPending).map(row => collectionRow("sea-service", row)),
         medicals: medicals.map(row => readonlyRecord(row, true)),
         doctorVisits: doctorVisits.map(row => readonlyRecord(row, true)),
         briefings: briefings.map(row => readonlyRecord(row, true)),
         debriefings: debriefings.map(row => readonlyRecord(row, true)),
       },
+      // Requirement 1, crew-facing side: every submission this crew member
+      // has made recently, whatever its outcome — including *why* one was
+      // rejected. Deliberately separate from the `sections` overlay above
+      // (which only reflects currently-open pending edits) so a rejection
+      // can be shown here without risking it shadowing a fresh resubmission
+      // in the live record lists.
+      recentSubmissions: recentSubmissions.map(change => ({
+        pendingUuid: change.pendingUuid,
+        section: change.section,
+        action: change.action,
+        status: change.status,
+        rejectionReason: change.rejectionReason,
+        submittedAt: change.createdAt,
+        reviewedAt: change.reviewedAt,
+      })),
       permissions: {
         writableSingletons: ["particulars", "personal", "contact", "family", "next-of-kin", "vessel-types"],
         writableCollections: ["children", "documents", "visas", "education", "licenses", "training", "sea-service"],
@@ -357,81 +261,26 @@ export async function getCrewInformationMasters(_req: Request, res: Response): P
   }
 }
 
+/** Requirement 1: every crew-submitted profile edit is staged for office verification (unless this tenant has the gate switched off) rather than written straight into the canonical crew record. */
 export async function updateSection(req: Request, res: Response): Promise<void> {
   try {
     const crewUuid = req.crewUser!.crewUuid;
-    if (req.params.section === "particulars") {
-      const body = parse(particularsSchema, req.body);
-      const { nationality, ...core } = body;
-      const crew = await crewMembersService.update(crewUuid, {
-        ...core,
-        ...(nationality ? { nationality } : {}),
-      } as any);
-      res.json(sanitize(crew));
+    const domain = req.crewUser!.domain;
+    const section = req.params.section;
+    if (!isSingletonSection(section)) {
+      res.status(404).json({ error: "not_found" });
       return;
     }
-    if (req.params.section === "personal") {
-      res.json(sanitize(await crewProfileService.upsertPersonalDetails(
-        crewUuid,
-        parse(personalSchema, req.body) as any,
-      )));
-      return;
-    }
-    if (req.params.section === "contact") {
-      res.json(sanitize(await crewProfileService.upsertAddress(
-        crewUuid,
-        parse(contactSchema, req.body) as any,
-      )));
-      return;
-    }
-    if (req.params.section === "family") {
-      res.json(sanitize(await crewProfileService.upsertFamilyInfo(
-        crewUuid,
-        parse(familyInfoSchema, req.body) as any,
-      )));
-      return;
-    }
-    if (req.params.section === "next-of-kin") {
-      res.json(sanitize(await crewProfileService.upsertNextOfKin(
-        crewUuid,
-        parse(nextOfKinSchema, req.body) as any,
-      )));
-      return;
-    }
-    if (req.params.section === "vessel-types") {
-      const body = parse(vesselTypesSchema, req.body);
-      res.json(sanitize(await crewProfileService.syncVesselTypes(
-        crewUuid,
-        body.vesselTypeUuids,
-      )));
-      return;
-    }
-    res.status(404).json({ error: "not_found" });
+    const body = parse(singletonSchemas[section], req.body);
+    const { autoApplied, appliedResult, pendingChange } = await stageChange({
+      domain, crewUuid, section, action: "update", payload: body,
+    });
+    res.json(autoApplied
+      ? sanitize(appliedResult)
+      : { ...sanitize(body), reviewStatus: "pending", pendingUuid: pendingChange.pendingUuid });
   } catch (error) {
     sendError(res, error);
   }
-}
-
-function isCollectionName(value: string): value is CollectionName {
-  return Object.prototype.hasOwnProperty.call(collections, value);
-}
-
-// Fetches just the attachments for one record, for DELETE's cleanup step —
-// deliberately not adapter.list(), which would re-fetch the crew member's
-// entire collection (plus a second batched attachment query across all of
-// it) just to find the one record being deleted.
-const attachmentsByCollection: Partial<Record<CollectionName, (recordUuid: string) => Promise<any[]>>> = {
-  documents: recordUuid => crewDocumentsService.getAttachments(recordUuid),
-  visas: recordUuid => crewVisasService.getAttachments(recordUuid),
-  education: recordUuid => crewEducationService.getAttachments(recordUuid),
-  licenses: recordUuid => infoLicensesRepository.findAttachmentsByLicUuid(recordUuid),
-  training: recordUuid => infoTrainingRepository.findAttachmentsByTrainUuid(recordUuid),
-  "sea-service": recordUuid => crewSeaServiceService.getAttachments(recordUuid),
-};
-
-async function attachmentsForRecord(name: CollectionName, recordUuid: string): Promise<any[]> {
-  const fn = attachmentsByCollection[name];
-  return fn ? fn(recordUuid) : [];
 }
 
 export async function collectionHandler(req: Request, res: Response): Promise<void> {
@@ -443,16 +292,25 @@ export async function collectionHandler(req: Request, res: Response): Promise<vo
     }
     const adapter = collections[name];
     const crewUuid = req.crewUser!.crewUuid;
+    const domain = req.crewUser!.domain;
 
     if (req.method === "GET") {
-      const rows = await adapter.list(crewUuid);
-      res.json(rows.map(row => readonlyRecord(row, isReadonlyCollectionRecord(name, row))));
+      const [rows, openPending] = await Promise.all([
+        adapter.list(crewUuid),
+        pendingChangesRepository.listOpenForCrew(crewUuid, domain),
+      ]);
+      const overlaid = overlayPending(name, rows, openPending);
+      res.json(overlaid.map(row => collectionRow(name, row)));
       return;
     }
     if (req.method === "POST") {
       const body = parse(collectionSchemas[name], req.body);
-      const created = await adapter.create(crewUuid, body);
-      res.status(201).json(readonlyRecord(created, false));
+      const { autoApplied, appliedResult, pendingChange } = await stageChange({
+        domain, crewUuid, section: name, action: "create", payload: body,
+      });
+      res.status(201).json(autoApplied
+        ? readonlyRecord(appliedResult, false)
+        : readonlyRecord({ ...body, [adapter.primaryKey]: pendingChange.pendingUuid, uuid: pendingChange.pendingUuid, reviewStatus: "pending", pendingUuid: pendingChange.pendingUuid }, true));
       return;
     }
 
@@ -471,21 +329,26 @@ export async function collectionHandler(req: Request, res: Response): Promise<vo
       res.status(409).json({ error: "readonly_record" });
       return;
     }
+
     if (req.method === "DELETE") {
-      const attachments = await attachmentsForRecord(name, req.params.uuid);
-      await adapter.remove(req.params.uuid);
-      await Promise.all(attachments.map((attachment: any) => {
-        const path = attachment?.filePath;
-        return path && !path.startsWith("data:")
-          ? fileStorageService.deleteAttachment(path)
-          : Promise.resolve();
-      }));
-      res.status(204).send();
+      const { autoApplied, pendingChange } = await stageChange({
+        domain, crewUuid, section: name, action: "delete", targetUuid: req.params.uuid, payload: {},
+      });
+      if (autoApplied) {
+        res.status(204).send();
+      } else {
+        res.status(202).json({ status: "pending_delete", pendingUuid: pendingChange.pendingUuid });
+      }
       return;
     }
 
     const body = parse(collectionSchemas[name].partial().strict(), req.body);
-    res.json(readonlyRecord(await adapter.update(req.params.uuid, body), false));
+    const { autoApplied, appliedResult, pendingChange } = await stageChange({
+      domain, crewUuid, section: name, action: "update", targetUuid: req.params.uuid, payload: body,
+    });
+    res.json(autoApplied
+      ? readonlyRecord(appliedResult, false)
+      : readonlyRecord({ ...target, ...body, reviewStatus: "pending", pendingUuid: pendingChange.pendingUuid }, true));
   } catch (error) {
     sendError(res, error);
   }

@@ -41,6 +41,16 @@ const config: Record<string, { title: string; description: string; fields: strin
 };
 
 const idOf = (row: any) => row?.recordUuid || row?.childUuid || row?.docUuid || row?.visaUuid || row?.eduUuid || row?.licUuid || row?.trainUuid || row?.seaUuid || row?.medUuid || row?.visitUuid || row?.briefingUuid || row?.debriefingUuid || row?.uuid;
+// requirement 1: entries submitted via the app are held for crewing-team
+// review before they publish — reviewStatus is set by the server whenever a
+// record has an open submission against it. A rejected outcome doesn't
+// appear here (it never re-enters this list) — see the "Recent submissions"
+// section on the profile screen for that.
+function submissionStatusLabel(reviewStatus: string | undefined): string | null {
+  if (reviewStatus === "pending") return "Awaiting crewing team review";
+  if (reviewStatus === "pending_delete") return "Deletion awaiting crewing team review";
+  return null;
+}
 // Server enrichment columns (e.g. `resolvedVesselName`) shadow a genuine field
 // (`vesselName`) when one exists; otherwise they're the only human-readable
 // value available (e.g. `resolvedVesselTypeName` has no plain `vesselType`
@@ -108,7 +118,7 @@ export default function CrewCollectionScreen() {
       {!showList ? <StateView loading={loading} error={error} retry={load} /> : null}
     </>}
     ListEmptyComponent={showList ? <StateView empty={`No ${tabLabel(collection).toLowerCase()} recorded`} /> : null}
-    renderItem={({ item: row }) => { const rowReadOnly = Boolean(row.readOnly || !canWrite); return <Pressable accessibilityRole="button" accessibilityLabel={`View ${tabLabel(collection)} record`} testID={`crew-record-${idOf(row)}`} onPress={() => setEditing({ ...row, readOnly: rowReadOnly })} style={({ pressed }) => [styles.card, pressed && styles.pressed]}><View style={styles.row}><View style={{ flex: 1 }}><Text style={styles.cardTitle}>{row.documentName || row.trainingCourse || row.certificateDocument || row.institution || row.vesselName || row.courseId || row.licenseId || row.country || "Record"}</Text>{row.expiry || row.expiryDate || row.rank || row.joiningRank || row.rankServed || row.qualifications ? <Text style={styles.cardMeta}>{row.expiry || row.expiryDate ? `Expires ${row.expiry || row.expiryDate}` : row.rank || row.joiningRank || row.rankServed || row.qualifications}</Text> : null}</View><Text style={{ color: rowReadOnly ? palette.muted : palette.teal, fontWeight: "800" }}>{rowReadOnly ? "View" : "Edit"}</Text></View></Pressable>; }}
+    renderItem={({ item: row }) => { const rowReadOnly = Boolean(row.readOnly || !canWrite); const statusLabel = submissionStatusLabel(row.reviewStatus); return <Pressable accessibilityRole="button" accessibilityLabel={`View ${tabLabel(collection)} record`} testID={`crew-record-${idOf(row)}`} onPress={() => setEditing({ ...row, readOnly: rowReadOnly })} style={({ pressed }) => [styles.card, pressed && styles.pressed]}><View style={styles.row}><View style={{ flex: 1 }}><Text style={styles.cardTitle}>{row.documentName || row.trainingCourse || row.certificateDocument || row.institution || row.vesselName || row.courseId || row.licenseId || row.country || "Record"}</Text>{row.expiry || row.expiryDate || row.rank || row.joiningRank || row.rankServed || row.qualifications ? <Text style={styles.cardMeta}>{row.expiry || row.expiryDate ? `Expires ${row.expiry || row.expiryDate}` : row.rank || row.joiningRank || row.rankServed || row.qualifications}</Text> : null}{statusLabel ? <Text style={{ color: palette.amber, fontWeight: "800", marginTop: 4, fontSize: 12 }}>{statusLabel}</Text> : null}</View><Text style={{ color: rowReadOnly ? palette.muted : palette.teal, fontWeight: "800" }}>{rowReadOnly ? "View" : "Edit"}</Text></View></Pressable>; }}
     ListFooterComponent={!readonly && canWrite ? <Button title={`Add ${tabLabel(collection).replace(/s$/, "")}`} onPress={() => setEditing("new")} /> : null}
   />;
 }
@@ -126,8 +136,12 @@ function RecordEditor({ collection, config: c, record, masters, attachmentRules,
   const attachmentCollection = collection === "doctorVisits" ? "doctor-visits" : collection;
   const parentUuid = idOf(record);
   const canReadFiles = Boolean(parentUuid && attachmentRules?.readableCollections.includes(attachmentCollection));
-  const canWriteFiles = Boolean(canReadFiles && !readOnly && attachmentRules?.writableCollections.includes(attachmentCollection));
-  if (readOnly) { const detailFields = detailFieldsFor(c.fields, record); return <ScrollView style={styles.screen} contentContainerStyle={styles.content}><Text style={styles.title}>Record details</Text><Text style={styles.subtitle}>Read only</Text>{detailFields.map((field: string) => <View key={field} style={styles.card}><Text style={styles.label}>{detailFieldLabel(field)}</Text><Text style={styles.cardMeta}>{String(record[field])}</Text></View>)}{canReadFiles ? <CrewAttachments collection={attachmentCollection} parentUuid={parentUuid} writable={false} maxBytes={attachmentRules?.maxBytes} /> : null}<Button title="Back" secondary onPress={onDone} /></ScrollView>; }
+  // Attachments stay writable even while a *field* edit on this record is
+  // pending review (readOnly) — the server only gates them off for the
+  // pre-existing hard-readonly cases (archived license, company sea-service)
+  // or lack of permission. See controller.ts's readonlyRecord()/hardReadOnly.
+  const canWriteFiles = Boolean(canReadFiles && !forceReadOnly && !record.hardReadOnly && attachmentRules?.writableCollections.includes(attachmentCollection));
+  if (readOnly) { const detailFields = detailFieldsFor(c.fields, record); const statusLabel = submissionStatusLabel(record.reviewStatus); return <ScrollView style={styles.screen} contentContainerStyle={styles.content}><Text style={styles.title}>Record details</Text><Text style={[styles.subtitle, statusLabel && { color: palette.amber, fontWeight: "800" }]}>{statusLabel || "Read only"}</Text>{detailFields.map((field: string) => <View key={field} style={styles.card}><Text style={styles.label}>{detailFieldLabel(field)}</Text><Text style={styles.cardMeta}>{String(record[field])}</Text></View>)}{canReadFiles ? <CrewAttachments collection={attachmentCollection} parentUuid={parentUuid} writable={canWriteFiles} maxBytes={attachmentRules?.maxBytes} /> : null}<Button title="Back" secondary onPress={onDone} /></ScrollView>; }
   const change = (field: string, value: any) => { setSaved(false); setErrors((current) => ({ ...current, [field]: "" })); setForm((current: any) => ({ ...current, [field]: value })); };
   const optionsFor = (field: string) => field === "vesselUuid" ? (masters.vessels || []) : field === "vesselTypeUuid" ? (masters.vesselTypes || []) : ["countryUuid", "issuingCountryUuid"].includes(field) ? (masters.countries || []) : null;
   const cancel = () => dirty ? Alert.alert("Discard changes?", "Your entered data has not been saved.", [{ text: "Keep editing", style: "cancel" }, { text: "Discard", style: "destructive", onPress: onDone }]) : onDone();

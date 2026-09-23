@@ -6,6 +6,8 @@ import {
   appCrewContentPages,
   appCrewNotices,
   appCrewNotifications,
+  appCrewPendingChanges,
+  appCrewAppSettings,
 } from "./schema";
 
 // ============================================================================
@@ -123,3 +125,38 @@ export const insertAppCrewNotificationSchema = createInsertSchema(appCrewNotific
 });
 export type InsertAppCrewNotification = z.infer<typeof insertAppCrewNotificationSchema>;
 export type AppCrewNotification = typeof appCrewNotifications.$inferSelect;
+
+// ============================================================================
+// APP CREW PENDING CHANGES (crew-portal entries awaiting office verification)
+// ============================================================================
+
+export const pendingChangeActionSchema = z.enum(["create", "update", "delete"]);
+export type PendingChangeAction = z.infer<typeof pendingChangeActionSchema>;
+
+export const pendingChangeStatusSchema = z.enum(["pending", "approved", "rejected"]);
+export type PendingChangeStatus = z.infer<typeof pendingChangeStatusSchema>;
+
+export const insertAppCrewPendingChangeSchema = createInsertSchema(appCrewPendingChanges).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAppCrewPendingChange = z.infer<typeof insertAppCrewPendingChangeSchema>;
+export type AppCrewPendingChange = typeof appCrewPendingChanges.$inferSelect;
+
+export const rejectPendingChangeRequestSchema = z.object({
+  reason: z.string().trim().min(1).max(1000),
+});
+export type RejectPendingChangeRequest = z.infer<typeof rejectPendingChangeRequestSchema>;
+
+// ============================================================================
+// APP CREW APP SETTINGS (per-tenant crew-app toggles)
+// ============================================================================
+
+export const insertAppCrewAppSettingsSchema = createInsertSchema(appCrewAppSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertAppCrewAppSettings = z.infer<typeof insertAppCrewAppSettingsSchema>;
+export type AppCrewAppSettings = typeof appCrewAppSettings.$inferSelect;

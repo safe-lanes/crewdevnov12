@@ -25,6 +25,7 @@ import accountsV2Routes from "./v2/accounts/routes";
 import { briefingsV2Routes } from "./v2/briefings";
 import { interviewsV2Routes } from "./v2/interviews";
 import { debriefingsV2Routes } from "./v2/debriefings";
+import crewAppReviewV2Routes from "./v2/crew-app-review/routes";
 import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
 import { setupSwagger } from "./swagger";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
@@ -160,6 +161,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/v2/briefings", briefingsV2Routes);
   app.use("/api/v2/interviews", interviewsV2Routes);
   app.use("/api/v2/debriefings", debriefingsV2Routes);
+
+  // Office review queue for crew-portal entries awaiting verification
+  // (requirement 1) — reuses server/v2/crew-app/crew-information's staging
+  // service; mounted under /api/v2/ so it gets tenant+auth + RBAC.
+  app.use("/api/v2/crew-app-review", crewAppReviewV2Routes);
 
   // Start crewing alert background scanner (multi-tenant only)
   if (tenantConnectionManager.isMultiTenantEnabled) {

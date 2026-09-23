@@ -2,13 +2,10 @@ import { NextFunction, Request, Response } from "express";
 import multer from "multer";
 import {
   crewBriefingService,
-  crewCertificatesService,
-  crewDocumentsService,
-  crewEducationService,
   crewMedicalService,
-  crewSeaServiceService,
-  crewVisasService,
 } from "../../crew-pool/services";
+import { attachmentAdapters, isCollectionName, isReadonlyCollectionRecord, collections, type CollectionName } from "./adapters";
+import { pendingChangesRepository } from "./pendingChangesRepository";
 import {
   AttachmentValidationError,
   fileStorageService,
@@ -30,13 +27,28 @@ type Adapter = {
   remove?: (attUuid: string) => Promise<void>;
 };
 
+// Wraps the shared collection adapters (documents/visas/education/licenses/
+// training/sea-service — see ./adapters) plus the two read-only-from-here
+// sections that still list their own attachments.
+function collectionAttachmentAdapter(name: CollectionName): Adapter {
+  const attach = attachmentAdapters[name];
+  return {
+    parentKey: collections[name].primaryKey,
+    module: `crew-pool/crew-${name}`,
+    writable: Boolean(attach),
+    list: collections[name].list,
+    add: attach?.add,
+    remove: attach?.remove,
+  };
+}
+
 const adapters: Record<AttachmentSection, Adapter> = {
-  documents: { parentKey: "docUuid", module: "crew-pool/crew-documents", writable: true, list: crewDocumentsService.getAll.bind(crewDocumentsService), add: crewDocumentsService.addAttachment.bind(crewDocumentsService), remove: crewDocumentsService.removeAttachment.bind(crewDocumentsService) },
-  visas: { parentKey: "visaUuid", module: "crew-pool/crew-visas", writable: true, list: crewVisasService.getAll.bind(crewVisasService), add: crewVisasService.addAttachment.bind(crewVisasService), remove: crewVisasService.removeAttachment.bind(crewVisasService) },
-  education: { parentKey: "eduUuid", module: "crew-pool/crew-education", writable: true, list: crewEducationService.getAll.bind(crewEducationService), add: crewEducationService.addAttachment.bind(crewEducationService), remove: crewEducationService.removeAttachment.bind(crewEducationService) },
-  licenses: { parentKey: "licUuid", module: "crew-pool/crew-licenses", writable: true, list: crewCertificatesService.getLicenses.bind(crewCertificatesService), add: crewCertificatesService.addLicenseAttachment.bind(crewCertificatesService), remove: crewCertificatesService.removeLicenseAttachment.bind(crewCertificatesService) },
-  training: { parentKey: "trainUuid", module: "crew-pool/crew-training", writable: true, list: crewCertificatesService.getTraining.bind(crewCertificatesService), add: crewCertificatesService.addTrainingAttachment.bind(crewCertificatesService), remove: crewCertificatesService.removeTrainingAttachment.bind(crewCertificatesService) },
-  "sea-service": { parentKey: "seaUuid", module: "crew-pool/crew-sea-service", writable: true, list: crewSeaServiceService.getAll.bind(crewSeaServiceService), add: crewSeaServiceService.addAttachment.bind(crewSeaServiceService), remove: crewSeaServiceService.removeAttachment.bind(crewSeaServiceService) },
+  documents: collectionAttachmentAdapter("documents"),
+  visas: collectionAttachmentAdapter("visas"),
+  education: collectionAttachmentAdapter("education"),
+  licenses: collectionAttachmentAdapter("licenses"),
+  training: collectionAttachmentAdapter("training"),
+  "sea-service": collectionAttachmentAdapter("sea-service"),
   medicals: { parentKey: "medUuid", module: "crew-pool/crew-medicals", writable: false, list: crewMedicalService.getMedicals.bind(crewMedicalService) },
   "doctor-visits": { parentKey: "visitUuid", module: "crew-pool/crew-doctor-visits", writable: false, list: crewMedicalService.getDoctorVisits.bind(crewMedicalService) },
   briefings: { parentKey: "briefingUuid", module: "crew-pool/crew-briefings", writable: false, list: crewBriefingService.getBriefings.bind(crewBriefingService) },
@@ -71,19 +83,45 @@ function adapterFor(value: string): Adapter | null {
 }
 
 function isReadOnlyParent(section: string, parent: any): boolean {
-  return (section === "sea-service" && parent?.serviceType === "company") ||
-    (section === "licenses" && Boolean(parent?.archivedAt));
+  return isCollectionName(section) && isReadonlyCollectionRecord(section, parent);
 }
 
-async function ownParent(req: Request): Promise<{ adapter: Adapter; parent: any }> {
+interface ResolvedParent {
+  adapter: Adapter;
+  parent: any;
+  /** Set when the "parent" is actually a still-pending 'create' row, not yet a canonical record — attachments are staged on the pending row instead of linked live. */
+  pendingUuid?: string;
+}
+
+async function ownParent(req: Request): Promise<ResolvedParent> {
   const adapter = adapterFor(req.params.collection);
   if (!adapter) throw Object.assign(new Error("Attachment section not found"), { status: 404 });
   const rows = await adapter.list(req.crewUser!.crewUuid);
   const parent = rows.find((row) => row?.[adapter.parentKey] === req.params.uuid);
-  if (!parent || parent.crewUuid !== req.crewUser!.crewUuid) {
-    throw Object.assign(new Error("Record not found"), { status: 404 });
+  if (parent) {
+    if (parent.crewUuid !== req.crewUser!.crewUuid) {
+      throw Object.assign(new Error("Record not found"), { status: 404 });
+    }
+    return { adapter, parent };
   }
-  return { adapter, parent };
+
+  // Not a canonical record yet — check whether it's this crew member's own
+  // still-pending submission awaiting office verification (requirement 1).
+  if (isCollectionName(req.params.collection) && adapter.writable) {
+    const pending = await pendingChangesRepository.findByUuid(req.params.uuid);
+    if (
+      pending && pending.crewUuid === req.crewUser!.crewUuid && pending.status === "pending" &&
+      pending.action === "create" && pending.section === req.params.collection
+    ) {
+      const stagedAttachments = JSON.parse(pending.stagedAttachments || "[]");
+      return {
+        adapter,
+        parent: { crewUuid: pending.crewUuid, attachments: stagedAttachments },
+        pendingUuid: pending.pendingUuid,
+      };
+    }
+  }
+  throw Object.assign(new Error("Record not found"), { status: 404 });
 }
 
 function ownAttachment(parent: any, attUuid: string): any {
@@ -124,7 +162,7 @@ export async function listCrewAttachments(req: Request, res: Response): Promise<
 export async function uploadCrewAttachment(req: Request, res: Response): Promise<void> {
   let storedPath: string | null = null;
   try {
-    const { adapter, parent } = await ownParent(req);
+    const { adapter, parent, pendingUuid } = await ownParent(req);
     if (!adapter.writable || !adapter.add) throw Object.assign(new Error("Attachments are read only for this section"), { status: 403 });
     if (isReadOnlyParent(req.params.collection, parent)) throw Object.assign(new Error("This record is read only"), { status: 409 });
     if (!req.file) throw Object.assign(new Error("Select a file to upload"), { status: 400 });
@@ -132,6 +170,21 @@ export async function uploadCrewAttachment(req: Request, res: Response): Promise
     const extension = detectedType === "application/pdf" ? ".pdf" : detectedType === "image/png" ? ".png" : ".jpg";
     const displayName = fileStorageService.sanitizeFileName(req.file.originalname).replace(/\.[^.]*$/, "") + extension;
     storedPath = await fileStorageService.writeAttachment(adapter.module, displayName, req.file.buffer);
+
+    if (pendingUuid) {
+      // Still-pending 'create' — file is written to storage now, but only
+      // linked into the canonical record's attachments once the office
+      // approves the entry (see pendingChangesService.applyPendingChange).
+      const { attUuid } = await pendingChangesRepository.appendStagedAttachment(pendingUuid, {
+        fileName: displayName,
+        filePath: storedPath,
+        fileType: detectedType,
+        fileSize: String(req.file.size),
+      });
+      res.status(201).json(metadata({ attUuid, fileName: displayName, fileType: detectedType, fileSize: String(req.file.size), createdAt: new Date().toISOString() }, true));
+      return;
+    }
+
     const attachment = await adapter.add(req.params.uuid, {
       fileName: displayName,
       filePath: storedPath,
@@ -149,10 +202,18 @@ export async function uploadCrewAttachment(req: Request, res: Response): Promise
 
 export async function deleteCrewAttachment(req: Request, res: Response): Promise<void> {
   try {
-    const { adapter, parent } = await ownParent(req);
+    const { adapter, parent, pendingUuid } = await ownParent(req);
     if (!adapter.writable || !adapter.remove) throw Object.assign(new Error("Attachments are read only for this section"), { status: 403 });
     if (isReadOnlyParent(req.params.collection, parent)) throw Object.assign(new Error("This record is read only"), { status: 409 });
     ownAttachment(parent, req.params.attUuid);
+
+    if (pendingUuid) {
+      const removed = await pendingChangesRepository.removeStagedAttachment(pendingUuid, req.params.attUuid);
+      if (removed?.filePath) await fileStorageService.deleteAttachment(removed.filePath);
+      res.status(204).send();
+      return;
+    }
+
     await adapter.remove(req.params.attUuid);
     res.status(204).send();
   } catch (error) {

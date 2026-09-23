@@ -10302,7 +10302,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                       </Button>
                     )}
                     {canCreateCrewDatabase && mobileAccountQuery.data?.status === 'not_provisioned' && (
-                      <Button type="button" size="sm" disabled={isSaving || mobileAccountBusy || isCrewTerminated || mobileAccountQuery.isLoading} onClick={openMobileApplicationDialog} data-testid="button-submit-mobile-application">
+                      <Button type="button" size="sm" className="bg-green-600 hover:bg-green-700 text-white" disabled={isSaving || mobileAccountBusy || isCrewTerminated || mobileAccountQuery.isLoading} onClick={openMobileApplicationDialog} data-testid="button-submit-mobile-application">
                         Submit Application
                       </Button>
                     )}
@@ -10661,6 +10661,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <AlertDialogCancel disabled={mobileAccountBusy}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={mobileAccountBusy}
+              className={mobileAccountDialog !== 'reissue' ? 'bg-green-600 hover:bg-green-700 text-white' : undefined}
               onClick={(event) => {
                 event.preventDefault();
                 if (mobileAccountDialog === 'reissue') void reissueMobileCredentials();
