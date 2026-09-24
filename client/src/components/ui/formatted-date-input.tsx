@@ -11,6 +11,7 @@ interface FormattedDateInputProps {
   max?: string;
   placeholder?: string;
   disabled?: boolean;
+  retainInvalidDraftOnBlur?: boolean;
   "data-testid"?: string;
 }
 
@@ -65,7 +66,7 @@ function isRealDate(year: number, month: number, day: number): boolean {
 }
 
 const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
-  ({ value, onChange, onBlur, className, min, max, placeholder, disabled = false, "data-testid": dataTestId }, ref) => {
+  ({ value, onChange, onBlur, className, min, max, placeholder, disabled = false, retainInvalidDraftOnBlur = false, "data-testid": dataTestId }, ref) => {
     const calendarInputRef = React.useRef<HTMLInputElement>(null);
     const [draft, setDraft] = React.useState(() => formatIsoDate(value));
     const [isInvalid, setIsInvalid] = React.useState(false);
@@ -130,7 +131,9 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
       if (openingCalendarRef.current) return;
 
       const canonicalValue = parseManualDate(draft);
-      setIsInvalid(isDraftInvalid(draft));
+      const invalidDraft = isDraftInvalid(draft);
+      setIsInvalid(invalidDraft);
+      if (retainInvalidDraftOnBlur && invalidDraft) return;
 
       if (canonicalValue) {
         setDraft(formatIsoDate(
@@ -162,12 +165,15 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
         event.currentTarget.value = valueRef.current;
       }
       openingCalendarRef.current = false;
-      if (!calendarChangedRef.current && isDraftInvalid(draft)) {
+      const invalidDraft =
+        !calendarChangedRef.current && isDraftInvalid(draft);
+      if (invalidDraft) {
         setIsInvalid(true);
       } else {
         setDraft(formatIsoDate(valueRef.current));
       }
       calendarChangedRef.current = false;
+      if (retainInvalidDraftOnBlur && invalidDraft) return;
       if (onBlur) {
         const input = event.currentTarget;
         const controlledValue = input.value;
