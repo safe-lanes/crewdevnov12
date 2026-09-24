@@ -12,6 +12,15 @@ interface FormattedDateInputProps {
   placeholder?: string;
   disabled?: boolean;
   retainInvalidDraftOnBlur?: boolean;
+  /**
+   * Restore a saved visible draft when the input mounts.
+   * Use a new key for an explicit draft reset.
+   */
+  initialDraft?: string;
+  /** Report visible text, including incomplete or invalid text. */
+  onDraftChange?: (draft: string) => void;
+  /** Report visible-text validity separately from the accepted date. */
+  onDraftValidityChange?: (isValid: boolean) => void;
   "data-testid"?: string;
 }
 
@@ -66,9 +75,12 @@ function isRealDate(year: number, month: number, day: number): boolean {
 }
 
 const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
-  ({ value, onChange, onBlur, className, min, max, placeholder, disabled = false, retainInvalidDraftOnBlur = false, "data-testid": dataTestId }, ref) => {
+  ({ value, onChange, onBlur, className, min, max, placeholder, disabled = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
     const calendarInputRef = React.useRef<HTMLInputElement>(null);
-    const [draft, setDraft] = React.useState(() => formatIsoDate(value));
+    const [draft, setDraft] = React.useState(
+      () => initialDraft ?? formatIsoDate(value),
+    );
+    const previousControlledValueRef = React.useRef(value);
     const [isInvalid, setIsInvalid] = React.useState(false);
     const lastCanonicalValueRef = React.useRef(value);
     const valueRef = React.useRef(value);
@@ -88,10 +100,26 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
         || Boolean(max && canonicalValue > max);
     };
 
+    const isVisibleDraftValid = !isDraftInvalid(draft);
+    React.useLayoutEffect(() => {
+      onDraftChange?.(draft);
+    }, [draft, onDraftChange]);
+    React.useLayoutEffect(() => {
+      onDraftValidityChange?.(isVisibleDraftValid);
+    }, [isVisibleDraftValid, onDraftValidityChange]);
+
     React.useEffect(() => {
+      const valueChanged = previousControlledValueRef.current !== value;
+      previousControlledValueRef.current = value;
       const isOwnChange = value === lastCanonicalValueRef.current;
       valueRef.current = value;
       lastCanonicalValueRef.current = value;
+      // Preserve a saved draft when this input remounts.
+      // An actual accepted-value change still synchronises normally.
+      if (initialDraft !== undefined && !valueChanged) {
+        setIsInvalid(isDraftInvalid(draft));
+        return;
+      }
       setDraft(formatIsoDate(value));
       setIsInvalid((wasInvalid) =>
         isOwnChange && wasInvalid && isDraftInvalid(formatIsoDate(value)),
