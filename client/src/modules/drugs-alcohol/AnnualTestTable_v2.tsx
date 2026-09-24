@@ -299,7 +299,6 @@ export const AnnualTestTable_v2: React.FC<AnnualTestTableProps> = ({
         'nextDue',
         'frequencyMonths',
         'plannedPort',
-        'plannedDate',
         'actions'
       ];
 
@@ -544,6 +543,11 @@ export const AnnualTestTable_v2: React.FC<AnnualTestTableProps> = ({
           cellStyle: { fontSize: '12px', color: '#4f5863' },
           editable: true,
           cellEditor: PlannedDateCellEditor,
+          singleClickEdit: true,
+          width: 180,
+          minWidth: 180,
+          suppressSizeToFit: true,
+          suppressAutoSize: true,
         },
         {
           headerName: 'Comments',

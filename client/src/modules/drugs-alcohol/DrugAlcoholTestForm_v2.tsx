@@ -30,6 +30,10 @@ import { generateDrugAlcoholTestPDF } from '@/lib/generateDrugAlcoholTestPDF';
 import { useToast } from '@/hooks/use-toast';
 import { drugsAlcoholApiV2 } from './api/drugsAlcoholApiV2';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { DaDateInput } from './DaDateInput';
+import {
+  parseManualDate,
+} from '@/components/ui/formatted-date-input';
 
 function getCurrentLocalDateTime() {
   const d = new Date();
@@ -673,7 +677,51 @@ export function DrugAlcoholTestForm_v2({
     });
   };
 
+  const dateFormRef = useRef<HTMLFormElement>(null);
+  const canSaveDisplayedDates = () => {
+    const editedFields =
+      dateFormRef.current?.querySelectorAll<HTMLElement>(
+        '[data-da-date-field][data-da-date-edited="true"]',
+      );
+    if (!editedFields) return true;
+    for (const wrapper of editedFields) {
+      const input =
+        wrapper.querySelector<HTMLInputElement>(
+          'input[type="text"]',
+        );
+      const fieldName = wrapper.dataset.daDateField;
+      if (
+        !input ||
+        !fieldName ||
+        input.matches(':disabled') ||
+        input.getClientRects().length === 0
+      ) {
+        continue;
+      }
+      const text = input.value.trim();
+      const displayedValue =
+        text === '' ? '' : parseManualDate(text);
+      const acceptedValue =
+        form.getValues(fieldName as any) ?? '';
+      if (
+        displayedValue === null ||
+        displayedValue !== acceptedValue
+      ) {
+        toast({
+          title: 'Date not accepted',
+          description:
+            'Correct this date or clear it before saving.',
+          variant: 'destructive',
+        });
+        input.focus();
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleSaveDraft = () => {
+    if (!canSaveDisplayedDates()) return;
     const rawPersonnel = (form.getValues('personnelTested') as any[]) || [];
 
     const hasEmptyOther = rawPersonnel.some((p) => {
@@ -753,6 +801,7 @@ export function DrugAlcoholTestForm_v2({
   };
 
   const handleFormSubmit = (data: DrugAlcoholTestFormData) => {
+    if (!canSaveDisplayedDates()) return;
     const rawPersonnel = (form.getValues('personnelTested') as any[]) || [];
 
     const hasEmptyOther = rawPersonnel.some((p) => {
@@ -1430,20 +1479,22 @@ export function DrugAlcoholTestForm_v2({
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Date External Test Results received</FormLabel>
                               <FormControl>
-                                <Input
+                                <DaDateInput
                                   {...field}
-                                  type="date"
+                                  value={field.value ?? ''}
+                                  label="Date external test results received"
+                                  disabled={isFormLocked}
                                   min={externalResultsMinDate}
-                                  onChange={(e) => {
-                                    const v = e.target.value;
-
-                                    // Reject dates earlier than the allowed minimum.
-                                    // Allow clearing and allow unrestricted entry when no floor exists.
-                                    if (externalResultsMinDate && v && v < externalResultsMinDate) {
+                                  onChange={(event) => {
+                                    const value = event.target.value;
+                                    if (
+                                      externalResultsMinDate &&
+                                      value &&
+                                      value < externalResultsMinDate
+                                    ) {
                                       return;
                                     }
-
-                                    field.onChange(e);
+                                    field.onChange(event);
                                   }}
                                   className="bg-[#ffffff]"
                                   data-testid="input-externalTestResultsDate"
@@ -1556,7 +1607,14 @@ export function DrugAlcoholTestForm_v2({
                             <FormLabel className="text-xs text-gray-500 tracking-wide">Last Calibrated</FormLabel>
                             <div className="flex gap-1">
                               <FormControl>
-                                <Input {...field} type="date" className="bg-[#ffffff] flex-1" data-testid={`input-lastCalibrated-${index}`} />
+                                <DaDateInput
+                                  {...field}
+                                  value={field.value ?? ''}
+                                  label="Equipment last calibrated"
+                                  disabled={isFormLocked}
+                                  className="bg-[#ffffff] flex-1"
+                                  data-testid={`input-lastCalibrated-${index}`}
+                                />
                               </FormControl>
                               <Button
                                 type="button"
@@ -1770,9 +1828,11 @@ export function DrugAlcoholTestForm_v2({
                                     render={({ field }) => (
                                       <FormItem>
                                         <FormControl>
-                                          <Input
+                                          <DaDateInput
                                             {...field}
-                                            type="date"
+                                            value={field.value ?? ''}
+                                            label="Personnel alcohol test date"
+                                            disabled={isFormLocked}
                                             className="bg-white text-xs h-8"
                                             data-testid={`input-alcohol-date-${index}`}
                                           />
@@ -1873,9 +1933,11 @@ export function DrugAlcoholTestForm_v2({
                                     render={({ field }) => (
                                       <FormItem>
                                         <FormControl>
-                                          <Input
+                                          <DaDateInput
                                             {...field}
-                                            type="date"
+                                            value={field.value ?? ''}
+                                            label="Personnel drug test date"
+                                            disabled={isFormLocked}
                                             className="bg-white text-xs h-8"
                                             data-testid={`input-drug-date-${index}`}
                                           />
@@ -2416,7 +2478,14 @@ export function DrugAlcoholTestForm_v2({
           <main className="flex-1 overflow-y-auto" ref={continuousScrollContainerRef}>
             <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleFormSubmit, handleFormError)} className="space-y-6">
+                <form
+                  ref={dateFormRef}
+                  onSubmit={form.handleSubmit(
+                    handleFormSubmit,
+                    handleFormError,
+                  )}
+                  className="space-y-6"
+                >
                   <fieldset disabled={isFormLocked} className="space-y-6 min-w-0">
                     {renderContinuousSections()}
                   </fieldset>
