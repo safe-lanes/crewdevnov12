@@ -1,3 +1,7 @@
+import {
+    FormattedDateInput,
+    formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
@@ -448,16 +452,15 @@ const TravelEndDateArchivedCell: React.FC<{ planning: any }> = ({ planning }) =>
     const { toast } = useToast();
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (editing) {
-            inputRef.current?.focus();
-            try {
-                inputRef.current?.showPicker?.();
-            } catch {
-                /* showPicker needs a user gesture in some browsers; focus is enough fallback */
-            }
+            inputRef.current
+                ?.querySelector<HTMLButtonElement>(
+                    'button[aria-label="Choose date from calendar"]',
+                )
+                ?.click();
         }
     }, [editing]);
 
@@ -484,15 +487,33 @@ const TravelEndDateArchivedCell: React.FC<{ planning: any }> = ({ planning }) =>
         }
     };
 
+    const minDate = formatIsoDate(planning.signOffDate || "")
+        ? planning.signOffDate
+        : undefined;
+
     if (editing) {
         return (
-            <input
+            <FormattedDateInput
                 ref={inputRef}
-                type="date"
-                defaultValue={planning.travelEndDate || ''}
-                min={planning.signOffDate || undefined}
-                onChange={handleChange}
-                onBlur={() => setEditing(false)}
+                value={planning.travelEndDate || ""}
+                min={minDate}
+                onChange={(event) => {
+                    const value = event.target.value;
+                    if (value) {
+                        if (!formatIsoDate(value)) return;
+                        if (minDate && value < minDate) return;
+                    }
+                    void handleChange(event);
+                }}
+                onBlur={(event) => {
+                    const nextTarget = event.relatedTarget;
+                    if (
+                        !(nextTarget instanceof Node) ||
+                        !inputRef.current?.contains(nextTarget)
+                    ) {
+                        setEditing(false);
+                    }
+                }}
                 className="w-full h-6 px-1 text-xs border rounded outline-none"
                 data-testid="input-travel-end-date-archived"
             />
