@@ -10,6 +10,7 @@ import { copyFormVersionStructure, formStructureService } from "./formStructureS
 import type { AdmRankGroupV2, InsertAdmRankGroupV2 } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
 import { formStructureRepository } from "../repositories/formStructureRepository";
+import { frmFormParts } from "../../../../shared/v2/forms-engine/schema";
 
 const rankGroupsRepo = new RankGroupsRepository();
 const formsRepo = new FormsRepository();
@@ -137,9 +138,8 @@ async function copyFormConfiguration(
       throw new CopyFormConfigurationError("The selected source rank group is no longer active.", 400);
     }
     const sourceCounts = await formStructureRepository.getStructureSummary(sourceVersion.fvUuid, tx);
-    if (sourceCounts.sections === 0 && sourceCounts.questions === 0 && sourceCounts.optionSets === 0 && sourceCounts.options === 0) {
-      throw new CopyFormConfigurationError("The selected source version has no configured content to copy.", 400);
-    }
+    // A version with only fixed parts is still a valid source. The copy
+    // routine itself rejects a source without version-owned parts.
 
     const targetDraftRows = await tx
       .select()
@@ -206,7 +206,9 @@ async function copyFormConfiguration(
     }
 
     const discarded = await formStructureRepository.getStructureSummary(targetVersion.fvUuid, tx);
-    const hasExistingContent = discarded.sections > 0 || discarded.questions > 0 || discarded.optionSets > 0 || discarded.options > 0;
+    const targetParts = await tx.select({ formPartUuid: frmFormParts.formPartUuid })
+      .from(frmFormParts).where(eq(frmFormParts.formVersionUuid, targetVersion.fvUuid)).limit(1);
+    const hasExistingContent = targetParts.length > 0 || discarded.sections > 0 || discarded.questions > 0 || discarded.optionSets > 0 || discarded.options > 0;
     if (hasExistingContent && !confirmReplace) {
       throw new CopyFormConfigurationError(
         `Copying will replace ${discarded.sections} sections and ${discarded.questions} points in draft v${targetVersion.versionNo}. Confirm to continue.`,
@@ -279,6 +281,8 @@ async function upsertDraftVersion(formId: number, rankGroupId: number, configura
     }, true), tx);
     if (sourceVersion?.fvUuid) {
       await copyFormVersionStructure(sourceVersion.fvUuid, created.fvUuid, tx);
+    } else {
+      throw new Error("Cannot create a form version without parts: no released source version exists. Template initialization is deferred.");
     }
   });
 
@@ -307,11 +311,12 @@ async function releaseAndMirrorConfiguration(
     const formId = Number(locked.form_id);
     const rankGroupName = String(locked.name);
     const formRows = await tx
-      .select({ formUuid: admFormsV2.formUuid })
+      .select({ formUuid: admFormsV2.formUuid, category: admFormsV2.category })
       .from(admFormsV2)
       .where(and(eq(admFormsV2.id, formId), eq(admFormsV2.isDeleted, false)));
     const form = formRows[0];
     if (!form) throw new Error(`Form not found: ${formId}`);
+    throw new Error("Cannot create a direct released form version without parts. Create a draft from a released source version.");
     if (await formStructureService.hasStructureForForm(form.formUuid, tx)) {
       throw new Error(
         "Cannot create a direct released version because this form has configurable structure. Create a draft so structure can be copied before release.",

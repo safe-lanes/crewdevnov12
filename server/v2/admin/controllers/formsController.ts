@@ -37,7 +37,11 @@ export const formsController = {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid form ID" });
       }
-      const parts = await formsService.getPartsByFormId(id);
+      const versionUuid = req.query.formVersionUuid;
+      if (versionUuid !== undefined && (typeof versionUuid !== "string" || !versionUuid.trim())) {
+        return res.status(400).json({ error: "Invalid form version UUID" });
+      }
+      const parts = await formsService.getPartsByFormId(id, versionUuid as string | undefined);
       res.json(parts);
     } catch (error: any) {
       if (error.message?.includes("not found")) {
@@ -214,7 +218,7 @@ export const formsController = {
       if (msg.includes("draft already exists")) {
         return res.status(409).json({ error: msg });
       }
-      if (msg.includes("not found") || msg.includes("required")) {
+      if (msg.includes("not found") || msg.includes("required") || msg.includes("without parts") || msg.includes("no version-owned parts")) {
         return res.status(400).json({ error: msg });
       }
       console.error("Error creating form version:", error);

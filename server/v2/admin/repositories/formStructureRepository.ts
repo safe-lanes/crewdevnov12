@@ -61,6 +61,7 @@ export class FormStructureRepository {
       .from(frmFormParts)
       .where(and(
         eq(frmFormParts.formPartUuid, partUuid),
+        eq(frmFormParts.formVersionUuid, fvUuid),
         eq(frmFormParts.isDeleted, false),
       ));
     if (parts.length === 0) return undefined;
@@ -398,6 +399,15 @@ export class FormStructureRepository {
       if (source.formId !== target.formId) {
         throw new Error("Cannot copy structure between versions belonging to different forms");
       }
+      if (sourceFvUuid === destinationFvUuid) throw new Error("Cannot copy a version into itself");
+
+      const sourceParts = await db.select().from(frmFormParts).where(and(
+        eq(frmFormParts.formVersionUuid, sourceFvUuid),
+        eq(frmFormParts.isDeleted, false),
+      )).orderBy(asc(frmFormParts.sortOrder), asc(frmFormParts.id));
+      if (!sourceParts.length) {
+        throw new Error(`Cannot copy version ${sourceFvUuid}: it has no version-owned parts`);
+      }
 
       // The target guard above deliberately runs before the first insert.
       const sourceSets = await db.select().from(frmOptionSets).where(and(
@@ -418,6 +428,40 @@ export class FormStructureRepository {
         inArray(frmQuestions.sectionUuid, sourceSectionUuids),
         eq(frmQuestions.isDeleted, false),
       )).orderBy(asc(frmQuestions.sortOrder), asc(frmQuestions.id));
+
+      const sourcePartUuids = new Set(sourceParts.map((part: any) => part.formPartUuid));
+      for (const section of sourceSections) {
+        if (!sourcePartUuids.has(section.formPartUuid)) {
+          throw new Error(`Cannot copy section ${section.sectionUuid}: source part ${section.formPartUuid} does not belong to source version ${sourceFvUuid}`);
+        }
+      }
+      const targetSections = await db.select({ sectionUuid: frmSections.sectionUuid })
+        .from(frmSections).where(eq(frmSections.formVersionUuid, destinationFvUuid)).limit(1);
+      if (targetSections.length) {
+        throw new Error(`Cannot replace version ${destinationFvUuid} parts while sections still reference them; clear the target structure first`);
+      }
+      // The caller may replace an existing draft. Its sections are removed
+      // first; deleting only destination parts prevents mixing two inventories.
+      await db.delete(frmFormParts).where(eq(frmFormParts.formVersionUuid, destinationFvUuid));
+      const partUuidMap = new Map<string, string>();
+      for (const part of sourceParts) {
+        const formPartUuid = uuidv4();
+        partUuidMap.set(part.formPartUuid, formPartUuid);
+        await db.insert(frmFormParts).values({
+          formPartUuid,
+          formUuid: part.formUuid,
+          formVersionUuid: destinationFvUuid,
+          partCode: part.partCode,
+          partTitle: part.partTitle,
+          partType: part.partType,
+          isOfficeOnly: part.isOfficeOnly,
+          sortOrder: part.sortOrder,
+          createdByUuid: null,
+          updatedByUuid: null,
+          isDeleted: false,
+          isSync: false,
+        });
+      }
 
       const setUuidMap = new Map<string, string>();
       for (const row of sourceSets) {
@@ -459,7 +503,7 @@ export class FormStructureRepository {
         await db.insert(frmSections).values({
           sectionUuid,
           formVersionUuid: destinationFvUuid,
-          formPartUuid: row.formPartUuid,
+          formPartUuid: partUuidMap.get(row.formPartUuid)!,
           sectionCode: row.sectionCode,
           sectionTitle: row.sectionTitle,
           applicableVesselTypes: row.applicableVesselTypes,
@@ -583,6 +627,7 @@ export class FormStructureRepository {
       .innerJoin(frmFormParts, eq(frmFormParts.formPartUuid, frmSections.formPartUuid))
       .where(and(
         eq(frmFormParts.formUuid, formUuid),
+         eq(frmFormParts.formVersionUuid, frmSections.formVersionUuid),
         eq(frmFormParts.isDeleted, false),
         eq(frmSections.isDeleted, false),
       ))

@@ -268,8 +268,9 @@ export const debriefingService = {
       debriefingRepository.structure(submission.formVersionUuid),
       debriefingRepository.readData(submissionUuid),
       submission.debriefingUuid ? debriefingRepository.g1(submission.debriefingUuid) : Promise.resolve(null),
-      debriefingRepository.formParts(submission.formUuid),
+       debriefingRepository.formParts(submission.formVersionUuid),
     ]);
+    if (!formParts.length) throw new DebriefingError(`Debriefing version ${submission.formVersionUuid} has no parts; submission cannot be displayed`, 409);
     const responsibleRoleUuids = Array.from(new Set<string>(
       structure.sections.flatMap((section: any) =>
         section.responsibleMode === "role" && section.responsibleRoleUuid

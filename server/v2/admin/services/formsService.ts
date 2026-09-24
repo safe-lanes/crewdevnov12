@@ -5,7 +5,7 @@ import { applyAuditUser } from "../utils/auditUser";
 import { getDb } from "../../db";
 import { copyFormVersionStructure } from "./formStructureService";
 import { frmFormParts } from "../../../../shared/v2/forms-engine/schema";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2 } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
 
@@ -44,13 +44,18 @@ export const formsService = {
     return form;
   },
 
-  async getPartsByFormId(id: number) {
+  async getPartsByFormId(id: number, versionUuid?: string) {
     const form = await formsRepo.findById(id);
     if (!form) throw new Error(`Form not found: ${id}`);
+    if (versionUuid) {
+      const version = await formVersionsRepo.findByUuid(versionUuid);
+      if (!version || version.formId !== form.id) throw new Error(`Form version not found for form: ${versionUuid}`);
+    }
     return getDb()
       .select({
         formPartUuid: frmFormParts.formPartUuid,
         formUuid: frmFormParts.formUuid,
+        formVersionUuid: frmFormParts.formVersionUuid,
         partCode: frmFormParts.partCode,
         partTitle: frmFormParts.partTitle,
         partType: frmFormParts.partType,
@@ -59,6 +64,7 @@ export const formsService = {
       .from(frmFormParts)
       .where(and(
         eq(frmFormParts.formUuid, form.formUuid),
+        versionUuid ? eq(frmFormParts.formVersionUuid, versionUuid) : isNull(frmFormParts.formVersionUuid),
         eq(frmFormParts.isDeleted, false),
       ))
       .orderBy(asc(frmFormParts.sortOrder), asc(frmFormParts.id));
@@ -336,6 +342,8 @@ export const formsService = {
       }, true), tx);
       if (sourceVersion?.fvUuid) {
         await copyFormVersionStructure(sourceVersion.fvUuid, created.fvUuid, tx);
+      } else {
+        throw new Error("Cannot create a form version without parts: no released source version exists. Template initialization is deferred.");
       }
       return created;
     });

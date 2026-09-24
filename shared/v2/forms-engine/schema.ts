@@ -1,4 +1,5 @@
-import { boolean, date, index, integer, pgTable, serial, text, timestamp, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { boolean, date, foreignKey, index, integer, pgTable, serial, text, timestamp, uniqueIndex, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { admFormVersionsV2, admFormsV2, admRoleMasterAc } from "../admin/schema";
@@ -37,6 +38,9 @@ export const frmFormParts = pgTable(
     formUuid: text("form_uuid")
       .notNull()
       .references(() => admFormsV2.formUuid, { onDelete: "restrict", onUpdate: "cascade" }),
+    // NULL denotes the form's template; non-NULL parts belong to one version.
+    formVersionUuid: text("form_version_uuid")
+      .references(() => admFormVersionsV2.fvUuid, { onDelete: "restrict", onUpdate: "cascade" }),
     partCode: text("part_code").notNull(),
     partTitle: text("part_title").notNull(),
     partType: text("part_type").notNull(),
@@ -45,6 +49,10 @@ export const frmFormParts = pgTable(
   },
   (table) => ({
     formUuidIdx: index("idx_frm_form_parts_form_uuid").on(table.formUuid),
+    formVersionUuidIdx: index("idx_frm_form_parts_form_version_uuid").on(table.formVersionUuid),
+    templateCodeUnique: uniqueIndex("uq_frm_form_parts_template_form_code").on(table.formUuid, table.partCode).where(sql`${table.formVersionUuid} IS NULL`),
+    versionCodeUnique: uniqueIndex("uq_frm_form_parts_version_code").on(table.formVersionUuid, table.partCode).where(sql`${table.formVersionUuid} IS NOT NULL`),
+    versionPartUnique: uniqueIndex("uq_frm_form_parts_version_uuid").on(table.formVersionUuid, table.formPartUuid),
   }),
 );
 
@@ -76,6 +84,11 @@ export const frmSections = pgTable(
     ...auditColumns,
   },
   (table) => ({
+    versionPartFk: foreignKey({
+      name: "fk_frm_sections_version_part",
+      columns: [table.formVersionUuid, table.formPartUuid],
+      foreignColumns: [frmFormParts.formVersionUuid, frmFormParts.formPartUuid],
+    }).onUpdate("cascade").onDelete("restrict"),
     formVersionUuidIdx: index("idx_frm_sections_form_version_uuid").on(table.formVersionUuid),
     formPartUuidIdx: index("idx_frm_sections_form_part_uuid").on(table.formPartUuid),
     responsibleRoleUuidIdx: index("idx_frm_sections_responsible_role_uuid").on(table.responsibleRoleUuid),

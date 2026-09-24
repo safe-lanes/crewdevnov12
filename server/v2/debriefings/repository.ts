@@ -86,9 +86,9 @@ export const debriefingRepository = {
     )).orderBy(asc(frmOptions.sortOrder)) : [];
     return { sections, questions, options };
   },
-  async formParts(formUuid: string) {
+  async formParts(versionUuid: string) {
     return getDb().select().from(frmFormParts).where(and(
-      eq(frmFormParts.formUuid, formUuid),
+      eq(frmFormParts.formVersionUuid, versionUuid),
       eq(frmFormParts.isDeleted, false),
     )).orderBy(asc(frmFormParts.sortOrder), asc(frmFormParts.id));
   },

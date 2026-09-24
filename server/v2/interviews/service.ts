@@ -111,7 +111,8 @@ export const interviewService = {
   async read(submissionUuid: string, req: Request) {
     await authorizeInterviewRead(req);
     const submission = await interviewRepository.submission(submissionUuid); if (!submission) throw new InterviewError("Crew Interview submission not found", 404);
-    const [tree, data, parts] = await Promise.all([interviewRepository.structure(submission.formVersionUuid), interviewRepository.data(submissionUuid), interviewRepository.parts(submission.formUuid)]);
+    const [tree, data, parts] = await Promise.all([interviewRepository.structure(submission.formVersionUuid), interviewRepository.data(submissionUuid), interviewRepository.parts(submission.formVersionUuid)]);
+    if (!parts.length) throw new InterviewError(`Interview version ${submission.formVersionUuid} has no parts; submission cannot be displayed`, 409);
     // B6 is read fresh and never mutated. A deleted/missing B6 item is represented as unavailable.
     const b6 = submission.interviewItemUuid ? await interviewRepository.item(submission.interviewItemUuid) : null;
     const candidate = b6?.candidate;

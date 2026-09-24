@@ -54,7 +54,7 @@ export const interviewRepository = {
         eq(frmSectionSignatures.isDeleted, false), eq(frmSectionStates.isDeleted, false), eq(crewInterviewSubmissions.isDeleted, false))).limit(1);
     return rows[0];
   },
-  async parts(formUuid: string) {
-    return getDb().select().from(frmFormParts).where(and(eq(frmFormParts.formUuid, formUuid), eq(frmFormParts.isDeleted, false))).orderBy(asc(frmFormParts.sortOrder));
+  async parts(versionUuid: string) {
+    return getDb().select().from(frmFormParts).where(and(eq(frmFormParts.formVersionUuid, versionUuid), eq(frmFormParts.isDeleted, false))).orderBy(asc(frmFormParts.sortOrder));
   },
 };
