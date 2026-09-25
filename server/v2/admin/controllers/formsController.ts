@@ -83,6 +83,12 @@ export const formsController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form data", details: result.error.issues });
       }
+      if (result.data.category === "dynamic") {
+        const current = await formsService.getById(id);
+        if (current.category !== "dynamic") {
+          return res.status(409).json({ error: "Existing forms cannot be reclassified as dynamic" });
+        }
+      }
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       const payload = { ...result.data, auditUserUuid };
       const form = await formsService.updateById(id, payload);

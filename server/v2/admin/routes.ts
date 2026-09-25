@@ -20,6 +20,7 @@ import {
 } from "./controllers";
 import { requirePermission } from "../../middleware/requirePermission";
 import { requireTrustedAccessControlAdmin } from "../../middleware/requireTrustedAccessControlAdmin";
+import { formPartController } from "./controllers/formPartController";
 
 const router = Router();
 
@@ -37,6 +38,10 @@ router.get("/forms/:id/versions", requirePermission("Forms", "view"), formsContr
 router.post("/forms/:id/versions", requirePermission("Forms", "create"), formsController.createVersion);
 
 router.get("/form-versions/:versionId/configuration", formsController.getVersionConfiguration);
+router.post("/form-versions/:fvUuid/parts", requirePermission("Forms", "edit"), formPartController.create);
+router.put("/form-versions/:fvUuid/parts/reorder", requirePermission("Forms", "edit"), formPartController.reorder);
+router.patch("/form-versions/:fvUuid/parts/:partUuid", requirePermission("Forms", "edit"), formPartController.rename);
+router.delete("/form-versions/:fvUuid/parts/:partUuid", requirePermission("Forms", "edit"), formPartController.remove);
 router.get(
   "/form-versions/:fvUuid/parts/:partUuid/structure",
   requirePermission("Forms", "view"),
