@@ -392,6 +392,7 @@ const DateTimeInput = React.forwardRef<HTMLDivElement, NativeDateTimeInputProps>
     "data-testid": dataTestId, ...inputProps
   }, ref) => {
     const manualRef = React.useRef<HTMLInputElement>(null);
+    const pickerRef = React.useRef<HTMLInputElement>(null);
     const ownValue = React.useRef<string | undefined>(undefined);
     const [original, setOriginal] = React.useState(value);
     const [draft, setDraft] = React.useState(() => formatIsoDateTime(value));
@@ -402,6 +403,9 @@ const DateTimeInput = React.forwardRef<HTMLDivElement, NativeDateTimeInputProps>
     React.useImperativeHandle(inputRef, () => manualRef.current!);
 
     React.useLayoutEffect(() => {
+      if (pickerRef.current) {
+        pickerRef.current.value = pickerMinute(value);
+      }
       if (value !== ownValue.current) {
         setOriginal(value);
         setDraft(formatIsoDateTime(value));
@@ -520,12 +524,39 @@ const DateTimeInput = React.forwardRef<HTMLDivElement, NativeDateTimeInputProps>
             <input
               className="formatted-datetime-native absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
               type="datetime-local"
-              value={pickerMinute(value)}
+              ref={pickerRef}
+              defaultValue={pickerMinute(value)}
               step={60}
               disabled={disabled || readOnly}
               aria-label="Choose date and time from calendar"
               data-testid={dataTestId ? `${dataTestId}-picker` : undefined}
-              onInputCapture={event => event.stopPropagation()}
+              onInputCapture={event => {
+                event.stopPropagation();
+                if (
+                  disabled ||
+                  readOnly ||
+                  event.currentTarget.matches(":disabled")
+                ) {
+                  return;
+                }
+                setEdited(true);
+                if (!event.currentTarget.validity.valid) {
+                  setPickerInvalid(true);
+                  setShowError(true);
+                  return;
+                }
+                setPickerInvalid(false);
+                const selected = event.currentTarget.value;
+                const previousMinute = pickerMinute(value);
+                const next =
+                  selected &&
+                  previousMinute &&
+                  selected.slice(11) === previousMinute.slice(11)
+                    ? selected + value.slice(16)
+                    : selected;
+                setDraft(formatIsoDateTime(next));
+                setShowError(!acceptable(next));
+              }}
               onChange={event => {
                 if (disabled || readOnly || event.currentTarget.matches(":disabled")) return;
                 setEdited(true);

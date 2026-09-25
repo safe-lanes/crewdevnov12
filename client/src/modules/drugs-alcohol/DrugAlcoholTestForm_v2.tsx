@@ -1531,7 +1531,7 @@ export function DrugAlcoholTestForm_v2({
                   </div>
                   
                   {!form.watch('equipmentNotApplicable') && form.watch('testingEquipment')?.map((equipment, index) => (
-                    <div key={equipment.id} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 mb-6" data-testid={`equipment-entry-${index}`}>
+                    <div key={equipment.id} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 pr-8" data-testid={`equipment-entry-${index}`}>
                       <FormField
                         control={form.control}
                         name={`testingEquipment.${index}.equipmentId` as any}
@@ -1579,10 +1579,10 @@ export function DrugAlcoholTestForm_v2({
                         name={`testingEquipment.${index}.lastCalibrated` as any}
                         render={({ field }) => (
                           <FormItem className="relative">
-                            <FormLabel className="block pr-8 text-xs text-gray-500 tracking-wide">
+                            <FormLabel className="text-xs text-gray-500 tracking-wide">
                               Last Calibrated
                             </FormLabel>
-                            <div>
+                            <div className="relative">
                               <FormControl>
                                 <DaDateInput
                                   {...field}
@@ -1597,7 +1597,7 @@ export function DrugAlcoholTestForm_v2({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="absolute right-0 top-0 h-6 w-6 text-gray-400 hover:text-red-600"
+                                className="absolute -right-8 top-0 h-9 w-6 text-gray-400 hover:text-red-600"
                                 aria-label="Remove testing equipment"
                                 onClick={() => {
                                   const current = form.getValues('testingEquipment') || [];
