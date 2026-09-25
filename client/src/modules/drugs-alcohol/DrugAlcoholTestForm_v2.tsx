@@ -3,7 +3,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Save, Plus, Link as LinkIcon, Trash2, Calendar, Upload, FileText, AlertTriangle, Paperclip, Lock, LockOpen } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Link as LinkIcon, Trash2, Upload, FileText, AlertTriangle, Paperclip, Lock, LockOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,9 +28,9 @@ import { FileAttachmentDialog, type FileAttachment } from '@/components/FileAtta
 import { generateDrugAlcoholTestPDF } from '@/lib/generateDrugAlcoholTestPDF';
 import { useToast } from '@/hooks/use-toast';
 import { drugsAlcoholApiV2 } from './api/drugsAlcoholApiV2';
-import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { DaDateInput } from './DaDateInput';
 import {
+  FormattedDateInput,
   parseManualDate,
 } from '@/components/ui/formatted-date-input';
 
@@ -1256,70 +1255,18 @@ export function DrugAlcoholTestForm_v2({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Date & Time Test completed</FormLabel>
-                              <div className="relative">
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    type="datetime-local"
-                                    className="bg-[#ffffff] pr-10 [&::-webkit-calendar-picker-indicator]:hidden"
-                                    data-testid="input-dateTimeTestCompleted"
-                                    onKeyDown={(e) => {
-                                      if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-                                        e.preventDefault();
-                                      }
-                                    }}
-                                  />
-                                </FormControl>
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                                      data-testid="button-open-dateTimeTestCompleted-calendar"
-                                    >
-                                      <Calendar className="h-4 w-4 text-gray-500" />
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0" align="end">
-                                    <CalendarPicker
-                                      mode="single"
-                                      selected={field.value ? new Date(`${field.value.split('T')[0]}T00:00:00`) : undefined}
-                                      onSelect={(date) => {
-                                        if (!date) return;
-                                        const yyyy = date.getFullYear();
-                                        const mm = String(date.getMonth() + 1).padStart(2, '0');
-                                        const dd = String(date.getDate()).padStart(2, '0');
-                                        const datePart = `${yyyy}-${mm}-${dd}`;
-                                        const now = new Date();
-                                        const timePart =
-                                          field.value && field.value.includes('T') && field.value.split('T')[1]
-                                            ? field.value.split('T')[1]
-                                            : `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                                        field.onChange(`${datePart}T${timePart}`);
-                                      }}
-                                      initialFocus
-                                    />
-                                    <div className="border-t p-3">
-                                      <Input
-                                        type="time"
-                                        value={field.value && field.value.includes('T') ? field.value.split('T')[1] : ''}
-                                        onChange={(e) => {
-                                          if (!field.value) return;
-                                          const now = new Date();
-                                          const datePart = field.value.includes('T') ? field.value.split('T')[0] : field.value;
-                                          const timePart = e.target.value
-                                            ? e.target.value
-                                            : `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-                                          field.onChange(`${datePart}T${timePart}`);
-                                        }}
-                                        data-testid="input-time-dateTimeTestCompleted"
-                                      />
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                              </div>
+                              <FormControl>
+                                <FormattedDateInput
+                                  mode="datetime"
+                                  inputRef={field.ref}
+                                  name={field.name}
+                                  value={field.value ?? ""}
+                                  onChange={field.onChange}
+                                  onBlur={field.onBlur}
+                                  className="bg-[#ffffff]"
+                                  data-testid="input-dateTimeTestCompleted"
+                                />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -1380,7 +1327,16 @@ export function DrugAlcoholTestForm_v2({
                               <FormItem>
                                 <FormLabel className="text-xs text-gray-500 tracking-wide">Incident Date & Time</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="datetime-local" className="bg-[#ffffff]" data-testid="input-incidentDateTime" />
+                                  <FormattedDateInput
+                                    mode="datetime"
+                                    inputRef={field.ref}
+                                    name={field.name}
+                                    value={field.value ?? ""}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    className="bg-[#ffffff]"
+                                    data-testid="input-incidentDateTime"
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1394,7 +1350,17 @@ export function DrugAlcoholTestForm_v2({
                               <FormItem>
                                 <FormLabel className="text-xs text-gray-500 tracking-wide">Alcohol Test - Date & Time Completed</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="datetime-local" disabled={!showAlcoholFields} className="bg-[#ffffff]" data-testid="input-alcoholTestDateTime" />
+                                  <FormattedDateInput
+                                    mode="datetime"
+                                    inputRef={field.ref}
+                                    name={field.name}
+                                    value={field.value ?? ""}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    disabled={!showAlcoholFields}
+                                    className="bg-[#ffffff]"
+                                    data-testid="input-alcoholTestDateTime"
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1408,7 +1374,17 @@ export function DrugAlcoholTestForm_v2({
                               <FormItem>
                                 <FormLabel className="text-xs text-gray-500 tracking-wide">Drug Test - Date & Time Completed</FormLabel>
                                 <FormControl>
-                                  <Input {...field} type="datetime-local" disabled={!showDrugFields} className="bg-[#ffffff]" data-testid="input-drugTestDateTime" />
+                                  <FormattedDateInput
+                                    mode="datetime"
+                                    inputRef={field.ref}
+                                    name={field.name}
+                                    value={field.value ?? ""}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    disabled={!showDrugFields}
+                                    className="bg-[#ffffff]"
+                                    data-testid="input-drugTestDateTime"
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 import { CalendarDays } from "lucide-react";
+import { Input } from "./input";
 
 interface FormattedDateInputProps {
   value: string;
@@ -74,7 +75,7 @@ function isRealDate(year: number, month: number, day: number): boolean {
     && candidate.getUTCDate() === day;
 }
 
-const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
+const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
   ({ value, onChange, onBlur, className, min, max, placeholder, disabled = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
     const calendarInputRef = React.useRef<HTMLInputElement>(null);
     const [draft, setDraft] = React.useState(
@@ -314,6 +315,43 @@ const FormattedDateInput = React.forwardRef<HTMLDivElement, FormattedDateInputPr
     );
   }
 );
+DateOnlyInput.displayName = "DateOnlyInput";
+
+interface NativeDateTimeInputProps
+  extends Omit<
+    React.ComponentPropsWithoutRef<typeof Input>,
+    "type" | "value" | "onChange"
+  > {
+  mode: "datetime";
+  value: string;
+  onChange: React.ChangeEventHandler<HTMLInputElement>;
+  inputRef?: React.Ref<HTMLInputElement>;
+}
+
+type DateSelectorProps =
+  | (FormattedDateInputProps & { mode?: "date" })
+  | NativeDateTimeInputProps;
+
+const FormattedDateInput = React.forwardRef<
+  HTMLDivElement,
+  DateSelectorProps
+>((props, ref) => {
+  if (props.mode === "datetime") {
+    const { mode, inputRef, ...inputProps } = props;
+
+    return (
+      <div ref={ref}>
+        <Input
+          {...inputProps}
+          ref={inputRef}
+          type="datetime-local"
+        />
+      </div>
+    );
+  }
+
+  return <DateOnlyInput {...props} ref={ref} />;
+});
 FormattedDateInput.displayName = "FormattedDateInput";
 
 export { FormattedDateInput };
