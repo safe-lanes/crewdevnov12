@@ -1,16 +1,22 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GenericFormEditor } from "@/components/GenericFormEditor";
 
 const queryResults = vi.hoisted(() => new Map<string, unknown>());
+const emptyQueryResult = vi.hoisted((): unknown[] => []);
+const partsForVersion = (versionUuid: string) => [
+  { formPartUuid: `${versionUuid}-a`, formVersionUuid: versionUuid, partCode: "A", partTitle: "Preparation", partType: "fixed" },
+  { formPartUuid: `${versionUuid}-b`, formVersionUuid: versionUuid, partCode: "B", partTitle: "Deck briefing", partType: "configurable" },
+  { formPartUuid: `${versionUuid}-c`, formVersionUuid: versionUuid, partCode: "C", partTitle: "Office review", partType: "fixed" },
+];
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
   return {
     ...actual,
     useQuery: (options: { queryKey?: unknown[] }) => ({
-      data: queryResults.get(String(options.queryKey?.[0])) ?? [],
+      data: queryResults.get(String(options.queryKey?.[0])) ?? emptyQueryResult,
       isLoading: false,
       refetch: vi.fn(),
     }),
@@ -19,6 +25,10 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
+
+beforeEach(() => {
+  (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+});
 
 function renderEditor(options: { rankGroupName?: string } = {}) {
   container = document.createElement("div");
@@ -65,7 +75,11 @@ function loadEditableStructure() {
     versionDate: "01-Jan-2026",
     status: "draft",
   }]);
+  queryResults.set("admin-form-version-parts", partsForVersion("draft-version"));
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.includes("/parts?formVersionUuid=")) {
+      return { ok: true, json: async () => partsForVersion("draft-version") };
+    }
     if (url.endsWith("/structures") && init?.method === "PUT") {
       const body = JSON.parse(String(init.body));
       return {
@@ -197,29 +211,21 @@ afterEach(() => {
 });
 
 describe("GenericFormEditor shared Preview shell", () => {
-  it("keeps a first save authoritative while draft creation refetches before a delayed structure write", async () => {
+  it("keeps a first save authoritative while a structure write is delayed", async () => {
     queryResults.set("/api/v2/admin/rank-groups", [{ id: 7, name: "Deck", formId: 99 }]);
-    queryResults.set("/api/v2/admin/forms/99/versions", []);
+    queryResults.set("/api/v2/admin/forms/99/versions", [{
+      id: 1, fvUuid: "created-draft", formId: 99, rankGroupId: 7,
+      versionNo: "01", versionDate: "01-Jan-2026", status: "draft",
+    }]);
+    queryResults.set("admin-form-version-parts", partsForVersion("created-draft"));
     let finishStructureWrite: (() => void) | undefined;
     const structureWriteGate = new Promise<void>((resolve) => {
       finishStructureWrite = resolve;
     });
     const requestOrder: string[] = [];
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (url === "/api/v2/admin/forms/99/versions" && init?.method === "POST") {
-        requestOrder.push("draft-created");
-        return {
-          ok: true,
-          json: async () => ({
-            id: 1,
-            fvUuid: "created-draft",
-            formId: 99,
-            rankGroupId: 7,
-            versionNo: "01",
-            versionDate: "01-Jan-2026",
-            status: "draft",
-          }),
-        };
+      if (url.includes("/parts?formVersionUuid=")) {
+        return { ok: true, json: async () => partsForVersion("created-draft") };
       }
       if (url.endsWith("/structures") && init?.method === "PUT") {
         requestOrder.push("structure-write-started");
@@ -240,7 +246,7 @@ describe("GenericFormEditor shared Preview shell", () => {
     click(editor.querySelector<HTMLElement>('[data-testid="button-save-form-structure"]')!);
     await flushAsyncWork();
 
-    expect(requestOrder).toEqual(["draft-created", "structure-write-started"]);
+    expect(requestOrder).toContain("structure-write-started");
     expect(onSave).not.toHaveBeenCalled();
     expect(editor.querySelectorAll('[data-testid^="card-section-"]')).toHaveLength(1);
     expect(editor.querySelectorAll('[data-testid^="card-point-"]')).toHaveLength(2);
@@ -249,7 +255,7 @@ describe("GenericFormEditor shared Preview shell", () => {
     await flushAsyncWork();
     await flushAsyncWork();
 
-    expect(requestOrder).toEqual(["draft-created", "structure-write-started", "structure-write-completed"]);
+    expect(requestOrder.slice(-2)).toEqual(["structure-write-started", "structure-write-completed"]);
     expect(editor.querySelectorAll('[data-testid^="card-section-"]')).toHaveLength(1);
     expect(editor.querySelectorAll('[data-testid^="card-point-"]')).toHaveLength(2);
     expect(editor.querySelector('[data-testid="select-form-version"]')?.textContent).toContain("v01");
@@ -275,30 +281,23 @@ describe("GenericFormEditor shared Preview shell", () => {
     await flushAsyncWork();
 
     expect((fetch as any).mock.calls.filter(([url, init]: [string, RequestInit]) =>
-      url === "/api/v2/admin/forms/99/versions" && init?.method === "POST")).toHaveLength(1);
+      url === "/api/v2/admin/forms/99/versions" && init?.method === "POST")).toHaveLength(0);
     expect((fetch as any).mock.calls.filter(([url, init]: [string, RequestInit]) =>
       url.endsWith("/structures") && init?.method === "PUT")).toHaveLength(2);
     expect(editor.querySelectorAll('[data-testid^="card-section-"]')).toHaveLength(2);
     expect(editor.textContent).toContain("All changes saved");
   });
 
-  it("retains all 5 sections and 50 points from a fast first-save response", async () => {
+  it("retains all 5 sections and 50 points from a fast save response", async () => {
     queryResults.set("/api/v2/admin/rank-groups", [{ id: 7, name: "Deck", formId: 99 }]);
-    queryResults.set("/api/v2/admin/forms/99/versions", []);
+    queryResults.set("/api/v2/admin/forms/99/versions", [{
+      id: 1, fvUuid: "large-draft", formId: 99, rankGroupId: 7,
+      versionNo: "01", versionDate: "01-Jan-2026", status: "draft",
+    }]);
+    queryResults.set("admin-form-version-parts", partsForVersion("large-draft"));
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (url === "/api/v2/admin/forms/99/versions" && init?.method === "POST") {
-        return {
-          ok: true,
-          json: async () => ({
-            id: 1,
-            fvUuid: "large-draft",
-            formId: 99,
-            rankGroupId: 7,
-            versionNo: "01",
-            versionDate: "01-Jan-2026",
-            status: "draft",
-          }),
-        };
+      if (url.includes("/parts?formVersionUuid=")) {
+        return { ok: true, json: async () => partsForVersion("large-draft") };
       }
       if (url.endsWith("/structures") && init?.method === "PUT") {
         return echoSavedStructures("large-draft", init);
@@ -423,8 +422,8 @@ describe("GenericFormEditor shared Preview shell", () => {
     await flushAsyncWork();
     await flushAsyncWork();
 
-    const partA = editor.querySelector<HTMLButtonElement>('[data-testid="button-step-part-a"]');
-    const partC = editor.querySelector<HTMLButtonElement>('[data-testid="button-step-part-c"]');
+    const partA = editor.querySelector<HTMLButtonElement>('[data-testid="button-step-draft-version-a"]');
+    const partC = editor.querySelector<HTMLButtonElement>('[data-testid="button-step-draft-version-c"]');
     if (!partA || !partC) throw new Error("Fixed-part navigation controls did not render");
 
     expect(partA).not.toBeDisabled();

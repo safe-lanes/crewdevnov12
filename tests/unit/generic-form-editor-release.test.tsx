@@ -1,6 +1,6 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GenericFormEditor } from "@/components/GenericFormEditor";
 
 const queryResults = vi.hoisted(() => new Map<string, unknown>());
@@ -24,6 +24,10 @@ vi.mock("@/hooks/use-toast", () => ({
 
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
+
+beforeEach(() => {
+  (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+});
 
 const draft = {
   id: 42,
@@ -128,7 +132,17 @@ function setInputValue(input: HTMLInputElement, value: string) {
 function setup(initialStructure = structureResponse()) {
   queryResults.set("/api/v2/admin/rank-groups", [{ id: 7, name: "Deck", formId: 99 }]);
   queryResults.set("/api/v2/admin/forms/99/versions", [draft]);
+  queryResults.set("admin-form-version-parts", [{
+    formPartUuid: "version-part-b",
+    formVersionUuid: draft.fvUuid,
+    partCode: "B",
+    partTitle: "Deck briefing",
+    partType: "configurable",
+  }]);
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    if (url.includes("/parts?formVersionUuid=")) {
+      return response(queryResults.get("admin-form-version-parts"));
+    }
     if (url.includes("/structure")) return response(initialStructure);
     return response({});
   }));
@@ -210,6 +224,7 @@ describe("GenericFormEditor release workflow", () => {
     await flushAsyncWork();
 
     expect(requestOrder).toEqual(["save", "release"]);
+    expect(savedBody.parts[0].form_part_uuid).toBe("version-part-b");
     expect(savedBody.parts[0].structure.sections[0].section_title).toBe("Unsaved release title");
     expect(apiRequestMock).toHaveBeenLastCalledWith(
       "POST",

@@ -53,6 +53,20 @@ export interface ConfigurableFormPart {
   isOfficeOnly?: boolean;
 }
 
+const EMPTY_FORM_PARTS: ConfigurableFormPart[] = [];
+
+async function loadVersionParts(formId: number, versionUuid: string): Promise<ConfigurableFormPart[]> {
+  const response = await fetch(
+    `/api/v2/admin/forms/${formId}/parts?formVersionUuid=${encodeURIComponent(versionUuid)}`,
+  );
+  if (!response.ok) throw new Error(`Failed to load parts for form version ${versionUuid}`);
+  const parts = await response.json();
+  if (!Array.isArray(parts) || parts.length === 0 || parts.some((part) => part.formVersionUuid !== versionUuid)) {
+    throw new Error(`Form version ${versionUuid} has no valid version-owned parts`);
+  }
+  return parts;
+}
+
 interface GenericFormEditorProps {
   form: Form & { originalFormId?: number };
   formName: string;
@@ -533,7 +547,6 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   rankGroupName,
   rankGroupId: providedRankGroupId,
   rankGroupConfig,
-  configurableParts: partsFromParent = [],
   onClose,
   onSave,
 }) => {
@@ -597,25 +610,6 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     releaseConfirmOpen: false,
     handleClose: () => undefined,
   });
-
-  const { data: formPartsData = [], isLoading: isLoadingParts } = useQuery<ConfigurableFormPart[]>({
-    queryKey: [`/api/v2/admin/forms/${realFormId}/parts`],
-    queryFn: async () => {
-      const response = await fetch(`/api/v2/admin/forms/${realFormId}/parts`);
-      if (!response.ok) throw new Error("Failed to load form parts");
-      return response.json();
-    },
-    enabled: !!realFormId,
-  });
-
-  const allParts = useMemo(
-    () => (partsFromParent.length > 0 ? partsFromParent : formPartsData),
-    [partsFromParent, formPartsData],
-  );
-  const configurableParts = useMemo(
-    () => allParts.filter((part) => part.partType === "configurable"),
-    [allParts],
-  );
 
   const { data: rankGroups = [] } = useQuery<Array<{ id: number; name: string; formId: number }>>({
     queryKey: ["/api/v2/admin/rank-groups", realFormId],
@@ -692,6 +686,19 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     () => availableVersions.find((version) => version.fvUuid === selectedVersionUuid) ?? sortedVersions[0],
     [availableVersions, selectedVersionUuid, sortedVersions],
   );
+  const { data: versionParts, isFetching: isLoadingParts, error: partsError } = useQuery<ConfigurableFormPart[]>({
+    queryKey: ["admin-form-version-parts", realFormId, selectedVersion?.fvUuid],
+    queryFn: () => loadVersionParts(realFormId, selectedVersion!.fvUuid),
+    enabled: !!realFormId && !!selectedVersion?.fvUuid,
+    retry: false,
+  });
+  // Form-level parts passed by AdminModule are templates used only to choose
+  // this editor. Structure reads and writes must use the selected version's UUIDs.
+  const allParts = versionParts ?? EMPTY_FORM_PARTS;
+  const configurableParts = useMemo(
+    () => allParts.filter((part) => part.partType === "configurable"),
+    [allParts],
+  );
   // Navigation includes every part. Only configurable parts have editable
   // trees; registered fixed parts reuse their feature-owned read-only preview.
   const selectedPart = allParts.find((part) => part.formPartUuid === selectedPartUuid) ?? configurableParts[0];
@@ -705,15 +712,15 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const serializedState = JSON.stringify({ trees, optionSets });
   const isDirty = baselineRef.current !== null && baselineRef.current !== serializedState;
   const canEdit = isEditing && (!selectedVersion || selectedVersion.status === "draft");
-  const canModify = canEdit && !isSaving;
+  const canModify = canEdit && !isSaving && !isLoadingParts && !isLoadingTree && !partsError && allParts.length > 0;
   const isPreview = viewMode === "preview";
   const previewFixedParts = getFixedParts(form.category, { readOnly: true });
 
   useEffect(() => {
-    if (!selectedPartUuid && configurableParts[0]) {
-      setSelectedPartUuid(configurableParts[0].formPartUuid);
+    if (allParts.length && !allParts.some((part) => part.formPartUuid === selectedPartUuid)) {
+      setSelectedPartUuid(configurableParts[0]?.formPartUuid ?? allParts[0].formPartUuid);
     }
-  }, [configurableParts, selectedPartUuid]);
+  }, [allParts, configurableParts, selectedPartUuid]);
 
   useEffect(() => {
     if (selectedVersionUuid) return;
@@ -727,10 +734,19 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
   useEffect(() => {
     if (saveTransitionRef.current) return;
+    if (isLoadingParts) return;
+    if (partsError) {
+      setSaveError(partsError.message);
+      baselineRef.current = null;
+      return;
+    }
     if (!selectedVersion?.fvUuid || configurableParts.length === 0) {
       setTrees({});
       setOptionSets({});
       baselineRef.current = null;
+      if (selectedVersion?.fvUuid && allParts.length === 0) {
+        setSaveError(`Form version ${selectedVersion.fvUuid} has no parts`);
+      }
       return;
     }
     if (skipNextTreeLoadVersionRef.current === selectedVersion.fvUuid) {
@@ -778,7 +794,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [configurableParts, selectedVersion?.fvUuid]);
+  }, [allParts.length, configurableParts, isLoadingParts, partsError, selectedVersion?.fvUuid]);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -1252,6 +1268,10 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
 
   const save = async (): Promise<VersionRow | null> => {
     if (!canEdit || saveTransitionRef.current) return null;
+    if (isLoadingParts || isLoadingTree || partsError || !configurableParts.length || baselineRef.current === null) {
+      setSaveError("Wait for the selected version's parts and structures to load before saving.");
+      return null;
+    }
     const validationError = validateTrees();
     if (validationError) {
       setSaveError(validationError);
@@ -1267,15 +1287,24 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       const treesAtSave = trees;
       const optionSetsAtSave = optionSets;
       const draft = await createDraft();
+      // Creating a draft copies parts with new UUIDs. Never send UUIDs from
+      // the released source or the form-level templates to the draft writer.
+      const draftParts = await loadVersionParts(realFormId, draft.fvUuid);
+      const draftConfigurableParts = draftParts.filter((part) => part.partType === "configurable");
+      const sourcePartByCode = new Map(configurableParts.map((part) => [part.partCode, part]));
+      if (!draftConfigurableParts.length || draftConfigurableParts.length !== configurableParts.length ||
+          draftConfigurableParts.some((part) => !sourcePartByCode.has(part.partCode))) {
+        throw new Error("Draft parts do not match the loaded form; reload the draft before saving.");
+      }
       const response = await apiRequest(
         "PUT",
         `/api/v2/admin/form-versions/${draft.fvUuid}/structures`,
         {
-          parts: configurableParts.map((part) => ({
+          parts: draftConfigurableParts.map((part) => ({
             form_part_uuid: part.formPartUuid,
             structure: toPayload(
-              treesAtSave[part.formPartUuid] || [],
-              optionSetsAtSave[part.formPartUuid] || [],
+              treesAtSave[sourcePartByCode.get(part.partCode)!.formPartUuid] || [],
+              optionSetsAtSave[sourcePartByCode.get(part.partCode)!.formPartUuid] || [],
             ),
           })),
           auditUserUuid: getCrewUserId(),
@@ -1286,7 +1315,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       if (savedResponse.form_version_uuid !== draft.fvUuid || !Array.isArray(savedResponse.parts)) {
         throw new Error("Form structure save returned an invalid response");
       }
-      const savedEntries = configurableParts.map((part) => {
+      const savedEntries = draftConfigurableParts.map((part) => {
         const savedPart = savedResponse.parts.find((item) => item.form_part_uuid === part.formPartUuid);
         if (!savedPart) throw new Error(`Form structure save omitted ${part.partTitle}`);
         const savedOptionSets = normalizeOptionSets(savedPart);
@@ -1310,7 +1339,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       onSave({
         formId: realFormId,
         formVersionUuid: draft.fvUuid,
-        savedParts: configurableParts.length,
+        savedParts: draftConfigurableParts.length,
         durationMs: Math.round(performance.now() - startedAt),
       });
       toast({ title: "Draft saved", description: "The complete form structure has been saved." });
@@ -1677,7 +1706,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                     </Button>
                   )}
                    {viewMode === "configure" && canEdit && (
-                    <Button onClick={save} disabled={isSaving || isLoadingTree} className="bg-[#16569e] hover:bg-[#0f4078]" data-testid="button-save-form-structure">
+                     <Button onClick={save} disabled={isSaving || isLoadingTree || isLoadingParts || !!partsError || !configurableParts.length || baselineRef.current === null} className="bg-[#16569e] hover:bg-[#0f4078]" data-testid="button-save-form-structure">
                       <Save className="h-4 w-4 mr-2" /> {isSaving ? "Saving..." : "Save"}
                     </Button>
                   )}
@@ -1694,7 +1723,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
               )}
 
                 <div>
-                 {isLoadingTree ? (
+                 {isLoadingTree || isLoadingParts ? (
                    <div className="p-10 text-center text-sm text-gray-500">Loading form structure…</div>
                  ) : (
                    <div className="p-6 space-y-5">
