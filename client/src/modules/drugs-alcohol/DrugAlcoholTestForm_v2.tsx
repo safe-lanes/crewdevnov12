@@ -680,36 +680,34 @@ export function DrugAlcoholTestForm_v2({
   const canSaveDisplayedDates = () => {
     const editedFields =
       dateFormRef.current?.querySelectorAll<HTMLElement>(
-        '[data-da-date-field][data-da-date-edited="true"]',
+        '[data-da-date-field][data-da-date-edited="true"], [data-datetime-field][data-datetime-edited="true"]',
       );
     if (!editedFields) return true;
     for (const wrapper of editedFields) {
-      const input =
-        wrapper.querySelector<HTMLInputElement>(
-          'input[type="text"]',
-        );
-      const fieldName = wrapper.dataset.daDateField;
+      const input = wrapper.querySelector<HTMLInputElement>('input[type="text"]');
+      const isDateTime = wrapper.hasAttribute('data-datetime-field');
+      const fieldName = isDateTime
+        ? wrapper.dataset.datetimeField
+        : wrapper.dataset.daDateField;
       if (
-        !input ||
-        !fieldName ||
-        input.matches(':disabled') ||
+        !input || !fieldName || input.matches(':disabled') ||
         input.getClientRects().length === 0
-      ) {
-        continue;
-      }
+      ) continue;
       const text = input.value.trim();
-      const displayedValue =
-        text === '' ? '' : parseManualDate(text);
-      const acceptedValue =
-        form.getValues(fieldName as any) ?? '';
+      const displayedValue = isDateTime
+        ? wrapper.dataset.datetimeCanonical ?? null
+        : text === '' ? '' : parseManualDate(text);
+      const acceptedValue = form.getValues(fieldName as any) ?? '';
       if (
+        (isDateTime && wrapper.dataset.datetimeInvalid === 'true') ||
         displayedValue === null ||
         displayedValue !== acceptedValue
       ) {
         toast({
-          title: 'Date not accepted',
-          description:
-            'Correct this date or clear it before saving.',
+          title: isDateTime ? 'Date and time not accepted' : 'Date not accepted',
+          description: isDateTime
+            ? 'Correct this date and time or clear it before continuing.'
+            : 'Correct this date or clear it before continuing.',
           variant: 'destructive',
         });
         input.focus();
@@ -760,6 +758,7 @@ export function DrugAlcoholTestForm_v2({
   };
 
   const handleExport = async () => {
+    if (!canSaveDisplayedDates()) return;
     try {
       const data = form.getValues();
       const vesselName = getVesselName(data.vesselId || '');
@@ -1172,7 +1171,7 @@ export function DrugAlcoholTestForm_v2({
                     </div>
 
                     {/* Row 2: Alcohol/Drug, Initiated By, Date & Time Test completed */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4">
                       <FormField
                         control={form.control}
                         name="alcoholDrugType"
@@ -1319,7 +1318,7 @@ export function DrugAlcoholTestForm_v2({
                           />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4">
                           <FormField
                             control={form.control}
                             name="incidentDateTime"
@@ -1532,7 +1531,7 @@ export function DrugAlcoholTestForm_v2({
                   </div>
                   
                   {!form.watch('equipmentNotApplicable') && form.watch('testingEquipment')?.map((equipment, index) => (
-                    <div key={equipment.id} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" data-testid={`equipment-entry-${index}`}>
+                    <div key={equipment.id} className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 mb-6" data-testid={`equipment-entry-${index}`}>
                       <FormField
                         control={form.control}
                         name={`testingEquipment.${index}.equipmentId` as any}
@@ -1580,15 +1579,17 @@ export function DrugAlcoholTestForm_v2({
                         name={`testingEquipment.${index}.lastCalibrated` as any}
                         render={({ field }) => (
                           <FormItem className="relative">
-                            <FormLabel className="text-xs text-gray-500 tracking-wide">Last Calibrated</FormLabel>
-                            <div className="flex gap-1">
+                            <FormLabel className="block pr-8 text-xs text-gray-500 tracking-wide">
+                              Last Calibrated
+                            </FormLabel>
+                            <div>
                               <FormControl>
                                 <DaDateInput
                                   {...field}
                                   value={field.value ?? ''}
                                   label="Equipment last calibrated"
                                   disabled={isFormLocked}
-                                  className="bg-[#ffffff] flex-1"
+                                  className="bg-[#ffffff]"
                                   data-testid={`input-lastCalibrated-${index}`}
                                 />
                               </FormControl>
@@ -1596,7 +1597,8 @@ export function DrugAlcoholTestForm_v2({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 text-gray-400 hover:text-red-600"
+                                className="absolute right-0 top-0 h-6 w-6 text-gray-400 hover:text-red-600"
+                                aria-label="Remove testing equipment"
                                 onClick={() => {
                                   const current = form.getValues('testingEquipment') || [];
                                   form.setValue('testingEquipment', current.filter((_, i) => i !== index));
