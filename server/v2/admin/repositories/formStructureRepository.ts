@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import {
@@ -34,6 +34,46 @@ export type FormStructureContext = {
 };
 
 export class FormStructureRepository {
+  // The caller supplies the version-creation transaction. Form-level parts are
+  // permanent templates; only newly inserted, version-owned parts are writable.
+  async initializePartsFromTemplates(formUuid: string, versionUuid: string, tx: Executor): Promise<void> {
+    const versions = await tx.select({
+      formUuid: admFormsV2.formUuid,
+      status: admFormVersionsV2.status,
+    }).from(admFormVersionsV2)
+      .innerJoin(admFormsV2, eq(admFormsV2.id, admFormVersionsV2.formId))
+      .where(and(
+        eq(admFormVersionsV2.fvUuid, versionUuid),
+        eq(admFormVersionsV2.isDeleted, false),
+        eq(admFormsV2.isDeleted, false),
+      ));
+    if (versions[0]?.formUuid !== formUuid || versions[0]?.status !== "draft") {
+      throw new Error("Template initialization requires a draft version of the same form");
+    }
+    const existingParts = await tx.select({ id: frmFormParts.id }).from(frmFormParts)
+      .where(eq(frmFormParts.formVersionUuid, versionUuid)).limit(1);
+    if (existingParts.length) throw new Error("Version already has parts");
+
+    const templates = await tx.select().from(frmFormParts).where(and(
+      eq(frmFormParts.formUuid, formUuid),
+      isNull(frmFormParts.formVersionUuid),
+      eq(frmFormParts.isDeleted, false),
+    )).orderBy(asc(frmFormParts.sortOrder), asc(frmFormParts.id));
+    if (!templates.length) return;
+    await tx.insert(frmFormParts).values(templates.map((part: typeof frmFormParts.$inferSelect) => ({
+      formPartUuid: uuidv4(),
+      formUuid,
+      formVersionUuid: versionUuid,
+      partCode: part.partCode,
+      partTitle: part.partTitle,
+      partType: part.partType,
+      isOfficeOnly: part.isOfficeOnly,
+      sortOrder: part.sortOrder,
+      isDeleted: false,
+      isSync: false,
+    })));
+  }
+
   private async findContextWithExecutor(
     executor: Executor,
     fvUuid: string,

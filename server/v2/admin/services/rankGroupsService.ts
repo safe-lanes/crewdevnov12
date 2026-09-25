@@ -282,7 +282,7 @@ async function upsertDraftVersion(formId: number, rankGroupId: number, configura
     if (sourceVersion?.fvUuid) {
       await copyFormVersionStructure(sourceVersion.fvUuid, created.fvUuid, tx);
     } else {
-      throw new Error("Cannot create a form version without parts: no released source version exists. Template initialization is deferred.");
+      await formStructureRepository.initializePartsFromTemplates(form.formUuid, created.fvUuid, tx);
     }
   });
 

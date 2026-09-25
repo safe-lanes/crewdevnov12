@@ -4,6 +4,7 @@ import { RankGroupsRepository } from "../repositories/rankGroupsRepository";
 import { applyAuditUser } from "../utils/auditUser";
 import { getDb } from "../../db";
 import { copyFormVersionStructure } from "./formStructureService";
+import { formStructureRepository } from "../repositories/formStructureRepository";
 import { frmFormParts } from "../../../../shared/v2/forms-engine/schema";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2 } from "../../../../shared/v2/admin/types";
@@ -343,7 +344,7 @@ export const formsService = {
       if (sourceVersion?.fvUuid) {
         await copyFormVersionStructure(sourceVersion.fvUuid, created.fvUuid, tx);
       } else {
-        throw new Error("Cannot create a form version without parts: no released source version exists. Template initialization is deferred.");
+        await formStructureRepository.initializePartsFromTemplates(form.formUuid, created.fvUuid, tx);
       }
       return created;
     });

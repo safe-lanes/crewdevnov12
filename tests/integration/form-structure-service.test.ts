@@ -114,6 +114,18 @@ async function createFormFixture(name: string) {
   return { form, rankGroup, partUuid };
 }
 
+async function versionPartUuid(versionUuid: string, partCode = "B"): Promise<string> {
+  const [part] = await getDb().select({ formPartUuid: frmFormParts.formPartUuid })
+    .from(frmFormParts)
+    .where(and(
+      eq(frmFormParts.formVersionUuid, versionUuid),
+      eq(frmFormParts.partCode, partCode),
+      eq(frmFormParts.isDeleted, false),
+    ));
+  if (!part) throw new Error(`Version ${versionUuid} has no part with code ${partCode}`);
+  return part.formPartUuid;
+}
+
 async function deleteFixture(formUuid: string) {
   const db = getDb();
   const forms = await db.select({ id: admFormsV2.id }).from(admFormsV2)
@@ -146,6 +158,7 @@ async function deleteFixture(formUuid: string) {
       await db.delete(frmOptions).where(inArray(frmOptions.optionSetUuid, setUuids));
       await db.delete(frmOptionSets).where(inArray(frmOptionSets.optionSetUuid, setUuids));
     }
+    await db.delete(frmFormParts).where(inArray(frmFormParts.formVersionUuid, versionUuids));
   }
   await db.delete(admFormVersionsV2).where(eq(admFormVersionsV2.formId, form.id));
   await db.delete(admRankGroupsV2).where(eq(admRankGroupsV2.formId, form.id));
@@ -166,10 +179,11 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
+    const firstPartUuid = await versionPartUuid(firstDraft.fvUuid);
 
     const saved = await formStructureService.replaceStructure(
       firstDraft.fvUuid,
-      partUuid,
+      firstPartUuid,
       testStructure(),
       null,
     );
@@ -186,7 +200,7 @@ describe.sequential("form structure service integration", () => {
     const savedOptionUuid = saved.sections[0].questions[0].options[0].option_uuid;
     const savedSetUuid = saved.option_sets[0].option_set_uuid;
 
-    const renamed = await formStructureService.replaceStructure(firstDraft.fvUuid, partUuid, {
+    const renamed = await formStructureService.replaceStructure(firstDraft.fvUuid, firstPartUuid, {
       sections: [{
         section_uuid: savedSectionUuid,
         section_code: "B1",
@@ -221,9 +235,9 @@ describe.sequential("form structure service integration", () => {
 
     const released = await formsService.releaseVersionById(firstDraft.id);
     await expect(
-      formStructureService.replaceStructure(released.fvUuid, partUuid, { sections: [] }, null),
+      formStructureService.replaceStructure(released.fvUuid, firstPartUuid, { sections: [] }, null),
     ).rejects.toMatchObject<FormStructureServiceError>({ statusCode: 409 });
-    const releasedTree = await formStructureService.getStructure(released.fvUuid, partUuid);
+    const releasedTree = await formStructureService.getStructure(released.fvUuid, firstPartUuid);
     expect(releasedTree.sections[0].section_uuid).toBe(savedSectionUuid);
 
     const copiedDraft = await formsService.createVersionByFormId(form.id, {
@@ -232,7 +246,8 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
-    const copiedTree = await formStructureService.getStructure(copiedDraft.fvUuid, partUuid);
+    const copiedPartUuid = await versionPartUuid(copiedDraft.fvUuid);
+    const copiedTree = await formStructureService.getStructure(copiedDraft.fvUuid, copiedPartUuid);
     expect(copiedTree.sections).toHaveLength(1);
     expect(copiedTree.sections[0]).toMatchObject({
       signature_officer_required: false,
@@ -245,8 +260,8 @@ describe.sequential("form structure service integration", () => {
     expect(copiedTree.sections[0].questions[0].options[0].option_uuid).not.toBe(savedOptionUuid);
     expect(copiedTree.option_sets[0].option_set_uuid).not.toBe(savedSetUuid);
 
-    await formStructureService.replaceStructure(copiedDraft.fvUuid, partUuid, { sections: [] }, null);
-    const emptiedDraft = await formStructureService.getStructure(copiedDraft.fvUuid, partUuid);
+    await formStructureService.replaceStructure(copiedDraft.fvUuid, copiedPartUuid, { sections: [] }, null);
+    const emptiedDraft = await formStructureService.getStructure(copiedDraft.fvUuid, copiedPartUuid);
     expect(emptiedDraft.sections).toEqual([]);
   });
 
@@ -258,8 +273,9 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
+    const draftPartUuid = await versionPartUuid(draft.fvUuid);
     const setUuid = uuidv4();
-    const saved = await formStructureService.replaceStructure(draft.fvUuid, partUuid, {
+    const saved = await formStructureService.replaceStructure(draft.fvUuid, draftPartUuid, {
       option_sets: [{
         option_set_uuid: setUuid,
         option_set_name: "Readiness",
@@ -315,7 +331,7 @@ describe.sequential("form structure service integration", () => {
     // top-level and under each question for legacy editor compatibility.
     const roundTripped = await formStructureService.replaceStructure(
       draft.fvUuid,
-      partUuid,
+      draftPartUuid,
       saved as any,
       null,
     );
@@ -333,14 +349,15 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "25-Aug-2026",
     } as any);
-    const copiedTree = await formStructureService.getStructure(copiedDraft.fvUuid, partUuid);
+    const copiedPartUuid = await versionPartUuid(copiedDraft.fvUuid);
+    const copiedTree = await formStructureService.getStructure(copiedDraft.fvUuid, copiedPartUuid);
     expect(copiedTree.option_sets[0]).toMatchObject({
       option_set_name: "Readiness",
       low_end_label: "Needs attention",
       high_end_label: "Ready",
     });
     expect(copiedTree.option_sets[0].option_set_uuid).not.toBe(setUuid);
-    expect((await formStructureService.getStructure(released.fvUuid, partUuid)).option_sets[0]).toMatchObject({
+    expect((await formStructureService.getStructure(released.fvUuid, draftPartUuid)).option_sets[0]).toMatchObject({
       low_end_label: "Needs attention",
       high_end_label: "Ready",
     });
@@ -354,8 +371,9 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
+    const draftPartUuid = await versionPartUuid(draft.fvUuid);
     const setUuid = uuidv4();
-    const first = await formStructureService.replaceStructure(draft.fvUuid, partUuid, {
+    const first = await formStructureService.replaceStructure(draft.fvUuid, draftPartUuid, {
       option_sets: [{
         option_set_uuid: setUuid,
         option_set_name: "Future choices",
@@ -365,7 +383,7 @@ describe.sequential("form structure service integration", () => {
     }, null);
     expect(first.option_sets.map((set: any) => set.option_set_uuid)).toContain(setUuid);
 
-    const assigned = await formStructureService.replaceStructure(draft.fvUuid, partUuid, {
+    const assigned = await formStructureService.replaceStructure(draft.fvUuid, draftPartUuid, {
       option_sets: first.option_sets.map((set: any) => ({
         option_set_uuid: set.option_set_uuid,
         option_set_name: set.option_set_name,
@@ -415,8 +433,10 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
+    const draftPartUuid = await versionPartUuid(draft.fvUuid);
+    const draftSecondPartUuid = await versionPartUuid(draft.fvUuid, "D");
     const setUuid = uuidv4();
-    const first = await formStructureService.replaceStructure(draft.fvUuid, partUuid, {
+    const first = await formStructureService.replaceStructure(draft.fvUuid, draftPartUuid, {
       option_sets: [{
         option_set_uuid: setUuid,
         option_set_name: "Reusable choices",
@@ -426,8 +446,8 @@ describe.sequential("form structure service integration", () => {
     }, null);
     expect(first.option_sets).toHaveLength(1);
 
-    await formStructureService.replaceStructure(draft.fvUuid, secondPartUuid, { sections: [] }, null);
-    const afterLegacySave = await formStructureService.getStructure(draft.fvUuid, partUuid);
+    await formStructureService.replaceStructure(draft.fvUuid, draftSecondPartUuid, { sections: [] }, null);
+    const afterLegacySave = await formStructureService.getStructure(draft.fvUuid, draftPartUuid);
     expect(afterLegacySave.option_sets).toMatchObject([{
       option_set_uuid: setUuid,
       options: [{ option_value: "ready" }],
@@ -442,7 +462,8 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
-    await formStructureService.replaceStructure(sourceDraft.fvUuid, partUuid, testStructure(), null);
+    const sourcePartUuid = await versionPartUuid(sourceDraft.fvUuid);
+    await formStructureService.replaceStructure(sourceDraft.fvUuid, sourcePartUuid, testStructure(), null);
     const [draftTarget] = await getDb().insert(admFormVersionsV2).values({
       fvUuid: uuidv4(),
       formId: form.id,
@@ -454,7 +475,8 @@ describe.sequential("form structure service integration", () => {
     }).returning();
     await expect(copyFormVersionStructure(sourceDraft.fvUuid, draftTarget.fvUuid))
       .resolves.toMatchObject({ sections: 1, questions: 1, options: 2 });
-    expect((await formStructureService.getStructure(draftTarget.fvUuid, partUuid)).sections).toHaveLength(1);
+    const targetPartUuid = await versionPartUuid(draftTarget.fvUuid);
+    expect((await formStructureService.getStructure(draftTarget.fvUuid, targetPartUuid)).sections).toHaveLength(1);
 
     const source = await formsService.releaseVersionById(sourceDraft.id);
     const [target] = await getDb().insert(admFormVersionsV2).values({
@@ -467,10 +489,19 @@ describe.sequential("form structure service integration", () => {
       configuration: "{}",
       releasedAt: new Date(),
     }).returning();
+    const [targetPart] = await getDb().insert(frmFormParts).values({
+      formPartUuid: uuidv4(),
+      formUuid: form.formUuid,
+      formVersionUuid: target.fvUuid,
+      partCode: "B",
+      partTitle: "Briefing Points",
+      partType: "configurable",
+      isOfficeOnly: false,
+    }).returning();
 
     await expect(copyFormVersionStructure(source.fvUuid, target.fvUuid))
       .rejects.toThrow("target status must be exactly draft");
-    expect((await formStructureService.getStructure(target.fvUuid, partUuid)).sections).toEqual([]);
+    expect((await formStructureService.getStructure(target.fvUuid, targetPart.formPartUuid)).sections).toEqual([]);
   });
 
   it("copies between same-form rank groups, creates v01, confirms replacement, and rejects released-only or cross-form targets", async () => {
@@ -504,8 +535,9 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
+    const sourcePartUuid = await versionPartUuid(sourceDraft.fvUuid);
     const sourceSetUuid = uuidv4();
-    const sourceTree = await formStructureService.replaceStructure(sourceDraft.fvUuid, partUuid, {
+    const sourceTree = await formStructureService.replaceStructure(sourceDraft.fvUuid, sourcePartUuid, {
       option_sets: [{
         option_set_uuid: sourceSetUuid,
         option_set_name: "Copy scale",
@@ -557,7 +589,10 @@ describe.sequential("form structure service integration", () => {
       sourceStatus: "draft",
       copied: { sections: 1, questions: 1, options: 2, optionSets: 1 },
     });
-    const targetTree = await formStructureService.getStructure(copied.targetFormVersionUuid, partUuid);
+    const targetTree = await formStructureService.getStructure(
+      copied.targetFormVersionUuid,
+      await versionPartUuid(copied.targetFormVersionUuid),
+    );
     expect(targetTree.sections).toHaveLength(1);
     expect(targetTree.sections[0].section_uuid).not.toBe(sourceTree.sections[0].section_uuid);
     expect(targetTree.sections[0].questions[0].question_uuid).not.toBe(sourceTree.sections[0].questions[0].question_uuid);
@@ -629,9 +664,9 @@ describe.sequential("form structure service integration", () => {
       emptySource.fvUuid,
       false,
       null,
-    )).rejects.toMatchObject({
-      statusCode: 400,
-      message: "The selected source version has no configured content to copy.",
+    )).resolves.toMatchObject({
+      sourceCounts: { sections: 0, questions: 0, optionSets: 0, options: 0 },
+      copied: { sections: 0, questions: 0, optionSets: 0, options: 0 },
     });
 
     const [detachedSource] = await db.insert(admFormVersionsV2).values({
@@ -681,10 +716,11 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
+    const sourcePartUuid = await versionPartUuid(sourceDraft.fvUuid);
     const startedAt = Date.now();
     const saved = await formStructureService.replaceStructure(
       sourceDraft.fvUuid,
-      partUuid,
+      sourcePartUuid,
       acceptanceSizedStructure(),
       null,
     );
@@ -701,7 +737,7 @@ describe.sequential("form structure service integration", () => {
     expect(saveDurationMs).toBeLessThan(10_000);
 
     const released = await formsService.releaseVersionById(sourceDraft.id);
-    const sourceTree = await formStructureService.getStructure(released.fvUuid, partUuid);
+    const sourceTree = await formStructureService.getStructure(released.fvUuid, sourcePartUuid);
     const sourceSectionUuid = sourceTree.sections[0].section_uuid;
     const sourceQuestionUuid = sourceTree.sections[0].questions[0].question_uuid;
     const sourceOptionUuid = sourceTree.sections[0].questions[0].options[0].option_uuid;
@@ -713,17 +749,18 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
-    const directTree = await formStructureService.getStructure(directDraft.fvUuid, partUuid);
+    const directPartUuid = await versionPartUuid(directDraft.fvUuid);
+    const directTree = await formStructureService.getStructure(directDraft.fvUuid, directPartUuid);
     expect(directTree.sections).toHaveLength(10);
     expect(directTree.sections[0].questions).toHaveLength(10);
     expect(directTree.sections[0].questions[0].options).toHaveLength(2);
     expect(directTree.sections[0].section_uuid).not.toBe(sourceSectionUuid);
     expect(directTree.sections[0].questions[0].question_uuid).not.toBe(sourceQuestionUuid);
     expect(directTree.sections[0].questions[0].options[0].option_uuid).not.toBe(sourceOptionUuid);
-    expect((await formStructureService.getStructure(released.fvUuid, partUuid)).sections).toHaveLength(10);
+    expect((await formStructureService.getStructure(released.fvUuid, sourcePartUuid)).sections).toHaveLength(10);
 
     // Remove the direct draft so the rank-group configuration path must build its own copy.
-    await formStructureService.replaceStructure(directDraft.fvUuid, partUuid, { sections: [] }, null);
+    await formStructureService.replaceStructure(directDraft.fvUuid, directPartUuid, { sections: [] }, null);
     const directSets = await getDb().select({ optionSetUuid: frmOptionSets.optionSetUuid })
       .from(frmOptionSets)
       .where(eq(frmOptionSets.formVersionUuid, directDraft.fvUuid));
@@ -732,6 +769,7 @@ describe.sequential("form structure service integration", () => {
       await getDb().delete(frmOptions).where(inArray(frmOptions.optionSetUuid, directSetUuids));
       await getDb().delete(frmOptionSets).where(inArray(frmOptionSets.optionSetUuid, directSetUuids));
     }
+    await getDb().delete(frmFormParts).where(eq(frmFormParts.formVersionUuid, directDraft.fvUuid));
     await getDb().delete(admFormVersionsV2).where(eq(admFormVersionsV2.id, directDraft.id));
 
     await rankGroupsService.updateConfigurationById(rankGroup.id, "{}");
@@ -741,12 +779,13 @@ describe.sequential("form structure service integration", () => {
       eq(admFormVersionsV2.isDeleted, false),
     ));
     expect(rankGroupDrafts).toHaveLength(1);
-    const rankGroupTree = await formStructureService.getStructure(rankGroupDrafts[0].fvUuid, partUuid);
+    const rankGroupPartUuid = await versionPartUuid(rankGroupDrafts[0].fvUuid);
+    const rankGroupTree = await formStructureService.getStructure(rankGroupDrafts[0].fvUuid, rankGroupPartUuid);
     expect(rankGroupTree.sections).toHaveLength(10);
     expect(rankGroupTree.sections[0].questions).toHaveLength(10);
     expect(rankGroupTree.sections[0].questions[0].options).toHaveLength(2);
     expect(rankGroupTree.sections[0].section_uuid).not.toBe(sourceSectionUuid);
-    expect((await formStructureService.getStructure(released.fvUuid, partUuid)).sections).toHaveLength(10);
+    expect((await formStructureService.getStructure(released.fvUuid, sourcePartUuid)).sections).toHaveLength(10);
     console.info(`Acceptance-sized form structure saved in ${saveDurationMs}ms (10 sections, 100 questions, 20 options).`);
   });
 
@@ -759,22 +798,39 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
+    const draftPartUuid = await versionPartUuid(draft.fvUuid);
+    const foreignDraft = await formsService.createVersionByFormId(foreign.form.id, {
+      rankGroupId: foreign.rankGroup.id,
+      configuration: "{}",
+      sharedConfig: "{}",
+      versionDate: "24-Aug-2026",
+    } as any);
+    const crossFormPartUuid = uuidv4();
+    await getDb().insert(frmFormParts).values({
+      formPartUuid: crossFormPartUuid,
+      formUuid: foreign.form.formUuid,
+      formVersionUuid: draft.fvUuid,
+      partCode: "FOREIGN",
+      partTitle: "Foreign form part",
+      partType: "configurable",
+      isOfficeOnly: false,
+    });
 
     await expect(
-      formStructureService.replaceStructure(draft.fvUuid, foreign.partUuid, testStructure(), null),
+      formStructureService.replaceStructure(draft.fvUuid, crossFormPartUuid, testStructure(), null),
     ).rejects.toMatchObject<FormStructureServiceError>({ statusCode: 400 });
 
     const unknownVesselTypePayload = testStructure();
     unknownVesselTypePayload.sections[0].applicable_vessel_types = [uuidv4()];
     await expect(
-      formStructureService.replaceStructure(draft.fvUuid, source.partUuid, unknownVesselTypePayload, null),
+      formStructureService.replaceStructure(draft.fvUuid, draftPartUuid, unknownVesselTypePayload, null),
     ).rejects.toThrow("Unknown vessel type UUID");
 
     const unknownRolePayload = testStructure();
     unknownRolePayload.sections[0].responsible_mode = "role";
     unknownRolePayload.sections[0].responsible_role_uuid = uuidv4();
     await expect(
-      formStructureService.replaceStructure(draft.fvUuid, source.partUuid, unknownRolePayload, null),
+      formStructureService.replaceStructure(draft.fvUuid, draftPartUuid, unknownRolePayload, null),
     ).rejects.toThrow("Unknown responsible role UUID");
   });
 
@@ -795,19 +851,21 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
+    const draftPartUuid = await versionPartUuid(draft.fvUuid);
+    const draftSecondPartUuid = await versionPartUuid(draft.fvUuid, "D");
     const invalidSecondPart = testStructure();
     invalidSecondPart.sections[0].responsible_mode = "role";
     invalidSecondPart.sections[0].responsible_role_uuid = uuidv4();
 
     await expect(
       formStructureService.replaceStructures(draft.fvUuid, [
-        { partUuid, structure: testStructure() },
-        { partUuid: secondPartUuid, structure: invalidSecondPart },
+        { partUuid: draftPartUuid, structure: testStructure() },
+        { partUuid: draftSecondPartUuid, structure: invalidSecondPart },
       ], null),
     ).rejects.toThrow("Unknown responsible role UUID");
 
-    expect((await formStructureService.getStructure(draft.fvUuid, partUuid)).sections).toEqual([]);
-    expect((await formStructureService.getStructure(draft.fvUuid, secondPartUuid)).sections).toEqual([]);
+    expect((await formStructureService.getStructure(draft.fvUuid, draftPartUuid)).sections).toEqual([]);
+    expect((await formStructureService.getStructure(draft.fvUuid, draftSecondPartUuid)).sections).toEqual([]);
   });
 
   it("rolls back the entire tree when a database write fails mid-replacement", async () => {
@@ -818,6 +876,7 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       versionDate: "24-Aug-2026",
     } as any);
+    const draftPartUuid = await versionPartUuid(draft.fvUuid);
     const malformed = testStructure();
     malformed.sections[0].questions[0].options = [
       { option_label: "First", option_value: "duplicate" },
@@ -825,9 +884,9 @@ describe.sequential("form structure service integration", () => {
     ];
 
     await expect(
-      formStructureRepository.replaceTree(draft.fvUuid, partUuid, malformed, null),
+      formStructureRepository.replaceTree(draft.fvUuid, draftPartUuid, malformed, null),
     ).rejects.toThrow();
-    const treeAfterFailure = await formStructureService.getStructure(draft.fvUuid, partUuid);
+    const treeAfterFailure = await formStructureService.getStructure(draft.fvUuid, draftPartUuid);
     expect(treeAfterFailure.sections).toEqual([]);
   });
 
@@ -846,12 +905,21 @@ describe.sequential("form structure service integration", () => {
       sharedConfig: "{}",
       releasedAt: new Date(),
     });
+    const [sourcePart] = await db.insert(frmFormParts).values({
+      formPartUuid: uuidv4(),
+      formUuid: form.formUuid,
+      formVersionUuid: sourceVersionUuid,
+      partCode: "B",
+      partTitle: "Briefing Points",
+      partType: "configurable",
+      isOfficeOnly: false,
+    }).returning();
     const sectionUuid = uuidv4();
     const questionUuid = uuidv4();
     await db.insert(frmSections).values({
       sectionUuid,
       formVersionUuid: sourceVersionUuid,
-      formPartUuid: partUuid,
+      formPartUuid: sourcePart.formPartUuid,
       sectionCode: "B1",
       sectionTitle: "Copied through rank group",
       responsibleMode: "not_applicable",
@@ -871,12 +939,15 @@ describe.sequential("form structure service integration", () => {
       eq(admFormVersionsV2.isDeleted, false),
     ));
     expect(drafts).toHaveLength(1);
-    const copiedTree = await formStructureService.getStructure(drafts[0].fvUuid, partUuid);
+    const copiedTree = await formStructureService.getStructure(
+      drafts[0].fvUuid,
+      await versionPartUuid(drafts[0].fvUuid),
+    );
     expect(copiedTree.sections).toHaveLength(1);
     expect(copiedTree.sections[0].section_uuid).not.toBe(sectionUuid);
 
     await expect(
       rankGroupsService.releaseConfigurationById(rankGroup.id, "{}"),
-    ).rejects.toThrow("Cannot create a direct released version because this form has configurable structure");
+    ).rejects.toThrow("Cannot create a direct released form version without parts");
   });
 });
