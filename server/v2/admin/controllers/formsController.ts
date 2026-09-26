@@ -54,6 +54,9 @@ export const formsController = {
 
   async create(req: Request, res: Response) {
     try {
+      if (req.body?.category !== "dynamic") {
+        return res.status(400).json({ error: "Only Company Forms (category 'dynamic') can be created through this endpoint" });
+      }
       const result = insertAdmFormV2Schema
         .omit({ formUuid: true })
         .safeParse(req.body);

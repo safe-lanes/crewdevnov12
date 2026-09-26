@@ -13,7 +13,7 @@ export const admFormsV2 = pgTable("adm_forms_v2", {
   id: serial("id").primaryKey(),
   formUuid: text("form_uuid").notNull().unique(),
   name: text("name").notNull(),
-  category: text("category").notNull().default("appraisal"),
+  category: text("category").notNull(),
   rankGroup: text("rank_group").notNull(),
   versionNo: text("version_no").notNull(),
   versionDate: text("version_date").notNull(),
