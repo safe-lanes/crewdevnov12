@@ -46,11 +46,10 @@ export class FormsRepository {
     const results = await db
       .update(admFormsV2)
       .set({ ...data, updatedAt: new Date() })
-      // Existing SAIL forms cannot be reclassified to unlock draft-part edits.
-      // This condition also protects against a concurrent category change
-      // between an API preflight read and the actual update.
+      // A provided category must match the stored category at update time,
+      // including when a concurrent writer changes it after the API preflight.
       .where(and(eq(admFormsV2.id, id), eq(admFormsV2.isDeleted, false),
-        data.category === "dynamic" ? eq(admFormsV2.category, "dynamic") : undefined))
+        data.category !== undefined ? eq(admFormsV2.category, data.category) : undefined))
       .returning();
     return results[0];
   }
@@ -61,7 +60,7 @@ export class FormsRepository {
       .update(admFormsV2)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(admFormsV2.formUuid, formUuid), eq(admFormsV2.isDeleted, false),
-        data.category === "dynamic" ? eq(admFormsV2.category, "dynamic") : undefined))
+        data.category !== undefined ? eq(admFormsV2.category, data.category) : undefined))
       .returning();
     return results[0];
   }

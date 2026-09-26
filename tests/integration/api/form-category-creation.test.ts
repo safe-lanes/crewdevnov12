@@ -81,6 +81,20 @@ describe("client form creation category boundary", () => {
       `)).rows;
       console.info("Created dynamic form (raw SQL):", JSON.stringify(raw));
       expect(raw).toMatchObject([{ form_uuid: createdUuid, category: "dynamic" }]);
+
+      for (const category of ["briefing", "interview", "debriefing", "appraisal", "promotion"]) {
+        const reclassification = await agent.put(`${endpoint}/${dynamic.body.id}`)
+          .set("Authorization", `Bearer ${token()}`).send({ category });
+        console.info(`PUT dynamic form category ${category}:`, JSON.stringify({
+          status: reclassification.status, response: reclassification.body,
+        }));
+        expect(reclassification.status).toBe(409);
+        expect(reclassification.body.error).toContain("cannot be changed");
+      }
+      const afterAttempts = (await db.execute(sql`
+        SELECT category FROM adm_forms_v2 WHERE form_uuid = ${createdUuid}
+      `)).rows;
+      expect(afterAttempts).toMatchObject([{ category: "dynamic" }]);
     } finally {
       if (createdUuid) await db.delete(admFormsV2).where(eq(admFormsV2.formUuid, createdUuid));
       const after = await existing();

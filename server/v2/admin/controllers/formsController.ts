@@ -86,10 +86,10 @@ export const formsController = {
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form data", details: result.error.issues });
       }
-      if (result.data.category === "dynamic") {
+      if (result.data.category !== undefined) {
         const current = await formsService.getById(id);
-        if (current.category !== "dynamic") {
-          return res.status(409).json({ error: "Existing forms cannot be reclassified as dynamic" });
+        if (current.category !== result.data.category) {
+          return res.status(409).json({ error: "Form category cannot be changed through this endpoint" });
         }
       }
       const auditUserUuid = req.body?.auditUserUuid ?? null;
