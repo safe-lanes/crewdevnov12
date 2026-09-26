@@ -15,7 +15,7 @@ describe("Crew Interview creation rank resolution", () => {
     expect(getFormForRank).toHaveBeenCalledWith("Master", "interview");
   });
   it("rejects an unmatched rank while naming it", async () => {
-    getFormForRank.mockResolvedValue({ formUuid: FORM_UUID, rankGroupName: null, noReleasedVersion: true });
+    getFormForRank.mockResolvedValue(null);
     await expect(resolveInterviewCreationTarget("Unassigned Rank")).rejects.toMatchObject<Partial<InterviewError>>({ statusCode: 404, message: expect.stringContaining("rank Unassigned Rank") });
   });
   it("rejects a rank group without a released version", async () => {

@@ -558,7 +558,7 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   const useLatest = useLatestForNew || useLatestForEditing;
   const usePinned = isEditing && !!pinnedFormVersionId;
 
-  const { data: latestFormConfig, isLoading: isLoadingLatestConfig } = useQuery<FormForRankResponse>({
+  const { data: latestFormConfig, isLoading: isLoadingLatestConfig, error: latestFormError } = useQuery<FormForRankResponse>({
     queryKey: [`/api/v2/admin/forms/for-rank/${encodeURIComponent(crewMember?.rank || '')}?category=appraisal`],
     enabled: !!crewMember?.rank && useLatest,
   });
@@ -2722,8 +2722,11 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
   };
 
   const noReleasedVersion = !!formConfig?.noReleasedVersion;
-  if (noReleasedVersion && !appraisalId) {
-    const reason = formConfig?.noReleasedVersionReason || 'No released form version is available for this rank.';
+  const noFormConfigured = !usePinned && latestFormError?.message.startsWith('404:');
+  if ((noReleasedVersion && !appraisalId) || noFormConfigured) {
+    const reason = noFormConfigured
+      ? `No appraisal form configured for rank "${crewMember?.rank}". Ask an administrator to assign this rank to an active appraisal rank group.`
+      : formConfig?.noReleasedVersionReason || 'No released form version is available for this rank.';
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
         <div className="bg-white rounded-lg w-full max-w-md p-6 flex flex-col gap-4" data-testid="banner-no-released-version">
@@ -2734,9 +2737,9 @@ export const AppraisalForm: React.FC<AppraisalFormProps> = ({ crewMember, apprai
             </Button>
           </div>
           <p className="text-sm text-gray-700">{reason}</p>
-          <p className="text-xs text-gray-500">
+          {!noFormConfigured && <p className="text-xs text-gray-500">
             An administrator must release a form version for this rank group before appraisals can be started.
-          </p>
+          </p>}
           <div className="flex justify-end">
             <Button onClick={onClose} data-testid="button-dismiss-no-released">Close</Button>
           </div>

@@ -54,11 +54,7 @@ describe("briefing creation rank resolution", () => {
   });
 
   it("rejects a rank not covered by a rank group and names the rank", async () => {
-    getFormForRank.mockResolvedValue({
-      formUuid: FORM_UUID,
-      rankGroupName: null,
-      noReleasedVersion: true,
-    });
+    getFormForRank.mockResolvedValue(null);
 
     await expect(
       resolveBriefingCreationTarget({ joiningRank: "Unassigned Rank" }),

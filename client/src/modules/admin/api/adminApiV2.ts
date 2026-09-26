@@ -34,7 +34,10 @@ export const adminApiV2 = {
     const params = new URLSearchParams();
     if (category) params.set('category', category);
     const res = await fetch(`${V2_BASE}/forms/for-rank/${encodeURIComponent(rankLabel)}?${params}`);
-    if (!res.ok) throw new Error('Failed to fetch form for rank');
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.error || 'Failed to fetch form for rank');
+    }
     return res.json();
   },
 

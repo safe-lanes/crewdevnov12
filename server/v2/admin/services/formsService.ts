@@ -191,13 +191,9 @@ export const formsService = {
 
     if (!matchedForm) {
       console.log(`ℹ️ [V2 getFormForRank] No active rank groups found for rank "${rankLabel}" across ${candidateForms.length} form(s)`);
-      return {
-        ...candidateForms[0],
-        rankGroupName: null,
-        rankGroupConfig: null,
-        noReleasedVersion: true,
-        noReleasedVersionReason: `No active rank group covers rank "${getBaseRank(rankLabel) || rankLabel}".`,
-      };
+      // An unrelated form in the category is not a resolution for this rank.
+      // The HTTP controller turns null into a clear 404 for API consumers.
+      return null;
     }
 
     if (!rankGroupConfig) {
