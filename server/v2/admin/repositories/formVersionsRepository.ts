@@ -1,19 +1,18 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import { getDb } from "../../db";
 import { admFormVersionsV2 } from "../../../../shared/v2/admin/schema";
 import type { AdmFormVersionV2, InsertAdmFormVersionV2 } from "../../../../shared/v2/admin/types";
 import { v4 as uuidv4 } from "uuid";
 
 export class FormVersionsRepository {
-  async findByFormId(formId: number, rankGroupId?: number): Promise<AdmFormVersionV2[]> {
+  async findByFormId(formId: number, rankGroupId?: number | null): Promise<AdmFormVersionV2[]> {
     const db = getDb();
     const conditions = [
       eq(admFormVersionsV2.formId, formId),
       eq(admFormVersionsV2.isDeleted, false),
     ];
-    if (rankGroupId !== undefined) {
-      conditions.push(eq(admFormVersionsV2.rankGroupId, rankGroupId));
-    }
+    if (rankGroupId === null) conditions.push(isNull(admFormVersionsV2.rankGroupId));
+    else if (rankGroupId !== undefined) conditions.push(eq(admFormVersionsV2.rankGroupId, rankGroupId));
     return db
       .select()
       .from(admFormVersionsV2)
@@ -103,6 +102,26 @@ export class FormVersionsRepository {
     return results[0];
   }
 
+  async findDraftByFormId(formId: number): Promise<AdmFormVersionV2 | undefined> {
+    const results = await getDb()
+      .select()
+      .from(admFormVersionsV2)
+      .where(and(
+        eq(admFormVersionsV2.formId, formId),
+        isNull(admFormVersionsV2.rankGroupId),
+        eq(admFormVersionsV2.status, "draft"),
+        eq(admFormVersionsV2.isDeleted, false),
+      ))
+      .orderBy(desc(admFormVersionsV2.createdAt))
+      .limit(1);
+    return results[0];
+  }
+
+  async findLatestReleasedByFormId(formId: number): Promise<AdmFormVersionV2 | undefined> {
+    const versions = await this.findByFormId(formId, null);
+    return this.latestReleased(versions.filter(v => v.status === "released"));
+  }
+
   async findLatestReleasedByRankGroupId(rankGroupId: number): Promise<AdmFormVersionV2 | undefined> {
     const db = getDb();
     const results = await db
@@ -113,6 +132,10 @@ export class FormVersionsRepository {
         eq(admFormVersionsV2.status, 'released'),
         eq(admFormVersionsV2.isDeleted, false),
       ));
+    return this.latestReleased(results);
+  }
+
+  private latestReleased(results: AdmFormVersionV2[]): AdmFormVersionV2 | undefined {
     if (results.length === 0) return undefined;
     return results.reduce((latest, v) => {
       const vNo = parseInt(v.versionNo, 10);

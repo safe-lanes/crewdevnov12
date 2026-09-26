@@ -201,6 +201,9 @@ export const formsController = {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
+      if (error.message?.includes("do not use rank groups")) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error fetching form versions:", error);
       res.status(500).json({ error: "Failed to fetch form versions" });
     }
@@ -227,7 +230,7 @@ export const formsController = {
       if (msg.includes("draft already exists")) {
         return res.status(409).json({ error: msg });
       }
-      if (msg.includes("not found") || msg.includes("required") || msg.includes("without parts") || msg.includes("no version-owned parts")) {
+      if (msg.includes("not found") || msg.includes("required") || msg.includes("rank-grouped versions") || msg.includes("without parts") || msg.includes("no version-owned parts")) {
         return res.status(400).json({ error: msg });
       }
       console.error("Error creating form version:", error);

@@ -41,15 +41,15 @@ async function formFixture(category: string, withTemplate = false) {
     rankGroup: "Isolated", versionNo: "00", versionDate: "25-Sep-2026",
     isLockForm: false,
   }).returning();
-  const [group] = await db.insert(admRankGroupsV2).values({
+  const group = category === "dynamic" ? undefined : (await db.insert(admRankGroupsV2).values({
     rgUuid: uuidv4(), formId: form.id, name: `Part-edit ${formUuid}`, ranks: "[]",
-  }).returning();
+  }).returning())[0];
   if (withTemplate) await db.insert(frmFormParts).values({
     formPartUuid: uuidv4(), formUuid, partCode: "B", partTitle: "SAIL-owned part",
     partType: "configurable",
   });
   const draft = await formsService.createVersionByFormId(form.id, {
-    rankGroupId: group.id, configuration: "{}",
+    ...(group ? { rankGroupId: group.id } : {}), configuration: "{}",
   } as any);
   return { form, group, draft };
 }
@@ -89,7 +89,7 @@ async function cleanUp() {
 describe.sequential("version-scoped part edit API", () => {
   let dynamic: Awaited<ReturnType<typeof formFixture>>;
   let fixed: Awaited<ReturnType<typeof formFixture>>;
-  let unknown: Awaited<ReturnType<typeof formFixture>>;
+  let otherStandard: Awaited<ReturnType<typeof formFixture>>;
   let releasedUuid: string;
   let firstUuid: string;
   let secondUuid: string;
@@ -101,7 +101,7 @@ describe.sequential("version-scoped part edit API", () => {
     actorUuid = user.uuid;
     dynamic = await formFixture("dynamic");
     fixed = await formFixture("briefing", true);
-    unknown = await formFixture("future_custom_category", true);
+    otherStandard = await formFixture("interview", true);
     const [releasedGroup] = await getDb().insert(admRankGroupsV2).values({
       rgUuid: uuidv4(), formId: fixed.form.id, name: `Released ${uuidv4()}`, ranks: "[]",
     }).returning();
@@ -158,9 +158,9 @@ describe.sequential("version-scoped part edit API", () => {
     console.info("Dynamic part ownership and actor (raw SQL):", JSON.stringify(sqlRows.rows));
   });
 
-  it("denies fixed drafts, unknown categories, and released versions without touching their parts", async () => {
+  it("denies standard drafts of different categories and released versions without touching their parts", async () => {
     for (const [version, expected] of [
-      [fixed.draft.fvUuid, 403], [unknown.draft.fvUuid, 403], [releasedUuid, 409],
+      [fixed.draft.fvUuid, 403], [otherStandard.draft.fvUuid, 403], [releasedUuid, 409],
     ] as const) {
       const before = await rows(version);
       const beforeSql = await rawRows(version);

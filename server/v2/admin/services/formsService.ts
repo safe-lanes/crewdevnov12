@@ -280,21 +280,34 @@ export const formsService = {
   async getVersionsByFormId(formId: number, rankGroupId?: number): Promise<AdmFormVersionV2[]> {
     const form = await formsRepo.findById(formId);
     if (!form) throw new Error(`Form not found: ${formId}`);
+    if (form.category === "dynamic") {
+      if (rankGroupId !== undefined) throw new Error("Company Forms do not use rank groups.");
+      return formVersionsRepo.findByFormId(form.id, null);
+    }
     return formVersionsRepo.findByFormId(form.id, rankGroupId);
   },
 
   async getVersions(formUuid: string, rankGroupId?: number): Promise<AdmFormVersionV2[]> {
     const form = await formsRepo.findByUuid(formUuid);
     if (!form) throw new Error(`Form not found: ${formUuid}`);
+    if (form.category === "dynamic") {
+      if (rankGroupId !== undefined) throw new Error("Company Forms do not use rank groups.");
+      return formVersionsRepo.findByFormId(form.id, null);
+    }
     return formVersionsRepo.findByFormId(form.id, rankGroupId);
   },
 
   async createVersionByFormId(formId: number, data: Omit<InsertAdmFormVersionV2, "fvUuid" | "formId">): Promise<AdmFormVersionV2> {
     const form = await formsRepo.findById(formId);
     if (!form) throw new Error(`Form not found: ${formId}`);
-    if (!data.rankGroupId) {
+    const isCompanyForm = form.category === "dynamic";
+    if (isCompanyForm && data.rankGroupId != null) {
+      throw new Error("Company Forms cannot have rank-grouped versions.");
+    }
+    if (!isCompanyForm && !data.rankGroupId) {
       throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
     }
+    const rankGroupId = isCompanyForm ? null : data.rankGroupId!;
     const auditUserUuid = (data as any).auditUserUuid ?? null;
     // Server-controlled metadata: ignore client-supplied versionNo / releasedAt / status.
     // All new versions are drafts; release happens via releaseVersionById.
@@ -307,7 +320,9 @@ export const formsService = {
     }).replace(/ /g, "-");
     const pickedVersionDate = isValidVersionDate(data.versionDate) ? data.versionDate! : todayStr;
 
-    const existingDraft = await formVersionsRepo.findDraftByRankGroupId(data.rankGroupId);
+    const existingDraft = isCompanyForm
+      ? await formVersionsRepo.findDraftByFormId(form.id)
+      : await formVersionsRepo.findDraftByRankGroupId(rankGroupId!);
     if (existingDraft) {
       const updated = await formVersionsRepo.updateById(
         existingDraft.id,
@@ -321,19 +336,21 @@ export const formsService = {
       if (!updated) throw new Error(`Form version not found: ${existingDraft.id}`);
       return updated;
     }
-    const rgVersions = await formVersionsRepo.findByFormId(form.id, data.rankGroupId);
+    const rgVersions = await formVersionsRepo.findByFormId(form.id, rankGroupId);
     const maxVersionNo = rgVersions.reduce((max, v) => {
       const vNo = parseInt(v.versionNo, 10);
       return isNaN(vNo) ? max : Math.max(max, vNo);
     }, 0);
     const nextVersionNo = String(maxVersionNo + 1).padStart(2, "0");
-    const sourceVersion = await formVersionsRepo.findLatestReleasedByRankGroupId(data.rankGroupId);
+    const sourceVersion = isCompanyForm
+      ? await formVersionsRepo.findLatestReleasedByFormId(form.id)
+      : await formVersionsRepo.findLatestReleasedByRankGroupId(rankGroupId!);
     const db = getDb();
     return db.transaction(async (tx: any) => {
       const created = await formVersionsRepo.create(applyAuditUser({
         configuration: data.configuration ?? null,
         sharedConfig: data.sharedConfig ?? null,
-        rankGroupId: data.rankGroupId,
+        rankGroupId,
         formId: form.id,
         versionNo: nextVersionNo,
         versionDate: pickedVersionDate,
@@ -394,7 +411,11 @@ export const formsService = {
     // Parent form metadata MUST stay in sync with the latest released version.
     // Errors here propagate so the API surfaces a 500 rather than returning success
     // with a divergent parent record.
-    const allVersions = await formVersionsRepo.findByFormId(version.formId);
+    const form = await formsRepo.findById(version.formId);
+    if (!form) throw new Error(`Form not found: ${version.formId}`);
+    const allVersions = await formVersionsRepo.findByFormId(
+      version.formId, form.category === "dynamic" ? null : undefined,
+    );
     const released = allVersions.filter(v => v.status === "released");
     if (released.length > 0) {
       const latest = released.reduce((max, v) => {
