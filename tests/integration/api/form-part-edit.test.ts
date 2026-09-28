@@ -158,6 +158,30 @@ describe.sequential("version-scoped part edit API", () => {
     console.info("Dynamic part ownership and actor (raw SQL):", JSON.stringify(sqlRows.rows));
   });
 
+  it("generates unique codes for omitted-code creates without changing explicit-code rejection", async () => {
+    const isolated = await formFixture("dynamic");
+    const version = isolated.draft.fvUuid;
+    const first = await api("POST", `/${version}/parts`, { part_title: "First auto part" });
+    const second = await api("POST", `/${version}/parts`, { part_title: "Second auto part" });
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(first.body).toMatchObject({ partType: "configurable", partTitle: "First auto part" });
+    expect(first.body.partCode).toMatch(/^P[0-9a-f]{29}$/);
+    expect(second.body.partCode).toMatch(/^P[0-9a-f]{29}$/);
+    expect(second.body.partCode).not.toBe(first.body.partCode);
+    const duplicate = await api("POST", `/${version}/parts`, {
+      part_code: first.body.partCode, part_title: "Duplicate",
+    });
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body.error).toContain("already used in this version");
+    expect((await api("POST", `/${version}/parts`, {
+      part_title: "Fixed not allowed", part_type: "fixed",
+    })).status).toBe(400);
+    const sqlRows = await rawRows(version);
+    expect(sqlRows).toHaveLength(2);
+    expect(new Set(sqlRows.map((row: any) => row.part_code)).size).toBe(2);
+  });
+
   it("denies standard drafts of different categories and released versions without touching their parts", async () => {
     for (const [version, expected] of [
       [fixed.draft.fvUuid, 403], [otherStandard.draft.fvUuid, 403], [releasedUuid, 409],

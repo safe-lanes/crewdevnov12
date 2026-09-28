@@ -160,6 +160,7 @@ export interface ConfiguredFormRendererProps {
   onExpandedSectionsChange?: (value: Record<string, boolean>) => void;
   live?: ConfiguredFormLiveProps;
   fixedParts?: Record<string, React.ReactNode>;
+  hidePartCodes?: boolean;
   className?: string;
 }
 
@@ -998,11 +999,13 @@ function PartCard({
   part,
   subtitle,
   progress,
+  hidePartCodes = false,
   children,
 }: {
   part: ConfiguredFormPart;
   subtitle: React.ReactNode;
   progress?: React.ReactNode;
+  hidePartCodes?: boolean;
   children: React.ReactNode;
 }) {
   const code = part.partCode.trim() || "—";
@@ -1025,7 +1028,7 @@ function PartCard({
           className="text-xl font-semibold mb-2"
           style={{ color: sailDesignSystem.colors.headerText }}
         >
-          Part {code}: {title}
+          {hidePartCodes ? title : `Part ${code}: ${title}`}
         </h3>
         <div
           className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
@@ -1059,6 +1062,7 @@ export function ConfiguredFormRenderer({
   selectedPartUuid,
   live,
   fixedParts,
+  hidePartCodes = false,
   className = "",
 }: ConfiguredFormRendererProps) {
   const [internalVesselTypeUuid, setInternalVesselTypeUuid] = useState("all");
@@ -1148,12 +1152,12 @@ export function ConfiguredFormRenderer({
             fixedPartContent(selectedPart, fixedParts) ? (
               <FixedPartRenderer part={selectedPart} fixedParts={fixedParts} />
             ) : (
-              <PartCard part={selectedPart} subtitle={partSubtitle}>
+              <PartCard part={selectedPart} subtitle={partSubtitle} hidePartCodes={hidePartCodes}>
                 <FixedPartRenderer part={selectedPart} fixedParts={fixedParts} />
               </PartCard>
             )
           ) : (
-            <PartCard part={selectedPart} subtitle={partSubtitle} progress={progressCaption}>
+            <PartCard part={selectedPart} subtitle={partSubtitle} progress={progressCaption} hidePartCodes={hidePartCodes}>
               <div
                 className="flex flex-col"
                 style={{ gap: sailDesignSystem.spacing.sectionSpacing }}

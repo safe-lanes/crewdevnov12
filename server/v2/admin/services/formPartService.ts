@@ -65,22 +65,25 @@ async function activePart(tx: Executor, fvUuid: string, formUuid: string, partUu
 }
 
 export const formPartService = {
-  async create(fvUuid: string, input: { part_code: string; part_title: string; is_office_only: boolean }, actorId: number) {
+  async create(fvUuid: string, input: { part_code?: string; part_title: string; is_office_only: boolean }, actorId: number) {
     return getDb().transaction(async (tx: Executor) => {
       const { formUuid, auditIdentity } = await guardedVersion(tx, fvUuid, actorId);
+      // Internal identity, not a client-facing sequence. The version/code
+      // unique index remains the final authority (including deleted rows).
+      const partCode = input.part_code ?? `P${uuidv4().replace(/-/g, "").slice(0, 29)}`;
       // The version/code unique index also includes soft-deleted parts; fail
       // explicitly rather than silently resurrecting or returning a DB 500.
       const [collision] = await tx.select({ id: frmFormParts.id }).from(frmFormParts).where(and(
         eq(frmFormParts.formVersionUuid, fvUuid),
-        eq(frmFormParts.partCode, input.part_code),
+        eq(frmFormParts.partCode, partCode),
       ));
-      if (collision) throw new FormPartError(`Part code ${input.part_code} is already used in this version`, 409);
+      if (collision) throw new FormPartError(`Part code ${partCode} is already used in this version`, 409);
       const [last] = await tx.select({ sortOrder: frmFormParts.sortOrder }).from(frmFormParts)
         .where(and(eq(frmFormParts.formVersionUuid, fvUuid), eq(frmFormParts.isDeleted, false)))
         .orderBy(sql`${frmFormParts.sortOrder} DESC`).limit(1);
       const [part] = await tx.insert(frmFormParts).values({
         formPartUuid: uuidv4(), formUuid, formVersionUuid: fvUuid,
-        partCode: input.part_code, partTitle: input.part_title,
+        partCode, partTitle: input.part_title,
         partType: "configurable", isOfficeOnly: input.is_office_only,
         sortOrder: (last?.sortOrder ?? -1) + 1,
         createdByUuid: auditIdentity, updatedByUuid: auditIdentity,

@@ -5,7 +5,7 @@ import { FormPartError, formPartService } from "../services/formPartService";
 const versionParams = z.object({ fvUuid: z.string().uuid() });
 const partParams = versionParams.extend({ partUuid: z.string().uuid() });
 const createBody = z.object({
-  part_code: z.string().trim().min(1).max(30).regex(/^[A-Za-z][A-Za-z0-9_-]*$/),
+  part_code: z.string().trim().min(1).max(30).regex(/^[A-Za-z][A-Za-z0-9_-]*$/).optional(),
   part_title: z.string().trim().min(1).max(500),
   is_office_only: z.boolean().default(false),
 }).strict();

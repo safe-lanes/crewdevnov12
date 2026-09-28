@@ -55,13 +55,13 @@ export interface ConfigurableFormPart {
 
 const EMPTY_FORM_PARTS: ConfigurableFormPart[] = [];
 
-async function loadVersionParts(formId: number, versionUuid: string): Promise<ConfigurableFormPart[]> {
+async function loadVersionParts(formId: number, versionUuid: string, allowEmpty = false): Promise<ConfigurableFormPart[]> {
   const response = await fetch(
     `/api/v2/admin/forms/${formId}/parts?formVersionUuid=${encodeURIComponent(versionUuid)}`,
   );
   if (!response.ok) throw new Error(`Failed to load parts for form version ${versionUuid}`);
   const parts = await response.json();
-  if (!Array.isArray(parts) || parts.length === 0 || parts.some((part) => part.formVersionUuid !== versionUuid)) {
+  if (!Array.isArray(parts) || (!allowEmpty && parts.length === 0) || parts.some((part) => part.formVersionUuid !== versionUuid)) {
     throw new Error(`Form version ${versionUuid} has no valid version-owned parts`);
   }
   return parts;
@@ -568,6 +568,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isReleasing, setIsReleasing] = useState(false);
+  const [isPartMutating, setIsPartMutating] = useState(false);
+  const [addPartOpen, setAddPartOpen] = useState(false);
+  const [newPartTitle, setNewPartTitle] = useState("");
+  const [newPartOfficeOnly, setNewPartOfficeOnly] = useState(false);
+  const [renamingPartUuid, setRenamingPartUuid] = useState<string | null>(null);
+  const [partTitleDraft, setPartTitleDraft] = useState("");
   const [saveError, setSaveError] = useState("");
   const [selectedSection, setSelectedSection] = useState<{ partUuid: string; index: number } | null>(null);
   const [settingsDialog, setSettingsDialog] = useState<"vessel" | "responsible" | "comment" | "signature" | null>(null);
@@ -691,9 +697,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     () => availableVersions.find((version) => version.fvUuid === selectedVersionUuid) ?? sortedVersions[0],
     [availableVersions, selectedVersionUuid, sortedVersions],
   );
-  const { data: versionParts, isFetching: isLoadingParts, error: partsError } = useQuery<ConfigurableFormPart[]>({
+  const { data: versionParts, isFetching: isLoadingParts, error: partsError, refetch: refetchParts } = useQuery<ConfigurableFormPart[]>({
     queryKey: ["admin-form-version-parts", realFormId, selectedVersion?.fvUuid],
-    queryFn: () => loadVersionParts(realFormId, selectedVersion!.fvUuid),
+    queryFn: () => loadVersionParts(realFormId, selectedVersion!.fvUuid, form.category === "dynamic"),
     enabled: !!realFormId && !!selectedVersion?.fvUuid,
     retry: false,
   });
@@ -718,6 +724,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const isDirty = baselineRef.current !== null && baselineRef.current !== serializedState;
   const canEdit = !readOnly && isEditing && (!selectedVersion || selectedVersion.status === "draft");
   const canModify = canEdit && !isSaving && !isLoadingParts && !isLoadingTree && !partsError && allParts.length > 0;
+  const canManageParts = form.category === "dynamic" && !!selectedVersion &&
+    selectedVersion.status === "draft" && canEdit && !isSaving && !isReleasing &&
+    !isPartMutating && !isLoadingParts && !isLoadingTree && !partsError;
   const isPreview = viewMode === "preview";
   const previewFixedParts = getFixedParts(form.category, { readOnly: true });
 
@@ -749,9 +758,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       setTrees({});
       setOptionSets({});
       baselineRef.current = null;
-      if (selectedVersion?.fvUuid && allParts.length === 0) {
-        setSaveError(`Form version ${selectedVersion.fvUuid} has no parts`);
-      }
+      if (selectedVersion?.fvUuid && allParts.length === 0 && form.category === "dynamic") setSaveError("");
       return;
     }
     if (skipNextTreeLoadVersionRef.current === selectedVersion.fvUuid) {
@@ -1438,6 +1445,86 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     setSelectedVersionUuid(versionUuid);
     const version = availableVersions.find((item) => item.fvUuid === versionUuid);
     setIsEditing(version?.status === "draft");
+    setRenamingPartUuid(null);
+    setAddPartOpen(false);
+  };
+
+  const partAction = async (action: () => Promise<string | void>, success: string) => {
+    if (!canManageParts) return;
+    if (isDirty) {
+      setSaveError("Save or discard unsaved section changes before editing parts.");
+      return;
+    }
+    setIsPartMutating(true);
+    setSaveError("");
+    try {
+      const selectUuid = await action();
+      const refreshed = await refetchParts();
+      if (refreshed.error) throw refreshed.error;
+      if (selectUuid) setSelectedPartUuid(selectUuid);
+      else if (!refreshed.data?.some((part) => part.formPartUuid === selectedPartUuid)) {
+        setSelectedPartUuid(refreshed.data?.[0]?.formPartUuid ?? "");
+      }
+      toast({ title: success });
+    } catch (error) {
+      const raw = error instanceof Error ? error.message : String(error);
+      const body = raw.replace(/^\d+:\s*/, "");
+      let message = body;
+      try { message = JSON.parse(body).error || body; } catch { /* Non-JSON error */ }
+      setSaveError(message);
+    } finally {
+      setIsPartMutating(false);
+    }
+  };
+
+  const addPart = async () => {
+    const title = newPartTitle.trim();
+    if (!title || !selectedVersion) return;
+    await partAction(async () => {
+      const response = await apiRequest("POST", `/api/v2/admin/form-versions/${selectedVersion.fvUuid}/parts`, {
+        part_title: title, is_office_only: newPartOfficeOnly,
+      });
+      const part: ConfigurableFormPart = await response.json();
+      setAddPartOpen(false);
+      setNewPartTitle("");
+      setNewPartOfficeOnly(false);
+      return part.formPartUuid;
+    }, "Part added");
+  };
+
+  const renamePart = async (part: ConfigurableFormPart) => {
+    const title = partTitleDraft.trim();
+    if (!title || !selectedVersion) return;
+    if (title === part.partTitle) { setRenamingPartUuid(null); return; }
+    await partAction(async () => {
+      await apiRequest("PATCH", `/api/v2/admin/form-versions/${selectedVersion.fvUuid}/parts/${part.formPartUuid}`, {
+        part_title: title,
+      });
+      setRenamingPartUuid(null);
+      return part.formPartUuid;
+    }, "Part renamed");
+  };
+
+  const movePart = async (direction: -1 | 1) => {
+    if (!selectedPart || !selectedVersion) return;
+    const index = allParts.findIndex((part) => part.formPartUuid === selectedPart.formPartUuid);
+    if (index + direction < 0 || index + direction >= allParts.length) return;
+    const reordered = [...allParts];
+    [reordered[index], reordered[index + direction]] = [reordered[index + direction], reordered[index]];
+    await partAction(async () => {
+      await apiRequest("PUT", `/api/v2/admin/form-versions/${selectedVersion.fvUuid}/parts/reorder`, {
+        part_uuids: reordered.map((part) => part.formPartUuid),
+      });
+      return selectedPart.formPartUuid;
+    }, "Parts reordered");
+  };
+
+  const removePart = async () => {
+    if (!selectedPart || !selectedVersion) return;
+    const part = selectedPart;
+    await partAction(async () => {
+      await apiRequest("DELETE", `/api/v2/admin/form-versions/${selectedVersion.fvUuid}/parts/${part.formPartUuid}`);
+    }, "Part removed");
   };
 
   const requestVersionChange = (versionUuid: string) => {
@@ -1648,9 +1735,10 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           title={`${formName} form editor`}
           sections={allParts.map((part) => ({
             id: part.formPartUuid,
-            title: part.partTitle || `Part ${part.partCode}`,
-            letter: part.partCode,
+            title: part.partTitle || (form.category === "dynamic" ? "Untitled part" : `Part ${part.partCode}`),
+            letter: form.category === "dynamic" ? undefined : part.partCode,
           }))}
+          hideSectionLetters={form.category === "dynamic"}
           activeSection={selectedPart?.formPartUuid || selectedPartUuid}
           onActiveSectionChange={setSelectedPartUuid}
           onClose={handleClose}
@@ -1675,20 +1763,45 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 selectedVesselTypeUuid={previewVesselTypeUuid}
                 onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
                 fixedParts={previewFixedParts}
+                hidePartCodes={form.category === "dynamic"}
               />
             ) : (
                <>
                  <div className="sticky top-0 z-10 border-b bg-white/95 px-6 py-4 backdrop-blur">
                    <div className="flex flex-wrap items-start justify-between gap-3">
                      <div className="min-w-0 flex-1">
-                       <div className="text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>
-                         {selectedPart?.partCode} · {selectedPart?.partTitle}
-                       </div>
-                       <div className="mt-1 text-sm" style={{ color: sailDesignSystem.colors.textSecondary }}>
+                       {renamingPartUuid === selectedPart?.formPartUuid && canManageParts ? (
+                         <div className="flex items-center gap-2">
+                           <Input value={partTitleDraft} onChange={(event) => setPartTitleDraft(event.target.value)}
+                             onKeyDown={(event) => { if (event.key === "Enter") void renamePart(selectedPart); if (event.key === "Escape") setRenamingPartUuid(null); }}
+                             maxLength={500} autoFocus data-testid="input-rename-part" aria-label="Part title" />
+                           <Button size="sm" onClick={() => void renamePart(selectedPart)} disabled={!partTitleDraft.trim()} data-testid="button-save-part-name">Save</Button>
+                           <Button size="sm" variant="ghost" onClick={() => setRenamingPartUuid(null)}>Cancel</Button>
+                         </div>
+                       ) : (
+                         <div className="text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }} data-testid="part-heading">
+                           {selectedPart ? (form.category === "dynamic" ? selectedPart.partTitle : `${selectedPart.partCode} · ${selectedPart.partTitle}`) : "No parts yet"}
+                         </div>
+                       )}
+                       {selectedPart && <div className="mt-1 text-sm" style={{ color: sailDesignSystem.colors.textSecondary }}>
                          {currentSections.length} section{currentSections.length === 1 ? "" : "s"} ·
                          {" "}{currentSections.reduce((sum, section) => sum + section.questions.length, 0)} points
-                       </div>
+                       </div>}
                      </div>
+                     {canManageParts && (
+                       <div className="flex flex-wrap items-center gap-1" data-testid="company-part-controls">
+                         {selectedPart && <>
+                           <Button size="sm" variant="outline" onClick={() => { setRenamingPartUuid(selectedPart.formPartUuid); setPartTitleDraft(selectedPart.partTitle); }} data-testid="button-rename-part">Rename</Button>
+                           <Button size="icon" variant="outline" aria-label="Move part up" disabled={allParts[0]?.formPartUuid === selectedPart.formPartUuid} onClick={() => void movePart(-1)} data-testid="button-move-part-up"><ArrowUp className="h-4 w-4" /></Button>
+                           <Button size="icon" variant="outline" aria-label="Move part down" disabled={allParts[allParts.length - 1]?.formPartUuid === selectedPart.formPartUuid} onClick={() => void movePart(1)} data-testid="button-move-part-down"><ArrowDown className="h-4 w-4" /></Button>
+                           <Button size="icon" variant="outline" aria-label="Remove part" onClick={() => void removePart()} data-testid="button-remove-part"><Trash2 className="h-4 w-4" /></Button>
+                         </>}
+                         <Button size="sm" variant="outline" onClick={() => {
+                           if (isDirty) setSaveError("Save or discard unsaved section changes before editing parts.");
+                           else setAddPartOpen(true);
+                         }} data-testid="button-add-part"><Plus className="h-4 w-4 mr-1" /> Add part</Button>
+                       </div>
+                     )}
                      <div className="flex items-center gap-2">
                    {!readOnly && <Button
                      onClick={requestRelease}
@@ -2080,6 +2193,26 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         </SharedFormShell>,
         document.body,
       )}
+
+      <Dialog open={addPartOpen} onOpenChange={setAddPartOpen}>
+        <DialogContent data-testid="dialog-add-part">
+          <DialogHeader>
+            <DialogTitle>Add part</DialogTitle>
+            <DialogDescription>Name the new Company Form part.</DialogDescription>
+          </DialogHeader>
+          <Input value={newPartTitle} onChange={(event) => setNewPartTitle(event.target.value)}
+            onKeyDown={(event) => { if (event.key === "Enter") void addPart(); }}
+            maxLength={500} autoFocus placeholder="Part title" aria-label="New part title" data-testid="input-new-part-title" />
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={newPartOfficeOnly} onCheckedChange={(checked) => setNewPartOfficeOnly(checked === true)} />
+            Office only
+          </label>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddPartOpen(false)}>Cancel</Button>
+            <Button onClick={() => void addPart()} disabled={!newPartTitle.trim() || isPartMutating} data-testid="button-confirm-add-part">Add part</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={settingsDialog !== null} onOpenChange={(open) => !open && setSettingsDialog(null)}>
         <DialogContent className="max-w-lg" data-testid="section-settings-dialog">
