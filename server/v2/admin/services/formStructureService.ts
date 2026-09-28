@@ -315,6 +315,9 @@ function validateReplacement(input: FormStructureInput, fvUuid: string) {
 }
 
 function mapReplacementError(error: any): never {
+  if (error?.message?.includes("is archived and is read-only")) {
+    throw new FormStructureServiceError(error.message, 409);
+  }
   if (error?.message?.includes("only draft versions are editable")) {
     throw new FormStructureServiceError(error.message, 409);
   }

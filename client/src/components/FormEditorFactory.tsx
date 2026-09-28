@@ -19,6 +19,8 @@ interface FormEditorFactoryProps {
   rankGroupConfig?: any;
   configurableParts?: ConfigurableFormPart[];
   useV2?: boolean;
+  readOnly?: boolean;
+  initialPreview?: boolean;
   onClose: () => void;
   onSave: (data: any) => void;
 }
@@ -31,13 +33,15 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
   rankGroupConfig,
   configurableParts = [],
   useV2,
+  readOnly,
+  initialPreview,
   onClose,
   onSave
 }) => {
   // Get the appropriate editor component
   // Keep the two legacy name mappings authoritative. All other forms opt into
   // the generic tree editor only when the server reports a configurable part.
-  const EditorComponent = formEditors[formName]
+  const EditorComponent = (form.category === 'dynamic' ? GenericFormEditor : formEditors[formName])
     ?? (configurableParts.some((part) => part.partType === 'configurable') ? GenericFormEditor : undefined);
   
   if (!EditorComponent) {
@@ -68,6 +72,8 @@ export const FormEditorFactory: React.FC<FormEditorFactoryProps> = ({
       rankGroupConfig={rankGroupConfig}
       configurableParts={configurableParts}
       useV2={useV2}
+      readOnly={readOnly}
+      initialPreview={initialPreview}
       onClose={onClose}
       onSave={onSave}
     />

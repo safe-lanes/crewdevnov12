@@ -123,6 +123,10 @@ export const insertAdmTrainingMatrixVesselRevisionV2Schema = createInsertSchema(
 
 export type AdmFormV2 = typeof admFormsV2.$inferSelect;
 export type InsertAdmFormV2 = z.infer<typeof insertAdmFormV2Schema>;
+export type CreateCompanyFormV2Response = {
+  form: AdmFormV2;
+  version: AdmFormVersionV2;
+};
 
 export type AdmFormVersionV2 = typeof admFormVersionsV2.$inferSelect;
 export type InsertAdmFormVersionV2 = z.infer<typeof insertAdmFormVersionV2Schema>;

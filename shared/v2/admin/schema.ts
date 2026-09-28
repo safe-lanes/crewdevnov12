@@ -1,4 +1,5 @@
-import { pgTable, serial, text, boolean, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const auditColumns = {
   createdAt: timestamp("created_at").defaultNow(),
@@ -13,6 +14,8 @@ export const admFormsV2 = pgTable("adm_forms_v2", {
   id: serial("id").primaryKey(),
   formUuid: text("form_uuid").notNull().unique(),
   name: text("name").notNull(),
+  description: text("description"),
+  archivedAt: timestamp("archived_at"),
   category: text("category").notNull(),
   rankGroup: text("rank_group").notNull(),
   versionNo: text("version_no").notNull(),
@@ -21,7 +24,11 @@ export const admFormsV2 = pgTable("adm_forms_v2", {
   sharedConfig: text("shared_config"),
   isLockForm: boolean("is_lock_form").notNull().default(true),
   ...auditColumns,
-});
+}, (table) => ({
+  activeDynamicNameUnique: uniqueIndex("uq_adm_forms_v2_active_dynamic_name")
+    .on(sql`lower(trim(${table.name}))`)
+    .where(sql`${table.category} = 'dynamic' AND ${table.archivedAt} IS NULL`),
+}));
 
 export const admFormVersionsV2 = pgTable("adm_form_versions_v2", {
   id: serial("id").primaryKey(),

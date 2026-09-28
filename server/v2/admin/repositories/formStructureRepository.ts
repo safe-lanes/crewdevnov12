@@ -30,6 +30,9 @@ export type FormStructureContext = {
     status: string;
   };
   formUuid: string;
+  category: string;
+  formName: string;
+  archivedAt: Date | null;
   part: typeof frmFormParts.$inferSelect;
 };
 
@@ -86,6 +89,9 @@ export class FormStructureRepository {
         formId: admFormVersionsV2.formId,
         status: admFormVersionsV2.status,
         formUuid: admFormsV2.formUuid,
+        category: admFormsV2.category,
+        formName: admFormsV2.name,
+        archivedAt: admFormsV2.archivedAt,
       })
       .from(admFormVersionsV2)
       .innerJoin(admFormsV2, eq(admFormsV2.id, admFormVersionsV2.formId))
@@ -109,6 +115,9 @@ export class FormStructureRepository {
     return {
       version: versions[0],
       formUuid: versions[0].formUuid,
+      category: versions[0].category,
+      formName: versions[0].formName,
+      archivedAt: versions[0].archivedAt,
       part: parts[0],
     };
   }
@@ -184,8 +193,19 @@ export class FormStructureRepository {
   ) {
     const db = getDb();
     const replaceWithExecutor = async (tx: Executor) => {
+      const [identity] = await tx.select({ formId: admFormVersionsV2.formId })
+        .from(admFormVersionsV2)
+        .where(eq(admFormVersionsV2.fvUuid, fvUuid));
+      if (!identity) throw new Error("Form version or form part not found");
+      // Match archive's lock order (form, then version) to close the
+      // check/archive/write race while avoiding lock-order deadlocks.
+      await tx.execute(sql`SELECT id FROM adm_forms_v2 WHERE id = ${identity.formId} FOR UPDATE`);
+      await tx.execute(sql`SELECT id FROM adm_form_versions_v2 WHERE fv_uuid = ${fvUuid} FOR UPDATE`);
       const context = await this.findContextWithExecutor(tx, fvUuid, partUuid);
       if (!context) throw new Error("Form version or form part not found");
+      if (context.category === "dynamic" && context.archivedAt) {
+        throw new Error(`Company Form "${context.formName}" is archived and is read-only`);
+      }
       if (context.version.status !== "draft") {
         throw new Error(`Cannot modify form structure for version ${fvUuid}: only draft versions are editable (current status: ${context.version.status})`);
       }
@@ -411,6 +431,24 @@ export class FormStructureRepository {
     executor?: Executor,
   ): Promise<{ sections: number; questions: number; options: number }> {
     const copyWithExecutor = async (db: Executor) => {
+      const targetIdentity = (await db.select({ formId: admFormVersionsV2.formId })
+        .from(admFormVersionsV2)
+        .where(eq(admFormVersionsV2.fvUuid, destinationFvUuid)))[0];
+      if (!targetIdentity) throw new Error("Source or target form version not found");
+      await db.execute(sql`SELECT id FROM adm_forms_v2 WHERE id = ${targetIdentity.formId} FOR UPDATE`);
+      const targetForm = (await db.select({
+        category: admFormsV2.category,
+        name: admFormsV2.name,
+        archivedAt: admFormsV2.archivedAt,
+        isDeleted: admFormsV2.isDeleted,
+      }).from(admFormsV2).where(eq(admFormsV2.id, targetIdentity.formId)))[0];
+      if (!targetForm || targetForm.isDeleted) throw new Error("Target form not found");
+      if (targetForm.category === "dynamic" && targetForm.archivedAt) {
+        const error: any = new Error(`Company Form "${targetForm.name}" is archived and is read-only`);
+        error.statusCode = 409;
+        throw error;
+      }
+      await db.execute(sql`SELECT id FROM adm_form_versions_v2 WHERE fv_uuid = ${destinationFvUuid} FOR UPDATE`);
       const sourceRows = await db.select({
         fvUuid: admFormVersionsV2.fvUuid,
         formId: admFormVersionsV2.formId,

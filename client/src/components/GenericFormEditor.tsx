@@ -70,10 +70,13 @@ async function loadVersionParts(formId: number, versionUuid: string): Promise<Co
 interface GenericFormEditorProps {
   form: Form & { originalFormId?: number };
   formName: string;
+  useV2?: boolean;
   rankGroupName?: string;
   rankGroupId?: number;
   rankGroupConfig?: unknown;
   configurableParts?: ConfigurableFormPart[];
+  readOnly?: boolean;
+  initialPreview?: boolean;
   onClose: () => void;
   onSave: (data: unknown) => void;
 }
@@ -547,6 +550,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   rankGroupName,
   rankGroupId: providedRankGroupId,
   rankGroupConfig,
+  readOnly = false,
+  initialPreview = false,
   onClose,
   onSave,
 }) => {
@@ -556,7 +561,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [selectedVersionUuid, setSelectedVersionUuid] = useState("");
   const [authoritativeVersion, setAuthoritativeVersion] = useState<VersionRow | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [viewMode, setViewMode] = useState<EditorViewMode>("configure");
+  const [viewMode, setViewMode] = useState<EditorViewMode>(initialPreview ? "preview" : "configure");
   const [previewVesselTypeUuid, setPreviewVesselTypeUuid] = useState("all");
   const [trees, setTrees] = useState<Record<string, SectionModel[]>>({});
   const [optionSets, setOptionSets] = useState<Record<string, OptionSetModel[]>>({});
@@ -618,7 +623,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       if (!response.ok) throw new Error("Failed to load rank groups");
       return response.json();
     },
-    enabled: !!realFormId,
+    enabled: !!realFormId && form.category !== "dynamic",
   });
 
   const rankGroupId = useMemo(
@@ -634,7 +639,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       if (!response.ok) throw new Error("Failed to load form versions");
       return response.json();
     },
-    enabled: !!realFormId && rankGroupId !== null,
+    enabled: !!realFormId && (form.category === "dynamic" || rankGroupId !== null),
   });
 
   const { data: roles = [] } = useQuery<RoleRow[]>({
@@ -711,7 +716,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   ])), [trees]);
   const serializedState = JSON.stringify({ trees, optionSets });
   const isDirty = baselineRef.current !== null && baselineRef.current !== serializedState;
-  const canEdit = isEditing && (!selectedVersion || selectedVersion.status === "draft");
+  const canEdit = !readOnly && isEditing && (!selectedVersion || selectedVersion.status === "draft");
   const canModify = canEdit && !isSaving && !isLoadingParts && !isLoadingTree && !partsError && allParts.length > 0;
   const isPreview = viewMode === "preview";
   const previewFixedParts = getFixedParts(form.category, { readOnly: true });
@@ -727,7 +732,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     if (sortedVersions[0]) {
       setSelectedVersionUuid(sortedVersions[0].fvUuid);
       setIsEditing(sortedVersions[0].status === "draft");
-    } else if (!isLoadingVersions && rankGroupId !== null) {
+    } else if (!isLoadingVersions && (form.category === "dynamic" || rankGroupId !== null)) {
       setIsEditing(true);
     }
   }, [rankGroupId, selectedVersionUuid, sortedVersions, isLoadingVersions]);
@@ -1594,15 +1599,15 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         <div>
           <h1 className="text-xl font-semibold leading-none tracking-tight text-[#16569e]">{formName}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {rankGroupName || "All rank groups"} · configure the form structure and response points
+            {form.category === "dynamic" ? "Company Form" : rankGroupName || "All rank groups"} · configure the form structure and response points
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="flex items-center rounded-md border bg-white p-0.5" role="group" aria-label="Form editor view">
-            <Button type="button" variant={viewMode === "configure" ? "default" : "ghost"} size="sm" className="h-8 px-3 text-xs" onClick={viewMode === "preview" ? toggleViewMode : undefined} aria-pressed={viewMode === "configure"} data-testid="button-configure-mode">
+            {!readOnly && <Button type="button" variant={viewMode === "configure" ? "default" : "ghost"} size="sm" className="h-8 px-3 text-xs" onClick={viewMode === "preview" ? toggleViewMode : undefined} aria-pressed={viewMode === "configure"} data-testid="button-configure-mode">
               Configure
-            </Button>
-            <Button type="button" variant={viewMode === "preview" ? "default" : "ghost"} size="sm" className="h-8 px-3 text-xs" onClick={viewMode === "configure" ? toggleViewMode : undefined} aria-pressed={viewMode === "preview"} data-testid="button-preview-mode">
+            </Button>}
+            <Button type="button" variant={viewMode === "preview" ? "default" : "ghost"} size="sm" className="h-8 px-3 text-xs" onClick={!readOnly && viewMode === "configure" ? toggleViewMode : undefined} aria-pressed={viewMode === "preview"} data-testid="button-preview-mode">
               Preview
             </Button>
           </div>
@@ -1685,7 +1690,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                        </div>
                      </div>
                      <div className="flex items-center gap-2">
-                   <Button
+                   {!readOnly && <Button
                      onClick={requestRelease}
                      className="bg-green-600 hover:bg-green-700 text-white"
                      size="sm"
@@ -1693,14 +1698,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                      data-testid="button-release-version"
                    >
                      Release Ver
-                   </Button>
-                   {viewMode === "configure" && !canEdit && (
+                   </Button>}
+                   {viewMode === "configure" && !readOnly && !canEdit && (
                     <div className="flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800" data-testid="released-read-only-message">
                       <AlertCircle className="h-4 w-4" />
                       Released versions are read-only. Create a new draft to make changes.
                     </div>
                   )}
-                   {viewMode === "configure" && !canEdit && (
+                   {viewMode === "configure" && !readOnly && !canEdit && (
                     <Button onClick={startEditing} data-testid="button-edit-as-new-draft">
                       <Plus className="h-4 w-4 mr-2" /> Edit as new draft
                     </Button>

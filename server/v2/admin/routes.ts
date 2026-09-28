@@ -25,11 +25,13 @@ import { formPartController } from "./controllers/formPartController";
 const router = Router();
 
 router.get("/forms", requirePermission("Forms", "view"), formsController.getAll);
+router.get("/forms/eligible-submissions", requirePermission("Forms", "view"), formsController.getEligibleCompanyForms);
 router.get("/forms/for-rank/:rankLabel", formsController.getFormForRank);
 router.post("/forms/cleanup-duplicates", requirePermission("Forms", "delete"), formsController.cleanupDuplicates);
 router.get("/forms/:id/parts", requirePermission("Forms", "view"), formsController.getParts);
 router.get("/forms/:id", requirePermission("Forms", "view"), formsController.getById);
 router.post("/forms", requirePermission("Forms", "create"), formsController.create);
+router.post("/forms/:id/archive", requirePermission("Forms", "delete"), formsController.archive);
 router.put("/forms/:id", requirePermission("Forms", "edit"), formsController.update);
 router.patch("/forms/:id", requirePermission("Forms", "edit"), formsController.updateLockFlag);
 router.delete("/forms/:id", requirePermission("Forms", "delete"), formsController.delete);

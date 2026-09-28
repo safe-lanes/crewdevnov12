@@ -5,24 +5,22 @@ import type { AdmFormVersionV2, InsertAdmFormVersionV2 } from "../../../../share
 import { v4 as uuidv4 } from "uuid";
 
 export class FormVersionsRepository {
-  async findByFormId(formId: number, rankGroupId?: number | null): Promise<AdmFormVersionV2[]> {
-    const db = getDb();
+  async findByFormId(formId: number, rankGroupId?: number | null, executor: any = getDb()): Promise<AdmFormVersionV2[]> {
     const conditions = [
       eq(admFormVersionsV2.formId, formId),
       eq(admFormVersionsV2.isDeleted, false),
     ];
     if (rankGroupId === null) conditions.push(isNull(admFormVersionsV2.rankGroupId));
     else if (rankGroupId !== undefined) conditions.push(eq(admFormVersionsV2.rankGroupId, rankGroupId));
-    return db
+    return executor
       .select()
       .from(admFormVersionsV2)
       .where(and(...conditions))
       .orderBy(desc(admFormVersionsV2.createdAt));
   }
 
-  async findById(id: number): Promise<AdmFormVersionV2 | undefined> {
-    const db = getDb();
-    const results = await db
+  async findById(id: number, executor: any = getDb()): Promise<AdmFormVersionV2 | undefined> {
+    const results = await executor
       .select()
       .from(admFormVersionsV2)
       .where(and(eq(admFormVersionsV2.id, id), eq(admFormVersionsV2.isDeleted, false)));
@@ -57,9 +55,8 @@ export class FormVersionsRepository {
     return results[0];
   }
 
-  async updateById(id: number, data: Partial<InsertAdmFormVersionV2>): Promise<AdmFormVersionV2 | undefined> {
-    const db = getDb();
-    const results = await db
+  async updateById(id: number, data: Partial<InsertAdmFormVersionV2>, executor: any = getDb()): Promise<AdmFormVersionV2 | undefined> {
+    const results = await executor
       .update(admFormVersionsV2)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(admFormVersionsV2.id, id), eq(admFormVersionsV2.isDeleted, false)))
@@ -67,9 +64,8 @@ export class FormVersionsRepository {
     return results[0];
   }
 
-  async update(fvUuid: string, data: Partial<InsertAdmFormVersionV2>): Promise<AdmFormVersionV2 | undefined> {
-    const db = getDb();
-    const results = await db
+  async update(fvUuid: string, data: Partial<InsertAdmFormVersionV2>, executor: any = getDb()): Promise<AdmFormVersionV2 | undefined> {
+    const results = await executor
       .update(admFormVersionsV2)
       .set({ ...data, updatedAt: new Date() })
       .where(and(eq(admFormVersionsV2.fvUuid, fvUuid), eq(admFormVersionsV2.isDeleted, false)))
@@ -77,9 +73,8 @@ export class FormVersionsRepository {
     return results[0];
   }
 
-  async softDeleteById(id: number): Promise<boolean> {
-    const db = getDb();
-    const results = await db
+  async softDeleteById(id: number, executor: any = getDb()): Promise<boolean> {
+    const results = await executor
       .update(admFormVersionsV2)
       .set({ isDeleted: true, updatedAt: new Date() })
       .where(and(eq(admFormVersionsV2.id, id), eq(admFormVersionsV2.isDeleted, false)))
@@ -87,9 +82,8 @@ export class FormVersionsRepository {
     return results.length > 0;
   }
 
-  async findDraftByRankGroupId(rankGroupId: number): Promise<AdmFormVersionV2 | undefined> {
-    const db = getDb();
-    const results = await db
+  async findDraftByRankGroupId(rankGroupId: number, executor: any = getDb()): Promise<AdmFormVersionV2 | undefined> {
+    const results = await executor
       .select()
       .from(admFormVersionsV2)
       .where(and(
@@ -102,8 +96,8 @@ export class FormVersionsRepository {
     return results[0];
   }
 
-  async findDraftByFormId(formId: number): Promise<AdmFormVersionV2 | undefined> {
-    const results = await getDb()
+  async findDraftByFormId(formId: number, executor: any = getDb()): Promise<AdmFormVersionV2 | undefined> {
+    const results = await executor
       .select()
       .from(admFormVersionsV2)
       .where(and(
@@ -117,14 +111,13 @@ export class FormVersionsRepository {
     return results[0];
   }
 
-  async findLatestReleasedByFormId(formId: number): Promise<AdmFormVersionV2 | undefined> {
-    const versions = await this.findByFormId(formId, null);
+  async findLatestReleasedByFormId(formId: number, executor: any = getDb()): Promise<AdmFormVersionV2 | undefined> {
+    const versions = await this.findByFormId(formId, null, executor);
     return this.latestReleased(versions.filter(v => v.status === "released"));
   }
 
-  async findLatestReleasedByRankGroupId(rankGroupId: number): Promise<AdmFormVersionV2 | undefined> {
-    const db = getDb();
-    const results = await db
+  async findLatestReleasedByRankGroupId(rankGroupId: number, executor: any = getDb()): Promise<AdmFormVersionV2 | undefined> {
+    const results = await executor
       .select()
       .from(admFormVersionsV2)
       .where(and(
@@ -155,9 +148,8 @@ export class FormVersionsRepository {
     }, results[0]);
   }
 
-  async softDelete(fvUuid: string): Promise<boolean> {
-    const db = getDb();
-    const results = await db
+  async softDelete(fvUuid: string, executor: any = getDb()): Promise<boolean> {
+    const results = await executor
       .update(admFormVersionsV2)
       .set({ isDeleted: true, updatedAt: new Date() })
       .where(and(eq(admFormVersionsV2.fvUuid, fvUuid), eq(admFormVersionsV2.isDeleted, false)))

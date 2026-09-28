@@ -154,4 +154,39 @@ describe.sequential("Company Form version line", () => {
     expect((await get(`/forms/${standard.id}/versions`)).body).toHaveLength(1);
     expect((await get(`/forms/${standard.id}/versions?rankGroupId=${standardGroup.id}`)).body).toHaveLength(1);
   });
+
+  it("waits for a concurrent archive and rejects a version write after the archive commits", async () => {
+    const db = getDb();
+    const company = await form("dynamic");
+    let unlock!: () => void;
+    let acquired!: () => void;
+    const held = new Promise<void>((resolve) => { acquired = resolve; });
+    const holdLock = new Promise<void>((resolve) => { unlock = resolve; });
+    const archiveTransaction = db.transaction(async (tx: any) => {
+      await tx.execute(sql`SELECT id FROM adm_forms_v2 WHERE id = ${company.id} FOR UPDATE`);
+      await tx.update(admFormsV2).set({ archivedAt: new Date() }).where(eq(admFormsV2.id, company.id));
+      acquired();
+      await holdLock;
+    });
+    await held;
+
+    let writeSettled = false;
+    const write = formsService.createVersionByFormId(company.id, {
+      configuration: "{}",
+      versionDate: "26-Sep-2026",
+    } as any).then(
+      (version) => { writeSettled = true; return { version }; },
+      (error) => { writeSettled = true; return { error }; },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(writeSettled).toBe(false);
+
+    unlock();
+    await archiveTransaction;
+    const result = await write;
+    expect(result).toHaveProperty("error");
+    expect((result as any).error).toMatchObject({ statusCode: 409 });
+    expect((result as any).error.message).toContain("archived and is read-only");
+    expect(await db.select().from(admFormVersionsV2).where(eq(admFormVersionsV2.formId, company.id))).toHaveLength(0);
+  });
 });

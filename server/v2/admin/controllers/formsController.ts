@@ -6,11 +6,21 @@ import { z } from "zod";
 export const formsController = {
   async getAll(req: Request, res: Response) {
     try {
-      const forms = await formsService.getAll();
+      const includeArchived = req.query.showArchived !== "false";
+      const forms = await formsService.getAll(includeArchived);
       res.json(forms);
     } catch (error) {
       console.error("Error fetching forms:", error);
       res.status(500).json({ error: "Failed to fetch forms" });
+    }
+  },
+
+  async getEligibleCompanyForms(_req: Request, res: Response) {
+    try {
+      res.json(await formsService.getEligibleCompanyForms());
+    } catch (error) {
+      console.error("Error fetching eligible Company Forms:", error);
+      res.status(500).json({ error: "Failed to fetch eligible Company Forms" });
     }
   },
 
@@ -57,17 +67,21 @@ export const formsController = {
       if (req.body?.category !== "dynamic") {
         return res.status(400).json({ error: "Only Company Forms (category 'dynamic') can be created through this endpoint" });
       }
-      const result = insertAdmFormV2Schema
-        .omit({ formUuid: true })
-        .safeParse(req.body);
+      const result = z.object({
+        name: z.string().trim().min(1).max(500),
+        description: z.string().nullable().optional(),
+      }).safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form data", details: result.error.issues });
       }
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       const payload = { ...result.data, auditUserUuid };
-      const form = await formsService.create(payload);
-      res.json(form);
-    } catch (error) {
+      const created = await formsService.create(payload);
+      res.status(201).json(created);
+    } catch (error: any) {
+      if (error?.statusCode === 409 || error?.name === "CompanyFormNameConflictError") {
+        return res.status(409).json({ error: error.message });
+      }
       console.error("Error creating form:", error);
       res.status(500).json({ error: "Failed to create form" });
     }
@@ -80,7 +94,7 @@ export const formsController = {
         return res.status(400).json({ error: "Invalid form ID" });
       }
       const result = insertAdmFormV2Schema
-        .omit({ formUuid: true })
+        .omit({ formUuid: true, archivedAt: true })
         .partial()
         .safeParse(req.body);
       if (!result.success) {
@@ -97,11 +111,28 @@ export const formsController = {
       const form = await formsService.updateById(id, payload);
       res.json(form);
     } catch (error: any) {
+      if (error?.statusCode === 409 || error?.name === "CompanyFormNameConflictError") {
+        return res.status(409).json({ error: error.message });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
       console.error("Error updating form:", error);
       res.status(500).json({ error: "Failed to update form" });
+    }
+  },
+
+  async archive(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid form ID" });
+      await formsService.archiveById(id, req.body?.auditUserUuid ?? null);
+      res.json({ success: true });
+    } catch (error: any) {
+      if (error.message?.includes("not found")) return res.status(404).json({ error: error.message });
+      if (error.message?.includes("Only Company Forms")) return res.status(400).json({ error: error.message });
+      console.error("Error archiving form:", error);
+      res.status(500).json({ error: "Failed to archive form" });
     }
   },
 
@@ -121,6 +152,7 @@ export const formsController = {
       const form = await formsService.updateById(id, payload);
       res.json(form);
     } catch (error: any) {
+      if (error?.statusCode === 409) return res.status(409).json({ error: error.message });
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
@@ -140,7 +172,8 @@ export const formsController = {
         return res.status(404).json({ error: "Form not found" });
       }
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.statusCode === 409) return res.status(409).json({ error: error.message });
       console.error("Error deleting form:", error);
       res.status(500).json({ error: "Failed to delete form" });
     }
@@ -230,6 +263,9 @@ export const formsController = {
       if (msg.includes("draft already exists")) {
         return res.status(409).json({ error: msg });
       }
+      if (error?.statusCode === 409 || msg.includes("archived and is read-only")) {
+        return res.status(409).json({ error: msg });
+      }
       if (msg.includes("not found") || msg.includes("required") || msg.includes("rank-grouped versions") || msg.includes("without parts") || msg.includes("no version-owned parts")) {
         return res.status(400).json({ error: msg });
       }
@@ -262,7 +298,7 @@ export const formsController = {
         return res.status(400).json({ error: "Invalid version ID" });
       }
       const result = insertAdmFormVersionV2Schema
-        .omit({ fvUuid: true })
+        .omit({ fvUuid: true, formId: true })
         .partial()
         .safeParse(req.body);
       if (!result.success) {
@@ -273,6 +309,9 @@ export const formsController = {
       const version = await formsService.updateVersionById(id, payload);
       res.json(version);
     } catch (error: any) {
+      if (error?.statusCode === 409 || error.message?.includes("archived and is read-only")) {
+        return res.status(409).json({ error: error.message });
+      }
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
@@ -295,6 +334,9 @@ export const formsController = {
       if (msg.includes("not found")) {
         return res.status(404).json({ error: msg });
       }
+      if (error?.statusCode === 409 || msg.includes("archived and is read-only")) {
+        return res.status(409).json({ error: msg });
+      }
       if (msg.includes("Only draft versions can be released")) {
         return res.status(400).json({ error: msg });
       }
@@ -314,7 +356,10 @@ export const formsController = {
         return res.status(404).json({ error: "Form version not found" });
       }
       res.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.statusCode === 409 || error.message?.includes("archived and is read-only")) {
+        return res.status(409).json({ error: error.message });
+      }
       console.error("Error deleting form version:", error);
       res.status(500).json({ error: "Failed to delete form version" });
     }

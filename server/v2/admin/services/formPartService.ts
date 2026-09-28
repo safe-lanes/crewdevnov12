@@ -18,11 +18,19 @@ type Executor = any;
 const DYNAMIC_CATEGORY = "dynamic";
 
 async function guardedVersion(tx: Executor, fvUuid: string, actorId: number) {
-  // Serialize against release and concurrent part changes before checking status.
+  // Always lock parent form before version: archive uses the same parent lock,
+  // so an edit either commits before archive or observes the archived marker.
+  const [identity] = await tx.select({ formId: admFormVersionsV2.formId })
+    .from(admFormVersionsV2)
+    .where(eq(admFormVersionsV2.fvUuid, fvUuid));
+  if (!identity) throw new FormPartError("Form version not found", 404);
+  await tx.execute(sql`SELECT id FROM adm_forms_v2 WHERE id = ${identity.formId} FOR UPDATE`);
   await tx.execute(sql`SELECT id FROM adm_form_versions_v2 WHERE fv_uuid = ${fvUuid} FOR UPDATE`);
   const [version] = await tx.select({
     formUuid: admFormsV2.formUuid,
     category: admFormsV2.category,
+    formName: admFormsV2.name,
+    archivedAt: admFormsV2.archivedAt,
     status: admFormVersionsV2.status,
   }).from(admFormVersionsV2)
     .innerJoin(admFormsV2, eq(admFormsV2.id, admFormVersionsV2.formId))
@@ -32,6 +40,9 @@ async function guardedVersion(tx: Executor, fvUuid: string, actorId: number) {
       eq(admFormsV2.isDeleted, false),
     ));
   if (!version) throw new FormPartError("Form version not found", 404);
+  if (version.category === DYNAMIC_CATEGORY && version.archivedAt) {
+    throw new FormPartError(`Company Form "${version.formName}" is archived and is read-only`, 409);
+  }
   if (version.status !== "draft") throw new FormPartError("Only draft versions allow part editing", 409);
   if (version.category !== DYNAMIC_CATEGORY) {
     throw new FormPartError("Part editing is available only for dynamic forms", 403);
