@@ -40,6 +40,21 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
+  // A separate Vite entry, intentionally outside the application's router.
+  app.get("/scratch/editor-comparison", async (req, res, next) => {
+    try {
+      const template = await fs.promises.readFile(
+        path.resolve(import.meta.dirname, "..", "client", "scratch", "editor-comparison.html"),
+        "utf-8",
+      );
+      res.set("Cache-Control", "no-store").type("html").send(
+        await vite.transformIndexHtml(req.originalUrl, template),
+      );
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
