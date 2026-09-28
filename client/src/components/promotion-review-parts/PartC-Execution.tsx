@@ -1,10 +1,12 @@
 import React, { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PromotionDateInput, type PromotionDateDrafts } from './PromotionDateInput';
 import { Label } from '@/components/ui/label';
 import { Info } from 'lucide-react';
 
 interface PartCExecutionProps extends React.HTMLAttributes<HTMLDivElement> {
+  dateDrafts: PromotionDateDrafts;
   promotionDate: string;
   onSetPromotionDate: (value: string) => void;
   currentUserDisplay?: string;
@@ -14,6 +16,7 @@ interface PartCExecutionProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const PartCExecution = memo(function PartCExecution({
+  dateDrafts,
   promotionDate,
   onSetPromotionDate,
   currentUserDisplay = 'Current User, Staff',
@@ -38,8 +41,9 @@ export const PartCExecution = memo(function PartCExecution({
 
           <div className="flex items-center gap-4">
             <Label className="text-sm w-48">C1.1 Date of Promotion:</Label>
-            <Input 
-              type="date" 
+            <PromotionDateInput
+              drafts={dateDrafts}
+              fieldKey={'promotion'}
               className="w-40"
               placeholder="dd:mm:yy"
               value={promotionDate}
