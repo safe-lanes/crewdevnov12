@@ -168,7 +168,15 @@ async function deleteFixture(formUuid: string) {
 
 describe.sequential("form structure service integration", () => {
   afterAll(async () => {
-    for (const formUuid of formUuids) await deleteFixture(formUuid);
+    const failures: Error[] = [];
+    for (const formUuid of formUuids) {
+      try {
+        await deleteFixture(formUuid);
+      } catch (error) {
+        failures.push(new Error(`Failed to clean up form fixture ${formUuid}`, { cause: error }));
+      }
+    }
+    if (failures.length) throw new AggregateError(failures, "Form fixture cleanup failed");
   });
 
   it("writes draft trees transactionally, keeps identities, protects releases, and deep-copies a new draft", async () => {
