@@ -39,6 +39,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfiguredFormRenderer } from "@/components/configured-form/ConfiguredFormRenderer";
+import { companyFormNumbers } from "@/components/configured-form/displayNumbering";
 import { getFixedParts } from "@/components/configured-form/fixedPartRegistry";
 import { SharedFormShell } from "@/components/SharedFormShell";
 import { FormTable } from "@/components/BaseSubmoduleForm";
@@ -56,10 +57,9 @@ export interface ConfigurableFormPart {
 const EMPTY_FORM_PARTS: ConfigurableFormPart[] = [];
 
 async function loadVersionParts(formId: number, versionUuid: string, allowEmpty = false): Promise<ConfigurableFormPart[]> {
-  const response = await fetch(
+  const response = await apiRequest("GET",
     `/api/v2/admin/forms/${formId}/parts?formVersionUuid=${encodeURIComponent(versionUuid)}`,
   );
-  if (!response.ok) throw new Error(`Failed to load parts for form version ${versionUuid}`);
   const parts = await response.json();
   if (!Array.isArray(parts) || (!allowEmpty && parts.length === 0) || parts.some((part) => part.formVersionUuid !== versionUuid)) {
     throw new Error(`Form version ${versionUuid} has no valid version-owned parts`);
@@ -384,10 +384,11 @@ function normalizeTree(
   data: any,
   partCode: string,
   optionSets: OptionSetModel[] = normalizeOptionSets(data),
+  preserveCodes = false,
 ): SectionModel[] {
   const sections = Array.isArray(data?.sections) ? data.sections : [];
   const optionSetsByUuid = new Map(optionSets.map((set) => [set.option_set_uuid, set]));
-  return renumberSections(partCode, sections.map((section: any) => ({
+  const normalized = sections.map((section: any) => ({
     clientKey: clientKey("section"),
     section_uuid: section.section_uuid,
     section_code: section.section_code || "",
@@ -432,7 +433,8 @@ function normalizeTree(
         option_value: option.option_value || slugOptionValue(option.option_label || "option"),
       })),
     })) : [],
-  })));
+  }));
+  return preserveCodes ? normalized : renumberSections(partCode, normalized);
 }
 
 function toPayload(sections: SectionModel[], optionSets: OptionSetModel[] = []) {
@@ -625,8 +627,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const { data: rankGroups = [] } = useQuery<Array<{ id: number; name: string; formId: number }>>({
     queryKey: ["/api/v2/admin/rank-groups", realFormId],
     queryFn: async () => {
-      const response = await fetch(`/api/v2/admin/rank-groups/form/${realFormId}?includeArchived=true`);
-      if (!response.ok) throw new Error("Failed to load rank groups");
+      const response = await apiRequest("GET", `/api/v2/admin/rank-groups/form/${realFormId}?includeArchived=true`);
       return response.json();
     },
     enabled: !!realFormId && form.category !== "dynamic",
@@ -641,8 +642,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     queryKey: [`/api/v2/admin/forms/${realFormId}/versions`, rankGroupId],
     queryFn: async () => {
       const query = rankGroupId ? `?rankGroupId=${rankGroupId}` : "";
-      const response = await fetch(`/api/v2/admin/forms/${realFormId}/versions${query}`);
-      if (!response.ok) throw new Error("Failed to load form versions");
+      const response = await apiRequest("GET", `/api/v2/admin/forms/${realFormId}/versions${query}`);
       return response.json();
     },
     enabled: !!realFormId && (form.category === "dynamic" || rankGroupId !== null),
@@ -651,7 +651,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const { data: roles = [] } = useQuery<RoleRow[]>({
     queryKey: ["/api/v2/admin/access-control/roles", "includeInactive"],
     queryFn: async () => {
-      const response = await fetch("/api/v2/admin/access-control/roles?includeInactive=true");
+      const response = await apiRequest("GET", "/api/v2/admin/access-control/roles?includeInactive=true");
       if (!response.ok) return [];
       return response.json();
     },
@@ -660,7 +660,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const { data: departments = [] } = useQuery<DepartmentRow[]>({
     queryKey: ["/api/v2/masters/departments"],
     queryFn: async () => {
-      const response = await fetch("/api/v2/masters/departments");
+      const response = await apiRequest("GET", "/api/v2/masters/departments");
       if (!response.ok) return [];
       return response.json();
     },
@@ -668,7 +668,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const { data: vesselTypes = [] } = useQuery<VesselTypeRow[]>({
     queryKey: ["/api/v2/masters/vessel-types"],
     queryFn: async () => {
-      const response = await fetch("/api/v2/masters/vessel-types");
+      const response = await apiRequest("GET", "/api/v2/masters/vessel-types");
       if (!response.ok) return [];
       const result = await response.json();
       return Array.isArray(result) ? result : (result.data || []);
@@ -706,6 +706,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   // Form-level parts passed by AdminModule are templates used only to choose
   // this editor. Structure reads and writes must use the selected version's UUIDs.
   const allParts = versionParts ?? EMPTY_FORM_PARTS;
+  const isCompanyForm = form.category === "dynamic";
+  const displayNumbers = companyFormNumbers(allParts, trees);
+  const sectionDisplay = (section: SectionModel) => isCompanyForm
+    ? displayNumbers.section.get(section.section_uuid || section.clientKey) || ""
+    : section.section_code;
+  const pointDisplay = (question: QuestionModel) => isCompanyForm
+    ? displayNumbers.question.get(question.question_uuid || question.clientKey) || ""
+    : question.question_code;
   const configurableParts = useMemo(
     () => allParts.filter((part) => part.partType === "configurable"),
     [allParts],
@@ -771,14 +779,13 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     setIsLoadingTree(true);
     setSaveError("");
     Promise.all(configurableParts.map(async (part) => {
-      const response = await fetch(
+      const response = await apiRequest("GET",
         `/api/v2/admin/form-versions/${selectedVersion.fvUuid}/parts/${part.formPartUuid}/structure`,
       );
-      if (!response.ok) throw new Error(`Failed to load ${part.partTitle}`);
       const data = await response.json();
       const normalizedOptionSets = normalizeOptionSets(data);
       return [part.formPartUuid, {
-        sections: normalizeTree(data, part.partCode, normalizedOptionSets),
+        sections: normalizeTree(data, part.partCode, normalizedOptionSets, form.category === "dynamic"),
         optionSets: normalizedOptionSets,
       }] as const;
     }))
@@ -839,9 +846,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     if (!part) return;
     setTrees((previous) => ({
       ...previous,
-      [partUuid]: renumberSections(part.partCode, updater(previous[partUuid] || [])),
+      [partUuid]: isCompanyForm ? updater(previous[partUuid] || []) : renumberSections(part.partCode, updater(previous[partUuid] || [])),
     }));
-  }, [configurableParts]);
+  }, [configurableParts, isCompanyForm]);
 
   const updateSection = (partUuid: string, sectionIndex: number, updater: (section: SectionModel) => SectionModel) => {
     updatePartTree(partUuid, (sections) => sections.map((section, index) => index === sectionIndex ? updater(section) : section));
@@ -894,10 +901,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   };
 
   const addSection = (partUuid: string) => {
-    updatePartTree(partUuid, (sections) => [...sections, emptySection(
-      configurableParts.find((part) => part.formPartUuid === partUuid)?.partCode || "B",
-      sections.length,
-    )]);
+    updatePartTree(partUuid, (sections) => {
+      const next = emptySection(
+        configurableParts.find((part) => part.formPartUuid === partUuid)?.partCode || "B",
+        sections.length,
+      );
+      if (isCompanyForm) next.section_code = `S${newUuid().replace(/-/g, "")}`;
+      return [...sections, next];
+    });
   };
 
   const addQuestion = (partUuid: string, sectionIndex: number) => {
@@ -911,6 +922,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           inherited?.options || [],
           null,
         );
+        if (isCompanyForm) question.question_code = `Q${newUuid().replace(/-/g, "")}`;
         return inherited ? { ...question, response_type: "single_select" } : question;
       })()],
     }));
@@ -1122,7 +1134,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const optionSetUsage = (_partUuid: string, setUuid: string): string[] =>
     Object.values(trees).flatMap((sections) => sections.flatMap((section) => section.questions
       .filter((question) => (question.option_set_uuid || section.default_option_set_uuid) === setUuid)
-      .map((question) => `${question.question_code}${question.question_text.trim() ? ` — ${question.question_text.trim()}` : ""}`)));
+      .map((question) => `${pointDisplay(question)}${question.question_text.trim() ? ` — ${question.question_text.trim()}` : ""}`)));
 
   const deleteNamedOptionSet = (partUuid: string, set: OptionSetModel) => {
     const usage = optionSetUsage(partUuid, set.option_set_uuid || "");
@@ -1254,23 +1266,23 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         return "Named option-set option labels cannot be empty";
       }
       for (const section of trees[part.formPartUuid] || []) {
-        if (!section.section_title.trim()) return `${section.section_code}: section title is required`;
+        if (!section.section_title.trim()) return `${sectionDisplay(section)}: section title is required`;
         if (section.responsible_mode === "role" && !section.responsible_role_uuid) {
-          return `${section.section_code}: select a responsible role`;
+          return `${sectionDisplay(section)}: select a responsible role`;
         }
         if (section.responsible_mode === "department" && !section.responsible_department) {
-          return `${section.section_code}: select a responsible department`;
+          return `${sectionDisplay(section)}: select a responsible department`;
         }
         for (const question of section.questions) {
-          if (!question.question_text.trim()) return `${question.question_code}: point text is required`;
+          if (!question.question_text.trim()) return `${pointDisplay(question)}: point text is required`;
           if ((question.response_type === "single_select" || question.response_type === "multi_select") && question.options.length === 0) {
-            return `${question.question_code}: add at least one option`;
+            return `${pointDisplay(question)}: add at least one option`;
           }
           if (question.option_set_uuid && !optionSetFor(part.formPartUuid, question.option_set_uuid)) {
-            return `${question.question_code}: selected option set is unavailable`;
+            return `${pointDisplay(question)}: selected option set is unavailable`;
           }
           if (question.options.some((option) => !option.option_label.trim())) {
-            return `${question.question_code}: option labels cannot be empty`;
+            return `${pointDisplay(question)}: option labels cannot be empty`;
           }
         }
       }
@@ -1332,7 +1344,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         if (!savedPart) throw new Error(`Form structure save omitted ${part.partTitle}`);
         const savedOptionSets = normalizeOptionSets(savedPart);
         return [part.formPartUuid, {
-          sections: normalizeTree(savedPart, part.partCode, savedOptionSets),
+          sections: normalizeTree(savedPart, part.partCode, savedOptionSets, form.category === "dynamic"),
           optionSets: savedOptionSets,
         }] as const;
       });
@@ -1735,7 +1747,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           title={`${formName} form editor`}
           sections={allParts.map((part) => ({
             id: part.formPartUuid,
-            title: part.partTitle || (form.category === "dynamic" ? "Untitled part" : `Part ${part.partCode}`),
+            title: form.category === "dynamic" ? `${displayNumbers.part.get(part.formPartUuid)} · ${part.partTitle || "Untitled part"}` : part.partTitle || `Part ${part.partCode}`,
             letter: form.category === "dynamic" ? undefined : part.partCode,
           }))}
           hideSectionLetters={form.category === "dynamic"}
@@ -1763,7 +1775,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 selectedVesselTypeUuid={previewVesselTypeUuid}
                 onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
                 fixedParts={previewFixedParts}
-                hidePartCodes={form.category === "dynamic"}
+                companyForm={isCompanyForm}
               />
             ) : (
                <>
@@ -1780,7 +1792,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                          </div>
                        ) : (
                          <div className="text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }} data-testid="part-heading">
-                           {selectedPart ? (form.category === "dynamic" ? selectedPart.partTitle : `${selectedPart.partCode} · ${selectedPart.partTitle}`) : "No parts yet"}
+                           {selectedPart ? (isCompanyForm ? `${displayNumbers.part.get(selectedPart.formPartUuid)} · ${selectedPart.partTitle}` : `${selectedPart.partCode} · ${selectedPart.partTitle}`) : "No parts yet"}
                          </div>
                        )}
                        {selectedPart && <div className="mt-1 text-sm" style={{ color: sailDesignSystem.colors.textSecondary }}>
@@ -1931,6 +1943,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                       selectedVesselTypeUuid={previewVesselTypeUuid}
                       onSelectedVesselTypeUuidChange={setPreviewVesselTypeUuid}
                        fixedParts={previewFixedParts}
+                       companyForm={isCompanyForm}
                     />
                   ) : (
                   <>
@@ -1941,7 +1954,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                            <div className="flex items-start justify-between gap-3">
                              <div className="min-w-0 flex-1">
                                <div className="flex items-center gap-2">
-                                 <span className="shrink-0 text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{section.section_code}</span>
+                                 <span className="shrink-0 text-xl font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{sectionDisplay(section)}</span>
                                  <Input
                                    value={section.section_title}
                                    disabled={!canModify}
@@ -2052,7 +2065,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                              {section.questions.map((question, questionIndex) => (
                                <tr key={question.clientKey} className={tableClasses.row} data-testid={`card-point-${sectionIndex + 1}-${questionIndex + 1}`}>
                                  <td className={`${tableClasses.cell} align-top`}>
-                                   <div className="mb-1 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{question.question_code}</div>
+                                   <div className="mb-1 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{pointDisplay(question)}</div>
                                    <Textarea
                                      value={question.question_text}
                                      disabled={!canModify}
@@ -2221,7 +2234,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
               {settingsDialog === "vessel" ? "Vessel Type Applicability" : settingsDialog === "responsible" ? "Responsible Role / Department" : settingsDialog === "comment" ? "Section Comment Box" : "Electronic Signature"}
             </DialogTitle>
             <DialogDescription>
-              {sectionForSettings?.section_code} · {sectionForSettings?.section_title || "Untitled section"}
+              {sectionForSettings && sectionDisplay(sectionForSettings)} · {sectionForSettings?.section_title || "Untitled section"}
             </DialogDescription>
           </DialogHeader>
           {settingsDialog === "vessel" && (

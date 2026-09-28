@@ -28,6 +28,7 @@ import {
 } from "@/components/BaseSubmoduleForm";
 import { getTableClasses, sailDesignSystem } from "@/config/sailDesignSystem";
 import { apiRequest } from "@/lib/queryClient";
+import { companyFormNumbers } from "./displayNumbering";
 
 export type ConfiguredFormMode = "preview" | "live";
 
@@ -161,6 +162,7 @@ export interface ConfiguredFormRendererProps {
   live?: ConfiguredFormLiveProps;
   fixedParts?: Record<string, React.ReactNode>;
   hidePartCodes?: boolean;
+  companyForm?: boolean;
   className?: string;
 }
 
@@ -498,6 +500,7 @@ function SectionResponsibility({
 function ConfiguredPoint({
   question,
   questionId,
+  displayCode,
   answers,
   setAnswer,
   live,
@@ -505,6 +508,7 @@ function ConfiguredPoint({
 }: {
   question: ConfiguredFormQuestion;
   questionId: string;
+  displayCode: string;
   answers: Record<string, ConfiguredFormAnswerValue>;
   setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
   live?: ConfiguredFormLiveProps;
@@ -647,7 +651,7 @@ function ConfiguredPoint({
     <>
       <tr className={tableClasses.row} data-testid={`preview-point-${questionId}`}>
         <td className={tableClasses.cell} data-testid={`preview-point-label-${questionId}`}>
-          <SAILFormField label={question.question_code.trim() || "Point code not configured"}>
+          <SAILFormField label={displayCode || "Point code not configured"}>
             <span
               className="ml-2 text-[#4f5863] text-[13px] font-normal"
               data-testid={!hasText ? `missing-point-text-${questionId}` : undefined}
@@ -676,6 +680,7 @@ function ConfiguredPoint({
 function ConfiguredMatrixPoint({
   question,
   questionId,
+  displayCode,
   options,
   answers,
   setAnswer,
@@ -684,6 +689,7 @@ function ConfiguredMatrixPoint({
 }: {
   question: ConfiguredFormQuestion;
   questionId: string;
+  displayCode: string;
   options: ConfiguredFormOption[];
   answers: Record<string, ConfiguredFormAnswerValue>;
   setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
@@ -699,7 +705,7 @@ function ConfiguredMatrixPoint({
     <>
       <tr className={tableClasses.row} data-testid={`preview-matrix-point-${questionId}`}>
         <td className={`${tableClasses.cell} min-w-[220px]`}>
-          <span className="mr-2 text-gray-600 text-xs font-normal">{question.question_code || "Point code not configured"}</span>
+          <span className="mr-2 text-gray-600 text-xs font-normal">{displayCode || "Point code not configured"}</span>
           <span className="text-[#4f5863] text-[13px] font-normal">{question.question_text.trim() || MISSING_POINT_TEXT}</span>
           {question.is_mandatory && <span className="ml-1 font-bold" style={{ color: sailDesignSystem.colors.accent }} aria-label="Mandatory">*</span>}
         </td>
@@ -723,7 +729,7 @@ function ConfiguredMatrixPoint({
                       ? [...selectedOptions, value]
                       : selectedOptions.filter((selected) => selected !== value),
                 )}
-                aria-label={`${question.question_code}: ${label}`}
+                aria-label={`${displayCode}: ${label}`}
                 data-testid={`matrix-option-${questionId}-${index + 1}`}
               />
             </td>
@@ -745,6 +751,7 @@ function ConfiguredMatrixPoint({
 function ConfiguredMatrixSection({
   section,
   sectionId,
+  pointNumbers,
   answers,
   setAnswer,
   live,
@@ -752,6 +759,7 @@ function ConfiguredMatrixSection({
 }: {
   section: ConfiguredFormSection;
   sectionId: string;
+  pointNumbers: Map<string, string>;
   answers: Record<string, ConfiguredFormAnswerValue>;
   setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
   live?: ConfiguredFormLiveProps;
@@ -785,7 +793,7 @@ function ConfiguredMatrixSection({
         <tbody>
           {section.questions.map((question, questionIndex) => {
             const questionId = question.clientKey || question.question_uuid || `${sectionId}-point-${questionIndex + 1}`;
-            return <ConfiguredMatrixPoint key={questionId} question={question} questionId={questionId} options={options} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} />;
+            return <ConfiguredMatrixPoint key={questionId} question={question} questionId={questionId} displayCode={pointNumbers.get(question.question_uuid || question.clientKey || "") || question.question_code} options={options} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} />;
           })}
         </tbody>
       </table>
@@ -796,6 +804,8 @@ function ConfiguredMatrixSection({
 function ConfiguredSection({
   section,
   sectionId,
+  displayCode,
+  pointNumbers,
   roles,
   departments,
   vesselTypeLabel,
@@ -809,6 +819,8 @@ function ConfiguredSection({
 }: {
   section: ConfiguredFormSection;
   sectionId: string;
+  displayCode: string;
+  pointNumbers: Map<string, string>;
   roles: ConfiguredFormRole[];
   departments: ConfiguredFormDepartment[];
   vesselTypeLabel: string;
@@ -821,7 +833,7 @@ function ConfiguredSection({
   mode: ConfiguredFormMode;
 }) {
   const sectionTitle = section.section_title.trim() || MISSING_SECTION_TITLE;
-  const sectionCode = section.section_code.trim() || "Section code not configured";
+  const sectionCode = displayCode || "Section code not configured";
   // signature_required is intentionally a read-only legacy fallback. New
   // structures independently declare the officer and seafarer requirements.
   const officerSignatureRequired = !!section.signature_officer_required || (!!section.signature_required && !section.signature_seafarer_required);
@@ -852,7 +864,7 @@ function ConfiguredSection({
       setSectionDialog({
         kind: "validation",
         title: "Complete this section before submitting",
-        description: `Please answer mandatory point ${missing.question_code || missing.question_text}.`,
+        description: `Please answer mandatory point ${pointNumbers.get(missing.question_uuid || missing.clientKey || "") || missing.question_code || missing.question_text}.`,
       });
       return;
     }
@@ -946,12 +958,12 @@ function ConfiguredSection({
         ) : section.questions.length === 0 ? (
           <InlineMissing testId={`preview-no-points-${sectionId}`}>No points configured.</InlineMissing>
         ) : section.effectiveLayout === "matrix" ? (
-          <ConfiguredMatrixSection section={section} sectionId={sectionId} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} />
+          <ConfiguredMatrixSection section={section} sectionId={sectionId} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} pointNumbers={pointNumbers} />
         ) : (
           <FormTable headers={["Point", "Response", "Comment"]}>
             {section.questions.map((question, questionIndex) => {
               const questionId = question.clientKey || question.question_uuid || `${sectionId}-point-${questionIndex + 1}`;
-              return <ConfiguredPoint key={questionId} question={question} questionId={questionId} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} />;
+              return <ConfiguredPoint key={questionId} question={question} questionId={questionId} displayCode={pointNumbers.get(question.question_uuid || question.clientKey || "") || question.question_code} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} />;
             })}
           </FormTable>
         )}
@@ -1000,12 +1012,14 @@ function PartCard({
   subtitle,
   progress,
   hidePartCodes = false,
+  displayNumber,
   children,
 }: {
   part: ConfiguredFormPart;
   subtitle: React.ReactNode;
   progress?: React.ReactNode;
   hidePartCodes?: boolean;
+  displayNumber?: string;
   children: React.ReactNode;
 }) {
   const code = part.partCode.trim() || "—";
@@ -1028,7 +1042,7 @@ function PartCard({
           className="text-xl font-semibold mb-2"
           style={{ color: sailDesignSystem.colors.headerText }}
         >
-          {hidePartCodes ? title : `Part ${code}: ${title}`}
+          {displayNumber ? `${displayNumber} · ${title}` : hidePartCodes ? title : `Part ${code}: ${title}`}
         </h3>
         <div
           className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
@@ -1063,8 +1077,11 @@ export function ConfiguredFormRenderer({
   live,
   fixedParts,
   hidePartCodes = false,
+  companyForm = false,
   className = "",
 }: ConfiguredFormRendererProps) {
+  const displayNumbers = companyFormNumbers(parts, structures);
+  const pointNumbers = companyForm ? displayNumbers.question : new Map<string, string>();
   const [internalVesselTypeUuid, setInternalVesselTypeUuid] = useState("all");
   const [internalAnswers, setInternalAnswers] = useState<Record<string, ConfiguredFormAnswerValue>>({});
   const [internalExpandedSections, setInternalExpandedSections] = useState<Record<string, boolean>>({});
@@ -1103,7 +1120,7 @@ export function ConfiguredFormRenderer({
   const previewSchema = z.object({});
   const baseSections = parts.map((part, index) => ({
     id: part.formPartUuid,
-    title: part.partTitle.trim() || `Part ${part.partCode || index + 1}`,
+    title: companyForm ? `${displayNumbers.part.get(part.formPartUuid)} · ${part.partTitle.trim() || "Untitled part"}` : part.partTitle.trim() || `Part ${part.partCode || index + 1}`,
     letter: part.partCode || String(index + 1),
   }));
 
@@ -1152,12 +1169,12 @@ export function ConfiguredFormRenderer({
             fixedPartContent(selectedPart, fixedParts) ? (
               <FixedPartRenderer part={selectedPart} fixedParts={fixedParts} />
             ) : (
-              <PartCard part={selectedPart} subtitle={partSubtitle} hidePartCodes={hidePartCodes}>
+              <PartCard part={selectedPart} subtitle={partSubtitle} hidePartCodes={hidePartCodes} displayNumber={companyForm ? displayNumbers.part.get(selectedPart.formPartUuid) : undefined}>
                 <FixedPartRenderer part={selectedPart} fixedParts={fixedParts} />
               </PartCard>
             )
           ) : (
-            <PartCard part={selectedPart} subtitle={partSubtitle} progress={progressCaption} hidePartCodes={hidePartCodes}>
+            <PartCard part={selectedPart} subtitle={partSubtitle} progress={progressCaption} hidePartCodes={hidePartCodes} displayNumber={companyForm ? displayNumbers.part.get(selectedPart.formPartUuid) : undefined}>
               <div
                 className="flex flex-col"
                 style={{ gap: sailDesignSystem.spacing.sectionSpacing }}
@@ -1180,6 +1197,8 @@ export function ConfiguredFormRenderer({
                       key={sectionId}
                       section={section}
                       sectionId={sectionId}
+                      displayCode={companyForm ? displayNumbers.section.get(section.section_uuid || section.clientKey || "") || "" : section.section_code}
+                      pointNumbers={pointNumbers}
                       roles={roles}
                       departments={departments}
                       vesselTypeLabel={selectedVesselLabel}

@@ -4,14 +4,12 @@ const V2_BASE = '/api/v2/admin';
 
 export const adminApiV2 = {
   async getForms() {
-    const res = await fetch(`${V2_BASE}/forms`);
-    if (!res.ok) throw new Error('Failed to fetch forms');
+    const res = await apiRequest('GET', `${V2_BASE}/forms`);
     return res.json();
   },
 
   async getFormById(id: number) {
-    const res = await fetch(`${V2_BASE}/forms/${id}`);
-    if (!res.ok) throw new Error('Failed to fetch form');
+    const res = await apiRequest('GET', `${V2_BASE}/forms/${id}`);
     return res.json();
   },
 
@@ -49,8 +47,7 @@ export const adminApiV2 = {
   async getFormVersions(formId: number, rankGroupId?: number) {
     const params = new URLSearchParams();
     if (rankGroupId !== undefined) params.set('rankGroupId', rankGroupId.toString());
-    const res = await fetch(`${V2_BASE}/forms/${formId}/versions?${params}`);
-    if (!res.ok) throw new Error('Failed to fetch form versions');
+    const res = await apiRequest('GET', `${V2_BASE}/forms/${formId}/versions?${params}`);
     return res.json();
   },
 
@@ -60,16 +57,14 @@ export const adminApiV2 = {
   },
 
   async getRankGroups() {
-    const res = await fetch(`${V2_BASE}/rank-groups`);
-    if (!res.ok) throw new Error('Failed to fetch rank groups');
+    const res = await apiRequest('GET', `${V2_BASE}/rank-groups`);
     return res.json();
   },
 
   async getRankGroupsByFormId(formId: number, includeArchived: boolean = true) {
     const params = new URLSearchParams();
     if (!includeArchived) params.set('includeArchived', 'false');
-    const res = await fetch(`${V2_BASE}/rank-groups/form/${formId}?${params}`);
-    if (!res.ok) throw new Error('Failed to fetch rank groups');
+    const res = await apiRequest('GET', `${V2_BASE}/rank-groups/form/${formId}?${params}`);
     return res.json();
   },
 

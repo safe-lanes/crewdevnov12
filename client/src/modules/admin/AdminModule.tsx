@@ -3364,10 +3364,7 @@ const AdminModuleInner = (): JSX.Element => {
     queryKey: ["/api/v2/admin/forms"],
     enabled: selectedAdminPage === "forms",
     queryFn: async () => {
-      const response = await fetch("/api/v2/admin/forms");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const response = await apiRequest("GET", "/api/v2/admin/forms");
       return response.json();
     },
   });
@@ -3381,8 +3378,7 @@ const AdminModuleInner = (): JSX.Element => {
     queryFn: async () => {
       if (formIds.length === 0) return [];
       const results = await Promise.all(formIds.map(async (formId) => {
-        const response = await fetch(`/api/v2/admin/forms/${formId}/parts`);
-        if (!response.ok) return [];
+        const response = await apiRequest("GET", `/api/v2/admin/forms/${formId}/parts`);
         const parts = await response.json() as ConfigurableFormPart[];
         return parts.map((part) => ({ ...part, formId }));
       }));
@@ -3401,10 +3397,7 @@ const AdminModuleInner = (): JSX.Element => {
   const { data: allRankGroups = [] } = useQuery<RankGroup[]>({
     queryKey: ["/api/v2/admin/rank-groups", { includeArchived: true }],
     queryFn: async () => {
-      const response = await fetch("/api/v2/admin/rank-groups?includeArchived=true");
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const response = await apiRequest("GET", "/api/v2/admin/rank-groups?includeArchived=true");
       return response.json();
     },
     enabled: selectedAdminPage === "forms",
@@ -3416,8 +3409,7 @@ const AdminModuleInner = (): JSX.Element => {
       if (formIds.length === 0) return [];
       const results = await Promise.all(
         formIds.map(async (fid) => {
-          const response = await fetch(`/api/v2/admin/forms/${fid}/versions`);
-          if (!response.ok) return [];
+          const response = await apiRequest("GET", `/api/v2/admin/forms/${fid}/versions`);
           return response.json();
         })
       );
@@ -8544,11 +8536,18 @@ const AdminModuleInner = (): JSX.Element => {
 
       {/* Error state */}
       {error && (
-        <div className="flex justify-center items-center p-8">
-          <div className="text-red-500 text-sm">Error loading forms. Please try again.</div>
-          <div className="text-red-500 text-xs mt-2">
-            {error instanceof Error ? error.message : String(error)}
-          </div>
+        <div className="flex flex-col items-center justify-center gap-2 p-8 text-center" role="alert">
+          {error instanceof Error && error.message.startsWith("403:") ? (
+            <>
+              <div className="text-red-600 text-sm">Forms access is required to view this page.</div>
+              <div className="text-gray-600 text-xs">Sign in with a user who can view Forms. In development, select an Office persona from the account menu.</div>
+            </>
+          ) : (
+            <>
+              <div className="text-red-500 text-sm">Error loading forms. Please try again.</div>
+              <div className="text-red-500 text-xs">{error instanceof Error ? error.message : String(error)}</div>
+            </>
+          )}
         </div>
       )}
 
