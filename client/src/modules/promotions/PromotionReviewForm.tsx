@@ -1,5 +1,9 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { assertPromotionDateDrafts, type PromotionDateDrafts } from '@/components/promotion-review-parts/PromotionDateInput';
+import {
+  assertPromotionDateDrafts,
+  PromotionCalendarInputEventsContext,
+  type PromotionDateDrafts,
+} from '@/components/promotion-review-parts/PromotionDateInput';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { BaseSubmoduleForm, FormSection } from '@/components/BaseSubmoduleForm';
 import { Button } from '@/components/ui/button';
@@ -1735,8 +1739,19 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
     };
   }, [existingReviewData, promotionFormLockLive]);
 
+  const calendarReviewStatus = (
+    existingReviewData?.status || 'draft'
+  ).toString().trim().toLowerCase();
+
+  const acceptPromotionCalendarInputEvents =
+    !isLoadingReview &&
+    ['draft', 'in progress', 'in_progress'].includes(calendarReviewStatus);
+
   return (
     <div className="promotion-review-form">
+      <PromotionCalendarInputEventsContext.Provider
+        value={acceptPromotionCalendarInputEvents}
+      >
       <BaseSubmoduleForm
         title="Promotion Review Form"
         sections={sections}
@@ -2074,6 +2089,7 @@ export const PromotionReviewForm: React.FC<PromotionReviewFormProps> = ({
         );
       }}
       </BaseSubmoduleForm>
+      </PromotionCalendarInputEventsContext.Provider>
 
       {showChecklistForm && (
         <PromotionChecklistForm 

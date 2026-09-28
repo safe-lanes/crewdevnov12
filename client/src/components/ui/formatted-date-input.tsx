@@ -12,6 +12,8 @@ interface FormattedDateInputProps {
   max?: string;
   placeholder?: string;
   disabled?: boolean;
+  /** Accept native calendar input before a later blur/change event. */
+  acceptCalendarInputEvents?: boolean;
   retainInvalidDraftOnBlur?: boolean;
   /**
    * Restore a saved visible draft when the input mounts.
@@ -76,7 +78,7 @@ function isRealDate(year: number, month: number, day: number): boolean {
 }
 
 const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
-  ({ value, onChange, onBlur, className, min, max, placeholder, disabled = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
+  ({ value, onChange, onBlur, className, min, max, placeholder, disabled = false, acceptCalendarInputEvents = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
     const calendarInputRef = React.useRef<HTMLInputElement>(null);
     const [draft, setDraft] = React.useState(
       () => initialDraft ?? formatIsoDate(value),
@@ -235,6 +237,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
       const nextValue = event.currentTarget.value;
       if (
         disabled ||
+        (acceptCalendarInputEvents && event.currentTarget.matches(":disabled")) ||
         (nextValue !== "" && (
           !formatIsoDate(nextValue) ||
           Boolean(min && nextValue < min) ||
@@ -248,7 +251,12 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
         return;
       }
       handleCalendarChange(event);
-      calendarInputRef.current?.blur();
+      if (
+        !acceptCalendarInputEvents ||
+        event.nativeEvent.type !== "input"
+      ) {
+        calendarInputRef.current?.blur();
+      }
     };
 
     return (
@@ -294,7 +302,9 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
           ref={calendarInputRef}
           type="date"
           value={value}
-          onInputCapture={(event) => event.stopPropagation()}
+          onInputCapture={(event) => {
+            if (!acceptCalendarInputEvents) event.stopPropagation();
+          }}
           onChange={handleCalendarChangeAndBlur}
           onBlur={handleCalendarBlur}
           min={min || "0001-01-01"}

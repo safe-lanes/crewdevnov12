@@ -1,10 +1,12 @@
-import type { ChangeEventHandler } from 'react';
+import { createContext, useContext, type ChangeEventHandler } from 'react';
 import { Input } from '@/components/ui/input';
 import {
   FormattedDateInput,
   formatIsoDate,
   parseManualDate,
 } from '@/components/ui/formatted-date-input';
+
+export const PromotionCalendarInputEventsContext = createContext(false);
 
 type Draft = {
   value: string;
@@ -29,6 +31,9 @@ export function PromotionDateInput({
   fieldKey,
   ...props
 }: Props) {
+  const acceptCalendarInputEvents = useContext(
+    PromotionCalendarInputEventsContext
+  );
   let draft = drafts.get(fieldKey);
   if (!draft || draft.value !== props.value) {
     draft = {
@@ -54,6 +59,7 @@ export function PromotionDateInput({
       value={props.value}
       onChange={props.onChange}
       disabled={props.disabled}
+      acceptCalendarInputEvents={acceptCalendarInputEvents}
       className={`text-base md:text-sm ${props.className || ''} ${fixedWidth}`}
       data-testid={props['data-testid']}
       initialDraft={entry.text}
