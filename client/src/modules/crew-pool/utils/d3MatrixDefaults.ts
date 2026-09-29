@@ -30,7 +30,7 @@ export function d3CourseKey(
 
 export function d3RankId(
   value: string,
-  ranks: readonly { id: number | string; rank: string }[],
+  ranks: readonly { id: number | string; rank: string; label?: string }[],
   normalize: (rank: string) => string,
 ): number | null {
   if (!value.trim()) return null;
@@ -47,7 +47,18 @@ export function d3RankId(
           normalize(value).trim().toLowerCase(),
       );
 
-  const ids = [...new Set(candidates.map(rank => Number(rank.id)))];
+  // Preserve existing name matches, including ambiguous ones. Only use
+  // configured display labels when no master-name candidate was found.
+  const resolvedCandidates = candidates.length
+    ? candidates
+    : ranks.filter(
+        rank =>
+          rank.label?.trim() &&
+          normalize(rank.label).trim().toLowerCase() ===
+          normalize(value).trim().toLowerCase(),
+      );
+
+  const ids = [...new Set(resolvedCandidates.map(rank => Number(rank.id)))];
 
   return ids.length === 1 && Number.isFinite(ids[0]) ? ids[0] : null;
 }

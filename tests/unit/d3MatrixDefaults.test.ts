@@ -184,3 +184,95 @@ describe('D3 Matrix defaults', () => {
     expect(d3RowsForSave(rows, true)).toBe(rows);
   });
 });
+describe('D3 configured rank labels', () => {
+  const ranks = [
+    { id: 3, rank: 'Second Officer', label: '2nd Officer' },
+    { id: 4, rank: 'Third Officer', label: '3rd Officer' },
+    { id: 6, rank: 'Second Engineer', label: '2nd Engineer' },
+    { id: 7, rank: 'Third Engineer', label: '3rd Engineer' },
+    { id: 8, rank: 'Fourth Engineer', label: '4th Engineer' },
+    { id: 15, rank: 'Able Bodied Seaman', label: 'AB' },
+    { id: 16, rank: 'Ordinary Seaman', label: 'OS' },
+  ];
+  const normalize = (value: string) => value.replace(/_\d+$/, '');
+
+  it.each(ranks)('matches $label and its numbered positions', rank => {
+    expect(d3RankId(rank.label, ranks, normalize)).toBe(rank.id);
+    expect(d3RankId(rank.rank, ranks, normalize)).toBe(rank.id);
+    expect(d3RankId(rank.label + '_1', ranks, normalize)).toBe(rank.id);
+    expect(d3RankId(rank.label + '_2', ranks, normalize)).toBe(rank.id);
+    expect(d3RankId(` ${rank.label.toLowerCase()} `, ranks, normalize)).toBe(rank.id);
+  });
+
+  it('uses configured labels rather than a fixed list of aliases', () => {
+    expect(d3RankId('Custom Role', [
+      { id: 30, rank: 'Custom Master', label: 'Custom Role' },
+    ], normalize)).toBe(30);
+    expect(d3RankId('A/B', ranks, normalize)).toBeNull();
+  });
+
+  it('keeps exact and normalized master-name matches ahead of labels', () => {
+    const conflicting = [...ranks, { id: 90, rank: 'AB' }];
+    expect(d3RankId('AB', conflicting, normalize)).toBe(90);
+    expect(d3RankId('AB_1', conflicting, normalize)).toBe(90);
+  });
+
+  it('does not use labels to override ambiguous existing name matches', () => {
+    const ambiguous = [
+      ...ranks,
+      { id: 90, rank: 'AB' },
+      { id: 91, rank: 'AB' },
+    ];
+    expect(d3RankId('AB', ambiguous, normalize)).toBeNull();
+    expect(d3RankId('AB_1', ambiguous, normalize)).toBeNull();
+  });
+
+  it('rejects labels identifying different ranks, including normalized collisions', () => {
+    const ambiguous = [...ranks, { id: 90, rank: 'Other', label: 'AB' }];
+    expect(d3RankId('AB', ambiguous, normalize)).toBeNull();
+    expect(d3RankId('AB_1', ambiguous, normalize)).toBeNull();
+    expect(d3RankId('AB', [
+      ...ranks, { id: 90, rank: 'Other', label: 'AB_2' },
+    ], normalize)).toBeNull();
+  });
+
+  it('retains unique numeric-ID checks and ignores absent or blank labels', () => {
+    expect(d3RankId('AB', [...ranks, {
+      id: '15', rank: 'Same ID', label: 'AB',
+    }], normalize)).toBe(15);
+    expect(d3RankId('AB', [
+      { id: 'invalid', rank: 'Other', label: 'AB' },
+    ], normalize)).toBeNull();
+    expect(d3RankId('AB', [
+      { id: Infinity, rank: 'Other', label: 'AB' },
+    ], normalize)).toBeNull();
+    expect(d3RankId('AB', [
+      { id: 'invalid', rank: 'AB' }, ...ranks,
+    ], normalize)).toBeNull();
+    expect(d3RankId('Unknown', [
+      { id: 90, rank: 'Other' },
+      { id: 91, rank: 'Another', label: '   ' },
+    ], normalize)).toBeNull();
+    expect(d3RankId('   ', ranks, normalize)).toBeNull();
+  });
+
+  it('selects only the resolved rank courses without duplicating existing courses', () => {
+    const rankId = d3RankId('AB_2', ranks, normalize);
+    expect(rankId).toBe(15);
+    const requirements = [
+      { companyTrainingId: 1, rankId: 15, status: 'M' },
+      { companyTrainingId: 2, rankId: 15, status: 'R' },
+      { companyTrainingId: 3, rankId: 15, status: 'N' },
+      { companyTrainingId: 3, rankId: 16, status: 'M' },
+    ];
+    const select = (rows: any[], suppressed = new Set<string>()) =>
+      missingD3Defaults(rows, masters, requirements, rankId!, suppressed, 'TEST-');
+    const defaults = select([]);
+    expect(defaults.map(row => row.courseId)).toEqual(['A', 'B']);
+    expect(select(defaults)).toEqual([]);
+    expect(select([], new Set(['A'])).map(row => row.courseId)).toEqual(['B']);
+    const existing = { id: 'saved', courseId: 'A', certificateNo: 'KEEP' };
+    expect(select([existing]).map(row => row.courseId)).toEqual(['B']);
+    expect(existing.certificateNo).toBe('KEEP');
+  });
+});
