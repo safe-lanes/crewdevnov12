@@ -8,28 +8,11 @@ import { tenantConnectionManager } from "./utils/tenantConnectionManager";
 import { tenantMiddleware } from "./middleware/tenantMiddleware";
 import { authMiddleware } from "./middleware/authMiddleware";
 import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
-import { sanitizeComparisonHtml } from "../shared/v2/forms-engine/contentSanitizer";
 
 const app = express();
 app.set("trust proxy", 1);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
-
-// Development-only, ephemeral Word-paste comparison. No form routes, database
-// writes, or production endpoint. Never log the pasted document contents.
-if (process.env.NODE_ENV === "development") {
-  app.post(
-    "/scratch/editor-comparison/sanitize",
-    express.text({ type: "text/plain", limit: "250kb" }),
-    (req, res) => {
-      if (typeof req.body !== "string") {
-        return res.status(400).json({ error: "Expected text/plain HTML" });
-      }
-      res.set("Cache-Control", "no-store");
-      return res.json({ html: sanitizeComparisonHtml(req.body) });
-    },
-  );
-}
 
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
