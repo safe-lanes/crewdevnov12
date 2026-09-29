@@ -15,6 +15,11 @@ Set `EXPO_PUBLIC_API_BASE_URL` to your development API origin when testing on a
 physical device. Do not use `localhost` unless the simulator or emulator has
 port forwarding configured.
 
+For local web preview (`npx expo start --web`), set `EXPO_PUBLIC_API_BASE_URL_WEB`
+instead (defaults to `http://localhost:5000`) — it takes priority over
+`EXPO_PUBLIC_API_BASE_URL` on web only, so native and web can target different
+backends from the same `.env`.
+
 ## Run
 
 ```
