@@ -2009,7 +2009,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                    </Badge>
                                  )}
                                  {section.comment_box_required && <Badge variant="outline" className="text-[10px] font-normal">Comment required</Badge>}
-                                  {section.signature_officer_required && <Badge variant="outline" className="text-[10px] font-normal">Officer signature required</Badge>}
+                                  {section.signature_officer_required && <Badge variant="outline" className="text-[10px] font-normal">{isCompanyForm ? "Company Representative required" : "Officer signature required"}</Badge>}
                                   {section.signature_seafarer_required && <Badge variant="outline" className="text-[10px] font-normal">Seafarer signature required</Badge>}
                                   {section.default_option_set_uuid && <Badge variant="outline" className="text-[10px] font-normal">Default: {optionSetFor(selectedPart.formPartUuid, section.default_option_set_uuid)?.option_set_name || "Custom set"}</Badge>}
                                   <Badge variant="outline" className="text-[10px] font-normal">Layout: {section.layout_preference}</Badge>
@@ -2311,7 +2311,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           {settingsDialog === "signature" && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <p className="text-sm font-medium">Officer signature</p>
+                <p className="text-sm font-medium">{isCompanyForm ? "Company Representative" : "Officer signature"}</p>
                 <RadioGroup value={settingsValues.officerSignatureRequired ? "required" : "not_required"} onValueChange={(value) => setSettingsValues((current) => ({ ...current, officerSignatureRequired: value === "required" }))}>
                   <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="required" /> Required</label>
                   <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_required" /> Not Required</label>

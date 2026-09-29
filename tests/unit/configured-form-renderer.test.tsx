@@ -254,6 +254,56 @@ describe("configured form renderer preview", () => {
     expect(content.querySelectorAll("li")).toHaveLength(1);
     expect(screen.getByTestId("preview-point-content-preview").textContent).not.toContain("INTERNAL_CONTENT");
     expect(screen.queryByTestId("preview-response-content-preview")).toBeNull();
+    const table = screen.getByTestId("preview-point-content-preview").closest("table")!;
+    expect(table.querySelector("thead")).toBeNull();
+    expect(table.className).not.toContain("min-w-[600px]");
+    expect(screen.getByTestId("preview-point-content-preview").querySelector("td")?.colSpan).toBe(3);
+  });
+
+  it("keeps the shared header and a full-width Content row in a mixed Company Form section", () => {
+    const section: ConfiguredFormSection = {
+      ...configuredSection,
+      effectiveLayout: "matrix",
+      questions: [
+        { clientKey: "before", question_code: "B1", question_text: "Ready?", response_type: "yes_no", is_mandatory: false, comment_enabled: false, options: [] },
+        { clientKey: "notice", question_code: "INTERNAL", question_text: "Notice", content_html: "<p>Read this</p>", response_type: "content", is_mandatory: false, comment_enabled: false, options: [] },
+      ],
+    };
+    renderPreview([section], "all", true);
+    click(screen.getByTestId("button-step-part-b"));
+    const table = screen.getByTestId("preview-point-notice").closest("table")!;
+    expect(Array.from(table.querySelectorAll("thead th")).map((th) => th.textContent)).toEqual(["Point", "Response", "Comment"]);
+    expect(screen.getByTestId("preview-point-notice").querySelector("td")?.colSpan).toBe(3);
+    expect(screen.getByTestId("preview-response-before")).toBeDefined();
+  });
+
+  it("uses Company Representative for Company Form officer signatures in preview and live, leaving Standard Forms unchanged", () => {
+    const section: ConfiguredFormSection = {
+      ...configuredSection,
+      signature_required: false,
+      signature_officer_required: true,
+      signature_seafarer_required: false,
+    };
+    renderPreview([section], "all", true);
+    click(screen.getByTestId("button-step-part-b"));
+    expect(screen.getByTestId("preview-signature-officer-section-one")).toHaveTextContent("Company Representative");
+
+    renderPreview([section], "all", false);
+    click(screen.getByTestId("button-step-part-b"));
+    expect(screen.getByTestId("preview-signature-officer-section-one")).toHaveTextContent("Officer signature");
+
+    render(
+      <ConfiguredFormRenderer
+        mode="live"
+        embedded
+        companyForm
+        parts={[parts[1]]}
+        structures={{ "part-b": [section] }}
+        selectedPartUuid="part-b"
+        live={{ answers: {}, onAnswerChange: vi.fn() }}
+      />,
+    );
+    expect(screen.getByTestId("preview-signature-officer-section-one")).toHaveTextContent("Company Representative");
   });
 
   it("separates the preview banner from content using section spacing", () => {

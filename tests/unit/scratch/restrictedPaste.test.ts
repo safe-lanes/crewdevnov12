@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { normalizeWordPaste, pasteNotice, REMOVAL_NOTICE } from "../../../shared/v2/forms-engine/restrictedPaste";
+import { normalizeWordPaste, pasteNotice, TABLE_REMOVAL_NOTICE, IMAGE_REMOVAL_NOTICE } from "../../../shared/v2/forms-engine/restrictedPaste";
 import { comparisonAllowedTags, sanitizeComparisonHtml } from "../../../shared/v2/forms-engine/contentSanitizer";
 
 describe("restricted Word paste", () => {
@@ -30,6 +30,9 @@ describe("restricted Word paste", () => {
     expect(cleanedBlocks.every((block) => !/[\s\u00a0]{2}/u.test(block))).toBe(true);
     expect(result.html).not.toContain("\t");
     expect(result.removedFormatting).toBe(true);
+    expect(result.removedTable).toBe(false);
+    expect(result.removedImage).toBe(false);
+    expect(pasteNotice(result)).toBe("");
     expect(sanitizeComparisonHtml(result.html)).toBe(result.html);
   });
 
@@ -66,7 +69,9 @@ describe("restricted Word paste", () => {
     expect(cleanedParagraphs.filter((paragraph) => /^[1-9]\. \S/u.test(paragraph))).toHaveLength(9);
     expect(cleanedParagraphs.every((paragraph) => !/[\s\u00a0]{2}/u.test(paragraph))).toBe(true);
     expect(result.removedFormatting).toBe(true);
-    expect(pasteNotice(result.removedFormatting)).toBe(REMOVAL_NOTICE);
+    expect(result.removedTable).toBe(true);
+    expect(result.removedImage).toBe(false);
+    expect(pasteNotice(result)).toBe(TABLE_REMOVAL_NOTICE);
     expect(sanitized).toBe(result.html);
     expect(sanitized).not.toMatch(/<(?:table|thead|tbody|tr|th|td)\b/i);
     expect(cleaned.querySelectorAll("table,th,td")).toHaveLength(0);
@@ -96,6 +101,7 @@ describe("restricted Word paste", () => {
     );
     expect(result.removedFormatting).toBe(true);
     expect(result.html).not.toMatch(/<(?:table|img|a|h[1-6]|ol)\b/i);
+    expect(pasteNotice(result)).toBe(`${TABLE_REMOVAL_NOTICE}\n${IMAGE_REMOVAL_NOTICE}`);
   });
 
   it("joins a number and its statement from separate Word cells, without special-casing the header", () => {
@@ -113,6 +119,7 @@ describe("restricted Word paste", () => {
       "<p>2. Second <strong>statement</strong></p>",
     );
     expect(result.removedFormatting).toBe(true);
+    expect(pasteNotice(result)).toBe(TABLE_REMOVAL_NOTICE);
     expect(sanitizeComparisonHtml(result.html)).toBe(result.html);
     expect(result.html).not.toMatch(/<(?:table|tr|th|td)\b/i);
   });
@@ -123,6 +130,17 @@ describe("restricted Word paste", () => {
     );
     expect(result.html).toBe("<p>Heading text</p><p>Before after</p><p>End</p>");
     expect(result.removedFormatting).toBe(true);
+    expect(pasteNotice(result)).toBe("");
+  });
+
+  it("shows only the image line for an image and no notice for stripped Word styling", () => {
+    const image = normalizeWordPaste('<p>Diagram</p><img src="diagram.png" alt="Diagram description">');
+    expect(image.removedTable).toBe(false);
+    expect(image.removedImage).toBe(true);
+    expect(pasteNotice(image)).toBe(IMAGE_REMOVAL_NOTICE);
+    const styling = normalizeWordPaste('<p class="MsoNormal" style="color:red">Plain text</p>');
+    expect(styling.removedFormatting).toBe(true);
+    expect(pasteNotice(styling)).toBe("");
   });
 });
 

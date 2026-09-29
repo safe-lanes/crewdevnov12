@@ -1,14 +1,20 @@
 /** Restricted clipboard conversion for Company Form Content points. */
-export const REMOVAL_NOTICE =
-  "Tables and images were removed. For statements the seafarer must answer, use Yes/No points.";
+export const TABLE_REMOVAL_NOTICE =
+  "A table was removed and its text kept as paragraphs. If it listed items to be answered, add them as points instead.";
+export const IMAGE_REMOVAL_NOTICE = "Images were removed.";
 
-export function pasteNotice(removedFormatting: boolean): string {
-  return removedFormatting ? REMOVAL_NOTICE : "";
+export function pasteNotice(result: Pick<PasteResult, "removedTable" | "removedImage">): string {
+  return [
+    result.removedTable && TABLE_REMOVAL_NOTICE,
+    result.removedImage && IMAGE_REMOVAL_NOTICE,
+  ].filter(Boolean).join("\n");
 }
 
 export interface PasteResult {
   html: string;
   removedFormatting: boolean;
+  removedTable: boolean;
+  removedImage: boolean;
 }
 
 type Block = { kind: "paragraph" | "bullet"; content: DocumentFragment };
@@ -66,6 +72,8 @@ function normalizeWhitespace(fragment: DocumentFragment, doc: Document): void {
 
 export function normalizeWordPaste(rawHtml: string): PasteResult {
   const doc = new DOMParser().parseFromString(rawHtml, "text/html");
+  const removedTable = !!doc.body.querySelector("table");
+  const removedImage = !!doc.body.querySelector("img");
   const blocks: Block[] = [];
   let removedFormatting = false;
 
@@ -217,5 +225,5 @@ export function normalizeWordPaste(rawHtml: string): PasteResult {
       result.appendChild(p);
     }
   }
-  return { html: result.innerHTML, removedFormatting };
+  return { html: result.innerHTML, removedFormatting, removedTable, removedImage };
 }

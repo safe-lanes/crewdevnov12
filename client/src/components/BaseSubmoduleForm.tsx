@@ -206,8 +206,8 @@ export const FormTable: React.FC<{
 }> = ({ headers, children }) => (
   <div className="bg-white rounded-lg shadow-md overflow-hidden">
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[600px]">
-        <thead className="bg-gray-100">
+      <table className={headers.length ? "w-full min-w-[600px]" : "w-full"}>
+        {headers.length > 0 && <thead className="bg-gray-100">
           <tr>
             {headers.map((header, index) => (
               <th key={index} className="text-gray-600 text-xs font-normal py-2 px-4 text-left">
@@ -215,7 +215,7 @@ export const FormTable: React.FC<{
               </th>
             ))}
           </tr>
-        </thead>
+        </thead>}
         <tbody className="bg-white">
           {children}
         </tbody>

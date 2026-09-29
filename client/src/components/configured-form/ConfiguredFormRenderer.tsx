@@ -307,7 +307,7 @@ function SignaturePad({ sectionId, type, onSave }: { sectionId: string; type: Co
 }
 
 function SignatureBlock({
-  sectionId, type, state, live, readOnly, legacy = false,
+  sectionId, type, state, live, readOnly, legacy = false, companyForm = false,
 }: {
   sectionId: string;
   type: ConfiguredSignatureType;
@@ -315,12 +315,14 @@ function SignatureBlock({
   live?: ConfiguredFormLiveProps;
   readOnly: boolean;
   legacy?: boolean;
+  companyForm?: boolean;
 }) {
   const defaults = live?.signatureDefaults?.[type];
   const [name, setName] = useState(defaults?.name || "");
   const [rank, setRank] = useState(defaults?.rank || "");
   useEffect(() => { setName(defaults?.name || ""); setRank(defaults?.rank || ""); }, [defaults?.name, defaults?.rank]);
-  const label = legacy ? "Signature" : type === "officer" ? "Officer signature" : "Seafarer signature";
+  const label = companyForm && type === "officer" ? "Company Representative"
+    : legacy ? "Signature" : type === "officer" ? "Officer signature" : "Seafarer signature";
   if (state?.signatureUrl) {
     return <div className="flex flex-wrap items-center gap-2 text-sm" data-testid={legacy ? `preview-signature-${sectionId}` : `preview-signature-${type}-${sectionId}`}>
       <span className="font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{label}:</span>
@@ -826,6 +828,7 @@ function ConfiguredSection({
   setAnswer,
   live,
   mode,
+  companyForm,
 }: {
   section: ConfiguredFormSection;
   sectionId: string;
@@ -841,6 +844,7 @@ function ConfiguredSection({
   setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
   live?: ConfiguredFormLiveProps;
   mode: ConfiguredFormMode;
+  companyForm: boolean;
 }) {
   const sectionTitle = section.section_title.trim() || MISSING_SECTION_TITLE;
   const sectionCode = displayCode || "Section code not configured";
@@ -888,7 +892,7 @@ function ConfiguredSection({
     }
     const signatures = state?.signatures || {};
     const missingSignature = (officerSignatureRequired && !(signatures.officer?.signatureAttUuid || state?.signatureAttUuid))
-      ? "Officer"
+      ? companyForm ? "Company Representative" : "Officer"
       : seafarerSignatureRequired && !signatures.seafarer?.signatureAttUuid
         ? "Seafarer"
         : null;
@@ -921,9 +925,9 @@ function ConfiguredSection({
       {officerSignatureRequired && (
         <div>
           {mode === "preview" ? <div className="space-y-4 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={section.signature_required ? `preview-signature-${sectionId}` : `preview-signature-officer-${sectionId}`}>
-            <p className="text-sm font-semibold">Officer signature</p><p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>
+            <p className="text-sm font-semibold">{companyForm ? "Company Representative" : "Officer signature"}</p><p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>
             <SAILFormField label="Date"><p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm" data-testid={section.signature_required ? `preview-signature-date-${sectionId}` : undefined}>Auto-filled when signed</p></SAILFormField>
-          </div> : <SignatureBlock sectionId={sectionId} type="officer" readOnly={readOnly} live={live} legacy={!!section.signature_required} state={state?.signatures?.officer || (state?.signatureAttUuid ? { signatureAttUuid: state.signatureAttUuid, signatureName: state.signatureName, signedAt: state.signedAt, signatureUrl: state.signatureUrl } : undefined)} />}
+          </div> : <SignatureBlock sectionId={sectionId} type="officer" readOnly={readOnly} live={live} legacy={!!section.signature_required} companyForm={companyForm} state={state?.signatures?.officer || (state?.signatureAttUuid ? { signatureAttUuid: state.signatureAttUuid, signatureName: state.signatureName, signedAt: state.signedAt, signatureUrl: state.signatureUrl } : undefined)} />}
         </div>
       )}
       {seafarerSignatureRequired && (
@@ -967,10 +971,10 @@ function ConfiguredSection({
           </InlineMissing>
         ) : section.questions.length === 0 ? (
           <InlineMissing testId={`preview-no-points-${sectionId}`}>No points configured.</InlineMissing>
-        ) : section.effectiveLayout === "matrix" ? (
+        ) : section.effectiveLayout === "matrix" && section.questions.every((question) => question.response_type !== "content") ? (
           <ConfiguredMatrixSection section={section} sectionId={sectionId} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} pointNumbers={pointNumbers} />
         ) : (
-          <FormTable headers={["Point", "Response", "Comment"]}>
+          <FormTable headers={section.questions.every((question) => question.response_type === "content") ? [] : ["Point", "Response", "Comment"]}>
             {section.questions.map((question, questionIndex) => {
               const questionId = question.clientKey || question.question_uuid || `${sectionId}-point-${questionIndex + 1}`;
               return <ConfiguredPoint key={questionId} question={question} questionId={questionId} displayCode={pointNumbers.get(question.question_uuid || question.clientKey || "") || question.question_code} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} />;
@@ -1222,6 +1226,7 @@ export function ConfiguredFormRenderer({
                       setAnswer={setAnswer}
                       live={live}
                       mode={mode}
+                      companyForm={companyForm}
                     />
                   );
                 })}

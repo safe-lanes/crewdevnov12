@@ -10,7 +10,7 @@ export function ContentPointEditor({ html, onChange, disabled }: {
   disabled: boolean;
 }) {
   const [notice, setNotice] = useState("");
-  const removedOnPaste = useRef(false);
+  const removedOnPaste = useRef({ removedTable: false, removedImage: false });
   const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -26,7 +26,7 @@ export function ContentPointEditor({ html, onChange, disabled }: {
     editorProps: {
       transformPastedHTML: (raw) => {
         const result = normalizeWordPaste(raw);
-        removedOnPaste.current = result.removedFormatting;
+        removedOnPaste.current = result;
         return result.html;
       },
       handlePaste: (_view, event) => {
@@ -43,7 +43,7 @@ export function ContentPointEditor({ html, onChange, disabled }: {
           return `<p>${doc.innerHTML}</p>`;
         }).join("");
         const result = normalizeWordPaste(paragraphs);
-        setNotice(pasteNotice(result.removedFormatting));
+        setNotice(pasteNotice(result));
         editorRef.current?.commands.insertContent(result.html);
         return true;
       },
@@ -69,7 +69,7 @@ export function ContentPointEditor({ html, onChange, disabled }: {
         </div>
       )}
       <EditorContent editor={editor} className="min-h-32 p-3 [&_.tiptap]:min-h-28 [&_.tiptap]:outline-none [&_ul]:list-disc [&_ul]:pl-6 [&_p]:mb-2 [&_li_p]:mb-0" data-testid="content-point-input" />
-      {notice && <p role="status" className="border-t bg-amber-50 px-3 py-2 text-sm" data-testid="content-paste-notice">{notice}</p>}
+      {notice && <p role="status" className="whitespace-pre-line border-t bg-amber-50 px-3 py-2 text-sm" data-testid="content-paste-notice">{notice}</p>}
     </div>
   );
 }
