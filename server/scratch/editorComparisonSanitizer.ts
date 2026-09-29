@@ -1,10 +1,9 @@
 import sanitizeHtml from "sanitize-html";
 
-// Deliberately narrower than sanitize-html's defaults. This scratch endpoint
-// uses the same proposed policy for both editors; it is not a form write path.
+// Development-only policy for the restricted Tiptap paste test. Production
+// form writes do not use this endpoint.
 export const comparisonAllowedTags = [
-  "p", "br", "h1", "h2", "h3", "h4", "strong",
-  "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
+  "p", "br", "strong", "ul", "li",
 ];
 
 export function sanitizeComparisonHtml(html: string): string {
@@ -16,5 +15,7 @@ export function sanitizeComparisonHtml(html: string): string {
     transformTags: {
       b: "strong",
     },
+    exclusiveFilter: (frame) =>
+      (frame.tag === "p" || frame.tag === "li") && !frame.text.trim(),
   });
 }

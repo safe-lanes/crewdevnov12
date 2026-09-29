@@ -11,6 +11,12 @@ app.set("trust proxy", 1);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
+// Keep the development-only editor comparison unavailable even if production
+// routing gains a catch-all page handler later.
+app.use("/scratch/editor-comparison", (_req, res) => {
+  res.status(404).type("text/plain").send("Not found");
+});
+
 function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",

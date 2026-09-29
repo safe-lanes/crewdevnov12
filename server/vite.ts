@@ -91,6 +91,11 @@ export function serveStatic(app: Express) {
     );
   }
 
+  // The development-only scratch page must not be served by the SPA fallback.
+  app.use("/scratch/editor-comparison", (_req, res) => {
+    res.status(404).type("text/plain").send("Not found");
+  });
+
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist

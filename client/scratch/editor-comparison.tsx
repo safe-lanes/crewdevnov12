@@ -1,31 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { CKEditor } from "@ckeditor/ckeditor5-react";
-import {
-  Bold, ClassicEditor, Essentials, Heading, List, Paragraph, PasteFromOffice,
-  Table as CKTable, TableToolbar,
-} from "ckeditor5";
-import "ckeditor5/ckeditor5.css";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+import { normalizeWordPaste, REMOVAL_NOTICE } from "./restrictedPaste";
 import "./editor-comparison.css";
-
-type EditorName = "ckeditor" | "tiptap";
-
-const ckConfig = {
-  licenseKey: "GPL" as const,
-  plugins: [Essentials, Paragraph, Heading, Bold, List, CKTable, TableToolbar, PasteFromOffice],
-  toolbar: ["undo", "redo", "|", "heading", "bold", "|", "bulletedList", "numberedList", "|", "insertTable"],
-  heading: { options: [
-    { model: "paragraph" as const, title: "Paragraph", class: "ck-heading_paragraph" },
-    { model: "heading1" as const, view: "h1" as const, title: "Heading 1", class: "ck-heading_heading1" },
-    { model: "heading2" as const, view: "h2" as const, title: "Heading 2", class: "ck-heading_heading2" },
-    { model: "heading3" as const, view: "h3" as const, title: "Heading 3", class: "ck-heading_heading3" },
-    { model: "heading4" as const, view: "h4" as const, title: "Heading 4", class: "ck-heading_heading4" },
-  ] },
-  table: { contentToolbar: ["tableRow", "tableColumn"] },
-};
 
 function useSanitizedOutput(raw: string) {
   const [html, setHtml] = useState("");
@@ -66,11 +44,11 @@ function Output({ raw }: { raw: string }) {
     <div className="output-pane">
       <div className="pane-heading">
         <span>Server-sanitized result</span>
-        <span className="pane-note">Proposed HTML allowlist · no attributes</span>
+        <span className="pane-note">p · br · strong · ul · li · no attributes</span>
       </div>
       {error ? <p role="alert" className="error">{error}</p> : (
         <>
-          <div className="result-content" dangerouslySetInnerHTML={{ __html: html }} />
+          <div className="result-content" data-testid="sanitized-result" dangerouslySetInnerHTML={{ __html: html }} />
           <details>
             <summary>Inspect sanitized HTML</summary>
             <pre>{html}</pre>
@@ -81,90 +59,108 @@ function Output({ raw }: { raw: string }) {
   );
 }
 
-function TiptapPane({ onChange }: { onChange: (html: string) => void }) {
+function ScratchEditor() {
+  const [editorHtml, setEditorHtml] = useState("");
+  const [rawClipboardHtml, setRawClipboardHtml] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
+  const removedOnPaste = useRef(false);
+  const editorRef = useRef<ReturnType<typeof useEditor> | null>(null);
+
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit.configure({
-        heading: { levels: [1, 2, 3, 4] },
+        heading: false, orderedList: false,
         blockquote: false, code: false, codeBlock: false, horizontalRule: false,
         italic: false, strike: false, underline: false, link: false,
+        listKeymap: false,
       }),
-      Table.configure({ resizable: false }),
-      TableRow,
-      TableHeader,
-      TableCell,
     ],
-    content: "<p>Paste your Word document here.</p>",
-    onCreate: ({ editor }) => onChange(editor.getHTML()),
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    content: "",
+    editorProps: {
+      transformPastedHTML: (html) => {
+        const result = normalizeWordPaste(html);
+        removedOnPaste.current = result.removedFormatting;
+        return result.html;
+      },
+      handlePaste: (_view, event) => {
+        const raw = event.clipboardData?.getData("text/html") || "";
+        setRawClipboardHtml(raw || null);
+        if (raw) {
+          setNotice(removedOnPaste.current ? REMOVAL_NOTICE : "");
+          return false; // ProseMirror inserts the transformed HTML slice.
+        }
+        const text = event.clipboardData?.getData("text/plain") || "";
+        if (!text) return false;
+        // Plain-text clipboard fallback, so marker paragraphs still become
+        // bullets when a Word/browser combination supplies no HTML.
+        const doc = document.createElement("div");
+        const paragraphs = text.split(/\r?\n/).map((line) => {
+          doc.textContent = line;
+          return `<p>${doc.innerHTML}</p>`;
+        }).join("");
+        const result = normalizeWordPaste(paragraphs);
+        setNotice(result.removedFormatting ? REMOVAL_NOTICE : "");
+        editorRef.current?.commands.insertContent(result.html);
+        return true;
+      },
+      handleKeyDown: (_view, event) => {
+        // No manual nesting of bullet lists on this restricted editor.
+        return event.key === "Tab" && !!editorRef.current?.isActive("bulletList");
+      },
+    },
+    onCreate: ({ editor }) => {
+      editorRef.current = editor;
+      setEditorHtml(editor.getHTML());
+    },
+    onDestroy: () => { editorRef.current = null; },
+    onUpdate: ({ editor }) => setEditorHtml(editor.getHTML()),
   });
 
-  const action = useCallback((run: () => void) => () => {
-    editor?.chain().focus().run();
-    run();
-  }, [editor]);
+  function downloadRawPaste() {
+    if (rawClipboardHtml === null) return;
+    const url = URL.createObjectURL(new Blob([rawClipboardHtml], { type: "text/html;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "word-clipboard-raw.html";
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
-  if (!editor) return <p>Loading Tiptap…</p>;
-  const button = (label: string, command: () => void, active = false) => (
-    <button key={label} type="button" className={active ? "active" : ""} onClick={action(command)}>{label}</button>
-  );
-  return (
-    <>
-      <div className="toolbar" aria-label="Tiptap formatting">
-        {button("Paragraph", () => editor.chain().focus().setParagraph().run(), editor.isActive("paragraph"))}
-        {[1, 2, 3, 4].map((level) => button(`H${level}`, () => editor.chain().focus().toggleHeading({ level: level as 1 | 2 | 3 | 4 }).run(), editor.isActive("heading", { level })))}
-        {button("Bold", () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"))}
-        {button("Bullets", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}
-        {button("Numbers", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}
-        {button("Table", () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())}
-      </div>
-      <EditorContent editor={editor} className="tiptap-editor" />
-    </>
-  );
-}
-
-function Comparison() {
-  const [ckRaw, setCkRaw] = useState("");
-  const [tiptapRaw, setTiptapRaw] = useState("");
   return (
     <main>
       <header>
         <div className="eyebrow">Isolated scratch page · development only</div>
-        <h1>Word paste comparison</h1>
-        <p>Paste the same text from Word into each editor. The result at right is sent to the server, sanitized using the proposed allowlist, and returned for display. Nothing is saved to a form or database.</p>
+        <h1>Restricted Word paste test</h1>
+        <p>Paste from Word into the Tiptap editor. Bullets should appear in the editor immediately; the panel beside it shows what the server's five-tag sanitizer returns. Nothing is saved to a form or database.</p>
       </header>
-      <section className="comparison">
-        <h2>01 <span>CKEditor 5</span></h2>
-        <p className="description">Open-source build with Paste from Office. GPL licensing applies.</p>
-        <div className="panes">
-          <div className="editor-pane">
-            <div className="pane-heading">Paste from Word here</div>
-            <CKEditor
-              editor={ClassicEditor}
-              config={ckConfig}
-              data="<p>Paste your Word document here.</p>"
-              onReady={(editor) => setCkRaw(editor.getData())}
-              onChange={(_event, editor) => setCkRaw(editor.getData())}
-            />
-          </div>
-          <Output raw={ckRaw} />
+      <div className="capture">
+        <div>
+          <strong>Raw clipboard HTML stays in this browser.</strong>
+          <p>After pasting, download the raw HTML and attach that file in chat so it can become the real Word-paste test fixture. The raw clipboard HTML is not sent to the server or written to logs.</p>
         </div>
-      </section>
-      <section className="comparison">
-        <h2>02 <span>Tiptap</span></h2>
-        <p className="description">MIT-licensed editor with table support; no dedicated Word-paste plugin in this configuration.</p>
-        <div className="panes">
-          <div className="editor-pane">
-            <div className="pane-heading">Paste from Word here</div>
-            <TiptapPane onChange={setTiptapRaw} />
-          </div>
-          <Output raw={tiptapRaw} />
+        <button type="button" onClick={downloadRawPaste} disabled={!rawClipboardHtml}>Download raw paste HTML</button>
+      </div>
+      {notice && <div className="notice" role="status">{notice}</div>}
+      <div className="panes">
+        <div className="editor-pane">
+          <div className="pane-heading">Tiptap · paste from Word here</div>
+          {editor ? (
+            <>
+              <div className="toolbar" aria-label="Tiptap formatting">
+                <button type="button" onClick={() => editor.chain().focus().setParagraph().run()}>Paragraph</button>
+                <button type="button" className={editor.isActive("bold") ? "active" : ""} onClick={() => editor.chain().focus().toggleBold().run()}>Bold</button>
+                <button type="button" className={editor.isActive("bulletList") ? "active" : ""} onClick={() => editor.chain().focus().toggleBulletList().run()}>Bullets</button>
+              </div>
+              <EditorContent editor={editor} className="tiptap-editor" />
+            </>
+          ) : <p className="loading">Loading editor…</p>}
         </div>
-      </section>
-      <footer>Allowed: paragraphs, line breaks, headings 1–4, bold, bullet and numbered lists, and simple tables. All HTML attributes, images, links, styles, and merged-cell spans are removed by the server. Wide tables scroll horizontally.</footer>
+        <Output raw={editorHtml} />
+      </div>
+      <footer>Only paragraphs, line breaks, bold and flat bullet lists are supported. Table cell text becomes ordinary paragraphs; images, styling and other unsupported formatting are removed. The production application does not serve this page.</footer>
     </main>
   );
 }
 
-createRoot(document.getElementById("root")!).render(<Comparison />);
+createRoot(document.getElementById("root")!).render(<ScratchEditor />);
