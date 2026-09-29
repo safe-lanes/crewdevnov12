@@ -1,3 +1,7 @@
+import {
+    FormattedDateInput,
+    formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
@@ -448,16 +452,13 @@ const TravelEndDateArchivedCell: React.FC<{ planning: any }> = ({ planning }) =>
     const { toast } = useToast();
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (editing) {
-            inputRef.current?.focus();
-            try {
-                inputRef.current?.showPicker?.();
-            } catch {
-                /* showPicker needs a user gesture in some browsers; focus is enough fallback */
-            }
+            inputRef.current
+                ?.querySelector<HTMLInputElement>('input[type="text"]')
+                ?.focus();
         }
     }, [editing]);
 
@@ -484,31 +485,55 @@ const TravelEndDateArchivedCell: React.FC<{ planning: any }> = ({ planning }) =>
         }
     };
 
+    const minDate = formatIsoDate(planning.signOffDate || "")
+        ? planning.signOffDate
+        : undefined;
+
     if (editing) {
         return (
-            <input
-                ref={inputRef}
-                type="date"
-                defaultValue={planning.travelEndDate || ''}
-                min={planning.signOffDate || undefined}
-                onChange={handleChange}
-                onBlur={() => setEditing(false)}
-                className="w-full h-6 px-1 text-xs border rounded outline-none"
-                data-testid="input-travel-end-date-archived"
-            />
+            <div className="w-32">
+                <FormattedDateInput
+                    ref={inputRef}
+                    retainInvalidDraftOnBlur
+                    value={planning.travelEndDate || ""}
+                    min={minDate}
+                    onChange={(event) => {
+                        const value = event.target.value;
+                        if (!value || !formatIsoDate(value)) return;
+                        if (minDate && value < minDate) return;
+                        void handleChange(event);
+                    }}
+                    onBlur={(event) => {
+                        const nextTarget = event.relatedTarget;
+                        if (
+                            !(nextTarget instanceof Node) ||
+                            !inputRef.current?.contains(nextTarget)
+                        ) {
+                            setEditing(false);
+                        }
+                    }}
+                    className="w-full min-w-0 h-6 px-0 text-xs border rounded outline-none [&_input[type=text]]:px-1 [&_button]:w-7"
+                    data-testid="input-travel-end-date-archived"
+                />
+            </div>
         );
     }
-
     return (
-        <button
-            type="button"
-            className="text-xs text-gray-700 hover:underline cursor-pointer text-left w-full"
-            onClick={() => setEditing(true)}
-            disabled={saving}
-            data-testid="button-travel-end-date-archived"
-        >
-            {saving ? 'Saving...' : (planning.travelEndDate ? formatDateOnly(planning.travelEndDate) : <span className="text-gray-400">Select date</span>)}
-        </button>
+        <div className="w-32">
+            <button
+                type="button"
+                className="text-xs text-gray-700 hover:underline cursor-pointer text-left w-full"
+                onClick={() => setEditing(true)}
+                disabled={saving}
+                data-testid="button-travel-end-date-archived"
+            >
+                {saving ? 'Saving...' : (
+                    planning.travelEndDate
+                        ? formatDateOnly(planning.travelEndDate)
+                        : <span className="text-gray-400">Select date</span>
+                )}
+            </button>
+        </div>
     );
 };
 
@@ -1785,7 +1810,7 @@ export function VesselModule_v2(): JSX.Element {
                                                     {showArchived ? (
                                                         <>
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Actual Sign Off Date</TableHead>
-                                                            <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Travel End Date</TableHead>
+                                                            <TableHead className="text-white text-xs font-normal w-36 sticky top-0 z-30 bg-[#52baf3]">Travel End Date</TableHead>
                                                             {showAppraisalColumnArchived && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
                                                             {showHandoverColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>}
                                                         </>

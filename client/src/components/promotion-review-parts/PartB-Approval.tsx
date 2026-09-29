@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PromotionDateInput, type PromotionDateDrafts } from './PromotionDateInput';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -8,6 +9,7 @@ import { Plus, Info, X, Trash2 } from 'lucide-react';
 import type { Approver } from './types';
 
 interface PartBApprovalProps extends React.HTMLAttributes<HTMLDivElement> {
+  dateDrafts: PromotionDateDrafts;
   approvers: Approver[];
   onAddApprover: () => void;
   onDeleteApprover: (id: string) => void;
@@ -35,6 +37,7 @@ interface PartBApprovalProps extends React.HTMLAttributes<HTMLDivElement> {
 const slugify = (s: string) => s.toLowerCase().replace(/\s+/g, '-');
 
 export const PartBApproval = memo(function PartBApproval({
+  dateDrafts,
   approvers,
   onAddApprover,
   onDeleteApprover,
@@ -98,8 +101,9 @@ export const PartBApproval = memo(function PartBApproval({
           {approvers.map((approver) => (
             <div key={approver.id} className="space-y-2" data-testid={`approver-${approver.id}`}>
               <div className="flex items-center gap-3">
-                <Input 
-                  type="date" 
+                <PromotionDateInput
+                  drafts={dateDrafts}
+                  fieldKey={`approver:${approver.id}`}
                   className="h-9 w-40 text-xs"
                   placeholder="dd:mm:yy"
                   value={approver.date}

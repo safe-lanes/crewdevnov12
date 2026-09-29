@@ -1,3 +1,4 @@
+import { AppraisalDateInput } from "./AppraisalDateInput";
 import { memo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -150,7 +151,13 @@ const PartAComponent: React.FC<PartAProps> = ({
                   <FormItem>
                     <FormLabel className="text-xs text-gray-500 tracking-wide">Sign On Date</FormLabel>
                     <FormControl>
-                      <Input {...field} readOnly tabIndex={-1} placeholder="dd/mm/yyyy" type="date" className="bg-gray-50 text-gray-700 cursor-not-allowed focus-visible:ring-0 focus-visible:ring-offset-0" data-testid="input-sign-on" />
+                      <AppraisalDateInput
+                        {...field}
+                        readOnly
+                        tabIndex={-1}
+                        className="bg-gray-50 text-gray-700 cursor-not-allowed focus-visible:ring-0 focus-visible:ring-offset-0"
+                        data-testid="input-sign-on"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -199,7 +206,12 @@ const PartAComponent: React.FC<PartAProps> = ({
                   <FormItem>
                     <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period From</FormLabel>
                     <FormControl>
-                      <Input {...field} min={signOnValue || undefined} placeholder="dd.mm.yyyy" type="date" className="bg-[#ffffff]" data-testid="input-period-from" />
+                      <AppraisalDateInput
+                        {...field}
+                        min={signOnValue || undefined}
+                        className="bg-[#ffffff]"
+                        data-testid="input-period-from"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -212,9 +224,9 @@ const PartAComponent: React.FC<PartAProps> = ({
                   <FormItem>
                     <FormLabel className="text-xs text-gray-500 tracking-wide">Appraisal Period To<RequiredMark /></FormLabel>
                     <FormControl>
-                      <Input
+                      <AppraisalDateInput
                         {...field}
-                        type="date"
+                        rejectBeforeMin
                         min={form.watch('appraisalPeriodFrom') || undefined}
                         onChange={(e) => {
                           const from = form.getValues('appraisalPeriodFrom');
@@ -222,7 +234,6 @@ const PartAComponent: React.FC<PartAProps> = ({
                           if (from && val && val < from) return;
                           field.onChange(e);
                         }}
-                        placeholder="dd.mm.yyyy"
                         className="bg-[#ffffff]"
                         data-testid="input-period-to"
                       />

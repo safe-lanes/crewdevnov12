@@ -9,6 +9,7 @@ import SectionTitleComponents from "@/components/Section/SectionTitleComponents"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FormattedDateInput, formatIsoDate } from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -640,6 +641,10 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
   const isNew = mode.kind === "new";
   const row = mode.kind === "edit" ? mode.row : null;
   const isLimited = !!row && row.editable === "limited";
+  const [targetDateDraftValid, setTargetDateDraftValid] = useState(true);
+  const useLegacyDateInput = Boolean(
+    row?.targetDate && !formatIsoDate(row.targetDate)
+  );
 
   const [form, setForm] = useState<FormState>({
     sourceLabel: row?.source || "Others",
@@ -667,6 +672,11 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (!targetDateDraftValid) {
+        throw new Error(
+          "Enter a valid target/completion date, or clear the field."
+        );
+      }
       if (isNew) {
         await apiRequest("POST", "/api/v2/training-needs/others", {
           sourceLabel: form.sourceLabel || "Others",
@@ -807,12 +817,22 @@ function TrainingNeedDialog({ mode, onClose, companyTrainings, ranks, crew, user
 
           <div>
             <Label className="text-xs">Target or Compl. Date</Label>
-            <Input
-              type="date"
-              value={form.targetDate}
-              onChange={(e) => set("targetDate", e.target.value)}
-              data-testid="input-target-date"
-            />
+            {useLegacyDateInput ? (
+              <Input
+                type="date"
+                value={form.targetDate}
+                onChange={(e) => set("targetDate", e.target.value)}
+                data-testid="input-target-date"
+              />
+            ) : (
+              <FormattedDateInput
+                value={form.targetDate}
+                onChange={(e) => set("targetDate", e.target.value)}
+                onDraftValidityChange={setTargetDateDraftValid}
+                className="w-full h-9 text-base md:text-sm"
+                data-testid="input-target-date"
+              />
+            )}
           </div>
 
           {/* Manual name field — appears only when not bound to a crew member */}

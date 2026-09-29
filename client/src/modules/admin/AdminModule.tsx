@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { AdminDateInput } from "@/components/AdminDateInput";
+import { formatIsoDate } from "@/components/ui/formatted-date-input";
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
 import { getCrewUserId } from '@/lib/crewUser';
@@ -804,12 +806,14 @@ const AdminModuleInner = (): JSX.Element => {
   const [selectedVessels, setSelectedVessels] = useState<string[]>([]);
   const [nextRevision, setNextRevision] = useState<string>("R0"); // Auto-assigned next revision
   const [flexDate, setFlexDate] = useState("");
+  const flexDateDraftValidRef = useRef(true);
   const [revisionMode, setRevisionMode] = useState(false);
 
   // Training Matrix Vessel state (separate from Rank Admin Vessel)
   const [tmSelectedVessels, setTmSelectedVessels] = useState<string[]>([]);
   const [tmNextRevision, setTmNextRevision] = useState<string>("R0");
   const [tmFlexDate, setTmFlexDate] = useState("");
+  const tmFlexDateDraftValidRef = useRef(true);
   const [tmRevisionMode, setTmRevisionMode] = useState(false);
   const [tmApplicableTrainings, setTmApplicableTrainings] = useState<Map<string, Set<number>>>(new Map()); // vesselId -> Set of applicable training IDs
 
@@ -1493,6 +1497,15 @@ const AdminModuleInner = (): JSX.Element => {
 
   // Toast for notifications
   const { toast } = useToast();
+  const validateRevisionDateInput = (value: string, draftValid: boolean): boolean => {
+    if (draftValid && (!value || formatIsoDate(value))) return true;
+    toast({
+      title: "Invalid date",
+      description: "Enter a valid date from year 0001 to 9999, or clear the field.",
+      variant: "destructive",
+    });
+    return false;
+  };
 
   // Mutations for Master Data Entries
   const createEntryMutation = useCreateMasterDataEntry(selectedMaster);
@@ -3186,6 +3199,7 @@ const AdminModuleInner = (): JSX.Element => {
 
   const handleSubmit = async () => {
     if (selectedVessels.length === 0) return;
+    if (!validateRevisionDateInput(flexDate, flexDateDraftValidRef.current)) return;
 
     // Validate that flexDate is provided
     if (!flexDate) {
@@ -4983,12 +4997,14 @@ const AdminModuleInner = (): JSX.Element => {
                       <span className="font-medium">Next: {nextRevision}</span>
                     </div>
 
-                    <Input
-                      type="date"
-                      placeholder="dd/mm/yyyy"
+                    <AdminDateInput
+                      key={`rank-date:${ flexDate && !formatIsoDate(flexDate) ? flexDate : "supported" }`}
                       value={flexDate}
+                      initialDraft={formatIsoDate(flexDate) || flexDate}
                       onChange={(e) => setFlexDate(e.target.value)}
-                      className="h-8 w-36 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] pr-8"
+                      onDraftValidityChange={(valid) => { flexDateDraftValidRef.current = valid; }}
+                      placeholder="DD-MMM-YYYY"
+                      className="h-8 w-36 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
                       disabled={!revisionMode}
                       data-testid="flex-date-input"
                     />
@@ -6628,15 +6644,17 @@ const AdminModuleInner = (): JSX.Element => {
                   <span className="font-medium">Next: {tmNextRevision}</span>
                 </div>
 
-                <Input
-                  type="date"
-                  placeholder="dd/mm/yyyy"
-                  value={tmFlexDate}
-                  onChange={(e) => setTmFlexDate(e.target.value)}
-                  className="h-8 w-36 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae] pr-8"
-                  disabled={!tmRevisionMode}
-                  data-testid="tm-flex-date-input"
-                />
+                <AdminDateInput
+                      key={`tm-date:${ tmFlexDate && !formatIsoDate(tmFlexDate) ? tmFlexDate : "supported" }`}
+                      value={tmFlexDate}
+                      initialDraft={formatIsoDate(tmFlexDate) || tmFlexDate}
+                      onChange={(e) => setTmFlexDate(e.target.value)}
+                      onDraftValidityChange={(valid) => { tmFlexDateDraftValidRef.current = valid; }}
+                      placeholder="DD-MMM-YYYY"
+                      className="h-8 w-36 text-xs font-normal text-[#0f172a] placeholder:text-[#8899ae]"
+                      disabled={!tmRevisionMode}
+                      data-testid="tm-flex-date-input"
+                    />
 
                 {/* Revision control buttons */}
                 <div className="flex gap-2 ml-auto">
@@ -6693,6 +6711,7 @@ const AdminModuleInner = (): JSX.Element => {
                       <Button
                         onClick={() => {
                           if (tmSelectedVessels.length === 0) return;
+                          if (!validateRevisionDateInput(tmFlexDate, tmFlexDateDraftValidRef.current)) return;
                           if (!tmFlexDate) {
                             toast({
                               title: "Date required",

@@ -8,10 +8,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover as DatePopover, PopoverContent as DatePopoverContent, PopoverTrigger as DatePopoverTrigger } from "@/components/ui/popover";
+import {
+  FormattedDateInput,
+  formatIsoDate,
+  parseManualDate,
+} from "@/components/ui/formatted-date-input";
 import { ChevronDown, Calendar as CalendarIcon, Filter, Search } from 'lucide-react';
-import { addMonths, differenceInDays, startOfMonth, endOfMonth, format } from 'date-fns';
+import {
+  addMonths,
+  differenceInDays,
+  startOfMonth,
+  endOfMonth,
+  format,
+  parse,
+} from 'date-fns';
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -20,6 +30,18 @@ import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { useManningAgentsWithActiveCrewV2, useCrewPoolsV2, useVesselTypesV2, useNationalitiesV2 } from '@/hooks/v2/useMasterDataV2';
 import { ComplianceMatrixDialog_v2 as ComplianceMatrixDialog } from '@/modules/vessel/ComplianceMatrixDialog_v2';
 import { getCrewUserId } from '@/lib/crewUser';
+
+function parseRotationDateInput(value: string): Date | undefined {
+  if (!formatIsoDate(value)) return undefined;
+  return parse(value, "yyyy-MM-dd", new Date());
+}
+function formatRotationDateDraft(
+  date: Date | null | undefined,
+): string {
+  return date
+    ? formatIsoDate(format(date, "yyyy-MM-dd"))
+    : "";
+}
 
 // Format date as DD-MMM-YY (e.g., "15 Dec 25")
 function formatAvailabilityDate(dateString: string | null | undefined): string {
@@ -180,9 +202,24 @@ function CrewFilterDialog({
   };
 }) {
   const [localFilters, setLocalFilters] = useState<CrewFilters>(filters);
+  const [availabilityDraft, setAvailabilityDraft] = useState(
+    () => formatRotationDateDraft(filters.availabilityDate),
+  );
+  const [availabilityInputRevision, setAvailabilityInputRevision] =
+    useState(0);
+  const availabilityDraftValid =
+    !availabilityDraft.trim() ||
+    parseManualDate(availabilityDraft) !== null;
+  const showClearAvailability =
+    Boolean(localFilters.availabilityDate) ||
+    availabilityDraft.length > 0;
 
   useEffect(() => {
     setLocalFilters(filters);
+    setAvailabilityDraft(
+      formatRotationDateDraft(filters.availabilityDate),
+    );
+    setAvailabilityInputRevision(revision => revision + 1);
   }, [filters, open]);
 
   // Fetch Compliance Check options from oil_major_rules
@@ -213,8 +250,18 @@ function CrewFilterDialog({
     value === COMPANY_INTERNAL_VALUE ? COMPANY_INTERNAL_LABEL : value;
 
   const handleApply = () => {
+    if (!availabilityDraftValid) return;
     onFiltersChange(localFilters);
     onOpenChange(false);
+  };
+
+  const handleClearAvailabilityDate = () => {
+    setLocalFilters(prev => ({
+      ...prev,
+      availabilityDate: null,
+    }));
+    setAvailabilityDraft("");
+    setAvailabilityInputRevision(revision => revision + 1);
   };
 
   const handleReset = () => {
@@ -233,6 +280,8 @@ function CrewFilterDialog({
       oilMajorCompliance: [],
     };
     setLocalFilters(emptyFilters);
+    setAvailabilityDraft("");
+    setAvailabilityInputRevision(revision => revision + 1);
   };
 
   const toggleOilMajor = (value: string) => {
@@ -439,36 +488,65 @@ function CrewFilterDialog({
                   variant="outline"
                   className={cn(
                     "w-full justify-between",
-                    localFilters.availabilityDate ? "text-black dark:text-white" : "text-gray-500"
+                    localFilters.availabilityDate
+                      ? "text-black dark:text-white"
+                      : "text-gray-500"
                   )}
                   data-testid="filter-availabilityDate"
                 >
                   <span>
-                    {localFilters.availabilityDate 
-                      ? `Available by: ${format(localFilters.availabilityDate, 'dd-MMM-yyyy')}`
-                      : "Availability Date"
-                    }
+                    {localFilters.availabilityDate
+                      ? `Available by: ${format(
+                          localFilters.availabilityDate,
+                          'dd-MMM-yyyy'
+                        )}`
+                      : "Availability Date"}
                   </span>
                   <CalendarIcon className="h-4 w-4 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent
+                className="w-80 max-w-[calc(100vw-2rem)] p-0"
+                align="start"
+              >
                 <div className="p-2 border-b">
-                  <p className="text-sm text-gray-500">Show crew available on or before this date</p>
+                  <p className="text-sm text-gray-500">
+                    Show crew available on or before this date
+                  </p>
                 </div>
-                <Calendar
-                  mode="single"
-                  selected={localFilters.availabilityDate || undefined}
-                  onSelect={(date) => setLocalFilters(prev => ({ ...prev, availabilityDate: date || null }))}
-                  initialFocus
-                />
-                {localFilters.availabilityDate && (
+                <div className="p-2">
+                  <FormattedDateInput
+                    key={availabilityInputRevision}
+                    value={
+                      localFilters.availabilityDate
+                        ? format(
+                            localFilters.availabilityDate,
+                            "yyyy-MM-dd"
+                          )
+                        : ""
+                    }
+                    initialDraft={availabilityDraft}
+                    onDraftChange={setAvailabilityDraft}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      const date = parseRotationDateInput(value);
+                      if (value && !date) return;
+                      setLocalFilters(prev => ({
+                        ...prev,
+                        availabilityDate: date ?? null,
+                      }));
+                    }}
+                    className="w-full"
+                    data-testid="input-availability-date"
+                  />
+                </div>
+                {showClearAvailability && (
                   <div className="p-2 border-t">
                     <Button
                       variant="ghost"
                       size="sm"
                       className="w-full text-red-500 hover:text-red-600"
-                      onClick={() => setLocalFilters(prev => ({ ...prev, availabilityDate: null }))}
+                      onClick={handleClearAvailabilityDate}
                     >
                       Clear Date
                     </Button>
@@ -497,6 +575,7 @@ function CrewFilterDialog({
             </Button>
             <Button
               onClick={handleApply}
+              disabled={!availabilityDraftValid}
               className="bg-blue-600 hover:bg-blue-700"
               data-testid="button-apply-filters"
             >
@@ -1400,6 +1479,7 @@ function DatePeriodDialog({
   const [joiningDate, setJoiningDate] = useState<Date>();
   const [contractPeriod, setContractPeriod] = useState<string>('');
   const [unassignChecked, setUnassignChecked] = useState(false);
+  const [joiningDraftValid, setJoiningDraftValid] = useState(true);
 
   // Check if crew is already assigned to this vessel and rank
   // Note: vesselName prop now contains the vessel UUID (selectedVessel)
@@ -1417,43 +1497,41 @@ function DatePeriodDialog({
       setJoiningDate(new Date(initialValues.joiningDate));
       setContractPeriod(initialValues.contractPeriod.toString());
     } else if (!open) {
-      // Reset form when dialog closes
       setJoiningDate(undefined);
       setContractPeriod('');
       setUnassignChecked(false);
+      setJoiningDraftValid(true);
     }
   }, [open, initialValues]);
 
   const handleApply = () => {
-    // Priority: If unassign is checked, unassign regardless of other fields
+    // Unassign does not require a valid Joining Date or Contract Period.
     if (unassignChecked) {
       onUnassign();
       onOpenChange(false);
-      // Reset
       setJoiningDate(undefined);
       setContractPeriod('');
       setUnassignChecked(false);
+      setJoiningDraftValid(true);
       return;
     }
-
-    // Otherwise, validate and create assignment
-    if (!joiningDate || !contractPeriod) {
+    if (!joiningDraftValid || !joiningDate || !contractPeriod) {
       return;
     }
     onApply(joiningDate, parseInt(contractPeriod));
     onOpenChange(false);
-    // Reset
     setJoiningDate(undefined);
     setContractPeriod('');
     setUnassignChecked(false);
+    setJoiningDraftValid(true);
   };
 
   const handleCancel = () => {
     onOpenChange(false);
-    // Reset
     setJoiningDate(undefined);
     setContractPeriod('');
     setUnassignChecked(false);
+    setJoiningDraftValid(true);
   };
 
   return (
@@ -1466,31 +1544,21 @@ function DatePeriodDialog({
         <div className="space-y-4 py-4">
           {/* Joining Date */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Joining Date</label>
-            <DatePopover>
-              <DatePopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !joiningDate && "text-muted-foreground"
-                  )}
-                  data-testid="button-joining-date"
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {joiningDate ? format(joiningDate, "PPP") : "Pick a date"}
-                </Button>
-              </DatePopoverTrigger>
-              <DatePopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={joiningDate}
-                  onSelect={setJoiningDate}
-                  initialFocus
-                  data-testid="calendar-joining-date"
-                />
-              </DatePopoverContent>
-            </DatePopover>
+            <label className="text-sm font-medium">
+              Joining Date
+            </label>
+            <FormattedDateInput
+              value={joiningDate ? format(joiningDate, "yyyy-MM-dd") : ""}
+              onChange={(event) => {
+                const value = event.target.value;
+                const date = parseRotationDateInput(value);
+                if (value && !date) return;
+                setJoiningDate(date);
+              }}
+              onDraftValidityChange={setJoiningDraftValid}
+              className="w-full"
+              data-testid="calendar-joining-date"
+            />
           </div>
 
           {/* Contract Period */}
@@ -1541,7 +1609,10 @@ function DatePeriodDialog({
           </Button>
           <Button
             onClick={handleApply}
-            disabled={!unassignChecked && (!joiningDate || !contractPeriod)}
+            disabled={
+              !unassignChecked &&
+              (!joiningDraftValid || !joiningDate || !contractPeriod)
+            }
             className="bg-blue-600 hover:bg-blue-700"
             data-testid="button-apply-assignment"
           >
@@ -2196,6 +2267,38 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
     end: addMonths(today, 5)
   });
   const [dateRangeDialogOpen, setDateRangeDialogOpen] = useState(false);
+  const [timelineStartDraftValid, setTimelineStartDraftValid] =
+    useState(true);
+  const [timelineEndDraftValid, setTimelineEndDraftValid] =
+    useState(true);
+  const [timelineInputRevision, setTimelineInputRevision] =
+    useState(0);
+  const timelineDraftsValid =
+    timelineStartDraftValid && timelineEndDraftValid;
+
+  const handleTimelineRangeOpenChange = (open: boolean) => {
+    if (open) {
+      setTimelineStartDraftValid(true);
+      setTimelineEndDraftValid(true);
+      // Reopen from accepted dates, not discarded invalid drafts.
+      setTimelineInputRevision(revision => revision + 1);
+    }
+    setDateRangeDialogOpen(open);
+  };
+  const handleResetTimelineRange = () => {
+    const today = new Date();
+    setDateRange({
+      start: startOfMonth(addMonths(today, -2)),
+      end: addMonths(today, 5),
+    });
+    setTimelineStartDraftValid(true);
+    setTimelineEndDraftValid(true);
+    setTimelineInputRevision(revision => revision + 1);
+  };
+  const handleApplyTimelineRange = () => {
+    if (!timelineDraftsValid) return;
+    setDateRangeDialogOpen(false);
+  };
   
   const { toast } = useToast();
   
@@ -3287,7 +3390,10 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
           )}
 
           {/* Date Range filter */}
-          <Popover open={dateRangeDialogOpen} onOpenChange={setDateRangeDialogOpen}>
+          <Popover
+            open={dateRangeDialogOpen}
+            onOpenChange={handleTimelineRangeOpenChange}
+          >
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -3306,21 +3412,45 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                 <div className="flex flex-col md:flex-row gap-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Start Date</label>
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.start}
-                      onSelect={(date) => date && setDateRange({ ...dateRange, start: date })}
-                      disabled={(date) => date > dateRange.end}
+                    <FormattedDateInput
+                      key={`start-${timelineInputRevision}`}
+                      value={format(dateRange.start, "yyyy-MM-dd")}
+                      max={format(dateRange.end, "yyyy-MM-dd")}
+                      retainInvalidDraftOnBlur
+                      onDraftValidityChange={setTimelineStartDraftValid}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        const date = parseRotationDateInput(value);
+                        if (!date) return;
+                        setDateRange(prev =>
+                          value > format(prev.end, "yyyy-MM-dd")
+                            ? prev
+                            : { ...prev, start: date }
+                        );
+                      }}
+                      className="w-64 max-w-full"
                       data-testid="calendar-start-date"
                     />
                   </div>
                   <div>
                     <label className="text-sm font-medium mb-2 block">End Date</label>
-                    <Calendar
-                      mode="single"
-                      selected={dateRange.end}
-                      onSelect={(date) => date && setDateRange({ ...dateRange, end: date })}
-                      disabled={(date) => date < dateRange.start}
+                    <FormattedDateInput
+                      key={`end-${timelineInputRevision}`}
+                      value={format(dateRange.end, "yyyy-MM-dd")}
+                      min={format(dateRange.start, "yyyy-MM-dd")}
+                      retainInvalidDraftOnBlur
+                      onDraftValidityChange={setTimelineEndDraftValid}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        const date = parseRotationDateInput(value);
+                        if (!date) return;
+                        setDateRange(prev =>
+                          value < format(prev.start, "yyyy-MM-dd")
+                            ? prev
+                            : { ...prev, end: date }
+                        );
+                      }}
+                      className="w-64 max-w-full"
                       data-testid="calendar-end-date"
                     />
                   </div>
@@ -3329,20 +3459,15 @@ export function NewPlanDialog_v2({ open, onOpenChange, editPlan }: NewPlanDialog
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      const today = new Date();
-                      setDateRange({
-                        start: startOfMonth(addMonths(today, -2)),
-                        end: addMonths(today, 5)
-                      });
-                    }}
+                    onClick={handleResetTimelineRange}
                     data-testid="button-reset-date-range"
                   >
                     Reset to Default
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => setDateRangeDialogOpen(false)}
+                    onClick={handleApplyTimelineRange}
+                    disabled={!timelineDraftsValid}
                     className="bg-blue-600 hover:bg-blue-700"
                     data-testid="button-apply-date-range"
                   >

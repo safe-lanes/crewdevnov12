@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { RHDateInput, type RHDateInputHandle } from './RHDateInput';
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -85,6 +86,13 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
   const [officeClosureDate, setOfficeClosureDate] = useState<Date | undefined>(undefined);
   const [submissionStatus, setSubmissionStatus] = useState<"draft" | "vessel-submitted" | "office-submitted">("draft");
   const [status, setStatus] = useState<"Open" | "Closed">("Open");
+  const dueDateInput = useRef<RHDateInputHandle>(null);
+  const completedDateInput = useRef<RHDateInputHandle>(null);
+  const closureDateInput = useRef<RHDateInputHandle>(null);
+
+  const validateDates = () =>
+    [dueDateInput, completedDateInput, closureDateInput]
+      .every(input => input.current?.validate() !== false);
 
   // Fetch vessel name using V2 API
   const { vessels: v2Vessels } = useV2Vessels();
@@ -259,8 +267,12 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
     },
   });
 
-  const handleSave = () => saveMutation.mutate("draft");
+  const handleSave = () => {
+    if (!validateDates()) return;
+    saveMutation.mutate("draft");
+  };
   const handleVesselSubmit = () => {
+    if (!validateDates()) return;
     // Validate vessel submission fields
     if (!identifiedRootCause || !immediateCorrectiveAction || !preventiveAction || !preventiveActionDueDate) {
       toast({
@@ -281,7 +293,10 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
     }
     saveMutation.mutate("vessel-submitted");
   };
-  const handleOfficeSubmit = () => saveMutation.mutate("office-submitted");
+  const handleOfficeSubmit = () => {
+    if (!validateDates()) return;
+    saveMutation.mutate("office-submitted");
+  };
 
   const isReadOnly = submissionStatus === "office-submitted";
   
@@ -498,60 +513,32 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
 
                 <div>
                   <Label htmlFor="preventiveActionDueDate">Due Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        id="preventiveActionDueDate"
-                        data-testid="button-preventive-action-due-date"
-                        disabled={isReadOnly}
-                        className={cn(
-                          "w-full justify-start text-left font-normal mt-1",
-                          !preventiveActionDueDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {preventiveActionDueDate ? format(preventiveActionDueDate, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={preventiveActionDueDate}
-                        onSelect={setPreventiveActionDueDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <RHDateInput
+                    kind="calendar"
+                    value={preventiveActionDueDate}
+                    onChange={setPreventiveActionDueDate}
+                    validationRef={dueDateInput}
+                    resetKey={existingReport}
+                    disabled={isReadOnly}
+                    id="preventiveActionDueDate"
+                    className="mt-1"
+                    data-testid="button-preventive-action-due-date"
+                  />
                 </div>
 
                 <div>
                   <Label htmlFor="preventiveActionDateCompleted">Date Completed</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        id="preventiveActionDateCompleted"
-                        data-testid="button-preventive-action-date-completed"
-                        disabled={isReadOnly}
-                        className={cn(
-                          "w-full justify-start text-left font-normal mt-1",
-                          !preventiveActionDateCompleted && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {preventiveActionDateCompleted ? format(preventiveActionDateCompleted, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={preventiveActionDateCompleted}
-                        onSelect={setPreventiveActionDateCompleted}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <RHDateInput
+                    kind="calendar"
+                    value={preventiveActionDateCompleted}
+                    onChange={setPreventiveActionDateCompleted}
+                    validationRef={completedDateInput}
+                    resetKey={existingReport}
+                    disabled={isReadOnly}
+                    id="preventiveActionDateCompleted"
+                    className="mt-1"
+                    data-testid="button-preventive-action-date-completed"
+                  />
                 </div>
               </div>
             </div>
@@ -599,31 +586,17 @@ export function NCReportDialog({ open, onOpenChange, crewRecord, vesselName: ves
 
                 <div>
                   <Label htmlFor="officeDate">Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        id="officeDate"
-                        data-testid="button-office-date"
-                        disabled={isReadOnly}
-                        className={cn(
-                          "w-full justify-start text-left font-normal mt-1",
-                          !officeClosureDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {officeClosureDate ? format(officeClosureDate, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={officeClosureDate}
-                        onSelect={setOfficeClosureDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <RHDateInput
+                    kind="calendar"
+                    value={officeClosureDate}
+                    onChange={setOfficeClosureDate}
+                    validationRef={closureDateInput}
+                    resetKey={existingReport}
+                    disabled={isReadOnly}
+                    id="officeDate"
+                    className="mt-1"
+                    data-testid="button-office-date"
+                  />
                 </div>
               </div>
             </div>
