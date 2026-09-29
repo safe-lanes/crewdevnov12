@@ -223,6 +223,45 @@ describe.sequential("form structure service integration", () => {
     expect(row.rows[0]).toMatchObject({ content_html: sanitizeComparisonHtml(next), question_text: "Short label" });
   });
 
+  it("copies sanitized Content from released versions and freezes released Content rows", async () => {
+    const { form } = await createFormFixture(`Content copy ${uuidv4()}`, "dynamic");
+    const draft = await formsService.createVersionByFormId(form.id, {
+      configuration: "{}", versionDate: "24-Aug-2026",
+    } as any);
+    const sourcePart = await versionPartUuid(draft.fvUuid);
+    const sanitized = sanitizeComparisonHtml('<p class="word">Pinned <b>content</b></p><script>evil()</script>');
+    const saved = await formStructureService.replaceStructure(draft.fvUuid, sourcePart,
+      contentStructure('<p class="word">Pinned <b>content</b></p><script>evil()</script>'), null);
+    const questionUuid = saved.sections[0].questions[0].question_uuid;
+    const released = await formsService.releaseVersionById(draft.id);
+    const db = getDb();
+    const sourceBefore = await db.execute(sql`SELECT content_html FROM frm_questions WHERE question_uuid = ${questionUuid}`);
+    expect(sourceBefore.rows[0].content_html).toBe(sanitized);
+
+    await expect(formStructureService.replaceStructure(released.fvUuid, sourcePart,
+      contentStructure("<p>Changed after release</p>"), null))
+      .rejects.toMatchObject({ statusCode: 409 });
+    const sourceAfter = await db.execute(sql`SELECT content_html FROM frm_questions WHERE question_uuid = ${questionUuid}`);
+    expect(sourceAfter.rows).toEqual(sourceBefore.rows);
+
+    const copiedDraft = await formsService.createVersionByFormId(form.id, {
+      configuration: "{}", versionDate: "25-Aug-2026",
+    } as any);
+    const copiedRows = await db.execute(sql`
+      SELECT q.content_html FROM frm_questions q
+      JOIN frm_sections s ON s.section_uuid = q.section_uuid
+      WHERE s.form_version_uuid = ${copiedDraft.fvUuid} AND q.response_type = 'content' AND NOT q.is_deleted
+    `);
+    expect(copiedRows.rows).toHaveLength(1);
+    expect(copiedRows.rows[0].content_html).toBe(sourceAfter.rows[0].content_html);
+    console.log("Content version raw SQL:", {
+      sourceVersionUuid: released.fvUuid, destinationVersionUuid: copiedDraft.fvUuid,
+      sourceContentHtml: sourceAfter.rows[0].content_html,
+      destinationContentHtml: copiedRows.rows[0].content_html,
+      releasedWriteRejected: true, releasedRowUnchanged: true,
+    });
+  });
+
   it("rejects Content on a Standard Form draft in both write paths without persisting a row", async () => {
     const { form, rankGroup } = await createFormFixture(`Standard gate ${uuidv4()}`);
     const draft = await formsService.createVersionByFormId(form.id, {
