@@ -319,6 +319,9 @@ function mapReplacementError(error: any): never {
   if (error?.message === "Content points are available only on Company Forms") {
     throw new FormStructureServiceError(error.message, 400);
   }
+  if (error?.message === "Content point body is required after sanitization") {
+    throw new FormStructureServiceError(error.message, 400);
+  }
   if (error?.message?.includes("is archived and is read-only")) {
     throw new FormStructureServiceError(error.message, 409);
   }

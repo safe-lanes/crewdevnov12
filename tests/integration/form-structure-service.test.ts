@@ -223,6 +223,24 @@ describe.sequential("form structure service integration", () => {
     expect(row.rows[0]).toMatchObject({ content_html: sanitizeComparisonHtml(next), question_text: "Short label" });
   });
 
+  it("rejects Content whose body becomes empty after sanitization in either write path", async () => {
+    const { form } = await createFormFixture(`Empty content ${uuidv4()}`, "dynamic");
+    const draft = await formsService.createVersionByFormId(form.id, {
+      configuration: "{}", versionDate: "24-Aug-2026",
+    } as any);
+    const partUuid = await versionPartUuid(draft.fvUuid);
+    const input = contentStructure("<script>discard me</script>");
+    await expect(formStructureService.replaceStructure(draft.fvUuid, partUuid, input, null))
+      .rejects.toMatchObject({ statusCode: 400, message: "Content point body is required after sanitization" });
+    await expect(formStructureService.replaceStructures(draft.fvUuid, [{ partUuid, structure: input }], null))
+      .rejects.toMatchObject({ statusCode: 400, message: "Content point body is required after sanitization" });
+    const rows = await getDb().execute(sql`
+      SELECT q.question_uuid FROM frm_questions q JOIN frm_sections s ON s.section_uuid = q.section_uuid
+      WHERE s.form_version_uuid = ${draft.fvUuid} AND q.response_type = 'content'
+    `);
+    expect(rows.rows).toHaveLength(0);
+  });
+
   it("copies sanitized Content from released versions and freezes released Content rows", async () => {
     const { form } = await createFormFixture(`Content copy ${uuidv4()}`, "dynamic");
     const draft = await formsService.createVersionByFormId(form.id, {

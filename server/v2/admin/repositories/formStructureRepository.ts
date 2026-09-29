@@ -218,6 +218,17 @@ export class FormStructureRepository {
            context.category !== "dynamic") {
          throw new Error("Content points are available only on Company Forms");
        }
+       const sanitizedContent = new Map<object, string>();
+       for (const section of input.sections) {
+         for (const question of section.questions) {
+           if (question.response_type !== "content") continue;
+           const html = sanitizeComparisonHtml(question.content_html || "");
+           if (!html.replace(/<[^>]*>/g, "").trim()) {
+             throw new Error("Content point body is required after sanitization");
+           }
+           sanitizedContent.set(question, html);
+         }
+       }
 
       const current = await this.readTreeWithExecutor(tx, fvUuid, partUuid, true);
       await validate?.(current, tx);
@@ -402,9 +413,7 @@ export class FormStructureRepository {
           const values = {
             questionCode: question.question_code,
             questionText: question.question_text,
-             contentHtml: question.response_type === "content"
-               ? sanitizeComparisonHtml(question.content_html || "")
-               : null,
+             contentHtml: question.response_type === "content" ? sanitizedContent.get(question)! : null,
             responseType: question.response_type,
             isMandatory: question.is_mandatory,
             commentEnabled: question.comment_enabled,
