@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, Settings, Plus, Trash2, Info, CalendarIcon } from "lucide-react";
+import { ArrowLeft, Save, Settings, Plus, Trash2, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { AdminDateInput } from "@/components/AdminDateInput";
+import { formatIsoDate } from "@/components/ui/formatted-date-input";
+import { format, parseISO } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Form, promotionA2ConfigSchema, type PromotionA2Config, type PromotionChecklistSection, type PromotionChecklistAssessmentPoint } from "@shared/schema";
@@ -74,6 +74,20 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   const [activeVersion, setActiveVersion] = useState<string>("");
   const [selectedVersionNo, setSelectedVersionNo] = useState<string>("");
   const [selectedVersionDate, setSelectedVersionDate] = useState<Date | undefined>(undefined);
+  const versionDateDraftValidRef = useRef(true);
+  const versionDateInputValue = selectedVersionDate
+    ? format(selectedVersionDate, "yyyy-MM-dd")
+    : "";
+  const validateVersionDateInput = (): boolean => {
+    if (versionDateDraftValidRef.current &&
+        (!versionDateInputValue || formatIsoDate(versionDateInputValue))) return true;
+    toast({
+      title: "Invalid date",
+      description: "Enter a valid date from year 0001 to 9999, or clear the field.",
+      variant: "destructive",
+    });
+    return false;
+  };
   const [hasSavedDraft, setHasSavedDraft] = useState(false);
   const [versionExplicitlySelected, setVersionExplicitlySelected] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -422,6 +436,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   });
 
   const handleSaveDraft = handleSubmit((data) => {
+    if (isConfigMode && !validateVersionDateInput()) return;
     createDraftMutation.mutate(buildDraftPayload(data));
   });
 
@@ -429,6 +444,7 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
   // form state to the draft — /release only flips status on what the server holds.
   const handleReleaseVersion = handleSubmit(async (data) => {
     if (isConfigMode) {
+      if (!validateVersionDateInput()) return;
       try {
         const saved = await createDraftMutation.mutateAsync(buildDraftPayload(data));
         const draftId = (saved && typeof saved.id === 'number') ? saved.id : draftVersion?.id;
@@ -748,22 +764,19 @@ export const PromotionFormEditor: React.FC<PromotionFormEditorProps> = ({
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600 dark:text-gray-300">Version Date:</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8" data-testid="button-version-date">
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      {selectedVersionDate ? format(selectedVersionDate, "dd-MMM-yyyy") : format(new Date(), "dd-MMM-yyyy")}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 z-[300]" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={selectedVersionDate}
-                      onSelect={(date) => setSelectedVersionDate(date ?? undefined)}
-                      initialFocus
+                <AdminDateInput
+                      key={[`${actualFormId}:${editedRankGroupId ?? ""}`, versionDateInputValue && !formatIsoDate(versionDateInputValue)
+                        ? versionDateInputValue : "supported"].join(":")}
+                      value={versionDateInputValue}
+                      initialDraft={selectedVersionDate ? format(selectedVersionDate, "dd-MMM-yyyy") : ""}
+                      onChange={(event) => setSelectedVersionDate(
+                        event.target.value ? parseISO(event.target.value) : undefined
+                      )}
+                      onDraftValidityChange={(valid) => { versionDateDraftValidRef.current = valid; }}
+                      placeholder={format(new Date(), "dd-MMM-yyyy")}
+                      className="h-8 w-36 text-sm"
+                      data-testid="button-version-date"
                     />
-                  </PopoverContent>
-                </Popover>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600 dark:text-gray-300">Status:</span>
