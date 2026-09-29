@@ -133,7 +133,7 @@ import { useLicensesDceV2, useManningAgentsV2, useCrewPoolsV2, useAppraisalTypes
 import { useTrainingMastersV2, useCreateTrainingMasterV2, useUpdateTrainingMasterV2, useDeleteTrainingMasterV2, useReorderTrainingMastersV2, useCompanyTrainingGroupsV2, useUpdateCompanyTrainingGroupV2, useCompanyTrainingsV2, useUpdateCompanyTrainingV2, useDeleteCompanyTrainingV2, useReorderCompanyTrainingsV2, useCompanyTrainingRequirementsV2, useUpsertCompanyTrainingRequirementsV2, useCompanyRanksV2, useSaveCompanyRanksV2, useAvailableRanksV2, useCreateAvailableRankV2, useUpdateAvailableRankV2, useDeleteAvailableRankV2, useDeleteAllAvailableRanksV2, useVesselGroupsV2, useCreateVesselGroupV2, useUpdateVesselGroupV2, useDeleteVesselGroupV2, useVesselDraftsByVesselV2, useUpsertVesselDraftV2, useMasterDataV2, useImportCompanyTrainingsV2, useFormCopySourcesV2, useCopyFormConfigurationV2 } from './hooks/useAdminV2';
 
 const V2_KEY = '/api/v2/admin';
-type CompanyForm = Form & { formUuid?: string; description?: string | null; archivedAt?: string | null };
+type CompanyForm = Form & { formUuid?: string; subjectType?: string | null; description?: string | null; archivedAt?: string | null };
 type CompanyFormVersion = { id: number; formId: number; fvUuid: string; rankGroupId: number | null; versionNo: string; versionDate: string; status: string };
 
 // StableInput component - uses local state to prevent value loss during re-renders
@@ -568,7 +568,7 @@ const AdminModuleInner = (): JSX.Element => {
   const [showTrainingFilters, setShowTrainingFilters] = useState(true);
   const [trainingSearchFilter, setTrainingSearchFilter] = useState("");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [editingForm, setEditingForm] = useState<Form | null>(null);
+  const [editingForm, setEditingForm] = useState<(Form & { subjectType?: string | null }) | null>(null);
   const [editingRankGroup, setEditingRankGroup] = useState<string | null>(null);
   const [editingRankGroupId, setEditingRankGroupId] = useState<number | null>(null);
   const [isAddRankGroupOpen, setIsAddRankGroupOpen] = useState(false);

@@ -107,7 +107,8 @@ function treeResponse(
       sort_order: section.sortOrder,
       questions: (questionsBySection.get(section.sectionUuid) ?? []).map((question) => ({
         ...(() => {
-          const optionSet = setsByUuid.get(question.optionSetUuid ?? section.defaultOptionSetUuid);
+          const optionSet = question.responseType === "system_field"
+            ? undefined : setsByUuid.get(question.optionSetUuid ?? section.defaultOptionSetUuid);
           return {
             low_end_label: optionSet?.lowEndLabel ?? null,
             high_end_label: optionSet?.highEndLabel ?? null,
@@ -117,12 +118,14 @@ function treeResponse(
         question_code: question.questionCode,
         question_text: question.questionText,
         content_html: question.contentHtml,
+        system_field_key: question.systemFieldKey,
         response_type: question.responseType,
         is_mandatory: question.isMandatory,
         comment_enabled: question.commentEnabled,
         option_set_uuid: question.optionSetUuid,
         sort_order: question.sortOrder,
-        options: mapOptions(question.optionSetUuid ?? section.defaultOptionSetUuid),
+        options: question.responseType === "system_field"
+          ? [] : mapOptions(question.optionSetUuid ?? section.defaultOptionSetUuid),
       })),
     })),
   };

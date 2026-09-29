@@ -42,6 +42,7 @@ import { ConfiguredFormRenderer } from "@/components/configured-form/ConfiguredF
 import { ContentPointEditor } from "@/components/configured-form/ContentPointEditor";
 import { companyFormNumbers } from "@/components/configured-form/displayNumbering";
 import { getFixedParts } from "@/components/configured-form/fixedPartRegistry";
+import { COMPANY_FORM_SUBJECT_TYPES, getSystemFieldsForSubject } from "@shared/v2/forms-engine/systemFields";
 import { SharedFormShell } from "@/components/SharedFormShell";
 import { FormTable } from "@/components/BaseSubmoduleForm";
 import { getTableClasses, sailDesignSystem } from "@/config/sailDesignSystem";
@@ -69,7 +70,7 @@ async function loadVersionParts(formId: number, versionUuid: string, allowEmpty 
 }
 
 interface GenericFormEditorProps {
-  form: Form & { originalFormId?: number };
+  form: Form & { originalFormId?: number; subjectType?: string | null };
   formName: string;
   useV2?: boolean;
   rankGroupName?: string;
@@ -90,6 +91,7 @@ interface VersionRow {
   versionNo: string;
   versionDate: string;
   status: string;
+  releasedAt?: string | null;
   configuration?: string | null;
 }
 
@@ -157,6 +159,7 @@ interface QuestionModel {
   question_code: string;
   question_text: string;
   content_html?: string | null;
+  system_field_key?: string | null;
   response_type: string;
   is_mandatory: boolean;
   comment_enabled: boolean;
@@ -197,6 +200,7 @@ const RESPONSE_TYPES = [
   ["checkbox", "Checkbox"],
   ["info_only", "Information Only"],
   ["content", "Content"],
+  ["system_field", "System Field"],
 ] as const;
 
 let clientKeyCounter = 0;
@@ -415,19 +419,20 @@ function normalizeTree(
       question_code: question.question_code || "",
       question_text: question.question_text || "",
       content_html: question.content_html ?? null,
+      system_field_key: question.response_type === "system_field" ? question.system_field_key ?? null : null,
       response_type: question.response_type || "yes_no",
-      is_mandatory: !!question.is_mandatory,
-      comment_enabled: question.comment_enabled !== false,
+      is_mandatory: question.response_type === "system_field" ? false : !!question.is_mandatory,
+      comment_enabled: question.response_type === "system_field" ? false : question.comment_enabled !== false,
       // The repository persists resolved question references. A question that
       // comes back with the same set as its section default is represented in
       // the editor as inherited, so changing that default after a reload
       // updates it while a different set remains an explicit override.
-      option_set_uuid: question.option_set_uuid === section.default_option_set_uuid
+      option_set_uuid: question.response_type === "system_field" ? null : question.option_set_uuid === section.default_option_set_uuid
         ? null
         : question.option_set_uuid ?? null,
       low_end_label: question.low_end_label ?? optionSetsByUuid.get(question.option_set_uuid || section.default_option_set_uuid)?.low_end_label ?? null,
       high_end_label: question.high_end_label ?? optionSetsByUuid.get(question.option_set_uuid || section.default_option_set_uuid)?.high_end_label ?? null,
-      options: ((Array.isArray(question.options) && question.options.length > 0)
+      options: question.response_type === "system_field" ? [] : ((Array.isArray(question.options) && question.options.length > 0)
         ? question.options
         : (optionSetsByUuid.get(question.option_set_uuid || section.default_option_set_uuid)?.options || [])
       ).map((option: any) => ({
@@ -473,11 +478,12 @@ function toPayload(sections: SectionModel[], optionSets: OptionSetModel[] = []) 
         question_code: question.question_code,
         question_text: question.question_text.trim(),
         content_html: question.response_type === "content" ? question.content_html ?? "" : null,
+        system_field_key: question.response_type === "system_field" ? question.system_field_key ?? null : null,
         response_type: question.response_type,
-        is_mandatory: question.is_mandatory,
-        comment_enabled: question.comment_enabled,
-        option_set_uuid: question.option_set_uuid,
-        options: (question.option_set_uuid || section.default_option_set_uuid ? [] : question.options).map((option) => ({
+        is_mandatory: question.response_type === "system_field" ? false : question.is_mandatory,
+        comment_enabled: question.response_type === "system_field" ? false : question.comment_enabled,
+        option_set_uuid: question.response_type === "system_field" ? null : question.option_set_uuid,
+        options: question.response_type === "system_field" ? [] : (question.option_set_uuid || section.default_option_set_uuid ? [] : question.options).map((option) => ({
           ...(option.option_uuid ? { option_uuid: option.option_uuid } : {}),
           option_label: option.option_label.trim(),
           // This is intentionally preserved on edits and only created for new options.
@@ -491,6 +497,14 @@ function toPayload(sections: SectionModel[], optionSets: OptionSetModel[] = []) 
 function formatVersionDate(date = new Date()): string {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${String(date.getDate()).padStart(2, "0")}-${months[date.getMonth()]}-${date.getFullYear()}`;
+}
+
+function formatReleasedAt(value?: string | null): string {
+  if (!value) return "date unavailable";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "date unavailable";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${String(date.getUTCDate()).padStart(2, "0")}-${months[date.getUTCMonth()]}-${date.getUTCFullYear()}`;
 }
 
 function responseLabel(responseType: string): string {
@@ -713,6 +727,17 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   // this editor. Structure reads and writes must use the selected version's UUIDs.
   const allParts = versionParts ?? EMPTY_FORM_PARTS;
   const isCompanyForm = form.category === "dynamic";
+  const companySubjectType = isCompanyForm
+    ? (COMPANY_FORM_SUBJECT_TYPES as readonly string[]).includes(form.subjectType || "")
+      ? form.subjectType as (typeof COMPANY_FORM_SUBJECT_TYPES)[number]
+      : null
+    : null;
+  const systemFields = companySubjectType ? getSystemFieldsForSubject(companySubjectType) : [];
+  const selectedVersionLabel = isCompanyForm && selectedVersion
+    ? selectedVersion.status === "draft"
+      ? "Draft"
+      : `Version ${String(selectedVersion.versionNo).padStart(2, "0")} · Released ${formatReleasedAt(selectedVersion.releasedAt)}`
+    : undefined;
   const displayNumbers = companyFormNumbers(allParts, trees);
   const sectionDisplay = (section: SectionModel) => isCompanyForm
     ? displayNumbers.section.get(section.section_uuid || section.clientKey) || ""
@@ -963,11 +988,26 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     const previousQuestion = trees[partUuid]?.[sectionIndex]?.questions[questionIndex];
     const previousSet = optionSetFor(partUuid, previousQuestion?.option_set_uuid);
     updateQuestion(partUuid, sectionIndex, questionIndex, (question) => {
+      if (responseType === "system_field") {
+        const field = systemFields[0];
+        return {
+          ...question,
+          response_type: responseType,
+          system_field_key: field?.key ?? null,
+          question_text: field?.label ?? "",
+          content_html: null,
+          is_mandatory: false,
+          comment_enabled: false,
+          option_set_uuid: null,
+          options: [],
+        };
+      }
       const isSelect = responseType === "single_select" || responseType === "multi_select";
       if (!isSelect) {
         return {
           ...question, response_type: responseType, option_set_uuid: null, options: [],
           content_html: responseType === "content" ? question.content_html ?? "" : null,
+          system_field_key: null,
           is_mandatory: responseType === "content" ? false : question.is_mandatory,
           comment_enabled: responseType === "content" ? false : question.comment_enabled,
         };
@@ -980,6 +1020,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         return {
           ...question,
           response_type: responseType,
+          system_field_key: null,
           option_set_uuid: null,
           options: cloneOptions(inherited.options),
           low_end_label: inherited.low_end_label,
@@ -992,6 +1033,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         return {
           ...question,
           response_type: responseType,
+          system_field_key: null,
           options: cloneOptions(currentSet.options),
           low_end_label: currentSet.low_end_label,
           high_end_label: currentSet.high_end_label,
@@ -1001,6 +1043,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       return {
         ...question,
         response_type: responseType,
+        system_field_key: null,
         option_set_uuid: customSet.option_set_uuid || null,
         options: customSet.options,
         low_end_label: customSet.low_end_label,
@@ -1022,6 +1065,22 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         updatePartOptionSets(partUuid, (sets) => sets.filter((set) => set.option_set_uuid !== previousSet.option_set_uuid));
       }
     }
+  };
+
+  const changeSystemField = (partUuid: string, sectionIndex: number, questionIndex: number, fieldKey: string) => {
+    const field = systemFields.find((candidate) => candidate.key === fieldKey);
+    if (!field) return;
+    updateQuestion(partUuid, sectionIndex, questionIndex, (question) => ({
+      ...question,
+      response_type: "system_field",
+      system_field_key: field.key,
+      question_text: field.label,
+      content_html: null,
+      is_mandatory: false,
+      comment_enabled: false,
+      option_set_uuid: null,
+      options: [],
+    }));
   };
 
   const setSectionDefault = (partUuid: string, sectionIndex: number, value: string) => {
@@ -1285,6 +1344,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           return `${sectionDisplay(section)}: select a responsible department`;
         }
         for (const question of section.questions) {
+          if (question.response_type === "system_field" && !systemFields.some((field) => field.key === question.system_field_key)) {
+            return "Select a valid system field";
+          }
           if (!question.question_text.trim()) return `${pointDisplay(question)}: point text is required`;
           if (question.response_type === "content" && !question.content_html?.replace(/<[^>]*>/g, "").trim()) {
             return "Content point body is required";
@@ -1710,7 +1772,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     <div className="sticky top-0 bg-white border-b px-4 py-3 sm:px-6 sm:py-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold leading-none tracking-tight text-[#16569e]">{formName}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold leading-none tracking-tight text-[#16569e]">{formName}</h1>
+            {isCompanyForm && selectedVersionLabel && (
+              <Badge variant={selectedVersion?.status === "draft" ? "secondary" : "outline"} data-testid="company-form-version-display">
+                {selectedVersionLabel}
+              </Badge>
+            )}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {form.category === "dynamic" ? "Company Form" : rankGroupName || "All rank groups"} · configure the form structure and response points
           </p>
@@ -1780,6 +1849,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 mode="preview"
                 embedded
                 formTitle={formName}
+                formVersionLabel={selectedVersionLabel}
+                subjectType={companySubjectType}
                 parts={allParts}
                 structures={previewStructures}
                 roles={roles}
@@ -1948,6 +2019,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                       mode="preview"
                       embedded
                       formTitle={formName}
+                      formVersionLabel={selectedVersionLabel}
+                      subjectType={companySubjectType}
                       parts={allParts}
                       structures={previewStructures}
                       roles={roles}
@@ -2054,7 +2127,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                 <div className="flex items-center gap-2 rounded-md border bg-white px-2 py-1">
                                   <Select value={bulkResponseTypes[section.clientKey] || "single_select"} onValueChange={(value) => setBulkResponseTypes((current) => ({ ...current, [section.clientKey]: value }))}>
                                     <SelectTrigger className="h-7 w-[155px] text-xs" data-testid={`select-bulk-response-type-${sectionIndex + 1}`}><SelectValue /></SelectTrigger>
-                                    <SelectContent>{RESPONSE_TYPES.filter(([value]) => isCompanyForm || value !== "content").map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
+                                     <SelectContent>{RESPONSE_TYPES.filter(([value]) => isCompanyForm || (value !== "content" && value !== "system_field")).map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
                                   </Select>
                                   <Button variant="ghost" size="sm" onClick={() => {
                                     const type = bulkResponseTypes[section.clientKey] || "single_select";
@@ -2079,10 +2152,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                              {section.questions.map((question, questionIndex) => (
                                <tr key={question.clientKey} className={tableClasses.row} data-testid={`card-point-${sectionIndex + 1}-${questionIndex + 1}`}>
                                  <td className={`${tableClasses.cell} align-top`}>
-                                    <div className="mb-1 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{question.response_type === "content" ? "Content" : pointDisplay(question)}</div>
+                                     <div className="mb-1 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{question.response_type === "content" ? "Content" : question.response_type === "system_field" ? "System field" : pointDisplay(question)}</div>
                                    <Textarea
-                                     value={question.question_text}
-                                     disabled={!canModify}
+                                      value={question.response_type === "system_field"
+                                        ? systemFields.find((field) => field.key === question.system_field_key)?.label || question.question_text
+                                        : question.question_text}
+                                      disabled={!canModify || question.response_type === "system_field"}
                                      onChange={(event) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, question_text: event.target.value }))}
                                      onKeyDown={(event) => {
                                        if (event.key === "Enter" && !event.shiftKey && canModify) {
@@ -2090,7 +2165,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                          addQuestion(selectedPart.formPartUuid, sectionIndex);
                                        }
                                      }}
-                                      placeholder={question.response_type === "content" ? "Short content label" : "Enter point text, then press Enter for the next point"}
+                                       placeholder={question.response_type === "content" ? "Short content label" : question.response_type === "system_field" ? "Select a system field" : "Enter point text, then press Enter for the next point"}
                                      className={`min-h-[42px] resize-y border-0 bg-transparent px-0 text-sm font-semibold text-[#4f5863] shadow-none focus-visible:ring-0 ${!question.question_text.trim() && canModify ? "border-b border-red-300" : ""}`}
                                      data-testid={`textarea-point-text-${sectionIndex + 1}-${questionIndex + 1}`}
                                    />
@@ -2107,9 +2182,26 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                  <td className={`${tableClasses.cell} align-top`}>
                                    <Select value={question.response_type} disabled={!canModify} onValueChange={(value) => changeResponseType(selectedPart.formPartUuid, sectionIndex, questionIndex, value)}>
                                      <SelectTrigger className="h-9 w-full min-w-[160px]" data-testid={`select-response-type-${sectionIndex + 1}-${questionIndex + 1}`}><SelectValue /></SelectTrigger>
-                                    <SelectContent>{RESPONSE_TYPES.filter(([value]) => isCompanyForm || value !== "content").map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
+                                     <SelectContent>{RESPONSE_TYPES.filter(([value]) => isCompanyForm || (value !== "content" && value !== "system_field")).map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
                                    </Select>
-                                     <div className="mt-2 text-[11px] text-gray-500">{question.response_type === "content" ? "Display only — no answer." : "Single Selection allows one answer, Multi Selection allows several."}</div>
+                                      <div className="mt-2 text-[11px] text-gray-500">{question.response_type === "content" ? "Display only — no answer." : question.response_type === "system_field" ? "Read-only field supplied by the record." : "Single Selection allows one answer, Multi Selection allows several."}</div>
+                                      {question.response_type === "system_field" && (
+                                        <div className="mt-3 space-y-1.5">
+                                          <span className="text-xs font-semibold text-gray-700">System field</span>
+                                          <Select
+                                            value={question.system_field_key || ""}
+                                            disabled={!canModify || systemFields.length === 0}
+                                            onValueChange={(value) => changeSystemField(selectedPart.formPartUuid, sectionIndex, questionIndex, value)}
+                                          >
+                                            <SelectTrigger className="h-8 w-full min-w-[160px] text-xs" data-testid={`select-system-field-${sectionIndex + 1}-${questionIndex + 1}`}>
+                                              <SelectValue placeholder={systemFields.length ? "Select system field" : "No fields available"} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {systemFields.map((field) => <SelectItem value={field.key} key={field.key}>{field.label}</SelectItem>)}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                      )}
                                    {(question.response_type === "single_select" || question.response_type === "multi_select") && (
                                       <div className="mt-3 space-y-2 border-t pt-3" data-testid={`option-editor-${sectionIndex + 1}-${questionIndex + 1}`}>
                                         <div className="flex flex-wrap items-center gap-2">
@@ -2181,7 +2273,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                  </td>
                                  <td className={`${tableClasses.cell} align-top`}>
                                    <div className="space-y-2">
-                                     {question.response_type === "content" ? <span className="text-xs text-gray-500">No answer or comment</span> : <>
+                                      {question.response_type === "content" || question.response_type === "system_field" ? <span className="text-xs text-gray-500">No answer or comment</span> : <>
                                      <label className="flex items-center gap-2 text-xs text-gray-700">
                                        <Checkbox checked={question.is_mandatory} disabled={!canModify} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, is_mandatory: checked === true }))} data-testid={`checkbox-point-mandatory-${sectionIndex + 1}-${questionIndex + 1}`} />
                                        Mandatory

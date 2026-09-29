@@ -28,6 +28,7 @@ import {
 } from "@/components/BaseSubmoduleForm";
 import { getTableClasses, sailDesignSystem } from "@/config/sailDesignSystem";
 import { apiRequest } from "@/lib/queryClient";
+import { getSystemFieldsForSubject, isCompanyFormSubjectType } from "@shared/v2/forms-engine/systemFields";
 import { companyFormNumbers } from "./displayNumbering";
 
 export type ConfiguredFormMode = "preview" | "live";
@@ -53,6 +54,7 @@ export interface ConfiguredFormQuestion {
   question_code: string;
   question_text: string;
   content_html?: string | null;
+  system_field_key?: string | null;
   response_type: string;
   is_mandatory: boolean;
   comment_enabled: boolean;
@@ -147,6 +149,8 @@ export interface ConfiguredFormLiveProps {
 export interface ConfiguredFormRendererProps {
   mode: ConfiguredFormMode;
   formTitle?: string;
+  formVersionLabel?: string;
+  subjectType?: string | null;
   parts: ConfiguredFormPart[];
   structures: Record<string, ConfiguredFormSection[]>;
   roles?: ConfiguredFormRole[];
@@ -181,6 +185,15 @@ function roleName(role: ConfiguredFormRole): string {
 
 function vesselTypeName(type: ConfiguredFormVesselType): string {
   return type.name?.trim() || type.vesselType?.trim() || type.label?.trim() || "Unnamed vessel type";
+}
+
+function systemFieldLabel(question: ConfiguredFormQuestion, subjectType?: string | null): string {
+  const field = isCompanyFormSubjectType(subjectType)
+    ? getSystemFieldsForSubject(subjectType).find((candidate) => candidate.key === question.system_field_key)
+    : undefined;
+  return field?.label
+    || question.question_text.trim()
+    || "System field";
 }
 
 function departmentName(department: ConfiguredFormDepartment): string {
@@ -507,6 +520,7 @@ function ConfiguredPoint({
   answers,
   setAnswer,
   live,
+  subjectType,
   readOnly: sectionReadOnly,
 }: {
   question: ConfiguredFormQuestion;
@@ -515,6 +529,7 @@ function ConfiguredPoint({
   answers: Record<string, ConfiguredFormAnswerValue>;
   setAnswer: (questionId: string, value: ConfiguredFormAnswerValue) => void;
   live?: ConfiguredFormLiveProps;
+  subjectType?: string | null;
   readOnly?: boolean;
 }) {
   const comment = useQuestionComment(live?.answerComments?.[questionId] || "");
@@ -531,6 +546,17 @@ function ConfiguredPoint({
       <td colSpan={3} className={tableClasses.cell}>
         <div className="font-semibold">{question.question_text}</div>
         <div className="mt-2 text-sm [&_ul]:list-disc [&_ul]:pl-6 [&_p]:mb-2 [&_li_p]:mb-0" data-testid={`preview-content-${questionId}`} dangerouslySetInnerHTML={{ __html: question.content_html || "" }} />
+      </td>
+    </tr>;
+  }
+
+  if (question.response_type === "system_field") {
+    return <tr className={tableClasses.row} data-testid={`preview-system-field-${questionId}`}>
+      <td colSpan={3} className={tableClasses.cell}>
+        <div className="font-semibold">{systemFieldLabel(question, subjectType)}</div>
+        <div className="mt-1 text-sm text-muted-foreground" data-testid={`system-field-fill-message-${questionId}`}>
+          Filled from the record when opened
+        </div>
       </td>
     </tr>;
   }
@@ -829,6 +855,7 @@ function ConfiguredSection({
   live,
   mode,
   companyForm,
+  subjectType,
 }: {
   section: ConfiguredFormSection;
   sectionId: string;
@@ -845,6 +872,7 @@ function ConfiguredSection({
   live?: ConfiguredFormLiveProps;
   mode: ConfiguredFormMode;
   companyForm: boolean;
+  subjectType?: string | null;
 }) {
   const sectionTitle = section.section_title.trim() || MISSING_SECTION_TITLE;
   const sectionCode = displayCode || "Section code not configured";
@@ -866,7 +894,7 @@ function ConfiguredSection({
   const currentSectionComment = live?.sectionComments?.[sectionId] ?? sectionComment;
   const submitSection = () => {
     const missing = section.questions.find((question, index) => {
-      if (!question.is_mandatory || question.response_type === "info_only" || question.response_type === "content") return false;
+      if (!question.is_mandatory || question.response_type === "info_only" || question.response_type === "content" || question.response_type === "system_field") return false;
       const id = question.clientKey || question.question_uuid || `${sectionId}-point-${index + 1}`;
       const value = answers[id];
       return value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
@@ -971,13 +999,13 @@ function ConfiguredSection({
           </InlineMissing>
         ) : section.questions.length === 0 ? (
           <InlineMissing testId={`preview-no-points-${sectionId}`}>No points configured.</InlineMissing>
-        ) : section.effectiveLayout === "matrix" && section.questions.every((question) => question.response_type !== "content") ? (
+        ) : section.effectiveLayout === "matrix" && section.questions.every((question) => question.response_type !== "content" && question.response_type !== "system_field") ? (
           <ConfiguredMatrixSection section={section} sectionId={sectionId} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} pointNumbers={pointNumbers} />
         ) : (
-          <FormTable headers={section.questions.every((question) => question.response_type === "content") ? [] : ["Point", "Response", "Comment"]}>
+          <FormTable headers={section.questions.every((question) => question.response_type === "content" || question.response_type === "system_field") ? [] : ["Point", "Response", "Comment"]}>
             {section.questions.map((question, questionIndex) => {
               const questionId = question.clientKey || question.question_uuid || `${sectionId}-point-${questionIndex + 1}`;
-              return <ConfiguredPoint key={questionId} question={question} questionId={questionId} displayCode={pointNumbers.get(question.question_uuid || question.clientKey || "") || question.question_code} answers={answers} setAnswer={setAnswer} live={live} readOnly={readOnly} />;
+              return <ConfiguredPoint key={questionId} question={question} questionId={questionId} displayCode={question.response_type === "system_field" ? "" : pointNumbers.get(question.question_uuid || question.clientKey || "") || question.question_code} answers={answers} setAnswer={setAnswer} live={live} subjectType={subjectType} readOnly={readOnly} />;
             })}
           </FormTable>
         )}
@@ -1078,6 +1106,8 @@ function PartCard({
 export function ConfiguredFormRenderer({
   mode,
   formTitle = "Form",
+  formVersionLabel,
+  subjectType,
   parts,
   structures,
   roles = [],
@@ -1227,6 +1257,7 @@ export function ConfiguredFormRenderer({
                       live={live}
                       mode={mode}
                       companyForm={companyForm}
+                      subjectType={subjectType}
                     />
                   );
                 })}
@@ -1249,7 +1280,7 @@ export function ConfiguredFormRenderer({
   return (
     <div className={className} data-testid={mode === "preview" ? "configured-form-preview" : "configured-form-live"} style={{ fontFamily: sailDesignSystem.typography.fontFamily }}>
       <BaseSubmoduleForm
-        title={`${formTitle} · ${mode === "preview" ? "Preview" : "Live"}`}
+        title={`${formTitle}${companyForm && formVersionLabel ? ` · ${formVersionLabel}` : ""} · ${mode === "preview" ? "Preview" : "Live"}`}
         sections={baseSections}
         schema={previewSchema}
         defaultValues={{}}

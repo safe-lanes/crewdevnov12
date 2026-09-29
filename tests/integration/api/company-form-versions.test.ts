@@ -34,6 +34,7 @@ async function form(category: "dynamic" | "briefing") {
   formUuids.push(formUuid);
   const [row] = await getDb().insert(admFormsV2).values({
     formUuid, name: `Version-line fixture ${formUuid}`, category,
+    subjectType: category === "dynamic" ? "crew_assignment" : null,
     rankGroup: "", versionNo: "00", versionDate: "26-Sep-2026",
   }).returning();
   return row;

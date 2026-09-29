@@ -152,6 +152,45 @@ describe("generic configurable-form editor helpers", () => {
     expect(genericFormEditorTestUtils.isNamedOptionSet({ option_set_name: null })).toBe(false);
   });
 
+  it("round-trips System field keys and keeps them non-mandatory with no options", () => {
+    const normalized = genericFormEditorTestUtils.normalizeTree({
+      sections: [{
+        section_code: "P1",
+        section_title: "Crew",
+        responsible_mode: "not_applicable",
+        questions: [{
+          question_code: "P1.1",
+          question_text: "Vessel to join",
+          system_field_key: "vessel_to_join",
+          response_type: "system_field",
+          is_mandatory: true,
+          comment_enabled: true,
+          options: [{ option_label: "Do not keep", option_value: "unused" }],
+        }],
+      }],
+    }, "P", [], true);
+
+    const [section] = normalized;
+    const [question] = section.questions;
+    expect(question).toMatchObject({
+      system_field_key: "vessel_to_join",
+      response_type: "system_field",
+      is_mandatory: false,
+      comment_enabled: false,
+      options: [],
+    });
+
+    const [saved] = genericFormEditorTestUtils.toPayload(normalized).sections;
+    expect(saved.questions[0]).toMatchObject({
+      system_field_key: "vessel_to_join",
+      response_type: "system_field",
+      is_mandatory: false,
+      comment_enabled: false,
+      option_set_uuid: null,
+      options: [],
+    });
+  });
+
   it("persists an inherited option edit through the section default instead of a discarded point-local array", () => {
     const payload = genericFormEditorTestUtils.toPayload([{
       clientKey: "section",

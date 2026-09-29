@@ -23,7 +23,7 @@ export function companyFormNumbers<
       const sn = `${pn}.${si + 1}`;
       const sid = s.section_uuid || s.clientKey;
       if (sid) section.set(sid, sn);
-      active(s.questions).filter((q) => q.response_type !== "content").forEach((q, qi) => {
+      active(s.questions).filter((q) => q.response_type !== "content" && q.response_type !== "system_field").forEach((q, qi) => {
         const qid = q.question_uuid || q.clientKey;
         if (qid) question.set(qid, `${sn}.${qi + 1}`);
       });

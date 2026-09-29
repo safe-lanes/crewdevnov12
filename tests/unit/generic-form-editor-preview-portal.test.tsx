@@ -30,7 +30,7 @@ beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 });
 
-function renderEditor(options: { rankGroupName?: string } = {}) {
+function renderEditor(options: { rankGroupName?: string; companyForm?: boolean; formCategory?: string } = {}) {
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -39,7 +39,11 @@ function renderEditor(options: { rankGroupName?: string } = {}) {
   act(() => {
     root?.render(
       <GenericFormEditor
-        form={{ id: 99 } as any}
+        form={{
+          id: 99,
+          ...(options.companyForm ? { category: "dynamic", subjectType: "crew_assignment" } : {}),
+          ...(options.formCategory ? { category: options.formCategory } : {}),
+        } as any}
         formName="Safety review"
         rankGroupName={options.rankGroupName}
         configurableParts={[
@@ -60,6 +64,27 @@ function renderEditor(options: { rankGroupName?: string } = {}) {
 
 function click(element: HTMLElement) {
   act(() => element.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
+}
+
+function pointerDown(element: HTMLElement) {
+  const target = element as HTMLElement & {
+    hasPointerCapture?: (pointerId: number) => boolean;
+    releasePointerCapture?: (pointerId: number) => void;
+  };
+  target.hasPointerCapture ??= () => false;
+  target.releasePointerCapture ??= () => undefined;
+  act(() => element.dispatchEvent(new PointerEvent("pointerdown", {
+    bubbles: true,
+    button: 0,
+    pointerType: "mouse",
+  })));
+}
+
+function portalOption(label: string): HTMLElement {
+  const option = Array.from(document.body.querySelectorAll<HTMLElement>('[role="option"]'))
+    .find((candidate) => candidate.textContent?.trim() === label);
+  if (!option) throw new Error(`Unable to find open option "${label}"`);
+  return option;
 }
 
 async function flushAsyncWork() {
@@ -211,6 +236,76 @@ afterEach(() => {
 });
 
 describe("GenericFormEditor shared Preview shell", () => {
+  it("shows the selected Company Form version and formats its persisted release timestamp in UTC", () => {
+    queryResults.set("/api/v2/admin/forms/99/versions", [{
+      fvUuid: "released-company-version",
+      versionNo: "1",
+      versionDate: "26-Sep-2026",
+      status: "released",
+      releasedAt: "2026-09-26T00:05:00+09:00",
+    }]);
+    const { editor } = renderEditor({ companyForm: true });
+    expect(editor.querySelector('[data-testid="company-form-version-display"]')?.textContent).toContain("Version 01 · Released 25-Sep-2026");
+  });
+
+  it("does not add Company Form version metadata to a Standard Form title", () => {
+    queryResults.set("/api/v2/admin/forms/99/versions", [{
+      fvUuid: "released-standard-version",
+      versionNo: "1",
+      status: "released",
+      releasedAt: "2026-09-26T00:00:00Z",
+    }]);
+    const { editor } = renderEditor();
+    expect(editor.querySelector('[data-testid="company-form-version-display"]')).toBeNull();
+  });
+
+  it("offers System Field only for Company Forms and renders the selected field as read-only", async () => {
+    loadEditableStructure();
+    const { editor, previewButton } = renderEditor({ companyForm: true });
+    await flushAsyncWork();
+    await flushAsyncWork();
+
+    const bulkType = editor.querySelector<HTMLElement>('[data-testid="select-bulk-response-type-1"]');
+    if (!bulkType) throw new Error("Bulk response-type chooser did not render");
+    pointerDown(bulkType);
+    click(portalOption("System Field"));
+
+    const responseType = editor.querySelector<HTMLElement>('[data-testid="select-response-type-1-1"]');
+    if (!responseType) throw new Error("Point response-type chooser did not render");
+    pointerDown(responseType);
+    click(portalOption("System Field"));
+    await flushAsyncWork();
+
+    const fieldPicker = editor.querySelector<HTMLElement>('[data-testid="select-system-field-1-1"]');
+    const pointText = editor.querySelector<HTMLTextAreaElement>('[data-testid="textarea-point-text-1-1"]');
+    expect(fieldPicker).toBeTruthy();
+    expect(pointText?.disabled).toBe(true);
+    expect(editor.querySelector('[data-testid="checkbox-point-mandatory-1-1"]')).toBeNull();
+    expect(editor.querySelector('[data-testid="checkbox-point-comment-1-1"]')).toBeNull();
+    expect(editor.querySelector('[data-testid="option-editor-1-1"]')).toBeNull();
+
+    click(previewButton);
+    await flushAsyncWork();
+    expect(editor.textContent).toContain("Date of declaration");
+    expect(editor.textContent).toContain("Filled from the record when opened");
+  });
+
+  it("omits System Field from both Standard Form response choosers", async () => {
+    loadEditableStructure();
+    const { editor } = renderEditor({ formCategory: "standard" });
+    await flushAsyncWork();
+    await flushAsyncWork();
+
+    for (const testId of ["select-bulk-response-type-1", "select-response-type-1-1"]) {
+      const trigger = editor.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+      if (!trigger) throw new Error(`${testId} did not render`);
+      pointerDown(trigger);
+      expect(Array.from(document.body.querySelectorAll<HTMLElement>('[role="option"]'))
+        .some((option) => option.textContent?.trim() === "System Field")).toBe(false);
+      act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true })));
+    }
+  });
+
   it("keeps a first save authoritative while a structure write is delayed", async () => {
     queryResults.set("/api/v2/admin/rank-groups", [{ id: 7, name: "Deck", formId: 99 }]);
     queryResults.set("/api/v2/admin/forms/99/versions", [{

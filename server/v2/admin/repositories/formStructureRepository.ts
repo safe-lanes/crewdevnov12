@@ -16,6 +16,7 @@ import {
 } from "../../../../shared/v2/forms-engine/schema";
 import { masterVesselTypes } from "../../../../shared/schema";
 import { sanitizeComparisonHtml } from "../../../../shared/v2/forms-engine/contentSanitizer";
+import { getSystemField } from "../../../../shared/v2/forms-engine/systemFields";
 
 type Executor = any;
 type ReplaceTreeValidator = (
@@ -32,6 +33,7 @@ export type FormStructureContext = {
   };
   formUuid: string;
   category: string;
+  subjectType: string | null;
   formName: string;
   archivedAt: Date | null;
   part: typeof frmFormParts.$inferSelect;
@@ -91,6 +93,7 @@ export class FormStructureRepository {
         status: admFormVersionsV2.status,
         formUuid: admFormsV2.formUuid,
         category: admFormsV2.category,
+        subjectType: admFormsV2.subjectType,
         formName: admFormsV2.name,
         archivedAt: admFormsV2.archivedAt,
       })
@@ -117,6 +120,7 @@ export class FormStructureRepository {
       version: versions[0],
       formUuid: versions[0].formUuid,
       category: versions[0].category,
+      subjectType: versions[0].subjectType,
       formName: versions[0].formName,
       archivedAt: versions[0].archivedAt,
       part: parts[0],
@@ -218,6 +222,21 @@ export class FormStructureRepository {
            context.category !== "dynamic") {
          throw new Error("Content points are available only on Company Forms");
        }
+       for (const section of input.sections) {
+         for (const question of section.questions) {
+           if (question.response_type !== "system_field") continue;
+           const field = context.category === "dynamic"
+             ? getSystemField(context.subjectType, question.system_field_key)
+             : undefined;
+           if (!field) {
+             const error: any = new Error(context.category !== "dynamic"
+               ? "System fields are available only on Company Forms"
+               : "Unknown System field key for this Company Form subject");
+             error.statusCode = 400;
+             throw error;
+           }
+         }
+       }
        const sanitizedContent = new Map<object, string>();
        for (const section of input.sections) {
          for (const question of section.questions) {
@@ -313,7 +332,7 @@ export class FormStructureRepository {
               options: question.options,
             });
           }
-           if (!setUuid && question.response_type !== "content") setUuid = section.default_option_set_uuid ?? existingSection?.defaultOptionSetUuid ?? null;
+           if (!setUuid && question.response_type !== "content" && question.response_type !== "system_field") setUuid = section.default_option_set_uuid ?? existingSection?.defaultOptionSetUuid ?? null;
           questionSetUuid.set(questionUuid, setUuid);
         }
       }
@@ -412,8 +431,11 @@ export class FormStructureRepository {
           const existing = questionByUuid.get(questionUuid);
           const values = {
             questionCode: question.question_code,
-            questionText: question.question_text,
+            questionText: question.response_type === "system_field"
+              ? getSystemField(context.subjectType, question.system_field_key)!.label
+              : question.question_text,
              contentHtml: question.response_type === "content" ? sanitizedContent.get(question)! : null,
+            systemFieldKey: question.response_type === "system_field" ? question.system_field_key! : null,
             responseType: question.response_type,
             isMandatory: question.is_mandatory,
             commentEnabled: question.comment_enabled,
@@ -627,6 +649,7 @@ export class FormStructureRepository {
           questionCode: row.questionCode,
           questionText: row.questionText,
           contentHtml: row.contentHtml,
+          systemFieldKey: row.systemFieldKey,
           responseType: row.responseType,
           isMandatory: row.isMandatory,
           commentEnabled: row.commentEnabled,

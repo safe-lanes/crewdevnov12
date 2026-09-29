@@ -38,6 +38,7 @@ async function formFixture(category: string, withTemplate = false) {
   fixtures.push(formUuid);
   const [form] = await db.insert(admFormsV2).values({
     formUuid, name: `Part-edit fixture ${formUuid}`, category,
+    subjectType: category === "dynamic" ? "crew_assignment" : null,
     rankGroup: "Isolated", versionNo: "00", versionDate: "25-Sep-2026",
     isLockForm: false,
   }).returning();

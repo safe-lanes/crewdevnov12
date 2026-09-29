@@ -28,6 +28,7 @@ export const QUESTION_RESPONSE_TYPES = [
   "checkbox",
   "info_only",
   "content",
+  "system_field",
 ] as const;
 export const SECTION_LAYOUT_PREFERENCES = ["auto", "list", "matrix"] as const;
 
@@ -143,6 +144,7 @@ export const frmQuestions = pgTable(
     questionCode: text("question_code").notNull(),
     questionText: text("question_text").notNull(),
     contentHtml: text("content_html"),
+    systemFieldKey: text("system_field_key"),
     responseType: text("response_type").notNull(),
     isMandatory: boolean("is_mandatory").notNull().default(false),
     commentEnabled: boolean("comment_enabled").notNull().default(true),
@@ -383,6 +385,7 @@ export const formStructureQuestionInputSchema = z.object({
   question_code: z.string().trim().min(1).max(100),
   question_text: z.string().trim().min(1).max(2000),
   content_html: z.string().max(250000).nullable().optional(),
+  system_field_key: z.string().trim().min(1).max(100).nullable().optional(),
   response_type: z.enum(QUESTION_RESPONSE_TYPES),
   is_mandatory: z.boolean().default(false),
   comment_enabled: z.boolean().default(true),
@@ -395,6 +398,19 @@ export const formStructureQuestionInputSchema = z.object({
   sort_order: z.number().int().nonnegative().optional(),
   options: z.array(formStructureOptionInputSchema).default([]),
 }).strict().superRefine((question, ctx) => {
+  if (question.response_type === "system_field") {
+    if (!question.system_field_key) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["system_field_key"], message: "System field key is required" });
+    }
+    if (question.is_mandatory || question.comment_enabled) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["is_mandatory"], message: "System fields cannot require an answer or comment" });
+    }
+    if (question.option_set_uuid || question.options.length > 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["options"], message: "System fields cannot contain answer options" });
+    }
+  } else if (question.system_field_key) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["system_field_key"], message: "Only System fields may contain a field key" });
+  }
   if (question.response_type === "content" && !question.content_html?.trim()) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content_html"], message: "Content point HTML is required" });
   }

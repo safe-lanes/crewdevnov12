@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
+import request from "supertest";
 import { getDb } from "@server/v2/db";
 import {
   admFormVersionsV2,
@@ -92,6 +93,7 @@ async function createFormFixture(name: string, category: "briefing" | "dynamic" 
     formUuid,
     name,
     category,
+    subjectType: category === "dynamic" ? "crew_assignment" : null,
     rankGroup: "Test rank group",
     versionNo: "00",
     versionDate: "24-Aug-2026",
@@ -195,6 +197,103 @@ describe.sequential("form structure service integration", () => {
       }],
     }],
   } as FormStructureInput);
+
+  const systemStructure = (key: string): FormStructureInput => ({
+    sections: [{
+      section_code: "SYSTEM_SECTION",
+      section_title: "Record fields",
+      questions: [{
+        question_code: "SYSTEM_POINT",
+        question_text: "Record field",
+        system_field_key: key,
+        response_type: "system_field",
+        is_mandatory: false,
+        comment_enabled: false,
+        options: [],
+      }],
+    }],
+  } as FormStructureInput);
+
+  it("exposes System field keys through the create, single-part, and batch HTTP APIs", async () => {
+    const agent = request("http://127.0.0.1:5000");
+    const b64 = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
+    const authorization = `Bearer ${b64({ alg: "none", typ: "JWT" })}.${b64({ id: 24, domain: "test", userType: "Office" })}.devsig`;
+    const created = await agent.post("/api/v2/admin/forms").set("Authorization", authorization)
+      .send({ name: `System API ${uuidv4()}`, category: "dynamic" });
+    expect(created.status).toBe(201);
+    expect(created.body.form.subjectType).toBe("crew_assignment");
+    formUuids.push(created.body.form.formUuid);
+    const fvUuid = created.body.version.fvUuid;
+    const [mainPart] = await getDb().select({ formPartUuid: frmFormParts.formPartUuid })
+      .from(frmFormParts).where(eq(frmFormParts.formVersionUuid, fvUuid));
+    expect(mainPart).toBeDefined();
+    const partUuid = mainPart.formPartUuid;
+    const single = await agent.put(`/api/v2/admin/form-versions/${fvUuid}/parts/${partUuid}/structure`)
+      .set("Authorization", authorization).send(systemStructure("seafarer_name"));
+    expect(single.status).toBe(200);
+    expect(single.body.sections[0].questions[0].system_field_key).toBe("seafarer_name");
+    const batch = await agent.put(`/api/v2/admin/form-versions/${fvUuid}/structures`)
+      .set("Authorization", authorization)
+      .send({ parts: [{ form_part_uuid: partUuid, structure: systemStructure("date_of_declaration") }] });
+    expect(batch.status).toBe(200);
+    expect(batch.body.parts[0].sections[0].questions[0].system_field_key).toBe("date_of_declaration");
+    const rejected = await agent.put(`/api/v2/admin/form-versions/${fvUuid}/parts/${partUuid}/structure`)
+      .set("Authorization", authorization).send(systemStructure("wrong_subject_field"));
+    expect(rejected.status).toBe(400);
+  });
+
+  it("persists subject-scoped and shared System fields on drafts, preserves keys in a new version, and rejects invalid writes", async () => {
+    const { form } = await createFormFixture(`System fields ${uuidv4()}`, "dynamic");
+    const draft = await formsService.createVersionByFormId(form.id, {
+      configuration: "{}", versionDate: "24-Aug-2026",
+    } as any);
+    const partUuid = await versionPartUuid(draft.fvUuid);
+    const first = await formStructureService.replaceStructure(draft.fvUuid, partUuid, systemStructure("seafarer_name"), null);
+    expect(first.sections[0].questions[0]).toMatchObject({
+      system_field_key: "seafarer_name", response_type: "system_field",
+      question_text: "Seafarer name", comment_enabled: false, is_mandatory: false,
+    });
+    const shared = await formStructureService.replaceStructures(draft.fvUuid, [{
+      partUuid, structure: systemStructure("date_of_declaration"),
+    }], null);
+    expect(shared.parts[0].sections[0].questions[0]).toMatchObject({
+      system_field_key: "date_of_declaration", question_text: "Date of declaration",
+    });
+    const before = await getDb().execute(sql`
+      SELECT system_field_key FROM frm_questions WHERE question_uuid =
+        ${shared.parts[0].sections[0].questions[0].question_uuid}
+    `);
+    expect(before.rows[0].system_field_key).toBe("date_of_declaration");
+
+    for (const write of [
+      () => formStructureService.replaceStructure(draft.fvUuid, partUuid, systemStructure("not_a_field"), null),
+      () => formStructureService.replaceStructures(draft.fvUuid, [{
+        partUuid, structure: systemStructure("not_a_field"),
+      }], null),
+    ]) {
+      await expect(write()).rejects.toMatchObject({ statusCode: 400 });
+    }
+    await expect(formStructureService.replaceStructure(draft.fvUuid, partUuid, systemStructure("rank"), null))
+      .resolves.toBeDefined();
+    const released = await formsService.releaseVersionById(draft.id);
+    await expect(formStructureService.replaceStructure(released.fvUuid, partUuid, systemStructure("rank"), null))
+      .rejects.toMatchObject({ statusCode: 409 });
+    const copied = await formsService.createVersionByFormId(form.id, {
+      configuration: "{}", versionDate: "25-Aug-2026",
+    } as any);
+    const copiedTree = await formStructureService.getStructure(copied.fvUuid, await versionPartUuid(copied.fvUuid));
+    expect(copiedTree.sections[0].questions[0].system_field_key).toBe("rank");
+    const standard = await createFormFixture(`No System fields ${uuidv4()}`);
+    const standardDraft = await formsService.createVersionByFormId(standard.form.id, {
+      rankGroupId: standard.rankGroup.id, configuration: "{}", versionDate: "25-Aug-2026",
+    } as any);
+    await expect(formStructureService.replaceStructure(
+      standardDraft.fvUuid, await versionPartUuid(standardDraft.fvUuid), systemStructure("date_of_declaration"), null,
+    )).rejects.toMatchObject({ statusCode: 400, message: "System fields are available only on Company Forms" });
+    await expect(getDb().execute(sql`
+      UPDATE adm_forms_v2 SET subject_type = 'unsupported' WHERE id = ${form.id}
+    `)).rejects.toThrow(/chk_adm_forms_v2_subject_type/);
+  });
 
   it("sanitizes and reads back Content on both single-part and batch writes", async () => {
     const { form } = await createFormFixture(`Content integration ${uuidv4()}`, "dynamic");

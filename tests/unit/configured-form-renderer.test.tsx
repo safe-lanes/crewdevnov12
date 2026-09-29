@@ -232,6 +232,46 @@ describe("configured form renderer preview", () => {
     expect(numbered.question.get("after")).toBe("1.1.2");
   });
 
+  it("renders System fields read-only without an answer, comment, or consumed point number", () => {
+    const section: ConfiguredFormSection = {
+      ...configuredSection,
+      questions: [
+        { clientKey: "system-before", question_code: "B1.1", question_text: "Before", response_type: "yes_no", is_mandatory: false, comment_enabled: false, options: [] },
+        { clientKey: "declaration-date", question_code: "INTERNAL_SYSTEM_CODE", question_text: "Date of declaration", system_field_key: "date_of_declaration", response_type: "system_field", is_mandatory: false, comment_enabled: false, options: [] },
+        { clientKey: "system-after", question_code: "B1.3", question_text: "After", response_type: "free_text", is_mandatory: false, comment_enabled: false, options: [] },
+      ],
+    };
+    const numbered = companyFormNumbers([{ formPartUuid: "part-b" }], { "part-b": [section] });
+    expect(numbered.question.get("system-before")).toBe("1.1.1");
+    expect(numbered.question.has("declaration-date")).toBe(false);
+    expect(numbered.question.get("system-after")).toBe("1.1.2");
+
+    renderPreview([section], "all", true);
+    click(screen.getByTestId("button-step-part-b"));
+    const previewRow = screen.getByTestId("preview-system-field-declaration-date");
+    expect(previewRow).toHaveTextContent("Date of declaration");
+    expect(previewRow).toHaveTextContent("Filled from the record when opened");
+    expect(previewRow.textContent).not.toContain("INTERNAL_SYSTEM_CODE");
+    expect(previewRow.textContent).not.toContain("1.1.2");
+    expect(screen.queryByTestId("preview-response-declaration-date")).toBeNull();
+
+    render(
+      <ConfiguredFormRenderer
+        mode="live"
+        embedded
+        companyForm
+        subjectType="crew_assignment"
+        parts={[parts[1]]}
+        structures={{ "part-b": [section] }}
+        selectedPartUuid="part-b"
+        live={{ answers: {}, onAnswerChange: vi.fn() }}
+      />,
+    );
+    expect(screen.getByTestId("preview-system-field-declaration-date")).toHaveTextContent("Date of declaration");
+    expect(screen.getByTestId("preview-system-field-declaration-date")).toHaveTextContent("Filled from the record when opened");
+    expect(screen.queryByTestId("preview-response-declaration-date")).toBeNull();
+  });
+
   it("renders sanitized Content as display-only HTML without a response or point number", () => {
     const section: ConfiguredFormSection = {
       ...configuredSection,

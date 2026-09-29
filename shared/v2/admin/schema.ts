@@ -17,6 +17,7 @@ export const admFormsV2 = pgTable("adm_forms_v2", {
   description: text("description"),
   archivedAt: timestamp("archived_at"),
   category: text("category").notNull(),
+  subjectType: text("subject_type"),
   rankGroup: text("rank_group").notNull(),
   versionNo: text("version_no").notNull(),
   versionDate: text("version_date").notNull(),

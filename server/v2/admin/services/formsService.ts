@@ -119,6 +119,7 @@ export const formsService = {
           name: normalizedName,
           description: data.description ?? null,
           category: "dynamic",
+          subjectType: "crew_assignment",
           rankGroup: "",
           versionNo: "01",
           versionDate: date,
@@ -169,6 +170,11 @@ export const formsService = {
     try {
       form = await getDb().transaction(async (tx: any) => {
         const existing = await lockWritableForm(tx, id);
+        if (data.subjectType !== undefined && data.subjectType !== existing.subjectType) {
+          const error: any = new Error("Form subject cannot be changed");
+          error.statusCode = 409;
+          throw error;
+        }
         if (existing.category === "dynamic" && data.name !== undefined) {
           const conflict = await formsRepo.findActiveDynamicNameConflict(data.name, id, tx);
           if (conflict) throw new CompanyFormNameConflictError(conflict.name);
