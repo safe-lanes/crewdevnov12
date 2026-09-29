@@ -415,7 +415,11 @@ export function SummaryTable_v2({ selectedVessel, onAdd, onEdit }: SummaryTableP
         {
           headerName: 'Date',
           field: 'plannedDate',
-          width: 120,
+          width: 180,
+          minWidth: 180,
+          suppressSizeToFit: true,
+          suppressAutoSize: true,
+          singleClickEdit: true,
           cellClass: 'flex items-center text-[13px]',
           editable: (params) => params.data?.hasPlanning || false,
           cellEditor: PlannedDateCellEditor,

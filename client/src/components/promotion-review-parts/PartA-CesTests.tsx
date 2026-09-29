@@ -1,12 +1,14 @@
 import React, { memo } from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { PromotionDateInput, type PromotionDateDrafts } from './PromotionDateInput';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { MessageSquare, Trash2 } from 'lucide-react';
 import type { CesTest, Comment } from './types';
 
 interface PartACesTestsProps {
+  dateDrafts: PromotionDateDrafts;
   cesTests: CesTest[];
   onUpdateCesTest: (id: string, field: string, value: string) => void;
   onDeleteCesTest: (id: string) => void;
@@ -28,6 +30,7 @@ const computePassFail = (score: string, minScore: string): 'pass' | 'fail' | nul
 };
 
 export const PartACesTests = memo(function PartACesTests({
+  dateDrafts,
   cesTests,
   onUpdateCesTest,
   onDeleteCesTest,
@@ -61,8 +64,9 @@ export const PartACesTests = memo(function PartACesTests({
                   A2.7{String.fromCharCode(97 + index)}
                   {test.description && <span className="ml-2 text-gray-600">({test.description})</span>}
                 </span>
-                <Input 
-                  type="date" 
+                <PromotionDateInput
+                  drafts={dateDrafts}
+                  fieldKey={`ces:${test.id}`}
                   className="h-8 text-xs w-32" 
                   placeholder="dd/mm/yyyy"
                   value={test.date}

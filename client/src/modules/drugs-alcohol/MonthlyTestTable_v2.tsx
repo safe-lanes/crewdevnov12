@@ -297,7 +297,6 @@ export const MonthlyTestTable_v2: React.FC<MonthlyTestTableProps> = ({
         'testHistory[2]',
         'nextDue',
         'frequencyMonths',
-        'plannedDate',
         'actions'
       ];
 
@@ -535,6 +534,11 @@ export const MonthlyTestTable_v2: React.FC<MonthlyTestTableProps> = ({
           cellStyle: { fontSize: '12px', color: '#4f5863' },
           editable: true,
           cellEditor: PlannedDateCellEditor,
+          singleClickEdit: true,
+          width: 180,
+          minWidth: 180,
+          suppressSizeToFit: true,
+          suppressAutoSize: true,
         },
         {
           headerName: 'Comments',

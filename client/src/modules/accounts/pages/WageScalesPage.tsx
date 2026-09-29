@@ -32,6 +32,11 @@ import { accountsApiV2, parseApiError, ACCOUNTS_BASE } from "../api/accountsApiV
 import { formatDate } from "../accountsFormat";
 import { CURRENCIES } from "../accountsConstants";
 import WageScaleEditor from "./WageScaleEditor";
+import {
+  MISSING_SUPERSEDED_FROM,
+  getRevisionDateError,
+  shiftIsoDate,
+} from "@shared/v2/accounts/wageScaleRevisionDates";
 
 const LIST_KEY = [`${ACCOUNTS_BASE}/wage-scales`];
 const NONE = "__none__";
@@ -164,9 +169,28 @@ export default function WageScalesPage() {
   const [supersedeFrom, setSupersedeFrom] = useState("");
   const [superseding, setSuperseding] = useState(false);
 
+  const supersedeMin = supersedeRow?.effectiveFrom
+    ? shiftIsoDate(
+        supersedeRow.effectiveTo || supersedeRow.effectiveFrom,
+        1,
+      )
+    : undefined;
   const handleSupersede = (row: any) => {
+    if (!row.effectiveFrom) {
+      toast({
+        title: "Cannot create revision",
+        description: MISSING_SUPERSEDED_FROM,
+        variant: "destructive",
+      });
+      return;
+    }
+    const minimum = shiftIsoDate(
+      row.effectiveTo || row.effectiveFrom,
+      1,
+    );
+    const today = new Date().toISOString().slice(0, 10);
     setSupersedeRow(row);
-    setSupersedeFrom(new Date().toISOString().slice(0, 10));
+    setSupersedeFrom(today < minimum ? minimum : today);
   };
 
   const confirmSupersede = async () => {
@@ -177,6 +201,15 @@ export default function WageScalesPage() {
         title: "Effective From required",
         description:
           "The revision needs an Effective From date — without it, wage calculation can never switch to it.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const dateError = getRevisionDateError(row, supersedeFrom);
+    if (dateError) {
+      toast({
+        title: "Invalid revision date",
+        description: dateError,
         variant: "destructive",
       });
       return;
@@ -482,6 +515,7 @@ export default function WageScalesPage() {
             <Label>Revision effective from</Label>
             <Input
               type="date"
+              min={supersedeMin}
               value={supersedeFrom}
               onChange={(e) => setSupersedeFrom(e.target.value)}
               data-testid="input-supersede-effective-from"

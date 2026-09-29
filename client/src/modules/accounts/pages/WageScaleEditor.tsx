@@ -35,6 +35,10 @@ import {
 } from "lucide-react";
 import { accountsApiV2, parseApiError, ACCOUNTS_BASE } from "../api/accountsApiV2";
 import { formatDate, formatMoney, yearStepToMonths } from "../accountsFormat";
+import {
+  getRevisionDateError,
+  shiftIsoDate,
+} from "@shared/v2/accounts/wageScaleRevisionDates";
 
 const RANKS_KEY = ["/api/v2/admin/company-ranks"];
 const ELEMENTS_KEY = [`${ACCOUNTS_BASE}/pay-elements`];
@@ -105,7 +109,57 @@ export default function WageScaleEditor({
     (effFrom !== (scale.effectiveFrom ?? "") ||
       effTo !== (scale.effectiveTo ?? ""));
 
+  const revisionDateLimit = useMemo<{
+    min: string | undefined;
+    error: string | null;
+  }>(() => {
+    if (!supersedes?.effectiveFrom) {
+      return { min: undefined, error: null };
+    }
+    const boundary =
+      supersedes.effectiveTo || supersedes.effectiveFrom;
+    try {
+      return {
+        min: shiftIsoDate(boundary, 1),
+        error: null,
+      };
+    } catch {
+      return {
+        min: undefined,
+        error:
+          "The superseded wage scale's date boundary is invalid or outside the supported calendar range. Correct its effective dates before continuing.",
+      };
+    }
+  }, [supersedes?.effectiveFrom, supersedes?.effectiveTo]);
+  const validateRevisionDates = (
+    requireSavedDates = false,
+  ): boolean => {
+    if (!supersedes) return true;
+    const dateError =
+      getRevisionDateError(supersedes, effFrom) ||
+      revisionDateLimit.error;
+    if (dateError) {
+      toast({
+        title: "Invalid revision date",
+        description: dateError,
+        variant: "destructive",
+      });
+      return false;
+    }
+    if (requireSavedDates && datesDirty) {
+      toast({
+        title: "Save dates first",
+        description:
+          "Save the revision's effective dates before continuing.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
   const handleSaveDates = async () => {
+    if (!editable) return;
     if (isDraft && effFrom && effTo && effTo < effFrom) {
       toast({
         title: "Invalid effective dates",
@@ -114,6 +168,7 @@ export default function WageScaleEditor({
       });
       return;
     }
+    if (!validateRevisionDates()) return;
     setDatesSaving(true);
     try {
       await accountsApiV2.wageScales.update(scaleUuid, {
@@ -251,6 +306,7 @@ export default function WageScaleEditor({
       field: "__year__",
       pinned: "left",
       width: 150,
+      suppressSizeToFit: true,
       editable: false,
       sortable: false,
       filter: false,
@@ -277,6 +333,7 @@ export default function WageScaleEditor({
       field: "__total__",
       pinned: "right",
       width: 130,
+      suppressSizeToFit: true,
       editable: false,
       sortable: false,
       filter: false,
@@ -313,7 +370,6 @@ export default function WageScaleEditor({
   };
 
   // --- column management ---
-  const [colToAdd, setColToAdd] = useState("");
   const INELIGIBLE_HINTS: Record<string, string> = {
     fixed_amount: "Fixed amount — not a scale column",
     manual_entry: "Manual entry — entered as transactions",
@@ -322,9 +378,9 @@ export default function WageScaleEditor({
   const columnCandidates = elements.filter(
     (e: any) => !columns.some((c) => c.uuid === e.payElementUuid),
   );
-  const addColumn = () => {
-    const el = elementByUuid.get(colToAdd);
-    if (!el) return;
+  const addColumn = (uuid: string) => {
+    const el = elementByUuid.get(uuid);
+    if (!el || columns.some((c) => c.uuid === uuid)) return;
     setColumns((c) => [
       ...c,
       {
@@ -334,7 +390,6 @@ export default function WageScaleEditor({
         isRate: el.calcMethod === "rate_times_qty",
       },
     ]);
-    setColToAdd("");
     setDirty(true);
   };
   const removeColumn = (uuid: string) => {
@@ -430,6 +485,7 @@ export default function WageScaleEditor({
   };
 
   const handleSave = async () => {
+    if (!validateRevisionDates()) return;
     setSaving(true);
     try {
       await accountsApiV2.wageScales.replaceLines(scaleUuid, buildLines());
@@ -455,6 +511,7 @@ export default function WageScaleEditor({
   const [activating, setActivating] = useState(false);
 
   const runActivate = async (ack: boolean) => {
+    if (!validateRevisionDates(true)) return;
     setActivating(true);
     try {
       await accountsApiV2.wageScales.activate(scaleUuid, ack);
@@ -484,6 +541,7 @@ export default function WageScaleEditor({
   };
 
   const handleActivateClick = async () => {
+    if (!validateRevisionDates(true)) return;
     if (dirty) {
       toast({
         title: "Save first",
@@ -623,8 +681,9 @@ export default function WageScaleEditor({
             <Input
               type="date"
               value={effFrom}
+              min={revisionDateLimit.min}
               onChange={(e) => setEffFrom(e.target.value)}
-              disabled={!mayEdit}
+              disabled={!editable}
               className="h-8 w-40 text-xs"
               data-testid="input-editor-effective-from"
             />
@@ -638,7 +697,7 @@ export default function WageScaleEditor({
               value={effTo}
               onChange={(e) => setEffTo(e.target.value)}
               min={isDraft ? effFrom || undefined : undefined}
-              disabled={!mayEdit}
+              disabled={!editable}
               className="h-8 w-40 text-xs"
               data-testid="input-editor-effective-to"
             />
@@ -649,7 +708,7 @@ export default function WageScaleEditor({
               variant="outline"
               className="h-8"
               onClick={handleSaveDates}
-              disabled={datesSaving || !datesDirty}
+              disabled={!editable || datesSaving || !datesDirty}
               data-testid="button-save-dates"
             >
               {datesSaving ? "Saving…" : "Save dates"}
@@ -685,7 +744,7 @@ export default function WageScaleEditor({
         ))}
         {editable && (
           <div className="flex items-center gap-1">
-            <Select value={colToAdd} onValueChange={setColToAdd}>
+            <Select value="" onValueChange={addColumn}>
               <SelectTrigger
                 className="h-7 w-[220px] text-xs"
                 data-testid="select-add-column"
@@ -714,16 +773,6 @@ export default function WageScaleEditor({
                 })}
               </SelectContent>
             </Select>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7"
-              onClick={addColumn}
-              disabled={!colToAdd}
-              data-testid="button-add-column"
-            >
-              <Plus size={13} />
-            </Button>
           </div>
         )}
       </div>

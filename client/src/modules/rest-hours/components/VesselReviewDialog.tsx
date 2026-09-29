@@ -1,3 +1,4 @@
+import { RHDateInput, type RHDateInputHandle } from './RHDateInput';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,7 +9,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import type { RestHoursCrewRecord, NCReport } from '@shared/schema';
 import { filterViolations } from '../violationFilters';
 import { sortViolationCodes } from '../timelineCalculations';
@@ -89,6 +90,7 @@ export function VesselReviewDialog({
   const [officeComment, setOfficeComment] = useState('');
   const [reviewerName, setReviewerName] = useState('');
   const [reviewDate, setReviewDate] = useState<Date | undefined>(undefined);
+  const reviewDateInput = useRef<RHDateInputHandle>(null);
   const [ncReportDialogOpen, setNCReportDialogOpen] = useState(false);
   const [selectedNCReportRecord, setSelectedNCReportRecord] = useState<RestHoursCrewRecord | null>(null);
 
@@ -435,6 +437,7 @@ export function VesselReviewDialog({
   });
 
   const handleSaveComment = () => {
+    if (isOfficeMode && reviewDateInput.current?.validate() === false) return;
     if (isVesselMode) {
       saveCommentMutation.mutate(vesselComment);
     } else {
@@ -443,6 +446,7 @@ export function VesselReviewDialog({
   };
 
   const handleSubmit = () => {
+    if (isOfficeMode && reviewDateInput.current?.validate() === false) return;
     if (isVesselMode) {
       if (!vesselComment.trim()) {
         toast({
@@ -687,30 +691,16 @@ export function VesselReviewDialog({
 
                     <div>
                       <label className="text-sm text-gray-600 block mb-1">Date</label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            data-testid="button-review-date"
-                            disabled={isReadOnly}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !reviewDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {reviewDate ? format(reviewDate, "PPP") : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={reviewDate}
-                            onSelect={setReviewDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <RHDateInput
+                        kind="calendar"
+                        value={reviewDate}
+                        onChange={setReviewDate}
+                        validationRef={reviewDateInput}
+                        resetKey={officeCommentData}
+                        disabled={isReadOnly}
+                        aria-label="Reviewed by Office — Date"
+                        data-testid="button-review-date"
+                      />
                     </div>
                   </div>
                 </div>
