@@ -1,11 +1,16 @@
 import { Platform } from "react-native";
 
-// The managed Replit workflow supplies the crew web/API's mapped HTTPS
-// development origin. Local web development uses port 5001; native devices
-// must supply a reachable LAN URL.
+// EXPO_PUBLIC_API_BASE_URL_WEB takes priority on web only, so a physical-device
+// LAN URL (EXPO_PUBLIC_API_BASE_URL) and a local web preview target can be
+// configured at the same time from the same .env. The managed Replit workflow
+// supplies EXPO_PUBLIC_API_BASE_URL as the crew web/API's mapped HTTPS
+// development origin, which is why web still falls back to it before the
+// localhost default. Native devices must supply a reachable LAN URL via
+// EXPO_PUBLIC_API_BASE_URL.
 export const API_BASE_URL =
+  (Platform.OS === "web" ? process.env.EXPO_PUBLIC_API_BASE_URL_WEB : undefined) ??
   process.env.EXPO_PUBLIC_API_BASE_URL ??
-  (Platform.OS === "web" ? "http://localhost:5001" : "");
+  (Platform.OS === "web" ? "http://localhost:5000" : "");
 
 if (!API_BASE_URL) {
   throw new Error("EXPO_PUBLIC_API_BASE_URL is required for native device testing");
