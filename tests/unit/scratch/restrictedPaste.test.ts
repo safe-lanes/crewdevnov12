@@ -1,8 +1,38 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { normalizeWordPaste } from "../../../client/scratch/restrictedPaste";
 import { comparisonAllowedTags, sanitizeComparisonHtml } from "../../../server/scratch/editorComparisonSanitizer";
 
 describe("restricted Word paste", () => {
+  it("retains every nonempty paragraph of the first real Word clipboard fixture", () => {
+    const raw = readFileSync("tests/fixtures/word-paste-1.html", "utf8");
+    const original = new DOMParser().parseFromString(raw, "text/html");
+    const result = normalizeWordPaste(raw);
+    const cleaned = new DOMParser().parseFromString(result.html, "text/html");
+    const text = (value: string) => value.replace(/[\s\u00a0]+/gu, " ").trim();
+    const originalBlocks = Array.from(original.body.querySelectorAll("p"))
+      .map((p) => text(p.textContent || "").replace(/^[·•▪o§–\-*] /u, ""))
+      .filter(Boolean);
+    const cleanedBlocks = Array.from(cleaned.body.querySelectorAll("p, li"))
+      .map((block) => text(block.textContent || ""));
+
+    expect(originalBlocks).toHaveLength(21);
+    expect(cleanedBlocks).toEqual(originalBlocks);
+    expect(cleaned.querySelectorAll("ul")).toHaveLength(1);
+    expect(cleaned.querySelectorAll("ul > li")).toHaveLength(7);
+    expect(cleaned.querySelectorAll("li ul, li ol")).toHaveLength(0);
+    expect(Array.from(cleaned.querySelectorAll("p, li")).every((node) => !!node.textContent?.trim())).toBe(true);
+    expect(cleaned.querySelectorAll("table, img, a, ol, h1, h2, h3")).toHaveLength(0);
+    expect(original.querySelectorAll("table")).toHaveLength(0); // Tables require fixture 2.
+    for (const number of [1, 2, 3]) {
+      expect(cleanedBlocks.filter((block) => block.startsWith(`${number}. `))).toHaveLength(1);
+    }
+    expect(cleanedBlocks.every((block) => !/[\s\u00a0]{2}/u.test(block))).toBe(true);
+    expect(result.html).not.toContain("\t");
+    expect(result.removedFormatting).toBe(true);
+    expect(sanitizeComparisonHtml(result.html)).toBe(result.html);
+  });
+
   it.each(["·", "•", "▪", "o", "§", "–", "-", "*"])(
     "turns consecutive %s marker paragraphs into real flat list items",
     (marker) => {

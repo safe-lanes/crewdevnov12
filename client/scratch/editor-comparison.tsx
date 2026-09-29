@@ -48,7 +48,7 @@ function Output({ raw }: { raw: string }) {
       </div>
       {error ? <p role="alert" className="error">{error}</p> : (
         <>
-          <div className="result-content" data-testid="sanitized-result" dangerouslySetInnerHTML={{ __html: html }} />
+          <div className="result-content restricted-content" data-testid="sanitized-result" dangerouslySetInnerHTML={{ __html: html }} />
           <details>
             <summary>Inspect sanitized HTML</summary>
             <pre>{html}</pre>
@@ -152,7 +152,7 @@ function ScratchEditor() {
                 <button type="button" className={editor.isActive("bold") ? "active" : ""} onClick={() => editor.chain().focus().toggleBold().run()}>Bold</button>
                 <button type="button" className={editor.isActive("bulletList") ? "active" : ""} onClick={() => editor.chain().focus().toggleBulletList().run()}>Bullets</button>
               </div>
-              <EditorContent editor={editor} className="tiptap-editor" />
+              <EditorContent editor={editor} className="tiptap-editor restricted-content" />
             </>
           ) : <p className="loading">Loading editor…</p>}
         </div>

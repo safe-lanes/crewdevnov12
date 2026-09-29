@@ -40,15 +40,22 @@ function stripPrefix(fragment: DocumentFragment, length: number, doc: Document):
   }
 }
 
-function trimEdges(fragment: DocumentFragment, doc: Document): void {
+function normalizeWhitespace(fragment: DocumentFragment, doc: Document): void {
   const walker = doc.createTreeWalker(fragment, 4 /* SHOW_TEXT */);
   const nodes: Node[] = [];
   let node: Node | null;
   while ((node = walker.nextNode())) nodes.push(node);
+  let previousEndsWithSpace = false;
+  for (const textNode of nodes) {
+    let text = (textNode.textContent || "").replace(/[\s\u00a0]+/gu, " ");
+    if (previousEndsWithSpace) text = text.replace(/^ /, "");
+    textNode.textContent = text;
+    if (text) previousEndsWithSpace = text.endsWith(" ");
+  }
   if (nodes.length) {
-    nodes[0].textContent = (nodes[0].textContent || "").replace(/^\s+/u, "");
+    nodes[0].textContent = (nodes[0].textContent || "").replace(/^ /, "");
     const last = nodes[nodes.length - 1];
-    last.textContent = (last.textContent || "").replace(/\s+$/u, "");
+    last.textContent = (last.textContent || "").replace(/ $/, "");
   }
 }
 
@@ -95,12 +102,12 @@ export function normalizeWordPaste(rawHtml: string): PasteResult {
 
   function addParagraph(content: DocumentFragment, list = false): void {
     if (!meaningful(content)) return;
+    normalizeWhitespace(content, doc);
     const prefix = (content.textContent || "").match(BULLET_PREFIX);
     if (prefix) {
       stripPrefix(content, prefix[0].length, doc);
       list = true;
     }
-    trimEdges(content, doc);
     if (meaningful(content)) blocks.push({ kind: list ? "bullet" : "paragraph", content });
   }
 
