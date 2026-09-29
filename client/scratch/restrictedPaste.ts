@@ -52,9 +52,10 @@ function normalizeWhitespace(fragment: DocumentFragment, doc: Document): void {
     textNode.textContent = text;
     if (text) previousEndsWithSpace = text.endsWith(" ");
   }
-  if (nodes.length) {
-    nodes[0].textContent = (nodes[0].textContent || "").replace(/^ /, "");
-    const last = nodes[nodes.length - 1];
+  const populated = nodes.filter((textNode) => !!textNode.textContent);
+  if (populated.length) {
+    populated[0].textContent = (populated[0].textContent || "").replace(/^ /, "");
+    const last = populated[populated.length - 1];
     last.textContent = (last.textContent || "").replace(/ $/, "");
   }
 }
@@ -154,12 +155,30 @@ export function normalizeWordPaste(rawHtml: string): PasteResult {
     const tag = element.tagName.toUpperCase();
     if (element.attributes.length > 0 || REMOVED_FORMATTING.has(tag)) removedFormatting = true;
     if (tag === "TABLE") {
-      // Each cell becomes an ordinary paragraph. Never leave table markup in
-      // the editor; retain cell text even when Word supplies nested paragraphs.
+      // Keep each row together, including its number and statement in separate
+      // cells. Empty rows and tables contribute no paragraph.
       for (const row of Array.from(element.querySelectorAll("tr"))) {
+        const rowContent = doc.createDocumentFragment();
         for (const cell of Array.from(row.children)) {
-          if (cell.matches("th,td")) children(cell);
+          if (!cell.matches("th,td")) continue;
+          const cellContent = doc.createDocumentFragment();
+          for (const child of Array.from(cell.childNodes)) {
+            if (child.nodeType === 1 && BLOCK_TAGS.has((child as Element).tagName.toUpperCase())) {
+              // Word can put several paragraphs in one cell. Separate their
+              // text while retaining any bold inline content.
+              cellContent.appendChild(doc.createTextNode(" "));
+              inline(child, cellContent);
+              cellContent.appendChild(doc.createTextNode(" "));
+            } else {
+              inline(child, cellContent);
+            }
+          }
+          normalizeWhitespace(cellContent, doc);
+          if (!meaningful(cellContent)) continue;
+          if (meaningful(rowContent)) rowContent.appendChild(doc.createTextNode(" "));
+          rowContent.appendChild(cellContent);
         }
+        addParagraph(rowContent);
       }
       return;
     }

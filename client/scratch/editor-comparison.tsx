@@ -158,7 +158,7 @@ function ScratchEditor() {
         </div>
         <Output raw={editorHtml} />
       </div>
-      <footer>Only paragraphs, line breaks, bold and flat bullet lists are supported. Table cell text becomes ordinary paragraphs; images, styling and other unsupported formatting are removed. The production application does not serve this page.</footer>
+      <footer>Only paragraphs, line breaks, bold and flat bullet lists are supported. Each nonempty table row becomes one ordinary paragraph; images, styling and other unsupported formatting are removed. The production application does not serve this page.</footer>
     </main>
   );
 }

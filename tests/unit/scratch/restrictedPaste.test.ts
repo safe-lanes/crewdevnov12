@@ -43,7 +43,7 @@ describe("restricted Word paste", () => {
     },
   );
 
-  it("flattens nested lists and preserves table cell text as paragraphs", () => {
+  it("flattens nested lists and joins each table row into one paragraph", () => {
     const result = normalizeWordPaste(
       `<ul><li>Parent<ul><li>Child</li></ul></li></ul>
        <table><tr><th><p>Policy title</p></th><td><p>Policy text</p><p></p></td></tr></table>
@@ -52,11 +52,30 @@ describe("restricted Word paste", () => {
     );
     expect(result.html).toBe(
       "<ul><li>Parent</li><li>Child</li></ul>" +
-      "<p>Policy title</p><p>Policy text</p><p>Diagram description</p>" +
+      "<p>Policy title Policy text</p><p>Diagram description</p>" +
       "<p><strong>Bold text</strong> and link text</p>",
     );
     expect(result.removedFormatting).toBe(true);
     expect(result.html).not.toMatch(/<(?:table|img|a|h[1-6]|ol)\b/i);
+  });
+
+  it("joins a number and its statement from separate Word cells, without special-casing the header", () => {
+    const result = normalizeWordPaste(
+      `<table><tr><th><p>Yes</p></th><th><p>No</p></th></tr>
+       <tr><td><p>1. &nbsp; </p></td><td><p>All items contained in my employment contract have been explained
+       to me and I am aware of them.</p></td></tr>
+       <tr><td>2.</td><td><p>Second <strong>statement</strong></p></td></tr>
+       <tr><td> </td><td><p><br></p></td></tr></table>
+       <table><tr><td></td></tr></table>`,
+    );
+    expect(result.html).toBe(
+      "<p>Yes No</p>" +
+      "<p>1. All items contained in my employment contract have been explained to me and I am aware of them.</p>" +
+      "<p>2. Second <strong>statement</strong></p>",
+    );
+    expect(result.removedFormatting).toBe(true);
+    expect(sanitizeComparisonHtml(result.html)).toBe(result.html);
+    expect(result.html).not.toMatch(/<(?:table|tr|th|td)\b/i);
   });
 
   it("keeps text but drops dangerous markup before the server allowlist", () => {
