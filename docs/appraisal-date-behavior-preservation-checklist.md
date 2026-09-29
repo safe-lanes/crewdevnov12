@@ -2,6 +2,14 @@
 
 Recorded: 2026-09-28.
 
+Reconfirmed by the user on 2026-09-29 from the uploaded checklist:
+`attached_assets/Pasted-Below-is-the-preservation-checklist-No-changes-have-bee_1790657171291.txt`.
+The original uploaded text is retained unchanged. All seven sections of that
+checklist are covered below. Preserve this historical behavior baseline during
+the correction to use the actual shared date selector; do not treat descriptions
+of the earlier native controls as claims about the current implementation.
+This confirmation authorizes saving the reference only, not application changes.
+
 ## Purpose and status
 
 This preserves the complete analysis checklist requested by the user for later
