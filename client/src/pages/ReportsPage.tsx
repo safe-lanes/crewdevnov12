@@ -650,6 +650,7 @@ function FilterControl({
           value={current}
           onChange={(v) => onChange(v)}
           rangeMode={filter.kind === "periodMonth" ? "month" : "date"}
+          useSharedMonthSelector={reportId === "rh-compliance-summary" && filter.kind === "periodMonth"}
           placeholder={filter.kind === "periodMonth" ? "MMM-YYYY" : "DD-MMM-YYYY"}
         />
       );

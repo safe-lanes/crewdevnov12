@@ -2,6 +2,7 @@ import * as React from "react";
 import { cn } from "../../lib/utils";
 import { CalendarDays } from "lucide-react";
 import { Input } from "./input";
+import { MonthOnlyInput, type MonthDraft } from "./formatted-month-input";
 
 interface FormattedDateInputProps {
   value: string;
@@ -606,10 +607,13 @@ DateTimeInput.displayName = "DateTimeInput";
 
 type DateSelectorProps =
   | (FormattedDateInputProps & { mode?: "date" })
+  | (FormattedDateInputProps & { mode: "month"; initialMonthDraft?: MonthDraft; onMonthDraftChange?: (draft: MonthDraft) => void })
   | NativeDateTimeInputProps;
 
 const FormattedDateInput = React.forwardRef<HTMLDivElement, DateSelectorProps>(
-  (props, ref) => props.mode === "datetime"
+  (props, ref) => props.mode === "month"
+    ? <MonthOnlyInput {...props} ref={ref} />
+    : props.mode === "datetime"
     ? <DateTimeInput {...props} ref={ref} />
     : <DateOnlyInput {...props} ref={ref} />,
 );
