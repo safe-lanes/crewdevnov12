@@ -116,6 +116,7 @@ function treeResponse(
         question_uuid: question.questionUuid,
         question_code: question.questionCode,
         question_text: question.questionText,
+        content_html: question.contentHtml,
         response_type: question.responseType,
         is_mandatory: question.isMandatory,
         comment_enabled: question.commentEnabled,

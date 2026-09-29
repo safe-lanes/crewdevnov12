@@ -39,6 +39,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfiguredFormRenderer } from "@/components/configured-form/ConfiguredFormRenderer";
+import { ContentPointEditor } from "@/components/configured-form/ContentPointEditor";
 import { companyFormNumbers } from "@/components/configured-form/displayNumbering";
 import { getFixedParts } from "@/components/configured-form/fixedPartRegistry";
 import { SharedFormShell } from "@/components/SharedFormShell";
@@ -155,6 +156,7 @@ interface QuestionModel {
   question_uuid?: string;
   question_code: string;
   question_text: string;
+  content_html?: string | null;
   response_type: string;
   is_mandatory: boolean;
   comment_enabled: boolean;
@@ -194,6 +196,7 @@ const RESPONSE_TYPES = [
   ["number", "Number"],
   ["checkbox", "Checkbox"],
   ["info_only", "Information Only"],
+  ["content", "Content"],
 ] as const;
 
 let clientKeyCounter = 0;
@@ -323,6 +326,7 @@ function emptyQuestion(
     clientKey: clientKey("question"),
     question_code: `${sectionCode}.${questionIndex + 1}`,
     question_text: "",
+    content_html: null,
     response_type: "yes_no",
     is_mandatory: false,
     comment_enabled: true,
@@ -410,6 +414,7 @@ function normalizeTree(
       question_uuid: question.question_uuid,
       question_code: question.question_code || "",
       question_text: question.question_text || "",
+      content_html: question.content_html ?? null,
       response_type: question.response_type || "yes_no",
       is_mandatory: !!question.is_mandatory,
       comment_enabled: question.comment_enabled !== false,
@@ -467,6 +472,7 @@ function toPayload(sections: SectionModel[], optionSets: OptionSetModel[] = []) 
         ...(question.question_uuid ? { question_uuid: question.question_uuid } : {}),
         question_code: question.question_code,
         question_text: question.question_text.trim(),
+        content_html: question.response_type === "content" ? question.content_html ?? "" : null,
         response_type: question.response_type,
         is_mandatory: question.is_mandatory,
         comment_enabled: question.comment_enabled,
@@ -959,7 +965,12 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     updateQuestion(partUuid, sectionIndex, questionIndex, (question) => {
       const isSelect = responseType === "single_select" || responseType === "multi_select";
       if (!isSelect) {
-        return { ...question, response_type: responseType, option_set_uuid: null, options: [] };
+        return {
+          ...question, response_type: responseType, option_set_uuid: null, options: [],
+          content_html: responseType === "content" ? question.content_html ?? "" : null,
+          is_mandatory: responseType === "content" ? false : question.is_mandatory,
+          comment_enabled: responseType === "content" ? false : question.comment_enabled,
+        };
       }
       const section = trees[partUuid]?.[sectionIndex];
       const inherited = section?.default_option_set_uuid
@@ -1275,6 +1286,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         }
         for (const question of section.questions) {
           if (!question.question_text.trim()) return `${pointDisplay(question)}: point text is required`;
+          if (question.response_type === "content" && !question.content_html?.replace(/<[^>]*>/g, "").trim()) {
+            return "Content point body is required";
+          }
           if ((question.response_type === "single_select" || question.response_type === "multi_select") && question.options.length === 0) {
             return `${pointDisplay(question)}: add at least one option`;
           }
@@ -2040,7 +2054,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                 <div className="flex items-center gap-2 rounded-md border bg-white px-2 py-1">
                                   <Select value={bulkResponseTypes[section.clientKey] || "single_select"} onValueChange={(value) => setBulkResponseTypes((current) => ({ ...current, [section.clientKey]: value }))}>
                                     <SelectTrigger className="h-7 w-[155px] text-xs" data-testid={`select-bulk-response-type-${sectionIndex + 1}`}><SelectValue /></SelectTrigger>
-                                    <SelectContent>{RESPONSE_TYPES.map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
+                                    <SelectContent>{RESPONSE_TYPES.filter(([value]) => isCompanyForm || value !== "content").map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
                                   </Select>
                                   <Button variant="ghost" size="sm" onClick={() => {
                                     const type = bulkResponseTypes[section.clientKey] || "single_select";
@@ -2065,7 +2079,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                              {section.questions.map((question, questionIndex) => (
                                <tr key={question.clientKey} className={tableClasses.row} data-testid={`card-point-${sectionIndex + 1}-${questionIndex + 1}`}>
                                  <td className={`${tableClasses.cell} align-top`}>
-                                   <div className="mb-1 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{pointDisplay(question)}</div>
+                                    <div className="mb-1 text-xs font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{question.response_type === "content" ? "Content" : pointDisplay(question)}</div>
                                    <Textarea
                                      value={question.question_text}
                                      disabled={!canModify}
@@ -2076,18 +2090,26 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                          addQuestion(selectedPart.formPartUuid, sectionIndex);
                                        }
                                      }}
-                                     placeholder="Enter point text, then press Enter for the next point"
+                                      placeholder={question.response_type === "content" ? "Short content label" : "Enter point text, then press Enter for the next point"}
                                      className={`min-h-[42px] resize-y border-0 bg-transparent px-0 text-sm font-semibold text-[#4f5863] shadow-none focus-visible:ring-0 ${!question.question_text.trim() && canModify ? "border-b border-red-300" : ""}`}
                                      data-testid={`textarea-point-text-${sectionIndex + 1}-${questionIndex + 1}`}
                                    />
-                                   {!question.question_text.trim() && canModify && <p className="text-[11px] text-red-600">Point text is required.</p>}
+                                    {!question.question_text.trim() && canModify && <p className="text-[11px] text-red-600">Point text is required.</p>}
+                                    {question.response_type === "content" && <div className="mt-3">
+                                      <ContentPointEditor
+                                        key={question.question_uuid || question.clientKey}
+                                        html={question.content_html || ""}
+                                        disabled={!canModify}
+                                        onChange={(html) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, content_html: html }))}
+                                      />
+                                    </div>}
                                  </td>
                                  <td className={`${tableClasses.cell} align-top`}>
                                    <Select value={question.response_type} disabled={!canModify} onValueChange={(value) => changeResponseType(selectedPart.formPartUuid, sectionIndex, questionIndex, value)}>
                                      <SelectTrigger className="h-9 w-full min-w-[160px]" data-testid={`select-response-type-${sectionIndex + 1}-${questionIndex + 1}`}><SelectValue /></SelectTrigger>
-                                     <SelectContent>{RESPONSE_TYPES.map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
+                                    <SelectContent>{RESPONSE_TYPES.filter(([value]) => isCompanyForm || value !== "content").map(([value, label]) => <SelectItem value={value} key={value}>{label}</SelectItem>)}</SelectContent>
                                    </Select>
-                                    <div className="mt-2 text-[11px] text-gray-500">Single Selection allows one answer, Multi Selection allows several.</div>
+                                     <div className="mt-2 text-[11px] text-gray-500">{question.response_type === "content" ? "Display only — no answer." : "Single Selection allows one answer, Multi Selection allows several."}</div>
                                    {(question.response_type === "single_select" || question.response_type === "multi_select") && (
                                       <div className="mt-3 space-y-2 border-t pt-3" data-testid={`option-editor-${sectionIndex + 1}-${questionIndex + 1}`}>
                                         <div className="flex flex-wrap items-center gap-2">
@@ -2159,6 +2181,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                  </td>
                                  <td className={`${tableClasses.cell} align-top`}>
                                    <div className="space-y-2">
+                                     {question.response_type === "content" ? <span className="text-xs text-gray-500">No answer or comment</span> : <>
                                      <label className="flex items-center gap-2 text-xs text-gray-700">
                                        <Checkbox checked={question.is_mandatory} disabled={!canModify} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, is_mandatory: checked === true }))} data-testid={`checkbox-point-mandatory-${sectionIndex + 1}-${questionIndex + 1}`} />
                                        Mandatory
@@ -2167,6 +2190,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                        <Checkbox checked={question.comment_enabled} disabled={!canModify} onCheckedChange={(checked) => updateQuestion(selectedPart.formPartUuid, sectionIndex, questionIndex, (value) => ({ ...value, comment_enabled: checked === true }))} data-testid={`checkbox-point-comment-${sectionIndex + 1}-${questionIndex + 1}`} />
                                        Comment enabled
                                      </label>
+                                     </>}
                                    </div>
                                  </td>
                                  <td className={`${tableClasses.cell} align-top`}>

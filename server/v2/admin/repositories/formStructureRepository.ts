@@ -15,6 +15,7 @@ import {
   type FormStructureInput,
 } from "../../../../shared/v2/forms-engine/schema";
 import { masterVesselTypes } from "../../../../shared/schema";
+import { sanitizeComparisonHtml } from "../../../../shared/v2/forms-engine/contentSanitizer";
 
 type Executor = any;
 type ReplaceTreeValidator = (
@@ -213,6 +214,11 @@ export class FormStructureRepository {
         throw new Error(`Form part ${partUuid} does not belong to the same form as version ${fvUuid}`);
       }
 
+       if (input.sections.some((section) => section.questions.some((question) => question.response_type === "content")) &&
+           context.category !== "dynamic") {
+         throw new Error("Content points are available only on Company Forms");
+       }
+
       const current = await this.readTreeWithExecutor(tx, fvUuid, partUuid, true);
       await validate?.(current, tx);
       const activeSections = current.sections.filter((row: any) => !row.isDeleted);
@@ -296,7 +302,7 @@ export class FormStructureRepository {
               options: question.options,
             });
           }
-          if (!setUuid) setUuid = section.default_option_set_uuid ?? existingSection?.defaultOptionSetUuid ?? null;
+           if (!setUuid && question.response_type !== "content") setUuid = section.default_option_set_uuid ?? existingSection?.defaultOptionSetUuid ?? null;
           questionSetUuid.set(questionUuid, setUuid);
         }
       }
@@ -396,6 +402,9 @@ export class FormStructureRepository {
           const values = {
             questionCode: question.question_code,
             questionText: question.question_text,
+             contentHtml: question.response_type === "content"
+               ? sanitizeComparisonHtml(question.content_html || "")
+               : null,
             responseType: question.response_type,
             isMandatory: question.is_mandatory,
             commentEnabled: question.comment_enabled,
@@ -608,6 +617,7 @@ export class FormStructureRepository {
           sectionUuid,
           questionCode: row.questionCode,
           questionText: row.questionText,
+          contentHtml: row.contentHtml,
           responseType: row.responseType,
           isMandatory: row.isMandatory,
           commentEnabled: row.commentEnabled,

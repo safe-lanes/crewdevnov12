@@ -52,6 +52,7 @@ export interface ConfiguredFormQuestion {
   question_uuid?: string;
   question_code: string;
   question_text: string;
+  content_html?: string | null;
   response_type: string;
   is_mandatory: boolean;
   comment_enabled: boolean;
@@ -523,6 +524,15 @@ function ConfiguredPoint({
   const tableClasses = getTableClasses();
   const readOnly = !!live?.isLocked || !!sectionReadOnly;
 
+  if (question.response_type === "content") {
+    return <tr className={tableClasses.row} data-testid={`preview-point-${questionId}`}>
+      <td colSpan={3} className={tableClasses.cell}>
+        <div className="font-semibold">{question.question_text}</div>
+        <div className="mt-2 text-sm [&_ul]:list-disc [&_ul]:pl-6 [&_p]:mb-2 [&_li_p]:mb-0" data-testid={`preview-content-${questionId}`} dangerouslySetInnerHTML={{ __html: question.content_html || "" }} />
+      </td>
+    </tr>;
+  }
+
   const responseControl = (() => {
     switch (question.response_type) {
       case "yes_no":
@@ -852,7 +862,7 @@ function ConfiguredSection({
   const currentSectionComment = live?.sectionComments?.[sectionId] ?? sectionComment;
   const submitSection = () => {
     const missing = section.questions.find((question, index) => {
-      if (!question.is_mandatory || question.response_type === "info_only") return false;
+      if (!question.is_mandatory || question.response_type === "info_only" || question.response_type === "content") return false;
       const id = question.clientKey || question.question_uuid || `${sectionId}-point-${index + 1}`;
       const value = answers[id];
       return value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);

@@ -27,6 +27,7 @@ export const QUESTION_RESPONSE_TYPES = [
   "number",
   "checkbox",
   "info_only",
+  "content",
 ] as const;
 export const SECTION_LAYOUT_PREFERENCES = ["auto", "list", "matrix"] as const;
 
@@ -141,6 +142,7 @@ export const frmQuestions = pgTable(
       .references(() => frmSections.sectionUuid, { onDelete: "restrict", onUpdate: "cascade" }),
     questionCode: text("question_code").notNull(),
     questionText: text("question_text").notNull(),
+    contentHtml: text("content_html"),
     responseType: text("response_type").notNull(),
     isMandatory: boolean("is_mandatory").notNull().default(false),
     commentEnabled: boolean("comment_enabled").notNull().default(true),
@@ -380,6 +382,7 @@ export const formStructureQuestionInputSchema = z.object({
   question_uuid: rowUuidSchema.optional(),
   question_code: z.string().trim().min(1).max(100),
   question_text: z.string().trim().min(1).max(2000),
+  content_html: z.string().max(250000).nullable().optional(),
   response_type: z.enum(QUESTION_RESPONSE_TYPES),
   is_mandatory: z.boolean().default(false),
   comment_enabled: z.boolean().default(true),
@@ -392,6 +395,12 @@ export const formStructureQuestionInputSchema = z.object({
   sort_order: z.number().int().nonnegative().optional(),
   options: z.array(formStructureOptionInputSchema).default([]),
 }).strict().superRefine((question, ctx) => {
+  if (question.response_type === "content" && !question.content_html?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content_html"], message: "Content point HTML is required" });
+  }
+  if (question.response_type !== "content" && question.content_html) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content_html"], message: "Only Content points may contain HTML" });
+  }
   const needsOptions = question.response_type === "single_select" || question.response_type === "multi_select";
   if (!needsOptions && (question.options.length > 0 || question.option_set_uuid)) {
     ctx.addIssue({
