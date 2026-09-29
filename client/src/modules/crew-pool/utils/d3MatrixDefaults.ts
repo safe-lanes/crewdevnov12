@@ -4,6 +4,7 @@ export interface D3Identity {
   companyId?: string;
   trainUuid?: string;
   matrixDefault?: boolean;
+  trainingCourse?: string;
 }
 
 export interface D3Master {
@@ -26,6 +27,10 @@ export function d3CourseKey(
     masters.find(master => String(master.id) === id)?.companyId ||
     id
   );
+}
+
+export function d3TrainingName(value?: string): string {
+  return (value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 export function d3RankId(
@@ -78,6 +83,9 @@ export function missingD3Defaults(
   const existing = new Set(
     rows.map(row => d3CourseKey(row, masters)).filter(Boolean),
   );
+  const existingNames = new Set(
+    rows.map(row => d3TrainingName(row.trainingCourse)).filter(Boolean),
+  );
   const rowIds = new Set(rows.map(row => row.id));
 
   const required = new Set(
@@ -91,17 +99,20 @@ export function missingD3Defaults(
   );
 
   return masters.flatMap((master, index) => {
+    const name = d3TrainingName(master.trainingLabel);
     if (
       !required.has(Number(master.id)) ||
       !master.companyId ||
       !master.trainingLabel ||
       existing.has(master.companyId) ||
+      (name && existingNames.has(name)) ||
       suppressed.has(master.companyId)
     ) {
       return [];
     }
 
     existing.add(master.companyId);
+    if (name) existingNames.add(name);
 
     let id = prefix + master.id;
     for (let suffix = 1; rowIds.has(id); suffix++) {

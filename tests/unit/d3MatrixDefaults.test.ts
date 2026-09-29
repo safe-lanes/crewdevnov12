@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   d3CourseKey,
+  d3TrainingName,
   d3RankId,
   missingD3Defaults,
   mergeD3LocalRows,
@@ -51,14 +52,14 @@ describe('D3 Matrix defaults', () => {
     expect(rows[0].expiry).toBe('');
   });
 
-  it('recognizes canonical and legacy identities, not manual names', () => {
+  it('recognizes canonical and legacy identities and manual names', () => {
     expect(
       make([{ id: 'saved', courseId: '1' }]).map(row => row.courseId),
     ).toEqual(['B']);
 
     expect(
-      make([{ id: 'manual', trainingCourse: 'Alpha' }]),
-    ).toHaveLength(2);
+      make([{ id: 'manual', trainingCourse: 'Alpha' }]).map(row => row.courseId),
+    ).toEqual(['B']);
 
     expect(
       d3CourseKey(
@@ -274,5 +275,67 @@ describe('D3 configured rank labels', () => {
     const existing = { id: 'saved', courseId: 'A', certificateNo: 'KEEP' };
     expect(select([existing]).map(row => row.courseId)).toEqual(['B']);
     expect(existing.certificateNo).toBe('KEEP');
+  });
+});
+
+describe('D3 full-name duplicate prevention', () => {
+  it('normalizes only case and whitespace and keeps blank names empty', () => {
+    expect(d3TrainingName('  Advanced\t Oil  Training\n')).toBe('advanced oil training');
+    expect(d3TrainingName()).toBe('');
+    expect(d3TrainingName('   ')).toBe('');
+    expect(d3TrainingName('Oil/Chemical')).not.toBe(d3TrainingName('Oil Chemical'));
+    expect(d3TrainingName('Basic Oil')).not.toBe(d3TrainingName('Advanced Oil'));
+    expect(d3TrainingName('Basic Oil')).not.toBe(d3TrainingName('Basic Chemical'));
+  });
+
+  it.each([undefined, 'OLD', '999', 'C'])('blocks the same name with ID %s', courseId => {
+    expect(make([{ id: 'existing', courseId, trainingCourse: '  ALPHA  ' }])
+      .map(row => row.courseId)).toEqual(['B']);
+  });
+
+  it('does not require abbreviation or requirement to match', () => {
+    expect(make([{
+      id: 'existing', courseId: 'OLD', trainingCourse: 'Alpha',
+      abbr: 'DIFFERENT', requirement: 'Different requirement',
+    }]).map(row => row.courseId)).toEqual(['B']);
+  });
+
+  it('does not match blank names or partial names', () => {
+    for (const trainingCourse of [undefined, '', '   ', 'Alph', 'Alpha Refresher']) {
+      expect(make([{ id: 'existing', trainingCourse }])).toHaveLength(2);
+    }
+    expect(make([{ id: 'existing', courseId: 'A', trainingCourse: '' }])
+      .map(row => row.courseId)).toEqual(['B']);
+  });
+
+  it('blocks same-name additions in one pass and on repeat without changing suppression', () => {
+    const aliases = [masters[0], { ...masters[1], trainingLabel: ' ALPHA ' }];
+    const select = (rows: any[], suppressed = new Set<string>()) =>
+      missingD3Defaults(rows, aliases, matrix, 10, suppressed, 'TEST-');
+    const first = select([]);
+    expect(first.map(row => row.courseId)).toEqual(['A']);
+    expect(select(first)).toEqual([]);
+    expect(select([], new Set(['A'])).map(row => row.courseId)).toEqual(['B']);
+  });
+
+  it('preserves existing duplicates, expired certificate details and attachments', () => {
+    const row = {
+      id: 'saved', trainUuid: 'u1', courseId: 'OLD', trainingCourse: 'Alpha',
+      certificateNo: 'KEEP', expiry: '2000-01-01', attachments: [{ id: 'file' }],
+    };
+    const rows = [row, { ...row, id: 'saved2', trainUuid: 'u2' }];
+    const before = JSON.stringify(rows);
+    expect(make(rows).map(course => course.courseId)).toEqual(['B']);
+    expect(JSON.stringify(rows)).toBe(before);
+    expect(rows[0]).toBe(row);
+  });
+
+  it('leaves merging unchanged and retains same-name unsaved edits with different IDs', () => {
+    const saved = { id: 'saved', courseId: 'OLD', trainingCourse: 'Alpha', trainUuid: 'u1' };
+    const local = { ...make()[0], certificateNo: 'UNSAVED', attachments: [{ id: 'file' }] };
+    const result = mergeD3LocalRows([saved], [local], masters, new Set());
+    expect(result).toHaveLength(2);
+    expect(result[0]).toBe(saved);
+    expect(result[1]).toBe(local);
   });
 });

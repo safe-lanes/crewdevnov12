@@ -54,6 +54,7 @@ import {
   createD3CreateRegistry,
   loadD3Handoff,
   d3CourseKey,
+  d3TrainingName,
   d3RankId,
   missingD3Defaults,
   mergeD3LocalRows,
@@ -2510,11 +2511,18 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         ),
       );
 
+      const existingNames = new Set(
+        existingCourses.map(course => d3TrainingName(course.trainingCourse)).filter(Boolean),
+      );
+
       const missingTemplates = selectedTemplates.filter(template => {
         const key = d3CourseKey(template, d3IdentityMasters);
+        const name = d3TrainingName(template.name);
 
         if (key && existingKeys.has(key)) return false;
+        if (name && existingNames.has(name)) return false;
         if (key) existingKeys.add(key);
+        if (name) existingNames.add(name);
 
         return true;
       });
@@ -10332,6 +10340,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
         onClose={() => setIsTrainingDialogOpen(false)}
         onConfirm={addTrainingCoursesFromDatabase}
         existingCourseIds={formData.trainingCourses.map(c => c.courseId).filter((id): id is string => Boolean(id))}
+        existingCourseNames={formData.trainingCourses.map(c => c.trainingCourse)}
       />
       
       {/* Travel Document Selection Dialog - Add from Database */}
