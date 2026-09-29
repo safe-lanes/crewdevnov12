@@ -3,7 +3,7 @@
 export function companyFormNumbers<
   P extends { formPartUuid: string; sortOrder?: number; isDeleted?: boolean; isHidden?: boolean },
   S extends { section_uuid?: string; clientKey?: string; sortOrder?: number; is_deleted?: boolean; isDeleted?: boolean; isHidden?: boolean; questions: Q[] },
-  Q extends { question_uuid?: string; clientKey?: string; sortOrder?: number; is_deleted?: boolean; isDeleted?: boolean; isHidden?: boolean },
+  Q extends { question_uuid?: string; clientKey?: string; response_type?: string; sortOrder?: number; is_deleted?: boolean; isDeleted?: boolean; isHidden?: boolean },
 >(
   parts: P[],
   structures: Record<string, S[]>,
@@ -23,7 +23,7 @@ export function companyFormNumbers<
       const sn = `${pn}.${si + 1}`;
       const sid = s.section_uuid || s.clientKey;
       if (sid) section.set(sid, sn);
-      active(s.questions).forEach((q, qi) => {
+      active(s.questions).filter((q) => q.response_type !== "content").forEach((q, qi) => {
         const qid = q.question_uuid || q.clientKey;
         if (qid) question.set(qid, `${sn}.${qi + 1}`);
       });

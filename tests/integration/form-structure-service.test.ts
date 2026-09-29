@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "@server/v2/db";
 import {
@@ -23,6 +23,7 @@ import {
   formStructureService,
 } from "@server/v2/admin/services/formStructureService";
 import { formStructureRepository } from "@server/v2/admin/repositories/formStructureRepository";
+import { sanitizeComparisonHtml } from "@shared/v2/forms-engine/contentSanitizer";
 
 const formUuids: string[] = [];
 
@@ -83,14 +84,14 @@ function acceptanceSizedStructure(): FormStructureInput {
   };
 }
 
-async function createFormFixture(name: string) {
+async function createFormFixture(name: string, category: "briefing" | "dynamic" = "briefing") {
   const db = getDb();
   const formUuid = uuidv4();
   formUuids.push(formUuid);
   const [form] = await db.insert(admFormsV2).values({
     formUuid,
     name,
-    category: "briefing",
+    category,
     rankGroup: "Test rank group",
     versionNo: "00",
     versionDate: "24-Aug-2026",
@@ -177,6 +178,67 @@ describe.sequential("form structure service integration", () => {
       }
     }
     if (failures.length) throw new AggregateError(failures, "Form fixture cleanup failed");
+  });
+
+  const contentStructure = (html: string): FormStructureInput => ({
+    sections: [{
+      section_code: "CONTENT_SECTION",
+      section_title: "Content section",
+      questions: [{
+        question_code: "CONTENT_POINT",
+        question_text: "Short label",
+        response_type: "content",
+        content_html: html,
+        is_mandatory: false,
+        comment_enabled: false,
+        options: [],
+      }],
+    }],
+  } as FormStructureInput);
+
+  it("sanitizes and reads back Content on both single-part and batch writes", async () => {
+    const { form } = await createFormFixture(`Content integration ${uuidv4()}`, "dynamic");
+    const draft = await formsService.createVersionByFormId(form.id, {
+      configuration: "{}", versionDate: "24-Aug-2026",
+    } as any);
+    const partUuid = await versionPartUuid(draft.fvUuid);
+    const hostile = '<p style="color:red">Read <b onclick="evil()">this</b><script>alert(1)</script></p><img src=x>';
+    const expected = sanitizeComparisonHtml(hostile);
+    const saved = await formStructureService.replaceStructure(draft.fvUuid, partUuid, contentStructure(hostile), null);
+    expect(saved.sections[0].questions[0].content_html).toBe(expected);
+    expect(saved.sections[0].questions[0].question_text).toBe("Short label");
+    expect((await formStructureService.getStructure(draft.fvUuid, partUuid)).sections[0].questions[0].content_html).toBe(expected);
+
+    const next = '<ul class="hostile"><li>One</li><li><strong style="color:red">Two</strong></li></ul><iframe src="evil"></iframe>';
+    const batch = await formStructureService.replaceStructures(draft.fvUuid, [{
+      partUuid, structure: contentStructure(next),
+    }], null);
+    expect(batch.parts[0].sections[0].questions[0].content_html).toBe(sanitizeComparisonHtml(next));
+    const row = await getDb().execute(sql`
+      SELECT q.content_html, q.question_text FROM frm_questions q
+      JOIN frm_sections s ON s.section_uuid = q.section_uuid
+      WHERE s.form_version_uuid = ${draft.fvUuid} AND q.response_type = 'content' AND NOT q.is_deleted
+    `);
+    expect(row.rows).toHaveLength(1);
+    expect(row.rows[0]).toMatchObject({ content_html: sanitizeComparisonHtml(next), question_text: "Short label" });
+  });
+
+  it("rejects Content on a Standard Form draft in both write paths without persisting a row", async () => {
+    const { form, rankGroup } = await createFormFixture(`Standard gate ${uuidv4()}`);
+    const draft = await formsService.createVersionByFormId(form.id, {
+      rankGroupId: rankGroup.id, configuration: "{}", versionDate: "24-Aug-2026",
+    } as any);
+    const partUuid = await versionPartUuid(draft.fvUuid);
+    const input = contentStructure("<p>Never persist</p>");
+    await expect(formStructureService.replaceStructure(draft.fvUuid, partUuid, input, null))
+      .rejects.toMatchObject({ statusCode: 400, message: "Content points are available only on Company Forms" });
+    await expect(formStructureService.replaceStructures(draft.fvUuid, [{ partUuid, structure: input }], null))
+      .rejects.toMatchObject({ statusCode: 400, message: "Content points are available only on Company Forms" });
+    const rows = await getDb().execute(sql`
+      SELECT q.question_uuid FROM frm_questions q JOIN frm_sections s ON s.section_uuid = q.section_uuid
+      WHERE s.form_version_uuid = ${draft.fvUuid} AND q.response_type = 'content'
+    `);
+    expect(rows.rows).toHaveLength(0);
   });
 
   it("writes draft trees transactionally, keeps identities, protects releases, and deep-copies a new draft", async () => {

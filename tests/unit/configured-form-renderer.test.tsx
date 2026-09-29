@@ -140,6 +140,7 @@ function render(element: React.ReactElement) {
 function renderPreview(
   sections: ConfiguredFormSection[] = [configuredSection],
   vesselType = "all",
+  companyForm = false,
 ) {
   return render(
     <ConfiguredFormRenderer
@@ -154,6 +155,7 @@ function renderPreview(
         { vtUuid: "bulk", name: "Bulk Carrier" },
       ]}
       selectedVesselTypeUuid={vesselType}
+      companyForm={companyForm}
     />,
   );
 }
@@ -214,6 +216,44 @@ describe("configured form renderer preview", () => {
     expect(numbers.question.get("q")).toBe("2.1.2");
     expect(numbers.section.has("deleted")).toBe(false);
     expect(numbers.section.has("hidden")).toBe(false);
+  });
+
+  it("does not number Content or shift surrounding Company Form point numbers", () => {
+    const numbered = companyFormNumbers(
+      [{ formPartUuid: "part" }],
+      { part: [{ clientKey: "section", questions: [
+        { clientKey: "before", response_type: "yes_no" },
+        { clientKey: "content", response_type: "content" },
+        { clientKey: "after", response_type: "free_text" },
+      ] }] },
+    );
+    expect(numbered.question.get("before")).toBe("1.1.1");
+    expect(numbered.question.has("content")).toBe(false);
+    expect(numbered.question.get("after")).toBe("1.1.2");
+  });
+
+  it("renders sanitized Content as display-only HTML without a response or point number", () => {
+    const section: ConfiguredFormSection = {
+      ...configuredSection,
+      questions: [{
+        clientKey: "content-preview",
+        question_code: "INTERNAL_CONTENT",
+        question_text: "Safety notice",
+        content_html: "<p>Read <strong>carefully</strong></p><ul><li>First</li></ul>",
+        response_type: "content",
+        is_mandatory: false,
+        comment_enabled: false,
+        options: [],
+      }],
+    };
+    renderPreview([section], "all", true);
+    click(screen.getByTestId("button-step-part-b"));
+    const content = screen.getByTestId("preview-content-content-preview");
+    expect(content.textContent).toBe("Read carefullyFirst");
+    expect(content.querySelector("strong")?.textContent).toBe("carefully");
+    expect(content.querySelectorAll("li")).toHaveLength(1);
+    expect(screen.getByTestId("preview-point-content-preview").textContent).not.toContain("INTERNAL_CONTENT");
+    expect(screen.queryByTestId("preview-response-content-preview")).toBeNull();
   });
 
   it("separates the preview banner from content using section spacing", () => {

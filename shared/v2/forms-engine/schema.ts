@@ -398,6 +398,9 @@ export const formStructureQuestionInputSchema = z.object({
   if (question.response_type === "content" && !question.content_html?.trim()) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content_html"], message: "Content point HTML is required" });
   }
+  if (question.response_type === "content" && question.question_text.length > 200) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["question_text"], message: "Content label must be at most 200 characters" });
+  }
   if (question.response_type !== "content" && question.content_html) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["content_html"], message: "Only Content points may contain HTML" });
   }
