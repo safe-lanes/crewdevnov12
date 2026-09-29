@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { RHDateInput, type RHDateInputHandle } from './RHDateInput';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -77,6 +78,8 @@ export const VariableTaskForm = ({
 }: VariableTaskFormProps): JSX.Element => {
   const { toast } = useToast();
   const [showOtherTask, setShowOtherTask] = useState(false);
+  const startDateInput = useRef<RHDateInputHandle>(null);
+  const finishDateInput = useRef<RHDateInputHandle>(null);
 
   // Fetch all crew members from V2 API (crew_members_v2 table)
   const { data: allCrewMembers = [] } = useQuery<any[]>({
@@ -415,6 +418,7 @@ export const VariableTaskForm = ({
   }, [crewMembers]);
 
   const handleFormSubmit = (values: FormValues, isDraft: boolean) => {
+    if (startDateInput.current?.validate() === false || finishDateInput.current?.validate() === false) return;
     const startDateTime = `${formatDateForDisplay(values.startDate)} / ${values.startTime}`;
     const finishDateTime = `${formatDateForDisplay(values.finishDate)} / ${values.finishTime}`;
     
@@ -520,7 +524,13 @@ export const VariableTaskForm = ({
                     <FormItem>
                       <FormLabel>Start Date</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} data-testid="input-start-date" />
+                        <RHDateInput
+                          {...field}
+                          kind="native"
+                          validationRef={startDateInput}
+                          resetKey={editData}
+                          data-testid="input-start-date"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -565,7 +575,13 @@ export const VariableTaskForm = ({
                     <FormItem>
                       <FormLabel>Finish Date</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} data-testid="input-finish-date" />
+                        <RHDateInput
+                          {...field}
+                          kind="native"
+                          validationRef={finishDateInput}
+                          resetKey={editData}
+                          data-testid="input-finish-date"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
