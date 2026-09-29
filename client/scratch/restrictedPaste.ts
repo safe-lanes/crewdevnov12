@@ -2,6 +2,10 @@
 export const REMOVAL_NOTICE =
   "Tables and images were removed. For statements the seafarer must answer, use Yes/No points.";
 
+export function pasteNotice(removedFormatting: boolean): string {
+  return removedFormatting ? REMOVAL_NOTICE : "";
+}
+
 export interface PasteResult {
   html: string;
   removedFormatting: boolean;

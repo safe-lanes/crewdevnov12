@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { normalizeWordPaste, REMOVAL_NOTICE } from "./restrictedPaste";
+import { normalizeWordPaste, pasteNotice } from "./restrictedPaste";
 import "./editor-comparison.css";
 
 function useSanitizedOutput(raw: string) {
@@ -87,7 +87,7 @@ function ScratchEditor() {
         const raw = event.clipboardData?.getData("text/html") || "";
         setRawClipboardHtml(raw || null);
         if (raw) {
-          setNotice(removedOnPaste.current ? REMOVAL_NOTICE : "");
+          setNotice(pasteNotice(removedOnPaste.current));
           return false; // ProseMirror inserts the transformed HTML slice.
         }
         const text = event.clipboardData?.getData("text/plain") || "";
@@ -100,7 +100,7 @@ function ScratchEditor() {
           return `<p>${doc.innerHTML}</p>`;
         }).join("");
         const result = normalizeWordPaste(paragraphs);
-        setNotice(result.removedFormatting ? REMOVAL_NOTICE : "");
+        setNotice(pasteNotice(result.removedFormatting));
         editorRef.current?.commands.insertContent(result.html);
         return true;
       },

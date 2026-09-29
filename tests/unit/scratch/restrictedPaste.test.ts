@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { normalizeWordPaste } from "../../../client/scratch/restrictedPaste";
+import { normalizeWordPaste, pasteNotice, REMOVAL_NOTICE } from "../../../client/scratch/restrictedPaste";
 import { comparisonAllowedTags, sanitizeComparisonHtml } from "../../../server/scratch/editorComparisonSanitizer";
 
 describe("restricted Word paste", () => {
@@ -31,6 +31,45 @@ describe("restricted Word paste", () => {
     expect(result.html).not.toContain("\t");
     expect(result.removedFormatting).toBe(true);
     expect(sanitizeComparisonHtml(result.html)).toBe(result.html);
+  });
+
+  it("retains all nine numbered statements row by row in the second real Word clipboard fixture", () => {
+    const raw = readFileSync("tests/fixtures/word-paste-2.html", "utf8");
+    const source = new DOMParser().parseFromString(raw, "text/html");
+    const result = normalizeWordPaste(raw);
+    const cleaned = new DOMParser().parseFromString(result.html, "text/html");
+    const sanitized = sanitizeComparisonHtml(result.html);
+    const text = (value: string) => value.replace(/[\s\u00a0]+/gu, " ").trim();
+    const sourceRows = Array.from(source.querySelectorAll("table tr"));
+    const cleanedParagraphs = Array.from(cleaned.querySelectorAll("p")).map((p) => text(p.textContent || ""));
+
+    expect(source.querySelectorAll("table")).toHaveLength(1);
+    expect(sourceRows).toHaveLength(10); // Header plus nine statements.
+    expect(sourceRows[0].textContent).toContain("Yes");
+    expect(sourceRows[0].textContent).toContain("No");
+    expect(cleanedParagraphs).toContain("Yes No"); // Do not special-case the header.
+    for (const [index, row] of sourceRows.entries()) {
+      const cellText = Array.from(row.children)
+        .filter((cell) => cell.matches("th,td"))
+        .map((cell) => text(cell.textContent || ""))
+        .filter(Boolean)
+        .join(" ");
+      expect(cleanedParagraphs.filter((paragraph) => paragraph === cellText)).toHaveLength(1);
+      if (index > 0) {
+        expect(cellText).toMatch(new RegExp(`^${index}\\. \\S`));
+        expect(cleanedParagraphs).not.toContain(`${index}.`);
+      }
+    }
+    expect(cleanedParagraphs).toContain(
+      "1. All items contained in my employment contract have been explained to me and I am aware of them.",
+    );
+    expect(cleanedParagraphs.filter((paragraph) => /^[1-9]\. \S/u.test(paragraph))).toHaveLength(9);
+    expect(cleanedParagraphs.every((paragraph) => !/[\s\u00a0]{2}/u.test(paragraph))).toBe(true);
+    expect(result.removedFormatting).toBe(true);
+    expect(pasteNotice(result.removedFormatting)).toBe(REMOVAL_NOTICE);
+    expect(sanitized).toBe(result.html);
+    expect(sanitized).not.toMatch(/<(?:table|thead|tbody|tr|th|td)\b/i);
+    expect(cleaned.querySelectorAll("table,th,td")).toHaveLength(0);
   });
 
   it.each(["·", "•", "▪", "o", "§", "–", "-", "*"])(
