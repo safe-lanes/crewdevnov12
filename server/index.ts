@@ -8,7 +8,7 @@ import { tenantConnectionManager } from "./utils/tenantConnectionManager";
 import { tenantMiddleware } from "./middleware/tenantMiddleware";
 import { authMiddleware } from "./middleware/authMiddleware";
 import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
-import { sanitizeComparisonHtml } from "./scratch/editorComparisonSanitizer";
+import { sanitizeComparisonHtml } from "../shared/v2/forms-engine/contentSanitizer";
 
 const app = express();
 app.set("trust proxy", 1);

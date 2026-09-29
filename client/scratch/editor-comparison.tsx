@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { normalizeWordPaste, pasteNotice } from "./restrictedPaste";
+import { normalizeWordPaste, pasteNotice } from "../../shared/v2/forms-engine/restrictedPaste";
 import "./editor-comparison.css";
 
 function useSanitizedOutput(raw: string) {

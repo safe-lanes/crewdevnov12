@@ -1,7 +1,6 @@
 import sanitizeHtml from "sanitize-html";
 
-// Development-only policy for the restricted Tiptap paste test. Production
-// form writes do not use this endpoint.
+// The same restricted policy used by the Word paste comparison and form writes.
 export const comparisonAllowedTags = [
   "p", "br", "strong", "ul", "li",
 ];

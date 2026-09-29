@@ -1,4 +1,4 @@
-/** Development-only clipboard conversion for the restricted Content experiment. */
+/** Restricted clipboard conversion for Company Form Content points. */
 export const REMOVAL_NOTICE =
   "Tables and images were removed. For statements the seafarer must answer, use Yes/No points.";
 

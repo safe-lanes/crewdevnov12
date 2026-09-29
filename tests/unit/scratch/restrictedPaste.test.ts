@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { normalizeWordPaste, pasteNotice, REMOVAL_NOTICE } from "../../../client/scratch/restrictedPaste";
-import { comparisonAllowedTags, sanitizeComparisonHtml } from "../../../server/scratch/editorComparisonSanitizer";
+import { normalizeWordPaste, pasteNotice, REMOVAL_NOTICE } from "../../../shared/v2/forms-engine/restrictedPaste";
+import { comparisonAllowedTags, sanitizeComparisonHtml } from "../../../shared/v2/forms-engine/contentSanitizer";
 
 describe("restricted Word paste", () => {
   it("retains every nonempty paragraph of the first real Word clipboard fixture", () => {
