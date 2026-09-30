@@ -24,6 +24,16 @@ Related project task: #333 (Company Form Submissions).
 9. Retain signed submissions when an assignment is cancelled. They must remain readable, drop off any outstanding list, and never be deleted as a result of cancellation.
 10. Pin the form version at submission creation. Never re-resolve the version for that submission.
 
-## Open — settle before building
+## Subject stages, entry points, and access
 
-11. Decide where each kind of Company Form is opened. The reliever popup suits forms tied to a joining; other forms need another entry point.
+11. Each subject type defines its own list of stages, which may be empty. A Company Form version carries one stage from its subject type's list, or none if that list is empty. The crew assignment subject defines: before joining, on board, at sign-off.
+12. Entry points by stage: before joining — Vessel > Planning > reliever popup. On board — Vessel > Crew List. At sign-off — Vessel > Planning > On Board Status popup.
+13. Home: the crew profile lists every Company Form submission for the seafarer across ALL assignments, including cancelled ones, grouped by assignment: one row per assignment, expandable to its forms.
+14. The Crew List gets ONE Forms column showing a count, which opens the list. Never one column per form.
+15. Until the applicability engine exists, a crew manager picks the form manually from released Company Forms matching the subject type and stage.
+16. Seafarers will later complete forms themselves through a mobile app. The service must not assume an office user. Its API and permissions must support a seafarer acting on his own assignments only, enforced server-side. Mobile screens are out of scope.
+17. The core submission service must reach subject-specific behaviour only through what each subject type declares: its stable identifier, its stages, its System fields, who may act on it, its entry points and home, and its signatories. Nothing in the core may assume the subject is a crew assignment.
+
+## Release validation
+
+A draft Company Form version may have no stage. Releasing a version whose subject type defines stages must be refused until a stage from that subject's list is selected. A subject type with no stages has no stage to select.
