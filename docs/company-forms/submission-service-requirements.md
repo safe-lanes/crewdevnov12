@@ -37,3 +37,5 @@ Related project task: #333 (Company Form Submissions).
 ## Release validation
 
 A draft Company Form version may have no stage. Releasing a version whose subject type defines stages must be refused until a stage from that subject's list is selected. A subject type with no stages has no stage to select.
+
+For the existing released crew-assignment version, the approved migration mapping is **Company Forms MARPOL Declaration**, version **01** (`3a0ded43-41a4-4460-a6b1-2cc59b0409ba`) → **before joining**. Existing draft versions need no stage mapping until release.
