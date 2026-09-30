@@ -1159,10 +1159,22 @@ export async function importCrewAssignments(
               norm(p.rank) === norm(targetPos) ||
               norm(p.rank) === norm(item.rank)),
         );
-        if (matchingSlots.length > 1) {
-          throw new Error(`Multiple active planning slots match ${targetPos} on vessel ${vessel.vesselUuid}; reconcile before import.`);
+        // A signed-on reliever creates a legitimate second active slot at
+        // this rank. Prefer the exact onboard/reliever crew; for a new crew,
+        // only the primary slot can receive an import. Never guess if more
+        // than one slot survives either check.
+        const byCrew = matchingSlots.filter((p: any) =>
+          isPrimary ? p.crewUuid === crew.crewUuid : p.relieverCrewUuid === crew.crewUuid,
+        );
+        const eligibleSlots = matchingSlots.length === 1
+          ? matchingSlots
+          : byCrew.length > 0
+            ? byCrew
+            : matchingSlots.filter((p: any) => p.crewStatus === "primary");
+        if (eligibleSlots.length > 1 || (matchingSlots.length > 0 && eligibleSlots.length === 0)) {
+          throw new Error(`Multiple or ambiguous active planning slots match ${targetPos} on vessel ${vessel.vesselUuid}; reconcile before import.`);
         }
-        let matchedSlot: any = matchingSlots[0];
+        let matchedSlot: any = eligibleSlots[0];
 
         if (!matchedSlot) {
           // item.resolvedRankId is guaranteed non-null here (pre-flight validated)
@@ -1286,7 +1298,7 @@ export async function importCrewAssignments(
           await tx.update(vesselPlanningV2).set({
             crewUuid: crew.crewUuid,
             crewAssignUuid: assignmentUuid,
-            crewStatus: "primary",
+            crewStatus: matchedSlot.crewStatus === "secondary" ? "secondary" : "primary",
             signOnDate: item.signOnDate ?? null,
             reliefDue: finalReliefDue ?? null,
             joiningPortUuid: item.joiningPortUuid ?? null,

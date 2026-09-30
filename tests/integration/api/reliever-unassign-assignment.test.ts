@@ -350,6 +350,34 @@ describe("reliever assignment cancellation on planning unassign", () => {
       .toEqual({ [selectedUuid]: false, [otherUuid]: true });
   });
 
+  it("does not replace a divergent contract period when only relief due is edited, or vice versa", async () => {
+    const { planUuid, vesselUuid } = await seedPlanning(null);
+    const crewUuid = u();
+    const assignUuid = await seedAssignment(crewUuid, vesselUuid, "OnBoard");
+    await db.query(
+      "UPDATE vessel_planning_v2 SET crew_uuid=$1, crew_assign_uuid=$2, relief_due=NULL, contract_period_months=NULL WHERE plan_uuid=$3",
+      [crewUuid, assignUuid, planUuid],
+    );
+    await db.query(
+      "UPDATE crew_assignments SET relief_due='2027-07-01', contract_period='9' WHERE assign_uuid=$1",
+      [assignUuid],
+    );
+    const raw = async () => (await db.query(
+      "SELECT a.relief_due::text AS relief_due, a.contract_period FROM crew_assignments a WHERE a.assign_uuid=$1", [assignUuid],
+    )).rows[0];
+    console.log("REGRESSION 2 raw SQL BEFORE relief-due-only PATCH:", await raw());
+    expect((await request(server).patch(`/api/v2/vessel/planning/${planUuid}`)
+      .set("Authorization", `Bearer ${token()}`).send({ reliefDue: "2027-08-01" })).status).toBe(200);
+    console.log("REGRESSION 2 raw SQL AFTER relief-due-only PATCH:", await raw());
+    expect(await raw()).toEqual({ relief_due: "2027-08-01", contract_period: "9" });
+    await db.query("UPDATE crew_assignments SET relief_due='2027-07-01' WHERE assign_uuid=$1", [assignUuid]);
+    console.log("REGRESSION 2 raw SQL BEFORE contract-only PATCH:", await raw());
+    expect((await request(server).patch(`/api/v2/vessel/planning/${planUuid}`)
+      .set("Authorization", `Bearer ${token()}`).send({ contractPeriodMonths: 6 })).status).toBe(200);
+    console.log("REGRESSION 2 raw SQL AFTER contract-only PATCH:", await raw());
+    expect(await raw()).toEqual({ relief_due: "2027-07-01", contract_period: "6" });
+  });
+
   it("does not accept an incumbent link to another crew's OnBoard assignment", async () => {
     const { planUuid, vesselUuid } = await seedPlanning(null);
     const assignUuid = await seedAssignment(u(), vesselUuid, "OnBoard");
@@ -893,6 +921,101 @@ describe("reliever assignment cancellation on planning unassign", () => {
     expect(byId[active.planUuid].crew_uuid).toBe(crew.crewUuid);
     expect(byId[active.planUuid].crew_assign_uuid).toBeTruthy();
     assignUuids.push(byId[active.planUuid].crew_assign_uuid);
+  });
+
+  it("accepts import for a rank with active primary and signed-on secondary planning rows", async () => {
+    const primary = await seedImportCrew();
+    const secondary = await seedImportCrew();
+    const { planUuid, vesselUuid, rankId, rank } = await seedPlanning(null);
+    const primaryAssignUuid = await seedAssignment(primary.crewUuid, vesselUuid, "OnBoard");
+    const secondaryAssignUuid = await seedAssignment(secondary.crewUuid, vesselUuid, "OnBoard");
+    await db.query("UPDATE crew_assignments SET sign_on_date='2026-10-02' WHERE assign_uuid=ANY($1::text[])", [[primaryAssignUuid, secondaryAssignUuid]]);
+    await db.query(
+      "UPDATE vessel_planning_v2 SET crew_uuid=$1, crew_assign_uuid=$2, sign_on_date='2026-10-02', crew_status='primary' WHERE plan_uuid=$3",
+      [primary.crewUuid, primaryAssignUuid, planUuid],
+    );
+    const secondaryPlanUuid = u();
+    planUuids.push(secondaryPlanUuid);
+    await insert("vessel_planning_v2", {
+      plan_uuid: secondaryPlanUuid, vessel_uuid: vesselUuid, rank_id: rankId, rank,
+      crew_uuid: secondary.crewUuid, crew_assign_uuid: secondaryAssignUuid,
+      sign_on_date: "2026-10-02", crew_status: "secondary", is_archived: false, is_deleted: false,
+    });
+    const vesselName = await seedImportVessel(vesselUuid);
+    const sheet = await makeAssignmentsSheet(primary.employeeId, vesselName, rank, "2026-10-02", "Primary");
+    const result = await importCrewAssignments(sheet, "import-user");
+    console.log("REGRESSION 1 primary+secondary import AFTER FIX:", result);
+    expect(result.success).toBe(true);
+    const secondarySheet = await makeAssignmentsSheet(secondary.employeeId, vesselName, rank, "2026-10-02", "Primary");
+    const secondaryResult = await importCrewAssignments(secondarySheet, "import-user");
+    expect(secondaryResult.success).toBe(true);
+    const rows = await db.query(
+      "SELECT plan_uuid, crew_uuid, crew_assign_uuid, crew_status FROM vessel_planning_v2 WHERE plan_uuid=ANY($1::text[]) ORDER BY plan_uuid",
+      [[planUuid, secondaryPlanUuid]],
+    );
+    expect(rows.rows).toEqual([
+      { plan_uuid: [planUuid, secondaryPlanUuid].sort()[0],
+        crew_uuid: [planUuid, secondaryPlanUuid].sort()[0] === planUuid ? primary.crewUuid : secondary.crewUuid,
+        crew_assign_uuid: [planUuid, secondaryPlanUuid].sort()[0] === planUuid ? primaryAssignUuid : secondaryAssignUuid,
+        crew_status: [planUuid, secondaryPlanUuid].sort()[0] === planUuid ? "primary" : "secondary" },
+      { plan_uuid: [planUuid, secondaryPlanUuid].sort()[1],
+        crew_uuid: [planUuid, secondaryPlanUuid].sort()[1] === planUuid ? primary.crewUuid : secondary.crewUuid,
+        crew_assign_uuid: [planUuid, secondaryPlanUuid].sort()[1] === planUuid ? primaryAssignUuid : secondaryAssignUuid,
+        crew_status: [planUuid, secondaryPlanUuid].sort()[1] === planUuid ? "primary" : "secondary" },
+    ]);
+  });
+
+  it("backfills only exclusive matching incumbents and audits each automated link", async () => {
+    await db.query("BEGIN");
+    try {
+      const vesselUuid = u();
+      const createPlan = async (crewUuid: string, signOnDate = "2026-10-02") => {
+        const planUuid = u();
+        await insert("vessel_planning_v2", {
+          plan_uuid: planUuid, vessel_uuid: vesselUuid, rank_id: `R-${planUuid}`,
+          rank: "Backfill Test Officer", crew_uuid: crewUuid,
+          sign_on_date: signOnDate, is_archived: false, is_deleted: false,
+        });
+        return planUuid;
+      };
+      const createAssignment = async (crewUuid: string, signOnDate = "2026-10-02") => {
+        const assignUuid = u();
+        await insert("crew_assignments", {
+          assign_uuid: assignUuid, crew_uuid: crewUuid, vessel_uuid: vesselUuid,
+          assignment_type: "OnBoard", is_current: true, is_deleted: false,
+          sign_on_date: signOnDate,
+        });
+        return assignUuid;
+      };
+      const exclusiveCrew = u(), absentCrew = u(), ambiguousCrew = u(), sharedCrew = u(), dateCrew = u();
+      const exactPlan = await createPlan(exclusiveCrew);
+      const exactAssignment = await createAssignment(exclusiveCrew);
+      const absentPlan = await createPlan(absentCrew);
+      const ambiguousPlan = await createPlan(ambiguousCrew);
+      await createAssignment(ambiguousCrew);
+      await createAssignment(ambiguousCrew);
+      const sharedPlanA = await createPlan(sharedCrew);
+      const sharedPlanB = await createPlan(sharedCrew);
+      await createAssignment(sharedCrew);
+      const datePlan = await createPlan(dateCrew);
+      await createAssignment(dateCrew, "2026-09-01");
+      await db.query(await readFile(join(process.cwd(), "migrations/0222_backfill_exclusive_current_incumbents.sql"), "utf8"));
+      const plans = [exactPlan, absentPlan, ambiguousPlan, sharedPlanA, sharedPlanB, datePlan];
+      const linked = await db.query(
+        "SELECT plan_uuid, crew_assign_uuid FROM vessel_planning_v2 WHERE plan_uuid=ANY($1::text[]) ORDER BY plan_uuid",
+        [plans],
+      );
+      expect(linked.rows.filter(r => r.crew_assign_uuid !== null)).toEqual([
+        { plan_uuid: exactPlan, crew_assign_uuid: exactAssignment },
+      ]);
+      const audit = await db.query(
+        "SELECT assign_uuid, reviewed_by FROM vessel_planning_assignment_reconciliations WHERE plan_uuid=$1",
+        [exactPlan],
+      );
+      expect(audit.rows).toEqual([{ assign_uuid: exactAssignment, reviewed_by: "SYSTEM:exclusive-incumbent-backfill" }]);
+    } finally {
+      await db.query("ROLLBACK");
+    }
   });
 
   it("re-import safely replaces a Rotation-linked reliever and keeps the previous assignment history", async () => {

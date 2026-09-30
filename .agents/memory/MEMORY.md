@@ -31,7 +31,7 @@
 - [Briefing joining-rank semantics](briefing-joining-rank-semantics.md) — resolve Briefing forms and Part A rank from the G1 joining role, never the crew member’s present rank.
 - [Interview B6 authority](interview-b6-authority.md) — Interview detail reads B6 gate fields without writing them; all pinned sections apply because candidates have no authoritative vessel type.
 - [Reliever planning/assignment link](reliever-unassign-assignment-persistence.md) — persist reliever assignment UUID with planning in one locked transaction; use it instead of crew/vessel/state guesses.
-- [Verified assignment provenance](verified-assignment-provenance.md) — crew/vessel/current-state matches do not prove incumbent planning ownership; leave historical links unset until verified.
+- [Verified assignment provenance](verified-assignment-provenance.md) — runtime flows require exact UUID links; a user-approved one-time exclusive incumbent backfill is not a general fallback.
 - [Proxied browser readiness](proxied-browser-readiness.md) — navigation can precede client mount; a zero-height live-form wrapper can also look hidden while its content renders.
 - [Retired SPA endpoints](retired-spa-endpoints.md) — deleting a dev route does not produce a 404 if Vite or the production SPA fallback still serves HTML at its path.
 - [Company Form regression fixture](company-form-regression-fixture.md) — development has a deliberately retained Company Form and two version-owned part sets; don't clean it as test debris.

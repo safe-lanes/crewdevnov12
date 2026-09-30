@@ -975,10 +975,11 @@ export const vesselPlanningService = {
        throw new Error("Linked incumbent assignment is inconsistent; reconcile before updating assignment details");
      }
      await tx.update(crewAssignments).set({
-       reliefDue: reliefDueChanged ? (resolvedData as any).reliefDue ?? null : locked.reliefDue,
-       contractPeriod: contractChanged
-         ? ((resolvedData as any).contractPeriodMonths != null ? String((resolvedData as any).contractPeriodMonths) : null)
-         : (locked.contractPeriodMonths != null ? String(locked.contractPeriodMonths) : null),
+        ...(reliefDueChanged ? { reliefDue: (resolvedData as any).reliefDue ?? null } : {}),
+        ...(contractChanged ? {
+          contractPeriod: (resolvedData as any).contractPeriodMonths != null
+            ? String((resolvedData as any).contractPeriodMonths) : null,
+        } : {}),
        updatedByUuid: data.auditUserUuid || null,
        updatedAt: sql`NOW()`,
      }).where(eq(crewAssignments.assignUuid, locked.crewAssignUuid));
