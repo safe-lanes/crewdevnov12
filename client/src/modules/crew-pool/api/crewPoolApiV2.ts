@@ -481,11 +481,6 @@ export const crewPoolApiV2 = {
     return response.json();
   },
 
-  async assignToVessel(crewUuid: string, data: any) {
-    const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/assign`, data);
-    return response.json();
-  },
-
   async signOff(crewUuid: string, data: any) {
     const response = await apiRequest('POST', `${V2_BASE}/crew/${crewUuid}/sign-off`, data);
     return response.json();

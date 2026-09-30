@@ -1,5 +1,4 @@
 import { eq, and, desc } from "drizzle-orm";
-import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
 import { applyAuditUser } from "../../admin/utils/auditUser";
 import { CrewAssignmentsRepository } from "../repositories";
@@ -11,6 +10,13 @@ import type {
 } from "../../../../shared/v2/crew-pool/types";
 
 const crewAssignmentsRepository = new CrewAssignmentsRepository();
+const CURRENT_ASSIGNMENT_TYPES = ["Planned", "OnBoard", "Cancelled"] as const;
+
+function requireCurrentAssignmentType(value: unknown): void {
+  if (!CURRENT_ASSIGNMENT_TYPES.includes(value as typeof CURRENT_ASSIGNMENT_TYPES[number])) {
+    throw new Error("Assignment type must be Planned, OnBoard, or Cancelled");
+  }
+}
 
 export const crewAssignmentsService = {
   async getAll(crewUuid: string): Promise<CrewAssignment[]> {
@@ -37,6 +43,7 @@ export const crewAssignmentsService = {
     data: Omit<InsertCrewAssignment, "assignUuid" | "crewUuid">
   ): Promise<CrewAssignment> {
     await crewMembersService.getByUuid(crewUuid);
+    requireCurrentAssignmentType(data.assignmentType);
 
     if (data.signOnDate && data.signOffDate) {
       const signOn = new Date(data.signOnDate);
@@ -54,6 +61,9 @@ export const crewAssignmentsService = {
     data: Partial<InsertCrewAssignment> & { auditUserUuid?: string | null }
   ): Promise<CrewAssignment> {
     await this.getByUuid(assignUuid);
+    if ("assignmentType" in data) {
+      requireCurrentAssignmentType(data.assignmentType);
+    }
 
     if (data.signOnDate && data.signOffDate) {
       const signOn = new Date(data.signOnDate);
@@ -88,82 +98,6 @@ export const crewAssignmentsService = {
   },
 
   /**
-   * Assign crew to vessel (with primary/secondary status)
-   * Rules:
-   * - A crew can have one PRIMARY assignment (their main vessel)
-   * - A crew can have multiple SECONDARY assignments (relief/backup)
-   * - Creating a PRIMARY deactivates any existing PRIMARY
-   */
-  async assignToVessel(
-    crewUuid: string,
-    vesselUuid: string,
-    data: {
-      signOnDate?: Date | string;
-      reliefDue?: Date | string;
-      contractPeriod?: string;
-      assignmentType?: "primary" | "secondary";
-      notes?: string;
-      isCurrent?: boolean;
-      auditUserUuid?: string | null;
-    }
-  ): Promise<CrewAssignment> {
-    const db = getDb();
-    await crewMembersService.getByUuid(crewUuid);
-
-    const assignmentType = data.assignmentType || "primary";
-    const signOnDate = data.signOnDate || new Date();
-    const auditUserUuid = data.auditUserUuid ?? null;
-
-    return db.transaction(async (tx: any) => {
-      if (assignmentType === "primary") {
-        await tx
-          .update(crewAssignments)
-          .set(applyAuditUser({ isCurrent: false, auditUserUuid }))
-          .where(
-            and(
-              eq(crewAssignments.crewUuid, crewUuid),
-              eq(crewAssignments.assignmentType, "primary"),
-              eq(crewAssignments.isCurrent, true)
-            )
-          );
-      }
-
-      const now = new Date();
-      const signOnDateStr =
-        typeof signOnDate === "string"
-          ? signOnDate
-          : signOnDate.toISOString().split("T")[0];
-
-      const [assignment] = await tx
-        .insert(crewAssignments)
-        .values(
-          applyAuditUser(
-            {
-              assignUuid: uuidv4(),
-              crewUuid,
-              vesselUuid,
-              signOnDate: signOnDateStr,
-              reliefDue: data.reliefDue
-                ? typeof data.reliefDue === "string"
-                  ? data.reliefDue
-                  : data.reliefDue.toISOString().split("T")[0]
-                : null,
-              contractPeriod: data.contractPeriod ?? null,
-              assignmentType,
-              isCurrent: data.isCurrent !== undefined ? data.isCurrent : true,
-              createdAt: now,
-              auditUserUuid,
-            },
-            true
-          )
-        )
-        .returning();
-
-      return assignment;
-    });
-  },
-
-  /**
    * Sign off crew from vessel
    */
   async signOff(
@@ -185,7 +119,8 @@ export const crewAssignmentsService = {
         and(
           eq(crewAssignments.crewUuid, crewUuid),
           eq(crewAssignments.isCurrent, true),
-          eq(crewAssignments.assignmentType, "primary")
+          eq(crewAssignments.assignmentType, "OnBoard"),
+          eq(crewAssignments.isDeleted, false),
         )
       )
       .limit(1);
@@ -260,7 +195,7 @@ export const crewAssignmentsService = {
     ];
 
     if (!includeSecondary) {
-      conditions.push(eq(crewAssignments.assignmentType, "primary"));
+      conditions.push(eq(crewAssignments.assignmentType, "OnBoard"));
     }
 
     return db

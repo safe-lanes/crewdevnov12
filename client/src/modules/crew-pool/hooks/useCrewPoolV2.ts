@@ -1040,20 +1040,6 @@ export function useSaveVesselTypesV2() {
   });
 }
 
-export function useAssignToVesselV2() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: async ({ crewUuid, data }: { crewUuid: string; data: any }) => {
-      return crewPoolApiV2.assignToVessel(crewUuid, data);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew'] });
-      queryClient.invalidateQueries({ queryKey: [V2_QUERY_KEY, 'crew', variables.crewUuid] });
-    },
-  });
-}
-
 export function useSignOffV2() {
   const queryClient = useQueryClient();
   

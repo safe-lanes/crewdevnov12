@@ -1132,7 +1132,7 @@ export async function importCrewAssignments(
       for (const item of rowsToProcess) {
         const crew = item.crew;
         const vessel = item.vessel;
-        const isPrimary = item.assignmentType === "OnBoard" || item.assignmentType === "primary";
+        const isPrimary = item.assignmentType === "OnBoard";
         const targetPos = item.targetPos;
 
         let finalReliefDue = item.reliefDue;
@@ -1218,7 +1218,7 @@ export async function importCrewAssignments(
         } else {
           if (isPrimary) {
             // Mark the crew member's current primary assignment as no longer current
-            // (mirrors the logic in crewAssignmentsService.assignToVessel)
+            // Only canonical OnBoard assignments can be current incumbents.
             await tx
               .update(crewAssignments)
               .set({
@@ -1229,7 +1229,7 @@ export async function importCrewAssignments(
               .where(
                 and(
                   eq(crewAssignments.crewUuid, crew.crewUuid),
-                  inArray(crewAssignments.assignmentType, ["OnBoard", "primary"]),
+                  eq(crewAssignments.assignmentType, "OnBoard"),
                   eq(crewAssignments.isCurrent, true),
                 ),
               );
