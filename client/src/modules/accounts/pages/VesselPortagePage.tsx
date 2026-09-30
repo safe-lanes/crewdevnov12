@@ -1165,7 +1165,6 @@ export default function VesselPortagePage() {
       .autoCreate(vesselUuid, period)
       .then((result) => {
         const created = result?.created?.length ?? 0;
-        const errors = result?.errors?.length ?? 0;
         if (created > 0) {
           queryClient.invalidateQueries({
             queryKey: [
@@ -1174,16 +1173,6 @@ export default function VesselPortagePage() {
           });
           toast({
             title: `${created} engagement${created === 1 ? "" : "s"} created from Crewing`,
-          });
-        }
-        if (errors > 0) {
-          toast({
-            title: `${errors} crew member${errors === 1 ? "" : "s"} could not be engaged`,
-            description: (result.errors ?? [])
-              .slice(0, 3)
-              .map((e: any) => e.reason)
-              .join("; "),
-            variant: "destructive",
           });
         }
       })
