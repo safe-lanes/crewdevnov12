@@ -563,6 +563,7 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         handOverDate: planning.handOverDate,
         relieverCrewId: planning.relieverCrewUuid,
         relieverCrewUuid: planning.relieverCrewUuid,
+        relieverAssignUuid: planning.relieverAssignUuid,
         relieverCrewName: planning.relieverCrewName,
         relieverFirstName: (planning.relieverFirstName ?? '').trim(),
         relieverMiddleName: (planning.relieverMiddleName ?? '').trim(),
@@ -1192,6 +1193,8 @@ export function VesselModule_v2(): JSX.Element {
             planningData: crew ? {
                 planUuid: crew.planUuid || crew.id,
                 relieverCrewId: crew.relieverCrewId || crew.crewUuid,
+                relieverAssigned: Boolean(crew.relieverCrewId || crew.relieverCrewUuid || crew._isSynthesizedReliever),
+                relieverAssignUuid: crew.relieverAssignUuid ?? null,
                 relieverCrewName: crew.relieverCrewName || crew.crewName,
                 relieverHasPriorJoiningPromotion: crew.relieverHasPriorJoiningPromotion,
                 relieverPromotionToRank: crew.relieverPromotionToRank,
@@ -2555,6 +2558,7 @@ export function VesselModule_v2(): JSX.Element {
                                                         if (!secondaryCrew && primaryCrew?.relieverCrewId) {
                                                             secondaryCrew = {
                                                                 planUuid: primaryCrew.planUuid,
+                                                                relieverAssignUuid: primaryCrew.relieverAssignUuid ?? null,
                                                                 crewUuid: primaryCrew.relieverCrewId,
                                                                 crewName: primaryCrew.relieverCrewName,
                                                                 crewStatus: 'secondary',

@@ -900,6 +900,7 @@ export const vesselPlanningService = {
   async create(data: Omit<InsertVesselPlanningV2, "planUuid"> & { auditUserUuid?: string }) {
     // Apply audit user fields
     const auditedData = applyAuditUser(data, true);
+    delete (auditedData as any).relieverAssignUuid;
     
     // Resolve port values to UUIDs (handles both UUID and port name inputs)
     const resolvedData = { ...auditedData };
@@ -929,6 +930,12 @@ export const vesselPlanningService = {
   }
 
   const resolvedData = { ...auditedData };
+   // Association identity is written only by Deploy (or the migration), not
+   // by generic planning edits supplied by a client.
+   delete (resolvedData as any).relieverAssignUuid;
+   if (resolvedData.relieverCrewUuid && resolvedData.relieverCrewUuid !== existing.relieverCrewUuid) {
+     throw new Error("Deploy the reliever through Rotation to create its linked assignment");
+   }
   if (auditedData.joiningPortUuid) {
     resolvedData.joiningPortUuid = await resolvePortToUuid(auditedData.joiningPortUuid) || undefined;
   }
@@ -965,11 +972,15 @@ export const vesselPlanningService = {
 
       const relieverCrewUuid = lockedPlanning.relieverCrewUuid;
       if (relieverCrewUuid) {
-        const matchingAssignments = await tx
+        if (!lockedPlanning.relieverAssignUuid) {
+          throw new Error("Reliever assignment is unlinked; reconcile its assignment before unassigning");
+        }
+        const [assignment] = await tx
           .select({ assignUuid: crewAssignments.assignUuid })
           .from(crewAssignments)
           .where(
             and(
+              eq(crewAssignments.assignUuid, lockedPlanning.relieverAssignUuid),
               eq(crewAssignments.crewUuid, relieverCrewUuid),
               eq(crewAssignments.vesselUuid, lockedPlanning.vesselUuid),
               eq(crewAssignments.assignmentType, "Planned"),
@@ -977,42 +988,24 @@ export const vesselPlanningService = {
             ),
           )
           .for("update");
-
-        if (matchingAssignments.length === 1) {
-          await tx
-            .update(crewAssignments)
-            .set({
-              assignmentType: "Cancelled",
-              isCurrent: false,
-              reason: "Unassigned before joining",
-              updatedByUuid: data.auditUserUuid || null,
-              updatedAt: sql`NOW()`,
-            })
-            .where(
-              eq(
-                crewAssignments.assignUuid,
-                matchingAssignments[0].assignUuid,
-              ),
-            );
-        } else if (matchingAssignments.length > 1) {
-          console.warn(
-            "Reliever unassign found multiple Planned assignments; none were cancelled",
-            {
-              planUuid,
-              crewUuid: relieverCrewUuid,
-              vesselUuid: lockedPlanning.vesselUuid,
-              assignUuids: matchingAssignments.map(
-                (assignment: { assignUuid: string }) =>
-                  assignment.assignUuid,
-              ),
-            },
-          );
+        if (!assignment) {
+          throw new Error("Linked reliever assignment is no longer Planned; reconcile before unassigning");
         }
+        await tx
+          .update(crewAssignments)
+          .set({
+            assignmentType: "Cancelled",
+            isCurrent: false,
+            reason: "Unassigned before joining",
+            updatedByUuid: data.auditUserUuid || null,
+            updatedAt: sql`NOW()`,
+          })
+          .where(eq(crewAssignments.assignUuid, assignment.assignUuid));
       }
 
       const planning = await vesselPlanningRepository.update(
         planUuid,
-        resolvedData,
+        { ...resolvedData, relieverAssignUuid: null },
         tx,
       );
       if (!planning) {
@@ -1304,6 +1297,11 @@ export const vesselPlanningService = {
     relieverContractPeriodMonths?: number;
     auditUserUuid?: string;
   }) {
+    const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
+    if (!existing) throw new Error(`Planning record not found: ${planUuid}`);
+    if (existing.relieverCrewUuid !== relieverData.relieverCrewUuid) {
+      throw new Error("Deploy the reliever through Rotation to create its linked assignment");
+    }
     // Resolve port value to UUID if provided
     const resolvedData: any = { ...relieverData };
     if (relieverData.joiningPortUuid) {
@@ -1446,6 +1444,7 @@ export const vesselPlanningService = {
             takeOverConfirmation: false,
             handOverDate: null,
             relieverCrewUuid: null,
+            relieverAssignUuid: null,
             relieverSignOnDate: null,
             joiningPortUuid: resolvedPortUuid,
             joiningStatus: null,
@@ -1468,6 +1467,7 @@ export const vesselPlanningService = {
           .update(vesselPlanningV2)
           .set({
             relieverCrewUuid: null,
+            relieverAssignUuid: null,
             relieverSignOnDate: null,
             relieverContractPeriodMonths: null,
             relieverContractEndRangeStartMonths: null,
@@ -1520,6 +1520,7 @@ export const vesselPlanningService = {
             contractEndRangeEndMonths: effectiveContractRangeEnd,
             reliefDue: calculatedReliefDue,
             relieverCrewUuid: null,
+            relieverAssignUuid: null,
             relieverSignOnDate: null,
             relieverContractPeriodMonths: null,
             relieverContractEndRangeStartMonths: null,

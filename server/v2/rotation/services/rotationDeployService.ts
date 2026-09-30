@@ -102,12 +102,45 @@ export const rotationDeployService = {
           };
         }
 
+        const relieverAssignUuid = uuidv4();
+        // Assignment and planning reference the same identity, under the same
+        // transaction and row locks. Insert first for the planning foreign key.
+        await tx
+          .update(crewAssignments)
+          .set({
+            isCurrent: false,
+            updatedByUuid: effectiveAuditUser,
+          })
+          .where(
+            and(
+              eq(crewAssignments.crewUuid, entry.crewUuid),
+              eq(crewAssignments.isCurrent, true),
+              eq(crewAssignments.assignmentType, "Planned"),
+            ),
+          );
+
+        await tx
+          .insert(crewAssignments)
+          .values({
+            assignUuid: relieverAssignUuid,
+            crewUuid: entry.crewUuid,
+            vesselUuid: entry.vesselUuid,
+            isCurrent: false,
+            signOnDate: entry.signOnDate,
+            contractPeriod: entry.contractPeriod?.toString(),
+            portOfJoiningUuid: entry.joiningPortUuid,
+            assignmentType: "Planned",
+            createdByUuid: effectiveAuditUser,
+            updatedByUuid: effectiveAuditUser,
+          });
+
         let planUuid: string;
         if (existingPlan) {
           const planning = await vesselPlanningRepository.update(
             existingPlan.planUuid,
             {
               relieverCrewUuid: entry.crewUuid,
+              relieverAssignUuid,
               relieverSignOnDate: entry.signOnDate,
               joiningPortUuid: entry.joiningPortUuid,
               joiningStatus: "Planned",
@@ -131,6 +164,7 @@ export const rotationDeployService = {
               rankId: entry.rankId || entry.rank,
               rank: entry.rank,
               relieverCrewUuid: entry.crewUuid,
+              relieverAssignUuid,
               relieverSignOnDate: entry.signOnDate,
               joiningPortUuid: entry.joiningPortUuid,
               joiningStatus: "Planned",
@@ -181,36 +215,6 @@ export const rotationDeployService = {
             createdByUuid: effectiveAuditUser,
           })
           .returning();
-
-        // Do not deactivate OnBoard assignments: the crew remains on board until sign-off.
-        await tx
-          .update(crewAssignments)
-          .set({
-            isCurrent: false,
-            updatedByUuid: effectiveAuditUser,
-          })
-          .where(
-            and(
-              eq(crewAssignments.crewUuid, entry.crewUuid),
-              eq(crewAssignments.isCurrent, true),
-              eq(crewAssignments.assignmentType, "Planned"),
-            ),
-          );
-
-        await tx
-          .insert(crewAssignments)
-          .values({
-            assignUuid: uuidv4(),
-            crewUuid: entry.crewUuid,
-            vesselUuid: entry.vesselUuid,
-            isCurrent: false,
-            signOnDate: entry.signOnDate,
-            contractPeriod: entry.contractPeriod?.toString(),
-            portOfJoiningUuid: entry.joiningPortUuid,
-            assignmentType: "Planned",
-            createdByUuid: effectiveAuditUser,
-            updatedByUuid: effectiveAuditUser,
-          });
 
         return {
           success: true,

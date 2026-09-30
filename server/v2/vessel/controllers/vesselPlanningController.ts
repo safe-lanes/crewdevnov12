@@ -12,6 +12,10 @@ import {
 } from "../../shared/serveAttachmentHelper.js";
 import { resolveVesselFolderFromPlanUuid } from "../../shared/attachmentScope.js";
 import { getAuditUserUuid } from "../../accounts/controllers/_auth";
+import { getDb } from "../../db";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
+import { crewAssignments } from "../../../../shared/v2/crew-pool/schema";
+import { and, eq } from "drizzle-orm";
 
 /**
  * Normalize a stored attachment record for serving. Legacy rows written by the
@@ -113,10 +117,42 @@ export const vesselPlanningController = {
     }
   },
 
+  async getRelieverAssignment(req: Request, res: Response) {
+    try {
+      const { planUuid, assignUuid } = req.params;
+      const db = getDb();
+      const [row] = await db.select({
+        assignUuid: crewAssignments.assignUuid,
+        crewUuid: crewAssignments.crewUuid,
+        vesselUuid: crewAssignments.vesselUuid,
+        assignmentType: crewAssignments.assignmentType,
+        signOnDate: crewAssignments.signOnDate,
+        contractPeriod: crewAssignments.contractPeriod,
+        portOfJoiningUuid: crewAssignments.portOfJoiningUuid,
+      }).from(vesselPlanningV2)
+        .innerJoin(crewAssignments, and(
+          eq(crewAssignments.assignUuid, vesselPlanningV2.relieverAssignUuid),
+          eq(crewAssignments.crewUuid, vesselPlanningV2.relieverCrewUuid),
+          eq(crewAssignments.vesselUuid, vesselPlanningV2.vesselUuid),
+          eq(crewAssignments.isDeleted, false),
+        ))
+        .where(and(
+          eq(vesselPlanningV2.planUuid, planUuid),
+          eq(vesselPlanningV2.relieverAssignUuid, assignUuid),
+          eq(vesselPlanningV2.isDeleted, false),
+        ));
+      if (!row) return res.status(404).json({ error: "Linked reliever assignment unavailable" });
+      res.json(row);
+    } catch (error) {
+      console.error("Error opening linked reliever assignment:", error);
+      res.status(500).json({ error: "Failed to open linked reliever assignment" });
+    }
+  },
+
   async create(req: Request, res: Response) {
     try {
       const validatedData = insertVesselPlanningV2Schema
-        .omit({ planUuid: true })
+        .omit({ planUuid: true, relieverAssignUuid: true })
         .parse(req.body);
       const auditUserUuid = req.body?.auditUserUuid ?? null;
       const planning = await vesselPlanningService.create({ ...validatedData, auditUserUuid });
@@ -133,8 +169,9 @@ export const vesselPlanningController = {
   async update(req: Request, res: Response) {
     try {
       const { planUuid } = req.params;
+      const { relieverAssignUuid: _ignored, ...updateBody } = req.body || {};
       const planning = await vesselPlanningService.update(planUuid, {
-        ...req.body,
+        ...updateBody,
         // Audit identity is server-derived and cannot be spoofed by the client.
         auditUserUuid: getAuditUserUuid(req),
       });
@@ -145,6 +182,11 @@ export const vesselPlanningController = {
       }
       if (error.message?.includes("Travel End date cannot be filled before Sign Off")) {
         return res.status(400).json({ error: error.message });
+      }
+      if (error.message?.includes("assignment is unlinked") ||
+          error.message?.includes("assignment is no longer Planned") ||
+          error.message?.includes("Deploy the reliever")) {
+        return res.status(409).json({ error: error.message });
       }
       console.error("Error updating planning:", error);
       res.status(500).json({ error: "Failed to update planning record" });

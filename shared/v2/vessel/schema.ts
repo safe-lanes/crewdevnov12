@@ -30,6 +30,7 @@ export const vesselPlanningV2 = pgTable("vessel_planning_v2", {
   takeOverConfirmation: boolean("take_over_confirmation").default(false),
   handOverDate: text("hand_over_date"),
   relieverCrewUuid: text("reliever_crew_uuid"),
+  relieverAssignUuid: text("reliever_assign_uuid"),
   relieverSignOnDate: text("reliever_sign_on_date"),
   joiningPortUuid: text("joining_port_uuid"),
   joiningStatus: text("joining_status"),

@@ -30,6 +30,7 @@ export interface VesselPlanningV2 {
   takeOverConfirmation: boolean;
   handOverDate: string | null;
   relieverCrewUuid: string | null;
+  relieverAssignUuid?: string | null;
   relieverCrewName?: string;
   relieverSignOnDate: string | null;
   joiningPortUuid: string | null;

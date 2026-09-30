@@ -30,6 +30,7 @@ import { useUpdatePlanningV2, useCreatePlanningV2 } from '../hooks/useVesselV2';
 import { vesselApiV2 } from '../api/vesselApiV2';
 import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { apiRequest } from "@/lib/queryClient";
 
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -111,6 +112,14 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const [showSignOnConflict, setShowSignOnConflict] = useState(false);
     const [conflictVesselName, setConflictVesselName] = useState('');
     const [isCheckingConflict, setIsCheckingConflict] = useState(false);
+    const [assignmentDetails, setAssignmentDetails] = useState<{
+        assignUuid: string;
+        assignmentType: string | null;
+        signOnDate: string | null;
+        contractPeriod: string | null;
+    } | null>(null);
+    const [assignmentLoading, setAssignmentLoading] = useState(false);
+    const [assignmentError, setAssignmentError] = useState<string | null>(null);
     
     const updatePlanningV2 = useUpdatePlanningV2();
     const createPlanningV2 = useCreatePlanningV2();
@@ -134,6 +143,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     });
 
     React.useEffect(() => {
+        setAssignmentDetails(null);
+        setAssignmentError(null);
         if (open && planningData) {
             form.reset({
                 relieverCrewName: planningData.relieverCrewName || '',
@@ -168,6 +179,23 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             setUnassignChecked(false);
         }
     }, [open, planningData, form]);
+
+    const openLinkedAssignment = async () => {
+        if (!planningData?.planUuid || !planningData?.relieverAssignUuid) return;
+        setAssignmentLoading(true);
+        setAssignmentError(null);
+        try {
+            const response = await apiRequest(
+                "GET",
+                `/api/v2/vessel/planning/${encodeURIComponent(planningData.planUuid)}/reliever-assignment/${encodeURIComponent(planningData.relieverAssignUuid)}`
+            );
+            setAssignmentDetails(await response.json());
+        } catch (error) {
+            setAssignmentError(error instanceof Error ? error.message : "Assignment unavailable");
+        } finally {
+            setAssignmentLoading(false);
+        }
+    };
 
     const normalizeToIsoDate = (dateStr: string | undefined): string | undefined => {
         if (!dateStr) return undefined;
@@ -471,6 +499,35 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                         Rank: {rank}
                     </DialogTitle>
                 </DialogHeader>
+
+                {planningData?.relieverAssigned && (
+                    <div className="rounded-md border bg-slate-50 p-3 text-sm" data-testid="reliever-assignment-link">
+                        {planningData.relieverAssignUuid ? (
+                            <>
+                                <div className="flex items-center justify-between gap-2">
+                                    <span>Linked assignment</span>
+                                    <Button type="button" variant="outline" size="sm" onClick={openLinkedAssignment} disabled={assignmentLoading}>
+                                        {assignmentLoading ? "Opening…" : "Open assignment"}
+                                    </Button>
+                                </div>
+                                {assignmentDetails && (
+                                    <div className="mt-2 space-y-1" data-testid="reliever-assignment-details">
+                                        <div className="font-mono text-xs break-all">{assignmentDetails.assignUuid}</div>
+                                        <div>Status: {assignmentDetails.assignmentType ?? "Unknown"}</div>
+                                        <div>Joining date: {formatDateOnly(assignmentDetails.signOnDate) || "Not set"}</div>
+                                        <div>Contract: {assignmentDetails.contractPeriod ? `${assignmentDetails.contractPeriod} months` : "Not set"}</div>
+                                    </div>
+                                )}
+                                {assignmentError && <p className="mt-2 text-red-700" role="alert">{assignmentError}</p>}
+                            </>
+                        ) : (
+                            <p className="text-amber-800" role="status">
+                                Assignment unavailable: this legacy reliever has no verified assignment link.
+                                Reconcile the assignment before opening linked forms or unassigning.
+                            </p>
+                        )}
+                    </div>
+                )}
 
                 <Form {...form}>
                     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
