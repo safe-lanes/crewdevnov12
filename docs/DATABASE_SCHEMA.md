@@ -4,6 +4,12 @@
 
 The SAIL Crewing system uses PostgreSQL as its database, accessed via Drizzle ORM. The schema is defined in `shared/schema.ts` and contains 52 tables organized into logical domains.
 
+### Crew-assignment vessel guard
+
+`tr_crew_assignments_vessel_uuid_guard` is a row-level `BEFORE INSERT OR UPDATE OF vessel_uuid` trigger on `crew_assignments`, installed by the forward-only assignment-vessel migration. It checks a new or **changed** non-null vessel ID for canonical UUID shape (uppercase or lowercase hex), resolves exactly one non-deleted `master_vessels` row case-insensitively, and replaces the input with the master's exact stored spelling. Malformed, unknown, deleted, or ambiguous IDs fail the write. Null IDs remain allowed by the nullable column. Updates leaving `vessel_uuid` unchanged—including unrelated updates to historical assignments for retired/missing vessels—are exempt; existing records were not backfilled or validated. This is a trigger, **not** a foreign key or a Drizzle schema constraint.
+
+Current vessel-master sync inserts new keys, updates existing rows and soft-deletes omissions; it does not truncate or delete/reinsert `master_vessels`. A future change to hard-delete/truncate parent rows must review assignment history and this guard before changing sync behavior.
+
 ## Entity Relationship Diagram
 
 ```mermaid

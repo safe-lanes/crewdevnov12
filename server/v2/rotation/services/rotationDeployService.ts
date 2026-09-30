@@ -6,6 +6,7 @@ import { crewMembersV2, crewAssignments } from "../../../../shared/v2/crew-pool/
 import { rotationEntriesRepository, rotationArchiveRepository } from "../repositories";
 import { vesselPlanningRepository } from "../../vessel/repositories";
 import { v4 as uuidv4 } from "uuid";
+import { resolveAssignmentVesselUuid } from "../../crew-pool/services/assignmentVesselValidation";
 
 function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
   const auditUserUuid = (data as any).auditUserUuid || null;
@@ -47,6 +48,10 @@ export const rotationDeployService = {
         if (!entry.crewUuid) {
           return { success: false, error: "No crew assigned to this entry" };
         }
+        const vesselUuid = await resolveAssignmentVesselUuid(entry.vesselUuid, tx);
+        if (!vesselUuid) {
+          return { success: false, error: "Deployment requires a vessel ID" };
+        }
 
         const [crew] = await tx
           .select()
@@ -64,7 +69,7 @@ export const rotationDeployService = {
           .from(vesselPlanningV2)
           .where(
             and(
-              eq(vesselPlanningV2.vesselUuid, entry.vesselUuid),
+              eq(vesselPlanningV2.vesselUuid, vesselUuid),
               eq(vesselPlanningV2.rank, entry.rank),
               eq(vesselPlanningV2.crewStatus, "primary"),
               eq(vesselPlanningV2.isDeleted, false),
@@ -86,7 +91,7 @@ export const rotationDeployService = {
           .from(vesselPlanningV2)
           .where(
             and(
-              eq(vesselPlanningV2.vesselUuid, entry.vesselUuid),
+              eq(vesselPlanningV2.vesselUuid, vesselUuid),
               eq(vesselPlanningV2.rank, entry.rank),
               eq(vesselPlanningV2.crewStatus, "secondary"),
               eq(vesselPlanningV2.isDeleted, false),
@@ -124,7 +129,7 @@ export const rotationDeployService = {
           .values({
             assignUuid: relieverAssignUuid,
             crewUuid: entry.crewUuid,
-            vesselUuid: entry.vesselUuid,
+            vesselUuid,
             isCurrent: false,
             signOnDate: entry.signOnDate,
             contractPeriod: entry.contractPeriod?.toString(),
@@ -160,7 +165,7 @@ export const rotationDeployService = {
             .insert(vesselPlanningV2)
             .values({
               planUuid: uuidv4(),
-              vesselUuid: entry.vesselUuid,
+              vesselUuid,
               rankId: entry.rankId || entry.rank,
               rank: entry.rank,
               relieverCrewUuid: entry.crewUuid,
@@ -196,7 +201,7 @@ export const rotationDeployService = {
             archiveUuid: uuidv4(),
             draftUuid: entry.draftUuid,
             entryUuid: entry.entryUuid,
-            vesselUuid: entry.vesselUuid,
+            vesselUuid,
             rank: entry.rank,
             crewUuid: entry.crewUuid,
             crewName,

@@ -2,6 +2,12 @@ import { Request, Response } from "express";
 import { crewAssignmentsService } from "../services";
 import { insertCrewAssignmentSchema } from "@shared/v2/crew-pool/types";
 import { z } from "zod";
+import { InvalidAssignmentVesselError } from "../services/assignmentVesselValidation";
+
+function isAssignmentVesselFailure(error: any): boolean {
+  return error instanceof InvalidAssignmentVesselError ||
+    (error?.code === "22023" && /assignment vessel UUID/i.test(error.message ?? ""));
+}
 
 const signOffSchema = z.object({
   planUuid: z.string().min(1),
@@ -80,7 +86,7 @@ export const crewAssignmentsController = {
       );
       res.status(201).json(assignment);
     } catch (error: any) {
-      if (error.message?.startsWith("Assignment type must be")) {
+      if (isAssignmentVesselFailure(error) || error.message?.startsWith("Assignment type must be")) {
         return res.status(400).json({ error: error.message });
       }
       if (error instanceof z.ZodError) {
@@ -134,7 +140,7 @@ export const crewAssignmentsController = {
       );
       res.json(assignment);
     } catch (error: any) {
-      if (error.message?.startsWith("Assignment type must be")) {
+      if (isAssignmentVesselFailure(error) || error.message?.startsWith("Assignment type must be")) {
         return res.status(400).json({ error: error.message });
       }
       if (error instanceof z.ZodError) {

@@ -10,6 +10,7 @@ import { vesselDraftsService } from "../../admin/services/vesselDraftsService";
 import { vesselPlanningRepository } from "../repositories/vesselPlanningRepository";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { parseDateString } from "../utils/dateUtils";
+import { resolveAssignmentVesselUuid } from "../../crew-pool/services/assignmentVesselValidation";
 
 // ── Module-level concurrency guard for Stage 1 ───────────────────────────────
 // Prevents two simultaneous requests from both running Phase 2 writes for the
@@ -1038,6 +1039,9 @@ export async function importCrewAssignments(
       // — which is impossible for any two different well-formed UUIDs.  Locks are
       // released automatically on transaction commit or rollback.
       for (const vesselUuid of uniqueVesselUuids) {
+        // The spreadsheet resolves names to master rows, but a retired or
+        // malformed master UUID must still fail before any import writes.
+        await resolveAssignmentVesselUuid(vesselUuid, tx);
         const lockResult = await tx.execute(
           sql`SELECT pg_try_advisory_xact_lock(
             ('x' || substr(replace(${vesselUuid}, '-', ''), 1,  8))::bit(32)::integer,

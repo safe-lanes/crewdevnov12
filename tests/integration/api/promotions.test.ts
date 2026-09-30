@@ -18,6 +18,8 @@ import {
   crewMembersV2,
 } from '../../../shared/v2/crew-pool/schema';
 import { vesselPlanningV2 } from '../../../shared/v2/vessel/schema';
+import { masterVessels } from '../../../shared/schema';
+import { randomUUID } from 'crypto';
 import { vesselPlanningService } from '../../../server/v2/vessel/services/vesselPlanningService';
 import { and, eq, inArray } from 'drizzle-orm';
 import { findNextPromotionRank } from '../../../client/src/modules/promotions/promotionUtils';
@@ -214,10 +216,15 @@ describe('Promotions API Integration', () => {
     const crewMemberId = `T493-GUARD-${fixtureSuffix}`;
     const crewUuid = `task-493-promotee-${fixtureSuffix}`;
     const assignmentUuid = `task-493-assignment-${fixtureSuffix}`;
-    const vesselUuid = 'task-493-vessel';
+    const vesselUuid = randomUUID();
 
     beforeAll(async () => {
       const db = getDb();
+      await db.insert(masterVessels).values({
+        vesselUuid,
+        vessel: 'Promotion guard fixture',
+        isDeleted: false,
+      });
       await db.insert(crewMembersV2).values({
         crewUuid,
         empNo: crewMemberId,
@@ -242,6 +249,7 @@ describe('Promotions API Integration', () => {
       await db
         .delete(crewMembersV2)
         .where(eq(crewMembersV2.crewUuid, crewUuid));
+      await db.delete(masterVessels).where(eq(masterVessels.vesselUuid, vesselUuid));
     });
 
     const planningRow = (overrides: Record<string, unknown>) => ({

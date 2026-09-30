@@ -55,6 +55,16 @@ function token(): string {
 }
 
 async function insert(table: string, row: Record<string, unknown>) {
+  if (table === "crew_assignments" && typeof row.vessel_uuid === "string") {
+    const existing = await db.query("SELECT 1 FROM master_vessels WHERE vessel_uuid = $1", [row.vessel_uuid]);
+    if (!existing.rowCount) {
+      importedVesselUuids.push(row.vessel_uuid);
+      await db.query(
+        "INSERT INTO master_vessels(vessel_uuid, vessel, is_deleted) VALUES ($1, $2, false)",
+        [row.vessel_uuid, "Assignment fixture"],
+      );
+    }
+  }
   const columns = Object.keys(row);
   const values = Object.values(row);
   const params = columns.map((_, index) => `$${index + 1}`).join(", ");
@@ -119,7 +129,18 @@ async function seedDeployableEntry(
   vesselUuid: string,
   rankId: string,
   rank: string,
+  ensureMaster = true,
 ) {
+  if (ensureMaster) {
+    const existing = await db.query("SELECT 1 FROM master_vessels WHERE vessel_uuid = $1", [vesselUuid]);
+    if (!existing.rowCount) {
+      importedVesselUuids.push(vesselUuid);
+      await db.query(
+        "INSERT INTO master_vessels(vessel_uuid, vessel, is_deleted) VALUES ($1, $2, false)",
+        [vesselUuid, "Deploy fixture"],
+      );
+    }
+  }
   const crewUuid = u();
   const entryUuid = u();
   crewUuids.push(crewUuid);
@@ -168,8 +189,13 @@ async function makeAssignmentsSheet(
 
 async function seedImportVessel(vesselUuid: string) {
   const vesselName = `Import-${vesselUuid}`;
-  importedVesselUuids.push(vesselUuid);
-  await insert("master_vessels", { vessel_uuid: vesselUuid, vessel: vesselName });
+  const existing = await db.query("SELECT 1 FROM master_vessels WHERE vessel_uuid=$1", [vesselUuid]);
+  if (existing.rowCount) {
+    await db.query("UPDATE master_vessels SET vessel=$1 WHERE vessel_uuid=$2", [vesselName, vesselUuid]);
+  } else {
+    importedVesselUuids.push(vesselUuid);
+    await insert("master_vessels", { vessel_uuid: vesselUuid, vessel: vesselName });
+  }
   return vesselName;
 }
 
@@ -216,11 +242,13 @@ beforeAll(async () => {
   delete process.env.AUTH_BYPASS;
   const { authMiddleware } = await import("@server/middleware/authMiddleware");
   const { default: vesselRouter } = await import("@server/v2/vessel/routes");
+  const { default: crewPoolRouter } = await import("@server/v2/crew-pool/routes");
 
   const app = express();
   app.use(express.json());
   app.use(authMiddleware);
   app.use("/api/v2/vessel", vesselRouter);
+  app.use("/api/v2/crew-pool", crewPoolRouter);
   await new Promise<void>((resolve) => {
     server = app.listen(0, "127.0.0.1", resolve);
   });
@@ -1280,5 +1308,157 @@ describe("reliever assignment cancellation on planning unassign", () => {
       await db.query("ROLLBACK");
       db.off("notice", onNotice);
     }
+  });
+});
+
+describe("assignment vessel UUID guard", () => {
+  const malformed = "744535d0-841a-11ed-aa7c-7003bca91a866";
+  const vessel04 = "744535d0-841a-11ed-aa7c-7003bca91a86";
+
+  it("rejects malformed and absent master IDs in SQL, canonicalizes case, and preserves legacy unrelated updates", async () => {
+    const unknown = u();
+    const oldRows = await db.query(
+      "SELECT id, row_to_json(a) AS snapshot FROM crew_assignments a WHERE vessel_uuid = $1 ORDER BY id",
+      [malformed],
+    );
+    expect(oldRows.rowCount).toBeGreaterThan(0);
+    for (const value of [malformed, unknown]) {
+      await db.query("BEGIN");
+      try {
+        await expect(db.query(
+          "INSERT INTO crew_assignments(assign_uuid,crew_uuid,vessel_uuid,assignment_type) VALUES ($1,$2,$3,'Planned')",
+          [u(), u(), value],
+        )).rejects.toMatchObject({ code: "22023" });
+      } finally {
+        await db.query("ROLLBACK");
+      }
+    }
+    await db.query("BEGIN");
+    try {
+      const inserted = await db.query(
+        "INSERT INTO crew_assignments(assign_uuid,crew_uuid,vessel_uuid,assignment_type) VALUES ($1,$2,$3,'Planned') RETURNING vessel_uuid",
+        [u(), u(), vessel04.toUpperCase()],
+      );
+      expect(inserted.rows[0].vessel_uuid).toBe(vessel04);
+      const uppercaseParent = u().toUpperCase();
+      await db.query("INSERT INTO master_vessels(vessel_uuid,vessel,is_deleted) VALUES ($1,'Case fixture',false)", [uppercaseParent]);
+      const caseMatch = await db.query(
+        "INSERT INTO crew_assignments(assign_uuid,crew_uuid,vessel_uuid,assignment_type) VALUES ($1,$2,$3,'Planned') RETURNING vessel_uuid",
+        [u(), u(), uppercaseParent.toLowerCase()],
+      );
+      expect(caseMatch.rows[0].vessel_uuid).toBe(uppercaseParent);
+      await db.query("INSERT INTO master_vessels(vessel_uuid,vessel,is_deleted) VALUES ($1,'Ambiguous fixture',false)", [uppercaseParent.toLowerCase()]);
+      await db.query("SAVEPOINT ambiguous_vessel");
+      await expect(db.query(
+        "INSERT INTO crew_assignments(assign_uuid,crew_uuid,vessel_uuid,assignment_type) VALUES ($1,$2,$3,'Planned')",
+        [u(), u(), uppercaseParent],
+      )).rejects.toMatchObject({ code: "22023" });
+      await db.query("ROLLBACK TO SAVEPOINT ambiguous_vessel");
+      await db.query("UPDATE master_vessels SET is_deleted=true WHERE vessel_uuid=$1", [uppercaseParent.toLowerCase()]);
+      await db.query("UPDATE master_vessels SET is_deleted=true WHERE vessel_uuid=$1", [uppercaseParent]);
+      expect((await db.query(
+        "UPDATE crew_assignments SET reason='Retired parent still permits unrelated updates' WHERE vessel_uuid=$1 RETURNING vessel_uuid",
+        [uppercaseParent],
+      )).rows[0].vessel_uuid).toBe(uppercaseParent);
+      await db.query("SAVEPOINT invalid_vessel");
+      await expect(db.query(
+        "UPDATE crew_assignments SET vessel_uuid = $1 WHERE id = $2",
+        [unknown, oldRows.rows[0].id],
+      )).rejects.toMatchObject({ code: "22023" });
+      await db.query("ROLLBACK TO SAVEPOINT invalid_vessel");
+      expect((await db.query(
+        "UPDATE crew_assignments SET reason = $1 WHERE id = $2 RETURNING vessel_uuid",
+        ["Unrelated historical edit", oldRows.rows[0].id],
+      )).rows[0].vessel_uuid).toBe(malformed);
+    } finally {
+      await db.query("ROLLBACK");
+    }
+    const after = await db.query(
+      "SELECT id, row_to_json(a) AS snapshot FROM crew_assignments a WHERE vessel_uuid = $1 ORDER BY id",
+      [malformed],
+    );
+    expect(after.rows).toEqual(oldRows.rows);
+  });
+
+  it("returns 400 for invalid crew-pool API creates/updates and stores the master casing", async () => {
+    const crewUuid = u();
+    crewUuids.push(crewUuid);
+    await insert("crew_members_v2", { crew_uuid: crewUuid, emp_no: `EMP-${crewUuid}` });
+    const endpoint = `/api/v2/crew-pool/crew/${crewUuid}/assignments`;
+    for (const value of [malformed, u()]) {
+      const response = await request(server).post(endpoint)
+        .set("Authorization", `Bearer ${token()}`)
+        .send({ vesselUuid: value, assignmentType: "Planned" });
+      expect(response.status).toBe(400);
+      expect(response.body.error).toMatch(/Assignment vessel ID/);
+    }
+    const created = await request(server).post(endpoint)
+      .set("Authorization", `Bearer ${token()}`)
+      .send({ vesselUuid: vessel04.toUpperCase(), assignmentType: "Planned" });
+    expect(created.status).toBe(201);
+    expect(created.body.vesselUuid).toBe(vessel04);
+    assignUuids.push(created.body.assignUuid);
+    const rejected = await request(server).patch(`${endpoint}/${created.body.assignUuid}`)
+      .set("Authorization", `Bearer ${token()}`)
+      .send({ vesselUuid: malformed });
+    expect(rejected.status).toBe(400);
+    expect((await db.query("SELECT vessel_uuid FROM crew_assignments WHERE assign_uuid=$1", [created.body.assignUuid]))
+      .rows[0].vessel_uuid).toBe(vessel04);
+  });
+
+  it("rejects invalid deploys atomically and deploys successfully to vessel 04", async () => {
+    for (const value of [malformed, u()]) {
+      const { crewUuid, entryUuid } = await seedDeployableEntry(value, `Guard-${u()}`, `Guard-${u()}`, false);
+      const result = await rotationDeployService.deployEntry(entryUuid, "deploy-user");
+      expect(result).toMatchObject({ success: false });
+      expect(result.error).toMatch(/Assignment vessel ID/);
+      expect((await db.query("SELECT count(*)::int AS n FROM crew_assignments WHERE crew_uuid=$1", [crewUuid]))
+        .rows[0].n).toBe(0);
+      expect((await db.query("SELECT count(*)::int AS n FROM vessel_planning_v2 WHERE crew_uuid=$1 OR reliever_crew_uuid=$1", [crewUuid]))
+        .rows[0].n).toBe(0);
+      expect((await db.query("SELECT proposal_status FROM rotation_entries_v2 WHERE entry_uuid=$1", [entryUuid]))
+        .rows[0].proposal_status).toBe("Pending");
+    }
+    const { crewUuid, entryUuid } = await seedDeployableEntry(vessel04, `Guard-${u()}`, `Guard-${u()}`);
+    const result = await rotationDeployService.deployEntry(entryUuid, "deploy-user");
+    expect(result.success).toBe(true);
+    planUuids.push(result.planUuid!);
+    const assignment = await db.query(
+      "SELECT assign_uuid,vessel_uuid FROM crew_assignments WHERE crew_uuid=$1 AND vessel_uuid=$2",
+      [crewUuid, vessel04],
+    );
+    expect(assignment.rowCount).toBe(1);
+    assignUuids.push(assignment.rows[0].assign_uuid);
+    expect(assignment.rows[0].vessel_uuid).toBe(vessel04);
+  });
+
+  it("aborts the whole import for a malformed master vessel ID", async () => {
+    const validVesselUuid = u();
+    const validVesselName = await seedImportVessel(validVesselUuid);
+    const validPlan = await seedPlanning(null);
+    await db.query("UPDATE vessel_planning_v2 SET vessel_uuid=$1 WHERE plan_uuid=$2", [validVesselUuid, validPlan.planUuid]);
+    const validCrew = await seedImportCrew();
+    const vesselName = await seedImportVessel(malformed);
+    const { planUuid, rank } = await seedPlanning(null);
+    await db.query("UPDATE vessel_planning_v2 SET vessel_uuid=$1 WHERE plan_uuid=$2", [malformed, planUuid]);
+    const { crewUuid, employeeId } = await seedImportCrew();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await makeAssignmentsSheet(validCrew.employeeId, validVesselName, validPlan.rank));
+    workbook.getWorksheet("Assignments")!.addRow([
+      employeeId, vesselName, "", rank, rank, "2026-10-02", 4, "",
+      "", "Secondary", "Planned", rank,
+    ]);
+    const result = await importCrewAssignments(Buffer.from(await workbook.xlsx.writeBuffer()), "import-user");
+    expect(result.success).toBe(false);
+    expect(result.errors.join(" ")).toMatch(/Assignment vessel ID/);
+    expect(result.secondaryAssignedCount).toBe(0);
+    expect((await db.query("SELECT count(*)::int AS n FROM crew_assignments WHERE crew_uuid=$1", [crewUuid]))
+      .rows[0].n).toBe(0);
+    expect((await db.query("SELECT count(*)::int AS n FROM crew_assignments WHERE crew_uuid=$1", [validCrew.crewUuid]))
+      .rows[0].n).toBe(0);
+    expect((await db.query("SELECT reliever_crew_uuid FROM vessel_planning_v2 WHERE plan_uuid=$1", [planUuid]))
+      .rows[0].reliever_crew_uuid).toBeNull();
+    expect((await db.query("SELECT reliever_crew_uuid FROM vessel_planning_v2 WHERE plan_uuid=$1", [validPlan.planUuid]))
+      .rows[0].reliever_crew_uuid).toBeNull();
   });
 });

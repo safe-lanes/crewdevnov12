@@ -6,6 +6,7 @@ import type {
   InsertCrewAssignment,
 } from "../../../../shared/v2/crew-pool/types";
 import { v4 as uuidv4 } from "uuid";
+import { resolveAssignmentVesselUuid } from "../services/assignmentVesselValidation";
 
 export class CrewAssignmentsRepository {
   async findByCrewUuid(crewUuid: string): Promise<CrewAssignment[]> {
@@ -55,6 +56,7 @@ export class CrewAssignmentsRepository {
     data: Omit<InsertCrewAssignment, "assignUuid">
   ): Promise<CrewAssignment> {
     const db = getDb();
+    const vesselUuid = await resolveAssignmentVesselUuid(data.vesselUuid, db);
 
     // If marking as current, unset previous current
     if (data.isCurrent) {
@@ -73,6 +75,7 @@ export class CrewAssignmentsRepository {
       .insert(crewAssignments)
       .values({
         ...data,
+        vesselUuid,
         assignUuid: uuidv4(),
       })
       .returning();
@@ -84,6 +87,9 @@ export class CrewAssignmentsRepository {
     data: Partial<InsertCrewAssignment>
   ): Promise<CrewAssignment | undefined> {
     const db = getDb();
+    const vesselUuid = "vesselUuid" in data
+      ? await resolveAssignmentVesselUuid(data.vesselUuid, db)
+      : undefined;
 
     // If marking as current, unset previous current first
     if (data.isCurrent) {
@@ -103,7 +109,7 @@ export class CrewAssignmentsRepository {
 
     const results = await db
       .update(crewAssignments)
-      .set({ ...data, updatedAt: sql`now()` })
+      .set({ ...data, ...("vesselUuid" in data ? { vesselUuid } : {}), updatedAt: sql`now()` })
       .where(eq(crewAssignments.assignUuid, assignUuid))
       .returning();
     return results[0];
