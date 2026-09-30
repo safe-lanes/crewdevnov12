@@ -4,6 +4,7 @@ import { applyAuditUser } from "../../admin/utils/auditUser";
 import { CrewAssignmentsRepository } from "../repositories";
 import { crewMembersService } from "./crewMembersService";
 import { crewAssignments } from "../../../../shared/v2/crew-pool/schema";
+import { vesselPlanningService } from "../../vessel/services/vesselPlanningService";
 import type {
   InsertCrewAssignment,
   CrewAssignment,
@@ -103,52 +104,29 @@ export const crewAssignmentsService = {
   async signOff(
     crewUuid: string,
     data: {
+      planUuid: string;
       signOffDate?: Date | string;
       signOffReason?: string;
       signOffNotes?: string;
       auditUserUuid?: string | null;
     }
   ): Promise<CrewAssignment | null> {
-    const db = getDb();
-    const auditUserUuid = data.auditUserUuid ?? null;
-
-    const [current] = await db
-      .select()
-      .from(crewAssignments)
-      .where(
-        and(
-          eq(crewAssignments.crewUuid, crewUuid),
-          eq(crewAssignments.isCurrent, true),
-          eq(crewAssignments.assignmentType, "OnBoard"),
-          eq(crewAssignments.isDeleted, false),
-        )
-      )
-      .limit(1);
-
-    if (!current) {
-      return null;
-    }
-
     const signOffDate = data.signOffDate || new Date();
     const signOffDateStr =
       typeof signOffDate === "string"
         ? signOffDate
         : signOffDate.toISOString().split("T")[0];
-
-    const [updated] = await db
-      .update(crewAssignments)
-      .set(
-        applyAuditUser({
-          signOffDate: signOffDateStr,
-          reason: data.signOffReason || null,
-          isCurrent: false,
-          auditUserUuid,
-        })
-      )
-      .where(eq(crewAssignments.assignUuid, current.assignUuid))
-      .returning();
-
-    return updated;
+    const planning = await vesselPlanningService.signOffCrew(data.planUuid, {
+      signOffDate: signOffDateStr,
+      signOffReason: data.signOffReason,
+      auditUserUuid: data.auditUserUuid ?? undefined,
+      expectedCrewUuid: crewUuid,
+    });
+    if (!planning?.crewAssignUuid) {
+      throw new Error("Incumbent assignment link is missing; reconcile planning before sign-off");
+    }
+    const updated = await crewAssignmentsRepository.findByUuid(planning.crewAssignUuid);
+    return updated ?? null;
   },
 
   /**

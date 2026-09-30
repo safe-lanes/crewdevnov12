@@ -230,6 +230,7 @@ describe('Promotions API Integration', () => {
         crewUuid,
         vesselUuid,
         isCurrent: true,
+        assignmentType: 'OnBoard',
       });
     });
 

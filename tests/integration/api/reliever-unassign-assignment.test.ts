@@ -128,6 +128,7 @@ async function makeAssignmentsSheet(
   vesselName: string,
   rank: string,
   signOnDate = "2026-10-02",
+  type: "Primary" | "Secondary" = "Secondary",
 ) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Assignments");
@@ -138,7 +139,7 @@ async function makeAssignmentsSheet(
   ]);
   sheet.addRow([
     employeeId, vesselName, "", rank, rank, signOnDate, 4, "",
-    "", "Secondary", "Planned", rank,
+    "", type, type === "Primary" ? "Signed On" : "Planned", rank,
   ]);
   return Buffer.from(await workbook.xlsx.writeBuffer());
 }
@@ -217,6 +218,10 @@ afterAll(async () => {
   }
   if (planUuids.length > 0) {
     await db.query(
+      "DELETE FROM vessel_planning_assignment_reconciliations WHERE plan_uuid = ANY($1::text[])",
+      [planUuids],
+    );
+    await db.query(
       "DELETE FROM vessel_planning_v2 WHERE plan_uuid = ANY($1::text[])",
       [planUuids],
     );
@@ -228,6 +233,10 @@ afterAll(async () => {
     );
   }
   if (crewUuids.length > 0) {
+    await db.query(
+      "DELETE FROM crew_sea_service WHERE crew_uuid = ANY($1::text[])",
+      [crewUuids],
+    );
     await db.query(
       "DELETE FROM crew_members_v2 WHERE crew_uuid = ANY($1::text[])",
       [crewUuids],
@@ -243,6 +252,245 @@ afterAll(async () => {
 });
 
 describe("reliever assignment cancellation on planning unassign", () => {
+  it("enforces the three canonical assignment types and NOT NULL in the database", async () => {
+    const constraint = await db.query(
+      `SELECT pg_get_constraintdef(oid) definition FROM pg_constraint
+        WHERE conrelid = 'crew_assignments'::regclass
+          AND conname = 'ck_crew_assignments_assignment_type'`,
+    );
+    expect(constraint.rows[0]?.definition).toContain("'Planned'");
+    expect(constraint.rows[0]?.definition).toContain("'OnBoard'");
+    expect(constraint.rows[0]?.definition).toContain("'Cancelled'");
+    for (const type of ["Legacy", null]) {
+      await db.query("BEGIN");
+      try {
+        await expect(db.query(
+          "INSERT INTO crew_assignments (assign_uuid, crew_uuid, assignment_type) VALUES ($1, $2, $3)",
+          [u(), u(), type],
+        )).rejects.toThrow();
+      } finally {
+        await db.query("ROLLBACK");
+      }
+    }
+  });
+
+  it("refuses sign-on without the reliever assignment link even if a Planned assignment matches", async () => {
+    const crew = await seedImportCrew();
+    const { planUuid, vesselUuid } = await seedPlanning(crew.crewUuid);
+    const assignUuid = await seedAssignment(crew.crewUuid, vesselUuid);
+    const response = await request(server).post(`/api/v2/vessel/planning/${planUuid}/sign-on`)
+      .set("Authorization", `Bearer ${token()}`).send({ signOnDate: "2026-10-02" });
+    expect(response.status).toBe(409);
+    expect(response.body.error).toContain("assignment link is missing");
+    const assignment = await db.query("SELECT assignment_type FROM crew_assignments WHERE assign_uuid = $1", [assignUuid]);
+    expect(assignment.rows[0].assignment_type).toBe("Planned");
+  });
+
+  it("refuses sign-off without an incumbent link even if an OnBoard assignment matches", async () => {
+    const { planUuid, vesselUuid } = await seedPlanning(null);
+    const crewUuid = u();
+    const assignUuid = await seedAssignment(crewUuid, vesselUuid, "OnBoard");
+    await db.query("UPDATE vessel_planning_v2 SET crew_uuid = $1 WHERE plan_uuid = $2", [crewUuid, planUuid]);
+    const response = await request(server).post(`/api/v2/vessel/planning/${planUuid}/sign-off`)
+      .set("Authorization", `Bearer ${token()}`).send({ signOffDate: "2026-10-03" });
+    expect(response.status).toBe(409);
+    expect(response.body.error).toContain("assignment link is missing");
+    const assignment = await db.query("SELECT is_current, sign_off_date FROM crew_assignments WHERE assign_uuid = $1", [assignUuid]);
+    expect(assignment.rows[0]).toEqual({ is_current: true, sign_off_date: null });
+  });
+
+  it("requires administrator evidence before linking an older incumbent, then updates and signs off only that UUID", async () => {
+    const { planUuid, vesselUuid } = await seedPlanning(null);
+    const crewUuid = u();
+    const selectedUuid = await seedAssignment(crewUuid, vesselUuid, "OnBoard");
+    const otherUuid = await seedAssignment(crewUuid, vesselUuid, "OnBoard");
+    await db.query("UPDATE vessel_planning_v2 SET crew_uuid = $1 WHERE plan_uuid = $2", [crewUuid, planUuid]);
+    const url = `/api/v2/vessel/planning/${planUuid}/incumbent-reconciliation`;
+    const officeToken = jwt.sign({ id: ACTOR_ID + 1, domain: "test", userType: "Office" }, TEST_SECRET);
+    expect((await request(server).get(url).set("Authorization", `Bearer ${officeToken}`)).status).toBe(403);
+    expect((await request(server).post(url).set("Authorization", `Bearer ${officeToken}`)
+      .send({ assignUuid: selectedUuid, evidenceNote: "Signed voyage contract and embarkation sheet reviewed" })).status).toBe(403);
+    const choices = await request(server).get(url).set("Authorization", `Bearer ${token()}`);
+    expect(choices.status).toBe(200);
+    expect(choices.body.candidates.map((c: any) => c.assignUuid).sort())
+      .toEqual([selectedUuid, otherUuid].sort());
+    const incomplete = await request(server).post(url).set("Authorization", `Bearer ${token()}`)
+      .send({ assignUuid: selectedUuid, evidenceNote: "guess" });
+    expect(incomplete.status).toBe(400);
+    const wrong = await request(server).post(url).set("Authorization", `Bearer ${token()}`)
+      .send({ assignUuid: u(), evidenceNote: "Signed voyage contract and embarkation sheet reviewed" });
+    expect(wrong.status).toBe(409);
+    const decision = { assignUuid: selectedUuid, evidenceNote: "Signed voyage contract and embarkation sheet reviewed" };
+    const linked = await request(server).post(url).set("Authorization", `Bearer ${token()}`).send(decision);
+    expect(linked.status).toBe(200);
+    expect(linked.body.crewAssignUuid).toBe(selectedUuid);
+    expect((await request(server).post(url).set("Authorization", `Bearer ${token()}`).send(decision)).status).toBe(200);
+    const audit = await db.query(
+      "SELECT assign_uuid, reviewed_by, evidence_note FROM vessel_planning_assignment_reconciliations WHERE plan_uuid = $1", [planUuid],
+    );
+    expect(audit.rows).toEqual([{ assign_uuid: selectedUuid, reviewed_by: String(ACTOR_ID), evidence_note: decision.evidenceNote }]);
+
+    const update = await request(server).patch(`/api/v2/vessel/planning/${planUuid}`)
+      .set("Authorization", `Bearer ${token()}`).send({ reliefDue: "2027-02-01", contractPeriodMonths: 5 });
+    expect(update.status).toBe(200);
+    const afterUpdate = await db.query(
+      "SELECT assign_uuid, relief_due, contract_period FROM crew_assignments WHERE assign_uuid = ANY($1::text[])",
+      [[selectedUuid, otherUuid]],
+    );
+    expect(Object.fromEntries(afterUpdate.rows.map(r => [r.assign_uuid, [r.relief_due, r.contract_period]])))
+      .toEqual({ [selectedUuid]: ["2027-02-01", "5"], [otherUuid]: [null, null] });
+    const signedOff = await request(server).post(`/api/v2/vessel/planning/${planUuid}/sign-off`)
+      .set("Authorization", `Bearer ${token()}`).send({ signOffDate: "2026-10-03" });
+    expect(signedOff.status).toBe(200);
+    const afterSignOff = await db.query(
+      "SELECT assign_uuid, is_current FROM crew_assignments WHERE assign_uuid = ANY($1::text[])",
+      [[selectedUuid, otherUuid]],
+    );
+    expect(Object.fromEntries(afterSignOff.rows.map(r => [r.assign_uuid, r.is_current])))
+      .toEqual({ [selectedUuid]: false, [otherUuid]: true });
+  });
+
+  it("does not accept an incumbent link to another crew's OnBoard assignment", async () => {
+    const { planUuid, vesselUuid } = await seedPlanning(null);
+    const assignUuid = await seedAssignment(u(), vesselUuid, "OnBoard");
+    await db.query(
+      "UPDATE vessel_planning_v2 SET crew_uuid = $1, crew_assign_uuid = $2 WHERE plan_uuid = $3",
+      [u(), assignUuid, planUuid],
+    );
+    const response = await request(server).post(`/api/v2/vessel/planning/${planUuid}/sign-off`)
+      .set("Authorization", `Bearer ${token()}`).send({ signOffDate: "2026-10-03" });
+    expect(response.status).toBe(409);
+    expect(response.body.error).toContain("Linked incumbent assignment");
+    const assignment = await db.query("SELECT is_current, sign_off_date FROM crew_assignments WHERE assign_uuid = $1", [assignUuid]);
+    expect(assignment.rows[0]).toEqual({ is_current: true, sign_off_date: null });
+  });
+
+  it("serializes two sign-ons so the Planned assignment is promoted once", async () => {
+    const crew = await seedImportCrew();
+    const { planUuid, vesselUuid } = await seedPlanning(crew.crewUuid);
+    const assignUuid = await seedAssignment(crew.crewUuid, vesselUuid, "Planned", planUuid);
+    const responses = await Promise.all([1, 2].map(() =>
+      request(server).post(`/api/v2/vessel/planning/${planUuid}/sign-on`)
+        .set("Authorization", `Bearer ${token()}`).send({ signOnDate: "2026-10-02" }),
+    ));
+    expect(responses.filter(r => r.status === 200)).toHaveLength(1);
+    expect([400, 409]).toContain(responses.find(r => r.status !== 200)?.status);
+    const assignment = await db.query(
+      "SELECT assignment_type, is_current FROM crew_assignments WHERE assign_uuid = $1", [assignUuid],
+    );
+    expect(assignment.rows[0]).toEqual({ assignment_type: "OnBoard", is_current: true });
+    const plans = await db.query(
+      "SELECT count(*)::int n FROM vessel_planning_v2 WHERE vessel_uuid = $1 AND crew_uuid = $2 AND is_deleted = false",
+      [vesselUuid, crew.crewUuid],
+    );
+    expect(plans.rows[0].n).toBe(1);
+  });
+
+  it("serializes sign-ons on separate plans for the same crew", async () => {
+    const crew = await seedImportCrew();
+    const first = await seedPlanning(crew.crewUuid);
+    const second = await seedPlanning(crew.crewUuid);
+    const firstUuid = await seedAssignment(crew.crewUuid, first.vesselUuid, "Planned", first.planUuid);
+    const secondUuid = await seedAssignment(crew.crewUuid, second.vesselUuid, "Planned", second.planUuid);
+    const results = await Promise.all([first, second].map(plan =>
+      request(server).post(`/api/v2/vessel/planning/${plan.planUuid}/sign-on`)
+        .set("Authorization", `Bearer ${token()}`).send({ signOnDate: "2026-10-02" }),
+    ));
+    expect(results.filter(r => r.status === 200)).toHaveLength(1);
+    expect(results.find(r => r.status !== 200)?.status).toBe(409);
+    const assignments = await db.query(
+      "SELECT assignment_type, is_current FROM crew_assignments WHERE assign_uuid = ANY($1::text[])",
+      [[firstUuid, secondUuid]],
+    );
+    expect(assignments.rows.filter(r => r.assignment_type === "OnBoard" && r.is_current)).toHaveLength(1);
+    expect(assignments.rows.filter(r => r.assignment_type === "Planned" && !r.is_current)).toHaveLength(1);
+  });
+
+  it("promotes only the linked Planned assignment in a vacant position, then signs off only that assignment", async () => {
+    const crew = await seedImportCrew();
+    const { planUuid, vesselUuid } = await seedPlanning(crew.crewUuid);
+    const linkedUuid = await seedAssignment(crew.crewUuid, vesselUuid, "Planned", planUuid);
+    const unrelatedUuid = await seedAssignment(crew.crewUuid, vesselUuid);
+    const signedOn = await request(server).post(`/api/v2/vessel/planning/${planUuid}/sign-on`)
+      .set("Authorization", `Bearer ${token()}`).send({ signOnDate: "2026-10-02" });
+    expect(signedOn.status).toBe(200);
+    const planning = await db.query(
+      "SELECT crew_uuid, crew_assign_uuid, reliever_assign_uuid FROM vessel_planning_v2 WHERE plan_uuid = $1", [planUuid],
+    );
+    expect(planning.rows[0]).toEqual({
+      crew_uuid: crew.crewUuid, crew_assign_uuid: linkedUuid, reliever_assign_uuid: null,
+    });
+    const afterSignOn = await db.query(
+      "SELECT assign_uuid, assignment_type, is_current FROM crew_assignments WHERE assign_uuid = ANY($1::text[])",
+      [[linkedUuid, unrelatedUuid]],
+    );
+    expect(Object.fromEntries(afterSignOn.rows.map(r => [r.assign_uuid, [r.assignment_type, r.is_current]])))
+      .toEqual({ [linkedUuid]: ["OnBoard", true], [unrelatedUuid]: ["Planned", false] });
+    const [first, retry] = await Promise.all([1, 2].map(() =>
+      request(server).post(`/api/v2/vessel/planning/${planUuid}/sign-off`)
+        .set("Authorization", `Bearer ${token()}`).send({ signOffDate: "2026-10-03" }),
+    ));
+    expect(first.status).toBe(200);
+    expect(retry.status).toBe(200);
+    const afterSignOff = await db.query(
+      "SELECT assign_uuid, assignment_type, is_current, sign_off_date FROM crew_assignments WHERE assign_uuid = ANY($1::text[])",
+      [[linkedUuid, unrelatedUuid]],
+    );
+    expect(Object.fromEntries(afterSignOff.rows.map(r => [r.assign_uuid, [r.assignment_type, r.is_current, r.sign_off_date]])))
+      .toEqual({ [linkedUuid]: ["OnBoard", false, "2026-10-03"], [unrelatedUuid]: ["Planned", false, null] });
+  });
+
+  it("moves the exact reliever link to a secondary plan, preserving the incumbent link and history", async () => {
+    const reliever = await seedImportCrew();
+    const { planUuid, vesselUuid } = await seedPlanning(reliever.crewUuid);
+    const incumbentUuid = u();
+    const oldAssignUuid = await seedAssignment(incumbentUuid, vesselUuid, "OnBoard", undefined);
+    await db.query(
+      "UPDATE vessel_planning_v2 SET crew_uuid = $1, crew_assign_uuid = $2 WHERE plan_uuid = $3",
+      [incumbentUuid, oldAssignUuid, planUuid],
+    );
+    const relieverUuid = await seedAssignment(reliever.crewUuid, vesselUuid, "Planned", planUuid);
+    const otherUuid = await seedAssignment(reliever.crewUuid, vesselUuid);
+    const response = await request(server).post(`/api/v2/vessel/planning/${planUuid}/sign-on`)
+      .set("Authorization", `Bearer ${token()}`).send({ signOnDate: "2026-10-02" });
+    expect(response.status).toBe(200);
+    const secondary = await db.query(
+      "SELECT plan_uuid, crew_assign_uuid, crew_status FROM vessel_planning_v2 WHERE crew_uuid = $1 AND vessel_uuid = $2 AND is_deleted = false",
+      [reliever.crewUuid, vesselUuid],
+    );
+    expect(secondary.rows).toHaveLength(1);
+    planUuids.push(secondary.rows[0].plan_uuid);
+    expect(secondary.rows[0]).toMatchObject({ crew_assign_uuid: relieverUuid, crew_status: "secondary" });
+    const source = await db.query("SELECT crew_assign_uuid, reliever_assign_uuid FROM vessel_planning_v2 WHERE plan_uuid = $1", [planUuid]);
+    expect(source.rows[0]).toEqual({ crew_assign_uuid: oldAssignUuid, reliever_assign_uuid: null });
+    const signOff = await request(server).post(`/api/v2/vessel/planning/${planUuid}/sign-off`)
+      .set("Authorization", `Bearer ${token()}`).send({ signOffDate: "2026-10-03" });
+    expect(signOff.status).toBe(200);
+    const assignments = await db.query(
+      "SELECT assign_uuid, assignment_type, is_current FROM crew_assignments WHERE assign_uuid = ANY($1::text[])",
+      [[oldAssignUuid, relieverUuid, otherUuid]],
+    );
+    expect(Object.fromEntries(assignments.rows.map(r => [r.assign_uuid, [r.assignment_type, r.is_current]])))
+      .toEqual({
+        [oldAssignUuid]: ["OnBoard", false],
+        [relieverUuid]: ["OnBoard", true],
+        [otherUuid]: ["Planned", false],
+      });
+  });
+
+  it("rejects stale assignment links without changing planning or another crew's assignment", async () => {
+    const crew = await seedImportCrew();
+    const { planUuid, vesselUuid } = await seedPlanning(crew.crewUuid);
+    const wrongUuid = await seedAssignment(u(), vesselUuid, "Planned", planUuid);
+    const response = await request(server).post(`/api/v2/vessel/planning/${planUuid}/sign-on`)
+      .set("Authorization", `Bearer ${token()}`).send({ signOnDate: "2026-10-02" });
+    expect(response.status).toBe(409);
+    expect(response.body.error).toContain("Linked reliever assignment");
+    const planning = await db.query("SELECT reliever_crew_uuid FROM vessel_planning_v2 WHERE plan_uuid = $1", [planUuid]);
+    expect(planning.rows[0].reliever_crew_uuid).toBe(crew.crewUuid);
+    const assignment = await db.query("SELECT assignment_type FROM crew_assignments WHERE assign_uuid = $1", [wrongUuid]);
+    expect(assignment.rows[0].assignment_type).toBe("Planned");
+  });
   it("closes one Planned assignment, preserves other states, and is idempotent", async () => {
     const crewUuid = u();
     const { planUuid, vesselUuid } = await seedPlanning(crewUuid);
@@ -603,6 +851,50 @@ describe("reliever assignment cancellation on planning unassign", () => {
     expect(history.rows[0].assignment_type).toBe("Cancelled");
   });
 
+  it("primary crew-list import links the newly created incumbent and safely repeats", async () => {
+    const { planUuid, vesselUuid, rank } = await seedPlanning(null);
+    const vesselName = await seedImportVessel(vesselUuid);
+    const crew = await seedImportCrew();
+    const sheet = await makeAssignmentsSheet(crew.employeeId, vesselName, rank, "2026-10-02", "Primary");
+    const imported = await importCrewAssignments(sheet, "import-user");
+    expect(imported).toMatchObject({ success: true, primaryAssignedCount: 1 });
+    const planning = await db.query(
+      "SELECT crew_uuid, crew_assign_uuid FROM vessel_planning_v2 WHERE plan_uuid = $1", [planUuid],
+    );
+    expect(planning.rows[0].crew_uuid).toBe(crew.crewUuid);
+    const assignUuid = planning.rows[0].crew_assign_uuid;
+    expect(assignUuid).toBeTruthy();
+    assignUuids.push(assignUuid);
+    const repeated = await importCrewAssignments(sheet, "import-user");
+    expect(repeated).toMatchObject({ success: true, alreadyImportedCount: 1 });
+    const assignments = await db.query(
+      "SELECT assign_uuid FROM crew_assignments WHERE crew_uuid = $1 AND vessel_uuid = $2", [crew.crewUuid, vesselUuid],
+    );
+    expect(assignments.rows.map(r => r.assign_uuid)).toEqual([assignUuid]);
+  });
+
+  it("primary import never links a crew assignment to an archived same-rank plan", async () => {
+    const old = await seedPlanning(null);
+    const active = await seedPlanning(null);
+    await db.query("UPDATE vessel_planning_v2 SET is_archived = true WHERE plan_uuid = $1", [old.planUuid]);
+    await db.query("UPDATE vessel_planning_v2 SET vessel_uuid = $1 WHERE plan_uuid = $2", [old.vesselUuid, active.planUuid]);
+    const vesselName = await seedImportVessel(old.vesselUuid);
+    const crew = await seedImportCrew();
+    const sheet = await makeAssignmentsSheet(crew.employeeId, vesselName, active.rank, "2026-10-02", "Primary");
+    const imported = await importCrewAssignments(sheet, "import-user");
+    expect(imported).toMatchObject({ success: true, primaryAssignedCount: 1 });
+    const plans = await db.query(
+      "SELECT plan_uuid, crew_uuid, crew_assign_uuid FROM vessel_planning_v2 WHERE plan_uuid = ANY($1::text[])",
+      [[old.planUuid, active.planUuid]],
+    );
+    const byId = Object.fromEntries(plans.rows.map(r => [r.plan_uuid, r]));
+    expect(byId[old.planUuid].crew_uuid).toBeNull();
+    expect(byId[old.planUuid].crew_assign_uuid).toBeNull();
+    expect(byId[active.planUuid].crew_uuid).toBe(crew.crewUuid);
+    expect(byId[active.planUuid].crew_assign_uuid).toBeTruthy();
+    assignUuids.push(byId[active.planUuid].crew_assign_uuid);
+  });
+
   it("re-import safely replaces a Rotation-linked reliever and keeps the previous assignment history", async () => {
     const { planUuid, vesselUuid, rankId, rank } = await seedPlanning(null);
     const vesselName = await seedImportVessel(vesselUuid);
@@ -660,6 +952,27 @@ describe("reliever assignment cancellation on planning unassign", () => {
     expect(assignments.rows).toHaveLength(0);
   });
 
+  it("does not use a new import date to silently replace an unlinked reliever for the same crew", async () => {
+    const crew = await seedImportCrew();
+    const { planUuid, vesselUuid, rank } = await seedPlanning(crew.crewUuid);
+    const previousUuid = await seedAssignment(crew.crewUuid, vesselUuid);
+    await db.query("UPDATE crew_assignments SET sign_on_date = $1 WHERE assign_uuid = $2", ["2026-10-01", previousUuid]);
+    const vesselName = await seedImportVessel(vesselUuid);
+    const sheet = await makeAssignmentsSheet(crew.employeeId, vesselName, rank, "2026-10-04");
+    const result = await importCrewAssignments(sheet, "import-user");
+    expect(result.success).toBe(false);
+    expect(result.errors.join(" ")).toContain("no verified assignment link");
+    const assignments = await db.query(
+      "SELECT assign_uuid, assignment_type FROM crew_assignments WHERE crew_uuid = $1 AND vessel_uuid = $2",
+      [crew.crewUuid, vesselUuid],
+    );
+    expect(assignments.rows).toEqual([{ assign_uuid: previousUuid, assignment_type: "Planned" }]);
+    const planning = await db.query(
+      "SELECT reliever_crew_uuid, reliever_assign_uuid FROM vessel_planning_v2 WHERE plan_uuid = $1", [planUuid],
+    );
+    expect(planning.rows[0]).toEqual({ reliever_crew_uuid: crew.crewUuid, reliever_assign_uuid: null });
+  });
+
   it("does not reuse a Planned assignment owned by another reliever planning slot", async () => {
     const crew = await seedImportCrew();
     const owner = await seedPlanning(crew.crewUuid);
@@ -679,7 +992,7 @@ describe("reliever assignment cancellation on planning unassign", () => {
     const sheet = await makeAssignmentsSheet(crew.employeeId, vesselName, otherRank);
     const imported = await importCrewAssignments(sheet, "import-user");
     expect(imported.success).toBe(false);
-    expect(imported.errors.join(" ")).toContain("already linked to planning");
+    expect(imported.errors.join(" ")).toContain("no matching verified assignment link");
     const other = await db.query(
       "SELECT reliever_crew_uuid, reliever_assign_uuid FROM vessel_planning_v2 WHERE plan_uuid = $1",
       [otherPlanUuid],

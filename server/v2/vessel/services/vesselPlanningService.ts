@@ -901,6 +901,7 @@ export const vesselPlanningService = {
     // Apply audit user fields
     const auditedData = applyAuditUser(data, true);
     delete (auditedData as any).relieverAssignUuid;
+    delete (auditedData as any).crewAssignUuid;
     
     // Resolve port values to UUIDs (handles both UUID and port name inputs)
     const resolvedData = { ...auditedData };
@@ -933,6 +934,12 @@ export const vesselPlanningService = {
    // Association identity is written only by Deploy (or the migration), not
    // by generic planning edits supplied by a client.
    delete (resolvedData as any).relieverAssignUuid;
+   delete (resolvedData as any).crewAssignUuid;
+   if ("crewUuid" in resolvedData && resolvedData.crewUuid !== existing.crewUuid) {
+     // A generic edit cannot establish a verified assignment association.
+     // Clearing the old link prevents a later sign-off touching the old crew.
+     (resolvedData as any).crewAssignUuid = null;
+   }
    if (resolvedData.relieverCrewUuid && resolvedData.relieverCrewUuid !== existing.relieverCrewUuid) {
      throw new Error("Deploy the reliever through Rotation to create its linked assignment");
    }
@@ -951,6 +958,31 @@ export const vesselPlanningService = {
   const isRelieverClearRequest =
     "relieverCrewUuid" in resolvedData &&
     resolvedData.relieverCrewUuid === null;
+   const reliefDueChanged = "reliefDue" in resolvedData;
+   const contractChanged = "contractPeriodMonths" in resolvedData;
+   const syncIncumbent = async (tx: typeof db, locked: typeof existing) => {
+     if (!reliefDueChanged && !contractChanged) return;
+     const effectiveCrewUuid = "crewUuid" in resolvedData ? resolvedData.crewUuid : locked.crewUuid;
+     if (!effectiveCrewUuid) return;
+     if (!locked.crewAssignUuid || effectiveCrewUuid !== locked.crewUuid) {
+       throw new Error("Incumbent assignment link is missing; reconcile planning before updating assignment details");
+     }
+     const [assignment] = await tx.select().from(crewAssignments)
+       .where(eq(crewAssignments.assignUuid, locked.crewAssignUuid)).for("update");
+     if (!assignment || assignment.crewUuid !== effectiveCrewUuid ||
+         assignment.vesselUuid !== locked.vesselUuid || assignment.isDeleted ||
+         assignment.assignmentType !== "OnBoard" || !assignment.isCurrent) {
+       throw new Error("Linked incumbent assignment is inconsistent; reconcile before updating assignment details");
+     }
+     await tx.update(crewAssignments).set({
+       reliefDue: reliefDueChanged ? (resolvedData as any).reliefDue ?? null : locked.reliefDue,
+       contractPeriod: contractChanged
+         ? ((resolvedData as any).contractPeriodMonths != null ? String((resolvedData as any).contractPeriodMonths) : null)
+         : (locked.contractPeriodMonths != null ? String(locked.contractPeriodMonths) : null),
+       updatedByUuid: data.auditUserUuid || null,
+       updatedAt: sql`NOW()`,
+     }).where(eq(crewAssignments.assignUuid, locked.crewAssignUuid));
+   };
 
   let updated;
   if (isRelieverClearRequest) {
@@ -969,6 +1001,9 @@ export const vesselPlanningService = {
       if (!lockedPlanning) {
         throw new Error(`Planning record not found: ${planUuid}`);
       }
+       if (lockedPlanning.crewUuid !== existing.crewUuid) {
+         throw new Error("Planning crew changed; reload before editing");
+       }
 
       const relieverCrewUuid = lockedPlanning.relieverCrewUuid;
       if (relieverCrewUuid) {
@@ -1011,41 +1046,21 @@ export const vesselPlanningService = {
       if (!planning) {
         throw new Error(`Planning record not found: ${planUuid}`);
       }
+       await syncIncumbent(tx, lockedPlanning);
       return planning;
     });
   } else {
-    updated = await vesselPlanningRepository.update(planUuid, resolvedData);
-  }
-
-  // Keep crew_assignments in sync so the Crew Pool dashboard shows correct Relief Due.
-
-  // resolve effective values (use incoming change, else fall back to existing planning row)
-  const effectiveCrewUuid = (resolvedData as any).crewUuid ?? existing.crewUuid;
-  const reliefDueChanged = "reliefDue" in resolvedData;
-  const contractChanged = "contractPeriodMonths" in resolvedData;
-
-  if (effectiveCrewUuid && (reliefDueChanged || contractChanged)) {
-    const effectiveReliefDue = reliefDueChanged ? (resolvedData as any).reliefDue : existing.reliefDue;
-    const effectiveContract = contractChanged
-      ? (resolvedData as any).contractPeriodMonths
-      : existing.contractPeriodMonths;
-
-    await db
-      .update(crewAssignments)
-      .set({
-        reliefDue: effectiveReliefDue ?? null,
-        contractPeriod: effectiveContract != null ? String(effectiveContract) : null,
-        updatedByUuid: data.auditUserUuid || null,
-        updatedAt: sql`NOW()`,
-      })
-      .where(
-        and(
-          eq(crewAssignments.crewUuid, effectiveCrewUuid),
-          eq(crewAssignments.vesselUuid, existing.vesselUuid),
-          eq(crewAssignments.isCurrent, true),
-          eq(crewAssignments.assignmentType, "OnBoard"),
-        ),
-      );
+     updated = await db.transaction(async (tx: typeof db) => {
+       const [lockedPlanning] = await tx.select().from(vesselPlanningV2)
+         .where(and(eq(vesselPlanningV2.planUuid, planUuid), eq(vesselPlanningV2.isDeleted, false)))
+         .for("update");
+       if (!lockedPlanning) throw new Error(`Planning record not found: ${planUuid}`);
+       if (lockedPlanning.crewUuid !== existing.crewUuid) {
+         throw new Error("Planning crew changed; reload before editing");
+       }
+       await syncIncumbent(tx, lockedPlanning);
+       return vesselPlanningRepository.update(planUuid, resolvedData, tx);
+     });
   }
   return updated;
 },
@@ -1062,6 +1077,89 @@ export const vesselPlanningService = {
     return vesselPlanningRepository.archive(planUuid, archivedByUuid);
   },
 
+  async getIncumbentReconciliation(planUuid: string) {
+    const db = getDb();
+    const [planning] = await db.select().from(vesselPlanningV2)
+      .where(and(eq(vesselPlanningV2.planUuid, planUuid), eq(vesselPlanningV2.isDeleted, false)));
+    if (!planning) throw new Error(`Planning record not found: ${planUuid}`);
+    const candidates = planning.crewUuid && !planning.isArchived
+      ? await db.select({
+          assignUuid: crewAssignments.assignUuid,
+          crewUuid: crewAssignments.crewUuid,
+          vesselUuid: crewAssignments.vesselUuid,
+          signOnDate: crewAssignments.signOnDate,
+          signOffDate: crewAssignments.signOffDate,
+          contractPeriod: crewAssignments.contractPeriod,
+          reliefDue: crewAssignments.reliefDue,
+        }).from(crewAssignments).where(and(
+          eq(crewAssignments.crewUuid, planning.crewUuid),
+          eq(crewAssignments.vesselUuid, planning.vesselUuid),
+          eq(crewAssignments.assignmentType, "OnBoard"),
+          eq(crewAssignments.isCurrent, true),
+          eq(crewAssignments.isDeleted, false),
+          isNull(crewAssignments.signOffDate),
+        ))
+      : [];
+    // Candidates are for human review only. This read never assigns a link.
+    return {
+      planUuid, crewUuid: planning.crewUuid, vesselUuid: planning.vesselUuid,
+      planningSignOnDate: planning.signOnDate,
+      crewAssignUuid: planning.crewAssignUuid, candidates,
+    };
+  },
+
+  async reconcileIncumbentAssignment(
+    planUuid: string,
+    assignUuid: string,
+    evidenceNote: string,
+    reviewedBy: string,
+  ) {
+    const db = getDb();
+    return db.transaction(async (tx: typeof db) => {
+      const [planning] = await tx.select().from(vesselPlanningV2)
+        .where(and(eq(vesselPlanningV2.planUuid, planUuid), eq(vesselPlanningV2.isDeleted, false)))
+        .for("update");
+      if (!planning) throw new Error(`Planning record not found: ${planUuid}`);
+      if (planning.isArchived || !planning.crewUuid) {
+        throw new Error("Only an active occupied planning position can be reconciled");
+      }
+      if (planning.crewAssignUuid) {
+        if (planning.crewAssignUuid === assignUuid) return planning; // idempotent retry
+        throw new Error("Incumbent planning already has a different verified assignment link");
+      }
+      const [assignment] = await tx.select().from(crewAssignments)
+        .where(eq(crewAssignments.assignUuid, assignUuid)).for("update");
+      if (!assignment || assignment.crewUuid !== planning.crewUuid ||
+          assignment.vesselUuid !== planning.vesselUuid || assignment.isDeleted ||
+          assignment.assignmentType !== "OnBoard" || !assignment.isCurrent ||
+          assignment.signOffDate) {
+        throw new Error("Selected assignment is not a current OnBoard record for this planning crew and vessel");
+      }
+      const [otherOwner] = await tx.select({ planUuid: vesselPlanningV2.planUuid })
+        .from(vesselPlanningV2).where(and(
+          ne(vesselPlanningV2.planUuid, planUuid),
+          eq(vesselPlanningV2.isDeleted, false),
+          eq(vesselPlanningV2.isArchived, false),
+          or(eq(vesselPlanningV2.crewAssignUuid, assignUuid),
+             eq(vesselPlanningV2.relieverAssignUuid, assignUuid)),
+        )).limit(1);
+      if (otherOwner) throw new Error("Selected assignment is already linked to another active planning position");
+
+      const [updated] = await tx.update(vesselPlanningV2).set({
+        crewAssignUuid: assignUuid,
+        updatedByUuid: reviewedBy,
+        updatedAt: new Date(),
+      }).where(eq(vesselPlanningV2.planUuid, planUuid)).returning();
+      await tx.execute(sql`
+        INSERT INTO vessel_planning_assignment_reconciliations
+          (plan_uuid, assign_uuid, crew_uuid, vessel_uuid, reviewed_by, evidence_note)
+        VALUES (${planUuid}, ${assignUuid}, ${planning.crewUuid},
+                ${planning.vesselUuid}, ${reviewedBy}, ${evidenceNote})
+      `);
+      return updated;
+    });
+  },
+
   /**
    * Sign off crew from vessel - updates vessel_planning_v2, crew_assignments,
    * archives the primary, and auto-promotes any secondary to primary.
@@ -1073,6 +1171,7 @@ export const vesselPlanningService = {
     signOffPortUuid?: string;
     travelEndDate?: string;
     auditUserUuid?: string;
+    expectedCrewUuid?: string;
   }) {
     const db = getDb();
     
@@ -1081,42 +1180,52 @@ export const vesselPlanningService = {
       throw new Error(`Planning record not found: ${planUuid}`);
     }
 
-    const isPrimary = planning.crewStatus === 'primary';
-    const crewUuid = planning.crewUuid;
-    const vesselUuid = planning.vesselUuid;
-    const rankId = planning.rankId;
-
     const resolvedPortUuid = data.signOffPortUuid 
       ? await resolvePortToUuid(data.signOffPortUuid) 
       : undefined;
 
-    const secondaryCrew = (isPrimary && vesselUuid && rankId)
-      ? await vesselPlanningRepository.findSecondaryByVesselAndRank(vesselUuid, rankId, planUuid, planning.rank ?? undefined)
-      : null;
-
-    await db.transaction(async (tx) => {
-      if (crewUuid && vesselUuid) {
-        console.log(`📋 [VESSEL-PLANNING-V2] Sign-off (tx): crewUuid=${crewUuid}, crewStatus=${planning.crewStatus}, signOffDate=${data.signOffDate}`);
-        
-        await tx
-          .update(crewAssignments)
-          .set({
-            signOffDate: data.signOffDate,
-            reason: data.signOffReason || null,
-            isCurrent: false,
-            updatedAt: sql`NOW()`,
-            updatedByUuid: data.auditUserUuid || null,
-          })
-          .where(
-            and(
-              eq(crewAssignments.crewUuid, crewUuid),
-              eq(crewAssignments.vesselUuid, vesselUuid),
-              eq(crewAssignments.isCurrent, true)
-            )
-          );
+    const { signedOff, crewUuid, vesselUuid } = await db.transaction(async (tx: typeof db) => {
+      const [locked] = await tx.select().from(vesselPlanningV2)
+        .where(and(eq(vesselPlanningV2.planUuid, planUuid), eq(vesselPlanningV2.isDeleted, false)))
+        .for("update");
+      if (!locked) throw new Error(`Planning record not found: ${planUuid}`);
+      if (data.expectedCrewUuid && locked.crewUuid !== data.expectedCrewUuid) {
+        throw new Error("Planning crew does not match the requested crew; reload before sign-off");
       }
+      if (!locked.crewUuid || !locked.crewAssignUuid) {
+        throw new Error("Incumbent assignment link is missing; reconcile planning before sign-off");
+      }
+      const [assignment] = await tx.select().from(crewAssignments)
+        .where(eq(crewAssignments.assignUuid, locked.crewAssignUuid))
+        .for("update");
+      if (!assignment || assignment.crewUuid !== locked.crewUuid ||
+          assignment.vesselUuid !== locked.vesselUuid || assignment.isDeleted ||
+          assignment.assignmentType !== "OnBoard") {
+        throw new Error("Linked incumbent assignment is missing or inconsistent; reconcile before sign-off");
+      }
+      if (locked.isArchived && locked.reliefStatus === "Signed Off") {
+        // A retry must not sign off another assignment or alter signed history.
+        if (assignment.isCurrent || assignment.signOffDate !== locked.signOffDate) {
+          throw new Error("Linked incumbent assignment is inconsistent with signed-off planning");
+        }
+        return { signedOff: false, crewUuid: locked.crewUuid, vesselUuid: locked.vesselUuid };
+      }
+      if (locked.isArchived || !assignment.isCurrent) {
+        throw new Error("Linked incumbent assignment is no longer current; reconcile before sign-off");
+      }
+      const [signedAssignment] = await tx.update(crewAssignments)
+        .set({
+          signOffDate: data.signOffDate,
+          reason: data.signOffReason || null,
+          isCurrent: false,
+          updatedAt: sql`NOW()`,
+          updatedByUuid: data.auditUserUuid || null,
+        })
+        .where(and(eq(crewAssignments.assignUuid, locked.crewAssignUuid),
+                   eq(crewAssignments.isCurrent, true)))
+        .returning({ assignUuid: crewAssignments.assignUuid });
+      if (!signedAssignment) throw new Error("Linked incumbent assignment changed during sign-off");
 
-      console.log(`📋 [VESSEL-PLANNING-V2] Sign-off + archive ${planning.crewStatus} (tx): planUuid=${planUuid}`);
       await tx
         .update(vesselPlanningV2)
         .set({
@@ -1134,8 +1243,18 @@ export const vesselPlanningService = {
         })
         .where(eq(vesselPlanningV2.planUuid, planUuid));
 
+      const [secondaryCrew] = locked.crewStatus === "primary"
+        ? await tx.select().from(vesselPlanningV2).where(and(
+            eq(vesselPlanningV2.vesselUuid, locked.vesselUuid),
+            eq(vesselPlanningV2.rankId, locked.rankId),
+            eq(vesselPlanningV2.rank, locked.rank),
+            eq(vesselPlanningV2.crewStatus, "secondary"),
+            eq(vesselPlanningV2.isDeleted, false),
+            eq(vesselPlanningV2.isArchived, false),
+            ne(vesselPlanningV2.planUuid, planUuid),
+          )).limit(1).for("update")
+        : [];
       if (secondaryCrew) {
-        console.log(`📋 [VESSEL-PLANNING-V2] Promoting secondary to primary (tx): planUuid=${secondaryCrew.planUuid}`);
         await tx
           .update(vesselPlanningV2)
           .set({
@@ -1145,10 +1264,11 @@ export const vesselPlanningService = {
           })
           .where(eq(vesselPlanningV2.planUuid, secondaryCrew.planUuid));
       }
+      return { signedOff: true, crewUuid: locked.crewUuid, vesselUuid: locked.vesselUuid };
     });
 
     // E1 Sea Service sync: update toDate on sign-off
-    if (crewUuid && vesselUuid) {
+    if (signedOff) {
       try {
         const db2 = getDb();
         await db2
@@ -1355,23 +1475,6 @@ export const vesselPlanningService = {
     const relieverCrewUuid = planning.relieverCrewUuid;
     const vesselUuid = planning.vesselUuid;
 
-    // Backend enforcement: same guard as the UI conflict check, so the API
-    // rejects duplicates even when called directly. Excludes the current
-    // planning row to allow in-place handover.
-    const conflict = await vesselPlanningService.checkSignOnConflict(
-      relieverCrewUuid,
-      vesselUuid,
-      planUuid,
-    );
-    if (conflict.hasConflict) {
-      const err: any = new Error(
-        `Sign-on conflict: crew member is already actively signed on to vessel ${conflict.conflictVesselName || "another vessel"}. Please sign off from the previous assignment before proceeding.`
-      );
-      err.code = "SIGN_ON_CONFLICT";
-      err.conflict = conflict;
-      throw err;
-    }
-
     const signOnDate = data.signOnDate || planning.relieverSignOnDate || new Date().toISOString().split("T")[0];
     const effectiveContractPeriod = data.contractPeriodMonths || planning.relieverContractPeriodMonths;
     const effectiveContractRangeStart = data.contractEndRangeStartMonths ?? planning.relieverContractEndRangeStartMonths;
@@ -1393,9 +1496,38 @@ export const vesselPlanningService = {
       }
     }
 
-    const hasPrimaryCrew = !!planning.crewUuid && !planning.isArchived && !planning.isDeleted;
-
     const result = await db.transaction(async (tx: typeof db) => {
+      const [locked] = await tx.select().from(vesselPlanningV2)
+        .where(and(eq(vesselPlanningV2.planUuid, planUuid), eq(vesselPlanningV2.isDeleted, false)))
+        .for("update");
+      if (!locked || locked.isArchived || locked.relieverCrewUuid !== relieverCrewUuid ||
+          locked.vesselUuid !== vesselUuid) {
+        throw new Error("Reliever planning changed during sign-on; reload and try again");
+      }
+      if (!locked.relieverAssignUuid) {
+        throw new Error("Reliever assignment link is missing; reconcile planning before sign-on");
+      }
+      const linkedAssignUuid = locked.relieverAssignUuid;
+      const [linkedAssignment] = await tx.select().from(crewAssignments)
+        .where(eq(crewAssignments.assignUuid, linkedAssignUuid))
+        .for("update");
+      if (!linkedAssignment || linkedAssignment.crewUuid !== relieverCrewUuid ||
+          linkedAssignment.vesselUuid !== vesselUuid || linkedAssignment.isDeleted ||
+          linkedAssignment.assignmentType !== "Planned" || linkedAssignment.isCurrent) {
+        throw new Error("Linked reliever assignment is missing or no longer Planned; reconcile before sign-on");
+      }
+      // Serialize sign-ons for the same crew across distinct planning rows.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${relieverCrewUuid}, 0))`);
+      const conflict = await vesselPlanningService.checkSignOnConflict(relieverCrewUuid, vesselUuid, planUuid);
+      if (conflict.hasConflict) {
+        const err: any = new Error(
+          `Sign-on conflict: crew member is already actively signed on to vessel ${conflict.conflictVesselName || "another vessel"}. Please sign off from the previous assignment before proceeding.`
+        );
+        err.code = "SIGN_ON_CONFLICT";
+        err.conflict = conflict;
+        throw err;
+      }
+      const hasPrimaryCrew = !!locked.crewUuid;
       if (hasPrimaryCrew) {
         console.log(`🔄 [VESSEL-PLANNING-V2] CASE A: Primary crew exists (${planning.crewUuid}) — creating secondary record for reliever ${relieverCrewUuid}`);
 
@@ -1428,6 +1560,7 @@ export const vesselPlanningService = {
             rankId: planning.rankId,
             rank: planning.rank,
             crewUuid: relieverCrewUuid,
+            crewAssignUuid: linkedAssignUuid,
             crewStatus: "secondary",
             signOnDate,
             plannedConfirmedDate: effectivePlannedConfirmedDate,
@@ -1484,7 +1617,7 @@ export const vesselPlanningService = {
           .where(eq(vesselPlanningV2.planUuid, planUuid))
           .returning();
 
-        await tx
+        const [promoted] = await tx
           .update(crewAssignments)
           .set({
             isCurrent: true,
@@ -1494,14 +1627,12 @@ export const vesselPlanningService = {
             reliefDue: calculatedReliefDue,
             updatedByUuid: data.auditUserUuid || null,
           })
-          .where(
-            and(
-              eq(crewAssignments.crewUuid, relieverCrewUuid),
-              eq(crewAssignments.vesselUuid, vesselUuid),
-              eq(crewAssignments.isCurrent, false),
-              eq(crewAssignments.assignmentType, "Planned")
-            )
-          );
+          .where(and(
+            eq(crewAssignments.assignUuid, linkedAssignUuid),
+            eq(crewAssignments.assignmentType, "Planned"),
+            eq(crewAssignments.isDeleted, false),
+          )).returning({ assignUuid: crewAssignments.assignUuid });
+        if (!promoted) throw new Error("Linked reliever assignment changed during sign-on");
 
         return updated;
       } else {
@@ -1511,6 +1642,7 @@ export const vesselPlanningService = {
           .update(vesselPlanningV2)
           .set({
             crewUuid: relieverCrewUuid,
+            crewAssignUuid: linkedAssignUuid,
             crewStatus: "primary",
             signOnDate,
             plannedConfirmedDate: effectivePlannedConfirmedDate,
@@ -1535,7 +1667,7 @@ export const vesselPlanningService = {
           .where(eq(vesselPlanningV2.planUuid, planUuid))
           .returning();
 
-        await tx
+        const [promoted] = await tx
           .update(crewAssignments)
           .set({
             isCurrent: true,
@@ -1545,14 +1677,12 @@ export const vesselPlanningService = {
             reliefDue: calculatedReliefDue,
             updatedByUuid: data.auditUserUuid || null,
           })
-          .where(
-            and(
-              eq(crewAssignments.crewUuid, relieverCrewUuid),
-              eq(crewAssignments.vesselUuid, vesselUuid),
-              eq(crewAssignments.isCurrent, false),
-              eq(crewAssignments.assignmentType, "Planned")
-            )
-          );
+          .where(and(
+            eq(crewAssignments.assignUuid, linkedAssignUuid),
+            eq(crewAssignments.assignmentType, "Planned"),
+            eq(crewAssignments.isDeleted, false),
+          )).returning({ assignUuid: crewAssignments.assignUuid });
+        if (!promoted) throw new Error("Linked reliever assignment changed during sign-on");
 
         return updated;
       }

@@ -9,6 +9,7 @@ import type { Server } from "http";
 const TEST_SECRET = "obsolete-crew-assignment-paths-test";
 const crewUuid = randomUUID();
 const vesselUuid = randomUUID();
+const planUuid = randomUUID();
 const assignmentUuids: string[] = [];
 let db: Client;
 let server: Server;
@@ -39,6 +40,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await new Promise<void>(resolve => server?.close(() => resolve()));
+  await db.query("DELETE FROM vessel_planning_v2 WHERE plan_uuid = $1", [planUuid]);
   if (assignmentUuids.length) {
     await db.query(
       "DELETE FROM crew_assignments WHERE assign_uuid = ANY($1::text[])",
@@ -93,6 +95,11 @@ describe("canonical Crew Pool assignment paths", () => {
       .send({ vesselUuid, assignmentType: "OnBoard", isCurrent: true, signOnDate: "2026-09-01" });
     expect(created.status).toBe(201);
     assignmentUuids.push(created.body.assignUuid);
+    await db.query(
+      `INSERT INTO vessel_planning_v2 (plan_uuid, vessel_uuid, rank_id, rank, crew_uuid, crew_assign_uuid)
+       VALUES ($1, $2, 'Test Officer', 'Test Officer', $3, $4)`,
+      [planUuid, vesselUuid, crewUuid, created.body.assignUuid],
+    );
     const onboard = await request(server)
       .get(`/api/v2/crew-pool/vessels/${vesselUuid}/crew`)
       .set("Authorization", authorization());
@@ -102,7 +109,7 @@ describe("canonical Crew Pool assignment paths", () => {
     const signedOff = await request(server)
       .post(`/api/v2/crew-pool/crew/${crewUuid}/sign-off`)
       .set("Authorization", authorization())
-      .send({ signOffDate: "2026-09-30" });
+      .send({ planUuid, signOffDate: "2026-09-30" });
     expect(signedOff.status).toBe(200);
     expect(signedOff.body).toMatchObject({
       assignUuid: created.body.assignUuid,

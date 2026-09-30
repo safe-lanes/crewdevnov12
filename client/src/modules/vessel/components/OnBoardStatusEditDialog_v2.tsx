@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import { useVesselLookup } from '@/hooks/useVesselLookup';
 import { useUpdatePlanningV2, useCreatePlanningV2, useVesselPlanningV2 } from '../hooks/useVesselV2';
 import { vesselApiV2 } from '../api/vesselApiV2';
@@ -80,11 +81,62 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     planningData
 }) => {
     const { toast } = useToast();
+    const { userType } = usePermissions();
     const queryClient = useQueryClient();
     const { getVesselName } = useVesselLookup();
     const [signOffDateOpen, setSignOffDateOpen] = useState(false);
     const [takeOverDateOpen, setTakeOverDateOpen] = useState(false);
     const [travelEndDateOpen, setTravelEndDateOpen] = useState(false);
+    const [reviewedAssignUuid, setReviewedAssignUuid] = useState('');
+    const [evidenceNote, setEvidenceNote] = useState('');
+    const [reconciling, setReconciling] = useState(false);
+    const [verifiedAssignUuid, setVerifiedAssignUuid] = useState<string | null>(null);
+    const isAdmin = userType?.toLowerCase() === 'admin';
+    const needsIncumbentLink = Boolean(
+        planningData?.crewUuid && !planningData?.crewAssignUuid && !verifiedAssignUuid,
+    );
+    const { data: reconciliation, isLoading: loadingReconciliation, error: reconciliationError } = useQuery<{
+        planningSignOnDate: string | null;
+        candidates: Array<{
+            assignUuid: string;
+            signOnDate: string | null;
+            signOffDate: string | null;
+            contractPeriod: string | null;
+            reliefDue: string | null;
+        }>;
+    }>({
+        queryKey: ['/api/v2/vessel/planning', planningData?.planUuid, 'incumbent-reconciliation'],
+        queryFn: async () => {
+            const response = await apiRequest(
+                'GET',
+                `/api/v2/vessel/planning/${encodeURIComponent(planningData.planUuid)}/incumbent-reconciliation`,
+            );
+            return response.json();
+        },
+        enabled: open && needsIncumbentLink && isAdmin && Boolean(planningData?.planUuid),
+    });
+    React.useEffect(() => {
+        setReviewedAssignUuid('');
+        setEvidenceNote('');
+        setVerifiedAssignUuid(null);
+    }, [planningData?.planUuid, open]);
+    const reconcileIncumbent = async () => {
+        if (!planningData?.planUuid || !reviewedAssignUuid || evidenceNote.trim().length < 20) return;
+        setReconciling(true);
+        try {
+            await apiRequest('POST',
+                `/api/v2/vessel/planning/${encodeURIComponent(planningData.planUuid)}/incumbent-reconciliation`,
+                { assignUuid: reviewedAssignUuid, evidenceNote: evidenceNote.trim() },
+            );
+            setVerifiedAssignUuid(reviewedAssignUuid);
+            queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] });
+            toast({ title: 'Assignment verified', description: 'The onboard crew can now be signed off or edited.' });
+        } catch (error: any) {
+            toast({ title: 'Reconciliation failed', description: error?.message || 'Reload and review the assignment again.', variant: 'destructive' });
+        } finally {
+            setReconciling(false);
+        }
+    };
     
     const updatePlanningV2 = useUpdatePlanningV2();
     const createPlanningV2 = useCreatePlanningV2();
@@ -532,6 +584,46 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     </p>
                 )}
 
+                {needsIncumbentLink && (
+                    <div className="rounded-md border border-amber-300 bg-amber-50 p-4 space-y-3 text-sm" data-testid="incumbent-assignment-unlinked">
+                        <p className="font-semibold text-amber-900">Onboard assignment needs verification</p>
+                        <p>Sign-off and assignment details cannot be updated until an administrator reviews and links the exact assignment record. No assignment will be selected automatically.</p>
+                        {!isAdmin ? (
+                            <p>Ask an administrator to verify this crew member's assignment.</p>
+                        ) : (
+                            <>
+                                <p>Compare the crew's voyage documents with each record below. Planning sign-on: {reconciliation?.planningSignOnDate || 'not recorded'}.</p>
+                                {loadingReconciliation && <p>Loading assignment records…</p>}
+                                {reconciliationError && <p className="text-red-700">Could not load assignments. Reload before reviewing.</p>}
+                                {!loadingReconciliation && !reconciliationError && reconciliation?.candidates.length === 0 && (
+                                    <p>No current OnBoard assignment matches this crew and vessel. Do not link an unrelated record.</p>
+                                )}
+                                {reconciliation?.candidates.map(candidate => (
+                                    <label key={candidate.assignUuid} className="block rounded border bg-white p-2 cursor-pointer">
+                                        <input type="radio" name="reviewed-incumbent-assignment"
+                                            checked={reviewedAssignUuid === candidate.assignUuid}
+                                            onChange={() => setReviewedAssignUuid(candidate.assignUuid)} />
+                                        <span className="ml-2">Assignment {candidate.assignUuid}</span>
+                                        <span className="block ml-5 text-xs text-gray-600">
+                                            Signed on: {candidate.signOnDate || 'not recorded'} · Relief due: {candidate.reliefDue || 'not recorded'} · Contract: {candidate.contractPeriod || 'not recorded'}
+                                        </span>
+                                    </label>
+                                ))}
+                                <label className="block">
+                                    Evidence for selecting this exact assignment
+                                    <textarea className="mt-1 w-full rounded border p-2" rows={2} maxLength={2000}
+                                        placeholder="State which voyage document or verified record confirms this assignment."
+                                        value={evidenceNote} onChange={e => setEvidenceNote(e.target.value)} />
+                                </label>
+                                <Button type="button" variant="outline" onClick={reconcileIncumbent}
+                                    disabled={!reviewedAssignUuid || evidenceNote.trim().length < 20 || reconciling}>
+                                    Verify selected assignment
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                )}
+
                 <Form {...form}>
                     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                         <div className="grid grid-cols-[140px_1fr] items-center gap-4">
@@ -955,7 +1047,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                             <Button 
                                 type="submit"
                                 className="bg-green-600 hover:bg-green-700"
-                                disabled={!isOnboardCrewAssigned || updatePlanningV2.isPending || createPlanningV2.isPending}
+                                disabled={!isOnboardCrewAssigned || needsIncumbentLink || updatePlanningV2.isPending || createPlanningV2.isPending}
                                 data-testid="button-submit-onboard"
                             >
                                 Submit

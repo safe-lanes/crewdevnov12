@@ -4,6 +4,7 @@ import { insertCrewAssignmentSchema } from "@shared/v2/crew-pool/types";
 import { z } from "zod";
 
 const signOffSchema = z.object({
+  planUuid: z.string().min(1),
   signOffDate: z.string().optional(),
   signOffReason: z.string().optional(),
   signOffNotes: z.string().optional(),
@@ -105,6 +106,11 @@ export const crewAssignmentsController = {
       }
       res.json(assignment);
     } catch (error: any) {
+      if (error.message?.includes("assignment link is missing") ||
+          error.message?.includes("Linked incumbent assignment") ||
+          error.message?.includes("Planning crew does not match")) {
+        return res.status(409).json({ error: error.message });
+      }
       if (error instanceof z.ZodError) {
         return res
           .status(400)

@@ -10,6 +10,7 @@ export interface VesselPlanningV2 {
   rankId: string;
   rank: string;
   crewUuid: string | null;
+  crewAssignUuid?: string | null;
   crewName?: string;
   crewMemberName?: string | null;
   crewFirstName?: string | null;

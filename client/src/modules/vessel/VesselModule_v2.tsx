@@ -564,6 +564,7 @@ const mapV2PlanningToLegacy = (planning: VesselPlanningV2): any => {
         relieverCrewId: planning.relieverCrewUuid,
         relieverCrewUuid: planning.relieverCrewUuid,
         relieverAssignUuid: planning.relieverAssignUuid,
+        crewAssignUuid: planning.crewAssignUuid,
         relieverCrewName: planning.relieverCrewName,
         relieverFirstName: (planning.relieverFirstName ?? '').trim(),
         relieverMiddleName: (planning.relieverMiddleName ?? '').trim(),
@@ -1161,6 +1162,8 @@ export function VesselModule_v2(): JSX.Element {
             rankId: rankId,
             planningData: crew ? {
                 planUuid: crew.planUuid || crew.id,
+                crewUuid: crew.crewUuid,
+                crewAssignUuid: crew.crewAssignUuid ?? null,
                 onBoardCrewName: crew.crewName,
                 crewName: crew.crewName,
                 nationality: crew.nationality,

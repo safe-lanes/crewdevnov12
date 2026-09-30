@@ -47,6 +47,8 @@ router.get("/planning/check-sign-on-conflict/:crewUuid", vesselPlanningControlle
 
 router.get("/planning/:planUuid", vesselPlanningController.getByPlanUuid);
 router.get("/planning/:planUuid/reliever-assignment/:assignUuid", vesselPlanningController.getRelieverAssignment);
+router.get("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.getIncumbentReconciliation);
+router.post("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.reconcileIncumbentAssignment);
 router.post("/:vesselUuid/planning", vesselPlanningController.create);
 router.patch("/planning/:planUuid", vesselPlanningController.update);
 router.post("/planning/:planUuid/archive", vesselPlanningController.archive);

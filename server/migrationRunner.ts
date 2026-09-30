@@ -27,6 +27,9 @@ async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied
     "SELECT filename FROM schema_migrations ORDER BY filename"
   );
   const appliedMigrations = new Set(appliedResult.rows.map(row => row.filename));
+  const inferredLinkMigrationWasAlreadyApplied = appliedMigrations.has(
+    "0219_assignment_identity_and_type_constraint.sql",
+  );
 
   const migrationsDir = join(__dirname, "../migrations");
   let files: string[];
@@ -51,6 +54,17 @@ async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied
     if (appliedMigrations.has(filename)) {
       skippedCount++;
       continue;
+    }
+    if (filename === "0220_remove_inferred_incumbent_links.sql" &&
+        inferredLinkMigrationWasAlreadyApplied) {
+      // 0219 and 0220 are safe together before the app starts serving. If
+      // deployed separately, newer verified links may exist alongside links
+      // inferred by 0219. They cannot be distinguished retrospectively, so
+      // never erase them without an explicit review of that database.
+      throw new Error(
+        `[${label}] Migration 0220 cannot automatically follow a previously applied 0219. ` +
+        "Review incumbent links on this database before marking 0220 applied.",
+      );
     }
 
     console.log(`🔧 [${label}] Applying migration: ${filename}`);

@@ -19,6 +19,7 @@ export const vesselPlanningV2 = pgTable("vessel_planning_v2", {
   rankId: text("rank_id").notNull(),
   rank: text("rank").notNull(),
   crewUuid: text("crew_uuid"),
+  crewAssignUuid: text("crew_assign_uuid"),
   crewStatus: text("crew_status").default("primary"),
   signOnDate: text("sign_on_date"),
   reliefDue: text("relief_due"),
