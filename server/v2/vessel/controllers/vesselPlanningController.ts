@@ -64,6 +64,44 @@ async function persistIncoming(
 }
 
 export const vesselPlanningController = {
+  async getUnlinkedRelieverClearAudit(req: Request, res: Response) {
+    if (req.resolvedRole?.ok !== true || req.resolvedRole.role.roleName.trim().toLowerCase() !== "admin"
+      || !getAuditUserUuid(req)) {
+      return res.status(403).json({ error: "Administrator access required" });
+    }
+    try {
+      res.json(await vesselPlanningService.getUnlinkedRelieverClearAudit(req.params.planUuid));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) return res.status(404).json({ error: error.message });
+      console.error("Error reading reliever-clear audit:", error);
+      res.status(500).json({ error: "Failed to read reliever-clear audit" });
+    }
+  },
+
+  async clearUnlinkedReliever(req: Request, res: Response) {
+    if (req.resolvedRole?.ok !== true || req.resolvedRole.role.roleName.trim().toLowerCase() !== "admin"
+      || !getAuditUserUuid(req)) {
+      return res.status(403).json({ error: "Administrator access required" });
+    }
+    const parsed = z.object({
+      expectedCrewUuid: z.string().uuid(),
+      reason: z.string().trim().min(1).max(2000),
+    }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "A written reason and reliever crew ID are required" });
+    try {
+      res.json(await vesselPlanningService.clearUnlinkedReliever(
+        req.params.planUuid, parsed.data.expectedCrewUuid, parsed.data.reason, getAuditUserUuid(req)!,
+      ));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) return res.status(404).json({ error: error.message });
+      if (error.message?.includes("cannot be cleared") || error.message?.includes("Reliever changed")) {
+        return res.status(409).json({ error: error.message });
+      }
+      console.error("Error clearing unlinked reliever:", error);
+      res.status(500).json({ error: "Failed to clear unlinked reliever" });
+    }
+  },
+
   async getIncumbentReconciliation(req: Request, res: Response) {
     if (req.user?.userType?.toLowerCase() !== "admin" || !getAuditUserUuid(req)) {
       return res.status(403).json({ error: "Administrator access required" });

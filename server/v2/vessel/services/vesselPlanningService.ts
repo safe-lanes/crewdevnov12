@@ -1,6 +1,6 @@
 import { vesselPlanningRepository, vesselPlanningAttachmentsRepository } from "../repositories";
 import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachmentsV2, InsertVesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
-import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
+import { vesselPlanningV2, vesselPlanningRelieverClearAudit } from "../../../../shared/v2/vessel/schema";
 import { getDb } from "../../db";
 import { crewAssignments, crewDocuments, crewVisas, crewLicenses, crewTrainingCourses, crewPreJoiningMedicals, crewSeaService, crewPersonalDetails, crewMembersV2 } from "../../../../shared/v2/crew-pool/schema";
 import { masterPorts, masterVessels, masterVesselTypes, masterNationalities, masterCountries } from "../../../../shared/schema";
@@ -914,7 +914,56 @@ export const vesselPlanningService = {
     return vesselPlanningRepository.create(resolvedData);
   },
 
- async update(planUuid: string, data: Partial<InsertVesselPlanningV2> & { auditUserUuid?: string }) {
+  async getUnlinkedRelieverClearAudit(planUuid: string) {
+    const db = getDb();
+    const [planning] = await db.select({ planUuid: vesselPlanningV2.planUuid })
+      .from(vesselPlanningV2).where(eq(vesselPlanningV2.planUuid, planUuid));
+    if (!planning) throw new Error("Planning record not found");
+    return db.select().from(vesselPlanningRelieverClearAudit)
+      .where(eq(vesselPlanningRelieverClearAudit.planUuid, planUuid))
+      .orderBy(desc(vesselPlanningRelieverClearAudit.id));
+  },
+
+  async clearUnlinkedReliever(planUuid: string, expectedCrewUuid: string, reason: string, clearedBy: string) {
+    const explanation = reason.trim();
+    if (!explanation || !clearedBy) throw new Error("A written reason and administrator identity are required");
+    const db = getDb();
+    return db.transaction(async (tx: any) => {
+      const [locked] = await tx.select().from(vesselPlanningV2)
+        .where(eq(vesselPlanningV2.planUuid, planUuid)).for("update");
+      if (!locked || locked.isDeleted) throw new Error("Planning record not found");
+      if (locked.isArchived) throw new Error("Archived planning row cannot be cleared");
+      if (locked.relieverAssignUuid) throw new Error("Linked reliever cannot be cleared by this action");
+      if (!locked.relieverCrewUuid || locked.relieverCrewUuid !== expectedCrewUuid) {
+        throw new Error("Reliever changed or was already cleared; reload planning");
+      }
+      const [planning] = await tx.update(vesselPlanningV2).set({
+        relieverCrewUuid: null,
+        relieverAssignUuid: null,
+        joiningStatus: null,
+        relieverSignOnDate: null,
+        joiningPortUuid: null,
+        plannedConfirmedDate: null,
+        travelStartDate: null,
+        relieverContractPeriodMonths: null,
+        relieverContractEndRangeStartMonths: null,
+        relieverContractEndRangeEndMonths: null,
+        deploymentChecklistCompleted: null,
+        applicableDocsChecked: null,
+        updatedByUuid: clearedBy,
+        updatedAt: sql`NOW()`,
+      }).where(eq(vesselPlanningV2.planUuid, planUuid)).returning();
+      const [audit] = await tx.insert(vesselPlanningRelieverClearAudit).values({
+        planUuid,
+        relieverCrewUuid: locked.relieverCrewUuid,
+        clearedBy,
+        reason: explanation,
+      }).returning();
+      return { planning, audit };
+    });
+  },
+
+  async update(planUuid: string, data: Partial<InsertVesselPlanningV2> & { auditUserUuid?: string }) {
   const existing = await vesselPlanningRepository.findByPlanUuid(planUuid);
   if (!existing) {
     throw new Error(`Planning record not found: ${planUuid}`);

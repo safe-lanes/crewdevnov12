@@ -9,6 +9,7 @@ import {
   vesselImportController,
 } from "./controllers";
 import { importUploadMiddleware, tenantContextGuard } from "./middleware/importUpload";
+import { requirePermission } from "../../middleware/requirePermission";
 
 const router = Router();
 
@@ -46,6 +47,10 @@ router.get("/:vesselUuid/crew-list-export", vesselPlanningController.getCrewList
 router.get("/planning/check-sign-on-conflict/:crewUuid", vesselPlanningController.checkSignOnConflict);
 
 router.get("/planning/:planUuid", vesselPlanningController.getByPlanUuid);
+router.get("/planning/:planUuid/unlinked-reliever-clear-audit",
+  requirePermission("Vessel", "delete"), vesselPlanningController.getUnlinkedRelieverClearAudit);
+router.post("/planning/:planUuid/clear-unlinked-reliever",
+  requirePermission("Vessel", "delete"), vesselPlanningController.clearUnlinkedReliever);
 router.get("/planning/:planUuid/reliever-assignment/:assignUuid", vesselPlanningController.getRelieverAssignment);
 router.get("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.getIncumbentReconciliation);
 router.post("/planning/:planUuid/incumbent-reconciliation", vesselPlanningController.reconcileIncumbentAssignment);

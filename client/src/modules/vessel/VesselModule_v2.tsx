@@ -1196,6 +1196,7 @@ export function VesselModule_v2(): JSX.Element {
             planningData: crew ? {
                 planUuid: crew.planUuid || crew.id,
                 relieverCrewId: crew.relieverCrewId || crew.crewUuid,
+                relieverCrewUuid: crew.relieverCrewUuid || crew.relieverCrewId || crew.crewUuid,
                 relieverAssigned: Boolean(crew.relieverCrewId || crew.relieverCrewUuid || crew._isSynthesizedReliever),
                 relieverAssignUuid: crew.relieverAssignUuid ?? null,
                 relieverCrewName: crew.relieverCrewName || crew.crewName,

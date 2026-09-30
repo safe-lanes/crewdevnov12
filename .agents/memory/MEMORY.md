@@ -38,3 +38,4 @@
 - [Company Form archive policy](company-form-archive-policy.md) — archive frees active names but retains UUID-pinned history; future submission writes must check eligibility under the same form lock.
 - [Company part-code ownership](company-part-code-ownership.md) — Company part codes are internal server-generated identities when omitted; the editor uses titles, never generates or retries codes.
 - [Company system-field provenance](company-system-field-provenance.md) — shared fields need not come from the form subject; date of declaration belongs to the submission, not a crew assignment.
+- [Exceptional vessel actions](exceptional-vessel-permissions.md) — gate sensitive clears on resolved Admin role plus explicit Vessel/delete; neither JWT userType nor menu grant alone identifies an administrator.

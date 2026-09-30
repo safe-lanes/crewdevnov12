@@ -23,6 +23,28 @@ const assignUuids: string[] = [];
 const crewUuids: string[] = [];
 const entryUuids: string[] = [];
 const importedVesselUuids: string[] = [];
+const permissionUserIds: number[] = [];
+const clearFields = [
+  "reliever_crew_uuid", "reliever_assign_uuid", "joining_status", "reliever_sign_on_date",
+  "joining_port_uuid", "planned_confirmed_date", "travel_start_date",
+  "reliever_contract_period_months", "reliever_contract_end_range_start_months",
+  "reliever_contract_end_range_end_months", "deployment_checklist_completed",
+  "applicable_docs_checked",
+];
+
+async function permissionUser(role: string) {
+  const result = await db.query(
+    "INSERT INTO master_users (user_type,role) VALUES ('Office',$1) RETURNING id", [role],
+  );
+  const id = result.rows[0].id as number;
+  permissionUserIds.push(id);
+  return jwt.sign({ id, domain: "test", userType: "Office" }, TEST_SECRET, { expiresIn: "1h" });
+}
+
+function clearRequest(planUuid: string, bearer: string, crewUuid: string, reason = "Verified unlinked legacy planning entry") {
+  return request(server).post(`/api/v2/vessel/planning/${planUuid}/clear-unlinked-reliever`)
+    .set("Authorization", `Bearer ${bearer}`).send({ expectedCrewUuid: crewUuid, reason });
+}
 
 function token(): string {
   return jwt.sign(
@@ -218,6 +240,10 @@ afterAll(async () => {
   }
   if (planUuids.length > 0) {
     await db.query(
+      "DELETE FROM vessel_planning_reliever_clear_audit WHERE plan_uuid = ANY($1::text[])",
+      [planUuids],
+    );
+    await db.query(
       "DELETE FROM vessel_planning_assignment_reconciliations WHERE plan_uuid = ANY($1::text[])",
       [planUuids],
     );
@@ -248,7 +274,74 @@ afterAll(async () => {
       [importedVesselUuids],
     );
   }
+  if (permissionUserIds.length) {
+    await db.query("DELETE FROM master_users WHERE id = ANY($1::int[])", [permissionUserIds]);
+  }
   await db.end();
+});
+
+describe("exceptional unlinked reliever clear", () => {
+  it("requires both Administrator role and Vessel/delete; rejects blank reasons and linked rows", async () => {
+    const admin = await permissionUser("Admin");
+    const otherWithDelete = await permissionUser("Crewing Executive");
+    const withoutDelete = await permissionUser("Top Management - View");
+    const crewUuid = u();
+    const { planUuid, vesselUuid } = await seedPlanning(crewUuid);
+    const endpoint = `/api/v2/vessel/planning/${planUuid}/unlinked-reliever-clear-audit`;
+    expect((await request(server).post(`/api/v2/vessel/planning/${planUuid}/clear-unlinked-reliever`)
+      .send({ expectedCrewUuid: crewUuid, reason: "Unauthenticated request" })).status).toBe(401);
+    expect((await clearRequest(planUuid, otherWithDelete, crewUuid)).status).toBe(403);
+    expect((await clearRequest(planUuid, withoutDelete, crewUuid)).status).toBe(403);
+    expect((await request(server).get(endpoint).set("Authorization", `Bearer ${otherWithDelete}`)).status).toBe(403);
+    expect((await clearRequest(planUuid, admin, crewUuid, "   ")).status).toBe(400);
+    expect((await clearRequest(planUuid, admin, u())).status).toBe(409);
+    const assignment = await seedAssignment(crewUuid, vesselUuid, "Planned", planUuid);
+    expect((await clearRequest(planUuid, admin, crewUuid)).status).toBe(409);
+    expect((await db.query("SELECT assignment_type FROM crew_assignments WHERE assign_uuid=$1", [assignment])).rows[0].assignment_type).toBe("Planned");
+    expect((await db.query("SELECT count(*)::int n FROM vessel_planning_reliever_clear_audit WHERE plan_uuid=$1", [planUuid])).rows[0].n).toBe(0);
+  });
+
+  it("preserves the planning row and every assignment; writes a readable audit and refuses retries", async () => {
+    const admin = await permissionUser("Admin");
+    const crewUuid = u();
+    const { planUuid, vesselUuid } = await seedPlanning(crewUuid);
+    const assignment = await seedAssignment(crewUuid, vesselUuid);
+    const beforePlan = (await db.query("SELECT * FROM vessel_planning_v2 WHERE plan_uuid=$1", [planUuid])).rows[0];
+    const beforeAssignments = (await db.query("SELECT * FROM crew_assignments WHERE crew_uuid=$1 ORDER BY assign_uuid", [crewUuid])).rows;
+    const reason = "Legacy planning reliever has no verified assignment link";
+    const result = await request(server).post(`/api/v2/vessel/planning/${planUuid}/clear-unlinked-reliever`)
+      .set("Authorization", `Bearer ${admin}`)
+      .send({ expectedCrewUuid: crewUuid, reason, clearedBy: "spoofed-client-actor" });
+    expect(result.status).toBe(200);
+    expect(result.body.audit).toMatchObject({ planUuid, relieverCrewUuid: crewUuid, reason });
+    expect(result.body.audit.clearedBy).toBe(String((jwt.decode(admin) as any).id));
+    const afterPlan = (await db.query("SELECT * FROM vessel_planning_v2 WHERE plan_uuid=$1", [planUuid])).rows[0];
+    const expected = { ...beforePlan };
+    for (const column of clearFields) expected[column] = null;
+    expected.updated_at = afterPlan.updated_at;
+    expected.updated_by_uuid = result.body.audit.clearedBy;
+    expect(afterPlan).toEqual(expected);
+    expect(afterPlan.is_deleted).toBe(false);
+    expect((await db.query("SELECT * FROM crew_assignments WHERE crew_uuid=$1 ORDER BY assign_uuid", [crewUuid])).rows).toEqual(beforeAssignments);
+    expect((await clearRequest(planUuid, admin, crewUuid, reason)).status).toBe(409);
+    const audits = await request(server)
+      .get(`/api/v2/vessel/planning/${planUuid}/unlinked-reliever-clear-audit`)
+      .set("Authorization", `Bearer ${admin}`);
+    expect(audits.status).toBe(200);
+    expect(audits.body).toHaveLength(1);
+    expect(audits.body[0]).toMatchObject({ planUuid, relieverCrewUuid: crewUuid, reason });
+    expect((await db.query("SELECT assignment_type FROM crew_assignments WHERE assign_uuid=$1", [assignment])).rows[0].assignment_type).toBe("Planned");
+  });
+
+  it("serializes concurrent clears on a planning row even without a vessel master entry", async () => {
+    const admin = await permissionUser("Admin");
+    const crewUuid = u();
+    const { planUuid } = await seedPlanning(crewUuid);
+    const results = await Promise.all([1, 2].map(() => clearRequest(planUuid, admin, crewUuid)));
+    expect(results.map(r => r.status).sort()).toEqual([200, 409]);
+    const audits = await db.query("SELECT count(*)::int n FROM vessel_planning_reliever_clear_audit WHERE plan_uuid=$1", [planUuid]);
+    expect(audits.rows[0].n).toBe(1);
+  });
 });
 
 describe("reliever assignment cancellation on planning unassign", () => {

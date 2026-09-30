@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -31,6 +32,7 @@ import { vesselApiV2 } from '../api/vesselApiV2';
 import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest } from "@/lib/queryClient";
+import { usePermissions } from "@/contexts/PermissionsContext";
 
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -104,11 +106,19 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const { permissions, roleName, userType } = usePermissions();
+    const canClearUnlinked = roleName?.trim().toLowerCase() === 'admin'
+        && userType?.trim().toLowerCase() !== 'ship'
+        && permissions.some(p => p.menuName.toLowerCase() === 'vessel' && p.candelete);
+    const isUnlinkedReliever = !!planningData?.relieverCrewUuid && !planningData?.relieverAssignUuid;
     const [joiningDateOpen, setJoiningDateOpen] = useState(false);
     const [plannedConfirmedDateOpen, setPlannedConfirmedDateOpen] = useState(false);
     const [travelStartDateOpen, setTravelStartDateOpen] = useState(false);
     const [unassignChecked, setUnassignChecked] = useState(false);
     const [showUnassignConfirm, setShowUnassignConfirm] = useState(false);
+    const [clearReason, setClearReason] = useState('');
+    const [isClearingUnlinked, setIsClearingUnlinked] = useState(false);
+    const [clearUnlinkedSelected, setClearUnlinkedSelected] = useState(false);
     const [showSignOnConflict, setShowSignOnConflict] = useState(false);
     const [conflictVesselName, setConflictVesselName] = useState('');
     const [isCheckingConflict, setIsCheckingConflict] = useState(false);
@@ -145,6 +155,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     React.useEffect(() => {
         setAssignmentDetails(null);
         setAssignmentError(null);
+        setClearReason('');
+        setClearUnlinkedSelected(false);
         if (open && planningData) {
             form.reset({
                 relieverCrewName: planningData.relieverCrewName || '',
@@ -354,6 +366,28 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         }
     };
 
+    const handleClearUnlinked = async () => {
+        if (!canClearUnlinked || !planningData?.planUuid || !planningData?.relieverCrewUuid || !clearReason.trim()) return;
+        setIsClearingUnlinked(true);
+        try {
+            await apiRequest("POST",
+                `/api/v2/vessel/planning/${encodeURIComponent(planningData.planUuid)}/clear-unlinked-reliever`,
+                { expectedCrewUuid: planningData.relieverCrewUuid, reason: clearReason.trim() });
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }),
+                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] }),
+            ]);
+            toast({ title: "Unlinked reliever cleared", description: "The reason was recorded in the planning audit." });
+            setShowUnassignConfirm(false);
+            setClearUnlinkedSelected(false);
+            onOpenChange(false);
+        } catch (error: any) {
+            toast({ title: "Unable to clear reliever", description: error.message || "Reload and try again", variant: "destructive" });
+        } finally {
+            setIsClearingUnlinked(false);
+        }
+    };
+
     const handleSave = () => {
         const data = form.getValues();
         
@@ -468,7 +502,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     });
     
     const handleUnassignConfirm = () => {
-        handleUnassignV2();
+        if (clearUnlinkedSelected) void handleClearUnlinked();
+        else void handleUnassignV2();
     };
 
     const relieverName = form.watch('relieverCrewName');
@@ -523,7 +558,8 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                         ) : (
                             <p className="text-amber-800" role="status">
                                 Assignment unavailable: this legacy reliever has no verified assignment link.
-                                Reconcile the assignment before opening linked forms or unassigning.
+                                Normal unassign is unavailable without a verified assignment link.
+                                {canClearUnlinked ? " Administrators may clear the planning reliever with a written reason; no assignment will be changed." : " Ask an administrator to review this legacy reliever."}
                             </p>
                         )}
                     </div>
@@ -906,7 +942,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                             )}
                         />
 
-                        {isRelieverAssigned && (
+                        {isRelieverAssigned && !isUnlinkedReliever && (
                             <div className="flex items-center gap-2 pt-2 border-t">
                                 <Checkbox
                                     id="unassign-reliever-checkbox"
@@ -920,6 +956,22 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                                 >
                                     Unassign from vessel
                                 </label>
+                            </div>
+                        )}
+
+                        {isUnlinkedReliever && canClearUnlinked && (
+                            <div className="space-y-2 border-t pt-3">
+                                <Label htmlFor="unlinked-clear-reason">Reason for clearing this unlinked reliever</Label>
+                                <Textarea id="unlinked-clear-reason" value={clearReason}
+                                    onChange={event => setClearReason(event.target.value)}
+                                    maxLength={2000} placeholder="Explain why this planning reliever should be cleared"
+                                    data-testid="unlinked-clear-reason" />
+                                <Button type="button" variant="destructive"
+                                    disabled={!clearReason.trim() || isClearingUnlinked}
+                                    onClick={() => { setClearUnlinkedSelected(true); setShowUnassignConfirm(true); }}
+                                    data-testid="button-clear-unlinked-reliever">
+                                    Clear unlinked reliever
+                                </Button>
                             </div>
                         )}
 
@@ -941,17 +993,18 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
         <AlertDialog open={showUnassignConfirm} onOpenChange={setShowUnassignConfirm}>
             <AlertDialogContent>
                 <AlertDialogHeader>
-                    <AlertDialogTitle>Unassign Reliever from Vessel?</AlertDialogTitle>
+                    <AlertDialogTitle>{clearUnlinkedSelected ? "Clear unlinked planning reliever?" : "Unassign Reliever from Vessel?"}</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This will remove {form.watch('relieverCrewName')} from the planned vessel assignment.
-                        The crew member will be returned to the crew pool and their status will remain "On Leave".
-                        This action cannot be undone.
+                        {clearUnlinkedSelected
+                            ? `This will clear ${form.watch('relieverCrewName')} from this planning row and record your reason. No crew assignment will be changed.`
+                            : `This will remove ${form.watch('relieverCrewName')} from the planned vessel assignment. The crew member will be returned to the crew pool and their status will remain "On Leave". This action cannot be undone.`}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel data-testid="button-cancel-unassign">Cancel</AlertDialogCancel>
                     <AlertDialogAction 
                         onClick={handleUnassignConfirm}
+                        disabled={isClearingUnlinked || (clearUnlinkedSelected && !clearReason.trim())}
                         className="bg-red-600 hover:bg-red-700"
                         data-testid="button-confirm-unassign"
                     >
