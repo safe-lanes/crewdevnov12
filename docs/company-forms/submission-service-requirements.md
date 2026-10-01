@@ -8,7 +8,7 @@ Related project task: #333 (Company Form Submissions).
 
 ## System field values
 
-2. Resolve System field values from their authoritative source and **freeze them on the submission when the form is completed**. Subject-specific fields come from the subject's record; shared fields come from their own source (for example, date of declaration belongs to the submission, not the crew assignment). A later promotion or vessel rename must not change a completed submission. The signed document must show what was true when it was signed.
+2. Resolve ALL System field values from their authoritative sources and **freeze them on the submission at the FIRST successful section submission or signature, whichever happens first**, not at completion. Subject-specific fields come from the subject's record; shared fields come from their own authoritative submission context (for example, date of declaration belongs to the submission, not a crew assignment). After freezing, these values never change; completion freezes nothing further. If the live source record later differs from the frozen values, do not refresh them and do not invalidate signatures. Show a visible notice on the form: **"The record has changed since signing began. This declaration shows the values at the time of first signature."** The crew manager decides whether to continue or explicitly cancel and restart. Retain the earlier declaration's frozen values and signatures rather than rewriting what was signed.
 
 ## Signatures
 
