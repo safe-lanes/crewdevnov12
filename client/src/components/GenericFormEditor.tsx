@@ -93,6 +93,15 @@ interface VersionRow {
   status: string;
   releasedAt?: string | null;
   configuration?: string | null;
+  stageKey?: string | null;
+  stageSubjectType?: string | null;
+}
+
+interface SubjectStageRow {
+  subjectType: string;
+  stageKey: string;
+  label: string;
+  sortOrder: number;
 }
 
 interface SavedStructuresResponse {
@@ -175,7 +184,7 @@ interface SectionModel {
   section_code: string;
   section_title: string;
   applicable_vessel_types: string[];
-  responsible_mode: "role" | "department" | "not_applicable";
+  responsible_mode: "role" | "department" | "seafarer" | "not_applicable";
   responsible_role_uuid: string | null;
   responsible_department: string | null;
   comment_box_required: boolean;
@@ -581,6 +590,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const realFormId = form.originalFormId ?? form.id;
   const [selectedPartUuid, setSelectedPartUuid] = useState("");
   const [selectedVersionUuid, setSelectedVersionUuid] = useState("");
+  const [stageSelection, setStageSelection] = useState<{ versionUuid: string; stageKey: string } | null>(null);
   const [authoritativeVersion, setAuthoritativeVersion] = useState<VersionRow | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [viewMode, setViewMode] = useState<EditorViewMode>(initialPreview ? "preview" : "configure");
@@ -589,6 +599,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [optionSets, setOptionSets] = useState<Record<string, OptionSetModel[]>>({});
   const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingStage, setIsSavingStage] = useState(false);
   const [isReleasing, setIsReleasing] = useState(false);
   const [isPartMutating, setIsPartMutating] = useState(false);
   const [addPartOpen, setAddPartOpen] = useState(false);
@@ -668,6 +679,19 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     enabled: !!realFormId && (form.category === "dynamic" || rankGroupId !== null),
   });
 
+  const {
+    data: subjectStages = [],
+    isLoading: isLoadingSubjectStages,
+    error: subjectStagesError,
+  } = useQuery<SubjectStageRow[]>({
+    queryKey: [`/api/v2/admin/forms/${realFormId}/subject-stages`],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/v2/admin/forms/${realFormId}/subject-stages`);
+      return response.json();
+    },
+    enabled: !!realFormId && form.category === "dynamic",
+  });
+
   const { data: roles = [] } = useQuery<RoleRow[]>({
     queryKey: ["/api/v2/admin/access-control/roles", "includeInactive"],
     queryFn: async () => {
@@ -717,6 +741,16 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     () => availableVersions.find((version) => version.fvUuid === selectedVersionUuid) ?? sortedVersions[0],
     [availableVersions, selectedVersionUuid, sortedVersions],
   );
+  const currentStageKey = stageSelection && selectedVersion
+    && stageSelection.versionUuid === selectedVersion.fvUuid
+    ? stageSelection.stageKey
+    : selectedVersion?.stageKey ?? "";
+
+  useEffect(() => {
+    setStageSelection(selectedVersion
+      ? { versionUuid: selectedVersion.fvUuid, stageKey: selectedVersion.stageKey ?? "" }
+      : null);
+  }, [selectedVersion?.fvUuid, selectedVersion?.stageKey]);
   const { data: versionParts, isFetching: isLoadingParts, error: partsError, refetch: refetchParts } = useQuery<ConfigurableFormPart[]>({
     queryKey: ["admin-form-version-parts", realFormId, selectedVersion?.fvUuid],
     queryFn: () => loadVersionParts(realFormId, selectedVersion!.fvUuid, form.category === "dynamic"),
@@ -1500,13 +1534,49 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     }
   };
 
+  const updateVersionStage = async (value: string) => {
+    if (!selectedVersion || selectedVersion.status !== "draft" || readOnly || isSavingStage) return;
+    const version = selectedVersion;
+    const stageKey = value === "none" ? "" : value;
+    setStageSelection({ versionUuid: version.fvUuid, stageKey });
+    setSaveError("");
+    setIsSavingStage(true);
+    try {
+      const response = await apiRequest("PUT", `/api/v2/admin/form-versions/${version.id}`, {
+        stageKey: stageKey || null,
+        auditUserUuid: getCrewUserId(),
+      });
+      const updated = await response.json() as VersionRow;
+      setAuthoritativeVersion((current) => current?.fvUuid === updated.fvUuid ? updated : current);
+      await refetchVersions();
+      toast({ title: "Stage saved", description: "The draft's subject stage has been saved." });
+    } catch (error: any) {
+      setStageSelection((current) => current?.versionUuid === version.fvUuid
+        ? { versionUuid: version.fvUuid, stageKey: version.stageKey ?? "" }
+        : current);
+      const message = error?.message || "Unable to save the draft stage.";
+      setSaveError(message);
+      toast({ title: "Unable to save stage", description: message, variant: "destructive" });
+    } finally {
+      setIsSavingStage(false);
+    }
+  };
+
   const requestRelease = () => {
     if (
       isReleasing
       || isSaving
+      || isSavingStage
+      || isLoadingSubjectStages
       || !selectedVersion?.id
       || selectedVersion.status !== "draft"
     ) {
+      return;
+    }
+    if (subjectStages.length > 0 && !currentStageKey) {
+      const message = "Select a subject stage before releasing this Company Form version. Drafts may remain without a stage.";
+      setSaveError(message);
+      toast({ title: "Stage required to release", description: message, variant: "destructive" });
       return;
     }
     setReleaseConfirmOpen(true);
@@ -1812,6 +1882,39 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           </Button>
         </div>
       </div>
+      {isCompanyForm && (subjectStages.length > 0 || subjectStagesError) && (
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3" data-testid="company-form-stage-editor">
+          <label htmlFor="company-form-stage" className="text-sm font-medium text-gray-700">Subject stage</label>
+          {subjectStagesError ? (
+            <span className="text-sm text-red-700">Unable to load subject stages.</span>
+          ) : (
+            <>
+              <Select
+                value={currentStageKey || "none"}
+                onValueChange={(value) => void updateVersionStage(value)}
+                disabled={!selectedVersion || selectedVersion.status !== "draft" || readOnly || isSavingStage || isLoadingSubjectStages}
+              >
+                <SelectTrigger id="company-form-stage" className="w-[240px] bg-white" data-testid="select-company-form-stage">
+                  <SelectValue placeholder={isLoadingSubjectStages ? "Loading stages..." : "No stage selected"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No stage selected</SelectItem>
+                  {subjectStages.map((stage) => (
+                    <SelectItem value={stage.stageKey} key={stage.stageKey}>{stage.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-gray-500">
+                {selectedVersion?.status === "released"
+                  ? "Released stages are read-only."
+                  : isSavingStage
+                    ? "Saving stage…"
+                    : "Optional while drafting; required before release."}
+              </span>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -1852,7 +1955,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                 formVersionLabel={selectedVersionLabel}
                 subjectType={companySubjectType}
                 parts={allParts}
-                structures={previewStructures}
+                structures={previewStructures as any}
                 roles={roles}
                 departments={departments}
                 vesselTypes={vesselTypes}
@@ -1904,7 +2007,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                      onClick={requestRelease}
                      className="bg-green-600 hover:bg-green-700 text-white"
                      size="sm"
-                     disabled={!selectedVersion || selectedVersion.status !== "draft" || isSaving || isReleasing}
+                     disabled={!selectedVersion || selectedVersion.status !== "draft" || isSaving || isReleasing || isSavingStage || isLoadingSubjectStages}
                      data-testid="button-release-version"
                    >
                      Release Ver
@@ -2022,7 +2125,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                       formVersionLabel={selectedVersionLabel}
                       subjectType={companySubjectType}
                       parts={allParts}
-                      structures={previewStructures}
+                      structures={previewStructures as any}
                       roles={roles}
                       departments={departments}
                       vesselTypes={vesselTypes}
@@ -2078,7 +2181,9 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                                    );
                                  })() : (
                                    <Badge variant="outline" className="text-[10px] font-normal">
-                                     {section.responsible_mode === "department" ? `Dept: ${section.responsible_department || "Not set"}` : "No responsible party"}
+                                      {section.responsible_mode === "department"
+                                        ? `Dept: ${section.responsible_department || "Not set"}`
+                                        : section.responsible_mode === "seafarer" ? "Seafarer" : "No responsible party"}
                                    </Badge>
                                  )}
                                  {section.comment_box_required && <Badge variant="outline" className="text-[10px] font-normal">Comment required</Badge>}
@@ -2372,9 +2477,14 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           )}
           {settingsDialog === "responsible" && (
             <div className="space-y-4">
-              <RadioGroup value={settingsValues.responsibleMode} onValueChange={(value) => setSettingsValues((current) => ({ ...current, responsibleMode: value as SectionModel["responsible_mode"] }))} className="gap-3">
+              <RadioGroup value={settingsValues.responsibleMode} onValueChange={(value) => setSettingsValues((current) => ({
+                ...current,
+                responsibleMode: value as SectionModel["responsible_mode"],
+                ...(value === "seafarer" ? { responsibleRoleUuid: "", responsibleDepartment: "" } : {}),
+              }))} className="gap-3">
                 <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="role" /> Responsible Role</label>
                 <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="department" /> Responsible Department</label>
+                <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="seafarer" /> Seafarer</label>
                 <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_applicable" /> Not Applicable</label>
               </RadioGroup>
               {settingsValues.responsibleMode === "role" && (

@@ -2,6 +2,29 @@ import { describe, expect, it } from "vitest";
 import { genericFormEditorTestUtils } from "../../client/src/components/GenericFormEditor";
 
 describe("generic configurable-form editor helpers", () => {
+  it("clears role and department targets for the seafarer responsibility mode", () => {
+    const payload = genericFormEditorTestUtils.toPayload([{
+      clientKey: "section",
+      section_code: "B1",
+      section_title: "Crew assignment",
+      applicable_vessel_types: [],
+      responsible_mode: "seafarer",
+      responsible_role_uuid: "stale-role",
+      responsible_department: "stale-department",
+      comment_box_required: false,
+      signature_required: false,
+      default_option_set_uuid: null,
+      layout_preference: "auto",
+      questions: [],
+    }]);
+
+    expect(payload.sections[0]).toMatchObject({
+      responsible_mode: "seafarer",
+      responsible_role_uuid: null,
+      responsible_department: null,
+    });
+  });
+
   it("generates hidden option values only when adding new options and suffixes same-question collisions", () => {
     const first = genericFormEditorTestUtils.createOption("Ready to sail");
     const second = genericFormEditorTestUtils.createOption("Ready to sail", [first]);

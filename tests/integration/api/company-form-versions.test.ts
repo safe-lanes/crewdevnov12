@@ -6,9 +6,11 @@ import { getDb } from "@server/v2/db";
 import { formsService } from "@server/v2/admin/services/formsService";
 import { admFormsV2, admFormVersionsV2, admRankGroupsV2 } from "@shared/v2/admin/schema";
 import { frmFormParts, frmSections } from "@shared/v2/forms-engine/schema";
+import { frmSubjectTypes } from "@shared/v2/forms-engine/subjectRegistry";
 
 const agent = request("http://127.0.0.1:5000");
 const formUuids: string[] = [];
+const temporarySubjectTypes: string[] = [];
 
 function token() {
   const b64 = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -29,12 +31,12 @@ async function createVersion(formId: number, extra: object = {}) {
   });
 }
 
-async function form(category: "dynamic" | "briefing") {
+async function form(category: "dynamic" | "briefing", subjectType?: string) {
   const formUuid = uuidv4();
   formUuids.push(formUuid);
   const [row] = await getDb().insert(admFormsV2).values({
     formUuid, name: `Version-line fixture ${formUuid}`, category,
-    subjectType: category === "dynamic" ? "crew_assignment" : null,
+    subjectType: category === "dynamic" ? subjectType ?? "crew_assignment" : null,
     rankGroup: "", versionNo: "00", versionDate: "26-Sep-2026",
   }).returning();
   return row;
@@ -55,9 +57,29 @@ afterAll(async () => {
     await db.delete(admRankGroupsV2).where(eq(admRankGroupsV2.formId, row.id));
     await db.delete(admFormsV2).where(eq(admFormsV2.id, row.id));
   }
+  for (const subjectType of temporarySubjectTypes) {
+    await db.delete(frmSubjectTypes).where(eq(frmSubjectTypes.subjectType, subjectType));
+  }
 });
 
 describe.sequential("Company Form version line", () => {
+  it("allows a data-only Company subject to release with a NULL stage", async () => {
+    const subjectType = `stage_less_${uuidv4()}`;
+    temporarySubjectTypes.push(subjectType);
+    await getDb().insert(frmSubjectTypes).values({ subjectType, label: "Stage-less test subject" });
+    const company = await form("dynamic", subjectType);
+    const draft = await createVersion(company.id);
+    expect(draft.status).toBe(200);
+    expect(draft.body).toMatchObject({ stageKey: null, stageSubjectType: subjectType });
+    expect((await get(`/forms/${company.id}/subject-stages`)).body).toEqual([]);
+
+    const released = await post(`/form-versions/${draft.body.id}/release`);
+    expect(released.status).toBe(200);
+    expect(released.body).toMatchObject({
+      status: "released", stageKey: null, stageSubjectType: subjectType,
+    });
+  });
+
   it("scopes null-rank-group drafts, release sources, numbering, and lists to each form", async () => {
     const db = getDb();
     const company = await form("dynamic");
@@ -73,12 +95,20 @@ describe.sequential("Company Form version line", () => {
     // must never add one, but it cannot turn an omitted filter into IS NULL.
     const [legacy] = await db.insert(admFormVersionsV2).values({
       fvUuid: uuidv4(), formId: company.id, rankGroupId: legacyGroup.id,
-      versionNo: "99", versionDate: "26-Sep-2026", status: "released",
+      versionNo: "99", versionDate: "26-Sep-2026", status: "released", stageKey: "before_joining",
     }).returning();
 
     const first = await createVersion(company.id);
     expect(first.status).toBe(200);
-    expect(first.body).toMatchObject({ versionNo: "01", rankGroupId: null, status: "draft" });
+    expect(first.body).toMatchObject({
+      versionNo: "01", rankGroupId: null, status: "draft",
+      stageKey: null, stageSubjectType: "crew_assignment",
+    });
+    const subjectStages = await get(`/forms/${company.id}/subject-stages`);
+    expect(subjectStages.status).toBe(200);
+    expect(subjectStages.body).toContainEqual(expect.objectContaining({
+      subjectType: "crew_assignment", stageKey: "before_joining",
+    }));
     const firstUuid = first.body.fvUuid as string;
     expect(await db.select().from(frmFormParts)
       .where(eq(frmFormParts.formVersionUuid, firstUuid))).toHaveLength(0);
@@ -108,15 +138,48 @@ describe.sequential("Company Form version line", () => {
       .where(eq(frmFormParts.formVersionUuid, firstUuid));
     expect(firstParts).toHaveLength(2);
 
+    const missingStageRelease = await post(`/form-versions/${first.body.id}/release`);
+    expect(missingStageRelease.status).toBe(400);
+    expect(missingStageRelease.body.error).toContain("Select a subject stage");
+    const selectedStage = await agent.put(`/api/v2/admin/form-versions/${first.body.id}`)
+      .set("Authorization", `Bearer ${token()}`).send({ stageKey: "before_joining" });
+    expect(selectedStage.status).toBe(200);
+    expect(selectedStage.body).toMatchObject({ stageKey: "before_joining", stageSubjectType: "crew_assignment" });
+    const clearedStage = await agent.put(`/api/v2/admin/form-versions/${first.body.id}`)
+      .set("Authorization", `Bearer ${token()}`).send({ stageKey: null });
+    expect(clearedStage.status).toBe(200);
+    expect(clearedStage.body).toMatchObject({ stageKey: null, stageSubjectType: "crew_assignment" });
+    await agent.put(`/api/v2/admin/form-versions/${first.body.id}`)
+      .set("Authorization", `Bearer ${token()}`).send({ stageKey: "before_joining" }).expect(200);
+    const stagePreservedWithoutField = await createVersion(company.id);
+    expect(stagePreservedWithoutField.body).toMatchObject({
+      fvUuid: firstUuid, stageKey: "before_joining", stageSubjectType: "crew_assignment",
+    });
+    const attemptedOwnershipChange = await agent.put(`/api/v2/admin/form-versions/${first.body.id}`)
+      .set("Authorization", `Bearer ${token()}`).send({ rankGroupId: legacyGroup.id });
+    expect(attemptedOwnershipChange.status).toBe(400);
+    const attemptedDerivedSubject = await agent.put(`/api/v2/admin/form-versions/${first.body.id}`)
+      .set("Authorization", `Bearer ${token()}`).send({ stageSubjectType: "other" });
+    expect(attemptedDerivedSubject.status).toBe(400);
+
     const released = await post(`/form-versions/${first.body.id}/release`);
     expect(released.status).toBe(200);
-    expect(released.body).toMatchObject({ fvUuid: firstUuid, rankGroupId: null, status: "released" });
+    expect(released.body).toMatchObject({
+      fvUuid: firstUuid, rankGroupId: null, status: "released",
+      stageKey: "before_joining", stageSubjectType: "crew_assignment",
+    });
+    const attemptedReleasedStageChange = await agent.put(`/api/v2/admin/form-versions/${first.body.id}`)
+      .set("Authorization", `Bearer ${token()}`).send({ stageKey: "on_board" });
+    expect(attemptedReleasedStageChange.status).toBe(400);
     const [parent] = await db.select().from(admFormsV2).where(eq(admFormsV2.id, company.id));
     expect(parent.versionNo).toBe("01"); // not the legacy grouped v99
 
     const second = await createVersion(company.id);
     expect(second.status).toBe(200);
-    expect(second.body).toMatchObject({ versionNo: "02", rankGroupId: null, status: "draft" });
+    expect(second.body).toMatchObject({
+      versionNo: "02", rankGroupId: null, status: "draft",
+      stageKey: null, stageSubjectType: "crew_assignment",
+    });
     const secondParts = await db.select().from(frmFormParts)
       .where(eq(frmFormParts.formVersionUuid, second.body.fvUuid));
     expect(secondParts.map(p => p.partCode).sort()).toEqual(["A", "B"]);
@@ -143,6 +206,12 @@ describe.sequential("Company Form version line", () => {
 
     const standardFirst = await createVersion(standard.id, { rankGroupId: standardGroup.id });
     expect(standardFirst.status).toBe(200);
+    expect((await get(`/forms/${standard.id}/subject-stages`)).body).toEqual([]);
+    const standardStage = await createVersion(standard.id, {
+      rankGroupId: standardGroup.id, stageKey: "before_joining",
+    });
+    expect(standardStage.status).toBe(400);
+    expect(standardStage.body.error).toContain("Standard forms cannot");
     const standardBefore = (await db.execute(sql`
       SELECT id, rank_group_id FROM adm_form_versions_v2 WHERE form_id = ${standard.id}
     `)).rows;

@@ -28,6 +28,7 @@ router.get("/forms", requirePermission("Forms", "view"), formsController.getAll)
 router.get("/forms/eligible-submissions", requirePermission("Forms", "view"), formsController.getEligibleCompanyForms);
 router.get("/forms/for-rank/:rankLabel", formsController.getFormForRank);
 router.post("/forms/cleanup-duplicates", requirePermission("Forms", "delete"), formsController.cleanupDuplicates);
+router.get("/forms/:id/subject-stages", requirePermission("Forms", "view"), formsController.getSubjectStages);
 router.get("/forms/:id/parts", requirePermission("Forms", "view"), formsController.getParts);
 router.get("/forms/:id", requirePermission("Forms", "view"), formsController.getById);
 router.post("/forms", requirePermission("Forms", "create"), formsController.create);

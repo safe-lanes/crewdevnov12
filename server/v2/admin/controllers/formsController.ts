@@ -62,6 +62,18 @@ export const formsController = {
     }
   },
 
+  async getSubjectStages(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid form ID" });
+      res.json(await formsService.getSubjectStagesByFormId(id));
+    } catch (error: any) {
+      if (error.message?.includes("not found")) return res.status(404).json({ error: error.message });
+      console.error("Error fetching form subject stages:", error);
+      res.status(500).json({ error: "Failed to fetch form subject stages" });
+    }
+  },
+
   async create(req: Request, res: Response) {
     try {
       if (req.body?.category !== "dynamic") {
@@ -248,14 +260,18 @@ export const formsController = {
       if (isNaN(formId)) {
         return res.status(400).json({ error: "Invalid form ID" });
       }
+      if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "stageSubjectType")) {
+        return res.status(400).json({ error: "Stage subject type is managed by the server and cannot be supplied." });
+      }
       const result = insertAdmFormVersionV2Schema
-        .omit({ fvUuid: true, formId: true })
+        .omit({ fvUuid: true, formId: true, stageSubjectType: true })
+        .extend({ stageKey: z.string().nullable().optional() })
         .safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form version data", details: result.error.issues });
       }
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const payload = { ...result.data, auditUserUuid };
+      const payload = { ...result.data, auditUserUuid } as any;
       const version = await formsService.createVersionByFormId(formId, payload);
       res.json(version);
     } catch (error: any) {
@@ -266,6 +282,7 @@ export const formsController = {
       if (error?.statusCode === 409 || msg.includes("archived and is read-only")) {
         return res.status(409).json({ error: msg });
       }
+      if (error?.statusCode === 400) return res.status(400).json({ error: msg });
       if (msg.includes("not found") || msg.includes("required") || msg.includes("rank-grouped versions") || msg.includes("without parts") || msg.includes("no version-owned parts")) {
         return res.status(400).json({ error: msg });
       }
@@ -297,21 +314,30 @@ export const formsController = {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid version ID" });
       }
+      if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "stageSubjectType")) {
+        return res.status(400).json({ error: "Stage subject type is managed by the server and cannot be supplied." });
+      }
+      if (["formId", "fvUuid", "rankGroupId", "status", "releasedAt"].some((field) =>
+        Object.prototype.hasOwnProperty.call(req.body ?? {}, field))) {
+        return res.status(400).json({ error: "Version ownership and release fields are immutable." });
+      }
       const result = insertAdmFormVersionV2Schema
-        .omit({ fvUuid: true, formId: true })
+        .omit({ fvUuid: true, formId: true, stageSubjectType: true })
         .partial()
+        .extend({ stageKey: z.string().nullable().optional() })
         .safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ error: "Invalid form version data", details: result.error.issues });
       }
       const auditUserUuid = req.body?.auditUserUuid ?? null;
-      const payload = { ...result.data, auditUserUuid };
+      const payload = { ...result.data, auditUserUuid } as any;
       const version = await formsService.updateVersionById(id, payload);
       res.json(version);
     } catch (error: any) {
       if (error?.statusCode === 409 || error.message?.includes("archived and is read-only")) {
         return res.status(409).json({ error: error.message });
       }
+      if (error?.statusCode === 400) return res.status(400).json({ error: error.message });
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
@@ -337,6 +363,7 @@ export const formsController = {
       if (error?.statusCode === 409 || msg.includes("archived and is read-only")) {
         return res.status(409).json({ error: msg });
       }
+      if (error?.statusCode === 400) return res.status(400).json({ error: msg });
       if (msg.includes("Only draft versions can be released")) {
         return res.status(400).json({ error: msg });
       }

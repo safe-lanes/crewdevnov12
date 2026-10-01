@@ -171,6 +171,17 @@ afterEach(() => {
 });
 
 describe("configured form renderer preview", () => {
+  it("shows seafarer section responsibility without a role or department", () => {
+    renderPreview([{
+      ...configuredSection,
+      responsible_mode: "seafarer",
+      responsible_role_uuid: null,
+      responsible_department: null,
+    }], "all", true);
+    click(screen.getByTestId("button-step-part-b"));
+    expect(screen.getByText("To be completed by: Seafarer")).toBeTruthy();
+  });
+
   it("numbers Company Form list and matrix points by position in preview and live without changing codes", () => {
     const list = { ...configuredSection, section_uuid: "section-list", section_code: "opaque-section",
       questions: [{ ...configuredSection.questions[0], question_uuid: "point-list", question_code: "opaque-point" }] };

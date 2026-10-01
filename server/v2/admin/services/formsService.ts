@@ -6,6 +6,7 @@ import { getDb } from "../../db";
 import { copyFormVersionStructure } from "./formStructureService";
 import { formStructureRepository } from "../repositories/formStructureRepository";
 import { frmFormParts } from "../../../../shared/v2/forms-engine/schema";
+import { frmSubjectStages } from "../../../../shared/v2/forms-engine/subjectRegistry";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2, CreateCompanyFormV2Response } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
@@ -29,6 +30,70 @@ export class CompanyFormNameConflictError extends Error {
     super(`A Company Form named "${name}" already exists. Rename the existing form or archive it before reusing this name.`);
     this.name = "CompanyFormNameConflictError";
   }
+}
+
+export class FormStageValidationError extends Error {
+  readonly statusCode = 400;
+  constructor(message: string) {
+    super(message);
+    this.name = "FormStageValidationError";
+  }
+}
+
+type SubjectStage = {
+  subjectType: string;
+  stageKey: string;
+  label: string;
+  sortOrder: number;
+};
+
+async function getDeclaredStages(subjectType: string | null | undefined, executor: any = getDb()): Promise<SubjectStage[]> {
+  if (!subjectType) return [];
+  return executor
+    .select({
+      subjectType: frmSubjectStages.subjectType,
+      stageKey: frmSubjectStages.stageKey,
+      label: frmSubjectStages.label,
+      sortOrder: frmSubjectStages.sortOrder,
+    })
+    .from(frmSubjectStages)
+    .where(eq(frmSubjectStages.subjectType, subjectType))
+    .orderBy(asc(frmSubjectStages.sortOrder), asc(frmSubjectStages.stageKey));
+}
+
+function assertNoClientStageSubjectType(data: Record<string, unknown>) {
+  if (Object.prototype.hasOwnProperty.call(data, "stageSubjectType")) {
+    throw new FormStageValidationError("Stage subject type is managed by the server and cannot be supplied.");
+  }
+}
+
+function assertImmutableVersionOwnership(data: Record<string, unknown>) {
+  assertNoClientStageSubjectType(data);
+  for (const field of ["formId", "fvUuid", "rankGroupId", "status", "releasedAt"]) {
+    if (Object.prototype.hasOwnProperty.call(data, field)) {
+      throw new FormStageValidationError(`${field} is immutable and cannot be changed through version update.`);
+    }
+  }
+}
+
+async function persistableStageKey(
+  form: AdmFormV2,
+  stageKey: string | null | undefined,
+  executor: any,
+): Promise<{ stageKey: string | null; stageSubjectType: string | null }> {
+  if (form.category !== "dynamic") {
+    if (stageKey != null) throw new FormStageValidationError("Standard forms cannot be assigned a subject stage.");
+    return { stageKey: null, stageSubjectType: null };
+  }
+  const stages = await getDeclaredStages(form.subjectType, executor);
+  if (stageKey == null) return { stageKey: null, stageSubjectType: form.subjectType ?? null };
+  if (stages.length === 0) {
+    throw new FormStageValidationError("This Company Form does not declare subject stages.");
+  }
+  if (!stages.some((stage) => stage.stageKey === stageKey)) {
+    throw new FormStageValidationError("Select a valid stage for this Company Form.");
+  }
+  return { stageKey, stageSubjectType: form.subjectType ?? null };
 }
 
 async function lockWritableForm(tx: any, formId: number) {
@@ -77,6 +142,13 @@ export const formsService = {
     const form = await formsRepo.findByUuid(formUuid);
     if (!form) throw new Error(`Form not found: ${formUuid}`);
     return form;
+  },
+
+  async getSubjectStagesByFormId(id: number): Promise<SubjectStage[]> {
+    const form = await formsRepo.findById(id);
+    if (!form) throw new Error(`Form not found: ${id}`);
+    if (form.category !== "dynamic") return [];
+    return getDeclaredStages(form.subjectType);
   },
 
   async getPartsByFormId(id: number, versionUuid?: string) {
@@ -461,6 +533,7 @@ export const formsService = {
 
   async createVersionByFormId(formId: number, data: Omit<InsertAdmFormVersionV2, "fvUuid" | "formId">): Promise<AdmFormVersionV2> {
     return getDb().transaction(async (tx: any) => {
+      assertNoClientStageSubjectType(data as Record<string, unknown>);
       const form = await lockWritableForm(tx, formId);
       const isCompanyForm = form.category === "dynamic";
       if (isCompanyForm && data.rankGroupId != null) {
@@ -470,6 +543,11 @@ export const formsService = {
         throw new Error("rankGroupId is required to create a version. Please select a rank group first.");
       }
       const rankGroupId = isCompanyForm ? null : data.rankGroupId!;
+      const stageWasSupplied = Object.prototype.hasOwnProperty.call(data, "stageKey");
+      const requestedStage = stageWasSupplied ? (data as any).stageKey as string | null : undefined;
+      const stagePatch = stageWasSupplied
+        ? await persistableStageKey(form, requestedStage, tx)
+        : null;
       const auditUserUuid = (data as any).auditUserUuid ?? null;
       const today = new Date();
       const todayStr = today.toLocaleDateString("en-GB", {
@@ -489,6 +567,7 @@ export const formsService = {
             configuration: data.configuration ?? null,
             sharedConfig: data.sharedConfig ?? null,
             versionDate: pickedVersionDate,
+            ...(stagePatch ?? {}),
             auditUserUuid,
           }),
           tx,
@@ -513,9 +592,11 @@ export const formsService = {
         versionNo: nextVersionNo,
         versionDate: pickedVersionDate,
         status: "draft",
+        stageKey: stagePatch?.stageKey ?? null,
+        stageSubjectType: stagePatch?.stageSubjectType ?? (isCompanyForm ? form.subjectType ?? null : null),
         releasedAt: null,
         auditUserUuid,
-      }, true), tx);
+      } as any, true), tx);
       if (sourceVersion?.fvUuid) {
         await copyFormVersionStructure(sourceVersion.fvUuid, created.fvUuid, tx);
       } else {
@@ -539,8 +620,16 @@ export const formsService = {
 
   async updateVersionById(id: number, data: Partial<InsertAdmFormVersionV2>): Promise<AdmFormVersionV2> {
     return getDb().transaction(async (tx: any) => {
-      await lockWritableVersion(tx, id);
-      const version = await formVersionsRepo.updateById(id, applyAuditUser(data), tx);
+      assertImmutableVersionOwnership(data as Record<string, unknown>);
+      const { form, version: existing } = await lockWritableVersion(tx, id);
+      const update: Record<string, unknown> = { ...data };
+      if (Object.prototype.hasOwnProperty.call(data, "stageKey")) {
+        if (existing.status !== "draft") {
+          throw new FormStageValidationError("A released version's stage is immutable.");
+        }
+        Object.assign(update, await persistableStageKey(form, (data as any).stageKey, tx));
+      }
+      const version = await formVersionsRepo.updateById(id, applyAuditUser(update as Partial<InsertAdmFormVersionV2>), tx);
       if (!version) throw new Error(`Form version not found: ${id}`);
       return version;
     });
@@ -550,6 +639,13 @@ export const formsService = {
     return getDb().transaction(async (tx: any) => {
       const { form, version: existing } = await lockWritableVersion(tx, id);
       if (existing.status !== "draft") throw new Error("Only draft versions can be released.");
+      const stages = form.category === "dynamic" ? await getDeclaredStages(form.subjectType, tx) : [];
+      if (stages.length > 0 && (!existing.stageKey || !stages.some((stage) => stage.stageKey === existing.stageKey))) {
+        throw new FormStageValidationError("Select a subject stage before releasing this Company Form version.");
+      }
+      if (stages.length === 0 && existing.stageKey != null) {
+        throw new FormStageValidationError("This form does not declare subject stages; clear the stage before releasing.");
+      }
       const now = new Date();
       const todayStr = now.toLocaleDateString("en-GB", {
         day: "2-digit",
@@ -561,6 +657,7 @@ export const formsService = {
         status: "released",
         versionDate,
         releasedAt: now,
+        stageSubjectType: form.category === "dynamic" ? form.subjectType : null,
         auditUserUuid,
       }), tx);
       if (!version) throw new Error(`Form version not found: ${id}`);

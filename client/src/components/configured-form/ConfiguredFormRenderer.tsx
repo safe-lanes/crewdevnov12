@@ -70,7 +70,7 @@ export interface ConfiguredFormSection {
   section_code: string;
   section_title: string;
   applicable_vessel_types: string[];
-  responsible_mode: "role" | "department" | "not_applicable";
+  responsible_mode: "role" | "department" | "not_applicable" | "seafarer";
   responsible_role_uuid: string | null;
   responsible_role_name?: string | null;
   responsible_department: string | null;
@@ -506,6 +506,14 @@ function SectionResponsibility({
     return (
       <p className="text-sm font-semibold" data-testid={`responsible-department-${sectionId}`}>
         To be completed by: {department ? departmentName(department) : value}
+      </p>
+    );
+  }
+
+  if (section.responsible_mode === "seafarer") {
+    return (
+      <p className="text-sm font-semibold" data-testid={`responsible-seafarer-${sectionId}`}>
+        To be completed by: Seafarer
       </p>
     );
   }

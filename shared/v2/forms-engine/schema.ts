@@ -16,7 +16,7 @@ const auditColumns = {
 };
 
 export const FORM_PART_TYPES = ["fixed", "configurable"] as const;
-export const RESPONSIBLE_MODES = ["role", "department", "not_applicable"] as const;
+export const RESPONSIBLE_MODES = ["role", "department", "not_applicable", "seafarer"] as const;
 export const QUESTION_RESPONSE_TYPES = [
   "yes_no",
   "yes_no_na",

@@ -275,6 +275,7 @@ describe.sequential("form structure service integration", () => {
     }
     await expect(formStructureService.replaceStructure(draft.fvUuid, partUuid, systemStructure("rank"), null))
       .resolves.toBeDefined();
+    await formsService.updateVersionById(draft.id, { stageKey: "before_joining" });
     const released = await formsService.releaseVersionById(draft.id);
     await expect(formStructureService.replaceStructure(released.fvUuid, partUuid, systemStructure("rank"), null))
       .rejects.toMatchObject({ statusCode: 409 });
@@ -292,7 +293,7 @@ describe.sequential("form structure service integration", () => {
     )).rejects.toMatchObject({ statusCode: 400, message: "System fields are available only on Company Forms" });
     await expect(getDb().execute(sql`
       UPDATE adm_forms_v2 SET subject_type = 'unsupported' WHERE id = ${form.id}
-    `)).rejects.toThrow(/chk_adm_forms_v2_subject_type/);
+    `)).rejects.toThrow(/fk_adm_(forms_v2_subject_type|form_versions_v2_form_subject)/);
   });
 
   it("sanitizes and reads back Content on both single-part and batch writes", async () => {
@@ -350,6 +351,7 @@ describe.sequential("form structure service integration", () => {
     const saved = await formStructureService.replaceStructure(draft.fvUuid, sourcePart,
       contentStructure('<p class="word">Pinned <b>content</b></p><script>evil()</script>'), null);
     const questionUuid = saved.sections[0].questions[0].question_uuid;
+    await formsService.updateVersionById(draft.id, { stageKey: "before_joining" });
     const released = await formsService.releaseVersionById(draft.id);
     const db = getDb();
     const sourceBefore = await db.execute(sql`SELECT content_html FROM frm_questions WHERE question_uuid = ${questionUuid}`);

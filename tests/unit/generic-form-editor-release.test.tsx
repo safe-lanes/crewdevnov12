@@ -84,14 +84,14 @@ function savedStructures(body: any) {
   });
 }
 
-function renderEditor() {
+function renderEditor(formValue: any = { id: 99 }) {
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
   act(() => {
     root?.render(
       <GenericFormEditor
-        form={{ id: 99 } as any}
+        form={formValue as any}
         formName="Crew Briefing Form"
         rankGroupName="Deck"
         configurableParts={[{
@@ -160,6 +160,39 @@ afterEach(() => {
 });
 
 describe("GenericFormEditor release workflow", () => {
+  it("renders while versions have not loaded and no stage selection exists", () => {
+    setup();
+    queryResults.set("/api/v2/admin/forms/99/versions", []);
+    const editor = renderEditor({ id: 99, category: "dynamic", subjectType: "crew_assignment" });
+    expect(editor).toBeTruthy();
+  });
+
+  it("loads stage options from the subject registry and keeps an unselected stage draft-only", async () => {
+    setup();
+    queryResults.set("/api/v2/admin/forms/99/subject-stages", [{
+      subjectType: "future_subject_type",
+      stageKey: "registry_checkpoint",
+      label: "Registry checkpoint",
+      sortOrder: 1,
+    }]);
+
+    const editor = renderEditor({ id: 99, category: "dynamic", subjectType: "future_subject_type" });
+    await flushAsyncWork();
+    await flushAsyncWork();
+
+    const stageTrigger = editor.querySelector<HTMLElement>('[data-testid="select-company-form-stage"]');
+    if (!stageTrigger) throw new Error("Company Form stage selector did not render");
+    click(stageTrigger);
+    await flushAsyncWork();
+    expect(document.body.textContent).toContain("Registry checkpoint");
+    click(stageTrigger);
+    await flushAsyncWork();
+
+    click(editor.querySelector<HTMLElement>('[data-testid="button-release-version"]')!);
+    expect(editor.textContent).toContain("Select a subject stage before releasing");
+    expect(document.body.querySelector('[data-testid="button-confirm-release"]')).toBeNull();
+  });
+
   it("confirms a draft release and switches the editor to released read-only mode", async () => {
     setup();
     apiRequestMock.mockResolvedValue(response(released));
@@ -196,6 +229,16 @@ describe("GenericFormEditor release workflow", () => {
     const requestOrder: string[] = [];
     let savedBody: any;
     apiRequestMock.mockImplementation(async (method: string, url: string, body?: any) => {
+      if (method === "GET" && url.includes("/parts?formVersionUuid=")) {
+        return response([{
+          formPartUuid: "version-part-b",
+          formVersionUuid: "draft-version",
+          partCode: "B",
+          partTitle: "Deck briefing",
+          partType: "configurable",
+        }]);
+      }
+      if (method === "GET" && url.endsWith("/structure")) return response(structureResponse());
       if (method === "PUT" && url === "/api/v2/admin/form-versions/draft-version/structures") {
         requestOrder.push("save");
         savedBody = body;
@@ -209,6 +252,8 @@ describe("GenericFormEditor release workflow", () => {
     });
 
     const editor = renderEditor();
+    await flushAsyncWork();
+    await flushAsyncWork();
     await flushAsyncWork();
     await flushAsyncWork();
 

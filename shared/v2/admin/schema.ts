@@ -1,5 +1,6 @@
-import { pgTable, serial, text, boolean, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { foreignKey, pgTable, serial, text, boolean, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { frmSubjectStages, frmSubjectTypes } from "../forms-engine/subjectRegistry";
 
 export const auditColumns = {
   createdAt: timestamp("created_at").defaultNow(),
@@ -17,7 +18,10 @@ export const admFormsV2 = pgTable("adm_forms_v2", {
   description: text("description"),
   archivedAt: timestamp("archived_at"),
   category: text("category").notNull(),
-  subjectType: text("subject_type"),
+  subjectType: text("subject_type").references(() => frmSubjectTypes.subjectType, {
+    onDelete: "restrict",
+    onUpdate: "restrict",
+  }),
   rankGroup: text("rank_group").notNull(),
   versionNo: text("version_no").notNull(),
   versionDate: text("version_date").notNull(),
@@ -29,21 +33,41 @@ export const admFormsV2 = pgTable("adm_forms_v2", {
   activeDynamicNameUnique: uniqueIndex("uq_adm_forms_v2_active_dynamic_name")
     .on(sql`lower(trim(${table.name}))`)
     .where(sql`${table.category} = 'dynamic' AND ${table.archivedAt} IS NULL`),
+  formIdSubjectTypeUnique: uniqueIndex("uq_adm_forms_v2_id_subject_type")
+    .on(table.id, table.subjectType),
+  formUuidSubjectTypeUnique: uniqueIndex("uq_adm_forms_v2_form_uuid_subject_type")
+    .on(table.formUuid, table.subjectType),
 }));
 
 export const admFormVersionsV2 = pgTable("adm_form_versions_v2", {
   id: serial("id").primaryKey(),
   fvUuid: text("fv_uuid").notNull().unique(),
-  formId: integer("form_id").notNull(),
+  formId: integer("form_id").notNull().references(() => admFormsV2.id, {
+    onDelete: "restrict",
+    onUpdate: "restrict",
+  }),
   rankGroupId: integer("rank_group_id"),
   versionNo: text("version_no").notNull(),
   versionDate: text("version_date").notNull(),
   status: text("status").notNull().default("draft"),
+  stageKey: text("stage_key"),
+  stageSubjectType: text("stage_subject_type"),
   configuration: text("configuration"),
   sharedConfig: text("shared_config"),
   releasedAt: timestamp("released_at"),
   ...auditColumns,
-});
+}, (table) => ({
+  stageMembershipFk: foreignKey({
+    name: "fk_adm_form_versions_v2_stage",
+    columns: [table.stageSubjectType, table.stageKey],
+    foreignColumns: [frmSubjectStages.subjectType, frmSubjectStages.stageKey],
+  }).onDelete("restrict").onUpdate("restrict"),
+  formSubjectFk: foreignKey({
+    name: "fk_adm_form_versions_v2_form_subject",
+    columns: [table.formId, table.stageSubjectType],
+    foreignColumns: [admFormsV2.id, admFormsV2.subjectType],
+  }).onDelete("restrict").onUpdate("restrict"),
+}));
 
 export const admRankGroupsV2 = pgTable("adm_rank_groups_v2", {
   id: serial("id").primaryKey(),
