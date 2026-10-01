@@ -25,7 +25,15 @@ import { formPartController } from "./controllers/formPartController";
 const router = Router();
 
 router.get("/forms", requirePermission("Forms", "view"), formsController.getAll);
-router.get("/forms/eligible-submissions", requirePermission("Forms", "view"), formsController.getEligibleCompanyForms);
+// Retired in favor of the relationship-scoped Company Form submission API.
+// Keep this exact route ahead of /forms/:id so the old path cannot resolve as
+// a form ID or fall through to the SPA.
+router.get("/forms/eligible-submissions", (_req, res) => {
+  res.status(410).json({
+    error: "endpoint_retired",
+    message: "Use the relationship-scoped Company Form submission endpoints.",
+  });
+});
 router.get("/forms/for-rank/:rankLabel", formsController.getFormForRank);
 router.post("/forms/cleanup-duplicates", requirePermission("Forms", "delete"), formsController.cleanupDuplicates);
 router.get("/forms/:id/subject-stages", requirePermission("Forms", "view"), formsController.getSubjectStages);

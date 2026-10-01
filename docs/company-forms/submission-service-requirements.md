@@ -32,7 +32,7 @@ Related project task: #333 (Company Form Submissions).
 14. The Crew List gets ONE Forms column showing a count, which opens the list. Never one column per form.
 15. Until the applicability engine exists, a crew manager picks the form manually from released Company Forms matching the subject type and stage.
 16. Seafarers will later complete forms themselves through a mobile app. The service must not assume an office user. Its API and permissions must support a seafarer acting on his own assignments only, enforced server-side. Mobile screens are out of scope.
-17. The core submission service must reach subject-specific behaviour only through what each subject type declares: its stable identifier, its stages, its System fields, who may act on it, its entry points and home, and its signatories. Nothing in the core may assume the subject is a crew assignment.
+17. The core submission service must reach subject-specific behaviour only through what each subject type declares: its stable identifier, its stages, its System fields, who may act on it, its entry points and entry lists, its home, and its signatories. Nothing in the core may assume the subject is a crew assignment. Entry-list declarations are neutral metadata; the Crew List UI remains a separate concern, and the Crew List requirement above is unchanged.
 18. The submission service exposes its own endpoints for reading the
     pinned form version a submission uses. Filling or viewing a
     submission must never depend on Admin endpoints. Read access is
@@ -41,6 +41,21 @@ Related project task: #333 (Company Form Submissions).
     the seafarer himself — enforced server-side.
     A refused request must be reported as a permission problem, never
     as missing configuration.
+
+## Trusted vessel-scope prerequisite
+
+Ship-user Company Form access resolves membership from
+`master_users.vessel_ids`, keyed by the authenticated numeric
+`master_users.id`, then resolves those numeric IDs to active
+`master_vessels.vessel_uuid` records. The repository describes this field as
+parent-system data synchronized through the external master-data API, but
+does not verify the deployed upstream host, current payload correctness, or
+sync freshness. Deployments must verify that provisioning before enabling
+vessel-user access; no freshness interval is inferred here. Until there is a
+complete, valid, server-resolved vessel scope, vessel access is denied. JWT
+vessel claims are not an authorization fallback. Office Company Form
+permissions use the resolved active Office role's explicit Crew Database
+view/create/edit grant and do not depend on vessel-scope provisioning.
 
 ## Release validation
 

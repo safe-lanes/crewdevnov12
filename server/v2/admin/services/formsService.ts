@@ -322,17 +322,6 @@ export const formsService = {
     }
   },
 
-  async getEligibleCompanyForms(): Promise<Array<{ form: AdmFormV2; version: AdmFormVersionV2 }>> {
-    const forms = await formsRepo.findAll(false);
-    const eligible: Array<{ form: AdmFormV2; version: AdmFormVersionV2 }> = [];
-    for (const form of forms) {
-      if (form.category !== "dynamic" || form.archivedAt) continue;
-      const released = await formVersionsRepo.findLatestReleasedByFormId(form.id);
-      if (released) eligible.push({ form, version: released });
-    }
-    return eligible;
-  },
-
   async getFormForRank(rankLabel: string, category?: string): Promise<any> {
     const allForms = await formsRepo.findAll();
     const candidateForms = allForms.filter(f => {

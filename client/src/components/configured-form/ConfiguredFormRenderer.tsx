@@ -972,7 +972,7 @@ function ConfiguredSection({
           : <SignatureBlock sectionId={sectionId} type="seafarer" readOnly={readOnly} live={live} state={state?.signatures?.seafarer} />
       )}
       <SectionResponsibility section={section} roles={roles} departments={departments} sectionId={sectionId} />
-       {mode === "live" && <div className="flex flex-wrap items-center gap-2 border-t pt-3"><Badge variant="outline">{state?.status === "submitted" ? "Submitted" : state?.status === "not_applicable" ? "Not applicable" : "In progress"}</Badge>{live?.sectionOwnership?.[sectionId] && <span className="text-xs">Owner: {live.sectionOwnership[sectionId].ownerLabel}</span>}{state?.submittedByName && <span className="text-xs">Submitted by {state.submittedByName}</span>}{!readOnly && <><Button type="button" variant="outline" size="sm" onClick={() => void live?.onSaveDraft?.(sectionId)}>Save draft</Button><Button type="button" size="sm" onClick={submitSection}>Submit</Button></>}</div>}
+       {mode === "live" && <div className="flex flex-wrap items-center gap-2 border-t pt-3"><Badge variant="outline">{state?.status === "submitted" ? "Submitted" : state?.status === "not_applicable" ? "Not applicable" : "In progress"}</Badge>{live?.sectionOwnership?.[sectionId] && <span className="text-xs">Owner: {live.sectionOwnership[sectionId].ownerLabel}</span>}{state?.submittedByName && <span className="text-xs">Submitted by {state.submittedByName}</span>}{!readOnly && <><Button type="button" variant="outline" size="sm" onClick={() => void live?.onSaveDraft?.(sectionId)}>Save draft</Button>{(!companyForm || live?.onSubmitSection) && <Button type="button" size="sm" onClick={submitSection}>Submit</Button>}</>}</div>}
     </div>
   ) : undefined;
 

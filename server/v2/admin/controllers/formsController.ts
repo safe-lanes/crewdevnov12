@@ -15,15 +15,6 @@ export const formsController = {
     }
   },
 
-  async getEligibleCompanyForms(_req: Request, res: Response) {
-    try {
-      res.json(await formsService.getEligibleCompanyForms());
-    } catch (error) {
-      console.error("Error fetching eligible Company Forms:", error);
-      res.status(500).json({ error: "Failed to fetch eligible Company Forms" });
-    }
-  },
-
   async getById(req: Request, res: Response) {
     try {
       const id = parseInt(req.params.id);

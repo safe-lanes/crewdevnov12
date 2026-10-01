@@ -15,3 +15,22 @@ Append one row whenever a numbered task fully completes. Record its task number,
 | #362 | Use assignment identity for sign-on and sign-off | `d7dbd0f1118e3c5c36a2308a08f3412d4be3c475` | 2026-09-30 |
 | #365 | Let administrators safely clear unlinked relievers | `21cf7816cd0f2cb119ece1f22dba964efa1f06da` | 2026-09-30 |
 | #368 | Prevent invalid assignment vessel IDs | `7228d8d0463db2421f062442bed10a5c959fb478` | 2026-09-30 |
+| #354 | Start and edit Company Forms safely | `281f5640ca450d653d1260223e26915a605991ec` | 2026-10-01 |
+
+## Inventory audit — 2026-10-01
+
+All ten verified completed tasks in the current project catalogue from #344
+onward are recorded above. Each implementation hash is reachable from this branch, and
+each date matches the implementation commit's UTC date. Tasks #351 and #352
+remain recorded from their delivered commits even though the task panel has
+not reflected their completion; the ledger remains the authority.
+
+The current catalogue has no additional verified completions after #368.
+Unimplemented plans and archived suggestions are not completion records.
+
+Task #354's previous completion row was withdrawn after the client review of
+`4b2f366e7961bf0dfd590bc4581dec4921cf984d` found two P2 defects. Both were
+corrected in the implementation recorded above. The same independent client
+reviewer approved that exact commit and independently passed 54/54 renderer
+tests. There is exactly one completed row for #354. See
+`docs/company-forms/submission-runtime-verification.md`.

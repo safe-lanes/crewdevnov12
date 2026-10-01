@@ -20,6 +20,7 @@ import accountsV2Routes from "./v2/accounts/routes";
 import { briefingsV2Routes } from "./v2/briefings";
 import { interviewsV2Routes } from "./v2/interviews";
 import { debriefingsV2Routes } from "./v2/debriefings";
+import companyFormSubmissionsRoutes from "./v2/company-forms/routes";
 import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
 import { setupSwagger } from "./swagger";
 import { storage, isConnected, connectionError, calculateExperienceFromSeaService, calculateVesselTypeSpecificExperience } from "./storage";
@@ -123,6 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Configurable crew briefing submissions are isolated from form configuration.
   app.use("/api/v2/briefings", briefingsV2Routes);
+  app.use("/api/v2/company-form-submissions", companyFormSubmissionsRoutes);
   app.use("/api/v2/interviews", interviewsV2Routes);
   app.use("/api/v2/debriefings", debriefingsV2Routes);
 
