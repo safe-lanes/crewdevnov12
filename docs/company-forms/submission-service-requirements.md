@@ -33,6 +33,14 @@ Related project task: #333 (Company Form Submissions).
 15. Until the applicability engine exists, a crew manager picks the form manually from released Company Forms matching the subject type and stage.
 16. Seafarers will later complete forms themselves through a mobile app. The service must not assume an office user. Its API and permissions must support a seafarer acting on his own assignments only, enforced server-side. Mobile screens are out of scope.
 17. The core submission service must reach subject-specific behaviour only through what each subject type declares: its stable identifier, its stages, its System fields, who may act on it, its entry points and home, and its signatories. Nothing in the core may assume the subject is a crew assignment.
+18. The submission service exposes its own endpoints for reading the
+    pinned form version a submission uses. Filling or viewing a
+    submission must never depend on Admin endpoints. Read access is
+    granted by the user's relationship to the subject — for a crew
+    assignment, office crewing roles, users of that vessel, and later
+    the seafarer himself — enforced server-side.
+    A refused request must be reported as a permission problem, never
+    as missing configuration.
 
 ## Release validation
 
