@@ -40,11 +40,16 @@ const STATUS_BADGE: Record<string, string> = {
  * Payroll Run "Sync from Crewing" step, never by hand, so there is no
  * create button here.
  */
-export default function ContractsListPage() {
+export default function ContractsListPage({
+  vesselFilter,
+  onVesselFilterChange: setVesselFilter,
+}: {
+  vesselFilter: string;
+  onVesselFilterChange: (value: string) => void;
+}) {
   const [, setLocation] = useLocation();
   const { vessels, isLoading: vesselsLoading } = useVesselLookup();
-  const [vesselFilter, setVesselFilter] = useState("__all__");
-  const [statusFilter, setStatusFilter] = useState("active");
+  const [statusFilter, setStatusFilter] = useState("__all__");
   const [selectedUuids, setSelectedUuids] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
   const { toast } = useToast();
