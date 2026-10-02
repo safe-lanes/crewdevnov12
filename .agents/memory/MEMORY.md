@@ -1,3 +1,4 @@
+- [Runtime guard provenance](runtime-guard-provenance.md) — a merged guard is not proof the live API uses it; compare backend process age with source changes before blaming a bypass.
 - [Master-data & admin V2 API field casing](master-data-api-casing.md) — `/api/v2/masters/*` & `/api/v2/admin/*` serialize camelCase (rankId/crUuid/natUuid/vtUuid/agUuid), not snake_case DB columns; hooks typed `any[]` so tsc won't catch mismatches.
 - [Soft-delete vs plain unique constraints](soft-delete-unique-constraint-collisions.md) — soft-deleted rows still hold `.unique()` slots (e.g. `code`); `is_deleted=false` "empty" checks then 500 on re-insert (23505). Seed via revive-or-insert.
 - [getDb() typing quirk](getdb-typing.md) — tenant getDb() is loosely typed; callback params on query results (filter/map/transaction) need explicit type annotations or noImplicitAny adds TS7006 errors.
