@@ -35,3 +35,13 @@ corrected in the implementation recorded above. The same independent client
 reviewer approved that exact commit and independently passed 54/54 renderer
 tests. There is exactly one completed row for #354. See
 `docs/company-forms/submission-runtime-verification.md`.
+
+## Browser/preview provenance audit — 2026-10-02
+
+See [Backend restart evidence audit](backend-restart-evidence-audit.md) for every
+completion row above. No historical server-task browser/preview claim in the
+retained records establishes the required final-commit → backend-start →
+browser-check ordering. Those claims are **NOT VERIFIED**, not retrospective
+proof that every check failed or that the implementation was absent.
+Completion rows remain unchanged; this audit qualifies their visual-verification
+provenance rather than substituting new completion hashes.
