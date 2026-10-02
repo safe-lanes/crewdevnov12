@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import {
   masterNationalities,
   masterVessels,
+  masterVesselTypes,
 } from "../../../../shared/schema";
 import {
   crewAssignments,
@@ -29,6 +30,7 @@ export type CrewAssignmentSubject = {
   assignUuid: string;
   crewUuid: string;
   vesselUuid: string | null;
+  vesselTypeUuid?: string | null;
   signOnDate: string | null;
   signOffDate: string | null;
   assignmentType: string;
@@ -77,6 +79,10 @@ const allowedActions = {
     "read_asset",
     "create_submission",
     "edit_draft",
+    "submit_section",
+    "save_signature",
+    "remove_signature",
+    "void_submission",
   ],
   vessel: [
     "read_eligible_forms",
@@ -87,6 +93,9 @@ const allowedActions = {
     "read_asset",
     "create_submission",
     "edit_draft",
+    "submit_section",
+    "save_signature",
+    "remove_signature",
   ],
   seafarer: [
     "read_eligible_forms",
@@ -97,6 +106,9 @@ const allowedActions = {
     "read_asset",
     "create_submission",
     "edit_draft",
+    "submit_section",
+    "save_signature",
+    "remove_signature",
   ],
 } as const satisfies CompanyFormSubjectAdapter<CrewAssignmentSubject>["allowedActions"];
 
@@ -105,6 +117,7 @@ function mapAssignmentRow(row: any): CrewAssignmentSubject {
     assignUuid: row.assignUuid,
     crewUuid: row.crewUuid,
     vesselUuid: row.vesselUuid,
+    vesselTypeUuid: row.vesselTypeUuid ?? null,
     signOnDate: row.signOnDate,
     signOffDate: row.signOffDate,
     assignmentType: row.assignmentType,
@@ -123,6 +136,7 @@ async function lookupCrewAssignment(
       assignUuid: crewAssignments.assignUuid,
       crewUuid: crewAssignments.crewUuid,
       vesselUuid: crewAssignments.vesselUuid,
+      vesselType: masterVessels.vesselType,
       signOnDate: crewAssignments.signOnDate,
       signOffDate: crewAssignments.signOffDate,
       assignmentType: crewAssignments.assignmentType,
@@ -130,20 +144,34 @@ async function lookupCrewAssignment(
       isDeleted: crewAssignments.isDeleted,
     })
     .from(crewAssignments)
+    .leftJoin(masterVessels, eq(masterVessels.vesselUuid, crewAssignments.vesselUuid))
     .where(eq(crewAssignments.assignUuid, assignUuid))
     .limit(1);
-  if (lock) query = query.for("update");
+  if (lock) query = query.for("update", { of: crewAssignments });
 
   // Deliberately do not filter cancelled or non-current assignments here:
   // those records remain valid historical subjects for authorized reads.
   const row = (await query)[0];
-  return row ? mapAssignmentRow(row) : undefined;
+  if (!row) return undefined;
+  let vesselTypeUuid: string | null = null;
+  if (row.vesselType) {
+    const types = await executor.select({ vesselTypeUuid: masterVesselTypes.vtUuid })
+      .from(masterVesselTypes)
+      .where(and(
+        eq(masterVesselTypes.vesselType, row.vesselType),
+        eq(masterVesselTypes.isActive, true),
+        eq(masterVesselTypes.isDeleted, false),
+      )).limit(2);
+    if (types.length === 1) vesselTypeUuid = types[0].vesselTypeUuid;
+  }
+  return mapAssignmentRow({ ...row, vesselTypeUuid });
 }
 
 async function resolveCrewSystemField(
   key: string,
   subject: CrewAssignmentSubject,
   context: SystemFieldResolutionContext,
+  executor: any = getDb(),
 ): Promise<string | null> {
   if (key === "date_of_declaration") {
     return context.submission.dateOfDeclaration;
@@ -154,7 +182,7 @@ async function resolveCrewSystemField(
 
   if (key === "sign_on_date") return subject.signOnDate;
 
-  const db = getDb();
+  const db = executor;
   if (key === "seafarer_name" || key === "rank" || key === "nationality") {
     const crewRows = await db.select({
       firstName: crewMembersV2.firstName,
@@ -231,19 +259,32 @@ export function createCrewAssignmentSubject(
         assignUuid: crewAssignments.assignUuid,
         crewUuid: crewAssignments.crewUuid,
         vesselUuid: crewAssignments.vesselUuid,
+        vesselType: masterVessels.vesselType,
         signOnDate: crewAssignments.signOnDate,
         signOffDate: crewAssignments.signOffDate,
         assignmentType: crewAssignments.assignmentType,
         isCurrent: crewAssignments.isCurrent,
         isDeleted: crewAssignments.isDeleted,
       }).from(crewAssignments)
+        .leftJoin(masterVessels, eq(masterVessels.vesselUuid, crewAssignments.vesselUuid))
         .where(eq(crewAssignments.crewUuid, homeRef));
       // No current/cancelled/deleted filter: home is the durable assignment
       // history, while outstanding status is computed separately below.
-      return rows.map((row: any) => {
-        const context = mapAssignmentRow(row);
+      return Promise.all(rows.map(async (row: any) => {
+        let vesselTypeUuid: string | null = null;
+        if (row.vesselType) {
+          const types = await executor.select({ vesselTypeUuid: masterVesselTypes.vtUuid })
+            .from(masterVesselTypes)
+            .where(and(
+              eq(masterVesselTypes.vesselType, row.vesselType),
+              eq(masterVesselTypes.isActive, true),
+              eq(masterVesselTypes.isDeleted, false),
+            )).limit(2);
+          if (types.length === 1) vesselTypeUuid = types[0].vesselTypeUuid;
+        }
+        const context = mapAssignmentRow({ ...row, vesselTypeUuid });
         return { subjectRef: context.assignUuid, context };
-      });
+      }));
     },
     groupingIdentifier: (subject, subjectRef) => subject.assignUuid || subjectRef,
     isOutstanding: (subject) =>
@@ -308,13 +349,43 @@ export function createCrewAssignmentSubject(
         signatureType: "officer",
         displayLabel: "Company Representative",
         allowedActors: ["office", "vessel"],
+        methods: ["officer"],
+        methodsByActor: { office: ["officer"], vessel: ["officer"] },
         designationSource: "master_users.designation",
       },
       {
         signatureType: "seafarer",
         displayLabel: "Seafarer",
-        allowedActors: ["seafarer"],
+        allowedActors: ["seafarer", "office"],
+        methods: ["authenticated", "witnessed"],
+        methodsByActor: { seafarer: ["authenticated"], office: ["witnessed"] },
+        resolveIdentity: async ({ subject, executor }) => {
+          const crewSubject = subject as CrewAssignmentSubject;
+          const context: SystemFieldResolutionContext = {
+            submission: { dateOfDeclaration: null },
+            executor,
+          };
+          const [name, rank] = await Promise.all([
+            resolveCrewSystemField("seafarer_name", crewSubject, context, executor),
+            resolveCrewSystemField("rank", crewSubject, context, executor),
+          ]);
+          return { name, rank };
+        },
       },
     ],
+    isSectionApplicable: (section, subject) => {
+      if (!section.applicableVesselTypes) return Promise.resolve(true);
+      let allowed: unknown;
+      try {
+        allowed = JSON.parse(section.applicableVesselTypes);
+      } catch {
+        throw new Error("Invalid persisted vessel-type restriction in a Company Form section.");
+      }
+      if (!Array.isArray(allowed) || allowed.some((value) => typeof value !== "string")) {
+        throw new Error("Invalid persisted vessel-type restriction in a Company Form section.");
+      }
+      return Promise.resolve(allowed.length === 0 ||
+        (!!subject.vesselTypeUuid && allowed.includes(subject.vesselTypeUuid)));
+    },
   };
 }

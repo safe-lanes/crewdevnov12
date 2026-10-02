@@ -232,7 +232,7 @@ describe.sequential("Company Form answer round-trip through the client mapper", 
           responsible_mode, comment_box_required, signature_officer_required,
           signature_seafarer_required, layout_preference, sort_order, is_deleted)
        VALUES ($1, $2, $3, 'ANSWERS', 'Answer round-trip section',
-               'not_applicable', false, false, false, 'list', 0, false)`,
+                'seafarer', false, false, false, 'list', 0, false)`,
       [sectionUuid, formVersionUuid, partUuid],
     );
     await db.query(

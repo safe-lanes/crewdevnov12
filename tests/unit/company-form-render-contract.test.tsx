@@ -28,7 +28,18 @@ function formContract(overrides: Partial<CompanySubmissionRenderView> = {}): Com
       createdAt: "2026-05-01",
       completedAt: null,
       canEdit: true,
+      canVoid: false,
+      voidedAt: null,
+      voidedByUuid: null,
+      voidedByName: null,
+      voidReason: null,
+      voidedPreviousStatus: null,
+      replacedBySubmissionUuid: null,
+      replacesSubmissionUuid: null,
+      systemSnapshotAt: null,
+      systemSnapshotEvent: null,
     },
+    signatureMethodOptions: {},
     form: {
       formName: "Pinned declaration",
       description: null,
@@ -81,6 +92,8 @@ function formContract(overrides: Partial<CompanySubmissionRenderView> = {}): Com
         commentBoxRequired: false,
         signatureOfficerRequired: false,
         signatureSeafarerRequired: false,
+        requiresSubmission: true,
+        isApplicable: true,
         defaultOptionSetUuid: null,
         layoutPreference: "list",
         effectiveLayout: "list",
@@ -172,6 +185,13 @@ function formContract(overrides: Partial<CompanySubmissionRenderView> = {}): Com
       createdAt: null,
       updatedAt: null,
     }],
+    systemSnapshotAt: null,
+    systemSnapshotEvent: null,
+    systemValuesChanged: null,
+    systemValuesComparisonError: false,
+    systemValuesChangedNotice: null,
+    voidedReplacement: null,
+    replacementHistory: [],
     ...overrides,
   };
 }
@@ -200,6 +220,8 @@ function withSecondPart(contract = formContract()): CompanySubmissionRenderView 
           commentBoxRequired: false,
           signatureOfficerRequired: false,
           signatureSeafarerRequired: false,
+        requiresSubmission: true,
+        isApplicable: true,
           defaultOptionSetUuid: null,
           layoutPreference: "list",
           effectiveLayout: "list",
@@ -276,6 +298,7 @@ function losslessAnswerContract(): CompanySubmissionRenderView {
           })),
         ],
       }],
+      voidedReplacement: null,
     }],
     answers: [
       ...contract.answers,
@@ -917,5 +940,882 @@ describe("Company Form submission renderer contract", () => {
 
     await waitFor(() => expect(activeContainer?.querySelector('[role="alert"]')?.textContent)
       .toContain("Corrupt persisted multi_select answer"));
+  });
+
+  it("waits for queued answer saves before submitting, then refetches persisted completion", async () => {
+    let stored = formContract();
+    stored.parts[0].sections[0].canSubmit = true;
+    let resolveFirstDraft!: (response: Response) => void;
+    let resolveSectionSubmit!: (response: Response) => void;
+    const calls: Array<{ method: string; url: string; body?: unknown }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      calls.push({ method, url, body });
+      if (method === "GET") {
+        return new Response(JSON.stringify(stored), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (method === "PUT") {
+        if (calls.filter((call) => call.method === "PUT").length === 1) {
+          return new Promise<Response>((resolve) => { resolveFirstDraft = resolve; });
+        }
+        return new Response(null, { status: 204 });
+      }
+      if (method === "POST") {
+        stored = {
+          ...stored,
+          submission: { ...stored.submission, status: "completed", canEdit: false },
+          states: stored.states.map((state) => ({ ...state, status: "submitted" })),
+          parts: stored.parts.map((part) => ({
+            ...part,
+            sections: part.sections.map((section) => ({ ...section, canSubmit: false })),
+          })),
+        };
+        return new Promise<Response>((resolve) => { resolveSectionSubmit = resolve; });
+      }
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    }));
+
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+    await waitFor(() => expect(activeContainer?.querySelector('[data-testid="preview-response-free-text-question"]')).not.toBeNull());
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-response-free-text-question"]')!, {
+      target: { value: "Declaration response" },
+    });
+    await waitFor(() => expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1));
+
+    fireEvent.click([...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.trim() === "Submit")!);
+    await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).not.toBeNull());
+    fireEvent.click([...document.querySelectorAll('[role="alertdialog"] button')]
+      .find((button) => button.textContent?.trim() === "Submit")!);
+    await waitFor(() => expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1));
+    expect(calls.some((call) => call.method === "POST")).toBe(false);
+
+    await act(async () => {
+      resolveFirstDraft(new Response(null, { status: 204 }));
+    });
+    await waitFor(() => expect(calls.some((call) => call.method === "POST")).toBe(true));
+    expect(calls.filter((call) => call.method === "PUT")).toHaveLength(2);
+    const pendingSubmit = [...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Submitting…"));
+    expect(pendingSubmit).toBeDefined();
+    expect(pendingSubmit).toHaveProperty("disabled", true);
+    fireEvent.click(pendingSubmit!);
+    expect(calls.filter((call) => call.method === "POST")).toHaveLength(1);
+    expect(calls.find((call) => call.method === "POST")).toMatchObject({
+      url: `/api/v2/company-form-submissions/${submissionUuid}/sections/section-a/submit`,
+      body: undefined,
+    });
+    await act(async () => {
+      resolveSectionSubmit(new Response(JSON.stringify({ status: "completed" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }));
+    });
+    await waitFor(() => expect(calls.filter((call) => call.method === "GET")).toHaveLength(2));
+    expect(activeContainer?.textContent).toContain("Complete");
+    expect(activeContainer!.querySelector('[data-testid="preview-response-free-text-question"]')).toHaveProperty("readOnly", true);
+  });
+
+  it("does not offer section submission for a purely informational Company section", async () => {
+    const contract = formContract();
+    contract.parts[0].sections[0].requiresSubmission = false;
+    contract.parts[0].sections[0].questions = contract.parts[0].sections[0].questions
+      .filter((question) => question.responseType === "content" || question.responseType === "system_field");
+    contract.answers = [];
+    contract.submission.canEdit = true;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(contract), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    })));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+
+    await waitFor(() => expect(activeContainer?.querySelector('[data-testid="configured-form-live"]')).not.toBeNull());
+    expect(activeContainer?.textContent).toContain("Informational");
+    expect([...activeContainer!.querySelectorAll("button")].some((button) =>
+      ["Submit", "Save draft"].includes(button.textContent?.trim() ?? ""))).toBe(false);
+  });
+
+  it("shows the exact changed-record notice and navigates to the linked void replacement", async () => {
+    const voidedUuid = "827cb116-6c78-4f1b-9ae5-fc4327085fdd";
+    const contract = formContract({
+      submission: {
+        ...formContract().submission,
+        submissionUuid: voidedUuid,
+        status: "voided",
+        canEdit: false,
+        voidReason: "Corrected source details",
+        replacedBySubmissionUuid: submissionUuid,
+        replacesSubmissionUuid: "571a155b-3790-4f18-a17b-6a8b38ecff9f",
+      },
+      systemValuesChanged: true,
+      systemValuesChangedNotice: "The record has changed since signing began. This declaration shows the values at the time of first signature.",
+      voidedReplacement: {
+        label: "Voided — replaced by",
+        submissionUuid,
+      },
+      replacementHistory: [
+        { direction: "replaced_by", label: "Voided — replaced by", submissionUuid },
+        { direction: "replaces", label: "Replaces a voided submission", submissionUuid: "571a155b-3790-4f18-a17b-6a8b38ecff9f" },
+      ],
+    });
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      return new Response(JSON.stringify(url.includes(voidedUuid)
+        ? contract
+        : formContract()), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }));
+    mount(<CompanySubmissionRenderer submissionUuid={voidedUuid} />);
+
+    await waitFor(() => expect(activeContainer?.textContent).toContain("The record has changed since signing began. This declaration shows the values at the time of first signature."));
+    expect(activeContainer?.textContent).toContain("Voided — replaced by");
+    expect(activeContainer?.textContent).toContain("Replaces a voided submission");
+    expect(activeContainer?.textContent).toContain("Reason: Corrected source details");
+    fireEvent.click([...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes(`Open linked submission ${submissionUuid}`))!);
+    await waitFor(() => expect(calls).toContain(`/api/v2/company-form-submissions/${submissionUuid}/form`));
+  });
+
+  it("deletes a signature by its section-signature UUID rather than its attachment asset UUID", async () => {
+    const sectionSignatureUuid = "20f66d4d-cd8e-40b4-9ef8-663f2b4d8d13";
+    const attachmentAssetUuid = "6da6bcd3-0bd7-4fb3-8a6a-7da0d9c9db43";
+    const signed = formContract();
+    signed.parts[0].sections[0].signatureOfficerRequired = true;
+    signed.states[0].signatures = [{
+      sectionSignatureUuid,
+      signatureType: "officer",
+      signerName: "Office witness",
+      signerRank: null,
+      witnessName: null,
+      signedAt: "2026-06-01T12:00:00.000Z",
+      signedByUuid: "actor-office",
+      signatureMethod: "officer",
+      attachment: {
+        assetUuid: attachmentAssetUuid,
+        fileName: "signature.png",
+        fileType: "image/png",
+        fileSize: "128",
+        rawUrl: `/api/v2/company-form-submissions/${submissionUuid}/attachments/${attachmentAssetUuid}/raw`,
+      },
+    }];
+    let stored = signed;
+    const calls: Array<{ method: string; url: string }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const url = String(input);
+      calls.push({ method, url });
+      if (method === "GET" && url.endsWith("/raw")) {
+        return new Response(new Blob(["png"]), { status: 200, headers: { "content-type": "image/png" } });
+      }
+      if (method === "GET") {
+        return new Response(JSON.stringify(stored), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (method === "DELETE") {
+        stored = {
+          ...stored,
+          states: stored.states.map((state) => ({ ...state, signatures: [] })),
+        };
+        return new Response(null, { status: 204 });
+      }
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    }));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+
+    await waitFor(() => expect([...activeContainer!.querySelectorAll("button")]
+      .some((button) => button.textContent?.includes("Remove signature"))).toBe(true));
+    fireEvent.click([...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Remove signature"))!);
+
+    const deleteUrl = `/api/v2/company-form-submissions/${submissionUuid}/sections/section-a/signatures/${sectionSignatureUuid}`;
+    await waitFor(() => expect(calls).toContainEqual({ method: "DELETE", url: deleteUrl }));
+    expect(calls.some((call) => call.method === "DELETE" && call.url.includes(attachmentAssetUuid))).toBe(false);
+  });
+
+  it("persists a successful signature before showing its frozen values and changed-record notice", async () => {
+    const contract = formContract();
+    contract.signatureMethodOptions = { officer: [{ method: "officer", label: "Company representative" }] };
+    contract.parts[0].sections[0].signatureOfficerRequired = true;
+    contract.parts[0].sections[0].canSign = { officer: true };
+    let stored = contract;
+    const calls: Array<{ method: string; url: string; body?: Record<string, unknown> }> = [];
+    const signatureUuid = "20f66d4d-cd8e-40b4-9ef8-663f2b4d8d13";
+    const assetUuid = "6da6bcd3-0bd7-4fb3-8a6a-7da0d9c9db43";
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => ({
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      clearRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D));
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,c2lnbmF0dXJl");
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
+      calls.push({ method, url, body });
+      if (method === "GET" && url.endsWith("/raw")) {
+        return new Response(new Blob(["png"]), { status: 200, headers: { "content-type": "image/png" } });
+      }
+      if (method === "GET") {
+        return new Response(JSON.stringify(stored), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (method === "PUT") return new Response(null, { status: 204 });
+      if (method === "POST") {
+        expect(body).toEqual({
+          signatureType: "officer",
+          method: "officer",
+          data: "data:image/png;base64,c2lnbmF0dXJl",
+        });
+        stored = {
+          ...stored,
+          systemValuesChanged: true,
+          systemValuesChangedNotice: "The record has changed since signing began. This declaration shows the values at the time of first signature.",
+          systemFields: stored.systemFields.map((field) => ({
+            ...field,
+            value: "Frozen Seafarer",
+            valueOrigin: "frozen_snapshot",
+          })),
+          parts: stored.parts.map((part) => ({
+            ...part,
+            sections: part.sections.map((section) => ({
+              ...section,
+              questions: section.questions.map((question) => question.systemField
+                ? {
+                  ...question,
+                  systemField: { ...question.systemField, value: "Frozen Seafarer", valueOrigin: "frozen_snapshot" },
+                }
+                : question),
+            })),
+          })),
+          states: stored.states.map((state) => ({
+            ...state,
+            signatures: [{
+              sectionSignatureUuid: signatureUuid,
+              signatureType: "officer",
+              signerName: "Server-derived office signer",
+              signerRank: null,
+              witnessName: null,
+              signedAt: "2026-06-01T12:00:00.000Z",
+              signedByUuid: "office-actor",
+              signatureMethod: "officer",
+              attachment: {
+                assetUuid,
+                fileName: "signature.png",
+                fileType: "image/png",
+                fileSize: "128",
+                rawUrl: `/api/v2/company-form-submissions/${submissionUuid}/attachments/${assetUuid}/raw`,
+              },
+            }],
+          })),
+        };
+        return new Response(JSON.stringify({}), { status: 201, headers: { "content-type": "application/json" } });
+      }
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    }));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+    await waitFor(() => expect(activeContainer?.querySelector('[data-testid="live-signature-officer-section-a"]')).not.toBeNull());
+    const canvas = activeContainer!.querySelector("canvas[aria-label='Signature canvas']")!;
+    fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 1, clientY: 1 });
+    fireEvent.pointerMove(canvas, { pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(canvas, { pointerId: 1 });
+    fireEvent.click([...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Save signature"))!);
+
+    await waitFor(() => expect(calls.some((call) => call.method === "POST")).toBe(true));
+    await waitFor(() => expect(activeContainer?.textContent).toContain("The record has changed since signing began. This declaration shows the values at the time of first signature."));
+    expect(activeContainer?.querySelector('[data-testid="preview-content-system-question"]')?.textContent)
+      .toContain("Frozen Seafarer");
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Server-derived office signer"));
+    expect(calls.filter((call) => call.method === "GET" && call.url.endsWith("/form"))).toHaveLength(2);
+    expect(activeContainer!.querySelector('[data-testid="preview-response-free-text-question"]')).toHaveProperty("readOnly", false);
+  });
+
+  it("preserves newer edits and explicit clears in another section across a signature refetch and an older autosave acknowledgement", async () => {
+    const contract = withSecondPart();
+    contract.signatureMethodOptions = { officer: [{ method: "officer", label: "Company representative" }] };
+    contract.parts[0].sections[0].signatureOfficerRequired = true;
+    contract.parts[0].sections[0].canSign = { officer: true };
+    const sectionB = contract.parts[1].sections[0];
+    sectionB.commentBoxRequired = true;
+    sectionB.questions.push({
+      questionUuid: "cleared-answer-question",
+      questionCode: "B1.2",
+      questionText: "Answer to clear",
+      contentHtml: null,
+      systemFieldKey: null,
+      responseType: "free_text",
+      isMandatory: false,
+      commentEnabled: false,
+      optionSetUuid: null,
+      sortOrder: 1,
+      options: [],
+      systemField: null,
+    });
+    contract.states.find((state) => state.sectionUuid === "section-b")!.sectionComment = "Saved section comment";
+    contract.answers.push({
+      answerUuid: "answer-second-part",
+      questionUuid: "second-part-question",
+      answerValue: "Saved B answer",
+      answerComment: "Saved point comment",
+      createdAt: null,
+      updatedAt: null,
+    }, {
+      answerUuid: "answer-cleared",
+      questionUuid: "cleared-answer-question",
+      answerValue: "Previously saved answer",
+      answerComment: null,
+      createdAt: null,
+      updatedAt: null,
+    });
+    const signatureUuid = "62b783bd-6503-4b8b-ac45-8a37397d1672";
+    const assetUuid = "b1ba6d88-eb1b-4c91-85a7-bf022bff166e";
+    const calls: Array<{ method: string; url: string; body?: Record<string, unknown> }> = [];
+    const sectionBWrites: Array<Record<string, unknown>> = [];
+    let firstSectionBBody: Record<string, unknown> | undefined;
+    let releaseFirstSectionBWrite: (() => void) | undefined;
+    let releaseSignatureRefetch: (() => void) | undefined;
+    let formGetCount = 0;
+    let completedSectionBWrites = 0;
+    const applyDraft = (body: Record<string, unknown>, sectionUuid: string) => {
+      const answers = body.answers as Array<{
+        questionUuid: string;
+        value: ConfiguredFormAnswerValue | null;
+        comment?: string;
+      }>;
+      for (const answer of answers) {
+        let stored = contract.answers.find((item) => item.questionUuid === answer.questionUuid);
+        if (!stored) {
+          stored = {
+            answerUuid: `answer-${answer.questionUuid}`,
+            questionUuid: answer.questionUuid,
+            answerValue: null,
+            answerComment: null,
+            createdAt: null,
+            updatedAt: null,
+          };
+          contract.answers.push(stored);
+        }
+        stored.answerValue = answer.value === null ? null : String(answer.value);
+        if (answer.comment !== undefined) stored.answerComment = answer.comment;
+      }
+      if (body.sectionComment !== undefined) {
+        contract.states.find((state) => state.sectionUuid === sectionUuid)!.sectionComment = body.sectionComment as string;
+      }
+    };
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => ({
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      clearRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D));
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,c2lnbmF0dXJl");
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
+      calls.push({ method, url, body });
+      if (method === "GET" && url.endsWith("/raw")) {
+        return new Response(new Blob(["png"]), { status: 200, headers: { "content-type": "image/png" } });
+      }
+      if (method === "GET") {
+        formGetCount += 1;
+        const snapshot = JSON.stringify(contract);
+        if (formGetCount === 2) {
+          return new Promise<Response>((resolve) => {
+            releaseSignatureRefetch = () => resolve(new Response(snapshot, {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }));
+          });
+        }
+        return new Response(snapshot, { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (method === "PUT" && url.endsWith("/sections/section-b/answers")) {
+        const write = body!;
+        sectionBWrites.push(write);
+        if (sectionBWrites.length === 1) {
+          firstSectionBBody = write;
+          return new Promise<Response>((resolve) => {
+            releaseFirstSectionBWrite = () => {
+              applyDraft(write, "section-b");
+              completedSectionBWrites += 1;
+              resolve(new Response(null, { status: 204 }));
+            };
+          });
+        }
+        applyDraft(write, "section-b");
+        completedSectionBWrites += 1;
+        return new Response(null, { status: 204 });
+      }
+      if (method === "PUT") {
+        applyDraft(body!, "section-a");
+        return new Response(null, { status: 204 });
+      }
+      if (method === "POST") {
+        contract.states[0].signatures = [{
+          sectionSignatureUuid: signatureUuid,
+          signatureType: "officer",
+          signerName: "Saved office signer",
+          signerRank: null,
+          witnessName: null,
+          signedAt: "2026-06-01T12:00:00.000Z",
+          signedByUuid: "office-actor",
+          signatureMethod: "officer",
+          attachment: {
+            assetUuid,
+            fileName: "signature.png",
+            fileType: "image/png",
+            fileSize: "128",
+            rawUrl: `/api/v2/company-form-submissions/${submissionUuid}/attachments/${assetUuid}/raw`,
+          },
+        }];
+        return new Response(JSON.stringify({}), { status: 201, headers: { "content-type": "application/json" } });
+      }
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    }));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+
+    await waitFor(() => expect(activeContainer?.querySelector('[aria-label="Company Form parts"]')).not.toBeNull());
+    fireEvent.click(activeContainer!.querySelector('[aria-label="Company Form parts"] button:nth-child(2)')!);
+    await waitFor(() => expect(activeContainer?.querySelector('[data-testid="preview-response-second-part-question"]')).not.toBeNull());
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-response-second-part-question"]')!, {
+      target: { value: "First in-flight answer" },
+    });
+    await waitFor(() => expect(sectionBWrites).toHaveLength(1));
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-response-second-part-question"]')!, {
+      target: { value: "Newest B answer" },
+    });
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-response-cleared-answer-question"]')!, {
+      target: { value: "" },
+    });
+    fireEvent.click(activeContainer!.querySelector('[data-testid="button-preview-comment-second-part-question"]')!);
+    fireEvent.click(activeContainer!.querySelector('[data-testid="preview-comment-display-second-part-question"]')!);
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-comment-second-part-question"]')!, {
+      target: { value: "" },
+    });
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-section-comment-input-section-b"]')!, {
+      target: { value: "" },
+    });
+
+    expect(firstSectionBBody).toEqual({
+      answers: [{ questionUuid: "second-part-question", value: "First in-flight answer", comment: "Saved point comment" }],
+    });
+    expect(sectionBWrites).toHaveLength(1);
+    fireEvent.click(activeContainer!.querySelector('[aria-label="Company Form parts"] button:nth-child(1)')!);
+    await waitFor(() => expect(activeContainer?.querySelector('[data-testid="live-signature-officer-section-a"]')).not.toBeNull());
+    const canvas = activeContainer!.querySelector("canvas[aria-label='Signature canvas']")!;
+    fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 1, clientY: 1 });
+    fireEvent.pointerMove(canvas, { pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(canvas, { pointerId: 1 });
+    fireEvent.click([...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Save signature"))!);
+    await waitFor(() => expect(releaseSignatureRefetch).toBeTypeOf("function"));
+
+    releaseFirstSectionBWrite!();
+    await waitFor(() => expect(completedSectionBWrites).toBe(5));
+    releaseSignatureRefetch!();
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Saved office signer"));
+
+    fireEvent.click(activeContainer!.querySelector('[aria-label="Company Form parts"] button:nth-child(2)')!);
+    await waitFor(() => expect(activeContainer?.querySelector('[data-testid="preview-response-second-part-question"]')).toHaveProperty("value", "Newest B answer"));
+    expect(activeContainer!.querySelector('[data-testid="preview-response-cleared-answer-question"]')).toHaveProperty("value", "");
+    expect(activeContainer!.querySelector('[data-testid="preview-section-comment-input-section-b"]')).toHaveProperty("value", "");
+    fireEvent.click(activeContainer!.querySelector('[data-testid="button-preview-comment-second-part-question"]')!);
+    expect(activeContainer!.querySelector('[data-testid="preview-comment-second-part-question"]')).toHaveProperty("value", "");
+
+    expect(activeContainer!.querySelector('[data-testid="preview-response-second-part-question"]')).toHaveProperty("value", "Newest B answer");
+    expect(activeContainer!.querySelector('[data-testid="preview-response-cleared-answer-question"]')).toHaveProperty("value", "");
+    expect(activeContainer!.querySelector('[data-testid="preview-section-comment-input-section-b"]')).toHaveProperty("value", "");
+    expect(activeContainer!.querySelector('[data-testid="preview-comment-second-part-question"]')).toHaveProperty("value", "");
+
+    fireEvent.click([...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.trim() === "Save draft")!);
+    await waitFor(() => expect(sectionBWrites).toHaveLength(6));
+    expect(sectionBWrites[5]).toEqual({
+      answers: [
+        { questionUuid: "second-part-question", value: "Newest B answer", comment: "" },
+        { questionUuid: "cleared-answer-question", value: "" },
+      ],
+      sectionComment: "",
+    });
+    expect(completedSectionBWrites).toBe(6);
+    expect(contract.answers.find((answer) => answer.questionUuid === "second-part-question"))
+      .toMatchObject({ answerValue: "Newest B answer", answerComment: "" });
+    expect(contract.answers.find((answer) => answer.questionUuid === "cleared-answer-question")?.answerValue).toBe("");
+    expect(contract.states.find((state) => state.sectionUuid === "section-b")?.sectionComment).toBe("");
+  });
+
+  it("discards uncommitted overlays when a parent submission is voided", async () => {
+    const contract = withSecondPart();
+    contract.submission.canVoid = true;
+    const sectionB = contract.parts[1].sections[0];
+    sectionB.commentBoxRequired = true;
+    contract.states.find((state) => state.sectionUuid === "section-b")!.sectionComment = "Persisted section note";
+    contract.answers.push({
+      answerUuid: "answer-second-part",
+      questionUuid: "second-part-question",
+      answerValue: "Persisted B answer",
+      answerComment: "Persisted B comment",
+      createdAt: null,
+      updatedAt: null,
+    });
+    let rejectPendingBSave: (() => void) | undefined;
+    let sectionBWriteCount = 0;
+    let formGetCount = 0;
+    const calls: Array<{ method: string; url: string }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const url = String(input);
+      calls.push({ method, url });
+      if (method === "GET") {
+        formGetCount += 1;
+        return new Response(JSON.stringify(contract), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (method === "PUT" && url.endsWith("/sections/section-b/answers")) {
+        sectionBWriteCount += 1;
+        if (contract.submission.status !== "in_progress") {
+          return new Response(JSON.stringify({ message: "This submission is voided." }), { status: 403 });
+        }
+        return new Promise<Response>((_resolve, reject) => {
+          rejectPendingBSave = () => reject(new Error("This submission is voided."));
+        });
+      }
+      if (method === "POST" && url.endsWith("/void")) {
+        contract.submission.status = "voided";
+        contract.submission.canEdit = false;
+        contract.submission.canVoid = false;
+        contract.submission.voidReason = "The declaration was superseded.";
+        contract.submission.voidedAt = "2026-06-03T12:00:00.000Z";
+        contract.submission.voidedPreviousStatus = "in_progress";
+        return new Response(null, { status: 204 });
+      }
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    }));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+
+    await waitFor(() => expect(activeContainer?.querySelector('[aria-label="Company Form parts"]')).not.toBeNull());
+    fireEvent.click(activeContainer!.querySelector('[aria-label="Company Form parts"] button:nth-child(2)')!);
+    await waitFor(() => expect(activeContainer?.querySelector('[data-testid="preview-response-second-part-question"]')).not.toBeNull());
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-response-second-part-question"]')!, {
+      target: { value: "Uncommitted B answer" },
+    });
+    await waitFor(() => expect(rejectPendingBSave).toBeTypeOf("function"));
+    fireEvent.click(activeContainer!.querySelector('[data-testid="button-preview-comment-second-part-question"]')!);
+    fireEvent.click(activeContainer!.querySelector('[data-testid="preview-comment-display-second-part-question"]')!);
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-comment-second-part-question"]')!, {
+      target: { value: "Uncommitted B comment" },
+    });
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-section-comment-input-section-b"]')!, {
+      target: { value: "Uncommitted B section note" },
+    });
+
+    fireEvent.click(activeContainer!.querySelector('[aria-label="Company Form parts"] button:nth-child(1)')!);
+    fireEvent.change(activeContainer!.querySelector("#company-form-void-reason")!, {
+      target: { value: "The declaration was superseded." },
+    });
+    fireEvent.click([...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.trim() === "Void submission")!);
+    await waitFor(() => expect(formGetCount).toBe(2));
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Voided submission"));
+
+    fireEvent.click(activeContainer!.querySelector('[aria-label="Company Form parts"] button:nth-child(2)')!);
+    const answerInput = activeContainer!.querySelector('[data-testid="preview-response-second-part-question"]')!;
+    await waitFor(() => expect(answerInput).toHaveProperty("value", "Persisted B answer"));
+    expect(answerInput).toHaveProperty("readOnly", true);
+    expect(activeContainer!.querySelector('[data-testid="preview-section-comment-readonly-section-b"]')?.textContent)
+      .toBe("Persisted section note");
+
+    rejectPendingBSave!();
+    await waitFor(() => expect(sectionBWriteCount).toBe(3));
+    await waitFor(() => expect(activeContainer?.textContent).not.toContain("This submission is voided."));
+    expect(activeContainer!.querySelector('[data-testid="preview-response-second-part-question"]')).toHaveProperty("value", "Persisted B answer");
+    expect(activeContainer!.querySelector('[data-testid="preview-section-comment-readonly-section-b"]')?.textContent)
+      .toBe("Persisted section note");
+    expect(contract.answers.find((answer) => answer.questionUuid === "second-part-question"))
+      .toMatchObject({ answerValue: "Persisted B answer", answerComment: "Persisted B comment" });
+  });
+
+  it("shows persisted values for a section submitted elsewhere while other sections remain editable", async () => {
+    const contract = withSecondPart();
+    contract.signatureMethodOptions = { officer: [{ method: "officer", label: "Company representative" }] };
+    contract.parts[0].sections[0].signatureOfficerRequired = true;
+    contract.parts[0].sections[0].canSign = { officer: true };
+    contract.parts[1].sections[0].commentBoxRequired = true;
+    contract.states.find((state) => state.sectionUuid === "section-b")!.sectionComment = "Persisted section note";
+    contract.answers.push({
+      answerUuid: "answer-second-part",
+      questionUuid: "second-part-question",
+      answerValue: "Persisted B answer",
+      answerComment: "Persisted B comment",
+      createdAt: null,
+      updatedAt: null,
+    });
+    const signatureUuid = "12b2f768-e019-4fdd-8961-460360a38da8";
+    const assetUuid = "4b2d98cf-cf9c-42a1-8e53-11ad1b8c13df";
+    let rejectPendingBSave: (() => void) | undefined;
+    let sectionBWriteCount = 0;
+    let formGetCount = 0;
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => ({
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      clearRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D));
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,c2lnbmF0dXJl");
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined;
+      if (method === "GET" && url.endsWith("/raw")) {
+        return new Response(new Blob(["png"]), { status: 200, headers: { "content-type": "image/png" } });
+      }
+      if (method === "GET") {
+        formGetCount += 1;
+        return new Response(JSON.stringify(contract), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (method === "PUT" && url.endsWith("/sections/section-b/answers")) {
+        sectionBWriteCount += 1;
+        if (sectionBWriteCount === 1) {
+          return new Promise<Response>((_resolve, reject) => {
+            rejectPendingBSave = () => reject(new Error("This section has already been submitted."));
+          });
+        }
+        return new Response(JSON.stringify({ message: "This section has already been submitted." }), { status: 403 });
+      }
+      if (method === "PUT") return new Response(null, { status: 204 });
+      if (method === "POST") {
+        contract.states[0].signatures = [{
+          sectionSignatureUuid: signatureUuid,
+          signatureType: "officer",
+          signerName: "Saved office signer",
+          signerRank: null,
+          witnessName: null,
+          signedAt: "2026-06-03T12:00:00.000Z",
+          signedByUuid: "office-actor",
+          signatureMethod: "officer",
+          attachment: {
+            assetUuid,
+            fileName: "signature.png",
+            fileType: "image/png",
+            fileSize: "128",
+            rawUrl: `/api/v2/company-form-submissions/${submissionUuid}/attachments/${assetUuid}/raw`,
+          },
+        }];
+        contract.states.find((state) => state.sectionUuid === "section-b")!.status = "submitted";
+        return new Response(JSON.stringify({}), { status: 201, headers: { "content-type": "application/json" } });
+      }
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    }));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+
+    await waitFor(() => expect(activeContainer?.querySelector('[aria-label="Company Form parts"]')).not.toBeNull());
+    fireEvent.click(activeContainer!.querySelector('[aria-label="Company Form parts"] button:nth-child(2)')!);
+    await waitFor(() => expect(activeContainer?.querySelector('[data-testid="preview-response-second-part-question"]')).not.toBeNull());
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-response-second-part-question"]')!, {
+      target: { value: "Uncommitted B answer" },
+    });
+    await waitFor(() => expect(rejectPendingBSave).toBeTypeOf("function"));
+    fireEvent.click(activeContainer!.querySelector('[data-testid="button-preview-comment-second-part-question"]')!);
+    fireEvent.click(activeContainer!.querySelector('[data-testid="preview-comment-display-second-part-question"]')!);
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-comment-second-part-question"]')!, {
+      target: { value: "Uncommitted B comment" },
+    });
+    fireEvent.change(activeContainer!.querySelector('[data-testid="preview-section-comment-input-section-b"]')!, {
+      target: { value: "Uncommitted B section note" },
+    });
+
+    fireEvent.click(activeContainer!.querySelector('[aria-label="Company Form parts"] button:nth-child(1)')!);
+    await waitFor(() => expect(activeContainer?.querySelector('[data-testid="live-signature-officer-section-a"]')).not.toBeNull());
+    const canvas = activeContainer!.querySelector("canvas[aria-label='Signature canvas']")!;
+    fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 1, clientY: 1 });
+    fireEvent.pointerMove(canvas, { pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(canvas, { pointerId: 1 });
+    fireEvent.click([...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Save signature"))!);
+    await waitFor(() => expect(formGetCount).toBe(2));
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Saved office signer"));
+
+    fireEvent.click(activeContainer!.querySelector('[aria-label="Company Form parts"] button:nth-child(2)')!);
+    const answerInput = activeContainer!.querySelector('[data-testid="preview-response-second-part-question"]')!;
+    await waitFor(() => expect(answerInput).toHaveProperty("value", "Persisted B answer"));
+    expect(answerInput).toHaveProperty("readOnly", true);
+    expect(activeContainer?.textContent).toContain("Submitted");
+    expect(activeContainer!.querySelector('[data-testid="preview-section-comment-readonly-section-b"]')?.textContent)
+      .toBe("Persisted section note");
+
+    fireEvent.click(activeContainer!.querySelector('[aria-label="Company Form parts"] button:nth-child(1)')!);
+    expect(activeContainer!.querySelector('[data-testid="preview-response-free-text-question"]')).toHaveProperty("readOnly", false);
+    rejectPendingBSave!();
+    await waitFor(() => expect(sectionBWriteCount).toBe(3));
+    expect(activeContainer?.textContent).not.toContain("This section has already been submitted.");
+    expect(contract.submission.status).toBe("in_progress");
+  });
+
+  it("keeps a rejected signature transient and reports the server error without freezing stale client state", async () => {
+    const contract = formContract();
+    contract.signatureMethodOptions = { officer: [{ method: "officer", label: "Company representative" }] };
+    contract.parts[0].sections[0].signatureOfficerRequired = true;
+    contract.parts[0].sections[0].canSign = { officer: true };
+    const calls: Array<{ method: string; url: string }> = [];
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => ({
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      clearRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D));
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,c2lnbmF0dXJl");
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const url = String(input);
+      calls.push({ method, url });
+      if (method === "GET") return new Response(JSON.stringify(contract), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+      if (method === "PUT") return new Response(null, { status: 204 });
+      if (method === "POST") return new Response(JSON.stringify({
+        error: "forbidden",
+        message: "Only an authorized officer may sign this section.",
+      }), {
+        status: 403,
+        headers: { "content-type": "application/json" },
+      });
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    }));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+    await waitFor(() => expect(activeContainer?.querySelector('[data-testid="live-signature-officer-section-a"]')).not.toBeNull());
+    const canvas = activeContainer!.querySelector("canvas[aria-label='Signature canvas']")!;
+    fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 1, clientY: 1 });
+    fireEvent.pointerMove(canvas, { pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(canvas, { pointerId: 1 });
+    fireEvent.click([...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Save signature"))!);
+
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Only an authorized officer may sign this section."));
+    expect(calls.filter((call) => call.method === "GET" && call.url.endsWith("/form"))).toHaveLength(1);
+    expect(activeContainer?.textContent).not.toContain("Server-derived office signer");
+    expect(activeContainer?.textContent).not.toContain("record has changed since signing began");
+    expect(activeContainer?.querySelector('[data-testid="live-signature-officer-section-a"]')).not.toBeNull();
+  });
+
+  it("requires a void reason, shows server denial, then voids and follows both sides of a replacement", async () => {
+    const voidedUuid = "827cb116-6c78-4f1b-9ae5-fc4327085fdd";
+    const replacementUuid = "c94d1113-a414-4519-8e66-46c1aeb337e5";
+    const previousUuid = "571a155b-3790-4f18-a17b-6a8b38ecff9f";
+    const initial = formContract({
+      submission: { ...formContract().submission, submissionUuid: voidedUuid, canEdit: true },
+    });
+    initial.submission.canVoid = true;
+    const replacement = formContract({
+      submission: {
+        ...formContract().submission,
+        submissionUuid: replacementUuid,
+        replacesSubmissionUuid: voidedUuid,
+      },
+      replacementHistory: [{
+        direction: "replaces",
+        label: "Replaces a voided submission",
+        submissionUuid: voidedUuid,
+      }],
+    });
+    replacement.submission.canVoid = true;
+    let storedVoided: CompanySubmissionRenderView | undefined;
+    let voidAttempts = 0;
+    const calls: Array<{ method: string; url: string; body?: unknown }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? "GET";
+      const url = String(input);
+      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      calls.push({ method, url, body });
+      if (method === "GET") {
+        if (url.includes(voidedUuid)) return new Response(JSON.stringify(storedVoided ?? initial), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+        if (url.includes(replacementUuid)) return new Response(JSON.stringify(replacement), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (method === "POST" && url.endsWith(`/${voidedUuid}/void`)) {
+        expect(body).toEqual({ reason: "Corrected source details" });
+        voidAttempts += 1;
+        if (voidAttempts === 1) return new Response(JSON.stringify({
+          error: "forbidden",
+          message: "Office crewing authorization is required.",
+        }), {
+          status: 403,
+          headers: { "content-type": "application/json" },
+        });
+        storedVoided = {
+          ...initial,
+          submission: {
+            ...initial.submission,
+            status: "voided",
+            canEdit: false,
+            canVoid: false,
+            voidReason: "Corrected source details",
+            voidedAt: "2026-06-02T13:00:00.000Z",
+            replacedBySubmissionUuid: replacementUuid,
+            replacesSubmissionUuid: previousUuid,
+          },
+          voidedReplacement: {
+            label: "Voided — replaced by",
+            submissionUuid: replacementUuid,
+          },
+          replacementHistory: [
+            { direction: "replaced_by", label: "Voided — replaced by", submissionUuid: replacementUuid },
+            { direction: "replaces", label: "Replaces a voided submission", submissionUuid: previousUuid },
+          ],
+        };
+        return new Response(null, { status: 204 });
+      }
+      throw new Error(`Unexpected request: ${method} ${url}`);
+    }));
+    mount(<CompanySubmissionRenderer submissionUuid={voidedUuid} />);
+    await waitFor(() => expect(activeContainer?.querySelector("#company-form-void-reason")).not.toBeNull());
+    const reasonInput = activeContainer!.querySelector("#company-form-void-reason")!;
+    const voidButton = [...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Void submission"))!;
+    expect(voidButton).toHaveProperty("disabled", true);
+    expect(calls.some((call) => call.method === "POST")).toBe(false);
+
+    fireEvent.change(reasonInput, { target: { value: "  Corrected source details  " } });
+    fireEvent.click(voidButton);
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Office crewing authorization is required."));
+    expect(activeContainer?.querySelector("#company-form-void-reason")).toHaveProperty("value", "  Corrected source details  ");
+    fireEvent.click(voidButton);
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Reason: Corrected source details"));
+    expect(activeContainer?.textContent).toContain("Voided — replaced by");
+    expect(activeContainer?.textContent).toContain("Replaces a voided submission");
+    expect(calls.filter((call) => call.method === "POST")).toHaveLength(2);
+
+    fireEvent.click([...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes(`Open linked submission ${replacementUuid}`))!);
+    await waitFor(() => expect(calls).toContainEqual({
+      method: "GET",
+      url: `/api/v2/company-form-submissions/${replacementUuid}/form`,
+      body: undefined,
+    }));
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Replaces a voided submission"));
+    fireEvent.click([...activeContainer!.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes(`Open linked submission ${voidedUuid}`))!);
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Voided — replaced by"));
+    expect(activeContainer?.textContent).toContain(`Open linked submission ${replacementUuid}`);
   });
 });

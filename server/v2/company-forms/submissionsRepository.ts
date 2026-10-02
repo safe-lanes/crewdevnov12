@@ -10,6 +10,10 @@ import type {
   SubjectLookupResult,
 } from "./contracts";
 import { CompanyFormConflictError, CompanyFormNotFoundError } from "./errors";
+import {
+  validatePersistedCompanyFormLifecycle,
+  validatePersistedCompanyFormLifecycles,
+} from "./lifecyclePolicy";
 
 type Executor = any;
 
@@ -20,8 +24,10 @@ export type CompanyFormSubmissionRow = {
   formUuid: string;
   formVersionUuid: string;
   stageKey: string | null;
-  status: "in_progress" | "completed";
+  status: "in_progress" | "completed" | "voided";
   completedAt: Date | null;
+  replacesSubmissionUuid: string | null;
+  replacedBySubmissionUuid: string | null;
   createdAt: Date | null;
   updatedAt: Date | null;
 };
@@ -89,8 +95,14 @@ export class CompanyFormSubmissionsRepository {
       ))
       .orderBy(asc(admFormsV2.name), asc(admFormVersionsV2.versionNo));
 
+    const lifecycleByVersion = await validatePersistedCompanyFormLifecycles(
+      executor,
+      versions.map((row: { formVersionUuid: string }) => row.formVersionUuid),
+    );
+
     const latestByFormAndStage = new Map<string, EligibleCompanyForm>();
     for (const row of versions) {
+      if ((lifecycleByVersion.get(row.formVersionUuid)?.length ?? 1) > 0) continue;
       const eligible: EligibleCompanyForm = {
         formUuid: row.formUuid,
         formName: row.formName,
@@ -127,6 +139,8 @@ export class CompanyFormSubmissionsRepository {
         stageKey: frmCompanySubmissions.stageKey,
         status: frmCompanySubmissions.status,
         completedAt: frmCompanySubmissions.completedAt,
+        replacesSubmissionUuid: frmCompanySubmissions.replacesSubmissionUuid,
+        replacedBySubmissionUuid: frmCompanySubmissions.replacedBySubmissionUuid,
         createdAt: frmCompanySubmissions.createdAt,
         updatedAt: frmCompanySubmissions.updatedAt,
       })
@@ -197,6 +211,12 @@ export class CompanyFormSubmissionsRepository {
         if (version.status !== "released") {
           throw new CompanyFormConflictError("Only a released Company Form version can be started.");
         }
+        const lifecycleErrors = await validatePersistedCompanyFormLifecycle(tx, version.formVersionUuid);
+        if (lifecycleErrors.length > 0) {
+          throw new CompanyFormConflictError(
+            `This Company Form version cannot be completed and cannot be started. ${lifecycleErrors.join(" ")}`,
+          );
+        }
 
         await tx.execute(sql`
           SELECT pg_advisory_xact_lock(
@@ -213,7 +233,49 @@ export class CompanyFormSubmissionsRepository {
         ) {
           throw new CompanyFormConflictError("Selected Company Form version is no longer eligible for this subject.");
         }
+        const eligibleVersions = await this.findEligibleForms(input.subjectType, selectedStage, tx);
+        if (!eligibleVersions.some((candidate) =>
+          candidate.formUuid === form.formUuid &&
+          candidate.formVersionUuid === version.formVersionUuid)) {
+          throw new CompanyFormConflictError(
+            "Selected Company Form version is no longer the released eligible version. Refresh the form list and try again.",
+          );
+        }
 
+        // The subject row is locked for the transaction, serializing starts and
+        // voids for this assignment. Link only the newest terminal void so
+        // repeated void/re-create cycles form a readable chain, not a fork.
+        const activeSubmissions = await tx.select({
+          submissionUuid: frmCompanySubmissions.submissionUuid,
+        }).from(frmCompanySubmissions)
+          .where(and(
+            eq(frmCompanySubmissions.formUuid, form.formUuid),
+            eq(frmCompanySubmissions.subjectType, input.subjectType),
+            eq(frmCompanySubmissions.subjectRef, subject.subjectRef),
+            sql`${frmCompanySubmissions.status} <> 'voided'
+              AND COALESCE(${frmCompanySubmissions.isDeleted}, false) = false`,
+          ))
+          .limit(1)
+          .for("update");
+        if (activeSubmissions.length > 0) {
+          throw new CompanyFormConflictError("A non-voided submission for this Company Form and subject already exists.");
+        }
+        const replacedRows = await tx.select({
+          submissionUuid: frmCompanySubmissions.submissionUuid,
+        }).from(frmCompanySubmissions)
+          .where(and(
+            eq(frmCompanySubmissions.formUuid, form.formUuid),
+            eq(frmCompanySubmissions.subjectType, input.subjectType),
+            eq(frmCompanySubmissions.subjectRef, subject.subjectRef),
+            eq(frmCompanySubmissions.status, "voided"),
+            eq(frmCompanySubmissions.isDeleted, false),
+            isNull(frmCompanySubmissions.replacedBySubmissionUuid),
+          ))
+          .orderBy(desc(frmCompanySubmissions.voidedAt), desc(frmCompanySubmissions.createdAt),
+            desc(frmCompanySubmissions.id))
+          .limit(1)
+          .for("update");
+        const replacedSubmissionUuid = replacedRows[0]?.submissionUuid ?? null;
         const submissionUuid = uuidv4();
         const inserted = await tx.insert(frmCompanySubmissions).values({
           submissionUuid,
@@ -224,6 +286,7 @@ export class CompanyFormSubmissionsRepository {
           stageKey: selectedStage,
           status: "in_progress",
           completedAt: null,
+          replacesSubmissionUuid: replacedSubmissionUuid,
           isDeleted: false,
           isSync: false,
         }).returning({
@@ -235,10 +298,26 @@ export class CompanyFormSubmissionsRepository {
           stageKey: frmCompanySubmissions.stageKey,
           status: frmCompanySubmissions.status,
           completedAt: frmCompanySubmissions.completedAt,
+          replacesSubmissionUuid: frmCompanySubmissions.replacesSubmissionUuid,
+          replacedBySubmissionUuid: frmCompanySubmissions.replacedBySubmissionUuid,
           createdAt: frmCompanySubmissions.createdAt,
           updatedAt: frmCompanySubmissions.updatedAt,
         });
         const submission = inserted[0];
+        if (replacedSubmissionUuid) {
+          const replacedUpdate = await tx.update(frmCompanySubmissions).set({
+            replacedBySubmissionUuid: submissionUuid,
+          }).where(and(
+            eq(frmCompanySubmissions.submissionUuid, replacedSubmissionUuid),
+            eq(frmCompanySubmissions.status, "voided"),
+            isNull(frmCompanySubmissions.replacedBySubmissionUuid),
+          )).returning({ submissionUuid: frmCompanySubmissions.submissionUuid });
+          if (replacedUpdate.length !== 1) {
+            throw new CompanyFormConflictError(
+              "The prior voided Company Form changed during replacement; retry starting the form.",
+            );
+          }
+        }
         await input.adapter.linkSubmission({ executor: tx, submissionUuid, subject });
         return submission;
       });

@@ -78,7 +78,7 @@ describe("Company Form draft section responsibility", () => {
     })).rejects.toBeInstanceOf(CompanyFormPermissionError);
   });
 
-  it("allows only a trusted linked seafarer for seafarer sections", async () => {
+  it("allows the trusted linked seafarer or an authorized office actor, but never a vessel witness", async () => {
     const section = {
       responsibleMode: "seafarer",
       responsibleRoleUuid: null,
@@ -92,6 +92,12 @@ describe("Company Form draft section responsibility", () => {
     })).resolves.toBeUndefined();
     await expect(assertCompanyFormSectionEditable({
       principal: office,
+      section,
+      part: { isOfficeOnly: false },
+      executor: executorWithDepartment(null),
+    })).resolves.toBeUndefined();
+    await expect(assertCompanyFormSectionEditable({
+      principal: vessel,
       section,
       part: { isOfficeOnly: false },
       executor: executorWithDepartment(null),

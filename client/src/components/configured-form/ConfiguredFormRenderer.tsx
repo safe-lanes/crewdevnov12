@@ -82,6 +82,11 @@ export interface ConfiguredFormSection {
   default_option_set_uuid?: string | null;
   layout_preference?: "auto" | "list" | "matrix";
   effectiveLayout?: "list" | "matrix";
+  requires_submission?: boolean;
+  is_applicable?: boolean;
+  can_submit?: boolean;
+  can_edit?: boolean;
+  can_sign?: Partial<Record<ConfiguredSignatureType, boolean>>;
   questions: ConfiguredFormQuestion[];
   clientKey?: string;
 }
@@ -122,6 +127,10 @@ export interface ConfiguredSignature {
   signedAt?: string | null;
   signatureUrl?: string | null;
 }
+export interface ConfiguredSignatureMethodOption {
+  method: string;
+  label: string;
+}
 
 /**
  * Phase 3 contract. Preview deliberately does not consume these values: live
@@ -137,10 +146,14 @@ export interface ConfiguredFormLiveProps {
   onSectionCommentChange?: (sectionId: string, comment: string) => void;
   sectionOwnership?: Record<string, { ownerLabel: string; canEdit: boolean }>;
   sectionStates?: Record<string, { status: "not_started" | "submitted" | "not_applicable"; sectionComment?: string | null; submittedByName?: string | null; submittedAt?: string | null; signatures?: Partial<Record<ConfiguredSignatureType, ConfiguredSignature>>; /** Legacy single signature state. */ signatureAttUuid?: string | null; signatureName?: string | null; signedAt?: string | null; signatureUrl?: string | null }>;
+  submissionStatus?: "in_progress" | "completed" | "voided";
   signatureDefaults?: Partial<Record<ConfiguredSignatureType, { name?: string | null; rank?: string | null }>>;
+  signatureMethodOptions?: Partial<Record<ConfiguredSignatureType, ConfiguredSignatureMethodOption[]>>;
+  sectionSubmitting?: Record<string, boolean>;
+  sectionActionErrors?: Record<string, string>;
   onSaveDraft?: (sectionId: string) => void | Promise<void>;
   onSubmitSection?: (sectionId: string, comment: string) => void | Promise<void>;
-  onSignatureChange?: (sectionId: string, type: ConfiguredSignatureType, pngDataUrl: string, signerName?: string, signerRank?: string) => void | Promise<void>;
+   onSignatureChange?: (sectionId: string, type: ConfiguredSignatureType, pngDataUrl: string, signerName?: string, signerRank?: string, signatureMethod?: string, seafarerPresent?: boolean) => void | Promise<void>;
   onDeleteSignature?: (sectionId: string, type: ConfiguredSignatureType) => void | Promise<void>;
   isLocked?: boolean;
   onSubmit?: () => void | Promise<void>;
@@ -280,7 +293,12 @@ function useQuestionComment(initial = ""): QuestionCommentState {
   };
 }
 
-function SignaturePad({ sectionId, type, onSave }: { sectionId: string; type: ConfiguredSignatureType; onSave: (data: string) => void | Promise<void> }) {
+function SignaturePad({ sectionId, type, onSave, canSave = true }: {
+  sectionId: string;
+  type: ConfiguredSignatureType;
+  onSave: (data: string) => void | Promise<void>;
+  canSave?: boolean;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const [hasInk, setHasInk] = useState(false);
@@ -313,14 +331,14 @@ function SignaturePad({ sectionId, type, onSave }: { sectionId: string; type: Co
   };
   return <div className="space-y-2" data-testid={`live-signature-${type}-${sectionId}`}>
     <canvas ref={canvasRef} width={700} height={180} className="h-32 w-full touch-none rounded border bg-white" onPointerDown={start} onPointerMove={move} onPointerUp={() => { drawing.current = false; }} onPointerCancel={() => { drawing.current = false; }} aria-label="Signature canvas" />
-    <div className="flex items-center gap-2"><Button type="button" variant="outline" size="sm" disabled={saveState === "pending"} onClick={clear}>Clear</Button><Button type="button" size="sm" disabled={!hasInk || saveState === "pending"} onClick={() => void save()}>{saveState === "pending" ? "Saving signature…" : "Save signature"}</Button></div>
+    <div className="flex items-center gap-2"><Button type="button" variant="outline" size="sm" disabled={saveState === "pending"} onClick={clear}>Clear</Button><Button type="button" size="sm" disabled={!hasInk || saveState === "pending" || !canSave} onClick={() => void save()}>{saveState === "pending" ? "Saving signature…" : "Save signature"}</Button></div>
     {saveState === "success" && <p className="text-sm text-emerald-700" role="status">Signature saved.</p>}
     {saveState === "error" && <p className="text-sm text-destructive" role="alert">Signature could not be saved. Please try again.</p>}
   </div>;
 }
 
 function SignatureBlock({
-  sectionId, type, state, live, readOnly, legacy = false, companyForm = false,
+  sectionId, type, state, live, readOnly, legacy = false, companyForm = false, canSign = true,
 }: {
   sectionId: string;
   type: ConfiguredSignatureType;
@@ -329,11 +347,23 @@ function SignatureBlock({
   readOnly: boolean;
   legacy?: boolean;
   companyForm?: boolean;
+  canSign?: boolean;
 }) {
   const defaults = live?.signatureDefaults?.[type];
   const [name, setName] = useState(defaults?.name || "");
   const [rank, setRank] = useState(defaults?.rank || "");
+  const methodOptions = live?.signatureMethodOptions?.[type] ?? [];
+  const [signatureMethod, setSignatureMethod] = useState(methodOptions[0]?.method ?? "");
+  const [seafarerPresent, setSeafarerPresent] = useState(false);
+  const [signatureActionPending, setSignatureActionPending] = useState(false);
+  const [signatureActionError, setSignatureActionError] = useState<string | null>(null);
   useEffect(() => { setName(defaults?.name || ""); setRank(defaults?.rank || ""); }, [defaults?.name, defaults?.rank]);
+  useEffect(() => {
+    setSignatureMethod((current) => methodOptions.some((option) => option.method === current)
+      ? current
+      : methodOptions[0]?.method ?? "");
+    setSeafarerPresent(false);
+  }, [methodOptions]);
   const label = companyForm && type === "officer" ? "Company Representative"
     : legacy ? "Signature" : type === "officer" ? "Officer signature" : "Seafarer signature";
   if (state?.signatureUrl) {
@@ -344,15 +374,63 @@ function SignatureBlock({
       {type === "seafarer" && <span className="whitespace-nowrap text-muted-foreground">Signed in the presence of {state.witnessedByName || "the witnessing officer"}</span>}
       <span className="ml-1 whitespace-nowrap font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Date:</span>
       <span className="whitespace-nowrap" data-testid={legacy ? `preview-signature-date-${sectionId}` : undefined}>{formatSignatureDate(state.signedAt)}</span>
+      {!readOnly && live?.onDeleteSignature && <Button type="button" variant="outline" size="sm" disabled={signatureActionPending} onClick={async () => {
+        setSignatureActionPending(true);
+        setSignatureActionError(null);
+        try {
+          await live.onDeleteSignature?.(sectionId, type);
+        } catch (error) {
+          setSignatureActionError(error instanceof Error ? error.message : String(error));
+        } finally {
+          setSignatureActionPending(false);
+        }
+      }}>{signatureActionPending ? "Removing…" : "Remove signature"}</Button>}
+      {signatureActionError && <p className="text-sm text-destructive" role="alert">{signatureActionError}</p>}
     </div>;
   }
   return <div className="space-y-3 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={`preview-signature-${type}-${sectionId}`}>
     <p className="text-sm font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{label}</p>
-    {type === "seafarer" && <div className="grid gap-3 sm:grid-cols-2">
+    {type === "seafarer" && !companyForm && <div className="grid gap-3 sm:grid-cols-2">
       <SAILInput value={name} onChange={(event) => setName(event.target.value)} readOnly={readOnly} placeholder="NAME" aria-label="Seafarer name" data-testid={`signature-seafarer-name-${sectionId}`} />
       <SAILInput value={rank} onChange={(event) => setRank(event.target.value)} readOnly={readOnly} placeholder="RANK" aria-label="Seafarer rank" data-testid={`signature-seafarer-rank-${sectionId}`} />
     </div>}
-    {readOnly ? <p className="text-sm text-muted-foreground">Awaiting signature</p> : <SignaturePad sectionId={sectionId} type={type} onSave={(data) => live?.onSignatureChange?.(sectionId, type, data, type === "seafarer" ? name : defaults?.name || undefined, type === "seafarer" ? rank : defaults?.rank || undefined)} />}
+    {companyForm && methodOptions.length > 1 && !readOnly && <label className="block space-y-1 text-sm">
+      <span>Signing method</span>
+      <select className="h-10 w-full rounded-md border bg-background px-3" value={signatureMethod} onChange={(event) => setSignatureMethod(event.target.value)} aria-label={`${label} signing method`}>
+        {methodOptions.map((option) => <option key={option.method} value={option.method}>{option.label}</option>)}
+      </select>
+    </label>}
+    {companyForm && type === "seafarer" && signatureMethod === "witnessed" && !readOnly && <label className="flex items-start gap-2 text-sm">
+      <input type="checkbox" checked={seafarerPresent} onChange={(event) => setSeafarerPresent(event.target.checked)} />
+      <span>The seafarer is present and is signing this witnessed declaration.</span>
+    </label>}
+    {readOnly ? <p className="text-sm text-muted-foreground">Awaiting signature</p> : companyForm && !canSign
+      ? <p className="text-sm text-muted-foreground">Signing is unavailable for this account.</p>
+      : methodOptions.length > 0 || !companyForm
+      ? <SignaturePad
+        sectionId={sectionId}
+        type={type}
+        canSave={!companyForm || signatureMethod !== "witnessed" || seafarerPresent}
+        onSave={async (data) => {
+        setSignatureActionError(null);
+        try {
+          await live?.onSignatureChange?.(
+            sectionId,
+            type,
+            data,
+            companyForm ? undefined : type === "seafarer" ? name : defaults?.name || undefined,
+            companyForm ? undefined : type === "seafarer" ? rank : defaults?.rank || undefined,
+            companyForm ? signatureMethod : undefined,
+            companyForm && signatureMethod === "witnessed" ? seafarerPresent : undefined,
+          );
+        } catch (error) {
+          setSignatureActionError(error instanceof Error ? error.message : String(error));
+          throw error;
+        }
+        }}
+      />
+      : <p className="text-sm text-muted-foreground">Signing is unavailable for this account.</p>}
+    {signatureActionError && <p className="text-sm text-destructive" role="alert">{signatureActionError}</p>}
     <SAILFormField label="Date"><p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm">{formatSignatureDate(state?.signedAt)}</p></SAILFormField>
   </div>;
 }
@@ -888,11 +966,17 @@ function ConfiguredSection({
   // structures independently declare the officer and seafarer requirements.
   const officerSignatureRequired = !!section.signature_officer_required || (!!section.signature_required && !section.signature_seafarer_required);
   const seafarerSignatureRequired = !!section.signature_seafarer_required;
+  const hasAnswerablePoint = section.questions.some((question) =>
+    !["content", "system_field", "info_only"].includes(question.response_type));
+  const requiresSubmission = !companyForm || section.requires_submission === true
+    || (section.requires_submission === undefined && (hasAnswerablePoint || officerSignatureRequired || seafarerSignatureRequired));
   const hasFooterContent = section.comment_box_required
     || officerSignatureRequired || seafarerSignatureRequired
     || section.responsible_mode !== "not_applicable";
   const state = live?.sectionStates?.[sectionId];
-  const readOnly = !!live?.isLocked || state?.status === "submitted" || state?.status === "not_applicable" || live?.sectionOwnership?.[sectionId]?.canEdit === false;
+  const readOnly = !!live?.isLocked || state?.status === "submitted" || state?.status === "not_applicable"
+    || live?.sectionOwnership?.[sectionId]?.canEdit === false
+    || (companyForm && section.can_edit === false);
   const [sectionComment, setSectionComment] = useState(state?.sectionComment || "");
   const [sectionDialog, setSectionDialog] = useState<{
     kind: "validation" | "submit";
@@ -943,7 +1027,7 @@ function ConfiguredSection({
     setSectionDialog({
       kind: "submit",
       title: `Submit ${sectionCode} ${sectionTitle}?`,
-      description: "Submitted sections cannot be changed. This action is permanent.",
+      description: "Submitted sections cannot be changed.",
     });
   };
 
@@ -963,16 +1047,16 @@ function ConfiguredSection({
           {mode === "preview" ? <div className="space-y-4 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={section.signature_required ? `preview-signature-${sectionId}` : `preview-signature-officer-${sectionId}`}>
             <p className="text-sm font-semibold">{companyForm ? "Company Representative" : "Officer signature"}</p><p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>
             <SAILFormField label="Date"><p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm" data-testid={section.signature_required ? `preview-signature-date-${sectionId}` : undefined}>Auto-filled when signed</p></SAILFormField>
-          </div> : <SignatureBlock sectionId={sectionId} type="officer" readOnly={readOnly} live={live} legacy={!!section.signature_required} companyForm={companyForm} state={state?.signatures?.officer || (state?.signatureAttUuid ? { signatureAttUuid: state.signatureAttUuid, signatureName: state.signatureName, signedAt: state.signedAt, signatureUrl: state.signatureUrl } : undefined)} />}
+          </div> : <SignatureBlock sectionId={sectionId} type="officer" readOnly={readOnly} live={live} legacy={!!section.signature_required} companyForm={companyForm} canSign={!companyForm || section.can_sign?.officer === true} state={state?.signatures?.officer || (state?.signatureAttUuid ? { signatureAttUuid: state.signatureAttUuid, signatureName: state.signatureName, signedAt: state.signedAt, signatureUrl: state.signatureUrl } : undefined)} />}
         </div>
       )}
       {seafarerSignatureRequired && (
         mode === "preview"
           ? <div className="space-y-4 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={`preview-signature-seafarer-${sectionId}`}><p className="text-sm font-semibold">Seafarer signature</p><p className="text-xs">Signature placeholder — live signing is not available in Preview.</p><SAILFormField label="Date"><p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm">Auto-filled when signed</p></SAILFormField></div>
-          : <SignatureBlock sectionId={sectionId} type="seafarer" readOnly={readOnly} live={live} state={state?.signatures?.seafarer} />
+          : <SignatureBlock sectionId={sectionId} type="seafarer" readOnly={readOnly} live={live} companyForm={companyForm} canSign={!companyForm || section.can_sign?.seafarer === true} state={state?.signatures?.seafarer} />
       )}
-      <SectionResponsibility section={section} roles={roles} departments={departments} sectionId={sectionId} />
-       {mode === "live" && <div className="flex flex-wrap items-center gap-2 border-t pt-3"><Badge variant="outline">{state?.status === "submitted" ? "Submitted" : state?.status === "not_applicable" ? "Not applicable" : "In progress"}</Badge>{live?.sectionOwnership?.[sectionId] && <span className="text-xs">Owner: {live.sectionOwnership[sectionId].ownerLabel}</span>}{state?.submittedByName && <span className="text-xs">Submitted by {state.submittedByName}</span>}{!readOnly && <><Button type="button" variant="outline" size="sm" onClick={() => void live?.onSaveDraft?.(sectionId)}>Save draft</Button>{(!companyForm || live?.onSubmitSection) && <Button type="button" size="sm" onClick={submitSection}>Submit</Button>}</>}</div>}
+      {(hasFooterContent || !requiresSubmission) && <SectionResponsibility section={section} roles={roles} departments={departments} sectionId={sectionId} />}
+        {mode === "live" && <div className="flex flex-wrap items-center gap-2 border-t pt-3"><Badge variant="outline">{state?.status === "submitted" ? "Submitted" : state?.status === "not_applicable" ? "Not applicable" : companyForm && !requiresSubmission ? "Informational" : "In progress"}</Badge>{live?.sectionOwnership?.[sectionId] && <span className="text-xs">Owner: {live.sectionOwnership[sectionId].ownerLabel}</span>}{state?.submittedByName && <span className="text-xs">Submitted by {state.submittedByName}</span>}{!readOnly && requiresSubmission && <><Button type="button" variant="outline" size="sm" disabled={!!live?.sectionSubmitting?.[sectionId]} onClick={() => { void Promise.resolve(live?.onSaveDraft?.(sectionId)).catch(() => undefined); }}>Save draft</Button>{(!companyForm || (section.can_submit === true && !!live?.onSubmitSection)) && <Button type="button" size="sm" disabled={!!live?.sectionSubmitting?.[sectionId]} onClick={submitSection}>{live?.sectionSubmitting?.[sectionId] ? "Submitting…" : "Submit"}</Button>}</>}{live?.sectionActionErrors?.[sectionId] && <p className="basis-full text-sm text-destructive" role="alert">{live.sectionActionErrors[sectionId]}</p>}</div>}
     </div>
   ) : undefined;
 
@@ -1027,9 +1111,14 @@ function ConfiguredSection({
           <AlertDialogFooter>
             {sectionDialog?.kind === "submit" && <AlertDialogCancel>Cancel</AlertDialogCancel>}
             <AlertDialogAction
-              onClick={() => {
+              disabled={!!live?.sectionSubmitting?.[sectionId]}
+              onClick={async () => {
                 if (sectionDialog?.kind === "submit") {
-                  void live?.onSubmitSection?.(sectionId, currentSectionComment);
+                  try {
+                    await live?.onSubmitSection?.(sectionId, currentSectionComment);
+                  } catch {
+                    return;
+                  }
                 }
                 setSectionDialog(null);
               }}
@@ -1183,7 +1272,15 @@ export function ConfiguredFormRenderer({
       const id = section.clientKey || section.section_uuid || `${selectedPart?.formPartUuid}-section-${index + 1}`;
       return live?.sectionStates?.[id]?.status !== "not_applicable";
     });
-    const submittedCount = applicableSections.filter((section, index) => {
+    const completionSections = companyForm
+      ? applicableSections.filter((section) => {
+        if (section.requires_submission !== undefined) return section.requires_submission;
+        const hasAnswerablePoint = section.questions.some((question) =>
+          !["content", "system_field", "info_only"].includes(question.response_type));
+        return hasAnswerablePoint || !!section.signature_officer_required || !!section.signature_seafarer_required;
+      })
+      : applicableSections;
+    const submittedCount = completionSections.filter((section, index) => {
       const id = section.clientKey || section.section_uuid || `${selectedPart?.formPartUuid}-section-${index + 1}`;
       return live?.sectionStates?.[id]?.status === "submitted";
     }).length;
@@ -1194,7 +1291,7 @@ export function ConfiguredFormRenderer({
       : "Complete each section as applicable.";
     const progressCaption = mode === "live" && isPartB ? (
       <span data-testid="live-progress">
-        {submittedCount === applicableSections.length && applicableSections.length > 0 ? "Complete" : `${submittedCount} of ${applicableSections.length} applicable sections submitted`}
+        {live?.submissionStatus === "voided" ? "Voided" : live?.submissionStatus === "completed" ? "Complete" : submittedCount === completionSections.length && completionSections.length > 0 ? "Complete" : `${submittedCount} of ${completionSections.length} applicable sections submitted`}
       </span>
     ) : undefined;
 
@@ -1241,6 +1338,8 @@ export function ConfiguredFormRenderer({
                   const sectionId = section.clientKey || section.section_uuid || `${selectedPart.formPartUuid}-section-${sectionIndex + 1}`;
                   const isApplicable = live?.sectionStates?.[sectionId]?.status === "not_applicable"
                     ? false
+                    : companyForm && section.is_applicable !== undefined
+                    ? section.is_applicable
                     : selectedVessel === "all"
                     || section.applicable_vessel_types.length === 0
                     || section.applicable_vessel_types.includes(selectedVessel);

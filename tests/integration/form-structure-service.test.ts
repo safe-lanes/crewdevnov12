@@ -214,6 +214,18 @@ describe.sequential("form structure service integration", () => {
     }],
   } as FormStructureInput);
 
+  async function configureRequiredSeafarerSignature(versionUuid: string, partUuid: string): Promise<void> {
+    const updated = await getDb().update(frmSections).set({
+      responsibleMode: "seafarer",
+      signatureOfficerRequired: true,
+    }).where(and(
+      eq(frmSections.formVersionUuid, versionUuid),
+      eq(frmSections.formPartUuid, partUuid),
+      eq(frmSections.isDeleted, false),
+    )).returning({ sectionUuid: frmSections.sectionUuid });
+    if (updated.length === 0) throw new Error(`No section found in version ${versionUuid} part ${partUuid}.`);
+  }
+
   it("exposes System field keys through the create, single-part, and batch HTTP APIs", async () => {
     const agent = request("http://127.0.0.1:5000");
     const b64 = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -275,6 +287,7 @@ describe.sequential("form structure service integration", () => {
     }
     await expect(formStructureService.replaceStructure(draft.fvUuid, partUuid, systemStructure("rank"), null))
       .resolves.toBeDefined();
+    await configureRequiredSeafarerSignature(draft.fvUuid, partUuid);
     await formsService.updateVersionById(draft.id, { stageKey: "before_joining" });
     const released = await formsService.releaseVersionById(draft.id);
     await expect(formStructureService.replaceStructure(released.fvUuid, partUuid, systemStructure("rank"), null))
@@ -351,6 +364,7 @@ describe.sequential("form structure service integration", () => {
     const saved = await formStructureService.replaceStructure(draft.fvUuid, sourcePart,
       contentStructure('<p class="word">Pinned <b>content</b></p><script>evil()</script>'), null);
     const questionUuid = saved.sections[0].questions[0].question_uuid;
+    await configureRequiredSeafarerSignature(draft.fvUuid, sourcePart);
     await formsService.updateVersionById(draft.id, { stageKey: "before_joining" });
     const released = await formsService.releaseVersionById(draft.id);
     const db = getDb();

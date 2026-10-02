@@ -16,6 +16,7 @@ Append one row whenever a numbered task fully completes. Record its task number,
 | #365 | Let administrators safely clear unlinked relievers | `21cf7816cd0f2cb119ece1f22dba964efa1f06da` | 2026-09-30 |
 | #368 | Prevent invalid assignment vessel IDs | `7228d8d0463db2421f062442bed10a5c959fb478` | 2026-09-30 |
 | #354 | Start and edit Company Forms safely | `281f5640ca450d653d1260223e26915a605991ec` | 2026-10-01 |
+| #355 | Complete and sign Company Forms | `4684b96a3bbf32bafa85769644c1fdc1d063f340` | 2026-10-02 |
 
 ## Inventory audit — 2026-10-01
 

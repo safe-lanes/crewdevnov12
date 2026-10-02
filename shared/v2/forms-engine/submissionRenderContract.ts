@@ -1,5 +1,21 @@
-export type CompanyFormSubmissionStatus = "in_progress" | "completed";
+export type CompanyFormSubmissionStatus = "in_progress" | "completed" | "voided";
 export type CompanyFormSectionStatus = "not_started" | "in_progress" | "submitted" | string;
+export type CompanyFormSignatureType = "officer" | "seafarer";
+export type CompanyFormSignatureMethod = "officer" | "authenticated" | "witnessed";
+export type CompanyFormSignatureMethodOption = {
+  method: CompanyFormSignatureMethod;
+  label: string;
+};
+export type CompanyFormSubmissionSectionActions = {
+  canEdit: boolean;
+  canSubmit: boolean;
+  canSign: Partial<Record<CompanyFormSignatureType, boolean>>;
+};
+export type CompanyFormSubmissionHistoryLink = {
+  direction: "replaced_by" | "replaces";
+  label: "Voided — replaced by" | "Replaces a voided submission";
+  submissionUuid: string;
+};
 export type CompanyFormRenderResponseType =
   | "yes_no"
   | "yes_no_na"
@@ -22,8 +38,18 @@ export type CompanyFormSubmissionSummary = {
   stageKey: string | null;
   status: CompanyFormSubmissionStatus;
   canEdit: boolean;
+  canVoid: boolean;
   createdAt: string | null;
   completedAt: string | null;
+  voidedAt: string | null;
+  voidedByUuid: string | null;
+  voidedByName: string | null;
+  voidReason: string | null;
+  voidedPreviousStatus: "in_progress" | "completed" | null;
+  replacedBySubmissionUuid: string | null;
+  replacesSubmissionUuid: string | null;
+  systemSnapshotAt: string | null;
+  systemSnapshotEvent: "section_submission" | "signature" | null;
 };
 
 export type CompanyFormSubmissionAnswer = {
@@ -40,6 +66,7 @@ export type CompanyFormSubmissionSignature = {
   signatureType: string;
   signerName: string;
   signerRank: string | null;
+  witnessName: string | null;
   signedAt: string;
   signedByUuid: string;
   signatureMethod: string;
@@ -84,7 +111,7 @@ export type CompanyFormSystemFieldValue = {
   label: string;
   source: "submission" | "subject";
   value: string | null;
-  valueOrigin: "submission_date" | "current_subject" | "persisted_snapshot_unavailable";
+  valueOrigin: "submission_date" | "current_subject" | "frozen_snapshot" | "persisted_snapshot_unavailable";
 };
 
 export type CompanyFormRenderQuestion = {
@@ -119,6 +146,11 @@ export type CompanyFormRenderSection = {
   effectiveLayout: "list" | "matrix";
   sortOrder: number;
   questions: CompanyFormRenderQuestion[];
+  requiresSubmission: boolean;
+  isApplicable: boolean;
+  canEdit?: boolean;
+  canSubmit?: boolean;
+  canSign?: Partial<Record<CompanyFormSignatureType, boolean>>;
 };
 
 export type CompanyFormRenderPart = {
@@ -133,6 +165,7 @@ export type CompanyFormRenderPart = {
 
 export type CompanyFormSubmissionRenderContract = {
   submission: CompanyFormSubmissionSummary;
+  signatureMethodOptions: Partial<Record<CompanyFormSignatureType, CompanyFormSignatureMethodOption[]>>;
   form: {
     formName: string;
     description: string | null;
@@ -153,6 +186,16 @@ export type CompanyFormSubmissionRenderContract = {
   parts: CompanyFormRenderPart[];
   states: CompanyFormSubmissionSectionState[];
   answers: CompanyFormSubmissionAnswer[];
+  systemSnapshotAt: string | null;
+  systemSnapshotEvent: "section_submission" | "signature" | null;
+  systemValuesChanged: boolean | null;
+  systemValuesComparisonError: boolean;
+  systemValuesChangedNotice: string | null;
+  voidedReplacement: {
+    label: "Voided — replaced by" | "Replaces a voided submission";
+    submissionUuid: string;
+  } | null;
+  replacementHistory: CompanyFormSubmissionHistoryLink[];
 };
 
 export type CompanyFormSubmissionDetail = {
@@ -160,4 +203,9 @@ export type CompanyFormSubmissionDetail = {
   states: CompanyFormSubmissionSectionState[];
   answers: CompanyFormSubmissionAnswer[];
   formUrl: string;
+  voidedReplacement: {
+    label: "Voided — replaced by" | "Replaces a voided submission";
+    submissionUuid: string;
+  } | null;
+  replacementHistory: CompanyFormSubmissionHistoryLink[];
 };

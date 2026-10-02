@@ -5,7 +5,13 @@ import request from "supertest";
 import { getDb } from "@server/v2/db";
 import { formsService } from "@server/v2/admin/services/formsService";
 import { admFormsV2, admFormVersionsV2, admRankGroupsV2 } from "@shared/v2/admin/schema";
-import { frmFormParts, frmSections } from "@shared/v2/forms-engine/schema";
+import {
+  frmFormParts,
+  frmOptions,
+  frmOptionSets,
+  frmQuestions,
+  frmSections,
+} from "@shared/v2/forms-engine/schema";
 import { frmSubjectTypes } from "@shared/v2/forms-engine/subjectRegistry";
 
 const agent = request("http://127.0.0.1:5000");
@@ -31,6 +37,41 @@ async function createVersion(formId: number, extra: object = {}) {
   });
 }
 
+async function addSubmissionSection(versionUuid: string, formUuid: string) {
+  const [part] = await getDb().insert(frmFormParts).values({
+    formPartUuid: uuidv4(),
+    formUuid,
+    formVersionUuid: versionUuid,
+    partCode: "LIFECYCLE",
+    partTitle: "Lifecycle",
+    partType: "configurable",
+    isOfficeOnly: false,
+    isDeleted: false,
+    isSync: false,
+  }).returning();
+  const [section] = await getDb().insert(frmSections).values({
+    sectionUuid: uuidv4(),
+    formVersionUuid: versionUuid,
+    formPartUuid: part.formPartUuid,
+    sectionCode: "SUBMIT",
+    sectionTitle: "Submission section",
+    responsibleMode: "seafarer",
+    isDeleted: false,
+    isSync: false,
+  }).returning();
+  await getDb().insert(frmQuestions).values({
+    questionUuid: uuidv4(),
+    sectionUuid: section.sectionUuid,
+    questionCode: "ANSWER",
+    questionText: "Answer",
+    responseType: "free_text",
+    isMandatory: false,
+    commentEnabled: true,
+    isDeleted: false,
+    isSync: false,
+  });
+}
+
 async function form(category: "dynamic" | "briefing", subjectType?: string) {
   const formUuid = uuidv4();
   formUuids.push(formUuid);
@@ -42,28 +83,60 @@ async function form(category: "dynamic" | "briefing", subjectType?: string) {
   return row;
 }
 
-afterAll(async () => {
+async function cleanupFixture(formUuid: string): Promise<void> {
   const db = getDb();
-  for (const formUuid of formUuids) {
-    const [row] = await db.select({ id: admFormsV2.id }).from(admFormsV2)
+  await db.transaction(async (tx) => {
+    const [row] = await tx.select({ id: admFormsV2.id }).from(admFormsV2)
       .where(eq(admFormsV2.formUuid, formUuid));
-    if (!row) continue;
-    const versions = await db.select({ uuid: admFormVersionsV2.fvUuid })
+    if (!row) return;
+    const versions = await tx.select({ uuid: admFormVersionsV2.fvUuid })
       .from(admFormVersionsV2).where(eq(admFormVersionsV2.formId, row.id));
-    if (versions.length) await db.delete(frmSections)
-      .where(inArray(frmSections.formVersionUuid, versions.map(v => v.uuid)));
-    await db.delete(frmFormParts).where(eq(frmFormParts.formUuid, formUuid));
-    await db.delete(admFormVersionsV2).where(eq(admFormVersionsV2.formId, row.id));
-    await db.delete(admRankGroupsV2).where(eq(admRankGroupsV2.formId, row.id));
-    await db.delete(admFormsV2).where(eq(admFormsV2.id, row.id));
+    const versionUuids = versions.map((version) => version.uuid);
+    if (versionUuids.length) {
+      const sectionUuids = await tx.select({ uuid: frmSections.sectionUuid })
+        .from(frmSections).where(inArray(frmSections.formVersionUuid, versionUuids));
+      const sectionIds = sectionUuids.map((section) => section.uuid);
+      const optionSets = await tx.select({ uuid: frmOptionSets.optionSetUuid })
+        .from(frmOptionSets).where(inArray(frmOptionSets.formVersionUuid, versionUuids));
+      const optionSetIds = optionSets.map((optionSet) => optionSet.uuid);
+      if (sectionIds.length) {
+        await tx.delete(frmQuestions).where(inArray(frmQuestions.sectionUuid, sectionIds));
+        await tx.delete(frmSections).where(inArray(frmSections.sectionUuid, sectionIds));
+      }
+      if (optionSetIds.length) {
+        await tx.delete(frmOptions).where(inArray(frmOptions.optionSetUuid, optionSetIds));
+        await tx.delete(frmOptionSets).where(inArray(frmOptionSets.optionSetUuid, optionSetIds));
+      }
+      await tx.delete(frmFormParts).where(inArray(frmFormParts.formVersionUuid, versionUuids));
+    }
+    await tx.delete(frmFormParts).where(eq(frmFormParts.formUuid, formUuid));
+    await tx.delete(admFormVersionsV2).where(eq(admFormVersionsV2.formId, row.id));
+    await tx.delete(admRankGroupsV2).where(eq(admRankGroupsV2.formId, row.id));
+    await tx.delete(admFormsV2).where(eq(admFormsV2.id, row.id));
+  });
+}
+
+afterAll(async () => {
+  const failures: Error[] = [];
+  for (const formUuid of formUuids) {
+    try {
+      await cleanupFixture(formUuid);
+    } catch (error) {
+      failures.push(new Error(`Failed to clean up version-line fixture ${formUuid}`, { cause: error }));
+    }
   }
   for (const subjectType of temporarySubjectTypes) {
-    await db.delete(frmSubjectTypes).where(eq(frmSubjectTypes.subjectType, subjectType));
+    try {
+      await getDb().delete(frmSubjectTypes).where(eq(frmSubjectTypes.subjectType, subjectType));
+    } catch (error) {
+      failures.push(new Error(`Failed to clean up temporary subject type ${subjectType}`, { cause: error }));
+    }
   }
+  if (failures.length) throw new AggregateError(failures, "Version-line fixture cleanup failed");
 });
 
 describe.sequential("Company Form version line", () => {
-  it("allows a data-only Company subject to release with a NULL stage", async () => {
+  it("allows a stage-less Company Form with a valid submission path to release", async () => {
     const subjectType = `stage_less_${uuidv4()}`;
     temporarySubjectTypes.push(subjectType);
     await getDb().insert(frmSubjectTypes).values({ subjectType, label: "Stage-less test subject" });
@@ -72,11 +145,23 @@ describe.sequential("Company Form version line", () => {
     expect(draft.status).toBe(200);
     expect(draft.body).toMatchObject({ stageKey: null, stageSubjectType: subjectType });
     expect((await get(`/forms/${company.id}/subject-stages`)).body).toEqual([]);
+    await addSubmissionSection(draft.body.fvUuid, company.formUuid);
 
     const released = await post(`/form-versions/${draft.body.id}/release`);
     expect(released.status).toBe(200);
     expect(released.body).toMatchObject({
       status: "released", stageKey: null, stageSubjectType: subjectType,
+    });
+  });
+
+  it("refuses to release a Company Form version with no submission-requiring section", async () => {
+    const company = await form("dynamic");
+    const draft = await createVersion(company.id, { stageKey: "before_joining" });
+    expect(draft.status).toBe(200);
+
+    await expect(formsService.releaseVersionById(draft.body.id)).rejects.toMatchObject({
+      statusCode: 400,
+      message: expect.stringContaining("at least one section requiring submission"),
     });
   });
 
@@ -151,6 +236,7 @@ describe.sequential("Company Form version line", () => {
     expect(clearedStage.body).toMatchObject({ stageKey: null, stageSubjectType: "crew_assignment" });
     await agent.put(`/api/v2/admin/form-versions/${first.body.id}`)
       .set("Authorization", `Bearer ${token()}`).send({ stageKey: "before_joining" }).expect(200);
+    await addSubmissionSection(firstUuid, company.formUuid);
     const stagePreservedWithoutField = await createVersion(company.id);
     expect(stagePreservedWithoutField.body).toMatchObject({
       fvUuid: firstUuid, stageKey: "before_joining", stageSubjectType: "crew_assignment",
@@ -182,7 +268,7 @@ describe.sequential("Company Form version line", () => {
     });
     const secondParts = await db.select().from(frmFormParts)
       .where(eq(frmFormParts.formVersionUuid, second.body.fvUuid));
-    expect(secondParts.map(p => p.partCode).sort()).toEqual(["A", "B"]);
+    expect(secondParts.map(p => p.partCode).sort()).toEqual(["A", "B", "LIFECYCLE"]);
     expect(secondParts.every(p => p.formPartUuid && p.formVersionUuid === second.body.fvUuid)).toBe(true);
     expect(secondParts.every(p => !firstParts.some(firstPart => firstPart.formPartUuid === p.formPartUuid))).toBe(true);
     expect((await get(`/forms/${company.id}/versions`)).body.map((v: any) => v.versionNo).sort())

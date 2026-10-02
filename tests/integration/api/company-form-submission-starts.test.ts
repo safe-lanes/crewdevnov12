@@ -37,9 +37,11 @@ let formBoardUuid = "";
 let archivedFormUuid = "";
 let versionOneUuid = "";
 let versionTwoUuid = "";
+let invalidReleasedVersionUuid = "";
 let boardVersionUuid = "";
 let archivedVersionUuid = "";
 let primarySubmissionUuid = "";
+let replacementSubmissionUuid = "";
 let historySubmissionUuid = "";
 let writeSubmissionUuid = "";
 let historyAssetUuid = "";
@@ -160,7 +162,7 @@ async function createAssignment(assignUuid: string, assignmentType: string) {
   );
 }
 
-async function createRenderStructure(versionUuid: string, versionMarker: string): Promise<{
+async function createRenderStructure(versionUuid: string, versionMarker: string, ownerFormUuid = formUuid): Promise<{
   partUuid: string;
   sectionUuid: string;
   optionSetUuid: string;
@@ -177,7 +179,7 @@ async function createRenderStructure(versionUuid: string, versionMarker: string)
     `INSERT INTO frm_form_parts
        (form_part_uuid, form_uuid, form_version_uuid, part_code, part_title, part_type, is_office_only, sort_order, is_deleted)
      VALUES ($1, $2, $3, 'PART', $4, 'configurable', false, 0, false)`,
-    [partUuid, formUuid, versionUuid, `Pinned part ${versionMarker}`],
+    [partUuid, ownerFormUuid, versionUuid, `Pinned part ${versionMarker}`],
   );
   if (!renderVesselTypeUuid) {
     const vesselType = await db.query(
@@ -335,6 +337,14 @@ describe("Company Form subject-scoped starts and lists", () => {
         { versionUuid: versionTwoUuid, versionNo: "02", stageKey: "before_joining" },
       ],
     });
+    invalidReleasedVersionUuid = u();
+    await db.query(
+      `INSERT INTO adm_form_versions_v2
+         (fv_uuid, form_id, version_no, version_date, status, stage_key, is_deleted, released_at)
+       SELECT $1, id, '99', '2026-01-01', 'released', 'before_joining', false, NOW()
+       FROM adm_forms_v2 WHERE form_uuid = $2`,
+      [invalidReleasedVersionUuid, formUuid],
+    );
     await createRenderStructure(versionOneUuid, "one");
     await createRenderStructure(versionTwoUuid, "two");
     formBoardUuid = u();
@@ -344,6 +354,7 @@ describe("Company Form subject-scoped starts and lists", () => {
       formName: `CF board ${SUFFIX}`,
       versions: [{ versionUuid: boardVersionUuid, versionNo: "01", stageKey: "on_board" }],
     });
+    await createRenderStructure(boardVersionUuid, "board", formBoardUuid);
     archivedFormUuid = u();
     archivedVersionUuid = u();
     await createForm({
@@ -351,6 +362,7 @@ describe("Company Form subject-scoped starts and lists", () => {
       formName: `CF archived ${SUFFIX}`,
       versions: [{ versionUuid: archivedVersionUuid, versionNo: "01", stageKey: "before_joining" }],
     });
+    await createRenderStructure(archivedVersionUuid, "archive", archivedFormUuid);
   });
 
   afterAll(async () => {
@@ -366,7 +378,9 @@ describe("Company Form subject-scoped starts and lists", () => {
         historyAssignmentUuid,
         writeAssignmentUuid,
       ].filter(Boolean);
-      const submissionUuids = [primarySubmissionUuid, historySubmissionUuid, writeSubmissionUuid].filter(Boolean);
+      const submissionUuids = [
+        primarySubmissionUuid, replacementSubmissionUuid, historySubmissionUuid, writeSubmissionUuid,
+      ].filter(Boolean);
       const assetUuids = [historyAssetUuid, foreignAssetUuid].filter(Boolean);
       if (assetUuids.length) {
         await db.query(
@@ -418,7 +432,9 @@ describe("Company Form subject-scoped starts and lists", () => {
       if (renderVesselTypeUuid) {
         await db.query("DELETE FROM master_vessel_types WHERE vt_uuid = $1", [renderVesselTypeUuid]);
       }
-      const versions = [versionOneUuid, versionTwoUuid, boardVersionUuid, archivedVersionUuid].filter(Boolean);
+      const versions = [
+        versionOneUuid, versionTwoUuid, invalidReleasedVersionUuid, boardVersionUuid, archivedVersionUuid,
+      ].filter(Boolean);
       if (versions.length) {
         await db.query("DELETE FROM adm_form_versions_v2 WHERE fv_uuid = ANY($1::text[])", [versions]);
       }
@@ -462,6 +478,7 @@ describe("Company Form subject-scoped starts and lists", () => {
     const primary = eligible.body.find((form: any) => form.formUuid === formUuid);
     const archiveCandidate = eligible.body.find((form: any) => form.formUuid === archivedFormUuid);
     expect(primary.formVersionUuid).toBe(versionTwoUuid);
+    expect(eligible.body.some((form: any) => form.formVersionUuid === invalidReleasedVersionUuid)).toBe(false);
     expect(archiveCandidate.formVersionUuid).toBe(archivedVersionUuid);
     expect(eligible.body.length).toBeGreaterThanOrEqual(2);
     expect(eligible.body.every((form: any) => form.stageKey === "before_joining")).toBe(true);
@@ -507,6 +524,20 @@ describe("Company Form subject-scoped starts and lists", () => {
     });
     expect(invalid.status).toBe(400);
 
+    const invalidReleasedVersionStart = await call("post", path, {
+      userId: officeUserId,
+      body: { formUuid, formVersionUuid: invalidReleasedVersionUuid },
+    });
+    expect(invalidReleasedVersionStart.status).toBe(409);
+    expect(invalidReleasedVersionStart.body.message).toContain("cannot be completed");
+
+    const staleReleasedVersionStart = await call("post", path, {
+      userId: officeUserId,
+      body: { formUuid, formVersionUuid: versionOneUuid },
+    });
+    expect(staleReleasedVersionStart.status).toBe(409);
+    expect(staleReleasedVersionStart.body.message).toContain("Refresh the form list");
+
     const created = await call("post", path, {
       userId: officeUserId,
       body: { formUuid, formVersionUuid: versionTwoUuid },
@@ -522,6 +553,42 @@ describe("Company Form subject-scoped starts and lists", () => {
     });
     expect(duplicate.status).toBe(409);
     expect(duplicate.body.error).toBe("conflict");
+
+    await db.query(
+      `UPDATE frm_company_submissions
+       SET status = 'voided', voided_at = NOW(), voided_by_uuid = $2,
+           voided_by_name = 'Integration fixture',
+           void_reason = 'Integration replacement fixture',
+           voided_previous_status = 'in_progress'
+       WHERE submission_uuid = $1`,
+      [primarySubmissionUuid, String(officeUserId)],
+    );
+    const replacement = await call("post", path, {
+      userId: officeUserId,
+      body: { formUuid, formVersionUuid: versionTwoUuid },
+    });
+    expect(replacement.status).toBe(201);
+    replacementSubmissionUuid = replacement.body.submissionUuid;
+    expect(replacement.body.formVersionUuid).toBe(versionTwoUuid);
+    const replacementLinks = await db.query(
+      `SELECT old.replaced_by_submission_uuid, newer.replaces_submission_uuid,
+              newer.form_version_uuid
+       FROM frm_company_submissions old
+       JOIN frm_company_submissions newer
+         ON newer.submission_uuid = old.replaced_by_submission_uuid
+       WHERE old.submission_uuid = $1`,
+      [primarySubmissionUuid],
+    );
+    expect(replacementLinks.rows).toEqual([{
+      replaced_by_submission_uuid: replacementSubmissionUuid,
+      replaces_submission_uuid: primarySubmissionUuid,
+      form_version_uuid: versionTwoUuid,
+    }]);
+    const duplicateReplacement = await call("post", path, {
+      userId: officeUserId,
+      body: { formUuid, formVersionUuid: versionTwoUuid },
+    });
+    expect(duplicateReplacement.status).toBe(409);
 
     const competingStarts = await Promise.all([
       call("post", `/api/v2/company-form-submissions/subjects/crew_assignment/${archivedFormAssignmentUuid}/submissions`, {
@@ -547,7 +614,7 @@ describe("Company Form subject-scoped starts and lists", () => {
       { userId: officeUserId },
     );
     expect(list.status).toBe(200);
-    expect(list.body.totalCount).toBe(1);
+    expect(list.body.totalCount).toBe(2);
     expect(list.body.outstandingCount).toBe(1);
 
     const count = await call(
@@ -556,7 +623,7 @@ describe("Company Form subject-scoped starts and lists", () => {
       { userId: officeUserId },
     );
     expect(count.status).toBe(200);
-    expect(count.body.totalCount).toBe(1);
+    expect(count.body.totalCount).toBe(2);
 
     await db.query(
       "UPDATE crew_assignments SET assignment_type = 'Cancelled', is_current = false WHERE assign_uuid = $1",
@@ -584,11 +651,11 @@ describe("Company Form subject-scoped starts and lists", () => {
     expect(home.status).toBe(200);
     expect(home.body.groups).toHaveLength(5);
     expect(home.body.groups.map((group: any) => group.groupId)).toContain(assignmentUuid);
-    expect(home.body.totalCount).toBe(2);
+    expect(home.body.totalCount).toBe(3);
     expect(home.body.outstandingCount).toBe(1);
-    expect(home.body.historyCount).toBe(1);
+    expect(home.body.historyCount).toBe(2);
     expect(home.body.groups.find((group: any) => group.subjectRef === assignmentUuid).submissions)
-      .toHaveLength(1);
+      .toHaveLength(2);
   });
 
   it("rechecks archived state on start and retires the old Admin eligible endpoint as JSON 410", async () => {
@@ -632,13 +699,13 @@ describe("Company Form subject-scoped starts and lists", () => {
       renderServer,
       "post",
       `/api/v2/company-form-submissions/subjects/crew_assignment/${writeAssignmentUuid}/submissions`,
-      { userId: officeUserId, body: { formUuid, formVersionUuid: versionOneUuid } },
+      { userId: officeUserId, body: { formUuid, formVersionUuid: versionTwoUuid } },
     );
     expect(started.status).toBe(201);
     writeSubmissionUuid = started.body.submissionUuid;
 
-    const sectionUuid = renderSectionUuids[0];
-    const partUuid = renderPartUuids[0];
+    const sectionUuid = renderSectionUuids[1];
+    const partUuid = renderPartUuids[1];
     const questions = (await db.query(
       "SELECT question_uuid, question_code FROM frm_questions WHERE section_uuid = $1 AND is_deleted = false",
       [sectionUuid],
@@ -745,7 +812,8 @@ describe("Company Form subject-scoped starts and lists", () => {
       [sectionUuid],
     );
     const wrongSectionActor = await callOn(renderServer, "put", editPath, {
-      userId: officeUserId,
+      userId: shipUserId,
+      userType: "Ship",
       body: { answers: [answer] },
     });
     expect(wrongSectionActor.status).toBe(403);
@@ -777,7 +845,7 @@ describe("Company Form subject-scoped starts and lists", () => {
     expect(invalidShape.status).toBe(400);
     const foreignQuestion = (await db.query(
       "SELECT question_uuid FROM frm_questions WHERE section_uuid = $1 AND question_code = 'CHOICE'",
-      [renderSectionUuids[1]],
+      [renderSectionUuids[0]],
     )).rows[0].question_uuid as string;
     const invalidQuestion = await callOn(renderServer, "put", editPath, {
       userId: officeUserId,
@@ -787,7 +855,7 @@ describe("Company Form subject-scoped starts and lists", () => {
     const foreignSection = await callOn(
       renderServer,
       "put",
-      `/api/v2/company-form-submissions/${writeSubmissionUuid}/sections/${renderSectionUuids[1]}/answers`,
+      `/api/v2/company-form-submissions/${writeSubmissionUuid}/sections/${renderSectionUuids[0]}/answers`,
       { userId: officeUserId, body: { answers: [answer] } },
     );
     expect(foreignSection.status).toBe(400);
@@ -963,14 +1031,24 @@ describe("Company Form subject-scoped starts and lists", () => {
   });
 
   it("renders the authorized persisted pin without Admin routes and serves only submission-owned historical assets", async () => {
-    const started = await callOn(
-      renderServer,
-      "post",
-      `/api/v2/company-form-submissions/subjects/crew_assignment/${historyAssignmentUuid}/submissions`,
-      { userId: officeUserId, body: { formUuid, formVersionUuid: versionOneUuid } },
+    // This is a legacy, already-created submission pinned to v01 while v02 is
+    // now the eligible release. New starts must select v02, but existing pins
+    // must continue rendering v01 content.
+    historySubmissionUuid = u();
+    await db.query(
+      `INSERT INTO frm_company_submissions
+         (submission_uuid, subject_type, subject_ref, form_uuid, form_version_uuid,
+          stage_key, status, created_by_uuid, is_deleted, is_sync)
+       VALUES ($1, 'crew_assignment', $2, $3, $4, 'before_joining',
+               'in_progress', $5, false, false)`,
+      [historySubmissionUuid, historyAssignmentUuid, formUuid, versionOneUuid, String(officeUserId)],
     );
-    expect(started.status).toBe(201);
-    historySubmissionUuid = started.body.submissionUuid;
+    await db.query(
+      `INSERT INTO frm_company_submission_assignments
+         (submission_uuid, assign_uuid, created_by_uuid, updated_by_uuid, is_deleted, is_sync)
+       VALUES ($1, $2, $3, $3, false, false)`,
+      [historySubmissionUuid, historyAssignmentUuid, String(officeUserId)],
+    );
 
     const historyStateUuid = u();
     const historySectionUuid = renderSectionUuids[0];
@@ -1025,8 +1103,8 @@ describe("Company Form subject-scoped starts and lists", () => {
     expect(inProgressForm.body.parts[0].sections[0].sectionTitle).toBe("Pinned section one");
     const nameField = inProgressForm.body.parts[0].sections[0].questions
       .find((question: any) => question.systemFieldKey === "seafarer_name");
-    expect(nameField.systemField.value).toBe("Current Source");
-    expect(nameField.systemField.valueOrigin).toBe("current_subject");
+    expect(nameField.systemField.value).toBeNull();
+    expect(nameField.systemField.valueOrigin).toBe("persisted_snapshot_unavailable");
     expect(inProgressForm.body.parts[0].sections[0].applicableVesselTypes[0].vesselType)
       .toBe(`Render vessel type ${SUFFIX}`);
     expect(inProgressForm.body.parts[0].sections[0].responsibleRole.roleUuid).toBe(officeRoleUuid);
@@ -1136,8 +1214,6 @@ describe("Company Form subject-scoped starts and lists", () => {
       .find((question) => question.systemFieldKey === "seafarer_name");
     expect(completedNameField?.systemField?.value).toBeNull();
     expect(completedNameField?.systemField?.valueOrigin).toBe("persisted_snapshot_unavailable");
-    expect(contract.systemFields.find((field) => field.key === "date_of_declaration")?.value)
-      .toBe(contract.submission.completedAt?.slice(0, 10));
 
     const rawAsset = await callOn(
       renderServer,

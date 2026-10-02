@@ -20,7 +20,7 @@ Related project task: #333 (Company Form Submissions).
 ## Crew assignment subject
 
 7. Anchor a crew-assignment submission to `crew_assignments.assign_uuid`, verified in Task #309 to survive from Deploy through sign-off.
-8. Allow one submission per form per assignment.
+8. Allow one **non-voided** submission per form per assignment. An authorised office crewing role may explicitly void an in-progress or completed submission with a mandatory written reason; the server records who and when. Retain the voided declaration, its frozen values, answers, comments, and signatures as immutable, readable history. A replacement is a new submission using the released eligible version selected at its creation, not an edit or another attempt beneath the voided parent. The original and replacement reference each other and show “Voided — replaced by” and “Replaces a voided submission” when opened.
 9. Retain signed submissions when an assignment is cancelled. They must remain readable, drop off any outstanding list, and never be deleted as a result of cancellation.
 10. Pin the form version at submission creation. Never re-resolve the version for that submission.
 
@@ -60,5 +60,55 @@ view/create/edit grant and do not depend on vessel-scope provisioning.
 ## Release validation
 
 A draft Company Form version may have no stage. Releasing a version whose subject type defines stages must be refused until a stage from that subject's list is selected. A subject type with no stages has no stage to select.
+
+Company section submission requirements are derived from the pinned content,
+not from a new section-level required flag. Do not change existing section data:
+
+- Any answerable point or configured signature means the section requires
+  submission and must have a responsible party.
+- Content, System field, and `info_only` points collect no answers. A section
+  with only answer-free points and no signature is informational and requires
+  no submission.
+- Applicability uses the existing section vessel-type restriction.
+- The form completes automatically when every applicable section requiring
+  submission has been submitted. There is no separate Complete action.
+- Refuse release if there are no sections requiring submission, or any such
+  section lacks a valid responsible party. Exclude released versions failing
+  this same check from eligible forms and reject their creation server-side.
+
+The `seafarer` responsible party is one policy serving either the trusted-linked
+seafarer on his own assignment, or an authorised office crewing user acting with
+the seafarer present. The former uses authenticated signing once trusted account
+linkage exists; the latter uses explicitly office-witnessed signing. Vessel
+access alone confers no witness authority. Production authenticated seafarer
+signing remains fail-closed until trusted linkage exists.
+
+These decisions supersede the earlier proposal for required/optional section
+metadata and optional unsubmitted sections locked as unanswered. There is no
+declaration-attempt layer and no automatic restart. A separate permission for
+voiding completed submissions is possible, but is deliberately not implemented;
+both in-progress and completed voiding use the authorised office crewing policy.
+
+## Existing definition audit before implementation
+
+A read-only development-database audit on 2026-10-02 found seven nondeleted
+Company Form versions. All fail the new lifecycle release check. Existing
+definitions are not rewritten, and the already released version is not
+retrospectively unreleased.
+
+| Form | Version | Status | Failure |
+| --- | --- | --- | --- |
+| Company Forms MARPOL Declaration | 01 | released | No sections requiring submission |
+| Company Forms MARPOL Declaration | 02 | draft | No sections requiring submission |
+| Company Operations Checklist 2026-09-28 | 01 | draft | Only System-field content; no signatures |
+| Pre-Employment Declaration | 01 | draft | General and Drug & Alcohol Policy require signatures but have no responsible party |
+| Test Form | 01 | draft | Basic Details has answerable points but no responsible party |
+| Company Archive Probe 2026-09-28 | 01 | draft, archived | No sections |
+| company archive probe 2026-09-28 | 01 | draft, archived | No sections |
+
+Briefing differs: it completes when every section state is submitted or not
+applicable, has no section required/optional metadata, and does not capture a
+first-event System snapshot. Saving a Briefing signature does not submit the
+section. Briefing, Interview, Debriefing, and Standard Forms remain unchanged.
 
 For the existing released crew-assignment version, the approved migration mapping is **Company Forms MARPOL Declaration**, version **01** (`3a0ded43-41a4-4460-a6b1-2cc59b0409ba`) → **before joining**. Existing draft versions need no stage mapping until release.

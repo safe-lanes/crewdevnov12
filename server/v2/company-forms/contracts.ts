@@ -9,6 +9,10 @@ export const COMPANY_FORM_ACTIONS = [
   "read_asset",
   "create_submission",
   "edit_draft",
+  "submit_section",
+  "save_signature",
+  "remove_signature",
+  "void_submission",
 ] as const;
 
 export type CompanyFormAction = typeof COMPANY_FORM_ACTIONS[number];
@@ -79,7 +83,18 @@ export type SubjectSignatoryDeclaration = {
   signatureType: "officer" | "seafarer";
   displayLabel: string;
   allowedActors: readonly CompanyFormActorKind[];
+  methods: readonly ("officer" | "authenticated" | "witnessed")[];
+  methodsByActor?: Readonly<Partial<Record<
+    CompanyFormActorKind,
+    readonly ("officer" | "authenticated" | "witnessed")[]
+  >>>;
   designationSource?: "master_users.designation";
+  resolveIdentity?: (input: {
+    principal: CompanyFormPrincipal;
+    subject: unknown;
+    method: "officer" | "authenticated" | "witnessed";
+    executor: unknown;
+  }) => Promise<{ name: string | null; rank: string | null }>;
 };
 
 export type SubjectLookupResult<Context> = {
@@ -91,6 +106,7 @@ export type SystemFieldResolutionContext = {
   submission: {
     dateOfDeclaration: string | null;
   };
+  executor?: unknown;
 };
 
 export type CompanyFormSubjectAdapter<Context = unknown> = {
@@ -116,7 +132,11 @@ export type CompanyFormSubjectAdapter<Context = unknown> = {
     key: string,
     subject: Context,
     context: SystemFieldResolutionContext,
+    executor?: unknown,
   ): Promise<string | null>;
+  isSectionApplicable?(section: {
+    applicableVesselTypes: string | null;
+  }, subject: Context): Promise<boolean>;
   allowedActions: Readonly<Record<CompanyFormActorKind, readonly CompanyFormAction[]>>;
   authorize(
     principal: CompanyFormPrincipal,

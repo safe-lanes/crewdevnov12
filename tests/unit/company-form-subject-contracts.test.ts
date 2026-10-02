@@ -174,12 +174,17 @@ describe("Company Form subject-neutral declarations", () => {
         signatureType: "officer",
         displayLabel: "Company Representative",
         allowedActors: ["office", "vessel"],
+        methods: ["officer"],
+        methodsByActor: { office: ["officer"], vessel: ["officer"] },
         designationSource: "master_users.designation",
       },
       {
         signatureType: "seafarer",
         displayLabel: "Seafarer",
-        allowedActors: ["seafarer"],
+        allowedActors: ["seafarer", "office"],
+        methods: ["authenticated", "witnessed"],
+        methodsByActor: { seafarer: ["authenticated"], office: ["witnessed"] },
+        resolveIdentity: expect.any(Function),
       },
     ]);
     expect(crew.systemFields.find((field) => field.key === "date_of_declaration")?.source).toBe("submission");

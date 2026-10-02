@@ -31,6 +31,7 @@ export interface CompanySubmissionDraftInput {
 
 export interface CompanySubmissionRendererModel {
   submissionUuid: string;
+  status: CompanyFormSubmissionRenderContract["submission"]["status"];
   title: string;
   versionLabel: string;
   subjectType: string;
@@ -97,6 +98,23 @@ export function saveCompanySubmissionDraft(
     }
   });
   return scheduled;
+}
+
+export function flushCompanySubmissionDrafts(
+  submissionUuid: string,
+  sectionUuid: string,
+): Promise<void> {
+  return companySubmissionDraftQueues.get(draftQueueKey(submissionUuid, sectionUuid)) ?? Promise.resolve();
+}
+
+function answerValuesEqual(
+  left: ConfiguredFormAnswerValue | null | undefined,
+  right: ConfiguredFormAnswerValue | null | undefined,
+): boolean {
+  if (Object.is(left, right)) return true;
+  return Array.isArray(left) && Array.isArray(right)
+    && left.length === right.length
+    && left.every((value, index) => value === right[index]);
 }
 
 function parseAnswer(
@@ -206,6 +224,11 @@ function mapSection(
     comment_box_required: section.commentBoxRequired,
     signature_officer_required: section.signatureOfficerRequired,
     signature_seafarer_required: section.signatureSeafarerRequired,
+    requires_submission: section.requiresSubmission,
+    is_applicable: section.isApplicable,
+    can_submit: section.canSubmit,
+    can_edit: section.canEdit,
+    can_sign: section.canSign,
     default_option_set_uuid: section.defaultOptionSetUuid,
     layout_preference: section.layoutPreference as ConfiguredFormSection["layout_preference"],
     effectiveLayout: section.effectiveLayout,
@@ -292,10 +315,11 @@ export function mapCompanySubmissionForm(contract: CompanySubmissionRenderView):
       signatures: mapSignatureState(state),
     };
   }
-  const readOnly = !contract.submission.canEdit;
+  const readOnly = contract.submission.status !== "in_progress" || !contract.submission.canEdit;
 
   return {
     submissionUuid: contract.submission.submissionUuid,
+    status: contract.submission.status,
     title: contract.form.formName,
     versionLabel: contract.version.versionNo,
     subjectType: contract.submission.subjectType,
@@ -344,12 +368,31 @@ export function CompanySubmissionRenderer({
   onAnswerChange?: (questionUuid: string, value: ConfiguredFormAnswerValue) => void;
   onAnswerCommentChange?: (questionUuid: string, comment: string) => void;
 }) {
+  const [activeSubmissionUuid, setActiveSubmissionUuid] = useState(submissionUuid);
+  const originalSubmissionUuid = useRef(submissionUuid);
+  const activeSubmissionUuidRef = useRef(activeSubmissionUuid);
+  const activeSubmissionStatusRef = useRef<CompanySubmissionRendererModel["status"] | undefined>();
+  useEffect(() => {
+    setActiveSubmissionUuid(submissionUuid);
+    originalSubmissionUuid.current = submissionUuid;
+  }, [submissionUuid]);
+  useEffect(() => {
+    activeSubmissionUuidRef.current = activeSubmissionUuid;
+    activeSubmissionStatusRef.current = undefined;
+    answerRevisionsRef.current = {};
+    answerCommentRevisionsRef.current = {};
+    sectionCommentRevisionsRef.current = {};
+    acknowledgedAnswerRevisionsRef.current = {};
+    acknowledgedAnswerCommentRevisionsRef.current = {};
+    acknowledgedSectionCommentRevisionsRef.current = {};
+  }, [activeSubmissionUuid]);
   const form = useQuery({
-    queryKey: ["company-form-submission-form", submissionUuid],
-    queryFn: () => fetchCompanySubmissionForm(submissionUuid),
+    queryKey: ["company-form-submission-form", activeSubmissionUuid],
+    queryFn: () => fetchCompanySubmissionForm(activeSubmissionUuid),
     retry: false,
-    enabled: !!submissionUuid,
+    enabled: !!activeSubmissionUuid,
   });
+  const lifecycleForm = form.data;
   const model = useMemo(
     () => {
       if (!form.data) return { model: undefined, error: undefined };
@@ -370,11 +413,25 @@ export function CompanySubmissionRenderer({
   const [draftAnswerComments, setDraftAnswerComments] = useState<Record<string, string | null>>({});
   const [draftSectionComments, setDraftSectionComments] = useState<Record<string, string>>({});
   const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
+  const [sectionSubmitting, setSectionSubmitting] = useState<Record<string, boolean>>({});
+  const [sectionActionErrors, setSectionActionErrors] = useState<Record<string, string>>({});
+  const [voidReason, setVoidReason] = useState("");
+  const [isVoiding, setIsVoiding] = useState(false);
+  const [voidError, setVoidError] = useState<string | null>(null);
   const [selectedPartUuid, setSelectedPartUuid] = useState("");
   const draftAnswersRef = useRef(draftAnswers);
   const draftAnswerCommentsRef = useRef(draftAnswerComments);
   const draftSectionCommentsRef = useRef(draftSectionComments);
+  const draftRevisionCounterRef = useRef(0);
+  const answerRevisionsRef = useRef<Record<string, number>>({});
+  const answerCommentRevisionsRef = useRef<Record<string, number>>({});
+  const sectionCommentRevisionsRef = useRef<Record<string, number>>({});
+  const lockedSectionUuidsRef = useRef(new Set<string>());
+  const acknowledgedAnswerRevisionsRef = useRef<Record<string, number>>({});
+  const acknowledgedAnswerCommentRevisionsRef = useRef<Record<string, number>>({});
+  const acknowledgedSectionCommentRevisionsRef = useRef<Record<string, number>>({});
   const saveSequencesRef = useRef<Record<string, number>>({});
+  const explicitDraftSaveKeysRef = useRef(new Set<string>());
   const isMountedRef = useRef(false);
 
   useEffect(() => {
@@ -385,17 +442,118 @@ export function CompanySubmissionRenderer({
   }, []);
 
   useEffect(() => {
-    if (!rendererModel) return;
-    draftAnswersRef.current = rendererModel.answers;
-    draftAnswerCommentsRef.current = rendererModel.answerComments;
-    draftSectionCommentsRef.current = rendererModel.sectionComments;
-    setDraftAnswers(rendererModel.answers);
-    setDraftAnswerComments(rendererModel.answerComments);
-    setDraftSectionComments(rendererModel.sectionComments);
+    if (!rendererModel || rendererModel.submissionUuid !== activeSubmissionUuid) return;
+    activeSubmissionStatusRef.current = rendererModel.status;
+    const lockedSectionUuids = new Set(Object.entries(rendererModel.sectionStates)
+      .filter(([, state]) => state.status === "submitted" || state.status === "not_applicable")
+      .map(([sectionUuid]) => sectionUuid));
+    lockedSectionUuidsRef.current = lockedSectionUuids;
+    if (rendererModel.status !== "in_progress") {
+      answerRevisionsRef.current = {};
+      answerCommentRevisionsRef.current = {};
+      sectionCommentRevisionsRef.current = {};
+    lockedSectionUuidsRef.current = new Set();
+      acknowledgedAnswerRevisionsRef.current = {};
+      acknowledgedAnswerCommentRevisionsRef.current = {};
+      acknowledgedSectionCommentRevisionsRef.current = {};
+      lockedSectionUuidsRef.current = new Set(Object.keys(rendererModel.sectionStates));
+      draftAnswersRef.current = rendererModel.answers;
+      draftAnswerCommentsRef.current = rendererModel.answerComments;
+      draftSectionCommentsRef.current = rendererModel.sectionComments;
+      setDraftAnswers(rendererModel.answers);
+      setDraftAnswerComments(rendererModel.answerComments);
+      setDraftSectionComments(rendererModel.sectionComments);
+      setSaveErrors((current) => {
+        const next = { ...current };
+        for (const key of Object.keys(next)) {
+          if (key.startsWith(`${activeSubmissionUuid}\u0000`)) delete next[key];
+        }
+        return next;
+      });
+      setSectionActionErrors({});
+      setSelectedPartUuid((current) => rendererModel.parts.some((part) => part.formPartUuid === current)
+        ? current
+        : rendererModel.parts[0]?.formPartUuid ?? "");
+      return;
+    }
+    const answers = { ...rendererModel.answers };
+    for (const [questionUuid, revision] of Object.entries(answerRevisionsRef.current)) {
+      if (lockedSectionUuids.has(rendererModel.questionSections[questionUuid])) {
+        delete answerRevisionsRef.current[questionUuid];
+        delete acknowledgedAnswerRevisionsRef.current[questionUuid];
+        continue;
+      }
+      const localValue = draftAnswersRef.current[questionUuid];
+      const persistedValue = persistedDraftValue(questionUuid, localValue, rendererModel.questionResponseTypes);
+      const serverValue = rendererModel.answers[questionUuid];
+      const matchesServer = persistedValue === null
+        ? serverValue === undefined
+        : answerValuesEqual(serverValue, persistedValue);
+      if (revision <= (acknowledgedAnswerRevisionsRef.current[questionUuid] ?? 0) && matchesServer) {
+        delete answerRevisionsRef.current[questionUuid];
+        delete acknowledgedAnswerRevisionsRef.current[questionUuid];
+      } else if (localValue !== undefined) {
+        answers[questionUuid] = localValue;
+      }
+    }
+    const answerComments = { ...rendererModel.answerComments };
+    for (const [questionUuid, revision] of Object.entries(answerCommentRevisionsRef.current)) {
+      if (lockedSectionUuids.has(rendererModel.questionSections[questionUuid])) {
+        delete answerCommentRevisionsRef.current[questionUuid];
+        delete acknowledgedAnswerCommentRevisionsRef.current[questionUuid];
+        continue;
+      }
+      const localComment = draftAnswerCommentsRef.current[questionUuid];
+      const serverComment = rendererModel.answerComments[questionUuid];
+      const matchesServer = localComment === ""
+        ? serverComment === null || serverComment === undefined || serverComment === ""
+        : localComment === serverComment;
+      if (revision <= (acknowledgedAnswerCommentRevisionsRef.current[questionUuid] ?? 0) && matchesServer) {
+        delete answerCommentRevisionsRef.current[questionUuid];
+        delete acknowledgedAnswerCommentRevisionsRef.current[questionUuid];
+      } else if (localComment !== undefined) {
+        answerComments[questionUuid] = localComment;
+      }
+    }
+    const sectionComments = { ...rendererModel.sectionComments };
+    for (const [sectionUuid, revision] of Object.entries(sectionCommentRevisionsRef.current)) {
+      if (lockedSectionUuids.has(sectionUuid)) {
+        delete sectionCommentRevisionsRef.current[sectionUuid];
+        delete acknowledgedSectionCommentRevisionsRef.current[sectionUuid];
+        continue;
+      }
+      const localComment = draftSectionCommentsRef.current[sectionUuid];
+      const serverComment = rendererModel.sectionComments[sectionUuid] ?? "";
+      if (revision <= (acknowledgedSectionCommentRevisionsRef.current[sectionUuid] ?? 0)
+        && localComment === serverComment) {
+        delete sectionCommentRevisionsRef.current[sectionUuid];
+        delete acknowledgedSectionCommentRevisionsRef.current[sectionUuid];
+      } else if (localComment !== undefined) {
+        sectionComments[sectionUuid] = localComment;
+      }
+    }
+    draftAnswersRef.current = answers;
+    draftAnswerCommentsRef.current = answerComments;
+    draftSectionCommentsRef.current = sectionComments;
+    setDraftAnswers(answers);
+    setDraftAnswerComments(answerComments);
+    setDraftSectionComments(sectionComments);
+    setSaveErrors((current) => {
+      const next = { ...current };
+      const submissionPrefix = `${activeSubmissionUuid}\u0000`;
+      for (const key of Object.keys(next)) {
+        if (key.startsWith(submissionPrefix)
+          && lockedSectionUuids.has(key.slice(submissionPrefix.length))) delete next[key];
+      }
+      return next;
+    });
+    setSectionActionErrors((current) => Object.fromEntries(
+      Object.entries(current).filter(([sectionUuid]) => !lockedSectionUuids.has(sectionUuid)),
+    ));
     setSelectedPartUuid((current) => rendererModel.parts.some((part) => part.formPartUuid === current)
       ? current
       : rendererModel.parts[0]?.formPartUuid ?? "");
-  }, [rendererModel]);
+  }, [activeSubmissionUuid, rendererModel]);
 
   if (form.isPending) return React.createElement("div", { role: "status" }, "Loading Company Form…");
   if (form.error) return React.createElement(
@@ -421,13 +579,57 @@ export function CompanySubmissionRenderer({
   const reportSaveFailure = (error: unknown) => {
     return error instanceof Error ? error.message : String(error);
   };
-  const save = (sectionUuid: string, draft: CompanySubmissionDraftInput): Promise<void> => {
-    const key = draftQueueKey(submissionUuid, sectionUuid);
+  const save = (
+    sectionUuid: string,
+    draft: CompanySubmissionDraftInput,
+    purpose: "autosave" | "explicit" = "autosave",
+  ): Promise<void> => {
+    const key = draftQueueKey(activeSubmissionUuid, sectionUuid);
+    const saveSubmissionUuid = activeSubmissionUuid;
     const sequence = (saveSequencesRef.current[key] ?? 0) + 1;
     saveSequencesRef.current[key] = sequence;
-    return saveCompanySubmissionDraft(submissionUuid, sectionUuid, draft).then(
+    const answerRevisions = new Map<string, number>();
+    const answerCommentRevisions = new Map<string, number>();
+    for (const answer of draft.answers) {
+      const answerRevision = answerRevisionsRef.current[answer.questionUuid];
+      if (answerRevision !== undefined) answerRevisions.set(answer.questionUuid, answerRevision);
+      if (answer.comment !== undefined) {
+        const commentRevision = answerCommentRevisionsRef.current[answer.questionUuid];
+        if (commentRevision !== undefined) answerCommentRevisions.set(answer.questionUuid, commentRevision);
+      }
+    }
+    const sectionCommentRevision = draft.sectionComment === undefined
+      ? undefined
+      : sectionCommentRevisionsRef.current[sectionUuid];
+    return saveCompanySubmissionDraft(activeSubmissionUuid, sectionUuid, draft).then(
       () => {
-        if (!isMountedRef.current || saveSequencesRef.current[key] !== sequence) return;
+        if (activeSubmissionUuidRef.current === saveSubmissionUuid
+          && activeSubmissionStatusRef.current === "in_progress"
+          && !lockedSectionUuidsRef.current.has(sectionUuid)) {
+          for (const [questionUuid, revision] of answerRevisions) {
+            acknowledgedAnswerRevisionsRef.current[questionUuid] = Math.max(
+              acknowledgedAnswerRevisionsRef.current[questionUuid] ?? 0,
+              revision,
+            );
+          }
+          for (const [questionUuid, revision] of answerCommentRevisions) {
+            acknowledgedAnswerCommentRevisionsRef.current[questionUuid] = Math.max(
+              acknowledgedAnswerCommentRevisionsRef.current[questionUuid] ?? 0,
+              revision,
+            );
+          }
+          if (sectionCommentRevision !== undefined) {
+            acknowledgedSectionCommentRevisionsRef.current[sectionUuid] = Math.max(
+              acknowledgedSectionCommentRevisionsRef.current[sectionUuid] ?? 0,
+              sectionCommentRevision,
+            );
+          }
+        }
+        if (!isMountedRef.current || activeSubmissionUuidRef.current !== saveSubmissionUuid
+          || activeSubmissionStatusRef.current !== "in_progress"
+          || lockedSectionUuidsRef.current.has(sectionUuid)
+          || saveSequencesRef.current[key] !== sequence) return;
+        if (purpose === "autosave" && explicitDraftSaveKeysRef.current.has(key)) return;
         setSaveErrors((current) => {
           if (!(key in current)) return current;
           const next = { ...current };
@@ -436,15 +638,20 @@ export function CompanySubmissionRenderer({
         });
       },
       (error: unknown) => {
-        if (!isMountedRef.current || saveSequencesRef.current[key] !== sequence) return;
+        if (!isMountedRef.current || activeSubmissionUuidRef.current !== saveSubmissionUuid
+          || activeSubmissionStatusRef.current !== "in_progress"
+          || lockedSectionUuidsRef.current.has(sectionUuid)
+          || saveSequencesRef.current[key] !== sequence) return;
         setSaveErrors((current) => ({
           ...current,
           [key]: reportSaveFailure(error),
         }));
+        throw error;
       },
     );
   };
   const handleAnswerChange = (questionUuid: string, value: ConfiguredFormAnswerValue) => {
+    answerRevisionsRef.current[questionUuid] = ++draftRevisionCounterRef.current;
     draftAnswersRef.current = { ...draftAnswersRef.current, [questionUuid]: value };
     setDraftAnswers((current) => ({ ...current, [questionUuid]: value }));
     const sectionUuid = rendererModel.questionSections[questionUuid];
@@ -456,11 +663,12 @@ export function CompanySubmissionRenderer({
           value: persistedDraftValue(questionUuid, value, rendererModel.questionResponseTypes),
           ...(comment !== null && comment !== undefined ? { comment } : {}),
         }],
-      });
+      }).catch(() => undefined);
     }
     onAnswerChange?.(questionUuid, value);
   };
   const handleAnswerCommentChange = (questionUuid: string, comment: string) => {
+    answerCommentRevisionsRef.current[questionUuid] = ++draftRevisionCounterRef.current;
     draftAnswerCommentsRef.current = { ...draftAnswerCommentsRef.current, [questionUuid]: comment };
     setDraftAnswerComments((current) => ({ ...current, [questionUuid]: comment }));
     const sectionUuid = rendererModel.questionSections[questionUuid];
@@ -472,40 +680,231 @@ export function CompanySubmissionRenderer({
           value: persistedDraftValue(questionUuid, value, rendererModel.questionResponseTypes),
           comment,
         }],
-      });
+      }).catch(() => undefined);
     }
     onAnswerCommentChange?.(questionUuid, comment);
   };
   const handleSectionCommentChange = (sectionUuid: string, comment: string) => {
+    sectionCommentRevisionsRef.current[sectionUuid] = ++draftRevisionCounterRef.current;
     draftSectionCommentsRef.current = { ...draftSectionCommentsRef.current, [sectionUuid]: comment };
     setDraftSectionComments((current) => ({ ...current, [sectionUuid]: comment }));
-    if (!rendererModel.readOnly) void save(sectionUuid, { answers: [], sectionComment: comment });
+    if (!rendererModel.readOnly) void save(sectionUuid, { answers: [], sectionComment: comment }).catch(() => undefined);
   };
-  const handleSaveDraft = (sectionUuid: string) => {
+  const handleSaveDraft = async (sectionUuid: string) => {
     const section = Object.values(rendererModel.structures)
       .flat()
       .find((candidate) => candidate.section_uuid === sectionUuid);
     if (!section || rendererModel.readOnly) return;
-    return save(sectionUuid, {
-      answers: section.questions.flatMap((question) => {
-        const questionUuid = question.question_uuid;
-        if (!questionUuid) return [];
-        const displayValue = draftAnswersRef.current[questionUuid];
-        const comment = draftAnswerCommentsRef.current[questionUuid];
-        if (displayValue === undefined && (comment === null || comment === undefined)) return [];
-        return [{
-          questionUuid,
-          value: persistedDraftValue(questionUuid, displayValue, rendererModel.questionResponseTypes),
-          ...(comment !== null && comment !== undefined ? { comment } : {}),
-        }];
-      }),
-      sectionComment: draftSectionCommentsRef.current[sectionUuid] ?? "",
+    const queueKey = draftQueueKey(activeSubmissionUuid, sectionUuid);
+    explicitDraftSaveKeysRef.current.add(queueKey);
+    try {
+      await flushCompanySubmissionDrafts(activeSubmissionUuid, sectionUuid);
+      await save(sectionUuid, {
+        answers: section.questions.flatMap((question) => {
+          const questionUuid = question.question_uuid;
+          if (!questionUuid) return [];
+          if (["content", "system_field", "info_only"].includes(question.response_type)) return [];
+          const displayValue = draftAnswersRef.current[questionUuid];
+          const comment = draftAnswerCommentsRef.current[questionUuid];
+          if (displayValue === undefined && (comment === null || comment === undefined)) return [];
+          return [{
+            questionUuid,
+            value: persistedDraftValue(questionUuid, displayValue, rendererModel.questionResponseTypes),
+            ...(comment !== null && comment !== undefined ? { comment } : {}),
+          }];
+        }),
+        sectionComment: draftSectionCommentsRef.current[sectionUuid] ?? "",
+      }, "explicit");
+    } finally {
+      explicitDraftSaveKeysRef.current.delete(queueKey);
+    }
+  };
+
+  const refetchPersistedForm = async () => {
+    await form.refetch();
+  };
+
+  const handleSubmitSection = async (sectionUuid: string, _comment: string) => {
+    if (sectionSubmitting[sectionUuid]) return;
+    setSectionSubmitting((current) => ({ ...current, [sectionUuid]: true }));
+    setSectionActionErrors((current) => {
+      const next = { ...current };
+      delete next[sectionUuid];
+      return next;
     });
+    try {
+      await handleSaveDraft(sectionUuid);
+      await apiRequest(
+        "POST",
+        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/submit`,
+      );
+      await refetchPersistedForm();
+    } catch (error) {
+      const message = reportSaveFailure(error);
+      setSectionActionErrors((current) => ({ ...current, [sectionUuid]: message }));
+      throw error;
+    } finally {
+      setSectionSubmitting((current) => ({ ...current, [sectionUuid]: false }));
+    }
+  };
+
+  const handleSignatureChange = async (
+    sectionUuid: string,
+    type: "officer" | "seafarer",
+    pngDataUrl: string,
+    _signerName?: string,
+    _signerRank?: string,
+    signatureMethod?: string,
+    seafarerPresent?: boolean,
+  ) => {
+    if (sectionSubmitting[sectionUuid]) return;
+    setSectionSubmitting((current) => ({ ...current, [sectionUuid]: true }));
+    setSectionActionErrors((current) => {
+      const next = { ...current };
+      delete next[sectionUuid];
+      return next;
+    });
+    try {
+      await handleSaveDraft(sectionUuid);
+      await apiRequest(
+        "POST",
+        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/signatures`,
+        {
+          signatureType: type,
+          method: signatureMethod,
+          data: pngDataUrl,
+          ...(signatureMethod === "witnessed" ? { seafarerPresent } : {}),
+        },
+      );
+      await refetchPersistedForm();
+    } catch (error) {
+      const message = reportSaveFailure(error);
+      setSectionActionErrors((current) => ({ ...current, [sectionUuid]: message }));
+      throw error;
+    } finally {
+      setSectionSubmitting((current) => ({ ...current, [sectionUuid]: false }));
+    }
+  };
+
+  const handleDeleteSignature = async (sectionUuid: string, type: "officer" | "seafarer") => {
+    if (sectionSubmitting[sectionUuid]) return;
+    // The rendered signature state's signatureAttUuid is the attachment asset
+    // ID used for image retrieval. DELETE identifies the signature record.
+    const signatureUuid = lifecycleForm?.states
+      .find((state) => state.sectionUuid === sectionUuid)
+      ?.signatures.find((signature) => signature.signatureType === type)
+      ?.sectionSignatureUuid;
+    if (!signatureUuid) throw new Error("The persisted signature could not be identified. Reload the Company Form and try again.");
+    setSectionSubmitting((current) => ({ ...current, [sectionUuid]: true }));
+    setSectionActionErrors((current) => {
+      const next = { ...current };
+      delete next[sectionUuid];
+      return next;
+    });
+    try {
+      await apiRequest(
+        "DELETE",
+        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/signatures/${encodeURIComponent(signatureUuid)}`,
+      );
+      await refetchPersistedForm();
+    } catch (error) {
+      const message = reportSaveFailure(error);
+      setSectionActionErrors((current) => ({ ...current, [sectionUuid]: message }));
+      throw error;
+    } finally {
+      setSectionSubmitting((current) => ({ ...current, [sectionUuid]: false }));
+    }
+  };
+
+  const handleVoidSubmission = async () => {
+    if (!voidReason.trim() || isVoiding) return;
+    setIsVoiding(true);
+    setVoidError(null);
+    try {
+      await apiRequest(
+        "POST",
+        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/void`,
+        { reason: voidReason.trim() },
+      );
+      setVoidReason("");
+      await refetchPersistedForm();
+    } catch (error) {
+      setVoidError(reportSaveFailure(error));
+    } finally {
+      setIsVoiding(false);
+    }
   };
 
   const visibleSaveErrors = Object.entries(saveErrors)
-    .filter(([key]) => key.startsWith(`${submissionUuid}\u0000`));
+    .filter(([key]) => key.startsWith(`${activeSubmissionUuid}\u0000`));
+  const relatedSubmissions = lifecycleForm?.replacementHistory ?? [];
+  const submissionStatus = lifecycleForm?.submission.status;
   return React.createElement(React.Fragment, null,
+    lifecycleForm?.systemValuesChangedNotice && React.createElement(
+      "div",
+      { role: "status", className: "mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" },
+      lifecycleForm.systemValuesChangedNotice,
+    ),
+    lifecycleForm?.systemValuesComparisonError && React.createElement(
+      "div",
+      { role: "alert", className: "mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" },
+      "Current record values could not be compared with this declaration's saved snapshot.",
+    ),
+    relatedSubmissions.length > 0 && React.createElement(
+      "section",
+      { className: "mb-3 rounded-md border p-3 text-sm", "aria-label": "Voided submission history" },
+      relatedSubmissions.map((relatedSubmission) => React.createElement(
+        "div",
+        { key: `${relatedSubmission.label}:${relatedSubmission.submissionUuid}`, className: "mt-2 first:mt-0" },
+        React.createElement("p", null, relatedSubmission.label),
+        React.createElement(
+          "button",
+          {
+            type: "button",
+            className: "mt-1 text-primary underline underline-offset-2",
+            onClick: () => setActiveSubmissionUuid(relatedSubmission.submissionUuid),
+          },
+          `Open linked submission ${relatedSubmission.submissionUuid}`,
+        ),
+      )),
+    ),
+    activeSubmissionUuid !== originalSubmissionUuid.current && React.createElement(
+      "button",
+      {
+        type: "button",
+        className: "mb-3 text-primary underline underline-offset-2",
+        onClick: () => setActiveSubmissionUuid(originalSubmissionUuid.current),
+      },
+      "Return to the previously opened submission",
+    ),
+    lifecycleForm && submissionStatus === "voided" && React.createElement(
+      "div",
+      { role: "status", className: "mb-3 rounded-md border p-3 text-sm" },
+      React.createElement("p", { className: "font-semibold" }, "Voided submission"),
+      lifecycleForm.submission.voidReason && React.createElement("p", { className: "mt-1" }, `Reason: ${lifecycleForm.submission.voidReason}`),
+      lifecycleForm.submission.voidedAt && React.createElement("p", { className: "mt-1" }, `Voided at ${new Date(lifecycleForm.submission.voidedAt).toLocaleString()}`),
+    ),
+    lifecycleForm?.submission.canVoid && submissionStatus !== "voided" && React.createElement(
+      "section",
+      { className: "mb-3 space-y-2 rounded-md border p-3", "aria-label": "Void submission" },
+      React.createElement("label", { htmlFor: "company-form-void-reason", className: "block text-sm font-medium" }, "Void this submission and keep it in history"),
+      React.createElement("textarea", {
+        id: "company-form-void-reason",
+        className: "min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm",
+        value: voidReason,
+        onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => setVoidReason(event.target.value),
+        maxLength: 5000,
+        required: true,
+        "aria-required": true,
+      }),
+      React.createElement("button", {
+        type: "button",
+        className: "rounded-md border px-3 py-2 text-sm",
+        disabled: isVoiding || !voidReason.trim(),
+        onClick: () => void handleVoidSubmission(),
+      }, isVoiding ? "Voiding…" : "Void submission"),
+      voidError && React.createElement("p", { role: "alert", className: "text-sm text-destructive" }, voidError),
+    ),
     visibleSaveErrors.map(([key, message]) => React.createElement(
         "div",
         { key, role: "alert", className: "mb-3 flex items-start gap-2 text-sm text-destructive" },
@@ -551,11 +950,18 @@ export function CompanySubmissionRenderer({
         answerComments: draftAnswerComments,
         sectionComments: draftSectionComments,
         sectionStates: rendererModel.sectionStates,
+        submissionStatus,
+        signatureMethodOptions: lifecycleForm?.signatureMethodOptions,
+        sectionSubmitting,
+        sectionActionErrors,
         isLocked: rendererModel.readOnly,
         onAnswerChange: handleAnswerChange,
         onAnswerCommentChange: handleAnswerCommentChange,
         onSectionCommentChange: handleSectionCommentChange,
         onSaveDraft: handleSaveDraft,
+        onSubmitSection: handleSubmitSection,
+        onSignatureChange: handleSignatureChange,
+        onDeleteSignature: handleDeleteSignature,
       },
     }),
   );

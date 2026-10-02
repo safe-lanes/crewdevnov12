@@ -30,6 +30,9 @@ const assetParamsSchema = submissionParamsSchema.extend({
 const sectionParamsSchema = submissionParamsSchema.extend({
   sectionUuid: z.string().uuid(),
 }).strict();
+const signatureParamsSchema = sectionParamsSchema.extend({
+  signatureUuid: z.string().uuid(),
+}).strict();
 const draftAnswerSchema = z.object({
   questionUuid: z.string().uuid(),
   value: z.union([
@@ -62,6 +65,16 @@ const draftBodySchema = z.object({
     questionUuids.add(answer.questionUuid);
   });
 });
+const sectionSubmitBodySchema = z.object({}).strict();
+const signatureBodySchema = z.object({
+  signatureType: z.enum(["officer", "seafarer"]),
+  method: z.enum(["officer", "authenticated", "witnessed"]),
+  data: z.string().max(7_000_000),
+  seafarerPresent: z.boolean().optional(),
+}).strict();
+const voidBodySchema = z.object({
+  reason: z.string().trim().min(1).max(5000),
+}).strict();
 
 function sendError(res: Response, error: unknown): void {
   if (
@@ -143,6 +156,89 @@ router.put("/:submissionUuid/sections/:sectionUuid/answers", async (req, res) =>
       sectionUuid: params.sectionUuid,
       answers: body.data.answers,
       sectionComment: body.data.sectionComment,
+    });
+    res.status(204).end();
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.post("/:submissionUuid/sections/:sectionUuid/submit", async (req, res) => {
+  const params = parseParams(sectionParamsSchema, req, res);
+  if (!params) return;
+  const body = sectionSubmitBodySchema.safeParse(req.body ?? {});
+  if (!body.success) {
+    res.status(400).json({ error: "invalid_request", message: "Section submission accepts no request fields." });
+    return;
+  }
+  try {
+    res.json(await companyFormSubmissionsService.submitSection({
+      req,
+      submissionUuid: params.submissionUuid,
+      sectionUuid: params.sectionUuid,
+    }));
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.post("/:submissionUuid/sections/:sectionUuid/signatures", async (req, res) => {
+  const params = parseParams(sectionParamsSchema, req, res);
+  if (!params) return;
+  const body = signatureBodySchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({
+      error: "invalid_request",
+      message: "Invalid Company Form signature.",
+      details: body.error.issues,
+    });
+    return;
+  }
+  try {
+    res.status(201).json(await companyFormSubmissionsService.saveSignature({
+      req,
+      submissionUuid: params.submissionUuid,
+      sectionUuid: params.sectionUuid,
+      ...body.data,
+    }));
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.delete("/:submissionUuid/sections/:sectionUuid/signatures/:signatureUuid", async (req, res) => {
+  const params = parseParams(signatureParamsSchema, req, res);
+  if (!params) return;
+  try {
+    await companyFormSubmissionsService.removeSignature({
+      req,
+      submissionUuid: params.submissionUuid,
+      sectionUuid: params.sectionUuid,
+      signatureUuid: params.signatureUuid,
+    });
+    res.status(204).end();
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+router.post("/:submissionUuid/void", async (req, res) => {
+  const params = parseParams(submissionParamsSchema, req, res);
+  if (!params) return;
+  const body = voidBodySchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({
+      error: "invalid_request",
+      message: "A written Company Form void reason is required.",
+      details: body.error.issues,
+    });
+    return;
+  }
+  try {
+    await companyFormSubmissionsService.voidSubmission({
+      req,
+      submissionUuid: params.submissionUuid,
+      reason: body.data.reason,
     });
     res.status(204).end();
   } catch (error) {

@@ -12,7 +12,10 @@ import {
   frmSections,
   frmSignatureAttachments,
 } from "../../../shared/v2/forms-engine/schema";
-import { frmCompanySubmissions } from "../../../shared/v2/forms-engine/submissions";
+import {
+  frmCompanySubmissionSystemSnapshots,
+  frmCompanySubmissions,
+} from "../../../shared/v2/forms-engine/submissions";
 import { getDb } from "../db";
 
 type Executor = any;
@@ -28,6 +31,15 @@ export class CompanyFormSubmissionRenderRepository {
       stageKey: frmCompanySubmissions.stageKey,
       status: frmCompanySubmissions.status,
       completedAt: frmCompanySubmissions.completedAt,
+      voidedAt: frmCompanySubmissions.voidedAt,
+      voidedByUuid: frmCompanySubmissions.voidedByUuid,
+      voidedByName: frmCompanySubmissions.voidedByName,
+      voidReason: frmCompanySubmissions.voidReason,
+      voidedPreviousStatus: frmCompanySubmissions.voidedPreviousStatus,
+      replacedBySubmissionUuid: frmCompanySubmissions.replacedBySubmissionUuid,
+      replacesSubmissionUuid: frmCompanySubmissions.replacesSubmissionUuid,
+      systemSnapshotAt: frmCompanySubmissions.systemSnapshotAt,
+      systemSnapshotEvent: frmCompanySubmissions.systemSnapshotEvent,
       createdAt: frmCompanySubmissions.createdAt,
     }).from(frmCompanySubmissions).where(and(
       eq(frmCompanySubmissions.submissionUuid, submissionUuid),
@@ -54,7 +66,7 @@ export class CompanyFormSubmissionRenderRepository {
     const parent = parentRows[0];
     if (!parent) return undefined;
 
-    const [parts, sections, optionSets, states] = await Promise.all([
+    const [parts, sections, optionSets, states, systemSnapshots, signatureHistory] = await Promise.all([
       executor.select().from(frmFormParts).where(and(
         eq(frmFormParts.formUuid, parent.submission.formUuid),
         eq(frmFormParts.formVersionUuid, parent.submission.formVersionUuid),
@@ -91,6 +103,16 @@ export class CompanyFormSubmissionRenderRepository {
           eq(frmSections.formVersionUuid, parent.submission.formVersionUuid),
           eq(frmSections.isDeleted, false),
         )),
+      executor.select().from(frmCompanySubmissionSystemSnapshots).where(and(
+        eq(frmCompanySubmissionSystemSnapshots.submissionUuid, parent.submission.submissionUuid),
+        eq(frmCompanySubmissionSystemSnapshots.isDeleted, false),
+      )),
+      executor.select({ sectionSignatureUuid: frmSectionSignatures.sectionSignatureUuid })
+        .from(frmSectionSignatures)
+        .innerJoin(frmSectionStates, eq(frmSectionStates.sectionStateUuid, frmSectionSignatures.sectionStateUuid))
+        .where(and(
+          eq(frmSectionStates.submissionUuid, parent.submission.submissionUuid),
+        )).limit(1),
     ]);
 
     const sectionUuids = sections.map((section: any) => section.sectionUuid);
@@ -204,6 +226,8 @@ export class CompanyFormSubmissionRenderRepository {
       states: states.map((row: any) => row.state),
       answers: answerRows.map((row: any) => row.answer),
       signatures: signatureRows,
+      systemSnapshots,
+      hasSignatureHistory: signatureHistory.length > 0,
       vesselTypes: vesselTypeRows,
       roles: roleRows,
     };

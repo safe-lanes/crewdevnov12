@@ -19,6 +19,10 @@ const OFFICE_ACTION_PERMISSION: Partial<Record<CompanyFormAction, "view" | "crea
   read_asset: "view",
   create_submission: "create",
   edit_draft: "edit",
+  submit_section: "edit",
+  save_signature: "edit",
+  remove_signature: "edit",
+  void_submission: "edit",
 };
 
 export type SeafarerCrewLinkResolver = (masterUserId: number) => Promise<string | null>;

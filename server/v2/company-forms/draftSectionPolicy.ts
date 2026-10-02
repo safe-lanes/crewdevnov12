@@ -1,7 +1,20 @@
 import { eq } from "drizzle-orm";
 import { masterUsers } from "../../../shared/schema";
 import type { CompanyFormPrincipal } from "./contracts";
-import { CompanyFormPermissionError } from "./errors";
+import { CompanyFormPermissionError, CompanyFormValidationError } from "./errors";
+
+export function assertCompanyFormSignatureConfigured(
+  section: { signatureOfficerRequired: boolean; signatureSeafarerRequired: boolean },
+  signatureType: "officer" | "seafarer",
+): void {
+  const configured = signatureType === "officer"
+    ? section.signatureOfficerRequired
+    : section.signatureSeafarerRequired;
+  if (!configured) {
+    const label = signatureType === "officer" ? "Company Representative" : "Seafarer";
+    throw new CompanyFormValidationError(`${label} signing is not configured for this section.`);
+  }
+}
 
 type SectionPolicyInput = {
   principal: CompanyFormPrincipal;
@@ -46,6 +59,7 @@ export async function assertCompanyFormSectionEditable(input: SectionPolicyInput
   }
 
   if (section.responsibleMode === "seafarer") {
+    if (principal.kind === "office") return;
     if (principal.kind !== "seafarer" || principal.linkageSource !== "trusted_server_resolver") {
       throw new CompanyFormPermissionError("Only the linked seafarer may edit this Company Form section.");
     }

@@ -11,6 +11,7 @@ import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersionV2, CreateCompanyFormV2Response } from "../../../../shared/v2/admin/types";
 import { getBaseRank } from "../../../../shared/crew-mapping";
 import { v4 as uuidv4 } from "uuid";
+import { validatePersistedCompanyFormLifecycle } from "../../company-forms/lifecyclePolicy";
 
 const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
@@ -634,6 +635,12 @@ export const formsService = {
       }
       if (stages.length === 0 && existing.stageKey != null) {
         throw new FormStageValidationError("This form does not declare subject stages; clear the stage before releasing.");
+      }
+      if (form.category === "dynamic") {
+        const lifecycleErrors = await validatePersistedCompanyFormLifecycle(tx, existing.fvUuid);
+        if (lifecycleErrors.length > 0) {
+          throw new FormStageValidationError(lifecycleErrors.join(" "));
+        }
       }
       const now = new Date();
       const todayStr = now.toLocaleDateString("en-GB", {

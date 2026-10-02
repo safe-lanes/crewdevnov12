@@ -12,6 +12,10 @@ import type {
   CompanyFormSubmissionRenderContract,
   CompanyFormSubmissionSectionState,
   CompanyFormSubmissionSummary,
+  CompanyFormSignatureMethodOption,
+  CompanyFormSignatureType,
+  CompanyFormSubmissionHistoryLink,
+  CompanyFormSubmissionSectionActions,
   CompanyFormSystemFieldValue,
 } from "../../../shared/v2/forms-engine/submissionRenderContract";
 import {
@@ -41,8 +45,13 @@ import {
   type CompanyFormDraftAnswerInput,
   type CompanyFormSubmissionDraftRepository,
 } from "./submissionDraftRepository";
-import { assertCompanyFormSectionEditable } from "./draftSectionPolicy";
+import { assertCompanyFormSectionEditable, assertCompanyFormSignatureConfigured } from "./draftSectionPolicy";
 import { sanitizeComparisonHtml } from "../../../shared/v2/forms-engine/contentSanitizer";
+import { companyFormSubmissionLifecycleRepository } from "./submissionLifecycleRepository";
+import { fileStorageService } from "../shared/fileStorageService";
+import { randomUUID } from "node:crypto";
+import { getDb } from "../db";
+import { sectionRequiresSubmission } from "./lifecyclePolicy";
 
 function isoDate(value: Date | string | null | undefined): string | null {
   if (value === null || value === undefined) return null;
@@ -56,7 +65,7 @@ function isoCalendarDate(value: Date | string | null | undefined): string | null
   return timestamp ? timestamp.slice(0, 10) : null;
 }
 
-function mapSummary(row: any, canEdit: boolean): CompanyFormSubmissionSummary {
+function mapSummary(row: any, canEdit: boolean, canVoid: boolean): CompanyFormSubmissionSummary {
   return {
     submissionUuid: row.submissionUuid,
     subjectType: row.subjectType,
@@ -66,9 +75,38 @@ function mapSummary(row: any, canEdit: boolean): CompanyFormSubmissionSummary {
     stageKey: row.stageKey,
     status: row.status,
     canEdit,
+    canVoid,
     createdAt: isoDate(row.createdAt),
     completedAt: isoDate(row.completedAt),
+    voidedAt: isoDate(row.voidedAt),
+    voidedByUuid: row.voidedByUuid,
+    voidedByName: row.voidedByName,
+    voidReason: row.voidReason,
+    voidedPreviousStatus: row.voidedPreviousStatus,
+    replacedBySubmissionUuid: row.replacedBySubmissionUuid,
+    replacesSubmissionUuid: row.replacesSubmissionUuid,
+    systemSnapshotAt: isoDate(row.systemSnapshotAt),
+    systemSnapshotEvent: row.systemSnapshotEvent,
   };
+}
+
+function replacementHistory(row: any): CompanyFormSubmissionHistoryLink[] {
+  const links: CompanyFormSubmissionHistoryLink[] = [];
+  if (row.replacedBySubmissionUuid) {
+    links.push({
+      direction: "replaced_by",
+      label: "Voided — replaced by",
+      submissionUuid: row.replacedBySubmissionUuid,
+    });
+  }
+  if (row.replacesSubmissionUuid) {
+    links.push({
+      direction: "replaces",
+      label: "Replaces a voided submission",
+      submissionUuid: row.replacesSubmissionUuid,
+    });
+  }
+  return links;
 }
 
 function mapRenderOption(row: any): CompanyFormRenderOption {
@@ -235,6 +273,110 @@ export class CompanyFormSubmissionsService {
     }
   }
 
+  private async canAuthorizeAction(
+    adapter: CompanyFormSubjectAdapter<any>,
+    principal: CompanyFormPrincipal,
+    action: CompanyFormAction,
+    subject: any,
+  ): Promise<boolean> {
+    try {
+      return await adapter.authorize(principal, action, subject);
+    } catch {
+      return false;
+    }
+  }
+
+  private async canVoidSubmission(
+    adapter: CompanyFormSubjectAdapter<any>,
+    principal: CompanyFormPrincipal,
+    subject: any,
+    status: string,
+  ): Promise<boolean> {
+    if (principal.kind !== "office" || (status !== "in_progress" && status !== "completed")) return false;
+    return this.canAuthorizeAction(adapter, principal, "void_submission", subject);
+  }
+
+  private signatureMethodOptions(
+    adapter: CompanyFormSubjectAdapter<any>,
+    principal: CompanyFormPrincipal,
+    actionAuthorized: boolean,
+  ): Partial<Record<CompanyFormSignatureType, CompanyFormSignatureMethodOption[]>> {
+    const options: Partial<Record<CompanyFormSignatureType, CompanyFormSignatureMethodOption[]>> = {};
+    if (!actionAuthorized) return options;
+    for (const declaration of adapter.signatories) {
+      const methods = declaration.methodsByActor?.[principal.kind] ??
+        (declaration.allowedActors.includes(principal.kind) ? declaration.methods : []);
+      if (!methods.length) continue;
+      options[declaration.signatureType] = methods.map((method) => ({
+        method,
+        label: method === "officer" ? "Company Representative" :
+          method === "authenticated" ? "Authenticated Seafarer" :
+            "Office-witnessed Seafarer",
+      }));
+    }
+    return options;
+  }
+
+  private async sectionActions(input: {
+    principal: CompanyFormPrincipal;
+    canEditSubmission: boolean;
+    canSubmitAction: boolean;
+    canSaveSignatureAction: boolean;
+    sections: readonly any[];
+    parts: readonly any[];
+    questions: readonly any[];
+    states: readonly any[];
+    applicableBySection: ReadonlyMap<string, boolean>;
+    methodOptions: Partial<Record<CompanyFormSignatureType, CompanyFormSignatureMethodOption[]>>;
+  }): Promise<Record<string, CompanyFormSubmissionSectionActions>> {
+    const questionsBySection = new Map<string, any[]>();
+    for (const question of input.questions) {
+      const values = questionsBySection.get(question.sectionUuid) ?? [];
+      values.push(question);
+      questionsBySection.set(question.sectionUuid, values);
+    }
+    const partByUuid = new Map(input.parts.map((part) => [part.formPartUuid, part]));
+    const statusBySection = new Map(input.states.map((state) => [state.sectionUuid, state.status]));
+    const result: Record<string, CompanyFormSubmissionSectionActions> = {};
+    for (const section of input.sections) {
+      const applicable = input.applicableBySection.get(section.sectionUuid) ?? true;
+      const state = statusBySection.get(section.sectionUuid);
+      const mutable = state !== "submitted" && state !== "not_applicable";
+      let canEdit = input.canEditSubmission && applicable && mutable;
+      if (canEdit) {
+        try {
+          await assertCompanyFormSectionEditable({
+            principal: input.principal,
+            section,
+            part: partByUuid.get(section.formPartUuid) ?? { isOfficeOnly: false },
+            executor: getDb(),
+          });
+        } catch {
+          canEdit = false;
+        }
+      }
+      const questions = questionsBySection.get(section.sectionUuid) ?? [];
+      const required = sectionRequiresSubmission({ ...section, questions });
+      const canSign: Partial<Record<CompanyFormSignatureType, boolean>> = {};
+      for (const signatureType of ["officer", "seafarer"] as const) {
+        const signatureRequired = signatureType === "officer"
+          ? section.signatureOfficerRequired
+          : section.signatureSeafarerRequired;
+        canSign[signatureType] = canEdit && input.canSaveSignatureAction &&
+          signatureRequired && (input.methodOptions[signatureType]?.length ?? 0) > 0;
+      }
+      const canProvideRequiredSignatures =
+        (!section.signatureOfficerRequired || (input.methodOptions.officer?.length ?? 0) > 0) &&
+        (!section.signatureSeafarerRequired || (input.methodOptions.seafarer?.length ?? 0) > 0);
+      result[section.sectionUuid] = {
+        canEdit,
+        canSubmit: canEdit && input.canSubmitAction && required && canProvideRequiredSignatures,
+        canSign,
+      };
+    }
+    return result;
+  }
+
   private mapStatesAndAnswers(data: any, formUrl: string) {
     const signaturesByState = new Map<string, CompanyFormSubmissionSectionState["signatures"]>();
     for (const row of data.signatures as any[]) {
@@ -244,6 +386,7 @@ export class CompanyFormSubmissionsService {
         signatureType: row.signature.signatureType,
         signerName: row.signature.signerName,
         signerRank: row.signature.signerRank,
+        witnessName: row.signature.witnessName,
         signedAt: isoDate(row.signature.signedAt)!,
         signedByUuid: row.signature.signedByUuid,
         signatureMethod: row.signature.signatureMethod,
@@ -291,13 +434,19 @@ export class CompanyFormSubmissionsService {
     const data = await this.renderRepository.readPinnedRenderData(input.submissionUuid);
     if (!data) throw new CompanyFormNotFoundError("Company Form submission not found.");
     const canEdit = await this.canEditSubmission(adapter, principal, subject.context, data.submission.status);
+    const canVoid = await this.canVoidSubmission(adapter, principal, subject.context, data.submission.status);
     const formUrl = `/api/v2/company-form-submissions/${encodeURIComponent(input.submissionUuid)}`;
     const { states, answers } = this.mapStatesAndAnswers(data, formUrl);
+    const history = replacementHistory(data.submission);
     return {
-      submission: mapSummary(data.submission, canEdit),
+      submission: mapSummary(data.submission, canEdit, canVoid),
       states,
       answers,
       formUrl: `${formUrl}/form`,
+      voidedReplacement: history[0]
+        ? { label: history[0].label, submissionUuid: history[0].submissionUuid }
+        : null,
+      replacementHistory: history,
     };
   }
 
@@ -313,15 +462,58 @@ export class CompanyFormSubmissionsService {
     const data = await this.renderRepository.readPinnedRenderData(input.submissionUuid);
     if (!data) throw new CompanyFormNotFoundError("Company Form submission not found.");
     const canEdit = await this.canEditSubmission(adapter, principal, subject.context, data.submission.status);
+    const canVoid = await this.canVoidSubmission(adapter, principal, subject.context, data.submission.status);
 
     const stages = await adapter.loadStages();
     const stage = data.submission.stageKey
       ? stages.find((candidate) => candidate.stageKey === data.submission.stageKey)
       : undefined;
-    const dateOfDeclaration = isoCalendarDate(data.submission.completedAt ?? data.submission.createdAt);
+    const snapshotAt = data.submission.systemSnapshotAt as Date | string | null;
+    const dateOfDeclaration = isoCalendarDate(snapshotAt ?? data.submission.createdAt);
+    const snapshots = data.systemSnapshots as any[];
+    const snapshotByQuestion = new Map<string, any>(snapshots.map((snapshot) => [snapshot.questionUuid, snapshot]));
+    const systemSnapshotExists = snapshotAt !== null;
+    const hasLegacySignatureOrSubmission = !systemSnapshotExists &&
+      ((data.states as any[]).some((state) => state.status === "submitted") ||
+        data.hasSignatureHistory === true);
+    let systemValuesChanged: boolean | null = systemSnapshotExists ? false : null;
+    let systemValuesComparisonError = hasLegacySignatureOrSubmission;
+    const usedSystemFieldKeys = new Set((data.questions as any[])
+      .filter((question) => question.responseType === "system_field")
+      .map((question) => question.systemFieldKey));
     const systemFields: CompanyFormSystemFieldValue[] = [];
-    for (const field of adapter.systemFields) {
-      if (field.source === "subject" && data.submission.status === "completed") {
+    for (const field of adapter.systemFields.filter((declared) => usedSystemFieldKeys.has(declared.key))) {
+      if (systemSnapshotExists) {
+        const recorded = snapshots.find((snapshot) => snapshot.fieldKey === field.key);
+        if (recorded) {
+          systemFields.push({
+            ...field,
+            value: recorded.value,
+            valueOrigin: "frozen_snapshot",
+          });
+          try {
+            const current = await adapter.resolveSystemField(field.key, subject.context, {
+              submission: { dateOfDeclaration },
+            });
+            if (current !== recorded.value) systemValuesChanged = true;
+          } catch {
+            systemValuesComparisonError = true;
+            if (systemValuesChanged !== true) systemValuesChanged = null;
+          }
+        } else {
+          // A frozen timestamp with no corresponding row is incomplete
+          // history. Never replace it with values from the current source.
+          systemFields.push({
+            ...field,
+            value: null,
+            valueOrigin: "persisted_snapshot_unavailable",
+          });
+          systemValuesComparisonError = true;
+          if (systemValuesChanged !== true) systemValuesChanged = null;
+        }
+        continue;
+      }
+      if (hasLegacySignatureOrSubmission || data.submission.status === "completed" || data.submission.status === "voided") {
         systemFields.push({
           ...field,
           value: null,
@@ -367,6 +559,34 @@ export class CompanyFormSubmissionsService {
     const roleByUuid = new Map<string, any>(
       (data.roles as any[]).map((row) => [row.roleUuid, row]),
     );
+    const applicableBySection = new Map<string, boolean>();
+    for (const section of data.sections as any[]) {
+      applicableBySection.set(
+        section.sectionUuid,
+        await (adapter.isSectionApplicable?.(section, subject.context) ?? true),
+      );
+    }
+    const canSubmitAction = await this.canAuthorizeAction(
+      adapter, principal, "submit_section", subject.context,
+    );
+    const canSaveSignatureAction = await this.canAuthorizeAction(
+      adapter, principal, "save_signature", subject.context,
+    );
+    const signatureMethodOptions = this.signatureMethodOptions(
+      adapter, principal, canSaveSignatureAction,
+    );
+    const sectionActions = await this.sectionActions({
+      principal,
+      canEditSubmission: canEdit,
+      canSubmitAction,
+      canSaveSignatureAction,
+      sections: data.sections as any[],
+      parts: data.parts as any[],
+      questions: data.questions as any[],
+      states: data.states as any[],
+      applicableBySection,
+      methodOptions: signatureMethodOptions,
+    });
     const optionSets = (data.optionSets as any[]).map((set) => ({
       optionSetUuid: set.optionSetUuid,
       setName: set.setName,
@@ -384,6 +604,7 @@ export class CompanyFormSubmissionsService {
       sortOrder: part.sortOrder,
       sections: (sectionsByPart.get(part.formPartUuid) ?? []).map((section) => {
         const questions = questionsBySection.get(section.sectionUuid) ?? [];
+        const actions = sectionActions[section.sectionUuid];
         return {
           sectionUuid: section.sectionUuid,
           sectionCode: section.sectionCode,
@@ -410,6 +631,11 @@ export class CompanyFormSubmissionsService {
           layoutPreference: section.layoutPreference,
           effectiveLayout: resolveEffectiveLayout(section, questions, optionSetsByUuid, optionsBySet),
           sortOrder: section.sortOrder,
+          requiresSubmission: sectionRequiresSubmission({ ...section, questions }),
+          isApplicable: applicableBySection.get(section.sectionUuid) ?? true,
+          canEdit: actions?.canEdit ?? false,
+          canSubmit: actions?.canSubmit ?? false,
+          canSign: actions?.canSign ?? {},
           questions: questions.map((question) => {
             const responseType = renderResponseType(question.responseType);
             const isSystemField = responseType === "system_field";
@@ -436,7 +662,17 @@ export class CompanyFormSubmissionsService {
               optionSetUuid,
               sortOrder: question.sortOrder,
               options: optionSetUuid ? optionsBySet.get(optionSetUuid) ?? [] : [],
-              systemField: systemField ?? null,
+              systemField: isSystemField
+                ? {
+                  ...systemField!,
+                  value: snapshotByQuestion.has(question.questionUuid)
+                    ? snapshotByQuestion.get(question.questionUuid).value
+                    : systemField!.value,
+                  valueOrigin: snapshotByQuestion.has(question.questionUuid)
+                    ? "frozen_snapshot"
+                    : systemField!.valueOrigin,
+                }
+                : null,
             };
           }),
         };
@@ -445,8 +681,11 @@ export class CompanyFormSubmissionsService {
 
     const formUrl = `/api/v2/company-form-submissions/${encodeURIComponent(input.submissionUuid)}`;
     const { states, answers } = this.mapStatesAndAnswers(data, formUrl);
+    const history = replacementHistory(data.submission);
+    if (systemValuesComparisonError && systemValuesChanged !== true) systemValuesChanged = null;
     return {
-      submission: mapSummary(data.submission, canEdit),
+      submission: mapSummary(data.submission, canEdit, canVoid),
+      signatureMethodOptions,
       form: {
         formName: data.form.name,
         description: data.form.description,
@@ -467,6 +706,17 @@ export class CompanyFormSubmissionsService {
       parts,
       states,
       answers,
+      systemSnapshotAt: isoDate(snapshotAt),
+      systemSnapshotEvent: data.submission.systemSnapshotEvent,
+      systemValuesChanged,
+      systemValuesComparisonError,
+      systemValuesChangedNotice: systemValuesChanged
+        ? "The record has changed since signing began. This declaration shows the values at the time of first signature."
+        : null,
+      voidedReplacement: history[0]
+        ? { label: history[0].label, submissionUuid: history[0].submissionUuid }
+        : null,
+      replacementHistory: history,
     };
   }
 
@@ -527,6 +777,129 @@ export class CompanyFormSubmissionsService {
     });
   }
 
+  async submitSection(input: {
+    req: Request;
+    submissionUuid: string;
+    sectionUuid: string;
+  }) {
+    const { adapter, principal } = await this.authorizeSubmission(
+      input.req,
+      input.submissionUuid,
+      "submit_section",
+    );
+    return companyFormSubmissionLifecycleRepository.submitSection({
+      submissionUuid: input.submissionUuid,
+      sectionUuid: input.sectionUuid,
+      actor: principal,
+      adapter,
+    });
+  }
+
+  async saveSignature(input: {
+    req: Request;
+    submissionUuid: string;
+    sectionUuid: string;
+    signatureType: "officer" | "seafarer";
+    method: "officer" | "authenticated" | "witnessed";
+    data: string;
+    seafarerPresent?: boolean;
+  }) {
+    const { adapter, principal } = await this.authorizeSubmission(
+      input.req,
+      input.submissionUuid,
+      "save_signature",
+    );
+    // The version is immutable. Reject foreign/unconfigured sections before
+    // writing a file; the locked repository repeats this check authoritatively.
+    const pinned = await this.renderRepository.readPinnedRenderData(input.submissionUuid);
+    if (!pinned) throw new CompanyFormNotFoundError("Company Form submission not found.");
+    if (pinned.submission.status !== "in_progress") {
+      throw new CompanyFormConflictError("This Company Form no longer accepts signatures.");
+    }
+    const section = (pinned.sections as any[]).find((candidate) => candidate.sectionUuid === input.sectionUuid);
+    if (!section) throw new CompanyFormValidationError("Section does not belong to this pinned submission.");
+    assertCompanyFormSignatureConfigured(section, input.signatureType);
+    if (input.method === "witnessed" && input.seafarerPresent !== true) {
+      throw new CompanyFormValidationError("Confirm the Seafarer is present before recording a witnessed signature.");
+    }
+    if (input.method !== "witnessed" && input.seafarerPresent !== undefined) {
+      throw new CompanyFormValidationError("Seafarer presence may only be supplied for a witnessed signature.");
+    }
+    const match = /^data:image\/png;base64,([A-Za-z0-9+/]+={0,2})$/.exec(input.data);
+    if (!match || input.data.length > Math.ceil(5 * 1024 * 1024 * 4 / 3) + 100) {
+      throw new CompanyFormValidationError("Signature must be a PNG data URL within the size limit.");
+    }
+    const bytes = Buffer.from(match[1], "base64");
+    const mimeType = fileStorageService.detectMimeBySignature(bytes);
+    if (!mimeType || mimeType !== "image/png" || bytes.length > fileStorageService.MAX_ATTACHMENT_BYTES) {
+      throw new CompanyFormValidationError("Signature must be a valid PNG within the size limit.");
+    }
+    const attachmentUuid = randomUUID();
+    const filePath = await fileStorageService.writeAttachment(
+      "company-forms/signatures",
+      "signature.png",
+      bytes,
+    );
+    try {
+      return await companyFormSubmissionLifecycleRepository.saveSignature({
+        submissionUuid: input.submissionUuid,
+        sectionUuid: input.sectionUuid,
+        signatureType: input.signatureType,
+        method: input.method,
+        attachment: {
+          uuid: attachmentUuid,
+          path: filePath,
+          fileName: "signature.png",
+          fileType: mimeType,
+          fileSize: bytes.length,
+        },
+        actor: principal,
+        adapter,
+      });
+    } catch (error) {
+      await fileStorageService.deleteAttachment(filePath);
+      throw error;
+    }
+  }
+
+  async removeSignature(input: {
+    req: Request;
+    submissionUuid: string;
+    sectionUuid: string;
+    signatureUuid: string;
+  }) {
+    const { adapter, principal } = await this.authorizeSubmission(
+      input.req,
+      input.submissionUuid,
+      "remove_signature",
+    );
+    return companyFormSubmissionLifecycleRepository.removeSignature({
+      submissionUuid: input.submissionUuid,
+      sectionUuid: input.sectionUuid,
+      signatureUuid: input.signatureUuid,
+      actor: principal,
+      adapter,
+    });
+  }
+
+  async voidSubmission(input: {
+    req: Request;
+    submissionUuid: string;
+    reason: string;
+  }) {
+    const { adapter, principal } = await this.authorizeSubmission(
+      input.req,
+      input.submissionUuid,
+      "void_submission",
+    );
+    return companyFormSubmissionLifecycleRepository.voidSubmission({
+      submissionUuid: input.submissionUuid,
+      reason: input.reason,
+      actor: principal,
+      adapter,
+    });
+  }
+
   async eligibleForms(input: {
     req: Request;
     subjectType: string;
@@ -566,7 +939,7 @@ export class CompanyFormSubmissionsService {
   }): Promise<CompanyFormSubmissionRow> {
     const adapter = this.registry.get(input.subjectType);
     const principal = await this.resolvePrincipal(input.req);
-    return this.repository.createPinnedSubmission({
+    const submission = await this.repository.createPinnedSubmission({
       adapter,
       subjectType: input.subjectType,
       subjectRef: input.subjectRef,
@@ -576,6 +949,7 @@ export class CompanyFormSubmissionsService {
         await this.authorize(adapter, principal, "create_submission", subject.context);
       },
     });
+    return submission;
   }
 
   async listForSubject(input: {

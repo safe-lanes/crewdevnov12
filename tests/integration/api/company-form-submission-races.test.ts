@@ -176,7 +176,7 @@ describe.sequential("Company Form submission concurrency boundaries", () => {
         responsible_mode, comment_box_required, signature_officer_required,
         signature_seafarer_required, layout_preference, sort_order, is_deleted
       ) VALUES ($1, $2, $3, 'RACE-SECTION', 'Race test section',
-                'not_applicable', true, false, false, 'list', 0, false)
+                'seafarer', true, false, false, 'list', 0, false)
     `, [sectionUuid, versionUuid, partUuid]);
     await db.query(`
       INSERT INTO frm_questions(

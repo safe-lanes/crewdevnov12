@@ -257,9 +257,9 @@ describe("Company Form relationship boundary", () => {
           applicable_vessel_types, responsible_mode, responsible_role_uuid, comment_box_required,
           signature_officer_required, signature_seafarer_required, default_option_set_uuid,
           layout_preference, sort_order, is_deleted)
-       VALUES ($1, $2, $3, 'BOUNDARY', 'Boundary section', $4, 'not_applicable', NULL, false,
+        VALUES ($1, $2, $3, 'BOUNDARY', 'Boundary section', $4, 'role', $6, false,
                false, false, $5, 'auto', 0, false)`,
-      [sectionUuid, formVersionUuid, partUuid, JSON.stringify([vesselTypeUuid]), optionSetUuid],
+      [sectionUuid, formVersionUuid, partUuid, JSON.stringify([vesselTypeUuid]), optionSetUuid, shipRoleUuid],
     );
     await db.query(
       `INSERT INTO frm_questions

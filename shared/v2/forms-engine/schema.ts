@@ -327,6 +327,7 @@ export const frmSectionSignatures = pgTable(
       .references(() => frmSignatureAttachments.sigAttUuid, { onDelete: "restrict", onUpdate: "cascade" }),
     signerName: text("signer_name").notNull(),
     signerRank: text("signer_rank"),
+    witnessName: text("witness_name"),
     signedAt: timestamp("signed_at").notNull(),
     signedByUuid: text("signed_by_uuid").notNull(),
     signatureMethod: text("signature_method").notNull(),
