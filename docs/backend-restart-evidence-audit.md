@@ -5,7 +5,7 @@ Audit date: 2026-10-02. All timestamps below are UTC.
 ## Required standard
 
 For every task changing server code, closing evidence must identify the final
-implementation commit and its timestamp, the actual listening backend PID and
+task commit and its timestamp, the actual listening backend PID and
 its start timestamp, and the later browser/preview check timestamp and environment.
 Required ordering: final commit < backend start <= browser/preview check.
 Absent this evidence, the browser/preview claim is **NOT VERIFIED**.
