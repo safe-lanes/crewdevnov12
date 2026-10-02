@@ -89,7 +89,7 @@ Apply these to **every new table**:
 - Never edit `package.json` directly; use the package manager for dependencies.
 - Do not modify the Vite setup (`vite.config.ts`, `server/vite.ts`) or `drizzle.config.ts` unless absolutely necessary.
 - Secrets / environment variables are managed through the platform — never hardcode them.
-- Restart the "Start application" workflow after backend changes (the backend has no hot-reload).
+- The development command uses `tsx watch` to restart the backend automatically for server changes (including unimported server files); frontend-only changes remain Vite hot updates. Automatic restart does not waive the closing-evidence rule below: verify the actual listening process, and restart again after the final commit when needed.
 - **Server-task closing evidence (standing user rule):** Every task that changes server code must record the final task commit hash/time and the actual listening backend PID/start time, using UTC timestamps. The backend start time must be strictly later than the final commit time. If further server-code changes or final commits occur, repeat the restart and checks before closing.
 - **Browser/preview verification:** Record the check time and environment alongside that commit/process evidence. A browser or preview check without the required later backend start is **NOT VERIFIED**; frontend hot updates, a generic “application restarted” message, and a task-agent environment restart are not proof that the main backend loaded merged code. For a merged task, verify the main backend separately after the merge.
 - Add stable, descriptive `data-testid` attributes to interactive and data-bearing UI elements.

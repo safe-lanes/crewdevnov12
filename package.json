@@ -4,7 +4,7 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "NODE_ENV=development tsx server/index.ts",
+    "dev": "NODE_ENV=development tsx watch --clear-screen=false --include 'server/**/*' --exclude 'client/**' server/index.ts",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build:frontend": "NODE_ENV=production vite build",
     "build:backend": "esbuild server/production.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server/index.js",
