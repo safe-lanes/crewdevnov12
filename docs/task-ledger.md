@@ -17,6 +17,7 @@ Append one row whenever a numbered task fully completes. Record its task number,
 | #368 | Prevent invalid assignment vessel IDs | `7228d8d0463db2421f062442bed10a5c959fb478` | 2026-09-30 |
 | #354 | Start and edit Company Forms safely | `281f5640ca450d653d1260223e26915a605991ec` | 2026-10-01 |
 | #355 | Complete and sign Company Forms | `4684b96a3bbf32bafa85769644c1fdc1d063f340` | 2026-10-02 |
+| #356 | Open joining forms from Planning | `0cf92fceef8117be2d7bafe75710e0507b2f764f` | 2026-10-02 |
 
 ## Inventory audit — 2026-10-01
 
@@ -38,10 +39,17 @@ tests. There is exactly one completed row for #354. See
 
 ## Browser/preview provenance audit — 2026-10-02
 
-See [Backend restart evidence audit](backend-restart-evidence-audit.md) for every
-completion row above. No historical server-task browser/preview claim in the
+See [Backend restart evidence audit](backend-restart-evidence-audit.md) for the
+historical completion rows covered by that audit. No historical server-task browser/preview claim in the
 retained records establishes the required final-commit → backend-start →
 browser-check ordering. Those claims are **NOT VERIFIED**, not retrospective
 proof that every check failed or that the implementation was absent.
 Completion rows remain unchanged; this audit qualifies their visual-verification
 provenance rather than substituting new completion hashes.
+
+The later #356 closing acceptance has separate live evidence in
+[the retained fixture registry](company-form-regression-fixtures.md) and
+`docs/verification/joining-forms/`. Its closing browser harness explicitly checks
+latest commit → newer main-backend start → browser reload, preserves HEAD/PID,
+and verifies the completed declaration and source-change notice. The #356 row
+references its implementation commit, not the later evidence/ledger commit.
