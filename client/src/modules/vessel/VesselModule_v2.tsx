@@ -2711,6 +2711,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                         className="h-6 w-6 p-0"
                                                                         onClick={() => handleOpenReliefEdit(row.relieverData, row.rankName, row.rank.id || row.rank.rankId || '')}
                                                                         data-testid={`button-edit-reliever-${index}`}
+                                                                        data-plan-uuid={row.relieverData?.planUuid}
                                                                     >
                                                                         <Edit className="h-4 w-4 text-gray-400 cursor-pointer hover:text-blue-600" />
                                                                     </Button>

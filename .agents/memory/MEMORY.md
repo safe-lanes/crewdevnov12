@@ -43,3 +43,4 @@
 - [Exceptional vessel actions](exceptional-vessel-permissions.md) — gate sensitive clears on resolved Admin role plus explicit Vessel/delete; neither JWT userType nor menu grant alone identifies an administrator.
 - [Browser write ordering](browser-write-ordering.md) — row locks do not preserve browser edit order; verify delayed saves, explicit clearing, and comment-only persistence separately.
 - [Company submission lifecycle policy](company-submission-lifecycle-policy.md) — content-derived section submission replaces optional flags; explicit void/re-create replaces attempts.
+- [TypeScript baseline comparison](typescript-baseline-comparison.md) — use a read-only HEAD compiler host; printed type-property order can differ without new diagnostics.

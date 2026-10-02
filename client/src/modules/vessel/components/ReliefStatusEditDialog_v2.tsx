@@ -33,6 +33,7 @@ import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiRequest } from "@/lib/queryClient";
 import { usePermissions } from "@/contexts/PermissionsContext";
+import { JoiningCompanyForms } from "./JoiningCompanyForms";
 
 const reliefStatusFormSchema = z.object({
     relieverCrewName: z.string().optional(),
@@ -106,6 +107,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const [joiningFormsOpen, setJoiningFormsOpen] = useState(false);
     const { permissions, roleName, userType } = usePermissions();
     const canClearUnlinked = roleName?.trim().toLowerCase() === 'admin'
         && userType?.trim().toLowerCase() !== 'ship'
@@ -527,13 +529,17 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 
     return (
         <>
-            <Dialog open={open} onOpenChange={onOpenChange}>
+            <Dialog open={open && !joiningFormsOpen} onOpenChange={onOpenChange}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
                         Rank: {rank}
                     </DialogTitle>
                 </DialogHeader>
+                <Button type="button" variant="outline" data-testid="button-open-joining-forms"
+                    onClick={() => setJoiningFormsOpen(true)}>
+                    Joining forms
+                </Button>
 
                 {planningData?.relieverAssigned && (
                     <div className="rounded-md border bg-slate-50 p-3 text-sm" data-testid="reliever-assignment-link">
@@ -1014,6 +1020,20 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             </AlertDialogContent>
         </AlertDialog>
 
+        <Dialog open={open && joiningFormsOpen} onOpenChange={(value) => {
+            if (!value) setJoiningFormsOpen(false);
+        }}>
+            <DialogContent className="w-[1200px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Before-joining Company Forms</DialogTitle></DialogHeader>
+                {joiningFormsOpen && open && <JoiningCompanyForms
+                    planUuid={planningData?.planUuid || ""}
+                    assignmentUuid={planningData?.relieverAssignUuid || ""}
+                    crewUuid={planningData?.relieverCrewUuid || planningData?.relieverCrewId || ""}
+                    vesselUuid={vesselUuid}
+                />}
+                <Button type="button" variant="outline" onClick={() => setJoiningFormsOpen(false)}>Back to reliever</Button>
+            </DialogContent>
+        </Dialog>
         <AlertDialog open={showSignOnConflict} onOpenChange={setShowSignOnConflict}>
             <AlertDialogContent>
                 <AlertDialogHeader>
