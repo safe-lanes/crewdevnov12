@@ -36,7 +36,7 @@
 - [Verified assignment provenance](verified-assignment-provenance.md) — runtime flows require exact UUID links; a user-approved one-time exclusive incumbent backfill is not a general fallback.
 - [Proxied browser readiness](proxied-browser-readiness.md) — navigation can precede client mount; a zero-height live-form wrapper can also look hidden while its content renders.
 - [Retired SPA endpoints](retired-spa-endpoints.md) — deleting a dev route does not produce a 404 if Vite or the production SPA fallback still serves HTML at its path.
-- [Company Form regression fixture](company-form-regression-fixture.md) — development has a deliberately retained Company Form and two version-owned part sets; don't clean it as test debris.
+- [Company Form regression fixtures](company-form-regression-fixture.md) — retain definition and joining-declaration fixtures; isolate deployment from operations and keep the test actor free of Forms authoring grants.
 - [Company Form archive policy](company-form-archive-policy.md) — archive frees active names but retains UUID-pinned history; future submission writes must check eligibility under the same form lock.
 - [Company part-code ownership](company-part-code-ownership.md) — Company part codes are internal server-generated identities when omitted; the editor uses titles, never generates or retries codes.
 - [Company system-field provenance](company-system-field-provenance.md) — shared fields need not come from the form subject; date of declaration belongs to the submission, not a crew assignment.
