@@ -160,5 +160,45 @@ This watches loaded server dependencies and explicitly includes server files
 outside the import graph. Frontend-only files are excluded from the backend
 watcher and retain Vite hot updates. Production commands are unchanged.
 Automatic restart **does not waive** the standing final-commit/backend-start/
-check-time rule. Runtime file-modification proof is recorded below after the
-watch-enabled main workflow is started.
+check-time rule.
+
+### Actual automatic-restart proof (main workspace, UTC)
+
+Configuration/evidence commit:
+`900433b250fa2625f95e10191b23f8b580580a96`, **14:18:10 UTC**.
+The main workflow was restarted once to begin using the new command.
+
+| Event | Observed evidence |
+| --- | --- |
+| Watch-enabled baseline | Listening backend PID **3119**, start **14:18:16.990 UTC**; watcher PID **3108**, command `tsx watch --clear-screen=false --include server/**/* --exclude client/** server/index.ts`. |
+| Actual server-file content modification | At **14:19:40.289229 UTC**, a temporary harmless comment was appended to `server/index.ts`. |
+| Automatic restart | With **no manual workflow restart**, listener changed **3119 → 3161**. New backend started **14:19:45.310 UTC**; the same watcher PID **3108** remained. |
+| Post-restart API check | At **14:19:54.985997 UTC**, normal `/api/v2/admin/company-ranks` returned HTTP **200** with a JSON array, through the main development proxy. |
+
+The temporary comment was then removed, restoring `server/index.ts` exactly.
+That removal also triggers the watcher; no verification-only server change is
+left in the delivered source. Three focused command regression tests passed.
+
+The retained workflow output confirms both automatic events:
+
+```text
+14:19:40 [tsx] change in ./server/index.ts Restarting...
+14:19:40 [express] SIGTERM received. Shutting down gracefully...
+14:19:45 [tsx] Process didn't exit in 5s. Force killing...
+14:19:49 [express] serving on port 5000
+14:19:54 [express] GET /api/v2/admin/company-ranks 200
+14:20:02 [tsx] change in ./server/index.ts Restarting...
+14:20:07 [tsx] Process didn't exit in 5s. Force killing...
+14:20:11 [express] serving on port 5000
+```
+
+The existing development shutdown did not finish within tsx's five-second
+grace period, so the watcher force-stopped the old child before starting its
+replacement. Both automatic restarts succeeded. No unrelated shutdown-handler
+refactor or authentication/configuration change was made.
+
+The proof above is an actual source-content-change test, not a browser refresh
+or a manually triggered workflow restart. After the final documentation commit,
+the listener is refreshed once more and its strictly later start and subsequent
+preview time are reported in the closing response, satisfying the standing
+rule without claiming a self-referential future commit timestamp in this file.
