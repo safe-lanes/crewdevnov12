@@ -79,8 +79,12 @@ not from a new section-level required flag. Do not change existing section data:
 The `seafarer` responsible party is one policy serving either the trusted-linked
 seafarer on his own assignment, or an authorised office crewing user acting with
 the seafarer present. The former uses authenticated signing once trusted account
-linkage exists; the latter uses explicitly office-witnessed signing. Vessel
-access alone confers no witness authority. Production authenticated seafarer
+linkage exists; the latter uses explicitly office-witnessed signing. On-board
+forms also permit a vessel user to witness when its trusted role identifier
+belongs to the pinned section's permitted vessel roles and its trusted
+membership includes the submission's vessel. Office crewing witnessing remains
+available for before-joining forms. Vessel access alone confers no witness
+authority. Production authenticated seafarer
 signing remains fail-closed until trusted linkage exists.
 
 These decisions supersede the earlier proposal for required/optional section
@@ -88,6 +92,32 @@ metadata and optional unsubmitted sections locked as unanswered. There is no
 declaration-attempt layer and no automatic restart. A separate permission for
 voiding completed submissions is possible, but is deliberately not implemented;
 both in-progress and completed voiding use the authorised office crewing policy.
+
+## On-board vessel signatures
+
+Vessel Management is a third, distinct signature type. Its section-level
+permitted Ship roles are selected in the designer as one or more stable
+Access Control role identifiers. Names are display labels, never stored
+authorisation keys. The same pinned policy governs on-board witnessing.
+
+Authorise against the authenticated user's resolved active Ship role and
+complete server-resolved vessel membership. Recheck both at signing. Resolve
+the signer's own name from `master_users`, and its rank from that user's
+signing-time `designation`, requiring a uniquely recognised company-rank name
+or code and freezing the readable rank. Missing or ambiguous identity/rank
+denies signing. Do not infer the signer from a current vessel crew-list
+position: two Masters may be aboard during handover.
+
+Freeze actor/role identifiers, signer name/rank and witness information in
+the signature transaction. Later changes to user/role/crew records never
+reconstruct those values. Do not backfill old signatures. Ship actors cannot
+sign as Company Representative or void submissions merely because on-board
+signing is enabled.
+
+All vessel-side form reads, including picker metadata and linked-declaration
+labels, use submission endpoints. Wrong-role/wrong-vessel requests are
+permission errors, not missing configuration. Existing unrelated forms and
+released definitions remain unchanged.
 
 ## Existing definition audit before implementation
 
