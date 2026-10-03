@@ -80,19 +80,20 @@ export type SubjectEntryListDeclaration = {
 };
 
 export type SubjectSignatoryDeclaration = {
-  signatureType: "officer" | "seafarer";
+  signatureType: "officer" | "seafarer" | "vessel_management";
   displayLabel: string;
   allowedActors: readonly CompanyFormActorKind[];
-  methods: readonly ("officer" | "authenticated" | "witnessed")[];
+  methods: readonly ("officer" | "authenticated" | "witnessed" | "vessel_management")[];
   methodsByActor?: Readonly<Partial<Record<
     CompanyFormActorKind,
-    readonly ("officer" | "authenticated" | "witnessed")[]
+    readonly ("officer" | "authenticated" | "witnessed" | "vessel_management")[]
   >>>;
   designationSource?: "master_users.designation";
+  resolveWitnessIdentity?: (principal: CompanyFormPrincipal, executor: any) => Promise<{ name: string; rank: string } | null>;
   resolveIdentity?: (input: {
     principal: CompanyFormPrincipal;
     subject: unknown;
-    method: "officer" | "authenticated" | "witnessed";
+    method: "officer" | "authenticated" | "witnessed" | "vessel_management";
     executor: unknown;
   }) => Promise<{ name: string | null; rank: string | null }>;
 };
@@ -140,6 +141,11 @@ export type CompanyFormSubjectAdapter<Context = unknown> = {
     applicableVesselTypes: string | null;
   }, subject: Context): Promise<boolean>;
   allowedActions: Readonly<Record<CompanyFormActorKind, readonly CompanyFormAction[]>>;
+  authorizeStageAction?(principal: CompanyFormPrincipal, action: CompanyFormAction, subject: Context, stageKey: string | null): boolean;
+  authorizeSectionAction?(input: {
+    principal: CompanyFormPrincipal; subject: Context; stageKey: string | null;
+    section: any; action: CompanyFormAction; signatureType?: string; executor: any;
+  }): Promise<void>;
   authorize(
     principal: CompanyFormPrincipal,
     action: CompanyFormAction,

@@ -67,8 +67,8 @@ const draftBodySchema = z.object({
 });
 const sectionSubmitBodySchema = z.object({}).strict();
 const signatureBodySchema = z.object({
-  signatureType: z.enum(["officer", "seafarer"]),
-  method: z.enum(["officer", "authenticated", "witnessed"]),
+  signatureType: z.enum(["officer", "seafarer", "vessel_management"]),
+  method: z.enum(["officer", "authenticated", "witnessed", "vessel_management"]),
   data: z.string().max(7_000_000),
   seafarerPresent: z.boolean().optional(),
 }).strict();

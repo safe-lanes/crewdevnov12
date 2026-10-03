@@ -169,6 +169,7 @@ export class CompanyFormSubmissionsRepository {
     formUuid: string;
     formVersionUuid: string;
     authorizeLockedSubject: (subject: SubjectLookupResult<any>) => Promise<void>;
+    authorizeLockedVersion?: (subject: SubjectLookupResult<any>, stageKey: string | null) => Promise<void>;
   }): Promise<CompanyFormSubmissionRow> {
     try {
       return await getDb().transaction(async (tx: Executor) => {
@@ -220,6 +221,7 @@ export class CompanyFormSubmissionsRepository {
         if (version.status !== "released") {
           throw new CompanyFormConflictError("Only a released Company Form version can be started.");
         }
+        await input.authorizeLockedVersion?.(subject, version.stageKey);
         const lifecycleErrors = await validatePersistedCompanyFormLifecycle(tx, version.formVersionUuid);
         if (lifecycleErrors.length > 0) {
           throw new CompanyFormConflictError(

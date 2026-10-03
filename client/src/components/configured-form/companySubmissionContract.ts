@@ -225,6 +225,7 @@ function mapSection(
     comment_box_required: section.commentBoxRequired,
     signature_officer_required: section.signatureOfficerRequired,
     signature_seafarer_required: section.signatureSeafarerRequired,
+    signature_vessel_management_required: section.signatureVesselManagementRequired,
     requires_submission: section.requiresSubmission,
     is_applicable: section.isApplicable,
     can_submit: section.canSubmit,
@@ -257,6 +258,8 @@ function mapSignatureState(state: CompanyFormSubmissionSectionState) {
       signatureAttUuid: signature.attachment.assetUuid,
       signatureName: signature.signerName,
       signatureRank: signature.signerRank,
+      witnessedByName: signature.witnessName,
+      witnessedByRank: signature.witnessRank,
       signedAt: signature.signedAt,
       signatureUrl: signature.attachment.rawUrl,
     },
@@ -751,7 +754,7 @@ export function CompanySubmissionRenderer({
 
   const handleSignatureChange = async (
     sectionUuid: string,
-    type: "officer" | "seafarer",
+    type: "officer" | "seafarer" | "vessel_management",
     pngDataUrl: string,
     _signerName?: string,
     _signerRank?: string,
@@ -787,7 +790,7 @@ export function CompanySubmissionRenderer({
     }
   };
 
-  const handleDeleteSignature = async (sectionUuid: string, type: "officer" | "seafarer") => {
+  const handleDeleteSignature = async (sectionUuid: string, type: "officer" | "seafarer" | "vessel_management") => {
     if (sectionSubmitting[sectionUuid]) return;
     // The rendered signature state's signatureAttUuid is the attachment asset
     // ID used for image retrieval. DELETE identifies the signature record.

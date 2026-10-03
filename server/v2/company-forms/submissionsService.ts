@@ -312,13 +312,17 @@ export class CompanyFormSubmissionsService {
         method,
         label: method === "officer" ? "Company Representative" :
           method === "authenticated" ? "Authenticated Seafarer" :
-            "Office-witnessed Seafarer",
+            method === "vessel_management" ? "Vessel Management" :
+            principal.kind === "vessel" ? "Vessel-witnessed Seafarer" : "Office-witnessed Seafarer",
       }));
     }
     return options;
   }
 
   private async sectionActions(input: {
+    adapter: CompanyFormSubjectAdapter<any>;
+    subject: any;
+    stageKey: string | null;
     principal: CompanyFormPrincipal;
     canEditSubmission: boolean;
     canSubmitAction: boolean;
@@ -346,6 +350,11 @@ export class CompanyFormSubmissionsService {
       let canEdit = input.canEditSubmission && applicable && mutable;
       if (canEdit) {
         try {
+          if (input.adapter.authorizeStageAction && !input.adapter.authorizeStageAction(input.principal, "edit_draft", input.subject, input.stageKey)) {
+            throw new CompanyFormPermissionError();
+          }
+          await input.adapter.authorizeSectionAction?.({ principal: input.principal, subject: input.subject,
+            stageKey: input.stageKey, section, action: "edit_draft", executor: getDb() });
           await assertCompanyFormSectionEditable({
             principal: input.principal,
             section,
@@ -359,19 +368,25 @@ export class CompanyFormSubmissionsService {
       const questions = questionsBySection.get(section.sectionUuid) ?? [];
       const required = sectionRequiresSubmission({ ...section, questions });
       const canSign: Partial<Record<CompanyFormSignatureType, boolean>> = {};
-      for (const signatureType of ["officer", "seafarer"] as const) {
+      for (const signatureType of ["officer", "seafarer", "vessel_management"] as const) {
         const signatureRequired = signatureType === "officer"
           ? section.signatureOfficerRequired
-          : section.signatureSeafarerRequired;
+          : signatureType === "vessel_management" ? section.signatureVesselManagementRequired : section.signatureSeafarerRequired;
         canSign[signatureType] = canEdit && input.canSaveSignatureAction &&
           signatureRequired && (input.methodOptions[signatureType]?.length ?? 0) > 0;
+        if (canSign[signatureType]) {
+          try {
+            await input.adapter.authorizeSectionAction?.({ principal: input.principal, subject: input.subject,
+              stageKey: input.stageKey, section, action: "save_signature", signatureType, executor: getDb() });
+          } catch { canSign[signatureType] = false; }
+        }
       }
       const canProvideRequiredSignatures =
         (!section.signatureOfficerRequired || (input.methodOptions.officer?.length ?? 0) > 0) &&
         (!section.signatureSeafarerRequired || (input.methodOptions.seafarer?.length ?? 0) > 0);
       result[section.sectionUuid] = {
         canEdit,
-        canSubmit: canEdit && input.canSubmitAction && required && canProvideRequiredSignatures,
+        canSubmit: canEdit && input.canSubmitAction && required,
         canSign,
       };
     }
@@ -388,6 +403,9 @@ export class CompanyFormSubmissionsService {
         signerName: row.signature.signerName,
         signerRank: row.signature.signerRank,
         witnessName: row.signature.witnessName,
+        witnessRank: row.signature.witnessRank,
+        witnessUserId: row.signature.witnessUserId,
+        signerRoleUuid: row.signature.signerRoleUuid,
         signedAt: isoDate(row.signature.signedAt)!,
         signedByUuid: row.signature.signedByUuid,
         signatureMethod: row.signature.signatureMethod,
@@ -593,6 +611,7 @@ export class CompanyFormSubmissionsService {
       adapter, principal, canSaveSignatureAction,
     );
     const sectionActions = await this.sectionActions({
+      adapter, subject: subject.context, stageKey: data.submission.stageKey,
       principal,
       canEditSubmission: canEdit,
       canSubmitAction,
@@ -644,6 +663,8 @@ export class CompanyFormSubmissionsService {
           commentBoxRequired: section.commentBoxRequired,
           signatureOfficerRequired: section.signatureOfficerRequired,
           signatureSeafarerRequired: section.signatureSeafarerRequired,
+          signatureVesselManagementRequired: section.signatureVesselManagementRequired,
+          vesselSignatureRoleUuids: section.vesselSignatureRoleUuids,
           defaultOptionSetUuid: section.defaultOptionSetUuid,
           layoutPreference: section.layoutPreference,
           effectiveLayout: resolveEffectiveLayout(section, questions, optionSetsByUuid, optionsBySet),
@@ -787,9 +808,16 @@ export class CompanyFormSubmissionsService {
           throw new CompanyFormConflictError("Unable to verify that this subject still accepts draft edits.");
         }
         await this.authorize(adapter, principal, "edit_draft", lockedSubject.context);
+        if (adapter.authorizeStageAction && !adapter.authorizeStageAction(principal, "edit_draft", lockedSubject.context, submission.stageKey)) {
+          throw new CompanyFormPermissionError("This actor cannot edit at this stage.");
+        }
       },
       assertSectionWritable: async ({ section, part, executor }) => {
         await assertCompanyFormSectionEditable({ principal, section, part, executor });
+        const subject = await adapter.lookup(submission.subjectRef, executor);
+        if (!subject) throw new CompanyFormPermissionError();
+        await adapter.authorizeSectionAction?.({ principal, subject: subject.context, stageKey: submission.stageKey,
+          section, action: "edit_draft", executor });
       },
     });
   }
@@ -816,8 +844,8 @@ export class CompanyFormSubmissionsService {
     req: Request;
     submissionUuid: string;
     sectionUuid: string;
-    signatureType: "officer" | "seafarer";
-    method: "officer" | "authenticated" | "witnessed";
+    signatureType: "officer" | "seafarer" | "vessel_management";
+    method: "officer" | "authenticated" | "witnessed" | "vessel_management";
     data: string;
     seafarerPresent?: boolean;
   }) {
@@ -964,6 +992,11 @@ export class CompanyFormSubmissionsService {
       formVersionUuid: input.formVersionUuid,
       authorizeLockedSubject: async (subject) => {
         await this.authorize(adapter, principal, "create_submission", subject.context);
+      },
+      authorizeLockedVersion: async (subject, stageKey) => {
+        if (adapter.authorizeStageAction && !adapter.authorizeStageAction(principal, "create_submission", subject.context, stageKey)) {
+          throw new CompanyFormPermissionError("This actor cannot start a form at this stage.");
+        }
       },
     });
     return submission;

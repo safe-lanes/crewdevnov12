@@ -25,6 +25,7 @@ import type {
 } from "../contracts";
 import { authorizeOfficeAction, type PrincipalDependencies } from "../trustedPrincipalService";
 import { loadPersistedSubjectStages } from "../subjectStageRepository";
+import { authorizeCrewSectionAction, captureVesselSigner } from "./vesselSigningPolicy";
 
 export const CREW_ASSIGNMENT_SUBJECT_TYPE = "crew_assignment";
 
@@ -313,6 +314,11 @@ export function createCrewAssignmentSubject(
     systemFields,
     resolveSystemField: resolveCrewSystemField,
     allowedActions,
+    authorizeStageAction: (principal, action, subject, stageKey) =>
+      principal.kind !== "vessel" || action.startsWith("read_") || action === "list_submissions" ||
+      action === "count_submissions" || (stageKey === "on_board" && subject.isCurrent &&
+        subject.assignmentType.replace(/[\s_]/g, "").toLowerCase() === "onboard"),
+    authorizeSectionAction: authorizeCrewSectionAction,
     authorize: async (principal, action, subject) => {
       if (!allowedActions[principal.kind].includes(action as never)) return false;
 
@@ -361,17 +367,18 @@ export function createCrewAssignmentSubject(
       {
         signatureType: "officer",
         displayLabel: "Company Representative",
-        allowedActors: ["office", "vessel"],
+        allowedActors: ["office"],
         methods: ["officer"],
-        methodsByActor: { office: ["officer"], vessel: ["officer"] },
+        methodsByActor: { office: ["officer"] },
         designationSource: "master_users.designation",
       },
       {
         signatureType: "seafarer",
         displayLabel: "Seafarer",
-        allowedActors: ["seafarer", "office"],
+        allowedActors: ["seafarer", "office", "vessel"],
         methods: ["authenticated", "witnessed"],
-        methodsByActor: { seafarer: ["authenticated"], office: ["witnessed"] },
+        methodsByActor: { seafarer: ["authenticated"], office: ["witnessed"], vessel: ["witnessed"] },
+        resolveWitnessIdentity: (principal, executor) => principal.kind === "vessel" ? captureVesselSigner(principal, executor) : Promise.resolve(null),
         resolveIdentity: async ({ subject, executor }) => {
           const crewSubject = subject as CrewAssignmentSubject;
           const context: SystemFieldResolutionContext = {
@@ -384,6 +391,12 @@ export function createCrewAssignmentSubject(
           ]);
           return { name, rank };
         },
+      },
+      {
+        signatureType: "vessel_management", displayLabel: "Vessel Management",
+        allowedActors: ["vessel"], methods: ["vessel_management"],
+        methodsByActor: { vessel: ["vessel_management"] },
+        resolveIdentity: ({ principal, executor }) => captureVesselSigner(principal, executor),
       },
     ],
     isSectionApplicable: (section, subject) => {

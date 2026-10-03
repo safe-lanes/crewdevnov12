@@ -139,6 +139,9 @@ async function loadLockedContext(
   if (!await adapter.authorize(principal, action, lockedSubject.context)) {
     throw new CompanyFormPermissionError();
   }
+  if (adapter.authorizeStageAction && !adapter.authorizeStageAction(principal, action, lockedSubject.context, submission.stageKey)) {
+    throw new CompanyFormPermissionError("This actor cannot act at this submission stage.");
+  }
   return { submission, subject: lockedSubject };
 }
 
@@ -262,6 +265,8 @@ export class CompanyFormSubmissionLifecycleRepository {
         part,
         executor: tx,
       });
+      await input.adapter.authorizeSectionAction?.({ principal: input.actor, subject: subject.context,
+        stageKey: submission.stageKey, section, action: "submit_section", executor: tx });
 
       const answers = await tx.select({ answer: frmAnswers, question: frmQuestions })
         .from(frmAnswers)
@@ -294,6 +299,9 @@ export class CompanyFormSubmissionLifecycleRepository {
       }
       if (section.signatureSeafarerRequired && !presentTypes.has("seafarer")) {
         throw new CompanyFormValidationError("A Seafarer signature is required.");
+      }
+      if (section.signatureVesselManagementRequired && !presentTypes.has("vessel_management")) {
+        throw new CompanyFormValidationError("A Vessel Management signature is required.");
       }
 
       const now = new Date();
@@ -378,8 +386,8 @@ export class CompanyFormSubmissionLifecycleRepository {
   async saveSignature(input: {
     submissionUuid: string;
     sectionUuid: string;
-    signatureType: "officer" | "seafarer";
-    method: "officer" | "authenticated" | "witnessed";
+    signatureType: "officer" | "seafarer" | "vessel_management";
+    method: "officer" | "authenticated" | "witnessed" | "vessel_management";
     attachment: {
       uuid: string;
       path: string;
@@ -406,6 +414,8 @@ export class CompanyFormSubmissionLifecycleRepository {
       const applicable = await (input.adapter.isSectionApplicable?.(section, subject.context) ?? true);
       if (!applicable) throw new CompanyFormConflictError("This Company Form section does not apply to the subject.");
       await assertCompanyFormSectionEditable({ principal: input.actor, section, part, executor: tx });
+      await input.adapter.authorizeSectionAction?.({ principal: input.actor, subject: subject.context,
+        stageKey: submission.stageKey, section, action: "save_signature", signatureType: input.signatureType, executor: tx });
       const declaration = input.adapter.signatories.find((item) => item.signatureType === input.signatureType);
       const allowedMethods = declaration?.methodsByActor?.[input.actor.kind] ??
         (declaration?.allowedActors.includes(input.actor.kind) ? declaration.methods : []);
@@ -476,6 +486,10 @@ export class CompanyFormSubmissionLifecycleRepository {
         signerName,
         signerRank,
         witnessName: input.method === "witnessed" ? userName : null,
+        witnessUserId: input.method === "witnessed" ? user.id : null,
+        witnessRank: input.method === "witnessed"
+          ? (await declaration.resolveWitnessIdentity?.(input.actor, tx))?.rank ?? user.designation?.trim() ?? null : null,
+        signerRoleUuid: input.actor.kind !== "seafarer" ? input.actor.roleId : null,
         signedAt: now,
         signedByUuid: user.userUuid ?? String(input.actor.userId),
         signatureMethod: input.method,
@@ -530,6 +544,8 @@ export class CompanyFormSubmissionLifecycleRepository {
         eq(frmSectionSignatures.isDeleted, false),
       )).limit(1).for("update");
       if (!signatures[0]) throw new CompanyFormNotFoundError("Company Form signature not found in this section.");
+      await input.adapter.authorizeSectionAction?.({ principal: input.actor, subject: subject.context,
+        stageKey: submission.stageKey, section, action: "remove_signature", signatureType: signatures[0].signatureType, executor: tx });
       const declaration = input.adapter.signatories.find((item) =>
         item.signatureType === signatures[0].signatureType);
       const allowedMethods = declaration?.methodsByActor?.[input.actor.kind] ??

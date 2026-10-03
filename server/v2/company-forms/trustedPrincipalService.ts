@@ -56,8 +56,7 @@ export function decodeTrustedVesselIds(raw: string | null | undefined): number[]
   return [...new Set(ids)];
 }
 
-async function resolveTrustedVesselScope(masterUserId: number): Promise<readonly string[] | undefined> {
-  const db = getDb();
+export async function resolveTrustedVesselScope(masterUserId: number, db: any = getDb()): Promise<readonly string[] | undefined> {
   const users = await db
     .select({
       id: masterUsers.id,

@@ -35,3 +35,19 @@ chat. The reviewed plan is `.local/tasks/company-form-crew-list-entry.md`.
 - Six new release-policy tests plus existing lifecycle/render tests pass:
   36 tests across three suites. TypeScript remains at the 226 baseline
   diagnostics, none in the changed files.
+
+## Step 3 — guarded signing and witnessing
+
+- Subject declarations now separate Office Company Representative signing,
+  Seafarer authentication/witnessing, and permitted-role Vessel Management.
+- Stage-specific creation/edit/sign/submit guards reject vessel writes outside
+  current on-board assignments. Permitted role and trusted complete vessel
+  provisioning are rechecked for section writes.
+- Authenticated vessel users and roles are locked during capture. Name and
+  designation-to-company-rank resolution are frozen; no vessel Master roster
+  lookup or later reconstruction is used.
+- Witness user ID, name and readable rank are separate from the subject's
+  signature identity. Before-joining Office witnessing is retained.
+- Third-signature contracts, Preview/live pads, captured witness display and
+  required-signature completion checks are integrated.
+- Changed code adds no TypeScript diagnostics (226 existing baseline).

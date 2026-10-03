@@ -1,7 +1,7 @@
 export type CompanyFormSubmissionStatus = "in_progress" | "completed" | "voided";
 export type CompanyFormSectionStatus = "not_started" | "in_progress" | "submitted" | string;
-export type CompanyFormSignatureType = "officer" | "seafarer";
-export type CompanyFormSignatureMethod = "officer" | "authenticated" | "witnessed";
+export type CompanyFormSignatureType = "officer" | "seafarer" | "vessel_management";
+export type CompanyFormSignatureMethod = "officer" | "authenticated" | "witnessed" | "vessel_management";
 export type CompanyFormSignatureMethodOption = {
   method: CompanyFormSignatureMethod;
   label: string;
@@ -72,6 +72,9 @@ export type CompanyFormSubmissionSignature = {
   signerName: string;
   signerRank: string | null;
   witnessName: string | null;
+  witnessRank?: string | null;
+  witnessUserId?: number | null;
+  signerRoleUuid?: string | null;
   signedAt: string;
   signedByUuid: string;
   signatureMethod: string;
@@ -147,6 +150,8 @@ export type CompanyFormRenderSection = {
   commentBoxRequired: boolean;
   signatureOfficerRequired: boolean;
   signatureSeafarerRequired: boolean;
+  signatureVesselManagementRequired?: boolean;
+  vesselSignatureRoleUuids?: string[];
   defaultOptionSetUuid: string | null;
   layoutPreference: string;
   effectiveLayout: "list" | "matrix";

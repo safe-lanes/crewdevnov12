@@ -79,6 +79,7 @@ export interface ConfiguredFormSection {
   signature_required?: boolean;
   signature_officer_required?: boolean;
   signature_seafarer_required?: boolean;
+  signature_vessel_management_required?: boolean;
   default_option_set_uuid?: string | null;
   layout_preference?: "auto" | "list" | "matrix";
   effectiveLayout?: "list" | "matrix";
@@ -118,12 +119,13 @@ export interface ConfiguredFormVesselType {
 }
 
 export type ConfiguredFormAnswerValue = string | string[] | boolean;
-export type ConfiguredSignatureType = "officer" | "seafarer";
+export type ConfiguredSignatureType = "officer" | "seafarer" | "vessel_management";
 export interface ConfiguredSignature {
   signatureAttUuid?: string | null;
   signatureName?: string | null;
   signatureRank?: string | null;
   witnessedByName?: string | null;
+  witnessedByRank?: string | null;
   signedAt?: string | null;
   signatureUrl?: string | null;
 }
@@ -364,14 +366,14 @@ function SignatureBlock({
       : methodOptions[0]?.method ?? "");
     setSeafarerPresent(false);
   }, [methodOptions]);
-  const label = companyForm && type === "officer" ? "Company Representative"
+  const label = type === "vessel_management" ? "Vessel Management" : companyForm && type === "officer" ? "Company Representative"
     : legacy ? "Signature" : type === "officer" ? "Officer signature" : "Seafarer signature";
   if (state?.signatureUrl) {
     return <div className="flex flex-wrap items-center gap-2 text-sm" data-testid={legacy ? `preview-signature-${sectionId}` : `preview-signature-${type}-${sectionId}`}>
       <span className="font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>{label}:</span>
       <AuthenticatedSignatureImage url={state.signatureUrl} signerName={state.signatureName} compact />
-      <span className="whitespace-nowrap">{state.signatureName || "Signer name unavailable"}{type === "seafarer" && state.signatureRank ? ` · ${state.signatureRank}` : ""}</span>
-      {type === "seafarer" && <span className="whitespace-nowrap text-muted-foreground">Signed in the presence of {state.witnessedByName || "the witnessing officer"}</span>}
+      <span className="whitespace-nowrap">{state.signatureName || "Signer name unavailable"}{(companyForm || type === "seafarer") && state.signatureRank ? ` · ${state.signatureRank}` : ""}</span>
+      {type === "seafarer" && <span className="whitespace-nowrap text-muted-foreground">Signed in the presence of {state.witnessedByName || "the witnessing officer"}{state.witnessedByRank ? ` · ${state.witnessedByRank}` : ""}</span>}
       <span className="ml-1 whitespace-nowrap font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Date:</span>
       <span className="whitespace-nowrap" data-testid={legacy ? `preview-signature-date-${sectionId}` : undefined}>{formatSignatureDate(state.signedAt)}</span>
       {!readOnly && live?.onDeleteSignature && <Button type="button" variant="outline" size="sm" disabled={signatureActionPending} onClick={async () => {
@@ -966,12 +968,13 @@ function ConfiguredSection({
   // structures independently declare the officer and seafarer requirements.
   const officerSignatureRequired = !!section.signature_officer_required || (!!section.signature_required && !section.signature_seafarer_required);
   const seafarerSignatureRequired = !!section.signature_seafarer_required;
+  const vesselSignatureRequired = companyForm && !!section.signature_vessel_management_required;
   const hasAnswerablePoint = section.questions.some((question) =>
     !["content", "system_field", "info_only"].includes(question.response_type));
   const requiresSubmission = !companyForm || section.requires_submission === true
-    || (section.requires_submission === undefined && (hasAnswerablePoint || officerSignatureRequired || seafarerSignatureRequired));
+    || (section.requires_submission === undefined && (hasAnswerablePoint || officerSignatureRequired || seafarerSignatureRequired || vesselSignatureRequired));
   const hasFooterContent = section.comment_box_required
-    || officerSignatureRequired || seafarerSignatureRequired
+    || officerSignatureRequired || seafarerSignatureRequired || vesselSignatureRequired
     || section.responsible_mode !== "not_applicable";
   const state = live?.sectionStates?.[sectionId];
   const readOnly = !!live?.isLocked || state?.status === "submitted" || state?.status === "not_applicable"
@@ -1015,7 +1018,7 @@ function ConfiguredSection({
       ? companyForm ? "Company Representative" : "Officer"
       : seafarerSignatureRequired && !signatures.seafarer?.signatureAttUuid
         ? "Seafarer"
-        : null;
+        : vesselSignatureRequired && !signatures.vessel_management?.signatureAttUuid ? "Vessel Management" : null;
     if (missingSignature) {
       setSectionDialog({
         kind: "validation",
@@ -1056,6 +1059,9 @@ function ConfiguredSection({
           : <SignatureBlock sectionId={sectionId} type="seafarer" readOnly={readOnly} live={live} companyForm={companyForm} canSign={!companyForm || section.can_sign?.seafarer === true} state={state?.signatures?.seafarer} />
       )}
       {(hasFooterContent || !requiresSubmission) && <SectionResponsibility section={section} roles={roles} departments={departments} sectionId={sectionId} />}
+      {vesselSignatureRequired && (mode === "preview"
+        ? <div className="rounded-md border border-dashed px-4 py-4" data-testid={`preview-signature-vessel_management-${sectionId}`}><p className="font-semibold">Vessel Management</p><p className="text-xs">Signature placeholder — live signing is not available in Preview.</p></div>
+        : <SignatureBlock sectionId={sectionId} type="vessel_management" readOnly={readOnly} live={live} companyForm canSign={section.can_sign?.vessel_management === true} state={state?.signatures?.vessel_management} />)}
         {mode === "live" && <div className="flex flex-wrap items-center gap-2 border-t pt-3"><Badge variant="outline">{state?.status === "submitted" ? "Submitted" : state?.status === "not_applicable" ? "Not applicable" : companyForm && !requiresSubmission ? "Informational" : "In progress"}</Badge>{live?.sectionOwnership?.[sectionId] && <span className="text-xs">Owner: {live.sectionOwnership[sectionId].ownerLabel}</span>}{state?.submittedByName && <span className="text-xs">Submitted by {state.submittedByName}</span>}{!readOnly && requiresSubmission && <><Button type="button" variant="outline" size="sm" disabled={!!live?.sectionSubmitting?.[sectionId]} onClick={() => { void Promise.resolve(live?.onSaveDraft?.(sectionId)).catch(() => undefined); }}>Save draft</Button>{(!companyForm || (section.can_submit === true && !!live?.onSubmitSection)) && <Button type="button" size="sm" disabled={!!live?.sectionSubmitting?.[sectionId]} onClick={submitSection}>{live?.sectionSubmitting?.[sectionId] ? "Submitting…" : "Submit"}</Button>}</>}{live?.sectionActionErrors?.[sectionId] && <p className="basis-full text-sm text-destructive" role="alert">{live.sectionActionErrors[sectionId]}</p>}</div>}
     </div>
   ) : undefined;
@@ -1277,7 +1283,7 @@ export function ConfiguredFormRenderer({
         if (section.requires_submission !== undefined) return section.requires_submission;
         const hasAnswerablePoint = section.questions.some((question) =>
           !["content", "system_field", "info_only"].includes(question.response_type));
-        return hasAnswerablePoint || !!section.signature_officer_required || !!section.signature_seafarer_required;
+        return hasAnswerablePoint || !!section.signature_officer_required || !!section.signature_seafarer_required || !!section.signature_vessel_management_required;
       })
       : applicableSections;
     const submittedCount = completionSections.filter((section, index) => {
