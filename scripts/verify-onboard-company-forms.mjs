@@ -290,6 +290,10 @@ async function cancellation() {
 
 const ensure=(condition,message)=>{if(!condition)throw Error(message);};
 async function closing() {
+  const previous=await fs.readFile(`${root}/onboard-closing-browser.json`,"utf8").then(JSON.parse).catch(error=>{
+    if(error.code==="ENOENT")return null;throw error;
+  });
+  if(previous)await write(`onboard-closing-${previous.startedAt.replace(/[:.]/g,"-")}.json`,previous);
   const fixture=JSON.parse(await fs.readFile(manifestPath,"utf8"));
   const head=execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim();
   const commitDate=execFileSync("git",["show","-s","--format=%cI","HEAD"],{encoding:"utf8"}).trim();
@@ -367,7 +371,7 @@ async function closing() {
     if(await rows.count())await rows.first().getByRole("button").first().click();
     await page.getByTestId("tab-planning").click();
     await page.locator(`[data-plan-uuid="${fixture.planUuid}"]`).click();
-    await page.getByTestId("select-joining-status").locator("button").click();
+    await page.getByRole("dialog").getByRole("combobox").filter({hasText:"Planned"}).first().click();
     await page.getByRole("option",{name:"Signed On",exact:true}).click();
     const signed=page.waitForResponse(r=>r.request().method()==="POST"&&r.url().includes(`/planning/${fixture.planUuid}/sign-on`));
     await page.getByTestId("button-submit-relief").click();
@@ -468,11 +472,12 @@ async function closing() {
     ensure(execFileSync("ps",["-p",String(backendPid),"-o","args="],{encoding:"utf8"}).includes("server/index.ts"),"Main backend changed during closing browser");
     report.finishedAt=new Date().toISOString();report.passed=true;
   }catch(error){
-    report.passed=false;report.error=String(error);await shot("failure");
+    report.passed=false;report.error=String(error);await shot(`failure-${report.startedAt.replace(/[:.]/g,"-")}`);
     await fs.writeFile(`${root}/onboard-closing-failure-dom.txt`,await page.locator("body").innerText());
     throw error;
   }finally{
     report.apiEvidence=apiEvidence;
+    await write(`onboard-closing-${report.startedAt.replace(/[:.]/g,"-")}.json`,report);
     await write("onboard-closing-browser.json",report);await browser.close();
   }
   console.log("Closing browser passed",report);
