@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { ColDef, GridApi } from 'ag-grid-community';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { OnboardCompanyForms, useOnboardFormCounts } from "./components/OnboardCompanyForms";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -737,6 +738,7 @@ function OfficerMatrixRowV2({ rank, index, rankPlanningData, rankDepartment, han
 
 export function VesselModule_v2(): JSX.Element {
     const queryClient = useQueryClient();
+    const [companyFormsTarget, setCompanyFormsTarget] = useState<{ assignmentUuid: string; crewName: string; readOnly: boolean } | null>(null);
     const [selectedVesselPage, setSelectedVesselPage] = useState("vessel-database");
     const { canView, canCreate, canEdit, canDelete, permissions, userType, myVessels } = usePermissions();
     const allowedPages = useMemo(() => {
@@ -921,6 +923,7 @@ export function VesselModule_v2(): JSX.Element {
     }, [vesselRanksRaw, baseRankOrderMap]);
     
     const { data: vesselPlanningV2Raw = [], isLoading: planningLoading } = useVesselPlanningV2(selectedVessel?.vesselId || null);
+    const companyFormCounts = useOnboardFormCounts(vesselPlanningV2Raw.map(row => row.crewAssignUuid));
     
     const vesselPlanning = useMemo(() => {
         return vesselPlanningV2Raw.map(mapV2PlanningToLegacy);
@@ -1784,6 +1787,7 @@ export function VesselModule_v2(): JSX.Element {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
+                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3]" data-testid="crew-list-forms-header">Forms</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]">S. No.</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Rank</TableHead>
                                                     <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
@@ -1846,6 +1850,15 @@ export function VesselModule_v2(): JSX.Element {
                                                     
                                                     return (
                                                         <TableRow key={planning.id || planning.planUuid || index} className="hover:bg-gray-50 border-b border-gray-100">
+                                                            <TableCell className="text-xs" data-testid={`cell-forms-${planning.crewAssignUuid || index}`}>
+                                                              {!planning.crewAssignUuid ? <span title="No recorded assignment is linked">Not linked</span>
+                                                                : companyFormCounts.error ? <span role="alert" title={companyFormCounts.error.message}>Unavailable</span>
+                                                                : companyFormCounts.data?.[planning.crewAssignUuid] === undefined ? <span>Loading…</span>
+                                                                : <Button variant="ghost" size="sm" data-testid={`button-crew-forms-${planning.crewAssignUuid}`}
+                                                                  onClick={() => setCompanyFormsTarget({ assignmentUuid: planning.crewAssignUuid, crewName: planning.crewName || planning.crewMemberName || "Crew member", readOnly: showArchived || !!planning.isArchived })}>
+                                                                  {companyFormCounts.data?.[planning.crewAssignUuid] ?? 0}
+                                                                </Button>}
+                                                            </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-sno-${index + 1}`}>
                                                                 {index + 1}.
                                                             </TableCell>
@@ -2835,6 +2848,16 @@ export function VesselModule_v2(): JSX.Element {
                             <p className="text-sm text-muted-foreground">No document expiry issues found.</p>
                         )}
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={companyFormsTarget !== null} onOpenChange={open => {
+                if (!open) { setCompanyFormsTarget(null); void queryClient.invalidateQueries({ queryKey: ["onboard-company-form-counts"] }); }
+            }}>
+                <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" data-testid="onboard-company-forms-dialog">
+                    <DialogHeader><DialogTitle>On-board Forms · {companyFormsTarget?.crewName}</DialogTitle></DialogHeader>
+                    {companyFormsTarget && <OnboardCompanyForms key={companyFormsTarget.assignmentUuid}
+                        assignmentUuid={companyFormsTarget.assignmentUuid} readOnly={companyFormsTarget.readOnly} />}
                 </DialogContent>
             </Dialog>
 

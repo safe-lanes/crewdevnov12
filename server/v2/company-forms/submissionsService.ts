@@ -291,10 +291,12 @@ export class CompanyFormSubmissionsService {
     principal: CompanyFormPrincipal,
     subject: any,
     status: string,
+    stageKey: string | null = null,
   ): Promise<boolean> {
     if (status !== "in_progress") return false;
     try {
       if (!adapter.canStart(subject)) return false;
+      if (adapter.authorizeStageAction && !adapter.authorizeStageAction(principal, "edit_draft", subject, stageKey)) return false;
       return await adapter.authorize(principal, "edit_draft", subject);
     } catch {
       return false;
@@ -479,7 +481,7 @@ export class CompanyFormSubmissionsService {
     );
     const data = await this.renderRepository.readPinnedRenderData(input.submissionUuid);
     if (!data) throw new CompanyFormNotFoundError("Company Form submission not found.");
-    const canEdit = await this.canEditSubmission(adapter, principal, subject.context, data.submission.status);
+    const canEdit = await this.canEditSubmission(adapter, principal, subject.context, data.submission.status, data.submission.stageKey);
     const canVoid = await this.canVoidSubmission(adapter, principal, subject.context, data.submission.status);
     const formUrl = `/api/v2/company-form-submissions/${encodeURIComponent(input.submissionUuid)}`;
     const { states, answers } = this.mapStatesAndAnswers(data, formUrl);
@@ -507,7 +509,7 @@ export class CompanyFormSubmissionsService {
     );
     const data = await this.renderRepository.readPinnedRenderData(input.submissionUuid);
     if (!data) throw new CompanyFormNotFoundError("Company Form submission not found.");
-    const canEdit = await this.canEditSubmission(adapter, principal, subject.context, data.submission.status);
+    const canEdit = await this.canEditSubmission(adapter, principal, subject.context, data.submission.status, data.submission.stageKey);
     const canVoid = await this.canVoidSubmission(adapter, principal, subject.context, data.submission.status);
 
     const stages = await adapter.loadStages();
@@ -1044,10 +1046,16 @@ export class CompanyFormSubmissionsService {
       input.subjectType,
       [subject.subjectRef],
     );
+    const classified = classifyOutstanding(adapter, subject, rows);
     return {
       subjectType: input.subjectType,
       subjectRef: subject.subjectRef,
-      ...classifyOutstanding(adapter, subject, rows),
+      ...classified,
+      submissions: await Promise.all(classified.submissions.map(async row => ({
+        ...row,
+        canEdit: await this.canEditSubmission(adapter, principal, subject.context, row.status, row.stageKey),
+        replacementHistory: await this.readableHistory(input.req, row),
+      }))),
     };
   }
 

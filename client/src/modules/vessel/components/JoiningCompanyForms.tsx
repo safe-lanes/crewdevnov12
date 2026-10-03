@@ -167,11 +167,14 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
         <div>{submission.formName ?? forms.find((form) => form.formUuid === submission.formUuid)?.formName ?? "Company declaration"} · {submission.status}</div>
         <div className="text-muted-foreground">Version {submission.versionNo?.padStart(2, "0") ?? "unavailable"} · Released {sailDate(submission.releasedAt)}</div>
         <div className="text-muted-foreground">{submission.stageLabel ?? "Stage unavailable"}</div>
-        {submission.replacedBySubmissionUuid && <div>Voided — replaced by {submission.replacedBySubmissionUuid}</div>}
-        {submission.replacesSubmissionUuid && <div>Replaces a voided submission {submission.replacesSubmissionUuid}</div>}
+        {submission.replacementHistory?.map(link => <div key={link.submissionUuid}>
+          {link.label} <button type="button" className="text-primary underline"
+            onClick={() => setActiveSubmission(link.submissionUuid)}>
+            {link.targetLabel || "Open linked declaration — historical label unavailable"}</button>
+        </div>)}
         <Button type="button" variant="outline" className="mt-2"
           onClick={() => setActiveSubmission(submission.submissionUuid)}>
-          {submission.status === "in_progress" ? "Resume declaration" : "Read declaration"}
+          {submission.status === "in_progress" && submission.canEdit !== false ? "Resume declaration" : "Read declaration"}
         </Button>
       </div>)}
     </section>

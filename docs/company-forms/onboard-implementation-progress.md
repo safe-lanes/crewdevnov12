@@ -61,3 +61,15 @@ chat. The reviewed plan is `.local/tasks/company-form-crew-list-entry.md`.
   recorded seafarer name, never an exposed submission UUID.
 - Where no recorded historical name exists, the link explicitly says it is
   unavailable. No current crew/master value is substituted.
+
+## Step 5 — Crew List entry
+
+- One Forms column is shared by active/archived Crew List layouts. Its counts
+  come from bounded, scoped batches using the persisted crewAssignUuid.
+- Zero is clickable; missing links, loading and permission failures are not
+  presented as genuine zero counts.
+- The dialog offers a manual released on-board picker, pinned reopen, saved
+  statuses, readable void/replacement links and retained historical reads.
+- Archived rows have no start picker. Server stage/lifecycle checks remain
+  authoritative for cancelled, changed and non-current assignments.
+- Appraisal/Handover handlers and policy are unchanged.

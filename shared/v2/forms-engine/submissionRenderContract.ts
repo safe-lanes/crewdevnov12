@@ -56,6 +56,7 @@ export type CompanyFormSubmissionSummary = {
   replacesSubmissionUuid: string | null;
   systemSnapshotAt: string | null;
   systemSnapshotEvent: "section_submission" | "signature" | null;
+  replacementHistory?: CompanyFormSubmissionHistoryLink[];
 };
 
 export type CompanyFormSubmissionAnswer = {
