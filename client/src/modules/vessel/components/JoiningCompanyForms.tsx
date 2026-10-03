@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -163,8 +164,9 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
       {history.isFetching && <p role="status">Loading declarations…</p>}
       {history.isSuccess && submissions.length === 0 && <p className="text-sm text-muted-foreground">No declarations have been started for this assignment.</p>}
       {submissions.map((submission) => <div key={submission.submissionUuid} className="rounded-md border p-3 text-sm">
-        <div>{forms.find((form) => form.formUuid === submission.formUuid)?.formName ?? "Company declaration"} · {submission.status}</div>
-        <div className="text-muted-foreground break-all">Pinned version: {submission.formVersionUuid} · stage: {submission.stageKey}</div>
+        <div>{submission.formName ?? forms.find((form) => form.formUuid === submission.formUuid)?.formName ?? "Company declaration"} · {submission.status}</div>
+        <div className="text-muted-foreground">Version {submission.versionNo?.padStart(2, "0") ?? "unavailable"} · Released {sailDate(submission.releasedAt)}</div>
+        <div className="text-muted-foreground">{submission.stageLabel ?? "Stage unavailable"}</div>
         {submission.replacedBySubmissionUuid && <div>Voided — replaced by {submission.replacedBySubmissionUuid}</div>}
         {submission.replacesSubmissionUuid && <div>Replaces a voided submission {submission.replacesSubmissionUuid}</div>}
         <Button type="button" variant="outline" className="mt-2"

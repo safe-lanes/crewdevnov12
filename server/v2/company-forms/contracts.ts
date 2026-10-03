@@ -103,6 +103,8 @@ export type SubjectLookupResult<Context> = {
 };
 
 export type SystemFieldResolutionContext = {
+  /** Raw identifiers/calendar values for companion storage and legacy comparison. */
+  raw?: boolean;
   submission: {
     dateOfDeclaration: string | null;
   };

@@ -29,6 +29,15 @@ function mount(props = context) {
 afterEach(() => { cleanup(); request.mockReset(); });
 
 describe("Joining Company Forms use the recorded planning association", () => {
+  it("uses pinned version metadata and the display stage even outside today's eligible catalogue", async () => {
+    fixture({ eligible: [], submissions: [{ submissionUuid: "history", formVersionUuid: "private-uuid",
+      formUuid: "archived-form", formName: "Archived declaration", status: "voided",
+      versionNo: "02", releasedAt: "2026-10-02T07:34:39Z", stageKey: "before_joining", stageLabel: "Before joining" }] });
+    mount();
+    expect(await screen.findByText("Version 02 · Released 02-Oct-2026")).toBeTruthy();
+    expect(screen.getByText("Before joining")).toBeTruthy();
+    expect(screen.queryByText(/private-uuid|before_joining/)).toBeNull();
+  });
   it("reads the exact link without a crew/current-assignment discovery query", async () => {
     fixture();
     await verifyJoiningAssignment(context);

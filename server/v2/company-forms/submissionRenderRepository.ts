@@ -34,6 +34,8 @@ export class CompanyFormSubmissionRenderRepository {
       voidedAt: frmCompanySubmissions.voidedAt,
       voidedByUuid: frmCompanySubmissions.voidedByUuid,
       voidedByName: frmCompanySubmissions.voidedByName,
+      voidedByDesignation: frmCompanySubmissions.voidedByDesignation,
+      applicableSectionUuids: frmCompanySubmissions.applicableSectionUuids,
       voidReason: frmCompanySubmissions.voidReason,
       voidedPreviousStatus: frmCompanySubmissions.voidedPreviousStatus,
       replacedBySubmissionUuid: frmCompanySubmissions.replacedBySubmissionUuid,

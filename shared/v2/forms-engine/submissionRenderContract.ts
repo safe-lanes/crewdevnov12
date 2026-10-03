@@ -36,6 +36,10 @@ export type CompanyFormSubmissionSummary = {
   formUuid: string;
   formVersionUuid: string;
   stageKey: string | null;
+  stageLabel?: string | null;
+  versionNo?: string | null;
+  releasedAt?: string | null;
+  formName?: string | null;
   status: CompanyFormSubmissionStatus;
   canEdit: boolean;
   canVoid: boolean;
@@ -44,6 +48,7 @@ export type CompanyFormSubmissionSummary = {
   voidedAt: string | null;
   voidedByUuid: string | null;
   voidedByName: string | null;
+  voidedByDesignation?: string | null;
   voidReason: string | null;
   voidedPreviousStatus: "in_progress" | "completed" | null;
   replacedBySubmissionUuid: string | null;
@@ -107,6 +112,7 @@ export type CompanyFormRenderOptionSet = {
 };
 
 export type CompanyFormSystemFieldValue = {
+  systemValue?: string | null;
   key: string;
   label: string;
   source: "submission" | "subject";

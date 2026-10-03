@@ -1,4 +1,4 @@
-import { boolean, check, foreignKey, index, pgTable, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, check, foreignKey, index, pgTable, serial, text, timestamp, uniqueIndex, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { admFormVersionsV2, admFormsV2 } from "../admin/schema";
 import { crewAssignments } from "../crew-pool/schema";
@@ -17,6 +17,8 @@ export const frmCompanySubmissions = pgTable("frm_company_submissions", {
   voidedAt: timestamp("voided_at"),
   voidedByUuid: text("voided_by_uuid"),
   voidedByName: text("voided_by_name"),
+  voidedByDesignation: text("voided_by_designation"),
+  applicableSectionUuids: jsonb("applicable_section_uuids").$type<string[]>(),
   voidReason: text("void_reason"),
   voidedPreviousStatus: text("voided_previous_status"),
   replacedBySubmissionUuid: text("replaced_by_submission_uuid"),
@@ -113,6 +115,7 @@ export const frmCompanySubmissionSystemSnapshots = pgTable("frm_company_submissi
   sectionUuid: text("section_uuid").notNull(),
   questionUuid: text("question_uuid").notNull(),
   value: text("value"),
+  systemValue: text("system_value"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   createdByUuid: text("created_by_uuid").notNull(),
   isDeleted: boolean("is_deleted").notNull().default(false),

@@ -1499,6 +1499,8 @@ describe("Company Form submission renderer contract", () => {
         contract.submission.canVoid = false;
         contract.submission.voidReason = "The declaration was superseded.";
         contract.submission.voidedAt = "2026-06-03T12:00:00.000Z";
+        contract.submission.voidedByName = "Server captured officer";
+        contract.submission.voidedByDesignation = "Crewing Representative";
         contract.submission.voidedPreviousStatus = "in_progress";
         return new Response(null, { status: 204 });
       }
@@ -1530,6 +1532,9 @@ describe("Company Form submission renderer contract", () => {
       .find((button) => button.textContent?.trim() === "Void submission")!);
     await waitFor(() => expect(formGetCount).toBe(2));
     await waitFor(() => expect(activeContainer?.textContent).toContain("Voided submission"));
+    expect(activeContainer?.textContent).toContain("Voided by Server captured officer · Crewing Representative");
+    expect(activeContainer?.textContent).toContain("03-Jun-2026 12:00:00 UTC");
+    expect(activeContainer?.querySelector('[data-testid="select-preview-vessel-type"]')).toBeNull();
 
     fireEvent.click(activeContainer!.querySelector('[aria-label="Company Form parts"] button:nth-child(2)')!);
     const answerInput = activeContainer!.querySelector('[data-testid="preview-response-second-part-question"]')!;

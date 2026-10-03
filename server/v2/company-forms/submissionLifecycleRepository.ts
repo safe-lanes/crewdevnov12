@@ -200,13 +200,25 @@ async function freezeSystemFields(input: {
       submission: { dateOfDeclaration: declarationDate },
       executor: tx,
     }, tx),
+    systemValue: await adapter.resolveSystemField(question.systemFieldKey, subject.context, {
+      raw: true, submission: { dateOfDeclaration: declarationDate }, executor: tx,
+    }, tx),
     createdAt: at,
     createdByUuid: String(actorUserId),
     isDeleted: false,
     isSync: false,
   })));
   if (values.length) await tx.insert(frmCompanySubmissionSystemSnapshots).values(values);
+  const sections = await tx.select({ section: frmSections }).from(frmSections)
+    .innerJoin(frmFormParts, eq(frmFormParts.formPartUuid, frmSections.formPartUuid))
+    .where(and(eq(frmFormParts.formVersionUuid, submission.formVersionUuid),
+      eq(frmFormParts.isDeleted, false), eq(frmSections.isDeleted, false)));
+  const applicableSectionUuids: string[] = [];
+  for (const { section } of sections) {
+    if (await (adapter.isSectionApplicable?.(section, subject.context) ?? true)) applicableSectionUuids.push(section.sectionUuid);
+  }
   await tx.update(frmCompanySubmissions).set({
+    applicableSectionUuids,
     systemSnapshotAt: at,
     systemSnapshotEvent: event,
     updatedByUuid: String(actorUserId),
@@ -562,6 +574,7 @@ export class CompanyFormSubmissionLifecycleRepository {
         voidedAt: now,
         voidedByUuid: String(input.actor.userId),
         voidedByName,
+        voidedByDesignation: users[0].designation?.trim() || null,
         voidReason: reason,
         voidedPreviousStatus: submission.status,
         updatedByUuid: String(input.actor.userId),

@@ -1,4 +1,6 @@
 import { and, eq } from "drizzle-orm";
+import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
+import { sailDate } from "../../../../shared/v2/forms-engine/displayFormatting";
 import {
   masterNationalities,
   masterVessels,
@@ -174,13 +176,14 @@ async function resolveCrewSystemField(
   executor: any = getDb(),
 ): Promise<string | null> {
   if (key === "date_of_declaration") {
-    return context.submission.dateOfDeclaration;
+    const date = context.submission.dateOfDeclaration;
+    return context.raw || !date ? date : sailDate(date);
   }
   if (!subjectSystemFieldSources.has(key)) {
     throw new Error(`Unknown System field key for Company Form subject "${CREW_ASSIGNMENT_SUBJECT_TYPE}": ${key}`);
   }
 
-  if (key === "sign_on_date") return subject.signOnDate;
+  if (key === "sign_on_date") return context.raw || !subject.signOnDate ? subject.signOnDate : sailDate(subject.signOnDate);
 
   const db = executor;
   if (key === "seafarer_name" || key === "rank" || key === "nationality") {
@@ -201,7 +204,17 @@ async function resolveCrewSystemField(
         .filter(Boolean)
         .join(" ") || null;
     }
-    if (key === "rank") return crew.presentRank;
+    if (key === "rank") {
+      if (context.raw || !crew.presentRank) return crew.presentRank;
+      const ranks = await db.select({ rank: admCompanyRanksV2.rank })
+        .from(admCompanyRanksV2).where(and(
+          eq(admCompanyRanksV2.rankId, crew.presentRank),
+          eq(admCompanyRanksV2.isDeleted, false),
+          eq(admCompanyRanksV2.isRoleRow, false),
+        )).limit(2);
+      if (ranks.length !== 1) throw new Error("The readable rank name cannot be resolved uniquely.");
+      return ranks[0].rank;
+    }
     if (!crew.nationalityUuid) return null;
     const nationalityRows = await db.select({ nationality: masterNationalities.nationality })
       .from(masterNationalities)

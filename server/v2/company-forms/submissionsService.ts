@@ -81,6 +81,7 @@ function mapSummary(row: any, canEdit: boolean, canVoid: boolean): CompanyFormSu
     voidedAt: isoDate(row.voidedAt),
     voidedByUuid: row.voidedByUuid,
     voidedByName: row.voidedByName,
+    voidedByDesignation: row.voidedByDesignation,
     voidReason: row.voidReason,
     voidedPreviousStatus: row.voidedPreviousStatus,
     replacedBySubmissionUuid: row.replacedBySubmissionUuid,
@@ -489,10 +490,12 @@ export class CompanyFormSubmissionsService {
           systemFields.push({
             ...field,
             value: recorded.value,
+            systemValue: recorded.systemValue,
             valueOrigin: "frozen_snapshot",
           });
           try {
             const current = await adapter.resolveSystemField(field.key, subject.context, {
+              raw: recorded.systemValue == null,
               submission: { dateOfDeclaration },
             });
             if (current !== recorded.value) systemValuesChanged = true;
@@ -561,9 +564,23 @@ export class CompanyFormSubmissionsService {
     );
     const applicableBySection = new Map<string, boolean>();
     for (const section of data.sections as any[]) {
+      const frozen = systemSnapshotExists || ["completed", "voided"].includes(data.submission.status);
+      const state = (data.states as any[]).find(state => state.sectionUuid === section.sectionUuid);
+      const hasSignedState = state && (data.signatures as any[]).some(row => (row.signature ?? row).sectionStateUuid === state.sectionStateUuid);
+      if (frozen && !Array.isArray(data.submission.applicableSectionUuids) &&
+          parseVesselTypeUuids(section.applicableVesselTypes).length > 0 &&
+          state?.status !== "not_applicable" && state?.status !== "submitted" && !hasSignedState) {
+        throw new CompanyFormConflictError("Historical vessel-type applicability was not captured. This signed record cannot safely be filtered using current vessel data.");
+      }
       applicableBySection.set(
         section.sectionUuid,
-        await (adapter.isSectionApplicable?.(section, subject.context) ?? true),
+        Array.isArray(data.submission.applicableSectionUuids)
+          ? data.submission.applicableSectionUuids.includes(section.sectionUuid)
+          : systemSnapshotExists || ["completed", "voided"].includes(data.submission.status)
+            ? state?.status !== "not_applicable" &&
+              (parseVesselTypeUuids(section.applicableVesselTypes).length === 0 ||
+                state?.status === "submitted" || !!hasSignedState)
+            : await (adapter.isSectionApplicable?.(section, subject.context) ?? true),
       );
     }
     const canSubmitAction = await this.canAuthorizeAction(

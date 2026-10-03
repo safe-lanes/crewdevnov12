@@ -1,3 +1,4 @@
+import { sailUtcTimestamp } from "@shared/v2/forms-engine/displayFormatting";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -882,7 +883,8 @@ export function CompanySubmissionRenderer({
       { role: "status", className: "mb-3 rounded-md border p-3 text-sm" },
       React.createElement("p", { className: "font-semibold" }, "Voided submission"),
       lifecycleForm.submission.voidReason && React.createElement("p", { className: "mt-1" }, `Reason: ${lifecycleForm.submission.voidReason}`),
-      lifecycleForm.submission.voidedAt && React.createElement("p", { className: "mt-1" }, `Voided at ${new Date(lifecycleForm.submission.voidedAt).toLocaleString()}`),
+      React.createElement("p", { className: "mt-1" }, `Voided by ${lifecycleForm.submission.voidedByName ?? "Identity unavailable"} · ${lifecycleForm.submission.voidedByDesignation ?? "Designation not recorded"}`),
+      lifecycleForm.submission.voidedAt && React.createElement("p", { className: "mt-1" }, `Voided at ${sailUtcTimestamp(lifecycleForm.submission.voidedAt)}`),
     ),
     lifecycleForm?.submission.canVoid && submissionStatus !== "voided" && React.createElement(
       "section",

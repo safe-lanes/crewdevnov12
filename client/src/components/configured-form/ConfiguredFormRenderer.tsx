@@ -1297,7 +1297,7 @@ export function ConfiguredFormRenderer({
 
     return (
       <>
-        <div className="flex flex-wrap items-end justify-end gap-4" data-testid={mode === "preview" ? "preview-only-banner" : "configured-form-live-banner"}>
+        {!(companyForm && mode === "live") && <div className="flex flex-wrap items-end justify-end gap-4" data-testid={mode === "preview" ? "preview-only-banner" : "configured-form-live-banner"}>
           <SAILFormField label="Vessel type" className="min-w-[210px]" >
             <div data-testid="select-preview-vessel-type">
               <SAILSelect value={selectedVessel} onValueChange={setVesselType} placeholder="All vessel types">
@@ -1306,7 +1306,7 @@ export function ConfiguredFormRenderer({
               </SAILSelect>
             </div>
           </SAILFormField>
-        </div>
+        </div>}
 
         <div
           style={{ marginTop: sailDesignSystem.spacing.sectionSpacing }}
@@ -1334,7 +1334,8 @@ export function ConfiguredFormRenderer({
                     No sections configured for this part.
                   </InlineMissing>
                 )}
-                {selectedSections.map((section, sectionIndex) => {
+                {selectedSections.filter(section => !(companyForm && mode === "live" &&
+                  ["completed", "voided"].includes(live?.submissionStatus ?? "")) || section.is_applicable !== false).map((section, sectionIndex) => {
                   const sectionId = section.clientKey || section.section_uuid || `${selectedPart.formPartUuid}-section-${sectionIndex + 1}`;
                   const isApplicable = live?.sectionStates?.[sectionId]?.status === "not_applicable"
                     ? false

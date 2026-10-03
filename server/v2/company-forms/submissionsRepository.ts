@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { admFormVersionsV2, admFormsV2 } from "../../../shared/v2/admin/schema";
+import { frmSubjectStages } from "../../../shared/v2/forms-engine/subjectRegistry";
 import {
   frmCompanySubmissions,
 } from "../../../shared/v2/forms-engine/submissions";
@@ -137,6 +138,10 @@ export class CompanyFormSubmissionsRepository {
         formUuid: frmCompanySubmissions.formUuid,
         formVersionUuid: frmCompanySubmissions.formVersionUuid,
         stageKey: frmCompanySubmissions.stageKey,
+        versionNo: admFormVersionsV2.versionNo,
+        releasedAt: admFormVersionsV2.releasedAt,
+        formName: admFormsV2.name,
+        stageLabel: frmSubjectStages.label,
         status: frmCompanySubmissions.status,
         completedAt: frmCompanySubmissions.completedAt,
         replacesSubmissionUuid: frmCompanySubmissions.replacesSubmissionUuid,
@@ -145,6 +150,10 @@ export class CompanyFormSubmissionsRepository {
         updatedAt: frmCompanySubmissions.updatedAt,
       })
       .from(frmCompanySubmissions)
+      .leftJoin(admFormVersionsV2, eq(admFormVersionsV2.fvUuid, frmCompanySubmissions.formVersionUuid))
+      .leftJoin(admFormsV2, eq(admFormsV2.formUuid, frmCompanySubmissions.formUuid))
+      .leftJoin(frmSubjectStages, and(eq(frmSubjectStages.subjectType, frmCompanySubmissions.subjectType),
+        eq(frmSubjectStages.stageKey, frmCompanySubmissions.stageKey)))
       .where(and(
         eq(frmCompanySubmissions.subjectType, subjectType),
         inArray(frmCompanySubmissions.subjectRef, [...subjectRefs]),
