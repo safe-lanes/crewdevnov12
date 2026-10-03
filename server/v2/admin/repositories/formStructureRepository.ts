@@ -223,6 +223,22 @@ export class FormStructureRepository {
          throw new Error("Content points are available only on Company Forms");
        }
        for (const section of input.sections) {
+         if (section.signature_vessel_management_required || section.vessel_signature_role_uuids.length) {
+           if (context.category !== "dynamic") {
+             const error: any = new Error("Vessel signatures are available only on Company Forms");
+             error.statusCode = 400; throw error;
+           }
+           for (const id of section.vessel_signature_role_uuids) {
+             const roles = await tx.select().from(admRoleMasterAc).where(and(
+               eq(admRoleMasterAc.ruid, id), eq(admRoleMasterAc.roletype, "Ship"),
+               eq(admRoleMasterAc.isActive, true), eq(admRoleMasterAc.isDeleted, false),
+             )).limit(1);
+             if (roles.length !== 1) {
+               const error: any = new Error("Unknown permitted vessel role identifier");
+               error.statusCode = 400; throw error;
+             }
+           }
+         }
          for (const question of section.questions) {
            if (question.response_type !== "system_field") continue;
            const field = context.category === "dynamic"
@@ -409,6 +425,8 @@ export class FormStructureRepository {
           commentBoxRequired: section.comment_box_required,
           signatureOfficerRequired: section.signature_officer_required,
           signatureSeafarerRequired: section.signature_seafarer_required,
+          signatureVesselManagementRequired: section.signature_vessel_management_required,
+          vesselSignatureRoleUuids: [...new Set(section.vessel_signature_role_uuids)],
           defaultOptionSetUuid: section.default_option_set_uuid ?? null,
           layoutPreference: section.layout_preference,
           sortOrder: sectionIndex,
@@ -631,6 +649,8 @@ export class FormStructureRepository {
           commentBoxRequired: row.commentBoxRequired,
           signatureOfficerRequired: row.signatureOfficerRequired,
           signatureSeafarerRequired: row.signatureSeafarerRequired,
+          signatureVesselManagementRequired: row.signatureVesselManagementRequired,
+          vesselSignatureRoleUuids: row.vesselSignatureRoleUuids,
           defaultOptionSetUuid: row.defaultOptionSetUuid ? setUuidMap.get(row.defaultOptionSetUuid) ?? null : null,
           layoutPreference: row.layoutPreference,
           sortOrder: row.sortOrder,

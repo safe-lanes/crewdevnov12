@@ -22,3 +22,16 @@ chat. The reviewed plan is `.local/tasks/company-form-crew-list-entry.md`.
   before implementation in a private verification baseline. Subsequent
   comparisons project only the original keys, ignoring new nullable columns.
 - No existing operational or signed record was changed in this step.
+
+## Step 2 — migration and designer configuration
+
+- Added migration 0231: distinct Vessel Management signature constraints,
+  pinned section role-ID lists and nullable actor/witness capture columns.
+- Designer signature settings include Vessel Management and a multiple-Ship-role
+  selector. Read/save/version-copy paths preserve identifiers.
+- Configuration writes reject unknown/inactive/non-Ship role IDs and reject
+  this feature on unrelated form categories.
+- Release/eligibility validates required role lists and current role validity.
+- Six new release-policy tests plus existing lifecycle/render tests pass:
+  36 tests across three suites. TypeScript remains at the 226 baseline
+  diagnostics, none in the changed files.

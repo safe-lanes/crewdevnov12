@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
+import { admRoleMasterAc, admFormVersionsV2 } from "../../../shared/v2/admin/schema";
 import {
   frmFormParts,
   frmQuestions,
@@ -18,11 +19,16 @@ export type LifecycleSection = {
   responsibleDepartment?: string | null;
   signatureOfficerRequired: boolean;
   signatureSeafarerRequired: boolean;
+  signatureVesselManagementRequired?: boolean;
+  vesselSignatureRoleUuids?: string[];
+  vesselRolePolicyValid?: boolean;
+  onBoard?: boolean;
   questions: LifecycleQuestion[];
 };
 
 export function sectionRequiresSubmission(section: LifecycleSection): boolean {
   return section.signatureOfficerRequired ||
+    section.signatureVesselManagementRequired ||
     section.signatureSeafarerRequired ||
     section.questions.some((question) =>
       question.responseType !== "content" &&
@@ -60,6 +66,12 @@ export function validateCompanyFormLifecycle(
     errors.push("Company Form versions must contain at least one section requiring submission.");
   }
   for (const section of requiringSubmission) {
+    if ((section.signatureVesselManagementRequired || (section.onBoard && section.signatureSeafarerRequired)) && !section.vesselSignatureRoleUuids?.length) {
+      errors.push(`Section "${sectionName(section)}" requires at least one permitted vessel role.`);
+    }
+    if (section.vesselRolePolicyValid === false) {
+      errors.push(`Section "${sectionName(section)}" has an invalid or inactive permitted vessel role.`);
+    }
     if (!sectionHasResponsibleParty(section)) {
       errors.push(
         `Section "${sectionName(section)}" requires submission but has no responsible party. Assign a role, department, or seafarer.`,
@@ -89,10 +101,14 @@ export async function readCompanyFormLifecycleVersions(
     responsibleDepartment: frmSections.responsibleDepartment,
     signatureOfficerRequired: frmSections.signatureOfficerRequired,
     signatureSeafarerRequired: frmSections.signatureSeafarerRequired,
+    signatureVesselManagementRequired: frmSections.signatureVesselManagementRequired,
+    vesselSignatureRoleUuids: frmSections.vesselSignatureRoleUuids,
+    stageKey: admFormVersionsV2.stageKey,
     questionUuid: frmQuestions.questionUuid,
     responseType: frmQuestions.responseType,
   })
     .from(frmSections)
+    .innerJoin(admFormVersionsV2, eq(admFormVersionsV2.fvUuid, frmSections.formVersionUuid))
     .innerJoin(frmFormParts, and(
       eq(frmFormParts.formPartUuid, frmSections.formPartUuid),
       eq(frmFormParts.formVersionUuid, frmSections.formVersionUuid),
@@ -122,13 +138,24 @@ export async function readCompanyFormLifecycleVersions(
         responsibleDepartment: row.responsibleDepartment,
         signatureOfficerRequired: row.signatureOfficerRequired,
         signatureSeafarerRequired: row.signatureSeafarerRequired,
+        signatureVesselManagementRequired: row.signatureVesselManagementRequired,
+        vesselSignatureRoleUuids: row.vesselSignatureRoleUuids,
+        onBoard: row.stageKey === "on_board",
         questions: [],
       };
       lifecycle.sections.push(section);
     }
     if (row.questionUuid) section.questions.push({ responseType: row.responseType });
   }
+  const roleIds = [...new Set<string>(rows.flatMap((row: any) => row.vesselSignatureRoleUuids ?? []))];
+  const validRoles = roleIds.length ? await executor.select({ id: admRoleMasterAc.ruid }).from(admRoleMasterAc)
+    .where(and(inArray(admRoleMasterAc.ruid, roleIds), eq(admRoleMasterAc.roletype, "Ship"),
+      eq(admRoleMasterAc.isActive, true), eq(admRoleMasterAc.isDeleted, false))) : [];
+  const validRoleIds = new Set(validRoles.map((role: any) => role.id));
   for (const lifecycle of result.values()) {
+    for (const section of lifecycle.sections) {
+      section.vesselRolePolicyValid = (section.vesselSignatureRoleUuids ?? []).every(id => validRoleIds.has(id));
+    }
     lifecycle.errors = validateCompanyFormLifecycle(lifecycle.sections);
   }
   return result;

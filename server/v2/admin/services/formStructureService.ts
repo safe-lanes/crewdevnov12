@@ -95,6 +95,8 @@ function treeResponse(
       comment_box_required: section.commentBoxRequired,
       signature_officer_required: section.signatureOfficerRequired,
       signature_seafarer_required: section.signatureSeafarerRequired,
+      signature_vessel_management_required: section.signatureVesselManagementRequired,
+      vessel_signature_role_uuids: section.vesselSignatureRoleUuids,
       default_option_set_uuid: section.defaultOptionSetUuid,
       layout_preference: section.layoutPreference,
       effectiveLayout: resolveEffectiveLayout(

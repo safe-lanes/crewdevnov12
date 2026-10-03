@@ -116,6 +116,7 @@ interface SavedStructuresResponse {
 
 interface RoleRow {
   ruid: string;
+  roletype?: string;
   assignedRole?: string;
   name?: string;
   roleName?: string;
@@ -192,6 +193,8 @@ interface SectionModel {
   signature_required?: boolean;
   signature_officer_required?: boolean;
   signature_seafarer_required?: boolean;
+  signature_vessel_management_required?: boolean;
+  vessel_signature_role_uuids?: string[];
   default_option_set_uuid: string | null;
   layout_preference: "auto" | "list" | "matrix";
   effectiveLayout?: "list" | "matrix";
@@ -360,6 +363,8 @@ function emptySection(partCode: string, sectionIndex: number): SectionModel {
     comment_box_required: false,
     signature_officer_required: false,
     signature_seafarer_required: false,
+    signature_vessel_management_required: false,
+    vessel_signature_role_uuids: [],
     default_option_set_uuid: null,
     layout_preference: "auto",
     questions: [],
@@ -419,6 +424,8 @@ function normalizeTree(
     comment_box_required: !!section.comment_box_required,
     signature_officer_required: !!section.signature_officer_required,
     signature_seafarer_required: !!section.signature_seafarer_required,
+    signature_vessel_management_required: !!section.signature_vessel_management_required,
+    vessel_signature_role_uuids: section.vessel_signature_role_uuids ?? [],
     default_option_set_uuid: section.default_option_set_uuid ?? null,
     layout_preference: section.layout_preference || "auto",
     effectiveLayout: section.effectiveLayout,
@@ -480,6 +487,8 @@ function toPayload(sections: SectionModel[], optionSets: OptionSetModel[] = []) 
       comment_box_required: section.comment_box_required,
       signature_officer_required: !!section.signature_officer_required,
       signature_seafarer_required: !!section.signature_seafarer_required,
+      signature_vessel_management_required: !!section.signature_vessel_management_required,
+      vessel_signature_role_uuids: section.vessel_signature_role_uuids ?? [],
       default_option_set_uuid: section.default_option_set_uuid,
       layout_preference: section.layout_preference,
       questions: section.questions.map((question) => ({
@@ -618,6 +627,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
     commentRequired: false,
     officerSignatureRequired: false,
     seafarerSignatureRequired: false,
+    vesselManagementRequired: false,
+    vesselSignatureRoleUuids: [] as string[],
   });
   const [confirmDelete, setConfirmDelete] = useState<{
     title: string;
@@ -902,6 +913,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
       commentRequired: section.comment_box_required,
       officerSignatureRequired: !!section.signature_officer_required,
       seafarerSignatureRequired: !!section.signature_seafarer_required,
+      vesselManagementRequired: !!section.signature_vessel_management_required,
+      vesselSignatureRoleUuids: section.vessel_signature_role_uuids ?? [],
     });
   }, [selectedSection, trees]);
 
@@ -1731,6 +1744,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
         ...section,
         signature_officer_required: settingsValues.officerSignatureRequired,
         signature_seafarer_required: settingsValues.seafarerSignatureRequired,
+        signature_vessel_management_required: settingsValues.vesselManagementRequired,
+        vessel_signature_role_uuids: settingsValues.vesselSignatureRoleUuids,
       }));
     }
     setSettingsDialog(null);
@@ -2526,6 +2541,27 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                   <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_required" /> Not Required</label>
                 </RadioGroup>
               </div>
+              {isCompanyForm && <>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Vessel Management signature</p>
+                  <RadioGroup value={settingsValues.vesselManagementRequired ? "required" : "not_required"} onValueChange={value => setSettingsValues(current => ({ ...current, vesselManagementRequired: value === "required" }))}>
+                    <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="required" /> Required</label>
+                    <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_required" /> Not Required</label>
+                  </RadioGroup>
+                </div>
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium">Permitted vessel roles for signing and on-board witnessing</legend>
+                  <p className="text-xs text-muted-foreground">Select one or more. Permissions use role identifiers, not these display names.</p>
+                  {activeRoles.filter(role => role.roletype?.toLowerCase() === "ship").map(role => (
+                    <label key={role.ruid} className="flex items-center gap-2 text-sm">
+                      <Checkbox checked={settingsValues.vesselSignatureRoleUuids.includes(role.ruid)}
+                        onCheckedChange={checked => setSettingsValues(current => ({ ...current,
+                          vesselSignatureRoleUuids: checked ? [...new Set([...current.vesselSignatureRoleUuids, role.ruid])] : current.vesselSignatureRoleUuids.filter(id => id !== role.ruid),
+                        }))} /> {roleTitle(role)}
+                    </label>
+                  ))}
+                </fieldset>
+              </>}
             </div>
           )}
           <DialogFooter>
