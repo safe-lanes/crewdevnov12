@@ -183,7 +183,7 @@ describe("AuthContext status machine", () => {
 
   test("setPassword() moves status from mustResetPassword to loggedIn without a fresh login", async () => {
     mockedAuthApi.login.mockResolvedValue(crewLoginResult({ mustResetPassword: true }));
-    mockedAuthApi.setPassword.mockResolvedValue(undefined);
+    mockedAuthApi.setPassword.mockResolvedValue({ accessToken: "access-after-password-change", refreshToken: "refresh-after-password-change" });
 
     const { result } = renderAuth();
     await waitFor(() => expect(result.current.status).toBe("loggedOut"));

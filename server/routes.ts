@@ -7,6 +7,7 @@ import { crewContentRoutes } from "./v2/crew-app/content";
 import { crewNoticesRoutes } from "./v2/crew-app/notices";
 import { crewNotificationsRoutes, crewNotificationScanner } from "./v2/crew-app/notifications";
 import { crewInformationRoutes } from "./v2/crew-app/crew-information";
+import { crewPrivacyRoutes } from "./v2/crew-app/privacy";
 import { vesselV2Routes } from "./v2/vessel";
 import { rotationV2Routes } from "./v2/rotation";
 import portsV2Routes from "./v2/ports/portsRoutes";
@@ -32,6 +33,7 @@ import { storage, isConnected, connectionError, calculateExperienceFromSeaServic
 import { normalizeCrewMemberForTable, calculateCrewStatus } from "@shared/crew-mapping";
 import { tenantConnectionManager, TenantNotFoundError, TenantInactiveError } from "./utils/tenantConnectionManager";
 import { getDatabaseHealthStatus } from "./utils/healthStatus";
+import { erpCommandWorkerSupervisor } from "./v2/crew-app/erp-commands/supervisor";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/v2/tenant/init", async (req, res) => {
@@ -79,7 +81,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount v2 recruitment routes (isolated from existing functionality)
   app.use("/api/v2/recruitment", recruitmentV2Routes);
-  
+
   // Mount v2 crew pool routes
   app.use("/api/v2/crew-pool", crewPoolV2Routes);
 
@@ -100,7 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (origin && (configuredOrigins.includes(origin) || isReplitDevelopmentOrigin)) {
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Vary", "Origin");
-      res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type,Idempotency-Key");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
     }
     if (req.method === "OPTIONS") return res.sendStatus(204);
@@ -111,13 +113,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/crew-app/notices", crewNoticesRoutes);
   app.use("/api/crew-app/notifications", crewNotificationsRoutes);
   app.use("/api/crew-app/crew-information", crewInformationRoutes);
+  app.use("/api/crew-app/privacy-requests", crewPrivacyRoutes);
 
   // Mount v2 vessel routes
   app.use("/api/v2/vessel", vesselV2Routes);
-  
+
   // Mount v2 rotation routes
   app.use("/api/v2/rotation", rotationV2Routes);
-  
+
   // Mount v2 ports routes
   app.use("/api/v2/ports", portsV2Routes);
 
@@ -166,6 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // (requirement 1) — reuses server/v2/crew-app/crew-information's staging
   // service; mounted under /api/v2/ so it gets tenant+auth + RBAC.
   app.use("/api/v2/crew-app-review", crewAppReviewV2Routes);
+  erpCommandWorkerSupervisor.start();
 
   // Start crewing alert background scanner (multi-tenant only)
   if (tenantConnectionManager.isMultiTenantEnabled) {
@@ -247,20 +251,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Test with actual query
         await storage.getCrewMembers();
-        res.status(200).json({ 
-          status: "healthy", 
+        res.status(200).json({
+          status: "healthy",
           ...healthStatus
         });
       } catch (error) {
-        res.status(500).json({ 
-          status: "unhealthy - query failed", 
+        res.status(500).json({
+          status: "unhealthy - query failed",
           ...healthStatus,
           query_error: error instanceof Error ? error.message : String(error)
         });
       }
     } else {
-      res.status(500).json({ 
-        status: "unhealthy - no database connection", 
+      res.status(500).json({
+        status: "unhealthy - no database connection",
         ...healthStatus,
         troubleshooting: {
           check_database_exists: "Verify the database specified in DATABASE_URL exists on the PostgreSQL server",
@@ -279,20 +283,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     for (const hierarchy of hierarchies) {
       let rankPath: string[];
       try {
-        rankPath = typeof hierarchy.rankPath === 'string' 
-          ? JSON.parse(hierarchy.rankPath) 
+        rankPath = typeof hierarchy.rankPath === 'string'
+          ? JSON.parse(hierarchy.rankPath)
           : (Array.isArray(hierarchy.rankPath) ? hierarchy.rankPath : []);
       } catch (e) {
         rankPath = [];
       }
-      
+
       // Check if this hierarchy contains the current rank
       if (!rankPath.includes(currentRank)) {
         continue; // Try next hierarchy
       }
-      
+
       const currentIndex = rankPath.indexOf(currentRank);
-      
+
       // Check if there's a next rank (more senior position)
       if (currentIndex < rankPath.length - 1) {
         // Next rank exists (one position higher index = more senior)
@@ -310,7 +314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   async function ensurePromotionReviewsForEligibleCrew(): Promise<{ created: number; existing: number }> {
     let created = 0;
     let existing = 0;
-    
+
     try {
       // Get all crew members and promotion hierarchies
       const [crewMembers, hierarchies, existingReviews] = await Promise.all([
@@ -327,18 +331,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Build set of all ranks that appear in any hierarchy
       const ranksInHierarchies = new Set<string>();
       for (const h of hierarchies) {
-        const rankPath: string[] = typeof h.rankPath === 'string' 
-          ? JSON.parse(h.rankPath) 
+        const rankPath: string[] = typeof h.rankPath === 'string'
+          ? JSON.parse(h.rankPath)
           : h.rankPath || [];
         rankPath.forEach(r => ranksInHierarchies.add(r));
       }
 
       // Find eligible crew and create missing reviews
       const reviewsToCreate: { crewMemberId: string; promotionToRank: string }[] = [];
-      
+
       for (const crew of crewMembers) {
         const currentRank = crew.presentRank || '';
-        
+
         // Skip if crew has no rank or rank not in any hierarchy
         if (!currentRank || !ranksInHierarchies.has(currentRank)) {
           continue;
@@ -346,7 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Find next promotion rank
         const nextRank = findNextPromotionRank(currentRank, hierarchies);
-        
+
         // Skip if at top of hierarchy (no next rank)
         if (!nextRank) {
           continue;
@@ -398,17 +402,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   function getVisibleViolationCodes(complianceMode: string, opaMode: boolean): string[] {
     const codes: string[] = [];
-    
+
     if (complianceMode === 'Rest') {
       codes.push('A', 'C', 'E', 'F', 'G');
     } else {
       codes.push('B', 'D');
     }
-    
+
     if (opaMode) {
       codes.push('I', 'H');
     }
-    
+
     return codes;
   }
 
@@ -427,38 +431,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status?: string;
         search?: string;
       } = {};
-      
+
       if (req.query.rank) filters.rank = req.query.rank as string;
       if (req.query.nationality) filters.nationality = req.query.nationality as string;
       if (req.query.status) filters.status = req.query.status as string;
       if (req.query.search) filters.search = req.query.search as string;
-      
+
       const crewMembers = await storage.getCrewMembers(Object.keys(filters).length > 0 ? filters : undefined);
-      
+
       // Get all vessel planning records to derive vessel assignments
       const allVesselPlanning = await storage.getAllVesselPlanning();
-      
+
       // Get vessel master data (Master 014) for vessel type lookup
       const vesselMasterData = await storage.getMasterDataEntries('014');
       const vesselMap = new Map(vesselMasterData.map((v: any) => [v.entryId || v.entry_id, v]));
-      
+
       // Get vessel type master data (Master 004) for vessel type display names
       const vesselTypeMasterData = await storage.getMasterDataEntries('004');
       const vesselTypeMap = new Map(vesselTypeMasterData.map((vt: any) => [vt.code, vt.name]));
-      
+
       // Build a map of crewMemberId -> vessel assignment (vesselId, crewStatus, joiningDate, reliefDue, contractPeriodMonths)
       // A crew can have multiple assignments (primary on one vessel, secondary on another)
       // For "Present Vessel" in Crew Database, show the PRIMARY assignment
       // IMPORTANT: Filter out archived records - archived crew have been signed off and are not currently on board
       // Note: Convert crewMemberId to string for consistent key matching
       const crewVesselMap = new Map<string, { vesselId: string; crewStatus: string; joiningDate: string | null; reliefDue: string | null; contractPeriodMonths: number | null }[]>();
-      
+
       for (const planning of allVesselPlanning) {
         // Skip archived records - these crew members have been signed off
         if (planning.isArchived) {
           continue;
         }
-        
+
         if (planning.crewMemberId) {
           // Convert to string for consistent key matching (handles both string and number IDs)
           const crewIdKey = String(planning.crewMemberId);
@@ -471,36 +475,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
             crewStatus: isPrimary ? 'primary' : 'secondary',
             joiningDate: planning.signOnDate || null,
             reliefDue: planning.reliefDue || null,
-            contractPeriodMonths: planning.contractPeriodMonths !== undefined && planning.contractPeriodMonths !== null 
-              ? planning.contractPeriodMonths 
+            contractPeriodMonths: planning.contractPeriodMonths !== undefined && planning.contractPeriodMonths !== null
+              ? planning.contractPeriodMonths
               : null
           });
           crewVesselMap.set(crewIdKey, existing);
         }
       }
-      
+
       // Normalize crew members for table/frontend consumption
       // Override presentVessel with vessel assignment from vessel_planning
       const normalizedCrewMembers = crewMembers.map((crew: any) => {
         const normalized = normalizeCrewMemberForTable(crew) as any;
-        
+
         // Get vessel assignments from vessel_planning (convert crew.id to string for matching)
         const crewIdKey = String(crew.id);
         const vesselAssignments = crewVesselMap.get(crewIdKey) || [];
-        
+
         // Determine if crew has active vessel assignment
         const hasVesselAssignment = vesselAssignments.length > 0;
-        
+
         if (hasVesselAssignment) {
           // Find primary assignment first, fallback to first assignment
           const primaryAssignment = vesselAssignments.find(a => a.crewStatus === 'primary') || vesselAssignments[0];
-          
+
           // Override presentVessel with vessel from vessel_planning
           normalized.presentVessel = primaryAssignment.vesselId;
-          
+
           // Include all assignments for display (both P and S)
           normalized.vesselAssignments = vesselAssignments;
-          
+
           // Override joiningDate, reliefDue, and contractPeriodMonths from vessel_planning if available
           if (primaryAssignment.joiningDate) {
             normalized.joiningDate = primaryAssignment.joiningDate;
@@ -515,7 +519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // No vessel_planning assignment - clear presentVessel
           normalized.presentVessel = null;
         }
-        
+
         // Use unified status calculation logic:
         // isActive=false → "Inactive", else check vessel assignment → "On Board"/"On Leave"
         const isActive = crew.isActive !== false; // Default to active if null/undefined
@@ -530,16 +534,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
         normalized.isActive = isActive;
         normalized.nextAvailability = crew.nextAvailability || null;
-        
+
         // Calculate experience metrics for Officer Matrix display
         const companySeaService = normalized.currentCompanySeaService || [];
         const externalSeaService = normalized.externalSeaService || [];
         const currentRank = normalized.presentRank || '';
-        
+
         // Parse sea service if stored as JSON string, with error handling
         let parsedCompanySeaService: any[] = [];
         let parsedExternalSeaService: any[] = [];
-        
+
         try {
           if (typeof companySeaService === 'string') {
             const parsed = JSON.parse(companySeaService);
@@ -551,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Invalid JSON, default to empty array
           parsedCompanySeaService = [];
         }
-        
+
         try {
           if (typeof externalSeaService === 'string') {
             const parsed = JSON.parse(externalSeaService);
@@ -563,14 +567,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Invalid JSON, default to empty array
           parsedExternalSeaService = [];
         }
-        
+
         // Calculate experience metrics
         normalized.experienceMetrics = calculateExperienceFromSeaService(
           parsedCompanySeaService,
           parsedExternalSeaService,
           currentRank
         );
-        
+
         // Calculate time on board (months from sign-on date to today)
         if (normalized.signOnDate) {
           try {
@@ -585,7 +589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           normalized.experienceMetrics.timeOnBoard = 0;
         }
-        
+
         // Calculate vessel type-specific experience for Officer Matrix "Tanker Type" column
         if (normalized.presentVessel) {
           const vessel = vesselMap.get(normalized.presentVessel);
@@ -608,10 +612,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           normalized.experienceMetrics.vesselType = null;
         }
-        
+
         return normalized;
       });
-      
+
       res.json(normalizedCrewMembers);
     } catch (error) {
       console.error("❌ Failed to fetch crew members with filters:", error);

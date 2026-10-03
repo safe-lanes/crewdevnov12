@@ -19,6 +19,12 @@ export default function MoreScreen() {
       <Pressable accessibilityRole="button" accessibilityLabel="Forum" style={styles.item} onPress={() => navigation.navigate("ContentPage", { pageKey: "forum" })}>
          <Text style={styles.itemText}>Forum</Text><Text style={styles.chevron}>›</Text>
       </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Privacy requests" style={styles.item} onPress={() => navigation.navigate("PrivacyRequests")}>
+        <Text style={styles.itemText}>Privacy requests</Text><Text style={styles.chevron}>›</Text>
+      </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Two-step verification" style={styles.item} onPress={() => navigation.navigate("MfaSetup")}>
+        <Text style={styles.itemText}>Two-step verification</Text><Text style={styles.chevron}>›</Text>
+      </Pressable>
 
       <Pressable accessibilityRole="button" accessibilityLabel="Log out" style={[styles.item, styles.logout]} onPress={() => logout()} testID="logout-button">
         <Text style={styles.logoutText}>Log Out</Text>

@@ -1,0 +1,194 @@
+name: Security CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["mobile-v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  erp-worker-live-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      CI_TEST_DATABASE_PREFIX: ci_erp_
+      ALLOW_ERP_CONCURRENCY_TEST: "true"
+      MASTER_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/ci_erp_master
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Create disposable master and tenant databases
+        env: { PGPASSWORD: postgres }
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -c "CREATE DATABASE ci_erp_master"
+          psql -h 127.0.0.1 -U postgres -d postgres -c "CREATE DATABASE ci_erp_tenant_a"
+          psql -h 127.0.0.1 -U postgres -d postgres -c "CREATE DATABASE ci_erp_tenant_b"
+          psql -h 127.0.0.1 -U postgres -d ci_erp_master -f migrations/master/0001_create_tenants_table.sql
+          psql -h 127.0.0.1 -U postgres -d ci_erp_master -c "INSERT INTO tenants(tuid,domain) VALUES('ci_erp_tenant_a','tenant-a.test.invalid'),('ci_erp_tenant_b','tenant-b.test.invalid')"
+          for db in ci_erp_tenant_a ci_erp_tenant_b; do
+            psql -h 127.0.0.1 -U postgres -d "$db" -f migrations/0000_stiff_archangel.sql
+            psql -h 127.0.0.1 -U postgres -d "$db" -f migrations/0214_create_crew_app_pending_changes.sql
+            psql -h 127.0.0.1 -U postgres -d "$db" -f migrations/0218_mobile_approval_outbox.sql
+            psql -h 127.0.0.1 -U postgres -d "$db" -f migrations/0221_mobile_erp_command_worker.sql
+            psql -h 127.0.0.1 -U postgres -d "$db" -c "CREATE TABLE IF NOT EXISTS schema_migrations(id serial primary key,filename varchar(255) unique not null,applied_at timestamp default now()); INSERT INTO schema_migrations(filename) VALUES('0221_mobile_erp_command_worker.sql') ON CONFLICT DO NOTHING"
+          done
+      - name: Run live worker safety validation
+        run: npx tsx scripts/live-erp-worker-validation.ts
+
+  quality-and-security-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mobile/package-lock.json
+      - name: Install BFF dependencies from lockfile
+        run: npm ci
+      - name: Install mobile dependencies from lockfile
+        working-directory: mobile
+        run: npm ci
+      - name: Build BFF and web bundle
+        run: npm run build
+      - name: Typecheck mobile
+        working-directory: mobile
+        run: npm run typecheck && npm run typecheck:test
+      - name: Run BFF unit tests
+        run: npm run test:unit
+      - name: Run BFF integration tests
+        run: npm run test:integration
+      - name: Run mobile tests
+        working-directory: mobile
+        run: npm test -- --ci
+      - name: Inspect mobile source configuration
+        run: npm run check:mobile-manifest
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-test-evidence
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 90
+
+  dependency-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mobile/package-lock.json
+      - name: Deterministic dependency install without lifecycle scripts
+        run: npm ci --ignore-scripts && npm ci --ignore-scripts --prefix mobile
+      - name: Reject critical BFF dependency vulnerabilities
+        run: npm audit --audit-level=critical
+      - name: Reject critical mobile dependency vulnerabilities
+        working-directory: mobile
+        run: npm audit --audit-level=critical
+      - name: Review dependency changes
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          fail-on-scopes: runtime, development
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan repository history for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  codeql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
+
+  sbom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install from lockfiles
+        run: npm ci && npm ci --prefix mobile
+      - name: Generate CycloneDX SBOMs
+        run: |
+          npm sbom --sbom-format=cyclonedx > bff-sbom.cdx.json
+          npm sbom --prefix mobile --sbom-format=cyclonedx > mobile-sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: software-bills-of-materials
+          path: "*-sbom.cdx.json"
+          if-no-files-found: error
+          retention-days: 90
+
+  release-readiness:
+    if: startsWith(github.ref, 'refs/tags/mobile-v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Reject placeholder or insecure production endpoints
+        run: npm run check:mobile-release
+      - name: Generate and inspect Android manifest
+        working-directory: mobile
+        run: |
+          npm ci
+          npx expo prebuild --no-install --platform android --clean
+          node ../scripts/inspect-mobile-manifest.mjs app.json android/app/src/main/AndroidManifest.xml

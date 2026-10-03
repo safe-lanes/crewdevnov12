@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="50" failures="0" errors="0" time="0.4233266">
+    <testsuite name="tests/unit/backup-restore-automation.test.ts" timestamp="2026-10-02T12:22:00.522Z" hostname="Datta" tests="5" failures="0" errors="0" skipped="0" time="0.0181876">
+        <testcase classname="tests/unit/backup-restore-automation.test.ts" name="backup and restore automation boundaries &gt; does not put database credentials in a shell command" time="0.0045306">
+        </testcase>
+        <testcase classname="tests/unit/backup-restore-automation.test.ts" name="backup and restore automation boundaries &gt; requires a KMS-encrypted private vault and checksum manifest" time="0.0022586">
+        </testcase>
+        <testcase classname="tests/unit/backup-restore-automation.test.ts" name="backup and restore automation boundaries &gt; cleans temporary backup and restore material" time="0.00122">
+        </testcase>
+        <testcase classname="tests/unit/backup-restore-automation.test.ts" name="backup and restore automation boundaries &gt; refuses unsafe restore targets and keeps ERP dispatch disabled" time="0.001003">
+        </testcase>
+        <testcase classname="tests/unit/backup-restore-automation.test.ts" name="backup and restore automation boundaries &gt; verifies checksum, archive readability, restore success, and required tables" time="0.0008489">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/consolidated-security-report.test.ts" timestamp="2026-10-02T12:22:00.557Z" hostname="Datta" tests="3" failures="0" errors="0" skipped="0" time="0.0109871">
+        <testcase classname="tests/unit/consolidated-security-report.test.ts" name="consolidated mobile security report &gt; states an honest release decision and preserves the ERP boundary" time="0.0030142">
+        </testcase>
+        <testcase classname="tests/unit/consolidated-security-report.test.ts" name="consolidated mobile security report &gt; covers completed remediation areas and outstanding evidence" time="0.0014737">
+        </testcase>
+        <testcase classname="tests/unit/consolidated-security-report.test.ts" name="consolidated mobile security report &gt; contains the verified 2026 store requirements and final gates" time="0.0005355">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/crew-app-clamav-scanner.test.ts" timestamp="2026-10-02T12:22:00.567Z" hostname="Datta" tests="3" failures="0" errors="0" skipped="0" time="0.0535011">
+        <testcase classname="tests/unit/crew-app-clamav-scanner.test.ts" name="real ClamAV adapter &gt; streams a file using INSTREAM and accepts only an explicit clean response" time="0.0383081">
+        </testcase>
+        <testcase classname="tests/unit/crew-app-clamav-scanner.test.ts" name="real ClamAV adapter &gt; maps a FOUND response to infected" time="0.007538">
+        </testcase>
+        <testcase classname="tests/unit/crew-app-clamav-scanner.test.ts" name="real ClamAV adapter &gt; fails production bootstrap closed without a configured scanner" time="0.0020768">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/crew-app-offline-foundation.test.ts" timestamp="2026-10-02T12:22:00.573Z" hostname="Datta" tests="2" failures="0" errors="0" skipped="0" time="0.029242">
+        <testcase classname="tests/unit/crew-app-offline-foundation.test.ts" name="crew-app low-bandwidth safety foundation &gt; uses operation UUIDs and exposes an owner-scoped status lookup" time="0.0138991">
+        </testcase>
+        <testcase classname="tests/unit/crew-app-offline-foundation.test.ts" name="crew-app low-bandwidth safety foundation &gt; times out explicitly and identifies the result as ambiguous" time="0.0088617">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/crew-app-privacy-execution.test.ts" timestamp="2026-10-02T12:22:00.579Z" hostname="Datta" tests="6" failures="0" errors="0" skipped="0" time="0.0103089">
+        <testcase classname="tests/unit/crew-app-privacy-execution.test.ts" name="crew privacy execution &gt; requires isolated privacy RBAC and creates no automatic role grants" time="0.0023184">
+        </testcase>
+        <testcase classname="tests/unit/crew-app-privacy-execution.test.ts" name="crew privacy execution &gt; requires verification and approval before deletion execution" time="0.0005625">
+        </testcase>
+        <testcase classname="tests/unit/crew-app-privacy-execution.test.ts" name="crew privacy execution &gt; blocks erasure while ERP commands are unresolved" time="0.0003357">
+        </testcase>
+        <testcase classname="tests/unit/crew-app-privacy-execution.test.ts" name="crew privacy execution &gt; revokes sessions, disables credentials, clears notifications and pending payloads" time="0.0007339">
+        </testcase>
+        <testcase classname="tests/unit/crew-app-privacy-execution.test.ts" name="crew privacy execution &gt; records retained ERP data as partial rather than complete deletion" time="0.0002854">
+        </testcase>
+        <testcase classname="tests/unit/crew-app-privacy-execution.test.ts" name="crew privacy execution &gt; uses immutable correlated audits and evidence references" time="0.0002689">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/crew-app-siem-sink.test.ts" timestamp="2026-10-02T12:22:00.586Z" hostname="Datta" tests="3" failures="0" errors="0" skipped="0" time="0.020952">
+        <testcase classname="tests/unit/crew-app-siem-sink.test.ts" name="crew SIEM delivery &gt; delivers pseudonymized signed events without credentials" time="0.0122365">
+        </testcase>
+        <testcase classname="tests/unit/crew-app-siem-sink.test.ts" name="crew SIEM delivery &gt; retries a transient delivery failure" time="0.0019007">
+        </testcase>
+        <testcase classname="tests/unit/crew-app-siem-sink.test.ts" name="crew SIEM delivery &gt; fails production startup closed without SIEM configuration" time="0.0013695">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/mobile-device-hardening.test.ts" timestamp="2026-10-02T12:22:00.593Z" hostname="Datta" tests="3" failures="0" errors="0" skipped="0" time="0.0214355">
+        <testcase classname="tests/unit/mobile-device-hardening.test.ts" name="mobile device hardening configuration &gt; uses device-only secure storage accessibility" time="0.0115449">
+        </testcase>
+        <testcase classname="tests/unit/mobile-device-hardening.test.ts" name="mobile device hardening configuration &gt; disables Android backup and enables complete iOS file protection" time="0.0021073">
+        </testcase>
+        <testcase classname="tests/unit/mobile-device-hardening.test.ts" name="mobile device hardening configuration &gt; does not declare deep links or unnecessary sensitive permissions" time="0.0025753">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/mobile-mfa-security.test.ts" timestamp="2026-10-02T12:22:00.600Z" hostname="Datta" tests="3" failures="0" errors="0" skipped="0" time="0.0915834">
+        <testcase classname="tests/unit/mobile-mfa-security.test.ts" name="crew mobile MFA security boundary &gt; does not issue tokens until enrolled MFA is verified" time="0.0187349">
+        </testcase>
+        <testcase classname="tests/unit/mobile-mfa-security.test.ts" name="crew mobile MFA security boundary &gt; encrypts TOTP secrets and consumes recovery codes atomically" time="0.0280366">
+        </testcase>
+        <testcase classname="tests/unit/mobile-mfa-security.test.ts" name="crew mobile MFA security boundary &gt; blocks screen capture and exposes an in-app enrollment path" time="0.034599">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/private-object-storage.test.ts" timestamp="2026-10-02T12:22:00.603Z" hostname="Datta" tests="3" failures="0" errors="0" skipped="0" time="0.0361843">
+        <testcase classname="tests/unit/private-object-storage.test.ts" name="private durable object storage &gt; writes a tenant-prefixed private object with server-side encryption" time="0.015416">
+        </testcase>
+        <testcase classname="tests/unit/private-object-storage.test.ts" name="private durable object storage &gt; rejects cross-tenant object deletion before contacting storage" time="0.0077496">
+        </testcase>
+        <testcase classname="tests/unit/private-object-storage.test.ts" name="private durable object storage &gt; deletes only an authorized tenant object" time="0.0017578">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/production-config-security.test.ts" timestamp="2026-10-02T12:22:00.692Z" hostname="Datta" tests="7" failures="0" errors="0" skipped="0" time="0.019968">
+        <testcase classname="tests/unit/production-config-security.test.ts" name="production configuration &gt; accepts a coherent production configuration" time="0.0074166">
+        </testcase>
+        <testcase classname="tests/unit/production-config-security.test.ts" name="production configuration &gt; rejects unsafe configuration" time="0.00149">
+        </testcase>
+        <testcase classname="tests/unit/production-config-security.test.ts" name="production configuration &gt; rejects unsafe configuration" time="0.0006339">
+        </testcase>
+        <testcase classname="tests/unit/production-config-security.test.ts" name="production configuration &gt; rejects unsafe configuration" time="0.0007325">
+        </testcase>
+        <testcase classname="tests/unit/production-config-security.test.ts" name="production configuration &gt; rejects unsafe configuration" time="0.0008717">
+        </testcase>
+        <testcase classname="tests/unit/production-config-security.test.ts" name="production configuration &gt; rejects unsafe configuration" time="0.0009392">
+        </testcase>
+        <testcase classname="tests/unit/production-config-security.test.ts" name="production configuration &gt; rejects plaintext object-storage endpoints and incomplete static credentials" time="0.0013248">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/security-ci-policy.test.ts" timestamp="2026-10-02T12:22:00.700Z" hostname="Datta" tests="3" failures="0" errors="0" skipped="0" time="0.011471">
+        <testcase classname="tests/unit/security-ci-policy.test.ts" name="security CI policy &gt; runs SAST, full-history secret scanning, dependency review, and SBOM generation" time="0.0029425">
+        </testcase>
+        <testcase classname="tests/unit/security-ci-policy.test.ts" name="security CI policy &gt; uses deterministic installs and scans both dependency trees" time="0.0020494">
+        </testcase>
+        <testcase classname="tests/unit/security-ci-policy.test.ts" name="security CI policy &gt; keeps root, mobile, and workflow dependencies updated" time="0.0007164">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/signed-mobile-build-readiness.test.ts" timestamp="2026-10-02T12:22:00.703Z" hostname="Datta" tests="5" failures="0" errors="0" skipped="0" time="0.039314">
+        <testcase classname="tests/unit/signed-mobile-build-readiness.test.ts" name="signed mobile build readiness &gt; uses store artifacts, remote credentials, remote versioning and draft submission" time="0.0060634">
+        </testcase>
+        <testcase classname="tests/unit/signed-mobile-build-readiness.test.ts" name="signed mobile build readiness &gt; fails closed for missing or unsafe public release configuration" time="0.001497">
+        </testcase>
+        <testcase classname="tests/unit/signed-mobile-build-readiness.test.ts" name="signed mobile build readiness &gt; keeps signing material and release artifacts out of Git" time="0.0019443">
+        </testcase>
+        <testcase classname="tests/unit/signed-mobile-build-readiness.test.ts" name="signed mobile build readiness &gt; loads local public build values from the repository-root env file" time="0.0167012">
+        </testcase>
+        <testcase classname="tests/unit/signed-mobile-build-readiness.test.ts" name="signed mobile build readiness &gt; provides platform signature and entitlement verification instructions" time="0.0064173">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/vapt-pack-completeness.test.ts" timestamp="2026-10-02T12:22:00.715Z" hostname="Datta" tests="4" failures="0" errors="0" skipped="0" time="0.0601917">
+        <testcase classname="tests/unit/vapt-pack-completeness.test.ts" name="independent VAPT preparation pack &gt; requires explicit written authorization, staging scope and stop conditions" time="0.0134831">
+        </testcase>
+        <testcase classname="tests/unit/vapt-pack-completeness.test.ts" name="independent VAPT preparation pack &gt; covers mobile, API, tenant, MFA, file, privacy, offline and ERP risks" time="0.0141167">
+        </testcase>
+        <testcase classname="tests/unit/vapt-pack-completeness.test.ts" name="independent VAPT preparation pack &gt; does not represent preparation artifacts as completed independent testing" time="0.0072775">
+        </testcase>
+        <testcase classname="tests/unit/vapt-pack-completeness.test.ts" name="independent VAPT preparation pack &gt; binds evidence to SHA-256 hashes and a source commit" time="0.0180729">
+        </testcase>
+    </testsuite>
+</testsuites>

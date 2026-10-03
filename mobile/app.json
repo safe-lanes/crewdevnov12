@@ -14,9 +14,18 @@
     },
     "plugins": [
       [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true,
+          "faceIDPermission": "Allow SAIL Crew to protect access to sensitive crew information."
+        }
+      ],
+      [
         "expo-image-picker",
         {
-          "photosPermission": "Allow SAIL Crew to select a crew photo or attachment."
+          "photosPermission": "Allow SAIL Crew to select a crew photo or attachment.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       "expo-document-picker"
@@ -24,11 +33,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sail.crewapp",
-      "buildNumber": "1.0.0"
+      "buildNumber": "1.0.0",
+      "entitlements": {
+        "com.apple.developer.default-data-protection": "NSFileProtectionComplete"
+      }
     },
     "android": {
       "package": "com.sail.crewapp",
       "versionCode": 1,
+      "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/login-ocean.png",
         "backgroundColor": "#12324A"

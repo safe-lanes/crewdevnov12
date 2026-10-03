@@ -24,6 +24,7 @@ import { MastersRepository } from "../../masters/repositories/mastersRepository"
 import { pendingChangesRepository } from "./pendingChangesRepository";
 import { stageChange } from "./pendingChangesService";
 import type { AppCrewPendingChange } from "../../../../shared/v2/crew-app/types";
+import { validate as isUuid } from "uuid";
 
 const mastersRepository = new MastersRepository();
 
@@ -84,6 +85,13 @@ function sendError(res: Response, error: any): void {
     message: error?.message || "Request failed",
     ...(error?.details ? { details: error.details } : {}),
   });
+}
+
+function operationUuid(req: Request): string | undefined {
+  const value = req.header("Idempotency-Key")?.trim();
+  if (!value) return undefined; // backward compatible; server generates one
+  if (!isUuid(value)) throw Object.assign(new Error("Idempotency-Key must be a UUID"), { status: 400 });
+  return value;
 }
 
 function readonlyRecord(row: any, readOnly: boolean, hardReadOnly = false): any {
@@ -261,6 +269,17 @@ export async function getCrewInformationMasters(_req: Request, res: Response): P
   }
 }
 
+export async function getOperationStatus(req: Request, res: Response): Promise<void> {
+  try {
+    const id = req.params.operationUuid;
+    if (!isUuid(id)) { res.status(404).json({ error: "not_found" }); return; }
+    const result = await pendingChangesRepository.findOperationForCrew(id, req.crewUser!.crewUuid, req.crewUser!.domain);
+    if (!result) { res.status(404).json({ error: "not_found" }); return; }
+    res.setHeader("Cache-Control", "no-store");
+    res.json(result);
+  } catch (error) { sendError(res, error); }
+}
+
 /** Requirement 1: every crew-submitted profile edit is staged for office verification (unless this tenant has the gate switched off) rather than written straight into the canonical crew record. */
 export async function updateSection(req: Request, res: Response): Promise<void> {
   try {
@@ -273,7 +292,7 @@ export async function updateSection(req: Request, res: Response): Promise<void> 
     }
     const body = parse(singletonSchemas[section], req.body);
     const { autoApplied, appliedResult, pendingChange } = await stageChange({
-      domain, crewUuid, section, action: "update", payload: body,
+      domain, crewUuid, section, action: "update", payload: body, operationUuid: operationUuid(req),
     });
     res.json(autoApplied
       ? sanitize(appliedResult)
@@ -306,7 +325,7 @@ export async function collectionHandler(req: Request, res: Response): Promise<vo
     if (req.method === "POST") {
       const body = parse(collectionSchemas[name], req.body);
       const { autoApplied, appliedResult, pendingChange } = await stageChange({
-        domain, crewUuid, section: name, action: "create", payload: body,
+        domain, crewUuid, section: name, action: "create", payload: body, operationUuid: operationUuid(req),
       });
       res.status(201).json(autoApplied
         ? readonlyRecord(appliedResult, false)
@@ -332,7 +351,7 @@ export async function collectionHandler(req: Request, res: Response): Promise<vo
 
     if (req.method === "DELETE") {
       const { autoApplied, pendingChange } = await stageChange({
-        domain, crewUuid, section: name, action: "delete", targetUuid: req.params.uuid, payload: {},
+        domain, crewUuid, section: name, action: "delete", targetUuid: req.params.uuid, payload: {}, operationUuid: operationUuid(req),
       });
       if (autoApplied) {
         res.status(204).send();
@@ -344,7 +363,7 @@ export async function collectionHandler(req: Request, res: Response): Promise<vo
 
     const body = parse(collectionSchemas[name].partial().strict(), req.body);
     const { autoApplied, appliedResult, pendingChange } = await stageChange({
-      domain, crewUuid, section: name, action: "update", targetUuid: req.params.uuid, payload: body,
+      domain, crewUuid, section: name, action: "update", targetUuid: req.params.uuid, payload: body, operationUuid: operationUuid(req),
     });
     res.json(autoApplied
       ? readonlyRecord(appliedResult, false)

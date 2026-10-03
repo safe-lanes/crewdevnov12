@@ -1,8 +1,10 @@
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../../db";
-import { appCrewPendingChanges, appCrewAppSettings } from "../../../../shared/v2/crew-app/schema";
+import { appCrewPendingChanges, appCrewAppSettings, appCrewPendingReviews, appCrewErpCommands } from "../../../../shared/v2/crew-app/schema";
 import type { AppCrewPendingChange } from "../../../../shared/v2/crew-app/types";
+import { deriveCommandType } from "../erp-commands/commandPolicy";
+import { canonicalHash } from "../erp-commands/canonical";
 
 export interface StageChangeInput {
   domain: string;
@@ -11,6 +13,15 @@ export interface StageChangeInput {
   action: "create" | "update" | "delete";
   targetUuid?: string | null;
   payload: unknown;
+  operationUuid?: string;
+}
+
+export function mapMobileOperationStatus(pendingStatus:string, commandStatus:string|null): "PENDING"|"UNDER_REVIEW"|"PROCESSING"|"COMPLETED"|"NEEDS_OFFICE_REVIEW"|"REJECTED" {
+  if(pendingStatus==="pending") return "UNDER_REVIEW";
+  if(pendingStatus==="rejected") return "REJECTED";
+  if(commandStatus==="applied") return "COMPLETED";
+  if(["manual_reconciliation_required","reconciliation_required","dead_letter","blocked"].includes(commandStatus??"")) return "NEEDS_OFFICE_REVIEW";
+  return "PROCESSING";
 }
 
 export class PendingChangesRepository {
@@ -22,32 +33,17 @@ export class PendingChangesRepository {
    */
   async stage(input: StageChangeInput): Promise<AppCrewPendingChange> {
     const db = getDb();
-    const existing = await db
-      .select()
-      .from(appCrewPendingChanges)
-      .where(and(
-        eq(appCrewPendingChanges.crewUuid, input.crewUuid),
-        eq(appCrewPendingChanges.domain, input.domain),
-        eq(appCrewPendingChanges.section, input.section),
-        eq(appCrewPendingChanges.action, input.action),
-        input.targetUuid ? eq(appCrewPendingChanges.targetUuid, input.targetUuid) : isNull(appCrewPendingChanges.targetUuid),
-        eq(appCrewPendingChanges.status, "pending"),
-        eq(appCrewPendingChanges.isDeleted, false),
-      ));
-
-    if (existing[0]) {
-      const [updated] = await db
-        .update(appCrewPendingChanges)
-        .set({ payload: JSON.stringify(input.payload ?? {}), updatedByUuid: input.crewUuid, updatedAt: new Date() })
-        .where(eq(appCrewPendingChanges.pendingUuid, existing[0].pendingUuid))
-        .returning();
-      return updated;
-    }
-
+    const operationUuid = input.operationUuid ?? uuidv4();
+    const duplicate = await db.select().from(appCrewPendingChanges).where(and(
+      eq(appCrewPendingChanges.domain, input.domain),
+      eq(appCrewPendingChanges.crewUuid, input.crewUuid),
+      eq(appCrewPendingChanges.operationUuid, operationUuid),
+    )).limit(1);
+    if (duplicate[0]) return duplicate[0];
     const [created] = await db
       .insert(appCrewPendingChanges)
       .values({
-        pendingUuid: uuidv4(),
+        pendingUuid: uuidv4(), operationUuid,
         domain: input.domain,
         crewUuid: input.crewUuid,
         section: input.section,
@@ -63,11 +59,57 @@ export class PendingChangesRepository {
     return created;
   }
 
+  /** Atomically claims one pending decision, records immutable review evidence, and creates one ERP command. */
+  async approveAndEnqueue(pendingUuid: string, reviewer: { uuid: string; name: string | null }) {
+    return getDb().transaction(async (tx: any) => {
+      const [claimed] = await tx.update(appCrewPendingChanges).set({
+        status: "approved", reviewedByUuid: reviewer.uuid, reviewedByName: reviewer.name,
+        reviewedAt: new Date(), updatedByUuid: reviewer.uuid, updatedAt: new Date(),
+      }).where(and(eq(appCrewPendingChanges.pendingUuid, pendingUuid), eq(appCrewPendingChanges.status, "pending"))).returning();
+
+      if (!claimed) {
+        const [existing] = await tx.select().from(appCrewPendingChanges)
+          .where(eq(appCrewPendingChanges.pendingUuid, pendingUuid)).limit(1);
+        if (!existing) throw Object.assign(new Error("Pending change not found"), { status: 404 });
+        throw Object.assign(new Error(`Pending change is already '${existing.status}'`), { status: 409 });
+      }
+
+      await tx.insert(appCrewPendingReviews).values({
+        reviewUuid: uuidv4(), pendingUuid, decision: "approved",
+        reviewerUuid: reviewer.uuid, reviewerName: reviewer.name,
+      });
+      const [command] = await tx.insert(appCrewErpCommands).values({
+        commandUuid: uuidv4(), pendingUuid, operationUuid: claimed.operationUuid,
+        domain: claimed.domain, crewUuid: claimed.crewUuid,
+        commandType: deriveCommandType(claimed.section, claimed.action),
+        approvedPayloadHash: canonicalHash(JSON.parse(claimed.payload || "{}")),
+        status: "queued",
+      }).returning();
+      return { pendingChange: claimed, command };
+    });
+  }
+
   async findByUuid(pendingUuid: string): Promise<AppCrewPendingChange | undefined> {
     const db = getDb();
     const result = await db.select().from(appCrewPendingChanges)
       .where(and(eq(appCrewPendingChanges.pendingUuid, pendingUuid), eq(appCrewPendingChanges.isDeleted, false)));
     return result[0];
+  }
+
+  async findOperationForCrew(operationUuid: string, crewUuid: string, domain: string) {
+    const db = getDb();
+    const [pending] = await db.select().from(appCrewPendingChanges).where(and(
+      eq(appCrewPendingChanges.operationUuid, operationUuid),
+      eq(appCrewPendingChanges.crewUuid, crewUuid),
+      eq(appCrewPendingChanges.domain, domain),
+      eq(appCrewPendingChanges.isDeleted, false),
+    )).limit(1);
+    if (!pending) return undefined;
+    const [command] = await db.select({ status: appCrewErpCommands.status, commandUuid: appCrewErpCommands.commandUuid })
+      .from(appCrewErpCommands).where(eq(appCrewErpCommands.pendingUuid, pending.pendingUuid)).limit(1);
+    const internal = command?.status ?? null;
+    const publicStatus = mapMobileOperationStatus(pending.status,internal);
+    return { operationUuid, pendingUuid: pending.pendingUuid, status: publicStatus };
   }
 
   /** All open (pending) rows for one crew member — used to overlay status onto getInformation()/collectionHandler responses. */

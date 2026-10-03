@@ -9,6 +9,7 @@ import { useCrewInformationQuery } from "../hooks/useCrewInformationQuery";
 
 const actions = [
   ["My Profile", "Crew details and family", "profile", "CrewProfile"],
+  ["Submissions & Sync", "Review requests and sync status", "document", "SubmissionsSync"],
   ["Documents & Visas", "Travel records", "document", "CrewCollection", "documents"],
   ["Training & Licenses", "Certificates and courses", "award", "CrewCollection", "training"],
   ["Sea Service", "Your time at sea", "vessel", "CrewCollection", "sea-service"],

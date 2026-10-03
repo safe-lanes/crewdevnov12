@@ -1,10 +1,13 @@
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import { Readable } from "node:stream";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { tenantConnectionManager } from "../../utils/tenantConnectionManager.js";
 
 // Ensure the private storage directory is resolved relative to project root
 const PRIVATE_ROOT = path.resolve(".private");
+const OBJECT_PREFIX = "object://";
 
 // Standard §4: server-side ceiling of 5 MB on every stored attachment.
 export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
@@ -175,6 +178,19 @@ export async function writeAttachment(
   const randomSuffix = crypto.randomBytes(4).toString("hex"); // 8 characters
   const uniqueName = `${timestamp}_${randomSuffix}_${sanitizedName}`;
 
+  if (storageDriver() === "s3") {
+    const key = [cleanDomain, ...cleanModuleSegments, uniqueName].join("/");
+    const kmsKeyId = process.env.ATTACHMENT_S3_KMS_KEY_ID?.trim();
+    await s3().send(new PutObjectCommand({
+      Bucket: bucket(), Key: key, Body: buffer,
+      ContentType: detectMimeBySignature(buffer) || "application/octet-stream",
+      ServerSideEncryption: kmsKeyId ? "aws:kms" : "AES256",
+      SSEKMSKeyId: kmsKeyId || undefined,
+      Metadata: { tenant: cleanDomain },
+    }));
+    return `${OBJECT_PREFIX}${key}`;
+  }
+
   // Establish full target directory path
   const targetDir = path.join(PRIVATE_ROOT, cleanDomain, ...cleanModuleSegments);
   await fs.mkdir(targetDir, { recursive: true });
@@ -200,12 +216,77 @@ function resolveInsidePrivateRoot(filePath: string): string {
   return resolvedPath;
 }
 
+function cleanSegment(value: string): string { return value.replace(/[^a-zA-Z0-9_\-]/g, "_"); }
+function storageDriver(): "local" | "s3" {
+  const configured = (process.env.ATTACHMENT_STORAGE_DRIVER || "local").toLowerCase();
+  if (configured !== "local" && configured !== "s3") throw new Error("Unsupported ATTACHMENT_STORAGE_DRIVER");
+  if (process.env.NODE_ENV === "production" && configured !== "s3") throw new Error("Production attachment storage must use the private S3 driver");
+  return configured;
+}
+function bucket(): string {
+  const value = process.env.ATTACHMENT_S3_BUCKET?.trim();
+  if (!value) throw new Error("ATTACHMENT_S3_BUCKET is required");
+  return value;
+}
+let s3Client: S3Client | null = null;
+export function setAttachmentObjectClientForTests(client: S3Client | null): void { s3Client = client; }
+function s3(): S3Client {
+  if (!s3Client) s3Client = new S3Client({
+    region: process.env.ATTACHMENT_S3_REGION || "us-east-1",
+    endpoint: process.env.ATTACHMENT_S3_ENDPOINT || undefined,
+    forcePathStyle: process.env.ATTACHMENT_S3_FORCE_PATH_STYLE === "true",
+    credentials: process.env.ATTACHMENT_S3_ACCESS_KEY_ID && process.env.ATTACHMENT_S3_SECRET_ACCESS_KEY ? {
+      accessKeyId: process.env.ATTACHMENT_S3_ACCESS_KEY_ID,
+      secretAccessKey: process.env.ATTACHMENT_S3_SECRET_ACCESS_KEY,
+    } : undefined,
+  });
+  return s3Client;
+}
+function objectKey(filePath: string): string {
+  if (!filePath.startsWith(OBJECT_PREFIX)) throw new Error("Invalid object reference");
+  const key = filePath.slice(OBJECT_PREFIX.length);
+  if (!key || key.startsWith("/") || key.split("/").some((part) => !part || part === "." || part === "..")) throw new Error("Invalid object key");
+  return key;
+}
+function assertTenantObjectKey(key: string): void {
+  if (!key.startsWith(`${cleanSegment(resolveDomain())}/`)) throw new Error("Access Denied: attachment is outside the authenticated tenant root.");
+}
+
+/** Mobile/BFF boundary: a stored path must remain inside the authenticated tenant root. */
+export function resolveInsideCurrentTenantRoot(filePath: string): string {
+  const domain = resolveDomain();
+  const cleanDomain = domain.replace(/[^a-zA-Z0-9_\-]/g, "_");
+  const tenantRoot = path.resolve(PRIVATE_ROOT, cleanDomain);
+  const resolvedPath = resolveInsidePrivateRoot(filePath);
+  const relative = path.relative(tenantRoot, resolvedPath);
+  if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Access Denied: attachment is outside the authenticated tenant root.");
+  }
+  return resolvedPath;
+}
+
+async function assertNoSymlinkEscape(resolvedPath: string): Promise<void> {
+  const domain = resolveDomain();
+  const cleanDomain = domain.replace(/[^a-zA-Z0-9_\-]/g, "_");
+  const tenantRoot = path.resolve(PRIVATE_ROOT, cleanDomain);
+  const [realTenantRoot, realFile] = await Promise.all([fs.realpath(tenantRoot), fs.realpath(resolvedPath)]);
+  const relative = path.relative(realTenantRoot, realFile);
+  if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Access Denied: attachment symlink escapes the authenticated tenant root.");
+  }
+}
+
 /**
  * Reads an attachment from disk by relative path. Prevents path traversal.
  */
 export async function readAttachment(
   filePath: string,
 ): Promise<{ stream: NodeJS.ReadableStream; mimeType: string }> {
+  if (filePath.startsWith(OBJECT_PREFIX)) {
+    const response = await s3().send(new GetObjectCommand({ Bucket: bucket(), Key: objectKey(filePath) }));
+    if (!response.Body) throw new Error("File not found");
+    return { stream: response.Body as Readable, mimeType: response.ContentType || "application/octet-stream" };
+  }
   // Resolve path and ensure it remains strictly inside PRIVATE_ROOT to block path traversal
   const resolvedPath = resolveInsidePrivateRoot(filePath);
 
@@ -225,6 +306,22 @@ export async function readAttachment(
   return { stream, mimeType };
 }
 
+export async function readAttachmentForCurrentTenant(
+  filePath: string,
+): Promise<{ stream: NodeJS.ReadableStream; mimeType: string }> {
+  if (filePath.startsWith(OBJECT_PREFIX)) {
+    const key = objectKey(filePath); assertTenantObjectKey(key);
+    const response = await s3().send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
+    if (!response.Body) throw new Error("File not found");
+    return { stream: response.Body as Readable, mimeType: response.ContentType || "application/octet-stream" };
+  }
+  const resolvedPath = resolveInsideCurrentTenantRoot(filePath);
+  await assertNoSymlinkEscape(resolvedPath);
+  const ext = path.extname(resolvedPath).toLowerCase();
+  const fileHandle = await fs.open(resolvedPath, "r");
+  return { stream: fileHandle.createReadStream(), mimeType: MIME_MAP[ext] || "application/octet-stream" };
+}
+
 /**
  * Permanently remove an attachment file from disk by relative path. Safe to call
  * when the file is already gone (missing files are ignored). Path traversal is
@@ -232,29 +329,50 @@ export async function readAttachment(
  */
 export async function deleteAttachment(filePath: string | null | undefined): Promise<void> {
   if (!filePath) return;
+  if (filePath.startsWith(OBJECT_PREFIX)) {
+    try { await s3().send(new DeleteObjectCommand({ Bucket: bucket(), Key: objectKey(filePath) })); }
+    catch (err: any) { console.error("deleteAttachment failed", { code: err?.name ?? "delete_failed" }); }
+    return;
+  }
   let resolvedPath: string;
   try {
     resolvedPath = resolveInsidePrivateRoot(filePath);
   } catch (err) {
-    console.error(`deleteAttachment refused traversal for path ${filePath}:`, err);
+    console.error("deleteAttachment refused an unsafe stored path");
     return;
   }
   try {
     await fs.unlink(resolvedPath);
   } catch (err: any) {
     if (err?.code !== "ENOENT") {
-      console.error(`deleteAttachment failed for path ${filePath}:`, err);
+      console.error("deleteAttachment failed", { code: err?.code ?? "delete_failed" });
     }
   }
+}
+
+export async function deleteAttachmentForCurrentTenant(filePath: string | null | undefined): Promise<void> {
+  if (!filePath) return;
+  if (filePath.startsWith(OBJECT_PREFIX)) {
+    const key = objectKey(filePath); assertTenantObjectKey(key);
+    await s3().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
+    return;
+  }
+  const resolvedPath = resolveInsideCurrentTenantRoot(filePath);
+  await assertNoSymlinkEscape(resolvedPath);
+  try { await fs.unlink(resolvedPath); }
+  catch (err: any) { if (err?.code !== "ENOENT") throw err; }
 }
 
 export const fileStorageService = {
   sanitizeFileName,
   writeAttachment,
   readAttachment,
+  readAttachmentForCurrentTenant,
   deleteAttachment,
+  deleteAttachmentForCurrentTenant,
   validateAttachmentBuffer,
   detectMimeBySignature,
   AttachmentValidationError,
   MAX_ATTACHMENT_BYTES,
+  resolveInsideCurrentTenantRoot,
 };

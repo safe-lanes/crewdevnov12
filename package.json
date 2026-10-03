@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=20 <22"
+  },
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "dev:all": "bash scripts/start-development.sh",
@@ -15,7 +18,10 @@
     "start": "NODE_ENV=production node dist/index.js",
     "start:prod": "NODE_ENV=production node dist/server/index.js",
     "check": "tsc",
+    "check:crew-app-security": "tsc -p tsconfig.crew-app-security.json",
     "db:backup": "tsx scripts/backup-db.ts",
+    "backup:vault": "tsx scripts/backup-db.ts",
+    "backup:verify-restore": "tsx scripts/verify-backup-restore.ts",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "setup-microfrontend": "node scripts/setup-microfrontend.js",
@@ -33,9 +39,15 @@
     "test:failed": "vitest run --bail",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e",
     "pre-deploy": "node scripts/pre-deploy-check.cjs",
-    "safety-check": "node scripts/safety-check.cjs"
+    "safety-check": "node scripts/safety-check.cjs",
+    "check:mobile-release": "node scripts/validate-mobile-release-config.mjs",
+    "check:mobile-manifest": "node scripts/inspect-mobile-manifest.mjs",
+    "test:maritime-network": "node tests/performance/crew-mobile-maritime.mjs",
+    "vapt:evidence-manifest": "node scripts/create-vapt-evidence-manifest.mjs",
+    "verify:mobile-artifacts": "node scripts/verify-mobile-release-artifacts.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.901.0",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@playwright/test": "^1.57.0",
@@ -121,6 +133,7 @@
     "memorystore": "^1.6.7",
     "multer": "^2.2.0",
     "next-themes": "^0.4.6",
+    "otpauth": "^9.4.1",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "pdf-lib": "^1.17.1",

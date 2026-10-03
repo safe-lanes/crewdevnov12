@@ -1,0 +1,10 @@
+[
+  { "name": "normal", "latencyMs": 0, "throughputKbps": null, "packetLossPercent": 0, "disconnectSeconds": 0 },
+  { "name": "latency-500ms", "latencyMs": 500, "throughputKbps": null, "packetLossPercent": 0, "disconnectSeconds": 0 },
+  { "name": "latency-1s", "latencyMs": 1000, "throughputKbps": null, "packetLossPercent": 0, "disconnectSeconds": 0 },
+  { "name": "throughput-20KBps", "latencyMs": 500, "throughputKbps": 160, "packetLossPercent": 0, "disconnectSeconds": 0 },
+  { "name": "throughput-10KBps", "latencyMs": 1000, "throughputKbps": 80, "packetLossPercent": 0, "disconnectSeconds": 0 },
+  { "name": "packet-loss-2pct", "latencyMs": 500, "throughputKbps": 160, "packetLossPercent": 2, "disconnectSeconds": 0 },
+  { "name": "packet-loss-5pct", "latencyMs": 1000, "throughputKbps": 80, "packetLossPercent": 5, "disconnectSeconds": 0 },
+  { "name": "temporary-disconnect", "latencyMs": 500, "throughputKbps": 160, "packetLossPercent": 0, "disconnectSeconds": 30 }
+]

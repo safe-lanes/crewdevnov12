@@ -23,3 +23,6 @@ if (!API_BASE_URL) {
 if (!__DEV__ && !API_BASE_URL.startsWith("https://")) {
   throw new Error(`API_BASE_URL must use https:// in a production build (got "${API_BASE_URL}").`);
 }
+if (!__DEV__ && (/REPLACE_WITH_/i.test(API_BASE_URL) || /https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(API_BASE_URL))) {
+  throw new Error("API_BASE_URL contains a placeholder or local development host in a production build.");
+}

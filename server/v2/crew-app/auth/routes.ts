@@ -24,5 +24,7 @@ router.post("/login", authAttemptLimiter, crewAuthController.login);
 router.post("/refresh", authAttemptLimiter, crewAuthController.refresh);
 router.post("/logout", crewAuthMiddleware, crewAuthController.logout);
 router.post("/set-password", crewAuthMiddleware, crewAuthController.setPassword);
+router.post("/mfa/enroll", crewAuthMiddleware, crewAuthController.beginMfa);
+router.post("/mfa/confirm", crewAuthMiddleware, crewAuthController.confirmMfa);
 
 export default router;

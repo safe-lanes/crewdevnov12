@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noImplicitAny": false
+  },
+  "include": [
+    "server/config/productionConfig.ts",
+    "server/v2/crew-app/**/*.ts",
+    "server/v2/crew-app-review/**/*.ts",
+    "shared/v2/crew-app/**/*.ts",
+    "tests/unit/crew-app-*.test.ts"
+  ],
+  "exclude": ["node_modules", "client", "mobile"]
+}

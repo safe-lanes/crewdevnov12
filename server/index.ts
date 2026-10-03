@@ -7,10 +7,18 @@ import { runMigrations } from "./migrationRunner";
 import { tenantConnectionManager } from "./utils/tenantConnectionManager";
 import { tenantMiddleware } from "./middleware/tenantMiddleware";
 import { authMiddleware } from "./middleware/authMiddleware";
+import { safeRequestLogging } from "./middleware/safeRequestLogging";
+import { validateProductionConfigAtStartup } from "./config/productionConfig";
 import { crewingAlertEngine } from "./v2/alerts/crewingAlertEngine";
 import { crewNotificationScanner } from "./v2/crew-app/notifications";
+import { erpCommandWorkerSupervisor } from "./v2/crew-app/erp-commands/supervisor";
+import { initializeCrewFileSecurity } from "./v2/crew-app/files/fileSecurityBootstrap";
+import { flushCrewSiem, initializeCrewSiem } from "./v2/crew-app/monitoring/siemSink";
 
 const app = express();
+validateProductionConfigAtStartup();
+initializeCrewFileSecurity();
+initializeCrewSiem();
 app.set("trust proxy", 1);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
@@ -35,6 +43,9 @@ const tenantInitLimiter = rateLimit({
 app.use("/api/", apiLimiter);
 app.use("/api/v2/tenant/init", tenantInitLimiter);
 
+/* Legacy body logger removed: API payloads can contain tokens and crew PII. */
+app.use(safeRequestLogging((line) => log(line)));
+/*
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -63,7 +74,7 @@ app.use((req, res, next) => {
   });
 
   next();
-});
+});*/
 
 (async () => {
   // Run database migrations automatically before starting server
@@ -91,12 +102,12 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.status(status).json({ message });
+    res.status(status).json({ message: status >= 500 ? "Internal Server Error" : message, requestId: _req.requestId });
     
     // Log error but don't throw - prevents unnecessary server shutdowns
     log(`API Error ${status}: ${message}`);
     if (status >= 500) {
-      log(`Server Error Details: ${err.stack || err}`);
+      log(`Server Error requestId=${_req.requestId ?? "unknown"}`);
     }
   });
 
@@ -137,8 +148,12 @@ app.use((req, res, next) => {
     log(`${signal} received. Shutting down gracefully...`);
     crewingAlertEngine.stop();
     crewNotificationScanner.stop();
+    const workerStopped = erpCommandWorkerSupervisor.stop();
+    const siemFlushed = flushCrewSiem();
     httpServer.close(async () => {
       log('HTTP server closed.');
+      await workerStopped;
+      await siemFlushed;
       await tenantConnectionManager.closeAll();
       process.exit(0);
     });

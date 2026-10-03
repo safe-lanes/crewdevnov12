@@ -13,6 +13,9 @@ import ContentPageScreen from "../screens/ContentPageScreen";
 import AdminContentEditScreen from "../screens/admin/AdminContentEditScreen";
 import CrewProfileScreen from "../screens/CrewProfileScreen";
 import CrewCollectionScreen from "../screens/CrewCollectionScreen";
+import PrivacyRequestsScreen from "../screens/PrivacyRequestsScreen";
+import MfaSetupScreen from "../screens/MfaSetupScreen";
+import SubmissionsSyncScreen from "../screens/SubmissionsSyncScreen";
 
 const HomeStack = createNativeStackNavigator();
 const stackScreenOptions = {
@@ -30,6 +33,7 @@ function HomeStackNavigator() {
       <HomeStack.Screen name="Notifications" component={NotificationsScreen} options={{ title: "Notifications" }} />
       <HomeStack.Screen name="CrewProfile" component={CrewProfileScreen} options={{ title: "My Profile" }} />
       <HomeStack.Screen name="CrewCollection" component={CrewCollectionScreen} options={{ title: "Crew records" }} />
+      <HomeStack.Screen name="SubmissionsSync" component={SubmissionsSyncScreen} options={{ title: "Submissions & Sync" }} />
     </HomeStack.Navigator>
   );
 }
@@ -55,6 +59,8 @@ function MoreStackNavigator() {
     <MoreStack.Navigator screenOptions={stackScreenOptions}>
       <MoreStack.Screen name="MoreMain" component={MoreScreen} options={{ title: "More" }} />
       <MoreStack.Screen name="ContentPage" component={ContentPageScreen} options={{ title: "" }} />
+      <MoreStack.Screen name="PrivacyRequests" component={PrivacyRequestsScreen} options={{ title: "Privacy Requests" }} />
+      <MoreStack.Screen name="MfaSetup" component={MfaSetupScreen} options={{ title: "Two-step verification" }} />
       <MoreStack.Screen
         name="AdminContentEdit"
         component={AdminContentEditScreen}

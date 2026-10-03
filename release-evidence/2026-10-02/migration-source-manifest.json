@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "assessmentId": "RELEASE-EVIDENCE-2026-10-02",
+  "generatedAt": "2026-10-02T12:20:40.101Z",
+  "sourceCommit": "9f5aceeee544d4e2d477fde034ed737bd83b953a",
+  "files": [
+    {
+      "name": "0218_mobile_approval_outbox.sql",
+      "size": 1836,
+      "sha256": "22b33352d7c090e67b3e4cf676fe039d884774615041cef8e997441f620cde3e"
+    },
+    {
+      "name": "0219_mobile_session_version.sql",
+      "size": 187,
+      "sha256": "f349b2576663033d211839e72dc3566f3d87a089eae09e571c0c5e4aee4a9400"
+    },
+    {
+      "name": "0220_mobile_privacy_requests.sql",
+      "size": 935,
+      "sha256": "db7bd5566b01d0d00b5a1c7c4ef442cd974e4cd09ae7dad7c95b94232258748d"
+    },
+    {
+      "name": "0221_mobile_erp_command_worker.sql",
+      "size": 2170,
+      "sha256": "762979d489b19996ff780535266cc99b766101583f83ed9cca8edf4f43708eb8"
+    },
+    {
+      "name": "0222_mobile_erp_command_operations.sql",
+      "size": 1186,
+      "sha256": "705e887d8af98e33256538ec09eba36f91302b416e4207b7079cb95d54db8141"
+    },
+    {
+      "name": "0223_privacy_request_execution.sql",
+      "size": 1243,
+      "sha256": "f9259739024fb6e1766568276dcce4ea480e094ceda6118f0232cd77bb4648a9"
+    },
+    {
+      "name": "0224_mobile_mfa.sql",
+      "size": 346,
+      "sha256": "74f33c45ef51b27be007ad65f8fbabd8d95294190b962f3949b745b3320fe63b"
+    }
+  ]
+}

@@ -15,13 +15,17 @@ const KEYS = {
   userType: "crew_user_type",
   firstName: "crew_first_name",
   familyName: "crew_family_name",
+  outboxEncryptionKey: "crew_outbox_encryption_key_v1",
 } as const;
 
 const webMemoryStore = new Map<string, string>();
+const SECURE_OPTIONS: SecureStore.SecureStoreOptions = {
+  keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+};
 
 async function getItem(key: string): Promise<string | null> {
   if (Platform.OS === "web") return webMemoryStore.get(key) ?? null;
-  return SecureStore.getItemAsync(key);
+  return SecureStore.getItemAsync(key, SECURE_OPTIONS);
 }
 
 async function setItem(key: string, value: string): Promise<void> {
@@ -29,7 +33,7 @@ async function setItem(key: string, value: string): Promise<void> {
     webMemoryStore.set(key, value);
     return;
   }
-  await SecureStore.setItemAsync(key, value);
+  await SecureStore.setItemAsync(key, value, SECURE_OPTIONS);
 }
 
 async function deleteItem(key: string): Promise<void> {
@@ -37,8 +41,14 @@ async function deleteItem(key: string): Promise<void> {
     webMemoryStore.delete(key);
     return;
   }
-  await SecureStore.deleteItemAsync(key);
+  await SecureStore.deleteItemAsync(key, SECURE_OPTIONS);
 }
+
+/** Narrow, namespaced access for device secrets that are not authentication state. */
+export const deviceSecretStore = {
+  getOutboxKey: () => getItem(KEYS.outboxEncryptionKey),
+  setOutboxKey: (value: string) => setItem(KEYS.outboxEncryptionKey, value),
+};
 
 export type StoredAuthState = {
   accessToken: string | null;

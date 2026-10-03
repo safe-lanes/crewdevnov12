@@ -16,7 +16,7 @@ interface AuthContextValue {
   isAdmin: boolean;
   hydrationError: string | null;
   retryHydration: () => void;
-  login: (identifier: string, password: string, domain: string) => Promise<void>;
+  login: (identifier: string, password: string, domain: string, mfaCode?: string) => Promise<void>;
   logout: () => Promise<void>;
   setPassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
@@ -60,9 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, [runHydrate]);
 
-  const login = useCallback(async (identifier: string, password: string, domain: string) => {
+  const login = useCallback(async (identifier: string, password: string, domain: string, mfaCode?: string) => {
     const { deviceId } = tokenStore.get();
-    const result = await authApi.login({ identifier, password, domain, deviceId: deviceId ?? undefined });
+    const result = await authApi.login({ identifier, password, domain, deviceId: deviceId ?? undefined, mfaCode });
     await tokenStore.set({
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
@@ -85,8 +85,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setPassword = useCallback(async (currentPassword: string, newPassword: string) => {
-    await authApi.setPassword({ currentPassword, newPassword });
-    await tokenStore.set({ mustResetPassword: false });
+    const tokens = await authApi.setPassword({ currentPassword, newPassword });
+    await tokenStore.set({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, mustResetPassword: false });
   }, []);
 
   const value = useMemo<AuthContextValue>(

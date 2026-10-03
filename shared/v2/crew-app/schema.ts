@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, integer, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, integer, timestamp, varchar, uniqueIndex } from "drizzle-orm/pg-core";
 
 // Duplicated locally rather than imported from crew-pool/schema.ts — this module is
 // meant to be fully self-contained (isolated auth system), so it avoids any import
@@ -30,6 +30,12 @@ export const appCrewCredentials = pgTable("app_crew_credentials", {
   temporaryPasswordConsumedAt: timestamp("temporary_password_consumed_at", { withTimezone: true }),
   provisioningOperationUuid: text("provisioning_operation_uuid"),
   failedLoginAttempts: integer("failed_login_attempts").default(0),
+  mfaEnabled: boolean("mfa_enabled").notNull().default(false),
+  mfaSecretCiphertext: text("mfa_secret_ciphertext"),
+  mfaSecretNonce: text("mfa_secret_nonce"),
+  mfaRecoveryCodeHashes: text("mfa_recovery_code_hashes").notNull().default("[]"),
+  mfaEnrolledAt: timestamp("mfa_enrolled_at", { withTimezone: true }),
+  sessionVersion: integer("session_version").notNull().default(0),
   lockedUntil: timestamp("locked_until", { withTimezone: true }),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   ...auditColumns,
@@ -95,6 +101,7 @@ export const appCrewNotifications = pgTable("app_crew_notifications", {
 export const appCrewPendingChanges = pgTable("app_crew_pending_changes", {
   id: serial("id").primaryKey(),
   pendingUuid: text("pending_uuid").notNull().unique(),
+  operationUuid: text("operation_uuid").notNull(),
   domain: varchar("domain", { length: 255 }).notNull(),
   crewUuid: text("crew_uuid").notNull(),
   // Matches the section/collection keys already used in
@@ -107,12 +114,91 @@ export const appCrewPendingChanges = pgTable("app_crew_pending_changes", {
   // crew member attached while building a still-pending 'create'. Linked into
   // the canonical record's attachments only once the create is approved.
   stagedAttachments: text("staged_attachments").notNull().default("[]"),
-  status: text("status").notNull().default("pending"), // 'pending' | 'approved' | 'rejected'
+  status: text("status").notNull().default("pending"),
   reviewedByUuid: text("reviewed_by_uuid"),
   reviewedByName: text("reviewed_by_name"),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   rejectionReason: text("rejection_reason"),
   ...auditColumns,
+}, (table) => ({
+  tenantCrewOperationUnique: uniqueIndex("app_crew_pending_tenant_crew_operation_uq")
+    .on(table.domain, table.crewUuid, table.operationUuid),
+}));
+
+/** Immutable reviewer decisions. A pending change can have only one terminal decision. */
+export const appCrewPendingReviews = pgTable("app_crew_pending_reviews", {
+  id: serial("id").primaryKey(),
+  reviewUuid: text("review_uuid").notNull().unique(),
+  pendingUuid: text("pending_uuid").notNull().unique(),
+  decision: text("decision").notNull(),
+  reviewerUuid: text("reviewer_uuid").notNull(),
+  reviewerName: text("reviewer_name"),
+  reason: text("reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Durable command boundary between mobile approval and authoritative ERP mutation. */
+export const appCrewErpCommands = pgTable("app_crew_erp_commands", {
+  id: serial("id").primaryKey(),
+  commandUuid: text("command_uuid").notNull().unique(),
+  pendingUuid: text("pending_uuid").notNull().unique(),
+  operationUuid: text("operation_uuid").notNull(),
+  domain: varchar("domain", { length: 255 }).notNull(),
+  crewUuid: text("crew_uuid").notNull(),
+  commandType: text("command_type").notNull(),
+  status: text("status").notNull().default("queued"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+  leaseOwner: text("lease_owner"),
+  leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+  resultJson: text("result_json"),
+  errorCode: text("error_code"),
+  lastErrorSummary: text("last_error_summary"),
+  authoritativeRecordUuid: text("authoritative_record_uuid"),
+  authoritativeResultHash: text("authoritative_result_hash"),
+  approvedPayloadHash: text("approved_payload_hash"),
+  appliedAt: timestamp("applied_at", { withTimezone: true }),
+  reconciledAt: timestamp("reconciled_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const appCrewErpCommandAudits = pgTable("app_crew_erp_command_audits", {
+  id: serial("id").primaryKey(), auditUuid: text("audit_uuid").notNull().unique(),
+  commandUuid: text("command_uuid").notNull(), operatorUuid: text("operator_uuid").notNull(),
+  previousStatus: text("previous_status").notNull(), newStatus: text("new_status").notNull(),
+  decision: text("decision").notNull(), reason: text("reason").notNull(),
+  correlationId: text("correlation_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const appCrewPrivacyRequests = pgTable("app_crew_privacy_requests", {
+  id: serial("id").primaryKey(),
+  requestUuid: text("request_uuid").notNull().unique(),
+  domain: varchar("domain", { length: 255 }).notNull(),
+  crewUuid: text("crew_uuid").notNull(),
+  requestType: text("request_type").notNull(),
+  status: text("status").notNull().default("submitted"),
+  reason: text("reason"),
+  legalHold: boolean("legal_hold").notNull().default(false),
+  resolutionNotes: text("resolution_notes"),
+  evidenceReference: text("evidence_reference"),
+  correlationId: text("correlation_id"),
+  identityVerifiedAt: timestamp("identity_verified_at", { withTimezone: true }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  reviewerId: text("reviewer_id"),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export const appCrewPrivacyRequestAudits = pgTable("app_crew_privacy_request_audits", {
+  id: serial("id").primaryKey(), auditUuid: text("audit_uuid").notNull().unique(),
+  requestUuid: text("request_uuid").notNull(), actorUuid: text("actor_uuid").notNull(),
+  previousStatus: text("previous_status").notNull(), newStatus: text("new_status").notNull(),
+  action: text("action").notNull(), reason: text("reason").notNull(), correlationId: text("correlation_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // One row per tenant domain. Absence of a row means the default (gate ON)

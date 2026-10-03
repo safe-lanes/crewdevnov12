@@ -104,8 +104,39 @@ export class CrewCredentialsRepository {
     const db = getDb();
     await db
       .update(appCrewCredentials)
-      .set({ passwordHash, mustResetPassword: false, temporaryPasswordConsumedAt: null })
+      .set({ passwordHash, mustResetPassword: false, temporaryPasswordConsumedAt: null, sessionVersion: sql`${appCrewCredentials.sessionVersion} + 1` })
       .where(eq(appCrewCredentials.id, id));
+  }
+
+  async incrementSessionVersion(id: number): Promise<void> {
+    await getDb().update(appCrewCredentials)
+      .set({ sessionVersion: sql`${appCrewCredentials.sessionVersion} + 1` })
+      .where(eq(appCrewCredentials.id, id));
+  }
+
+  async stageMfaSecret(id: number, ciphertext: string, nonce: string): Promise<void> {
+    await getDb().update(appCrewCredentials).set({
+      mfaSecretCiphertext: ciphertext,
+      mfaSecretNonce: nonce,
+    }).where(eq(appCrewCredentials.id, id));
+  }
+
+  async enableMfa(id: number, recoveryCodeHashes: string[]): Promise<void> {
+    await getDb().update(appCrewCredentials).set({
+      mfaEnabled: true,
+      mfaRecoveryCodeHashes: JSON.stringify(recoveryCodeHashes),
+      mfaEnrolledAt: new Date(),
+    }).where(eq(appCrewCredentials.id, id));
+  }
+
+  async consumeRecoveryCode(id: number, expectedHashesJson: string, remainingHashes: string[]): Promise<boolean> {
+    const rows = await getDb().update(appCrewCredentials).set({
+      mfaRecoveryCodeHashes: JSON.stringify(remainingHashes),
+    }).where(and(
+      eq(appCrewCredentials.id, id),
+      eq(appCrewCredentials.mfaRecoveryCodeHashes, expectedHashesJson),
+    )).returning({ id: appCrewCredentials.id });
+    return rows.length === 1;
   }
 
   async consumeTemporaryPassword(id: number): Promise<boolean> {

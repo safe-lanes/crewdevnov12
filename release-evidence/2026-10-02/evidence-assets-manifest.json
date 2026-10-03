@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "assessmentId": "RELEASE-EVIDENCE-2026-10-02",
+  "generatedAt": "2026-10-02T12:25:07.497Z",
+  "sourceCommit": "9f5aceeee544d4e2d477fde034ed737bd83b953a",
+  "files": [
+    {
+      "name": "RELEASE-EVIDENCE-PACK.md",
+      "size": 19192,
+      "sha256": "9af43db3b003a81d33cf171208c4ebe2809ae9bf0c8685c36a2fdb7160e89003"
+    },
+    {
+      "name": "README.md",
+      "size": 719,
+      "sha256": "4309a908ea308741fc3ad5f32f43cbb6901640cefb2ad9fbdf52509c4790b67c"
+    },
+    {
+      "name": "migration-source-manifest.json",
+      "size": 1352,
+      "sha256": "6611dd55af176d9d7df17b16669011a272ffef6fc256e37c5fd327f07fd12ec3"
+    },
+    {
+      "name": "results.json",
+      "size": 20140,
+      "sha256": "862910a8c59b6ddceb26e28052106b6eb8b748ed9ee56a3bb85c04035fa02182"
+    },
+    {
+      "name": "junit.xml",
+      "size": 13320,
+      "sha256": "cf96a8ca679049019cff7117829fcf7ffbc7fedbf8aa9e20144b324801d62706"
+    },
+    {
+      "name": "bff-sbom.cdx.json",
+      "size": 1433645,
+      "sha256": "39074de57c258cd0593c09ab412dbb015db8a0f8306eeccf55a79c6f16ea891a"
+    },
+    {
+      "name": "mobile-sbom.cdx.json",
+      "size": 1091921,
+      "sha256": "d8a5db82104f9d1bc46e8da3efd49f8af1eab2955e285a71276a773feec9b734"
+    },
+    {
+      "name": "bff-npm-audit.json",
+      "size": 16997,
+      "sha256": "665f643c6592576da3791319929c4adef8c43836ae6afd2f58aa0961ca7b2051"
+    },
+    {
+      "name": "mobile-npm-audit.json",
+      "size": 7740,
+      "sha256": "a02ab85b468b351667b7908cd5a20bbb210ce4c38d67b47cc5d8de51dac7b416"
+    }
+  ]
+}

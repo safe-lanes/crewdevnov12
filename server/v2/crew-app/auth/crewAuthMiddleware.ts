@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { runInCrewAppTenant } from "../tenantContext";
+import { CrewCredentialsRepository } from "./repositories/crewCredentialsRepository";
+import { emitCrewSecurityEvent } from "../monitoring/securityEvents";
 
 // Fully independent of server/middleware/authMiddleware.ts and tenantMiddleware.ts —
 // this module must never import from either, and must never reference JWT_SECRET.
@@ -9,6 +11,7 @@ import { runInCrewAppTenant } from "../tenantContext";
 // only auth boundary for those routes.
 
 const ACCESS_TOKEN_SECRET = process.env.CREW_APP_ACCESS_TOKEN_SECRET;
+const credentialsRepository = new CrewCredentialsRepository();
 
 if (!ACCESS_TOKEN_SECRET) {
   throw new Error(
@@ -47,7 +50,7 @@ export function crewAuthMiddleware(req: Request, res: Response, next: NextFuncti
     return;
   }
 
-  let decoded: { sub: number; crewId: string; domain: string; userType: string };
+  let decoded: { sub: number; crewId: string; domain: string; userType: string; sessionVersion: number; tokenType: string };
   try {
     decoded = jwt.verify(token, ACCESS_TOKEN_SECRET!, { algorithms: ["HS256"] }) as unknown as typeof decoded;
   } catch (err: any) {
@@ -59,7 +62,22 @@ export function crewAuthMiddleware(req: Request, res: Response, next: NextFuncti
     return;
   }
 
-  runInCrewAppTenant(decoded.domain, (tuid) => {
+  if (decoded.tokenType !== "access" || !Number.isInteger(decoded.sessionVersion)) {
+    res.status(401).json({ error: "invalid_token", message: "Invalid access token" });
+    return;
+  }
+
+  runInCrewAppTenant(decoded.domain, async (tuid) => {
+      const credential = await credentialsRepository.findById(decoded.sub);
+      if (credential && credential.domain !== decoded.domain) {
+        emitCrewSecurityEvent({ event: "tenant_mismatch", correlationId: req.requestId, actorId: decoded.sub, tenantId: decoded.domain, resourceType: "crew_session", result: "denied", reasonCode: "credential_domain_mismatch" });
+      }
+      if (!credential || credential.isActive === false || credential.crewUuid !== decoded.crewId ||
+          credential.domain !== decoded.domain || credential.userType !== decoded.userType ||
+          (credential.sessionVersion ?? 0) !== decoded.sessionVersion) {
+        emitCrewSecurityEvent({ event: "session_revoke", correlationId: req.requestId, actorId: decoded.sub, tenantId: decoded.domain, resourceType: "crew_session", result: "denied", reasonCode: "session_state_mismatch" });
+        throw Object.assign(new Error("Session is no longer active"), { status: 401, code: "session_revoked" });
+      }
       req.crewUser = {
         credentialId: decoded.sub,
         crewUuid: decoded.crewId,
@@ -75,8 +93,8 @@ export function crewAuthMiddleware(req: Request, res: Response, next: NextFuncti
     })
     .catch((err: any) => {
       res.status(err?.status ?? 500).json({
-        error: "tenant_resolution_failed",
-        message: err?.message ?? "Unable to resolve tenant for this request",
+        error: err?.code ?? "tenant_resolution_failed",
+        message: err?.status === 401 ? "Session is no longer active" : "Unable to resolve tenant for this request",
       });
     });
 }

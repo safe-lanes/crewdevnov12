@@ -14,6 +14,8 @@ import type {
   CrewRefreshRequest,
   CrewSetPasswordRequest,
 } from "../../../../../shared/v2/crew-app/types";
+import { emitCrewSecurityEvent } from "../../monitoring/securityEvents";
+import { crewMfaService } from "./crewMfaService";
 
 // Isolated from the legacy web auth (server/middleware/authMiddleware.ts /
 // tenantMiddleware.ts): own secrets, own token shapes, own tenant resolution.
@@ -54,9 +56,12 @@ interface CrewAccessTokenPayload {
   domain: string;
   userType: string;
   mustResetPassword: boolean;
+  sessionVersion: number;
+  tokenType: "access";
 }
 
-interface CrewRefreshTokenPayload extends CrewAccessTokenPayload {
+interface CrewRefreshTokenPayload extends Omit<CrewAccessTokenPayload, "tokenType"> {
+  tokenType: "refresh";
   jti: string;
   iat?: number;
   exp?: number;
@@ -77,10 +82,12 @@ async function issueTokenPair(
     domain: credential.domain,
     userType: credential.userType,
     mustResetPassword: credential.mustResetPassword ?? false,
+    sessionVersion: credential.sessionVersion ?? 0,
+    tokenType: "access",
   };
 
   const accessToken = jwt.sign(payload, ACCESS_TOKEN_SECRET!, { expiresIn: ACCESS_TOKEN_TTL });
-  const refreshToken = jwt.sign({ ...payload, jti: uuidv4() }, REFRESH_TOKEN_SECRET!, {
+  const refreshToken = jwt.sign({ ...payload, tokenType: "refresh", jti: uuidv4() }, REFRESH_TOKEN_SECRET!, {
     expiresIn: REFRESH_TOKEN_TTL,
   });
 
@@ -118,7 +125,7 @@ async function toCrewSummary(credential: AppCrewCredential) {
 
 export const crewAuthService = {
   async login(data: CrewLoginRequest) {
-    const { identifier, password, domain, deviceId, deviceLabel } = data;
+    const { identifier, password, domain, deviceId, deviceLabel, mfaCode } = data;
     return runInCrewAppTenant(domain, async () => {
         const credential = await crewCredentialsRepository.findByIdentifierAndDomain(identifier, domain);
 
@@ -139,8 +146,22 @@ export const crewAuthService = {
           const attempts = await crewCredentialsRepository.incrementFailedAttempts(credential.id);
           if (attempts >= MAX_FAILED_ATTEMPTS) {
             await crewCredentialsRepository.lockAccount(credential.id, new Date(Date.now() + LOCKOUT_DURATION_MS));
+            emitCrewSecurityEvent({ event: "account_lockout", actorId: credential.id, tenantId: credential.domain, resourceType: "crew_credential", result: "warning", reasonCode: "failed_attempt_threshold" });
           }
           throw new Error("Invalid credentials");
+        }
+
+        if (credential.mfaEnabled) {
+          if (!mfaCode) throw new Error("MFA required");
+          if (!(await crewMfaService.verify(credential, mfaCode))) {
+            const attempts = await crewCredentialsRepository.incrementFailedAttempts(credential.id);
+            if (attempts >= MAX_FAILED_ATTEMPTS) {
+              await crewCredentialsRepository.lockAccount(credential.id, new Date(Date.now() + LOCKOUT_DURATION_MS));
+              emitCrewSecurityEvent({ event: "account_lockout", actorId: credential.id, tenantId: credential.domain, resourceType: "crew_credential", result: "warning", reasonCode: "invalid_mfa_threshold" });
+            }
+            emitCrewSecurityEvent({ event: "login_failure", actorId: credential.id, tenantId: credential.domain, resourceType: "crew_credential", result: "denied", reasonCode: "invalid_mfa" });
+            throw new Error("Invalid MFA code");
+          }
         }
 
         if (credential.mustResetPassword) {
@@ -174,6 +195,7 @@ export const crewAuthService = {
       throw new Error("Invalid refresh token");
     }
 
+    if (decoded.tokenType !== "refresh") throw new Error("Invalid refresh token");
     return runInCrewAppTenant(decoded.domain, async () => {
         const tokenHash = hashToken(refreshToken);
         const consumed = await crewRefreshTokensRepository.consumeIfActive(tokenHash);
@@ -182,7 +204,7 @@ export const crewAuthService = {
           // This token was already rotated once before — reuse/replay. Kill the whole
           // session family and force a fresh login, per standard refresh-token-reuse mitigation.
           await crewRefreshTokensRepository.revokeAllForCredential(decoded.sub);
-          console.warn(`[crewAuthService] Refresh token reuse detected for credential ${decoded.sub}`);
+          emitCrewSecurityEvent({ event: "refresh_token_reuse", actorId: decoded.sub, tenantId: decoded.domain, resourceType: "crew_session", result: "warning", reasonCode: "rotated_token_replayed" });
           throw new Error("Invalid refresh token");
         }
 
@@ -196,7 +218,7 @@ export const crewAuthService = {
         // same as reuse/replay and kill the whole session family.
         if (consumed.deviceId && consumed.deviceId !== deviceId) {
           await crewRefreshTokensRepository.revokeAllForCredential(decoded.sub);
-          console.warn(`[crewAuthService] Refresh device mismatch for credential ${decoded.sub}`);
+          emitCrewSecurityEvent({ event: "refresh_token_reuse", actorId: decoded.sub, tenantId: decoded.domain, resourceType: "crew_session", result: "warning", reasonCode: "device_mismatch" });
           throw new Error("Invalid refresh token");
         }
 
@@ -204,6 +226,7 @@ export const crewAuthService = {
         if (!credential || credential.isActive === false) {
           throw new Error("Invalid refresh token");
         }
+        if ((credential.sessionVersion ?? 0) !== decoded.sessionVersion) throw new Error("Invalid refresh token");
         if (credential.mustResetPassword) {
           await crewRefreshTokensRepository.revokeAllForCredential(credential.id);
           throw new Error("Invalid refresh token");
@@ -217,6 +240,8 @@ export const crewAuthService = {
   async logout(data: CrewLogoutRequest, crewUser: { credentialId: number }): Promise<void> {
     if (data.allDevices) {
       await crewRefreshTokensRepository.revokeAllForCredential(crewUser.credentialId);
+      await crewCredentialsRepository.incrementSessionVersion(crewUser.credentialId);
+      emitCrewSecurityEvent({ event: "session_revoke", actorId: crewUser.credentialId, resourceType: "crew_session", result: "success", reasonCode: "logout_all_devices" });
       return;
     }
     if (data.refreshToken) {
@@ -228,7 +253,7 @@ export const crewAuthService = {
   },
 
   /** Runs inside the tenant context already established by crewAuthMiddleware. */
-  async setPassword(data: CrewSetPasswordRequest, crewUser: { credentialId: number }): Promise<void> {
+  async setPassword(data: CrewSetPasswordRequest, crewUser: { credentialId: number }): Promise<{ accessToken: string; refreshToken: string }> {
     const credential = await crewCredentialsRepository.findById(crewUser.credentialId);
     if (!credential) {
       throw new Error("Invalid credentials");
@@ -241,5 +266,24 @@ export const crewAuthService = {
 
     const passwordHash = await bcrypt.hash(data.newPassword, BCRYPT_SALT_ROUNDS);
     await crewCredentialsRepository.updatePasswordHash(credential.id, passwordHash);
+    await crewRefreshTokensRepository.revokeAllForCredential(credential.id);
+    const updated = await crewCredentialsRepository.findById(credential.id);
+    if (!updated) throw new Error("Invalid credentials");
+    return issueTokenPair(updated);
+  },
+
+  async beginMfa(crewUser: { credentialId: number }) {
+    const credential = await crewCredentialsRepository.findById(crewUser.credentialId);
+    if (!credential) throw new Error("Invalid credentials");
+    if (credential.mfaEnabled) throw new Error("MFA already enabled");
+    return crewMfaService.begin(credential);
+  },
+
+  async confirmMfa(code: string, crewUser: { credentialId: number }) {
+    const credential = await crewCredentialsRepository.findById(crewUser.credentialId);
+    if (!credential) throw new Error("Invalid credentials");
+    const recoveryCodes = await crewMfaService.confirm(credential, code);
+    emitCrewSecurityEvent({ event: "mfa_enabled", actorId: credential.id, tenantId: credential.domain, resourceType: "crew_credential", result: "success", reasonCode: "totp_enrolled" });
+    return { recoveryCodes };
   },
 };

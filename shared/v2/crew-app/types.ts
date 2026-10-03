@@ -8,6 +8,8 @@ import {
   appCrewNotifications,
   appCrewPendingChanges,
   appCrewAppSettings,
+  appCrewPendingReviews,
+  appCrewErpCommands,
 } from "./schema";
 
 // ============================================================================
@@ -45,8 +47,13 @@ export const crewLoginRequestSchema = z.object({
   domain: z.string().min(1),
   deviceId: z.string().optional(),
   deviceLabel: z.string().optional(),
+  mfaCode: z.string().trim().min(6).max(32).optional(),
 });
 export type CrewLoginRequest = z.infer<typeof crewLoginRequestSchema>;
+
+export const crewMfaCodeSchema = z.object({
+  code: z.string().trim().min(6).max(32),
+});
 
 export const crewRefreshRequestSchema = z.object({
   refreshToken: z.string().min(1),
@@ -143,6 +150,8 @@ export const insertAppCrewPendingChangeSchema = createInsertSchema(appCrewPendin
 });
 export type InsertAppCrewPendingChange = z.infer<typeof insertAppCrewPendingChangeSchema>;
 export type AppCrewPendingChange = typeof appCrewPendingChanges.$inferSelect;
+export type AppCrewPendingReview = typeof appCrewPendingReviews.$inferSelect;
+export type AppCrewErpCommand = typeof appCrewErpCommands.$inferSelect;
 
 export const rejectPendingChangeRequestSchema = z.object({
   reason: z.string().trim().min(1).max(1000),

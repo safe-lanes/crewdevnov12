@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { crewAuthMiddleware, requireCrewPasswordReset } from "../auth";
 import { requireCurrentCrew } from "./crewInformationGuard";
-import { getInformation, getCrewInformationMasters, updateSection, collectionHandler } from "./controller";
+import { getInformation, getCrewInformationMasters, getOperationStatus, updateSection, collectionHandler } from "./controller";
 import {
   deleteCrewAttachment,
   listCrewAttachments,
@@ -18,6 +18,7 @@ const bindParam = (name: string, value: string) => (req: any, _res: any, next: a
 };
 router.get("/", ...auth, getInformation);
 router.get("/masters", ...auth, getCrewInformationMasters);
+router.get("/operations/:operationUuid", ...auth, getOperationStatus);
 for (const name of ["particulars", "personal", "contact", "family", "next-of-kin", "vessel-types"]) {
   router.put(`/${name}`, ...auth, bindParam("section", name), updateSection);
 }

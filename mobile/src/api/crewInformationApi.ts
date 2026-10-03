@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiFetch, parseOrThrow, refreshCrewSession } from "./client";
 import { API_BASE_URL } from "../config";
 import { tokenStore } from "../auth/tokenStore";
+import { randomUUID } from "expo-crypto";
 
 const attachmentRulesSchema = z.object({
   readableCollections: z.array(z.string()),
@@ -77,17 +78,22 @@ async function request<T>(path: string, options: RequestInit | undefined, schema
   return parseOrThrow(response, "Unable to load crew information", schema);
 }
 
-const json = (method: string, body?: unknown): RequestInit => ({ method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+const mutationJson = (method: string, body?: unknown, operationId = randomUUID()): RequestInit => ({
+  method,
+  headers: { "Idempotency-Key": operationId },
+  ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+});
 
 export const crewInformationApi = {
   get: () => request("", undefined, crewInformationSchema),
   getMasters: () => request("/masters", undefined, crewInformationMastersSchema),
-  updateSection: (section: string, body: any) => request<any>(`/${section}`, json("PUT", body)),
+  operationStatus: (operationId: string) => request<any>(`/operations/${operationId}`, undefined),
+  updateSection: (section: string, body: any, operationId?: string) => request<any>(`/${section}`, mutationJson("PUT", body, operationId)),
   list: (collection: string) => request(`/${collection}`, undefined, collectionRowsSchema),
-  create: (collection: string, body: any) => request<any>(`/${collection}`, json("POST", body)),
-  update: (collection: string, uuid: string, body: any) => request<any>(`/${collection}/${uuid}`, json("PATCH", body)),
+  create: (collection: string, body: any) => request<any>(`/${collection}`, mutationJson("POST", body)),
+  update: (collection: string, uuid: string, body: any, operationId?: string) => request<any>(`/${collection}/${uuid}`, mutationJson("PATCH", body, operationId)),
   remove: async (collection: string, uuid: string) => {
-    await request<unknown>(`/${collection}/${uuid}`, { method: "DELETE" });
+    await request<unknown>(`/${collection}/${uuid}`, mutationJson("DELETE"));
   },
   listAttachments: (collection: string, uuid: string) => request(`/${collection}/${uuid}/attachments`, undefined, crewAttachmentListSchema),
   removeAttachment: (collection: string, uuid: string, attUuid: string) => request<void>(`/${collection}/${uuid}/attachments/${attUuid}`, { method: "DELETE" }),
@@ -107,12 +113,14 @@ export const crewInformationApi = {
         if (cancelled) return reject(Object.assign(new Error("Upload cancelled"), { cancelled: true }));
         xhr = new XMLHttpRequest();
         xhr.open("POST", `${API_BASE_URL}/api/crew-app/crew-information/${collection}/${uuid}/attachments`);
+        xhr.timeout = 60_000;
         const accessToken = tokenStore.get().accessToken;
         if (accessToken) xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
         };
         xhr.onerror = () => reject(Object.assign(new Error("Upload status is unknown. Reconnect to check before retrying."), { ambiguous: true }));
+        xhr.ontimeout = () => reject(Object.assign(new Error("Upload timed out. Reconnect and inspect attachments before retrying."), { ambiguous: true }));
         xhr.onabort = () => reject(Object.assign(new Error("Upload cancelled"), { cancelled: true }));
         xhr.onload = async () => {
           let body: any = {};

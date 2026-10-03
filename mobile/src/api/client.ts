@@ -4,6 +4,23 @@ import { tokenStore } from "../auth/tokenStore";
 import { queryClient } from "../queryClient";
 
 export type ApiError = Error & { status?: number; details?: unknown };
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const upstream = options.signal;
+  const abort = () => controller.abort();
+  upstream?.addEventListener("abort", abort, { once: true });
+  try { return await fetch(url, { ...options, signal: controller.signal }); }
+  catch (error: any) {
+    if (controller.signal.aborted && !upstream?.aborted) throw Object.assign(new Error("Request timed out; check operation status before retrying."), { code: "request_timeout", ambiguous: true });
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    upstream?.removeEventListener("abort", abort);
+  }
+}
 
 /**
  * Shared response parser for every api/*.ts module — was five near-identical
@@ -37,7 +54,7 @@ export async function parseOrThrow<T>(res: Response, fallbackError: string, sche
 }
 
 export async function rawPost<T = any>(path: string, body: unknown, schema?: ZodType<T>): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetchWithTimeout(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -86,7 +103,7 @@ export function refreshCrewSession(): Promise<boolean> {
 export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const doFetch = () => {
     const { accessToken } = tokenStore.get();
-    return fetch(`${API_BASE_URL}${path}`, {
+    return fetchWithTimeout(`${API_BASE_URL}${path}`, {
       ...options,
       headers: {
         "Content-Type": "application/json",

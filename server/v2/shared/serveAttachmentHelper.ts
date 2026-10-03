@@ -63,7 +63,8 @@ export async function serveAttachmentFromFilePath(
     fileData: string | null;
     fileName: string | null;
     fileType: string | null;
-  }
+  },
+  options: { tenantBound?: boolean } = {},
 ): Promise<void> {
   const { filePath, fileData, fileName, fileType } = attachment;
 
@@ -78,7 +79,9 @@ export async function serveAttachmentFromFilePath(
   // Case 1: Dual-read - filePath exists on filesystem
   if (filePath) {
     try {
-      const { stream, mimeType } = await fileStorageService.readAttachment(filePath);
+      const { stream, mimeType } = options.tenantBound
+        ? await fileStorageService.readAttachmentForCurrentTenant(filePath)
+        : await fileStorageService.readAttachment(filePath);
       
       const inline = INLINE_RENDERABLE_MIMES.has(mimeType);
       const contentDisposition = inline
@@ -91,7 +94,7 @@ export async function serveAttachmentFromFilePath(
       stream.pipe(res);
       return;
     } catch (err: any) {
-      console.error(`serveAttachmentFromFilePath filesystem read error for path ${filePath}:`, err);
+      console.error("serveAttachmentFromFilePath filesystem read failed", { code: err?.code ?? "read_failed" });
       // If file not found on disk, we can try to fall back to fileData if available,
       // otherwise return 404.
       if (!fileData) {

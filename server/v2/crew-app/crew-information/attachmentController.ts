@@ -13,6 +13,9 @@ import {
 } from "../../shared/fileStorageService";
 import { serveAttachmentFromFilePath } from "../../shared/serveAttachmentHelper";
 import { runInCrewAppTenant } from "../tenantContext";
+import { requireResourceOwnership } from "../authorization";
+import { scanCrewFile } from "../files/fileScanner";
+import { emitCrewSecurityEvent } from "../monitoring/securityEvents";
 
 type AttachmentSection =
   | "documents" | "visas" | "education" | "licenses" | "training" | "sea-service"
@@ -99,9 +102,7 @@ async function ownParent(req: Request): Promise<ResolvedParent> {
   const rows = await adapter.list(req.crewUser!.crewUuid);
   const parent = rows.find((row) => row?.[adapter.parentKey] === req.params.uuid);
   if (parent) {
-    if (parent.crewUuid !== req.crewUser!.crewUuid) {
-      throw Object.assign(new Error("Record not found"), { status: 404 });
-    }
+    requireResourceOwnership(req, parent);
     return { adapter, parent };
   }
 
@@ -169,6 +170,14 @@ export async function uploadCrewAttachment(req: Request, res: Response): Promise
     const detectedType = fileStorageService.validateAttachmentBuffer(req.file.buffer);
     const extension = detectedType === "application/pdf" ? ".pdf" : detectedType === "image/png" ? ".png" : ".jpg";
     const displayName = fileStorageService.sanitizeFileName(req.file.originalname).replace(/\.[^.]*$/, "") + extension;
+    const quarantinePath = await fileStorageService.writeAttachment("crew-app-quarantine", displayName, req.file.buffer);
+    const scan = await scanCrewFile(req.file.buffer, detectedType);
+    await fileStorageService.deleteAttachmentForCurrentTenant(quarantinePath);
+    if (scan.status !== "clean") {
+      const unavailable = scan.status === "failed";
+      emitCrewSecurityEvent({ event: scan.status === "infected" ? "malware_detection" : "file_rejection", correlationId: req.requestId, actorId: req.crewUser?.credentialId, tenantId: req.crewUser?.domain, resourceType: "crew_attachment", result: unavailable ? "failed" : "denied", reasonCode: scan.reason || scan.status });
+      throw Object.assign(new Error(unavailable ? "Attachment scanning is temporarily unavailable" : "Attachment was rejected by security scanning"), { status: unavailable ? 503 : 400 });
+    }
     storedPath = await fileStorageService.writeAttachment(adapter.module, displayName, req.file.buffer);
 
     if (pendingUuid) {
@@ -195,7 +204,7 @@ export async function uploadCrewAttachment(req: Request, res: Response): Promise
     });
     res.status(201).json(metadata(attachment, true));
   } catch (error) {
-    if (storedPath) await fileStorageService.deleteAttachment(storedPath);
+    if (storedPath) await fileStorageService.deleteAttachmentForCurrentTenant(storedPath);
     sendError(res, error);
   }
 }
@@ -209,7 +218,7 @@ export async function deleteCrewAttachment(req: Request, res: Response): Promise
 
     if (pendingUuid) {
       const removed = await pendingChangesRepository.removeStagedAttachment(pendingUuid, req.params.attUuid);
-      if (removed?.filePath) await fileStorageService.deleteAttachment(removed.filePath);
+      if (removed?.filePath) await fileStorageService.deleteAttachmentForCurrentTenant(removed.filePath);
       res.status(204).send();
       return;
     }
@@ -231,7 +240,7 @@ export async function serveCrewAttachment(req: Request, res: Response): Promise<
       fileData: attachment.fileData || (filePathIsDataUrl ? attachment.filePath : null),
       fileName: attachment.fileName || null,
       fileType: attachment.fileType || null,
-    });
+    }, { tenantBound: true });
   } catch (error) {
     sendError(res, error);
   }

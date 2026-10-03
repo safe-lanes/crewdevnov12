@@ -14,6 +14,7 @@ import { AlertsRepository } from "../../alerts/repositories/alertsRepository";
 import { crewMembersService } from "../../crew-pool/services";
 import type { AppCrewPendingChange } from "../../../../shared/v2/crew-app/types";
 import { notFound, httpError } from "../errors";
+import { emitCrewSecurityEvent } from "../monitoring/securityEvents";
 
 const alertsRepository = new AlertsRepository();
 const CREW_PORTAL_SUBMISSION_ALERT_TYPE = "crew_portal_submission";
@@ -133,6 +134,7 @@ export interface StageParams {
   action: "create" | "update" | "delete";
   targetUuid?: string | null;
   payload: unknown;
+  operationUuid?: string;
 }
 
 export interface StageResult {
@@ -148,9 +150,11 @@ export async function stageChange(params: StageParams): Promise<StageResult> {
   let appliedResult: any;
 
   if (!(await isVerificationRequired(params.domain))) {
-    appliedResult = await applyPendingChange(row);
-    row = await pendingChangesRepository.markApproved(row.pendingUuid, { uuid: "system", name: "Auto-approved (office verification disabled)" });
-    autoApplied = true;
+    const queued = await pendingChangesRepository.approveAndEnqueue(row.pendingUuid, { uuid: "system", name: "Auto-approved (office verification disabled)" });
+    row = queued.pendingChange;
+    // Approval is now durable and asynchronous. Never report a canonical ERP
+    // mutation before the outbox worker has verified it.
+    autoApplied = false;
   }
 
   await raiseSubmissionAlert(row, autoApplied);
@@ -158,20 +162,18 @@ export async function stageChange(params: StageParams): Promise<StageResult> {
 }
 
 export async function approveChange(pendingUuid: string, reviewer: Reviewer): Promise<{ pendingChange: AppCrewPendingChange; appliedResult: any }> {
-  const row = await pendingChangesRepository.findByUuid(pendingUuid);
-  if (!row) throw notFound("Pending change not found");
-  if (row.status !== "pending") throw httpError(`Pending change is already '${row.status}'`, 409);
-
-  const appliedResult = await applyPendingChange(row);
-  const updated = await pendingChangesRepository.markApproved(pendingUuid, reviewer);
-  return { pendingChange: updated, appliedResult };
+  const queued = await pendingChangesRepository.approveAndEnqueue(pendingUuid, reviewer);
+  emitCrewSecurityEvent({ event: "approval", actorId: reviewer.uuid, tenantId: queued.pendingChange.domain, resourceType: "pending_change", result: "success", reasonCode: "approved_and_queued" });
+  return { pendingChange: queued.pendingChange, appliedResult: { queued: true, commandUuid: queued.command.commandUuid } };
 }
 
 export async function rejectChange(pendingUuid: string, reviewer: Reviewer, reason: string): Promise<AppCrewPendingChange> {
   const row = await pendingChangesRepository.findByUuid(pendingUuid);
   if (!row) throw notFound("Pending change not found");
   if (row.status !== "pending") throw httpError(`Pending change is already '${row.status}'`, 409);
-  return pendingChangesRepository.markRejected(pendingUuid, reviewer, reason);
+  const rejected = await pendingChangesRepository.markRejected(pendingUuid, reviewer, reason);
+  emitCrewSecurityEvent({ event: "rejection", actorId: reviewer.uuid, tenantId: rejected.domain, resourceType: "pending_change", result: "success", reasonCode: "reviewer_rejected" });
+  return rejected;
 }
 
 export { isVerificationRequired };

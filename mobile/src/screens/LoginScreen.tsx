@@ -22,14 +22,21 @@ export default function LoginScreen() {
   const [domain, setDomain] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
 
   const onSubmit = async () => {
     setError(null);
     setSubmitting(true);
     try {
-      await login(identifier.trim(), password, domain.trim());
+      await login(identifier.trim(), password, domain.trim(), mfaRequired ? mfaCode.trim() : undefined);
     } catch (err: any) {
-      setError(err?.message ?? "Login failed");
+      if (err?.message === "MFA required") {
+        setMfaRequired(true);
+        setError("Enter the code from your authenticator app or a recovery code.");
+      } else {
+        setError(err?.message ?? "Login failed");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -86,6 +93,19 @@ export default function LoginScreen() {
               autoCorrect={false}
               testID="login-domain"
             />
+
+            {mfaRequired ? <>
+              <Text style={styles.label}>Authenticator or recovery code</Text>
+              <TextInput
+                style={styles.input}
+                accessibilityLabel="Authenticator or recovery code"
+                value={mfaCode}
+                onChangeText={setMfaCode}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                testID="login-mfa-code"
+              />
+            </> : null}
 
             {error ? (
               <View style={styles.errorContainer}>
