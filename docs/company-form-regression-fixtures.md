@@ -2,6 +2,19 @@
 
 These are retained development fixtures, not disposable test data. Do not delete them during cleanup or use them as production records.
 
+## Readability and void-audit follow-up
+
+The separate retained fixture and evidence are registered in
+[Readable submission verification](company-forms/readable-submission-verification.md).
+Only its new declaration `da1cba4e-76b7-44a0-b03c-19b881dfdaae` was signed,
+completed and voided during that follow-up.
+
+At the follow-up's starting capture on 2026-10-03, the original protected
+submission `026068b1-a083-4f86-9bf0-166df6ba6f6a` was already voided and replaced.
+The historical acceptance below describes its earlier completed state, not its
+current lifecycle. The follow-up preserves that starting-state row and all
+existing frozen values exactly, including its R017 snapshot.
+
 ## Joining declaration regression
 
 Completed on 2026-10-02 for the Planning entry point. Under the revised limits, normal Rotation deployed the seafarer into a new Planning row on existing vessel 02. Real-browser signing, whole-form snapshot, automatic completion and source-change/reload acceptance passed.

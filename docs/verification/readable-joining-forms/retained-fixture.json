@@ -1,0 +1,30 @@
+{
+  "actor": {
+    "masterUserId": 99,
+    "actorUuid": "fe6a15d7-489f-4b53-8f3e-12e95915cfb3",
+    "roleUuid": "95a1aff2-c823-4e08-b991-97072e4ae2a0",
+    "roleName": "TEST ONLY Joining Declaration Crewing",
+    "designation": "TEST ONLY Crewing Representative",
+    "formsAuthoringStatus": 403,
+    "uiPermissionReason": "Existing Vessel UI gates entering vessel details on Vessel Database edit and opening the reliever popup on Officer Matrix edit. Only synthetic role grants were changed; Forms remains denied."
+  },
+  "vesselUuid": "7440571a-841a-11ed-aa7c-7003bca91a86",
+  "vesselName": "vessel 03",
+  "crewUuid": "426f7335-4882-4984-859f-2c1013d2b3af",
+  "draftUuid": "9435e0fb-918b-4366-8607-f20f7d5bfe9b",
+  "entryUuid": "07b10740-73bb-4831-9cbd-645eb0243817",
+  "preExistingPlanning": {
+    "hash": "adcaaaa6aea5bcc50d6cce9db926547a",
+    "count": 85,
+    "unchanged": true
+  },
+  "preparedAt": "2026-10-03T07:01:34.270Z",
+  "planUuid": "a7358272-29df-4274-ac28-9259824e2f5c",
+  "assignmentUuid": "7521f648-7125-4855-a51c-22660a20bc0f",
+  "deployment": {
+    "success": true,
+    "planUuid": "a7358272-29df-4274-ac28-9259824e2f5c",
+    "archiveUuid": "9e5ff1ce-5b6b-4d4d-a42e-332f15ac94b9"
+  },
+  "submissionUuid": "da1cba4e-76b7-44a0-b03c-19b881dfdaae"
+}

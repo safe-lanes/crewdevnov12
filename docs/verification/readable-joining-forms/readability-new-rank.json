@@ -1,0 +1,370 @@
+{
+  "head": "4f5c384995fd321ba07f17dd1b49bd1ef9d462ab",
+  "commitDate": "2026-10-03T07:06:13Z",
+  "backendPid": 1268,
+  "backendStart": "2026-10-03T07:06:22.000Z",
+  "checkedAt": "2026-10-03T07:07:04.668Z",
+  "form": {
+    "submission": {
+      "submissionUuid": "da1cba4e-76b7-44a0-b03c-19b881dfdaae",
+      "subjectType": "crew_assignment",
+      "subjectRef": "7521f648-7125-4855-a51c-22660a20bc0f",
+      "formUuid": "1b9daec7-87f9-498d-8f0f-9f7d72e49206",
+      "formVersionUuid": "1fcd2e8d-1f88-489b-a7cc-cf48b18a712d",
+      "stageKey": "before_joining",
+      "status": "in_progress",
+      "canEdit": true,
+      "canVoid": true,
+      "createdAt": "2026-10-03T07:07:03.514Z",
+      "completedAt": null,
+      "voidedAt": null,
+      "voidedByUuid": null,
+      "voidedByName": null,
+      "voidedByDesignation": null,
+      "voidReason": null,
+      "voidedPreviousStatus": null,
+      "replacedBySubmissionUuid": null,
+      "replacesSubmissionUuid": null,
+      "systemSnapshotAt": "2026-10-03T07:07:04.374Z",
+      "systemSnapshotEvent": "signature"
+    },
+    "signatureMethodOptions": {
+      "officer": [
+        {
+          "method": "officer",
+          "label": "Company Representative"
+        }
+      ],
+      "seafarer": [
+        {
+          "method": "witnessed",
+          "label": "Office-witnessed Seafarer"
+        }
+      ]
+    },
+    "form": {
+      "formName": "Pre-Employment Declaration",
+      "description": "Declaration prior joining vessel each time",
+      "category": "dynamic",
+      "archivedAt": null
+    },
+    "version": {
+      "formVersionUuid": "1fcd2e8d-1f88-489b-a7cc-cf48b18a712d",
+      "versionNo": "02",
+      "versionDate": "02-Oct-2026",
+      "status": "released",
+      "stageKey": "before_joining",
+      "stageLabel": "Before joining",
+      "releasedAt": "2026-10-02T07:34:39.134Z"
+    },
+    "systemFields": [
+      {
+        "key": "seafarer_name",
+        "label": "Seafarer name",
+        "source": "subject",
+        "value": "TEST ONLY READABLE DECLARATION REGRESSION",
+        "systemValue": "TEST ONLY READABLE DECLARATION REGRESSION",
+        "valueOrigin": "frozen_snapshot"
+      },
+      {
+        "key": "rank",
+        "label": "Rank",
+        "source": "subject",
+        "value": "Pumpman",
+        "systemValue": "R017",
+        "valueOrigin": "frozen_snapshot"
+      },
+      {
+        "key": "vessel_to_join",
+        "label": "Vessel to join",
+        "source": "subject",
+        "value": "vessel 03",
+        "systemValue": "vessel 03",
+        "valueOrigin": "frozen_snapshot"
+      }
+    ],
+    "optionSets": [],
+    "parts": [
+      {
+        "formPartUuid": "c4f7faa9-a233-4271-ab77-b4b6787045d7",
+        "partCode": "MAIN",
+        "partTitle": "Pre-Employment Declaration",
+        "partType": "configurable",
+        "isOfficeOnly": false,
+        "sortOrder": 0,
+        "sections": [
+          {
+            "sectionUuid": "946aae7c-fca2-426a-9eff-2a27fe5c4328",
+            "sectionCode": "S4abfa015d4c04b04a5953c6926f5b85d",
+            "sectionTitle": "Basic Information",
+            "applicableVesselTypes": [],
+            "responsibleMode": "role",
+            "responsibleRoleUuid": "408d9fe9-1d0f-11f1-925d-5419ffd80f01",
+            "responsibleRole": {
+              "roleUuid": "408d9fe9-1d0f-11f1-925d-5419ffd80f01",
+              "roleName": "Crewing Manager",
+              "roleType": "Office"
+            },
+            "responsibleDepartment": null,
+            "commentBoxRequired": false,
+            "signatureOfficerRequired": false,
+            "signatureSeafarerRequired": false,
+            "defaultOptionSetUuid": null,
+            "layoutPreference": "auto",
+            "effectiveLayout": "list",
+            "sortOrder": 0,
+            "requiresSubmission": false,
+            "isApplicable": true,
+            "canEdit": false,
+            "canSubmit": false,
+            "canSign": {
+              "officer": false,
+              "seafarer": false
+            },
+            "questions": [
+              {
+                "questionUuid": "14ec213c-e8a9-4bfd-b877-78c34de74f65",
+                "questionCode": "Qa495355feaa04989bc7d7a00e28abd0e",
+                "questionText": "Seafarer name",
+                "responseType": "system_field",
+                "contentHtml": null,
+                "systemFieldKey": "seafarer_name",
+                "isMandatory": false,
+                "commentEnabled": false,
+                "optionSetUuid": null,
+                "sortOrder": 0,
+                "options": [],
+                "systemField": {
+                  "key": "seafarer_name",
+                  "label": "Seafarer name",
+                  "source": "subject",
+                  "value": "TEST ONLY READABLE DECLARATION REGRESSION",
+                  "systemValue": "TEST ONLY READABLE DECLARATION REGRESSION",
+                  "valueOrigin": "frozen_snapshot"
+                }
+              },
+              {
+                "questionUuid": "eef57af3-e66e-4fd2-978c-b7019ea45ae1",
+                "questionCode": "Q04fc32ca178041b8ad6b8dd3feffdb92",
+                "questionText": "Rank",
+                "responseType": "system_field",
+                "contentHtml": null,
+                "systemFieldKey": "rank",
+                "isMandatory": false,
+                "commentEnabled": false,
+                "optionSetUuid": null,
+                "sortOrder": 1,
+                "options": [],
+                "systemField": {
+                  "key": "rank",
+                  "label": "Rank",
+                  "source": "subject",
+                  "value": "Pumpman",
+                  "systemValue": "R017",
+                  "valueOrigin": "frozen_snapshot"
+                }
+              },
+              {
+                "questionUuid": "70350cff-f5c7-46e4-9ec7-e80deaa1e130",
+                "questionCode": "Qf2ddba4c71d7452084615b1ab7a500ef",
+                "questionText": "Vessel to join",
+                "responseType": "system_field",
+                "contentHtml": null,
+                "systemFieldKey": "vessel_to_join",
+                "isMandatory": false,
+                "commentEnabled": false,
+                "optionSetUuid": null,
+                "sortOrder": 2,
+                "options": [],
+                "systemField": {
+                  "key": "vessel_to_join",
+                  "label": "Vessel to join",
+                  "source": "subject",
+                  "value": "vessel 03",
+                  "systemValue": "vessel 03",
+                  "valueOrigin": "frozen_snapshot"
+                }
+              }
+            ]
+          },
+          {
+            "sectionUuid": "37c523b1-b995-4a54-8cec-10a8a89a318b",
+            "sectionCode": "Sb76f229acc904a56a31bab05b4f7801c",
+            "sectionTitle": "General",
+            "applicableVesselTypes": [],
+            "responsibleMode": "seafarer",
+            "responsibleRoleUuid": null,
+            "responsibleRole": null,
+            "responsibleDepartment": null,
+            "commentBoxRequired": false,
+            "signatureOfficerRequired": true,
+            "signatureSeafarerRequired": true,
+            "defaultOptionSetUuid": null,
+            "layoutPreference": "auto",
+            "effectiveLayout": "list",
+            "sortOrder": 1,
+            "requiresSubmission": true,
+            "isApplicable": true,
+            "canEdit": true,
+            "canSubmit": true,
+            "canSign": {
+              "officer": true,
+              "seafarer": true
+            },
+            "questions": [
+              {
+                "questionUuid": "17d16df1-300a-46ca-bdb3-e39000936abd",
+                "questionCode": "Q7e5475c817284b0aa2a64392b1758564",
+                "questionText": "Acknowledgement",
+                "responseType": "content",
+                "contentHtml": "<p>It is hereby confirmed that I have been informed of the Company’s Mission Statement, as follows:</p><p>“The company is dedicated to provide services to the TANKER MARKET and the public in general at the highest possible level with respect to SAFETY, ENVIRONMENTAL PROTECTION, HEALTH, SECURITY and PERFORMANCE standards.</p><p>The Company’s philosophy and business strategy is to focus on modern and efficient vessels and to operate them with the most sophisticated management systems available in the market having safe operations as the core of all activities. The Company considers Safety, Environmental Protection, Health and Security excellence as the equivalent to <strong>OCIMF TMSA Stage 4 compliance</strong>.</p><p>The company has set such compliance to <strong>OCIMF TMSA Stage 4</strong> as its prime operational target and has officially set the following long-term aspirations and goals:</p><ul><li><p><strong>ZERO INCIDENTS OPERATIONS</strong></p></li><li><p><strong>ZERO SPILLS OPERATIONS OR RELEASES TO THE ENVIRONMENT</strong></p></li><li><p><strong>ZERO CUSTOMER COMPLAINTS</strong></p></li><li><p><strong>ZERO PORT STATE DEFICIENCIES</strong></p></li><li><p><strong>ZERO EXTERNAL NON CONFORMITIES</strong></p></li><li><p><strong>REDUCTION IN PERMITTED EMISSIONS</strong></p></li><li><p><strong>OPERATIONS AT A STAGE OF EXCELLENCE (OCIMF TMSA STAGE 4 COMPLIANCE)</strong></p></li></ul>",
+                "systemFieldKey": null,
+                "isMandatory": false,
+                "commentEnabled": false,
+                "optionSetUuid": null,
+                "sortOrder": 0,
+                "options": [],
+                "systemField": null
+              }
+            ]
+          },
+          {
+            "sectionUuid": "e5d79ab7-6f5e-4dbe-8044-aa0c4262f3b8",
+            "sectionCode": "S2f29c4007ae04062a0b1411bfa100d40",
+            "sectionTitle": "Drug & Alcohol Policy",
+            "applicableVesselTypes": [],
+            "responsibleMode": "seafarer",
+            "responsibleRoleUuid": null,
+            "responsibleRole": null,
+            "responsibleDepartment": null,
+            "commentBoxRequired": false,
+            "signatureOfficerRequired": true,
+            "signatureSeafarerRequired": true,
+            "defaultOptionSetUuid": null,
+            "layoutPreference": "auto",
+            "effectiveLayout": "list",
+            "sortOrder": 2,
+            "requiresSubmission": true,
+            "isApplicable": true,
+            "canEdit": true,
+            "canSubmit": true,
+            "canSign": {
+              "officer": true,
+              "seafarer": true
+            },
+            "questions": [
+              {
+                "questionUuid": "bc82b01f-25a4-4ab9-a5d8-339f833284e6",
+                "questionCode": "Qc40d9abc243a4b01ac63c80bd63a6da2",
+                "questionText": "Acknowledgement",
+                "responseType": "content",
+                "contentHtml": "<p>It is hereby confirmed that I have been informed that in accordance with International Requirements, the Managers of the above-named vessel have established and are strictly enforcing onboard a “DRUGS &amp; ALCOHOL POLICY”, as follows:</p><p>“The company is fully committed to maintain a safe and healthy working environment, free from alcohol and unauthorized use of drugs. Illegal or unauthorized possession, consumption, distribution or sale of drugs or alcohol by any shipboard personnel of the company shall lead to instant dismissal and will render the person liable to legal proceedings.</p><p>As a condition of continued employment all shipboard personnel are required to submit to drug and alcohol testing. Refusal to consent to the testing, falsification of a test or positive test results will result in the termination of employment.</p>",
+                "systemFieldKey": null,
+                "isMandatory": false,
+                "commentEnabled": false,
+                "optionSetUuid": null,
+                "sortOrder": 0,
+                "options": [],
+                "systemField": null
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "states": [
+      {
+        "sectionStateUuid": "9b3a4ac0-f442-4596-b774-c03b0f7456a8",
+        "sectionUuid": "37c523b1-b995-4a54-8cec-10a8a89a318b",
+        "status": "not_started",
+        "sectionComment": "",
+        "submittedByUuid": null,
+        "submittedByName": null,
+        "submittedAt": null,
+        "signatures": [
+          {
+            "sectionSignatureUuid": "6d022f9d-4c8e-4039-9a22-853bb0758bd0",
+            "signatureType": "seafarer",
+            "signerName": "TEST ONLY READABLE DECLARATION REGRESSION",
+            "signerRank": "Pumpman",
+            "witnessName": "TEST ONLY JOINING DECLARATION CREWING ACTOR",
+            "signedAt": "2026-10-03T07:07:04.374Z",
+            "signedByUuid": "fe6a15d7-489f-4b53-8f3e-12e95915cfb3",
+            "signatureMethod": "witnessed",
+            "attachment": {
+              "assetUuid": "2549c923-0b93-41f7-8be9-9ab867fa27a4",
+              "fileName": "signature.png",
+              "fileType": "image/png",
+              "fileSize": "7555",
+              "rawUrl": "/api/v2/company-form-submissions/da1cba4e-76b7-44a0-b03c-19b881dfdaae/attachments/2549c923-0b93-41f7-8be9-9ab867fa27a4/raw"
+            }
+          }
+        ]
+      }
+    ],
+    "answers": [],
+    "systemSnapshotAt": "2026-10-03T07:07:04.374Z",
+    "systemSnapshotEvent": "signature",
+    "systemValuesChanged": false,
+    "systemValuesComparisonError": false,
+    "systemValuesChangedNotice": null,
+    "voidedReplacement": null,
+    "replacementHistory": []
+  },
+  "requests": [
+    {
+      "path": "/api/v2/company-form-submissions/subjects/crew_assignment/7521f648-7125-4855-a51c-22660a20bc0f/submissions",
+      "method": "GET",
+      "status": 200,
+      "actorId": 99
+    },
+    {
+      "path": "/api/v2/company-form-submissions/subjects/crew_assignment/7521f648-7125-4855-a51c-22660a20bc0f/eligible-forms?stageKey=before_joining",
+      "method": "GET",
+      "status": 200,
+      "actorId": 99
+    },
+    {
+      "path": "/api/v2/company-form-submissions/subjects/crew_assignment/7521f648-7125-4855-a51c-22660a20bc0f/submissions",
+      "method": "GET",
+      "status": 200,
+      "actorId": 99
+    },
+    {
+      "path": "/api/v2/company-form-submissions/subjects/crew_assignment/7521f648-7125-4855-a51c-22660a20bc0f/submissions",
+      "method": "POST",
+      "status": 201,
+      "actorId": 99
+    },
+    {
+      "path": "/api/v2/company-form-submissions/da1cba4e-76b7-44a0-b03c-19b881dfdaae/form",
+      "method": "GET",
+      "status": 200,
+      "actorId": 99
+    },
+    {
+      "path": "/api/v2/company-form-submissions/da1cba4e-76b7-44a0-b03c-19b881dfdaae/sections/37c523b1-b995-4a54-8cec-10a8a89a318b/answers",
+      "method": "PUT",
+      "status": 204,
+      "actorId": 99
+    },
+    {
+      "path": "/api/v2/company-form-submissions/da1cba4e-76b7-44a0-b03c-19b881dfdaae/sections/37c523b1-b995-4a54-8cec-10a8a89a318b/signatures",
+      "method": "POST",
+      "status": 201,
+      "actorId": 99
+    },
+    {
+      "path": "/api/v2/company-form-submissions/da1cba4e-76b7-44a0-b03c-19b881dfdaae/form",
+      "method": "GET",
+      "status": 200,
+      "actorId": 99
+    },
+    {
+      "path": "/api/v2/company-form-submissions/da1cba4e-76b7-44a0-b03c-19b881dfdaae/attachments/2549c923-0b93-41f7-8be9-9ab867fa27a4/raw",
+      "method": "GET",
+      "status": 200,
+      "actorId": 99
+    }
+  ]
+}
