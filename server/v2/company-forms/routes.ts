@@ -4,6 +4,16 @@ import { companyFormSubmissionsService } from "./submissionsService";
 import { fileStorageService } from "../shared/fileStorageService";
 
 const router = Router();
+router.post("/subjects/:subjectType/submission-counts", async (req, res) => {
+  const body = z.object({ subjectRefs: z.array(z.string().uuid()).min(1).max(200),
+    stageKey: z.string().min(1).max(100) }).strict().safeParse(req.body);
+  if (!body.success || !/^[a-z][a-z0-9_]{0,99}$/.test(req.params.subjectType)) {
+    res.status(400).json({ error: "invalid_request", message: "Invalid scoped form count request." }); return;
+  }
+  try {
+    res.json(await companyFormSubmissionsService.countsForSubjects({ req, subjectType: req.params.subjectType, ...body.data }));
+  } catch (error) { sendError(res, error); }
+});
 const subjectTypeSchema = z.string().regex(/^[a-z][a-z0-9_]{0,99}$/);
 const subjectRefSchema = z.string().trim().min(1).max(200);
 const paramsSchema = z.object({

@@ -51,3 +51,13 @@ chat. The reviewed plan is `.local/tasks/company-form-crew-list-entry.md`.
 - Third-signature contracts, Preview/live pads, captured witness display and
   required-signature completion checks are integrated.
 - Changed code adds no TypeScript diagnostics (226 existing baseline).
+
+## Step 4 — scoped reads and readable history
+
+- Added one subject-authorised batch count endpoint; it counts saved on-board
+  submissions including retained void/replacement history, not definitions.
+- Linked targets are separately authorised. Shared on-board/before-joining
+  renderer links show form, recorded declaration/explicit creation date and
+  recorded seafarer name, never an exposed submission UUID.
+- Where no recorded historical name exists, the link explicitly says it is
+  unavailable. No current crew/master value is substituted.

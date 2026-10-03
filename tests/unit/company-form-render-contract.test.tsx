@@ -1059,7 +1059,7 @@ describe("Company Form submission renderer contract", () => {
         submissionUuid,
       },
       replacementHistory: [
-        { direction: "replaced_by", label: "Voided — replaced by", submissionUuid },
+        { direction: "replaced_by", label: "Voided — replaced by", submissionUuid, targetLabel: "Replacement declaration — 03-Oct-2026 — Test Seafarer" },
         { direction: "replaces", label: "Replaces a voided submission", submissionUuid: "571a155b-3790-4f18-a17b-6a8b38ecff9f" },
       ],
     });
@@ -1081,7 +1081,7 @@ describe("Company Form submission renderer contract", () => {
     expect(activeContainer?.textContent).toContain("Replaces a voided submission");
     expect(activeContainer?.textContent).toContain("Reason: Corrected source details");
     fireEvent.click([...activeContainer!.querySelectorAll("button")]
-      .find((button) => button.textContent?.includes(`Open linked submission ${submissionUuid}`))!);
+      .find((button) => button.textContent?.includes("Replacement declaration — 03-Oct-2026"))!);
     await waitFor(() => expect(calls).toContain(`/api/v2/company-form-submissions/${submissionUuid}/form`));
   });
 
@@ -1784,7 +1784,7 @@ describe("Company Form submission renderer contract", () => {
             submissionUuid: replacementUuid,
           },
           replacementHistory: [
-            { direction: "replaced_by", label: "Voided — replaced by", submissionUuid: replacementUuid },
+            { direction: "replaced_by", label: "Voided — replaced by", submissionUuid: replacementUuid, targetLabel: "Replacement declaration — 03-Oct-2026 — Test Seafarer" },
             { direction: "replaces", label: "Replaces a voided submission", submissionUuid: previousUuid },
           ],
         };
@@ -1811,7 +1811,7 @@ describe("Company Form submission renderer contract", () => {
     expect(calls.filter((call) => call.method === "POST")).toHaveLength(2);
 
     fireEvent.click([...activeContainer!.querySelectorAll("button")]
-      .find((button) => button.textContent?.includes(`Open linked submission ${replacementUuid}`))!);
+      .find((button) => button.textContent?.includes("Replacement declaration — 03-Oct-2026"))!);
     await waitFor(() => expect(calls).toContainEqual({
       method: "GET",
       url: `/api/v2/company-form-submissions/${replacementUuid}/form`,
@@ -1819,8 +1819,9 @@ describe("Company Form submission renderer contract", () => {
     }));
     await waitFor(() => expect(activeContainer?.textContent).toContain("Replaces a voided submission"));
     fireEvent.click([...activeContainer!.querySelectorAll("button")]
-      .find((button) => button.textContent?.includes(`Open linked submission ${voidedUuid}`))!);
+      .find((button) => button.textContent?.includes("Open linked declaration — historical label unavailable"))!);
     await waitFor(() => expect(activeContainer?.textContent).toContain("Voided — replaced by"));
-    expect(activeContainer?.textContent).toContain(`Open linked submission ${replacementUuid}`);
+    expect(activeContainer?.textContent).toContain("Replacement declaration — 03-Oct-2026");
+    expect(activeContainer?.textContent).not.toContain(replacementUuid);
   });
 });

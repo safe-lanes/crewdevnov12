@@ -868,7 +868,7 @@ export function CompanySubmissionRenderer({
             className: "mt-1 text-primary underline underline-offset-2",
             onClick: () => setActiveSubmissionUuid(relatedSubmission.submissionUuid),
           },
-          `Open linked submission ${relatedSubmission.submissionUuid}`,
+          relatedSubmission.targetLabel || "Open linked declaration — historical label unavailable",
         ),
       )),
     ),

@@ -64,6 +64,15 @@ function postgresError(error: unknown): Record<string, unknown> | undefined {
 }
 
 export class CompanyFormSubmissionsRepository {
+  async countsForSubjects(subjectType: string, subjectRefs: string[], stageKey: string) {
+    if (!subjectRefs.length) return {};
+    const rows = await getDb().select({ subjectRef: frmCompanySubmissions.subjectRef,
+      count: sql<number>`count(*)::integer` }).from(frmCompanySubmissions)
+      .where(and(eq(frmCompanySubmissions.subjectType, subjectType),
+        inArray(frmCompanySubmissions.subjectRef, subjectRefs), eq(frmCompanySubmissions.stageKey, stageKey),
+        eq(frmCompanySubmissions.isDeleted, false))).groupBy(frmCompanySubmissions.subjectRef);
+    return Object.fromEntries(subjectRefs.map(ref => [ref, rows.find((row: any) => row.subjectRef === ref)?.count ?? 0]));
+  }
   async findEligibleForms(
     subjectType: string,
     stageKey: string | null,

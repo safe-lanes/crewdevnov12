@@ -15,6 +15,7 @@ export type CompanyFormSubmissionHistoryLink = {
   direction: "replaced_by" | "replaces";
   label: "Voided — replaced by" | "Replaces a voided submission";
   submissionUuid: string;
+  targetLabel?: string;
 };
 export type CompanyFormRenderResponseType =
   | "yes_no"

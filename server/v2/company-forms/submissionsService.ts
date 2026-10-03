@@ -196,6 +196,33 @@ function classifyOutstanding<Context>(
 }
 
 export class CompanyFormSubmissionsService {
+  async countsForSubjects(input: { req: Request; subjectType: string; subjectRefs: string[]; stageKey: string }) {
+    const adapter = this.registry.get(input.subjectType);
+    const principal = await this.resolvePrincipal(input.req);
+    for (const ref of new Set(input.subjectRefs)) {
+      const subject = await adapter.lookup(ref);
+      if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
+      await this.authorize(adapter, principal, "count_submissions", subject.context);
+    }
+    return this.repository.countsForSubjects(input.subjectType, [...new Set(input.subjectRefs)], input.stageKey);
+  }
+
+  private async readableHistory(req: Request, row: any): Promise<CompanyFormSubmissionHistoryLink[]> {
+    const links = replacementHistory(row);
+    return Promise.all(links.map(async link => {
+      // A relationship is not a grant to its target, even if the source is readable.
+      await this.authorizeSubmission(req, link.submissionUuid, "read_submission");
+      const target = await this.renderRepository.readPinnedRenderData(link.submissionUuid);
+      if (!target) throw new CompanyFormNotFoundError("Linked Company Form not found.");
+      const recordedName = (target.systemSnapshots as any[]).find(snapshot =>
+        ["name", "full_name", "seafarer_name"].includes(snapshot.fieldKey))?.value ??
+        (target.signatures as any[]).find(signature => signature.signature.signatureType === "seafarer")?.signature.signerName;
+      const date = target.submission.systemSnapshotAt ?? target.submission.createdAt;
+      const readableDate = date ? new Date(date).toLocaleDateString("en-GB",
+        { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).replace(/ /g, "-") : "Date unavailable";
+      return { ...link, targetLabel: `${target.submission.formName || "Company Form"} — ${target.submission.systemSnapshotAt ? "Declaration" : "Created"} ${readableDate} — ${recordedName || "Historical seafarer name unavailable"}` };
+    }));
+  }
   constructor(
     private readonly principalDependencies: PrincipalDependencies = {},
     private readonly registry = companyFormSubjectRegistry,
@@ -456,7 +483,7 @@ export class CompanyFormSubmissionsService {
     const canVoid = await this.canVoidSubmission(adapter, principal, subject.context, data.submission.status);
     const formUrl = `/api/v2/company-form-submissions/${encodeURIComponent(input.submissionUuid)}`;
     const { states, answers } = this.mapStatesAndAnswers(data, formUrl);
-    const history = replacementHistory(data.submission);
+    const history = await this.readableHistory(input.req, data.submission);
     return {
       submission: mapSummary(data.submission, canEdit, canVoid),
       states,
@@ -719,7 +746,7 @@ export class CompanyFormSubmissionsService {
 
     const formUrl = `/api/v2/company-form-submissions/${encodeURIComponent(input.submissionUuid)}`;
     const { states, answers } = this.mapStatesAndAnswers(data, formUrl);
-    const history = replacementHistory(data.submission);
+    const history = await this.readableHistory(input.req, data.submission);
     if (systemValuesComparisonError && systemValuesChanged !== true) systemValuesChanged = null;
     return {
       submission: mapSummary(data.submission, canEdit, canVoid),
