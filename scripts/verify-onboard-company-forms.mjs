@@ -435,7 +435,7 @@ async function closing() {
     await page.getByRole("dialog").getByRole("combobox").first().click();
     await page.getByRole("option",{name:"Signed On",exact:true}).click();
     await page.getByTestId("button-joining-date").click();
-    await page.getByRole("button",{name:String(new Date().getUTCDate()),exact:true}).click();
+    await page.locator("button").filter({hasText:new RegExp(`^${new Date().getUTCDate()}$`)}).last().click();
     const signed=page.waitForResponse(r=>r.request().method()==="POST"&&r.url().includes(`/planning/${fixture.planUuid}/sign-on`));
     await page.getByTestId("button-submit-relief").click();
     const signOnResponse=await signed;ensure(signOnResponse.ok(),`Normal Master sign-on failed: ${await signOnResponse.text()}`);
