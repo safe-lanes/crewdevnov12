@@ -58,7 +58,7 @@ journal `.local/verification/onboard-setup-journal.json`.
 | Ship role `73fa5c3c-0d65-486d-a493-e82eebaaa11e` | New retained Master role; no existing role converted |
 | Existing Vessel Admin role | Second valid pinned Ship-role identifier; not modified |
 | New Master role grants | Normal Vessel/Vessel Database/Officer Matrix and Crew Database view/edit; creation/deletion and Forms authoring remain denied |
-| New synthetic seafarer | `TEST ONLY ONBOARD SEAFARER`, employee number `TEST-ONBOARD-DECLARATION`; cloned only from a prior explicitly synthetic fixture |
+| New synthetic seafarers | Retained Master sign-on `TEST-ONBOARD-DECLARATION`; final Chief Engineer journey `TEST-ONBOARD-CLOSING`; cloned only from explicitly synthetic fixtures |
 | Normal Rotation draft and entries | New test-owned deployment, assignment and exact planning link; occupied slots untouched |
 | Form 801 | `TEST ONLY ONBOARD DECLARATION`, two System points, witnessed Seafarer and distinct Vessel Management signatures |
 | Form 802 | `TEST ONLY ONBOARD HANDOVER`, separate second-Master record and archival retention |
@@ -71,6 +71,15 @@ position is absent from vessel 02's actual UI profile. It was retained, not
 deleted or used to force sign-on. A second normal deployment used the genuinely
 vacant **configured Master** slot. This separate Rotation validation issue was
 suggested as a follow-up, not added to Company Form scope.
+
+The first browser attempt stopped before sign-on on a driver selector. The
+second completed normal Master sign-on, then correctly received a count 403:
+the synthetic provisioning used JSON `[1]` instead of the canonical persisted
+CSV `1`. Only the new test users were corrected; no permission guard was
+loosened. That signed-on Master and every failed attempt remain retained.
+The final fresh journey uses the vacant configured Chief Engineer position.
+The **authenticated actor remains Master 100 on vessel 02**; the seafarer's
+joining rank does not determine the signer/witness's captured Master rank.
 
 ## Authentication and permission scope
 

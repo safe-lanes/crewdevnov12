@@ -94,7 +94,7 @@ async function prepare() {
     if (previous) { actors[key] = previous; continue; }
     const uuid = randomUUID();
     const user = (await db.query(`INSERT INTO master_users(user_uuid,fullname,display_name,firstname,lastname,user_type,designation,role,vessel_ids)
-      VALUES($1,$2,$2,$2,'','Ship','Master',$3,$4) RETURNING id`, [uuid, name, role, own ? JSON.stringify([own.id]) : "[]"])).rows[0];
+      VALUES($1,$2,$2,$2,'','Ship','Master',$3,$4) RETURNING id`, [uuid, name, role, own ? String(own.id) : ""])).rows[0];
     actors[key] = { id: user.id, userUuid: uuid, name, role, roleUuid: id, vesselUuid: own?.vessel_uuid ?? vessel.vessel_uuid };
     journal.actors.push(actors[key]); await write("onboard-setup-journal.json", journal);
   }
@@ -288,6 +288,44 @@ async function cancellation() {
   await protectedCheck();console.log("Normal cancellation retained read-only history",saved.submissionUuid);
 }
 
+async function freshClosingFixture() {
+  const fixture=JSON.parse(await fs.readFile(manifestPath,"utf8"));
+  if(fixture.rank==="Chief Engineer")throw Error("Fresh closing fixture already retained; never recreate it.");
+  for(const actor of Object.values(fixture.actors)){
+    const scope=actor.id===fixture.actors.missingScope.id?"":String((await db.query(
+      "SELECT id FROM master_vessels WHERE vessel_uuid=$1",[actor.vesselUuid])).rows[0].id);
+    await db.query("UPDATE master_users SET vessel_ids=$1 WHERE id=$2 AND user_uuid=$3",[scope,actor.id,actor.userUuid]);
+  }
+  const countPath="/api/v2/company-form-submissions/subjects/crew_assignment/submission-counts";
+  await request(fixture.actors.master,"POST",countPath,{subjectRefs:[fixture.assignmentUuid],stageKey:"on_board"});
+  if((await db.query("SELECT 1 FROM vessel_planning_v2 WHERE vessel_uuid=$1 AND rank='Chief Engineer' AND is_deleted=false AND is_archived=false",[fixture.vesselUuid])).rowCount){
+    throw Error("Chief Engineer slot occupied; never clear it.");
+  }
+  fixture.retainedJoinedFixtures=[...(fixture.retainedJoinedFixtures??[]),{
+    crewUuid:fixture.crewUuid,entryUuid:fixture.entryUuid,planUuid:fixture.planUuid,assignmentUuid:fixture.assignmentUuid,
+    rank:fixture.rank,reason:"Normal Master browser sign-on succeeded; subsequent count refusal exposed incorrectly JSON-formatted synthetic provisioning. Retained without resetting sign-on."}];
+  const crewUuid=randomUUID(),entryUuid=randomUUID();
+  await clone("crew_members_v2",`crew_uuid='${fixture.crewUuid}'`,{
+    crew_uuid:crewUuid,first_name:"TEST ONLY CLOSING ONBOARD",family_name:"SEAFARER",middle_name:"",
+    emp_no:"TEST-ONBOARD-CLOSING",employee_id:"TEST-ONBOARD-CLOSING",present_rank:"R005",
+  });
+  await clone("rotation_entries_v2",`entry_uuid='${fixture.entryUuid}'`,{
+    entry_uuid:entryUuid,crew_uuid:crewUuid,rank:"Chief Engineer",rank_id:"R005",proposal_status:"Proposed",
+    deployed_date:null,deployed_by_uuid:null,deployed_to_plan_uuid:null,current_crew_uuid:null,
+  });
+  const result=await request(fixture.office,"POST",`/api/v2/rotation/entries/${entryUuid}/deploy`,
+    {deployedByUuid:String(fixture.office.id),auditUserUuid:String(fixture.office.id)});
+  ensure(result.success&&result.planUuid,"Fresh configured-slot deployment must succeed");
+  const plan=(await db.query("SELECT reliever_assign_uuid FROM vessel_planning_v2 WHERE plan_uuid=$1",[result.planUuid])).rows[0];
+  Object.assign(fixture,{crewUuid,crewName:"TEST ONLY CLOSING ONBOARD SEAFARER",entryUuid,
+    planUuid:result.planUuid,assignmentUuid:plan.reliever_assign_uuid,rank:"Chief Engineer",rankId:"R005"});
+  await write("onboard-retained-fixtures.json",fixture);
+  await request(fixture.actors.master,"POST",countPath,{subjectRefs:[fixture.assignmentUuid],stageKey:"on_board"});
+  await request(fixture.actors.master,"POST",`/api/v2/company-form-submissions/subjects/crew_assignment/${fixture.assignmentUuid}/submissions`,
+    {formUuid:fixture.forms[0].formUuid,formVersionUuid:fixture.forms[0].versionUuid},403);
+  await protectedCheck();console.log("Fresh normal Chief Engineer deployment; trusted CSV scope verified",fixture.planUuid,fixture.assignmentUuid);
+}
+
 const ensure=(condition,message)=>{if(!condition)throw Error(message);};
 async function closing() {
   const previous=await fs.readFile(`${root}/onboard-closing-browser.json`,"utf8").then(JSON.parse).catch(error=>{
@@ -325,9 +363,7 @@ async function closing() {
   const openList=async()=>{
     await page.getByRole("button",{name:"Crew List",exact:true}).click();
     ensure(await page.getByTestId("crew-list-forms-header").count()===1,"Exactly one Forms column is required");
-    const index=await page.getByTestId("crew-list-forms-header").evaluate(el=>el.cellIndex);
-    const row=page.getByRole("row").filter({hasText:"SEAFARER"}).first();
-    const count=row.getByRole("cell").nth(index).getByRole("button");
+    const count=page.getByTestId(`button-crew-forms-${fixture.assignmentUuid}`);
     await count.waitFor(); await count.click();
     await page.getByTestId("onboard-company-forms").waitFor();
   };
@@ -342,6 +378,8 @@ async function closing() {
     return saved.submissionUuid;
   };
   const sign=async(sectionUuid,type)=>{
+    const toggle=page.getByTestId(`button-preview-section-toggle-${sectionUuid}`);
+    if(await toggle.getAttribute("aria-expanded")==="false")await toggle.click();
     const block=page.getByTestId(`preview-signature-${type}-${sectionUuid}`);
     if(type==="seafarer")await block.getByRole("checkbox").check();
     const pad=page.getByTestId(`live-signature-${type}-${sectionUuid}`),canvas=pad.locator("canvas");
@@ -359,7 +397,7 @@ async function closing() {
   const submit=async(uuid,sectionUuid)=>{
     const pending=page.waitForResponse(r=>r.request().method()==="POST"&&r.url().endsWith(`/sections/${sectionUuid}/submit`));
     await page.getByTestId("configured-form-live").getByRole("button",{name:/^Submit( section)?$/i}).click();
-    await page.getByRole("button",{name:/^(Submit( section)?|Confirm|Confirm submission)$/i}).last().click();
+    await page.getByTestId(`briefing-section-dialog-${sectionUuid}`).getByRole("button",{name:"Submit",exact:true}).click();
     const response=await pending;ensure(response.ok(),`Section submit failed: ${await response.text()}`);
     const status=(await db.query("SELECT status FROM frm_company_submissions WHERE submission_uuid=$1",[uuid])).rows[0].status;
     ensure(status==="completed","Required sections must auto-complete, without a Complete button");
@@ -413,7 +451,7 @@ async function closing() {
     const replacement=await start(fixture.forms[0]);fixture.replacementSubmissionUuid=replacement;
     await write("onboard-retained-fixtures.json",fixture);
     await shot("05-readable-replacement-link");
-    const link=page.getByRole("button").filter({hasText:/TEST ONLY ONBOARD.*SEAFARER/}).first();
+    const link=page.getByRole("button").filter({hasText:fixture.crewName}).first();
     const text=await link.innerText();ensure(!text.includes(primary),"Historical link text must not expose its UUID");
     await link.click();await page.getByTestId("configured-form-live").waitFor({state:"attached"});
     ensure((await page.locator("body").innerText()).includes("Voided"),"Historical link must open the recorded voided declaration");
@@ -491,6 +529,7 @@ try {
   else if (mode === "closing") await closing();
   else if (mode === "configuration") await configuration();
   else if (mode === "cancellation") await cancellation();
+  else if (mode === "fresh-closing-fixture") await freshClosingFixture();
   else if (mode === "protected") console.log(await protectedCheck());
   else throw Error("Use prepare or protected; browser/API acceptance added in the next implementation batch.");
 } finally { await db.end(); }
