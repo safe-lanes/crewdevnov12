@@ -432,7 +432,7 @@ async function closing() {
     if(await rows.count())await rows.first().getByRole("button").first().click();
     await page.getByTestId("tab-planning").click();
     await page.locator(`[data-plan-uuid="${fixture.planUuid}"]`).click();
-    await page.getByRole("dialog").getByRole("combobox").filter({hasText:"Planned"}).first().click();
+    await page.getByRole("dialog").getByRole("combobox").first().click();
     await page.getByRole("option",{name:"Signed On",exact:true}).click();
     const signed=page.waitForResponse(r=>r.request().method()==="POST"&&r.url().includes(`/planning/${fixture.planUuid}/sign-on`));
     await page.getByTestId("button-submit-relief").click();
