@@ -73,3 +73,24 @@ chat. The reviewed plan is `.local/tasks/company-form-crew-list-entry.md`.
 - Archived rows have no start picker. Server stage/lifecycle checks remain
   authoritative for cancelled, changed and non-current assignments.
 - Appraisal/Handover handlers and policy are unchanged.
+
+## Step 6 — verification and retained closing driver
+
+- Focused regression suites pass 73 tests. TypeScript remains at the 226
+  existing diagnostic baseline, with none in changed TypeScript files.
+- Normal API version creation preserves the multi-role policy and third
+  signature; before-joining release rejects Vessel Management.
+- Office as well as Ship creation of an on-board form requires a current
+  verified OnBoard assignment. Historical reads and Office before-joining
+  creation remain available.
+- Synthetic cancellation retains read-only history and refuses restart.
+- All original protected declarations, frozen snapshots/signatures and
+  released definition records compare unchanged against the pre-change keys.
+- Retained fixture inventory, boundaries and evidence locations are documented
+  in `docs/company-forms/onboard-acceptance.md`.
+- The closing driver checks final HEAD/process chronology and performs normal
+  Master sign-on, witnessed signing, Vessel Management, automatic completion,
+  explicit replacement/history links, wrong-role/vessel/scope refusals,
+  immutable source values, two-Master handover and archival retention.
+- Closing success is recorded only by the generated runtime report after the
+  final commit and managed-backend restart, not assumed from this source file.

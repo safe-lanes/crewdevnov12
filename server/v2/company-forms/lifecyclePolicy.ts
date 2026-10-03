@@ -66,6 +66,9 @@ export function validateCompanyFormLifecycle(
     errors.push("Company Form versions must contain at least one section requiring submission.");
   }
   for (const section of requiringSubmission) {
+    if (section.signatureVesselManagementRequired && section.onBoard === false) {
+      errors.push(`Section "${sectionName(section)}" enables Vessel Management outside the on-board stage.`);
+    }
     if ((section.signatureVesselManagementRequired || (section.onBoard && section.signatureSeafarerRequired)) && !section.vesselSignatureRoleUuids?.length) {
       errors.push(`Section "${sectionName(section)}" requires at least one permitted vessel role.`);
     }

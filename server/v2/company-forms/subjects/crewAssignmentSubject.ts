@@ -314,10 +314,12 @@ export function createCrewAssignmentSubject(
     systemFields,
     resolveSystemField: resolveCrewSystemField,
     allowedActions,
-    authorizeStageAction: (principal, action, subject, stageKey) =>
-      principal.kind !== "vessel" || action.startsWith("read_") || action === "list_submissions" ||
-      action === "count_submissions" || (stageKey === "on_board" && subject.isCurrent &&
-        subject.assignmentType.replace(/[\s_]/g, "").toLowerCase() === "onboard"),
+    authorizeStageAction: (principal, action, subject, stageKey) => {
+      if (action.startsWith("read_") || action === "list_submissions" || action === "count_submissions") return true;
+      if (stageKey === "on_board" && (!subject.isCurrent ||
+        subject.assignmentType.replace(/[\s_]/g, "").toLowerCase() !== "onboard")) return false;
+      return principal.kind !== "vessel" || stageKey === "on_board";
+    },
     authorizeSectionAction: authorizeCrewSectionAction,
     authorize: async (principal, action, subject) => {
       if (!allowedActions[principal.kind].includes(action as never)) return false;

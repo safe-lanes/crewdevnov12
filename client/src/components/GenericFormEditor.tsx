@@ -2541,7 +2541,7 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
                   <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="not_required" /> Not Required</label>
                 </RadioGroup>
               </div>
-              {isCompanyForm && <>
+              {isCompanyForm && currentStageKey === "on_board" && <>
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Vessel Management signature</p>
                   <RadioGroup value={settingsValues.vesselManagementRequired ? "required" : "not_required"} onValueChange={value => setSettingsValues(current => ({ ...current, vesselManagementRequired: value === "required" }))}>
