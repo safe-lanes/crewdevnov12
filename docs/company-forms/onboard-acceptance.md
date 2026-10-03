@@ -81,6 +81,15 @@ The final fresh journey uses the vacant configured Chief Engineer position.
 The **authenticated actor remains Master 100 on vessel 02**; the seafarer's
 joining rank does not determine the signer/witness's captured Master rank.
 
+The Chief Engineer attempt completed normal sign-on and the witnessed
+signature with both System snapshots. Its driver incorrectly demanded 403 for
+an unconfigured Company Representative, whose correct configuration refusal
+is 400. This record and the failed run are retained. The subsequent complete
+journey uses the already test-owned **Planned Pumpman deployment** from the
+before-joining verification: no occupied slot is cleared, no existing
+declaration is re-signed or voided, and only new on-board submissions are made.
+Original before-joining frozen records remain in the protected comparison.
+
 ## Authentication and permission scope
 
 These are development acceptance checks using the project's existing

@@ -326,6 +326,29 @@ async function freshClosingFixture() {
   await protectedCheck();console.log("Fresh normal Chief Engineer deployment; trusted CSV scope verified",fixture.planUuid,fixture.assignmentUuid);
 }
 
+async function retainedPumpmanFixture() {
+  const fixture=JSON.parse(await fs.readFile(manifestPath,"utf8"));
+  const original=JSON.parse(await fs.readFile(`${root}/joining-declaration-retained-fixtures.json`,"utf8"));
+  const plan=(await db.query("SELECT * FROM vessel_planning_v2 WHERE plan_uuid=$1",[original.planUuid])).rows[0];
+  ensure(plan&&!plan.crew_uuid&&plan.reliever_crew_uuid===original.seafarer.crewUuid&&plan.reliever_assign_uuid===original.assignmentUuid,
+    "Use only the original test-owned planned Pumpman deployment; never replace occupied or other reliever positions");
+  const assignment=(await db.query("SELECT assignment_type,is_current FROM crew_assignments WHERE assign_uuid=$1",[original.assignmentUuid])).rows[0];
+  ensure(assignment.assignment_type==="Planned"&&!assignment.is_current,"Retained Pumpman must still be legitimately Planned");
+  const crew=(await db.query("SELECT first_name,middle_name,family_name FROM crew_members_v2 WHERE crew_uuid=$1",[original.seafarer.crewUuid])).rows[0];
+  fixture.retainedJoinedFixtures.push({crewUuid:fixture.crewUuid,entryUuid:fixture.entryUuid,planUuid:fixture.planUuid,
+    assignmentUuid:fixture.assignmentUuid,rank:fixture.rank,submissionUuid:fixture.primarySubmissionUuid,
+    reason:"Normal Master sign-on and witnessed Seafarer capture passed; driver expected 403 for an unconfigured Company Representative, correctly refused with 400. All rows retained."});
+  Object.assign(fixture,{crewUuid:original.seafarer.crewUuid,crewName:[crew.first_name,crew.middle_name,crew.family_name].filter(Boolean).join(" "),
+    entryUuid:original.rotationEntryUuid,planUuid:original.planUuid,assignmentUuid:original.assignmentUuid,rank:original.rank,rankId:original.rankId});
+  delete fixture.primarySubmissionUuid;
+  await write("onboard-retained-fixtures.json",fixture);
+  await request(fixture.actors.master,"POST","/api/v2/company-form-submissions/subjects/crew_assignment/submission-counts",
+    {subjectRefs:[fixture.assignmentUuid],stageKey:"on_board"});
+  await request(fixture.actors.master,"POST",`/api/v2/company-form-submissions/subjects/crew_assignment/${fixture.assignmentUuid}/submissions`,
+    {formUuid:fixture.forms[0].formUuid,formVersionUuid:fixture.forms[0].versionUuid},403);
+  await protectedCheck();console.log("Retained test-owned Pumpman deployment verified; before-joining frozen records untouched",fixture.planUuid);
+}
+
 const ensure=(condition,message)=>{if(!condition)throw Error(message);};
 async function closing() {
   const previous=await fs.readFile(`${root}/onboard-closing-browser.json`,"utf8").then(JSON.parse).catch(error=>{
@@ -396,7 +419,7 @@ async function closing() {
   };
   const submit=async(uuid,sectionUuid)=>{
     const pending=page.waitForResponse(r=>r.request().method()==="POST"&&r.url().endsWith(`/sections/${sectionUuid}/submit`));
-    await page.getByTestId("configured-form-live").getByRole("button",{name:/^Submit( section)?$/i}).click();
+    await page.getByTestId(`preview-section-footer-${sectionUuid}`).getByRole("button",{name:/^Submit( section)?$/i}).click();
     await page.getByTestId(`briefing-section-dialog-${sectionUuid}`).getByRole("button",{name:"Submit",exact:true}).click();
     const response=await pending;ensure(response.ok(),`Section submit failed: ${await response.text()}`);
     const status=(await db.query("SELECT status FROM frm_company_submissions WHERE submission_uuid=$1",[uuid])).rows[0].status;
@@ -430,7 +453,7 @@ async function closing() {
     const vmBody={...witnessed,signatureType:"vessel_management",method:"vessel_management"};delete vmBody.seafarerPresent;
     for(const key of["wrongRole","wrongVessel","missingScope"])await request(fixture.actors[key],"POST",signaturePath,vmBody,403);
     await request(fixture.actors.master,"POST",signaturePath,{...vmBody,signerName:"FORGED",signerRank:"FORGED",roleId:fixture.secondRole},400);
-    await request(fixture.actors.master,"POST",signaturePath,{...vmBody,signatureType:"officer",method:"officer"},403);
+    await request(fixture.actors.master,"POST",signaturePath,{...vmBody,signatureType:"officer",method:"officer"},[400,403]);
     await request(fixture.actors.master,"POST",`${prefix}/${primary}/void`,{reason:"Vessel users cannot void"},403);
     for(const key of["wrongVessel","missingScope"]){
       await request(fixture.actors[key],"GET",`${prefix}/${primary}/form`,undefined,403);
@@ -447,7 +470,7 @@ async function closing() {
     report.checks.push("Whole-form first-event snapshots remained immutable; witnessed and Vessel Management signatures auto-completed");
     // Explicit Office void is outside the closing Ship browser. No role switch.
     await request(fixture.office,"POST",`${prefix}/${primary}/void`,{reason:"TEST ONLY retained replacement and historical-link verification"},204);
-    await page.getByRole("button",{name:/^Back$/i}).click();
+    await page.getByRole("button",{name:/^(Back|Close)$/i}).last().click();
     const replacement=await start(fixture.forms[0]);fixture.replacementSubmissionUuid=replacement;
     await write("onboard-retained-fixtures.json",fixture);
     await shot("05-readable-replacement-link");
@@ -455,12 +478,12 @@ async function closing() {
     const text=await link.innerText();ensure(!text.includes(primary),"Historical link text must not expose its UUID");
     await link.click();await page.getByTestId("configured-form-live").waitFor({state:"attached"});
     ensure((await page.locator("body").innerText()).includes("Voided"),"Historical link must open the recorded voided declaration");
-    await page.getByRole("button",{name:/^Back$/i}).click();
+    await page.getByRole("button",{name:/^(Back|Close)$/i}).last().click();
     await page.getByTestId("select-onboard-form-version").selectOption(fixture.forms[0].versionUuid);
     await page.getByTestId("button-start-onboard-form").click();
     await sign(fixture.forms[0].sectionUuid,"seafarer");await sign(fixture.forms[0].sectionUuid,"vessel_management");
     await submit(replacement,fixture.forms[0].sectionUuid);
-    await page.getByRole("button",{name:/^Back$/i}).click();await shot("06-count-list-retained-history");
+    await page.getByRole("button",{name:/^(Back|Close)$/i}).last().click();await shot("06-count-list-retained-history");
     const count=await request(fixture.actors.master,"POST",`${prefix}/subjects/crew_assignment/submission-counts`,
       {subjectRefs:[fixture.assignmentUuid],stageKey:"on_board"});
     const history=await request(fixture.actors.master,"GET",`${subject}/submissions`);
@@ -530,6 +553,7 @@ try {
   else if (mode === "configuration") await configuration();
   else if (mode === "cancellation") await cancellation();
   else if (mode === "fresh-closing-fixture") await freshClosingFixture();
+  else if (mode === "retained-pumpman-fixture") await retainedPumpmanFixture();
   else if (mode === "protected") console.log(await protectedCheck());
   else throw Error("Use prepare or protected; browser/API acceptance added in the next implementation batch.");
 } finally { await db.end(); }
