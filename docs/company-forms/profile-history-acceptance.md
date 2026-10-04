@@ -91,3 +91,29 @@ Assignment groups explicitly say **Not recorded on assignment** for rank:
 the assignment model has no rank field. Today's crew rank must not be used to
 manufacture a historical assignment rank. Saved declarations still open their
 own original frozen System values.
+
+## Step 6 reproducible closing
+
+The committed read-only driver is:
+
+```sh
+node scripts/verify-crew-profile-company-forms.mjs
+```
+
+It refuses an uncommitted tree or a backend older than HEAD. Use the existing
+**Start application** managed workflow after committing; do not start a second
+server. The driver opens `/crew-pool?crew=…&section=G` in the real application,
+expands G3, opens both before-joining records directly, follows both renderer
+links, opens the completed on-board form and captures its signatures.
+
+It records the persisted Office actor, expected authoring refusal, separate
+wrong-vessel/unprovisioned home and direct-form refusals, Company Form GET
+request/status/actor evidence, actual screenshots, full form contracts,
+protected-table row hashes and stable HEAD/PID chronology. This uses the
+existing development persona mechanism, not production authentication.
+
+Every attempt retains its own timestamped directory under
+`.local/verification/crew-profile-company-forms/`. Read `report.json` and its
+`passed`, `failure` and `protectedUnchanged` fields; an existing failed attempt
+is never overwritten or renamed as successful. The final browser outcome is
+reported after the committed driver runs, not pre-written here.
