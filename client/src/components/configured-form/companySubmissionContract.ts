@@ -370,11 +370,14 @@ export function CompanySubmissionRenderer({
   onBack,
   onAnswerChange,
   onAnswerCommentChange,
+  showSubmissionMetadata = false,
 }: {
   submissionUuid: string;
   onBack?: () => void;
   onAnswerChange?: (questionUuid: string, value: ConfiguredFormAnswerValue) => void;
   onAnswerCommentChange?: (questionUuid: string, comment: string) => void;
+  /** Profile history needs explicit pinned-version/stage context when opened. */
+  showSubmissionMetadata?: boolean;
 }) {
   const [activeSubmissionUuid, setActiveSubmissionUuid] = useState(submissionUuid);
   const originalSubmissionUuid = useRef(submissionUuid);
@@ -864,6 +867,15 @@ export function CompanySubmissionRenderer({
   const relatedSubmissions = lifecycleForm?.replacementHistory ?? [];
   const submissionStatus = lifecycleForm?.submission.status;
   return React.createElement(React.Fragment, null,
+    showSubmissionMetadata && lifecycleForm && React.createElement(
+      "div",
+      { className: "mb-4 rounded-md border bg-slate-50 p-3", "data-testid": "company-form-saved-metadata" },
+      React.createElement("p", { className: "font-semibold" }, lifecycleForm.form.formName),
+      React.createElement("p", { className: "mt-1 text-sm text-slate-600" },
+        `Version ${lifecycleForm.version.versionNo || "Unavailable"} · ${lifecycleForm.version.stageLabel || "Stage unavailable"} · ${
+          submissionStatus === "voided" ? "Voided" : submissionStatus === "completed" ? "Completed" : "In progress"
+        }`),
+    ),
     React.createElement(AlertDialog, {
       open: retirementConfirmation !== null,
       onOpenChange: (open: boolean) => { if (!open) setRetirementConfirmation(null); },

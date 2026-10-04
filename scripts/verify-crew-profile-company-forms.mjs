@@ -72,6 +72,7 @@ async function readOpened(uuid, expected) {
   const response = await page.waitForResponse(r => new URL(r.url()).pathname === `${prefix}/${uuid}/form`, { timeout: 45000 });
   ensure(response.status() === 200, `Opened form ${uuid} did not return 200`);
   const contract = await response.json();
+  await save(`form-${uuid}.json`, contract);
   ensure(contract.submission.submissionUuid === uuid && contract.submission.status === expected, "Exact saved submission/status required");
   ensure(contract.submission.formVersionUuid === contract.version.formVersionUuid, "Pinned version required");
   ensure(!contract.submission.canEdit, "Completed/voided closing records must be read-only");
@@ -91,7 +92,6 @@ async function readOpened(uuid, expected) {
     await block.waitFor({ state: "visible" });
     if (signature.signerName) ensure((await block.innerText()).includes(signature.signerName), "Recorded signer identity must display");
   }
-  await save(`form-${uuid}.json`, contract);
   report.checks.push({ name: "exact-pinned-read-only-form", uuid, expected, version: contract.version.versionNo,
     stage: contract.version.stageLabel, frozenAt: contract.systemSnapshotAt, signatures: signatures.length,
     sourceNotice: contract.systemValuesChangedNotice });

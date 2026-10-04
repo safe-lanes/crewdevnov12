@@ -6,8 +6,8 @@ import { CrewCompanyFormsHome } from "../../client/src/modules/crew-pool/compone
 import { CrewCompanyFormsHistory } from "../../client/src/modules/crew-pool/components/CrewCompanyFormsHistory";
 
 vi.mock("../../client/src/components/configured-form/companySubmissionContract", () => ({
-  CompanySubmissionRenderer: ({ submissionUuid, onBack }: any) =>
-    <div data-testid="saved-form">{submissionUuid}<button onClick={onBack}>Saved form back</button></div>,
+  CompanySubmissionRenderer: ({ submissionUuid, onBack, showSubmissionMetadata }: any) =>
+    <div data-testid="saved-form">{submissionUuid}{showSubmissionMetadata && <span>Profile metadata enabled</span>}<button onClick={onBack}>Saved form back</button></div>,
 }));
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const reply = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status });
@@ -64,6 +64,7 @@ describe("G3 complete crew Company Form history", () => {
     mount(<CrewCompanyFormsHistory crewUuid="crew" />);
     fireEvent.click(await screen.findByTestId("crew-company-forms-open-aboard"));
     await waitFor(() => expect(screen.getByTestId("saved-form").textContent).toContain("aboard"));
+    expect(screen.getByText("Profile metadata enabled")).toBeTruthy();
     fireEvent.click(screen.getByTestId("button-close-crew-company-form"));
     await waitFor(() => expect(screen.queryByTestId("saved-form")).toBeNull());
     expect(screen.getByTestId("crew-company-forms-home")).toBeTruthy();

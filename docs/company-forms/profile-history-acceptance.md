@@ -117,3 +117,23 @@ Every attempt retains its own timestamped directory under
 `passed`, `failure` and `protectedUnchanged` fields; an existing failed attempt
 is never overwritten or renamed as successful. The final browser outcome is
 reported after the committed driver runs, not pre-written here.
+
+### Retained attempts and approved preparation
+
+The first attempt at `2026-10-04T06-27-06-575Z` failed before entering the
+profile: the synthetic Office role had Crew Database leaf access but lacked
+Crew Pool module viewing. Its report and screenshot remain a failure; protected
+records were unchanged. The user explicitly approved **only Crew Pool View**
+for that test-owned role. The normal Access Control API applied that one grant;
+all other grants were unchanged and every Forms authoring flag stayed false.
+The preparation evidence is `profile-fixture-permission-grant.json` under
+`.local/verification/`.
+
+The second attempt at `2026-10-04T07-00-28-942Z` reached G3 and the original
+declaration, but failed because opened-form version/stage context was absent.
+Its failure and unchanged protected rows are retained. A profile-only opt-in
+metadata panel now follows the renderer's actual active submission, including
+internal reciprocal-link navigation; other Company Form entry points retain
+their existing presentation. After this change the full inventory again
+passed **46 suites / 333 tests / zero skips**, with the unchanged **226**
+TypeScript baseline and no new diagnostics.
