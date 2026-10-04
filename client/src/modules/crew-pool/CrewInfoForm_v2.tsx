@@ -38,6 +38,7 @@ import { toStorageCrew } from '@shared/crew-mapping';
 import type { CrewDashboardSummary } from '@shared/schema';
 import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@shared/dateUtils';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
+import { CrewCompanyFormsHome } from './components/CrewCompanyFormsHome';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { VesselSearchDialog, type VesselSearchResult } from '@/modules/recruitment/VesselSearchDialog';
@@ -788,7 +789,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
 
   // V2: Crew assignments — used to detect auto-generated (vessel-synced) E1 rows
-  const { data: crewAssignmentsData } = useQuery<any[]>({
+  const { data: crewAssignmentsData, isLoading: assignmentHistoryLoading, error: assignmentHistoryError } = useQuery<any[]>({
     queryKey: ['/api/v2/crew-pool/crew', crewUuid, 'assignments'],
     queryFn: async () => {
       const response = await fetch(`/api/v2/crew-pool/crew/${crewUuid}/assignments`);
@@ -10173,13 +10174,19 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Card className="bg-white border border-gray-200 shadow-sm" ref={sectionGRef} data-section="G">
               <CardContent className="p-3 sm:p-4 lg:p-6">
                 <div className="pb-4 mb-6">
-                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G - Briefing &amp; De briefing</h2>
+                  <h2 className="text-xl font-semibold mb-2" style={{ color: '#16569e' }}>Part G - Briefing, Debriefing &amp; Other Forms</h2>
                   <div style={{ color: '#16569e' }} className="text-sm">Add briefing &amp; debriefing records</div>
                   <div className="w-full h-0.5 mt-2" style={{ backgroundColor: '#16569e' }}></div>
                 </div>
                 <div className="space-y-6">
                   {renderG1Briefing()}
                   {renderG2DeBriefing()}
+                  <CrewCompanyFormsHome
+                    crewUuid={crewUuid || undefined}
+                    assignments={crewAssignmentsData}
+                    assignmentHistoryLoading={assignmentHistoryLoading}
+                    assignmentHistoryError={assignmentHistoryError?.message}
+                  />
                 </div>
               </CardContent>
             </Card>
