@@ -1115,14 +1115,19 @@ export class CompanyFormSubmissionsService {
       rowsBySubject.set(row.subjectRef, subjectRows);
     }
 
-    const groups = permittedSubjects.map((subject) => ({
-      subjectRef: subject.subjectRef,
-      ...classifyOutstanding(
-        adapter,
-        subject,
-        rowsBySubject.get(subject.subjectRef) ?? [],
-      ),
-    }));
+    const groups = (await Promise.all(permittedSubjects.map(async (subject) => {
+      const classified = classifyOutstanding(adapter, subject, rowsBySubject.get(subject.subjectRef) ?? []);
+      return {
+        subjectRef: subject.subjectRef,
+        display: adapter.homeGroupDisplay?.(subject.context),
+        ...classified,
+        submissions: await Promise.all(classified.submissions.map(async row => ({
+          ...row,
+          canEdit: await this.canEditSubmission(adapter, principal, subject.context, row.status, row.stageKey),
+          replacementHistory: await this.readableHistory(input.req, row),
+        }))),
+      };
+    }))).filter(group => !group.display?.historyOnly || group.totalCount > 0);
     return {
       subjectType: input.subjectType,
       homeRef: input.homeRef,

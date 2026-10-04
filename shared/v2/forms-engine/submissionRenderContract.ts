@@ -1,4 +1,27 @@
 export type CompanyFormSubmissionStatus = "in_progress" | "completed" | "voided";
+export type CompanyFormHomeGroupDisplay = {
+  label: string;
+  status: string;
+  fields: Array<{ label: string; value: string }>;
+  /** Subjects absent from normal history appear only when they own saved records. */
+  historyOnly?: boolean;
+};
+export type CompanyFormSubmissionHome = {
+  subjectType: string;
+  homeRef: string;
+  groups: Array<{
+    subjectRef: string;
+    groupId: string;
+    display?: CompanyFormHomeGroupDisplay;
+    submissions: CompanyFormSubmissionSummary[];
+    totalCount: number;
+    outstandingCount: number;
+    historyCount: number;
+  }>;
+  totalCount: number;
+  outstandingCount: number;
+  historyCount: number;
+};
 export type CompanyFormSectionStatus = "not_started" | "in_progress" | "submitted" | string;
 export type CompanyFormSignatureType = "officer" | "seafarer" | "vessel_management";
 export type CompanyFormSignatureMethod = "officer" | "authenticated" | "witnessed" | "vessel_management";

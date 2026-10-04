@@ -33,6 +33,7 @@ export type CrewAssignmentSubject = {
   assignUuid: string;
   crewUuid: string;
   vesselUuid: string | null;
+  vesselName?: string | null;
   vesselTypeUuid?: string | null;
   signOnDate: string | null;
   signOffDate: string | null;
@@ -120,6 +121,7 @@ function mapAssignmentRow(row: any): CrewAssignmentSubject {
     assignUuid: row.assignUuid,
     crewUuid: row.crewUuid,
     vesselUuid: row.vesselUuid,
+    vesselName: row.vesselName ?? null,
     vesselTypeUuid: row.vesselTypeUuid ?? null,
     signOnDate: row.signOnDate,
     signOffDate: row.signOffDate,
@@ -139,6 +141,7 @@ async function lookupCrewAssignment(
       assignUuid: crewAssignments.assignUuid,
       crewUuid: crewAssignments.crewUuid,
       vesselUuid: crewAssignments.vesselUuid,
+      vesselName: masterVessels.vessel,
       vesselType: masterVessels.vesselType,
       signOnDate: crewAssignments.signOnDate,
       signOffDate: crewAssignments.signOffDate,
@@ -273,6 +276,7 @@ export function createCrewAssignmentSubject(
         assignUuid: crewAssignments.assignUuid,
         crewUuid: crewAssignments.crewUuid,
         vesselUuid: crewAssignments.vesselUuid,
+        vesselName: masterVessels.vessel,
         vesselType: masterVessels.vesselType,
         signOnDate: crewAssignments.signOnDate,
         signOffDate: crewAssignments.signOffDate,
@@ -301,6 +305,18 @@ export function createCrewAssignmentSubject(
       }));
     },
     groupingIdentifier: (subject, subjectRef) => subject.assignUuid || subjectRef,
+    homeGroupDisplay: (subject) => ({
+      label: subject.vesselName || "Vessel name unavailable",
+      status: subject.assignmentType.replace(/^OnBoard$/i, "On board"),
+      historyOnly: subject.isDeleted,
+      fields: [
+        { label: "Sign-on date", value: sailDate(subject.signOnDate) },
+        { label: "Sign-off date", value: sailDate(subject.signOffDate) },
+        // The assignment does not store a rank. Today's crew rank is not history.
+        { label: "Rank", value: "Not recorded on assignment" },
+        ...(subject.isDeleted ? [{ label: "Assignment record", value: "Archived history" }] : []),
+      ],
+    }),
     isOutstanding: (subject) =>
       !subject.isDeleted && subject.assignmentType.trim().toLocaleLowerCase() !== "cancelled",
     canStart: (subject) =>

@@ -1,4 +1,5 @@
 import type { Request } from "express";
+import type { CompanyFormHomeGroupDisplay } from "../../../shared/v2/forms-engine/submissionRenderContract";
 
 export const COMPANY_FORM_ACTIONS = [
   "read_eligible_forms",
@@ -123,6 +124,7 @@ export type CompanyFormSubjectAdapter<Context = unknown> = {
     executor?: unknown,
   ): Promise<readonly SubjectLookupResult<Context>[] | undefined>;
   groupingIdentifier(subject: Context, subjectRef: string): string;
+  homeGroupDisplay?(subject: Context): CompanyFormHomeGroupDisplay;
   isOutstanding(subject: Context): boolean;
   canStart(subject: Context): boolean;
   linkSubmission(input: {
