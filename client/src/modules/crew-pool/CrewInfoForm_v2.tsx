@@ -38,7 +38,7 @@ import { toStorageCrew } from '@shared/crew-mapping';
 import type { CrewDashboardSummary } from '@shared/schema';
 import { getReportingDate, formatDateToISO, calculatePeriodMonths } from '@shared/dateUtils';
 import { useCompanyRanks } from '@/hooks/useCompanyRanks';
-import { CrewCompanyFormsHome } from './components/CrewCompanyFormsHome';
+import { CrewCompanyFormsHistory } from './components/CrewCompanyFormsHistory';
 import { useRankNormalization } from '@/hooks/useRankNormalization';
 import { DEFAULT_DROPDOWN_VESSEL_TYPES } from '@/utils/data/vesselTypes';
 import { VesselSearchDialog, type VesselSearchResult } from '@/modules/recruitment/VesselSearchDialog';
@@ -10181,7 +10181,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                 <div className="space-y-6">
                   {renderG1Briefing()}
                   {renderG2DeBriefing()}
-                  <CrewCompanyFormsHome
+                  <CrewCompanyFormsHistory
                     crewUuid={crewUuid || undefined}
                     assignments={crewAssignmentsData}
                     assignmentHistoryLoading={assignmentHistoryLoading}
