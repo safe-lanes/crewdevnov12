@@ -169,7 +169,7 @@ export function CrewCompanyFormsHome({
                             Sign-off {sailDate(assignment.signOffDate)}
                           </>
                         ) : (
-                          "Assignment dates unavailable"
+                          "Historical assignment · recorded details below"
                         )}
                       </span>
                       {display?.status && (

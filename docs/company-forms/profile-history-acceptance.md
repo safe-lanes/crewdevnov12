@@ -72,3 +72,22 @@ authoring/renderer consumers. Skipped, missing and empty suites do not count
 as passes. Compare TypeScript against HEAD; unrelated diagnostics must be
 reported rather than presented as a clean build. If an unrelated task's
 failure blocks certification, report it and ask rather than executing that task.
+
+## Step 5 checks
+
+The complete discovered Company Forms/submission inventory passed on
+4 October 2026: **46 suites, 333 tests, zero skips**. The new service/UI tests
+cover all stages and statuses, Cancelled and submitted soft-deleted history,
+empty groups, authoritative permitted-subject grouping, wrong/unprovisioned
+vessel and cross-crew refusal, exact row/relationship targets, explicit 403
+handling and history navigation inside a disabled fieldset.
+
+The read-only compiler-host comparison against the starting commit
+`bbf84f6e4a0e638ad446c5f215fcb5e17506751c` found **226 existing diagnostics
+before and after, no new diagnostics**. This is not a clean TypeScript build.
+Full reports are retained under `.local/verification/`.
+
+Assignment groups explicitly say **Not recorded on assignment** for rank:
+the assignment model has no rank field. Today's crew rank must not be used to
+manufacture a historical assignment rank. Saved declarations still open their
+own original frozen System values.
