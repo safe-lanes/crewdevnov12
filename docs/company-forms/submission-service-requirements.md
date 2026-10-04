@@ -42,6 +42,59 @@ Related project task: #333 (Company Form Submissions).
     A refused request must be reported as a permission problem, never
     as missing configuration.
 
+## Applicability
+
+19. RULES. Each Company Form version carries applicability rules:
+    either an explicit "applies to all", or one or more condition
+    sets. Conditions within a set must all match; any one set
+    matching is enough. Dimensions are stored as data, not columns.
+    A rule marks the form mandatory or optional.
+
+20. WHEN RESOLVED, once per stage:
+    - before joining: at Deploy
+    - on board: at sign-on
+    - at sign-off: when Relief Status first becomes Planned or
+      Confirmed, whichever comes first; or, if the seafarer is
+      signed off without passing either, at sign-off itself.
+    Moving from Planned to Confirmed does not resolve again.
+
+21. PINNED. Each resolved requirement records the rule that matched
+    and freezes the values that decided it, including vessel flag
+    and owner, and first-ever and first-in-rank status.
+
+22. BLANK VALUES. A rule referencing a dimension with no value for
+    this seafarer or vessel records the requirement as UNRESOLVED and
+    shows it. Never silently "does not apply".
+
+23. CHANGES. Re-resolving may add requirements. It never removes a
+    requirement that has been started or signed. When a stage's
+    trigger is reversed — a relief deferred and its status cleared —
+    requirements of that stage not yet started are WITHDRAWN,
+    recorded with the reason, never deleted. If the trigger recurs,
+    the stage is resolved afresh.
+
+24. EFFECTIVE DATES. A rule effective from a date applies when the
+    stage's trigger occurs on or after that date — not by the date
+    the assignment was created.
+
+25. BLOCKING. Mandatory unsigned before-joining requirements block
+    the Deployment Checklist toggle. Sign-off is NEVER blocked by
+    outstanding forms: the seafarer's sign-off is recorded whatever
+    is owed, and outstanding sign-off requirements remain outstanding
+    afterwards, clearly flagged on the crew profile and in the
+    outstanding report.
+
+26. DECIDED NOT TO BUILD: no resolution trigger for promotions on
+    board. If a need arises, it is more likely a Standard Form.
+    STILL OPEN: whether manual selection remains alongside
+    applicability; how first-in-rank treats rank served on relief.
+
+27. SIGN-OFF WITNESSING. A seafarer's signature on a sign-off stage
+    form may be witnessed EITHER by a vessel user holding a permitted
+    role, or by an office crewing user. The form's configured
+    signatures decide which applies: Vessel Management for forms
+    signed aboard, Company Representative for debriefs done ashore.
+
 ## Trusted vessel-scope prerequisite
 
 Ship-user Company Form access resolves membership from
