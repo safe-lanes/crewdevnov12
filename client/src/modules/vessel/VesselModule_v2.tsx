@@ -1787,7 +1787,6 @@ export function VesselModule_v2(): JSX.Element {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow className="bg-[#52baf3] hover:bg-[#52baf3]">
-                                                    <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3]" data-testid="crew-list-forms-header">Forms</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]">S. No.</TableHead>
                                                     <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Rank</TableHead>
                                                     <TableHead className="text-white text-xs font-normal sticky top-0 z-30 bg-[#52baf3]">Surname, Given Name</TableHead>
@@ -1799,6 +1798,7 @@ export function VesselModule_v2(): JSX.Element {
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Travel End Date</TableHead>
                                                             {showAppraisalColumnArchived && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
                                                             {showHandoverColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>}
+                                                            <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3]" data-testid="crew-list-forms-header">Forms</TableHead>
                                                         </>
                                                     ) : (
                                                         <>
@@ -1808,6 +1808,7 @@ export function VesselModule_v2(): JSX.Element {
                                                             <TableHead className="text-white text-xs font-normal w-32 sticky top-0 z-30 bg-[#52baf3]">Medical Expiring</TableHead>
                                                             {showAppraisalColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Appraisal</TableHead>}
                                                             {showHandoverColumn && <TableHead className="text-white text-xs font-normal w-24 sticky top-0 z-30 bg-[#52baf3]">Handover</TableHead>}
+                                                            <TableHead className="text-white text-xs font-normal w-20 sticky top-0 z-30 bg-[#52baf3]" data-testid="crew-list-forms-header">Forms</TableHead>
                                                             <TableHead className="text-white text-xs font-normal w-16 sticky top-0 z-30 bg-[#52baf3]"></TableHead>
                                                         </>
                                                     )}
@@ -1847,18 +1848,20 @@ export function VesselModule_v2(): JSX.Element {
                                                     const hasBothCrewTypes = !!(rankEntry?.primary && rankEntry?.secondary);
                                                     const statusBadge = (!showArchived && hasBothCrewTypes) ? (planning.crewStatus === 'secondary' ? ' (S)' : ' (P)') : '';
                                                     const displayRank = rankBase + statusBadge;
+                                                    const formsCell = (
+                                                        <TableCell className="text-xs" data-testid={`cell-forms-${planning.crewAssignUuid || index}`}>
+                                                          {!planning.crewAssignUuid ? <span title="No recorded assignment is linked">Not linked</span>
+                                                            : companyFormCounts.error ? <span role="alert" title={companyFormCounts.error.message}>Unavailable</span>
+                                                            : companyFormCounts.data?.[planning.crewAssignUuid] === undefined ? <span>Loading…</span>
+                                                            : <Button variant="link" className="p-0 h-auto text-blue-600" data-testid={`button-crew-forms-${planning.crewAssignUuid}`}
+                                                              onClick={() => setCompanyFormsTarget({ assignmentUuid: planning.crewAssignUuid, crewName: planning.crewName || planning.crewMemberName || "Crew member", readOnly: showArchived || !!planning.isArchived })}>
+                                                              {companyFormCounts.data[planning.crewAssignUuid]}
+                                                            </Button>}
+                                                        </TableCell>
+                                                    );
                                                     
                                                     return (
                                                         <TableRow key={planning.id || planning.planUuid || index} className="hover:bg-gray-50 border-b border-gray-100">
-                                                            <TableCell className="text-xs" data-testid={`cell-forms-${planning.crewAssignUuid || index}`}>
-                                                              {!planning.crewAssignUuid ? <span title="No recorded assignment is linked">Not linked</span>
-                                                                : companyFormCounts.error ? <span role="alert" title={companyFormCounts.error.message}>Unavailable</span>
-                                                                : companyFormCounts.data?.[planning.crewAssignUuid] === undefined ? <span>Loading…</span>
-                                                                : <Button variant="ghost" size="sm" data-testid={`button-crew-forms-${planning.crewAssignUuid}`}
-                                                                  onClick={() => setCompanyFormsTarget({ assignmentUuid: planning.crewAssignUuid, crewName: planning.crewName || planning.crewMemberName || "Crew member", readOnly: showArchived || !!planning.isArchived })}>
-                                                                  {companyFormCounts.data?.[planning.crewAssignUuid] ?? 0}
-                                                                </Button>}
-                                                            </TableCell>
                                                             <TableCell className="text-xs text-gray-700" data-testid={`cell-sno-${index + 1}`}>
                                                                 {index + 1}.
                                                             </TableCell>
@@ -1980,6 +1983,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                             })()}
                                                                         </TableCell>
                                                                     )}
+                                                                    {formsCell}
                                                                 </>
                                                             ) : (
                                                                 <>
@@ -2189,6 +2193,7 @@ export function VesselModule_v2(): JSX.Element {
                                                                             })()}
                                                                         </TableCell>
                                                                     )}
+                                                                    {formsCell}
                                                                     <TableCell className="text-xs text-gray-700" data-testid={`cell-view-${index + 1}`}>
                                                                         {!isShipUser && (
                                                                             <Button 

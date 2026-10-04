@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { masterUsers } from "../../../shared/schema";
+import { admFormsV2 } from "../../../shared/v2/admin/schema";
 import {
   frmAnswers,
   frmFormParts,
@@ -119,6 +120,18 @@ async function loadLockedContext(
   principal: CompanyFormPrincipal,
   action: "submit_section" | "save_signature" | "remove_signature" | "void_submission",
 ) {
+  // All writes use subject -> (form/version when needed) -> submission ->
+  // section. Starts/voids already lock the subject first. Taking submission
+  // first here would deadlock a signature/submit against a concurrent void.
+  const observed = await tx.select().from(frmCompanySubmissions).where(and(
+    eq(frmCompanySubmissions.submissionUuid, submissionUuid),
+    eq(frmCompanySubmissions.isDeleted, false),
+  )).limit(1);
+  if (!observed[0]) throw new CompanyFormNotFoundError("Company Form submission not found.");
+  const lockedSubject = await adapter.lockForStart(observed[0].subjectRef, tx);
+  if (!lockedSubject || lockedSubject.subjectRef !== observed[0].subjectRef) {
+    throw new CompanyFormNotFoundError("Company Form subject not found.");
+  }
   await tx.execute(sql`
     SELECT submission_uuid
     FROM frm_company_submissions
@@ -132,9 +145,12 @@ async function loadLockedContext(
   )).limit(1);
   const submission = parents[0];
   if (!submission) throw new CompanyFormNotFoundError("Company Form submission not found.");
-  const lockedSubject = await adapter.lockForStart(submission.subjectRef, tx);
-  if (!lockedSubject || lockedSubject.subjectRef !== submission.subjectRef) {
-    throw new CompanyFormNotFoundError("Company Form subject not found.");
+  if (submission.subjectRef !== observed[0].subjectRef ||
+    submission.subjectType !== observed[0].subjectType ||
+    submission.formUuid !== observed[0].formUuid ||
+    submission.formVersionUuid !== observed[0].formVersionUuid ||
+    submission.stageKey !== observed[0].stageKey) {
+    throw new CompanyFormConflictError("The Company Form subject or version pin changed; reload the submission.");
   }
   if (!await adapter.authorize(principal, action, lockedSubject.context)) {
     throw new CompanyFormPermissionError();
@@ -570,6 +586,7 @@ export class CompanyFormSubmissionLifecycleRepository {
   async voidSubmission(input: {
     submissionUuid: string;
     reason: string;
+    retirementConfirmedAt?: string;
     actor: CompanyFormPrincipal;
     adapter: LifecycleAdapter;
   }) {
@@ -577,10 +594,26 @@ export class CompanyFormSubmissionLifecycleRepository {
     const reason = input.reason.trim();
     if (!reason || reason.length > 5000) throw new CompanyFormValidationError("A written void reason of 1 to 5,000 characters is required.");
     return getDb().transaction(async (tx: Executor) => {
+      // Match start's subject -> form ordering, then lock the submission.
+      // Archive takes the same form lock, so acknowledgement cannot race it.
+      const parents = await tx.select().from(frmCompanySubmissions).where(and(
+        eq(frmCompanySubmissions.submissionUuid, input.submissionUuid),
+        eq(frmCompanySubmissions.isDeleted, false),
+      )).limit(1);
+      if (!parents[0]) throw new CompanyFormNotFoundError("Company Form submission not found.");
+      await input.adapter.lockForStart(parents[0].subjectRef, tx);
+      const forms = await tx.select({ archivedAt: admFormsV2.archivedAt }).from(admFormsV2)
+        .where(eq(admFormsV2.formUuid, parents[0].formUuid)).limit(1).for("update");
+      if (!forms[0]) throw new CompanyFormNotFoundError("Company Form not found.");
       const { submission } = await loadLockedContext(
         tx, input.submissionUuid, input.adapter, input.actor, "void_submission",
       );
       if (submission.status === "voided") throw new CompanyFormConflictError("This Company Form submission is already voided.");
+      if (submission.stageKey === "on_board" && forms[0].archivedAt &&
+        (!input.retirementConfirmedAt ||
+          new Date(input.retirementConfirmedAt).getTime() !== new Date(forms[0].archivedAt).getTime())) {
+        throw new CompanyFormConflictError("This form has been retired. Voiding will not allow a replacement on this form.");
+      }
       const users = await tx.select().from(masterUsers).where(eq(masterUsers.id, input.actor.userId)).limit(1);
       const voidedByName = users[0] ? actorName(users[0]) : null;
       if (!voidedByName) throw new CompanyFormPermissionError("The authenticated voiding user's identity is unavailable.");

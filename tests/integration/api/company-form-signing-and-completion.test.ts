@@ -7,6 +7,7 @@ import { randomUUID } from "crypto";
 import type { Server } from "http";
 import companyFormSubmissionsRoutes from "@server/v2/company-forms/routes";
 import { fileStorageService } from "@server/v2/shared/fileStorageService";
+import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
 
 const TEST_SECRET = "company-form-signing-integration-test-secret";
 const SUFFIX = randomUUID().replaceAll("-", "").slice(0, 12);
@@ -46,6 +47,8 @@ let roleUuids: string[] = [];
 let attachmentPaths: string[] = [];
 let submissionUuids: string[] = [];
 let primarySubmissionUuid = "";
+let masterRankId = "";
+let changedRankId = "";
 const previousJwtSecret = process.env.JWT_SECRET;
 const previousAuthBypass = process.env.AUTH_BYPASS;
 
@@ -285,12 +288,23 @@ describe("Company Form signing, section submission, completion, and void history
     wrongVesselUuid = wrongVessel.rows[0].vessel_uuid;
     shipUser = await createShipUser(`CF Life Cycle Ship ${SUFFIX}`, Number(wrongVessel.rows[0].id));
 
+    // present_rank stores the master rank ID, never its display label.
+    const ranks = await db.query(
+      `SELECT rank_id, MIN(rank) AS rank FROM adm_company_ranks_v2
+       WHERE is_deleted = false AND is_role_row = false AND rank_id IS NOT NULL AND rank IS NOT NULL
+       GROUP BY rank_id HAVING count(*) = 1
+       ORDER BY (MIN(rank) = 'Master') DESC, rank_id LIMIT 2`,
+    );
+    expect(ranks.rows.filter(row => row.rank === "Master")).toHaveLength(1);
+    expect(ranks.rows.filter(row => row.rank !== "Master")).toHaveLength(1);
+    masterRankId = ranks.rows.find(row => row.rank === "Master")!.rank_id;
+    changedRankId = ranks.rows.find(row => row.rank !== "Master")!.rank_id;
     subjectUuid = uuid();
     await db.query(
       `INSERT INTO crew_members_v2
          (crew_uuid, emp_no, first_name, family_name, present_rank, nationality_uuid, is_deleted)
-       VALUES ($1, $2, 'Frozen', 'Name', 'Master', NULL, false)`,
-      [subjectUuid, `CF-LIFE-${SUFFIX}`],
+       VALUES ($1, $2, 'Frozen', 'Name', $3, NULL, false)`,
+      [subjectUuid, `CF-LIFE-${SUFFIX}`, masterRankId],
     );
 
     const primaryAssignment = await createCrewAssignment("Planned");
@@ -805,7 +819,7 @@ describe("Company Form signing, section submission, completion, and void history
     expect(snapshot.rows.find((row) => row.field_key === "rank")?.value).toBe("Master");
     expect(snapshot.rows.find((row) => row.field_key === "nationality")?.value).toBeNull();
     expect(snapshot.rows.find((row) => row.field_key === "date_of_declaration")?.value)
-      .toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      .toBe(sailDate(snapshot.rows[0].system_snapshot_at));
     expect(snapshot.rows.every((row) => row.created_by_uuid === String(office.id))).toBe(true);
     const firstSnapshotAt = snapshot.rows[0].system_snapshot_at as Date;
     expect(["section_submission", "signature"]).toContain(snapshot.rows[0].system_snapshot_event);
@@ -871,8 +885,8 @@ describe("Company Form signing, section submission, completion, and void history
     // refreshed master record.
     await db.query(
       `UPDATE crew_members_v2 SET first_name = 'Changed', family_name = 'Source',
-              present_rank = 'Chief Mate' WHERE crew_uuid = $1`,
-      [subjectUuid],
+              present_rank = $2 WHERE crew_uuid = $1`,
+      [subjectUuid, changedRankId],
     );
     const formAfterSourceChange = await call(
       "get",
@@ -1284,12 +1298,17 @@ describe("Company Form signing, section submission, completion, and void history
     );
     expect(triedToAlterVoidedSignature.status).toBe(409);
     expect(replacement.body.replacementHistory).toEqual(expect.arrayContaining([
-      {
+      expect.objectContaining({
         direction: "replaces",
         label: "Replaces a voided submission",
         submissionUuid,
-      },
+        targetLabel: expect.stringContaining(`CF lifecycle signing ${SUFFIX} — Declaration `),
+      }),
     ]));
+    expect(replacement.body.replacementHistory[0].targetLabel)
+      .toContain(`Voided by ${firstVoid.body.submission.voidedByName}`);
+    expect(replacement.body.replacementHistory[0].targetLabel)
+      .toContain(`Voided ${sailDate(firstVoid.body.submission.voidedAt)}`);
     const oldSubmissionSnapshot = await db.query(
       `SELECT status, form_version_uuid, void_reason, voided_at, voided_by_uuid,
               replaced_by_submission_uuid

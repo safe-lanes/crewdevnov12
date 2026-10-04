@@ -52,6 +52,7 @@ import { fileStorageService } from "../shared/fileStorageService";
 import { randomUUID } from "node:crypto";
 import { getDb } from "../db";
 import { sectionRequiresSubmission } from "./lifecyclePolicy";
+import { sailDate } from "../../../shared/v2/forms-engine/displayFormatting";
 
 function isoDate(value: Date | string | null | undefined): string | null {
   if (value === null || value === undefined) return null;
@@ -76,6 +77,7 @@ function mapSummary(row: any, canEdit: boolean, canVoid: boolean): CompanyFormSu
     status: row.status,
     canEdit,
     canVoid,
+    formArchivedAt: isoDate(row.formArchivedAt),
     createdAt: isoDate(row.createdAt),
     completedAt: isoDate(row.completedAt),
     voidedAt: isoDate(row.voidedAt),
@@ -214,13 +216,10 @@ export class CompanyFormSubmissionsService {
       await this.authorizeSubmission(req, link.submissionUuid, "read_submission");
       const target = await this.renderRepository.readPinnedRenderData(link.submissionUuid);
       if (!target) throw new CompanyFormNotFoundError("Linked Company Form not found.");
-      const recordedName = (target.systemSnapshots as any[]).find(snapshot =>
-        ["name", "full_name", "seafarer_name"].includes(snapshot.fieldKey))?.value ??
-        (target.signatures as any[]).find(signature => signature.signature.signatureType === "seafarer")?.signature.signerName;
-      const date = target.submission.systemSnapshotAt ?? target.submission.createdAt;
-      const readableDate = date ? new Date(date).toLocaleDateString("en-GB",
-        { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).replace(/ /g, "-") : "Date unavailable";
-      return { ...link, targetLabel: `${target.submission.formName || "Company Form"} — ${target.submission.systemSnapshotAt ? "Declaration" : "Created"} ${readableDate} — ${recordedName || "Historical seafarer name unavailable"}` };
+       // Both directions describe the related record, but audit the original void.
+       const original = link.direction === "replaces" ? target.submission : row;
+       const date = target.submission.systemSnapshotAt ?? target.submission.createdAt;
+       return { ...link, targetLabel: `${target.form.name || "Form name unavailable"} — ${target.submission.systemSnapshotAt ? "Declaration" : "Created (declaration date unavailable)"} ${sailDate(date)} — Voided by ${original.voidedByName || "Historical voiding identity unavailable"} — Voided ${sailDate(original.voidedAt)}` };
     }));
   }
   constructor(
@@ -487,7 +486,7 @@ export class CompanyFormSubmissionsService {
     const { states, answers } = this.mapStatesAndAnswers(data, formUrl);
     const history = await this.readableHistory(input.req, data.submission);
     return {
-      submission: mapSummary(data.submission, canEdit, canVoid),
+      submission: mapSummary({ ...data.submission, formArchivedAt: data.form.archivedAt }, canEdit, canVoid),
       states,
       answers,
       formUrl: `${formUrl}/form`,
@@ -751,7 +750,7 @@ export class CompanyFormSubmissionsService {
     const history = await this.readableHistory(input.req, data.submission);
     if (systemValuesComparisonError && systemValuesChanged !== true) systemValuesChanged = null;
     return {
-      submission: mapSummary(data.submission, canEdit, canVoid),
+      submission: mapSummary({ ...data.submission, formArchivedAt: data.form.archivedAt }, canEdit, canVoid),
       signatureMethodOptions,
       form: {
         formName: data.form.name,
@@ -960,6 +959,7 @@ export class CompanyFormSubmissionsService {
     req: Request;
     submissionUuid: string;
     reason: string;
+    retirementConfirmedAt?: string;
   }) {
     const { adapter, principal } = await this.authorizeSubmission(
       input.req,
@@ -969,6 +969,7 @@ export class CompanyFormSubmissionsService {
     return companyFormSubmissionLifecycleRepository.voidSubmission({
       submissionUuid: input.submissionUuid,
       reason: input.reason,
+      retirementConfirmedAt: input.retirementConfirmedAt,
       actor: principal,
       adapter,
     });

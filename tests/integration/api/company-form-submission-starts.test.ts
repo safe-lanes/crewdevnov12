@@ -590,6 +590,12 @@ describe("Company Form subject-scoped starts and lists", () => {
     });
     expect(duplicateReplacement.status).toBe(409);
 
+    // Only this test-owned assignment becomes on-board; do not bypass the
+    // current on-board requirement when testing concurrent starts.
+    await db.query(
+      "UPDATE crew_assignments SET assignment_type = 'OnBoard', is_current = true WHERE assign_uuid = $1",
+      [archivedFormAssignmentUuid],
+    );
     const competingStarts = await Promise.all([
       call("post", `/api/v2/company-form-submissions/subjects/crew_assignment/${archivedFormAssignmentUuid}/submissions`, {
         userId: officeUserId,
@@ -796,7 +802,8 @@ describe("Company Form subject-scoped starts and lists", () => {
       userType: "Ship",
       body: { answers: [], sectionComment: "Own vessel edit" },
     });
-    expect(ownVesselEditor.status).toBe(204);
+    // Vessel membership does not confer before-joining write rights.
+    expect(ownVesselEditor.status).toBe(403);
 
     await db.query("UPDATE frm_form_parts SET is_office_only = true WHERE form_part_uuid = $1", [partUuid]);
     const officeOnlyDenied = await callOn(renderServer, "put", editPath, {

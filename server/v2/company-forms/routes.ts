@@ -84,6 +84,7 @@ const signatureBodySchema = z.object({
 }).strict();
 const voidBodySchema = z.object({
   reason: z.string().trim().min(1).max(5000),
+  retirementConfirmedAt: z.string().datetime().optional(),
 }).strict();
 
 function sendError(res: Response, error: unknown): void {
@@ -249,6 +250,7 @@ router.post("/:submissionUuid/void", async (req, res) => {
       req,
       submissionUuid: params.submissionUuid,
       reason: body.data.reason,
+      retirementConfirmedAt: body.data.retirementConfirmedAt,
     });
     res.status(204).end();
   } catch (error) {

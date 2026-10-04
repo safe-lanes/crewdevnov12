@@ -104,7 +104,7 @@ describe("crew-assignment responsible-party declarations", () => {
     isDeleted: false,
   };
 
-  it("declares trusted seafarer signing and witnessed office signing, never witnessed vessel signing", async () => {
+  it("permits trusted vessel witnessing on board but refuses it before joining", async () => {
     const authorizeOffice = vi.fn(async () => true);
     const crew = createCrewAssignmentSubject({
       loadStages: async () => [],
@@ -116,8 +116,9 @@ describe("crew-assignment responsible-party declarations", () => {
     expect(seafarer).toMatchObject({
       signatureType: "seafarer",
       displayLabel: "Seafarer",
-      allowedActors: ["seafarer", "office"],
+      allowedActors: ["seafarer", "office", "vessel"],
       methods: ["authenticated", "witnessed"],
+      methodsByActor: { vessel: ["witnessed"], office: ["witnessed"], seafarer: ["authenticated"] },
     });
 
     const office: CompanyFormPrincipal = {
@@ -139,13 +140,50 @@ describe("crew-assignment responsible-party declarations", () => {
       vesselUuids: ["vessel-1"],
     };
     expect(await crew.authorize(vessel, "save_signature", assignment)).toBe(true);
-    expect(seafarer?.allowedActors).not.toContain("vessel");
-
     const responsibleSeafarerSection = {
       responsibleMode: "seafarer",
       responsibleRoleUuid: null,
       responsibleDepartment: null,
+      vesselSignatureRoleUuids: ["role-ship"],
     };
+    const onBoardAssignment = { ...assignment, assignmentType: "OnBoard", isCurrent: true };
+    // Supply persisted identity, active Ship role, rank and vessel membership;
+    // do not mock the policy or trust the JWT vessel assertion.
+    const rows = [
+      [{ id: 8, userType: "Ship", role: "Ship user", designation: "Master", fullname: "Saved Master" }],
+      [{ assignedRole: "Ship user" }],
+      [{ rankId: "master-rank", rank: "Master" }],
+      [{ id: 8, vesselIds: "12" }],
+      [{ id: 12, vesselUuid: "vessel-1" }],
+    ];
+    const executor = {
+      execute: vi.fn(async () => []),
+      select: vi.fn(() => ({
+        from: () => ({
+          where: () => {
+            const result = rows.shift()!;
+            return Object.assign(Promise.resolve(result), { limit: async () => result });
+          },
+        }),
+      })),
+    };
+    expect(crew.authorizeStageAction!(vessel, "save_signature", onBoardAssignment, "on_board")).toBe(true);
+    await expect(crew.authorizeSectionAction!({
+      principal: vessel, subject: onBoardAssignment, stageKey: "on_board",
+      section: responsibleSeafarerSection, action: "save_signature",
+      signatureType: "seafarer", executor,
+    })).resolves.toBeUndefined();
+    expect(executor.select).toHaveBeenCalledTimes(5);
+
+    // Even a current vessel assignment and a permitted section role cannot
+    // make a before-joining form witnessable by a Ship actor.
+    expect(crew.authorizeStageAction!(vessel, "save_signature", onBoardAssignment, "before_joining")).toBe(false);
+    await expect(crew.authorizeSectionAction!({
+      principal: vessel, subject: onBoardAssignment, stageKey: "before_joining",
+      section: responsibleSeafarerSection, action: "save_signature",
+      signatureType: "seafarer", executor,
+    })).rejects.toBeInstanceOf(CompanyFormPermissionError);
+    expect(executor.select).toHaveBeenCalledTimes(5);
     await expect(assertCompanyFormSectionEditable({
       principal: office,
       section: responsibleSeafarerSection,
@@ -157,7 +195,7 @@ describe("crew-assignment responsible-party declarations", () => {
       section: responsibleSeafarerSection,
       part: { isOfficeOnly: false },
       executor: undefined,
-    })).rejects.toBeInstanceOf(CompanyFormPermissionError);
+    })).resolves.toBeUndefined();
   });
 
   it("resolves the authenticated seafarer link on the server and limits sign/submit to his own assignment", async () => {

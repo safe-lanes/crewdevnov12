@@ -476,7 +476,10 @@ async function closing() {
     const replacement=await start(fixture.forms[0]);fixture.replacementSubmissionUuid=replacement;
     await write("onboard-retained-fixtures.json",fixture);
     await shot("05-readable-replacement-link");
-    const link=page.getByRole("button").filter({hasText:fixture.crewName}).first();
+    const replacedForm=await form(replacement);
+    const originalLink=replacedForm.replacementHistory.find(link=>link.direction==="replaces");
+    ensure(originalLink?.submissionUuid===primary,"Replacement must link to its exact original");
+    const link=page.getByRole("button",{name:originalLink.targetLabel,exact:true});
     const text=await link.innerText();ensure(!text.includes(primary),"Historical link text must not expose its UUID");
     await link.click();await page.getByTestId("configured-form-live").waitFor({state:"attached"});
     ensure((await page.locator("body").innerText()).includes("Voided"),"Historical link must open the recorded voided declaration");
@@ -489,9 +492,9 @@ async function closing() {
     const count=await request(fixture.actors.master,"POST",`${prefix}/subjects/crew_assignment/submission-counts`,
       {subjectRefs:[fixture.assignmentUuid],stageKey:"on_board"});
     const history=await request(fixture.actors.master,"GET",`${subject}/submissions`);
-    ensure(count[fixture.assignmentUuid]===history.submissions.filter(s=>s.stageKey==="on_board").length,"Count must equal saved list including voided history");
-    ensure(count[fixture.assignmentUuid]===2,"Definitions must not count as saved declarations");
-    report.checks.push("One Forms column, zero entry, explicit replacement, clickable recorded link and retained-history count/list agreement");
+    ensure(count[fixture.assignmentUuid]===history.submissions.filter(s=>s.stageKey==="on_board"&&s.status!=="voided").length,"Count must equal nonvoided saved on-board declarations only");
+    ensure(count[fixture.assignmentUuid]===1,"Voided originals and definitions must not count");
+    report.checks.push("One Forms column, zero entry, explicit replacement, actual form/audit link and nonvoided saved count; voided history retained");
     const second=await request(fixture.actors.masterTwo,"POST",`${subject}/submissions`,
       {formUuid:fixture.forms[1].formUuid,formVersionUuid:fixture.forms[1].versionUuid},201);
     fixture.handoverSubmissionUuid=second.submissionUuid;await write("onboard-retained-fixtures.json",fixture);

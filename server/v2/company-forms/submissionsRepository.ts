@@ -70,6 +70,8 @@ export class CompanyFormSubmissionsRepository {
       count: sql<number>`count(*)::integer` }).from(frmCompanySubmissions)
       .where(and(eq(frmCompanySubmissions.subjectType, subjectType),
         inArray(frmCompanySubmissions.subjectRef, subjectRefs), eq(frmCompanySubmissions.stageKey, stageKey),
+        subjectType === "crew_assignment" && stageKey === "on_board"
+          ? sql`${frmCompanySubmissions.status} <> 'voided'` : undefined,
         eq(frmCompanySubmissions.isDeleted, false))).groupBy(frmCompanySubmissions.subjectRef);
     return Object.fromEntries(subjectRefs.map(ref => [ref, rows.find((row: any) => row.subjectRef === ref)?.count ?? 0]));
   }
@@ -150,6 +152,15 @@ export class CompanyFormSubmissionsRepository {
         versionNo: admFormVersionsV2.versionNo,
         releasedAt: admFormVersionsV2.releasedAt,
         formName: admFormsV2.name,
+        formArchivedAt: admFormsV2.archivedAt,
+        voidedAt: frmCompanySubmissions.voidedAt,
+        voidedByName: frmCompanySubmissions.voidedByName,
+        voidedByUuid: frmCompanySubmissions.voidedByUuid,
+        voidedByDesignation: frmCompanySubmissions.voidedByDesignation,
+        voidReason: frmCompanySubmissions.voidReason,
+        voidedPreviousStatus: frmCompanySubmissions.voidedPreviousStatus,
+        systemSnapshotAt: frmCompanySubmissions.systemSnapshotAt,
+        systemSnapshotEvent: frmCompanySubmissions.systemSnapshotEvent,
         stageLabel: frmSubjectStages.label,
         status: frmCompanySubmissions.status,
         completedAt: frmCompanySubmissions.completedAt,

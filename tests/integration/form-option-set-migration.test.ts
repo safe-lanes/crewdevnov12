@@ -28,9 +28,9 @@ async function createLegacyFixture(client: PoolClient) {
   `, [versionUuid, form.rows[0].id]);
   await client.query(`
     INSERT INTO frm_form_parts(
-      form_part_uuid, form_uuid, part_code, part_title, part_type
-    ) VALUES ($1, $2, 'B', 'Points', 'configurable')
-  `, [partUuid, formUuid]);
+      form_part_uuid, form_uuid, form_version_uuid, part_code, part_title, part_type
+    ) VALUES ($1, $2, $3, 'B', 'Points', 'configurable')
+  `, [partUuid, formUuid, versionUuid]);
   await client.query(`
     INSERT INTO frm_sections(
       section_uuid, form_version_uuid, form_part_uuid, section_code,

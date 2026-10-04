@@ -3,7 +3,8 @@ import { eq, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import request from "supertest";
 import { getDb } from "@server/v2/db";
-import { admFormsV2 } from "@shared/v2/admin/schema";
+import { admFormsV2, admFormVersionsV2 } from "@shared/v2/admin/schema";
+import { frmFormParts } from "@shared/v2/forms-engine/schema";
 
 const endpoint = "/api/v2/admin/forms";
 const namedForms = [
@@ -30,6 +31,7 @@ describe("client form creation category boundary", () => {
     console.info("Five existing forms before (raw SQL):", JSON.stringify(before));
 
     let createdUuid: string | undefined;
+    let createdId: number | undefined;
     try {
       let sqlError = "";
       try {
@@ -73,8 +75,13 @@ describe("client form creation category boundary", () => {
       console.info("POST create category dynamic:", JSON.stringify({
         request: { ...payload, category: "dynamic" }, status: dynamic.status, response: dynamic.body,
       }));
-      expect(dynamic.status).toBe(200);
-      createdUuid = dynamic.body.formUuid;
+      createdUuid = dynamic.body.form?.formUuid;
+      createdId = dynamic.body.form?.id;
+      expect(dynamic.status).toBe(201);
+      expect(dynamic.body).toMatchObject({
+        form: { formUuid: expect.any(String), category: "dynamic" },
+        version: { formId: createdId, status: "draft" },
+      });
       const raw = (await db.execute(sql`
         SELECT form_uuid, name, category, rank_group, version_no, version_date
         FROM adm_forms_v2 WHERE form_uuid = ${createdUuid}
@@ -83,7 +90,7 @@ describe("client form creation category boundary", () => {
       expect(raw).toMatchObject([{ form_uuid: createdUuid, category: "dynamic" }]);
 
       for (const category of ["briefing", "interview", "debriefing", "appraisal", "promotion"]) {
-        const reclassification = await agent.put(`${endpoint}/${dynamic.body.id}`)
+        const reclassification = await agent.put(`${endpoint}/${createdId}`)
           .set("Authorization", `Bearer ${token()}`).send({ category });
         console.info(`PUT dynamic form category ${category}:`, JSON.stringify({
           status: reclassification.status, response: reclassification.body,
@@ -96,7 +103,13 @@ describe("client form creation category boundary", () => {
       `)).rows;
       expect(afterAttempts).toMatchObject([{ category: "dynamic" }]);
     } finally {
-      if (createdUuid) await db.delete(admFormsV2).where(eq(admFormsV2.formUuid, createdUuid));
+      if (createdUuid && createdId) {
+        await db.transaction(async (tx: any) => {
+          await tx.delete(frmFormParts).where(eq(frmFormParts.formUuid, createdUuid!));
+          await tx.delete(admFormVersionsV2).where(eq(admFormVersionsV2.formId, createdId!));
+          await tx.delete(admFormsV2).where(eq(admFormsV2.formUuid, createdUuid!));
+        });
+      }
       const after = await existing();
       console.info("Five existing forms after (raw SQL):", JSON.stringify(after));
       expect(after).toEqual(before);

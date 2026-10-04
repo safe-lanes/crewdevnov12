@@ -167,8 +167,11 @@ export class CompanyFormSubmissionDraftRepository {
       throw new CompanyFormValidationError("Provide at least one answer or a section comment to save.");
     }
     await executor.transaction(async (tx: Executor) => {
-      // Generic parent is always the first row lock. Child-only/orphan shared
-      // rows cannot establish a submission or authorize a write.
+      // Match start, void and lifecycle writes: subject first, then generic
+      // submission parent, then section. Revalidate the expected pin under
+      // the parent lock before making any authorization or mutation decision.
+      const subject = await input.lockSubject(input.expectedSubmission.subjectRef, tx);
+      if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
       await tx.execute(sql`
         SELECT submission_uuid
         FROM frm_company_submissions
@@ -208,10 +211,7 @@ export class CompanyFormSubmissionDraftRepository {
         throw new CompanyFormConflictError("Completed Company Form submissions are read-only.");
       }
 
-      // This adapter lock serializes the write with authoritative subject
-      // cancellation/update transactions; it is always acquired after parent.
-      const subject = await input.lockSubject(parent.subjectRef, tx);
-      if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
+      // The adapter lock also serializes authoritative cancellation/update.
       if (subject.subjectRef !== parent.subjectRef) {
         throw new CompanyFormConflictError("The Company Form subject pin changed; reload the submission.");
       }

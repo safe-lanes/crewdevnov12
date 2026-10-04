@@ -32,11 +32,11 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
   const [error, setError] = useState<string | null>(null);
   const path = `/api/v2/company-form-submissions/subjects/crew_assignment/${encodeURIComponent(assignmentUuid)}`;
   const history = useQuery({
-    queryKey: ["onboard-company-form-history", assignmentUuid], retry: false,
+    queryKey: ["onboard-company-form-history", assignmentUuid], retry: false, staleTime: 0,
     queryFn: async () => (await apiRequest("GET", `${path}/submissions`)).json() as Promise<{ submissions: CompanyFormSubmissionSummary[] }>,
   });
   const eligible = useQuery({
-    queryKey: ["onboard-company-form-eligible", assignmentUuid], retry: false, enabled: !readOnly,
+    queryKey: ["onboard-company-form-eligible", assignmentUuid], retry: false, staleTime: 0, enabled: !readOnly,
     queryFn: async () => (await apiRequest("GET", `${path}/eligible-forms?stageKey=on_board`)).json() as Promise<Eligible[]>,
   });
   const submissions = (history.data?.submissions ?? []).filter(s => s.stageKey === "on_board");
@@ -75,12 +75,14 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
       }}>{busy ? "Opening…" : existing ? "Open existing declaration" : "Start selected declaration"}</Button>
     </div>}
     {error && <p role="alert" className="text-destructive">{error}</p>}
-    <h3 className="font-medium">Saved declarations and retained history ({submissions.length})</h3>
+    <h3 className="font-medium">Saved declarations and retained history (total including voided: {submissions.length})</h3>
     {history.isSuccess && !submissions.length && <p>No on-board declarations have been started.</p>}
     {submissions.map(s => <div key={s.submissionUuid} className="rounded-md border p-3 text-sm">
       <p>{s.formName || "Company declaration"} · {s.status}</p>
       <p>Version {s.versionNo?.padStart(2, "0") || "unavailable"} · Released {sailDate(s.releasedAt)}</p>
       <p>{s.systemSnapshotAt ? "Declaration" : "Created"} {sailDate(s.systemSnapshotAt ?? s.createdAt)}</p>
+      {s.status === "voided" && s.formArchivedAt && !s.replacedBySubmissionUuid &&
+        <p>No replacement — form retired</p>}
       {s.replacementHistory?.map(link => <p key={link.submissionUuid}>{link.label}{" "}
         <button className="text-primary underline" onClick={() => setActive(link.submissionUuid)}>
           {link.targetLabel || "Open linked declaration — historical label unavailable"}</button></p>)}

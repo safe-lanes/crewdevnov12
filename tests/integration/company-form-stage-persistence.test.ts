@@ -66,7 +66,7 @@ async function createCrewAssignment(client: PoolClient) {
 describe.sequential("Company Form stage and submission persistence", () => {
   afterAll(async () => pool.end());
 
-  it("preserves the one approved historical mapping and leaves the six crew drafts unclassified", async () => {
+  it("preserves the approved historical mapping and leaves new crew drafts unclassified", async () => {
     await withTransaction(async (client) => {
       const approved = await client.query<{
         status: string;
@@ -87,13 +87,20 @@ describe.sequential("Company Form stage and submission persistence", () => {
         subject_type: "crew_assignment",
       });
 
+      // Do not assert a global draft count: retained authoring/acceptance
+      // fixtures legitimately add drafts and classified versions over time.
+      const draftVersionUuids = [];
+      for (let index = 0; index < 6; index++) {
+        draftVersionUuids.push((await createForm(client, "crew_assignment")).versionUuid);
+      }
       const drafts = await client.query<{ count: string; unclassified: string }>(`
         SELECT count(*)::text AS count,
                count(*) FILTER (WHERE v.stage_key IS NULL)::text AS unclassified
         FROM adm_form_versions_v2 v
         JOIN adm_forms_v2 f ON f.id = v.form_id
         WHERE v.status = 'draft' AND f.subject_type = 'crew_assignment'
-      `);
+          AND v.fv_uuid = ANY($1::text[])
+      `, [draftVersionUuids]);
       expect(drafts.rows[0]).toEqual({ count: "6", unclassified: "6" });
     });
   });

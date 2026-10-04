@@ -1718,6 +1718,109 @@ describe("Company Form submission renderer contract", () => {
     expect(activeContainer?.querySelector('[data-testid="live-signature-officer-section-a"]')).not.toBeNull();
   });
 
+  it("refreshes a cached exact original on reciprocal navigation without resolving a latest version", async () => {
+    const targetUuid = "cached-original";
+    const source = formContract({ replacementHistory: [{
+      direction: "replaces", label: "Replaces a voided submission", submissionUuid: targetUuid,
+      targetLabel: "Actual original — Created 01-May-2026 — Voided by Saved Office",
+    }] });
+    const stale = formContract({ submission: { ...source.submission, submissionUuid: targetUuid, status: "voided" }, replacementHistory: [] });
+    const fresh = { ...stale, replacementHistory: [{
+      direction: "replaced_by" as const, label: "Voided — replaced by", submissionUuid,
+      targetLabel: "Actual replacement — Declaration 03-Oct-2026 — Voided by Saved Office",
+    }] };
+    const fetch = vi.fn(async (input: RequestInfo | URL) =>
+      new Response(JSON.stringify(String(input).includes(targetUuid) ? fresh : source), {
+        status: 200, headers: { "content-type": "application/json" },
+      }));
+    vi.stubGlobal("fetch", fetch);
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Actual original"));
+    activeQueryClient!.setDefaultOptions({ queries: { retry: false, staleTime: Infinity, gcTime: Infinity } });
+    activeQueryClient!.setQueryData(["company-form-submission-form", targetUuid], stale);
+    const link = [...activeContainer!.querySelectorAll("button")].find(b => b.textContent === source.replacementHistory![0].targetLabel)!;
+    fireEvent.click(link);
+    await waitFor(() => expect(activeContainer?.textContent).toContain(fresh.replacementHistory[0].targetLabel));
+    expect(fetch.mock.calls.some(([url]) => String(url) === `/api/v2/company-form-submissions/${targetUuid}/form`)).toBe(true);
+    expect(fetch.mock.calls.every(([url]) => !String(url).includes("/admin/"))).toBe(true);
+  });
+
+  it("requires explicit retirement confirmation and cancellation performs no write", async () => {
+    const current = formContract();
+    current.submission.stageKey = "on_board";
+    current.submission.canVoid = true;
+    current.form.archivedAt = "2026-10-03T09:36:28.067Z";
+    let writes = 0;
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        writes++;
+        expect(JSON.parse(String(init.body))).toEqual({
+          reason: "Test retirement", retirementConfirmedAt: current.form.archivedAt,
+        });
+        current.submission.status = "voided";
+        current.submission.canVoid = false;
+        return new Response(null, { status: 204 });
+      }
+      return new Response(JSON.stringify(current), { headers: { "content-type": "application/json" } });
+    }));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+    await waitFor(() => expect(activeContainer?.querySelector("#company-form-void-reason")).not.toBeNull());
+    fireEvent.change(activeContainer!.querySelector("#company-form-void-reason")!, { target: { value: "Test retirement" } });
+    const voidButton = [...activeContainer!.querySelectorAll("button")].find(b => b.textContent === "Void submission")!;
+    fireEvent.click(voidButton);
+    const warning = "This form has been retired. Voiding will not allow a replacement on this form.";
+    await waitFor(() => expect(document.body.textContent).toContain(warning));
+    expect(writes).toBe(0);
+    fireEvent.click([...document.body.querySelectorAll("button")].find(b => b.textContent === "Cancel")!);
+    await waitFor(() => expect(document.body.textContent).not.toContain(warning));
+    expect(writes).toBe(0);
+    expect(current.submission.status).toBe("in_progress");
+    fireEvent.click(voidButton);
+    await waitFor(() => expect(document.body.textContent).toContain(warning));
+    fireEvent.click([...document.body.querySelectorAll("button")].find(b => b.textContent === "Confirm void")!);
+    await waitFor(() => expect(activeContainer?.textContent).toContain("No replacement — form retired"));
+    expect(writes).toBe(1);
+  });
+
+  it.each([
+    { retired: true, replacement: null, stage: "on_board", expected: true },
+    { retired: true, replacement: "related-id", stage: "on_board", expected: false },
+    { retired: false, replacement: null, stage: "on_board", expected: false },
+    { retired: true, replacement: null, stage: "before_joining", expected: false },
+  ])("limits the retired placeholder to the correct history state: %j", async ({ retired, replacement, stage, expected }) => {
+    const current = formContract();
+    current.submission.status = "voided";
+    current.submission.stageKey = stage;
+    current.submission.replacedBySubmissionUuid = replacement;
+    current.form.archivedAt = retired ? "2026-10-03T09:36:28.067Z" : null;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(current), {
+      headers: { "content-type": "application/json" },
+    })));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+    await waitFor(() => expect(activeContainer?.textContent).toContain("Voided"));
+    expect(activeContainer?.textContent?.includes("No replacement — form retired")).toBe(expected);
+  });
+
+  it("checks fresh server retirement state before writing, rather than the initial render", async () => {
+    const current = formContract();
+    current.submission.stageKey = "on_board";
+    current.submission.canVoid = true;
+    let reads = 0;
+    let writes = 0;
+    vi.stubGlobal("fetch", vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "POST") { writes++; return new Response(null, { status: 204 }); }
+      reads++;
+      if (reads > 1) current.form.archivedAt = "2026-10-03T10:00:00.000Z";
+      return new Response(JSON.stringify(current), { headers: { "content-type": "application/json" } });
+    }));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} />);
+    await waitFor(() => expect(activeContainer?.querySelector("#company-form-void-reason")).not.toBeNull());
+    fireEvent.change(activeContainer!.querySelector("#company-form-void-reason")!, { target: { value: "Intervening archive" } });
+    fireEvent.click([...activeContainer!.querySelectorAll("button")].find(b => b.textContent === "Void submission")!);
+    await waitFor(() => expect(document.body.textContent).toContain("This form has been retired. Voiding will not allow a replacement on this form."));
+    expect(writes).toBe(0);
+  });
+
   it("requires a void reason, shows server denial, then voids and follows both sides of a replacement", async () => {
     const voidedUuid = "827cb116-6c78-4f1b-9ae5-fc4327085fdd";
     const replacementUuid = "c94d1113-a414-4519-8e66-46c1aeb337e5";

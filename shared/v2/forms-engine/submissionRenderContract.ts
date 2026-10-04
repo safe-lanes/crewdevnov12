@@ -41,6 +41,7 @@ export type CompanyFormSubmissionSummary = {
   versionNo?: string | null;
   releasedAt?: string | null;
   formName?: string | null;
+  formArchivedAt?: string | null;
   status: CompanyFormSubmissionStatus;
   canEdit: boolean;
   canVoid: boolean;

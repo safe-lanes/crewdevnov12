@@ -10,6 +10,10 @@ import type {
 } from "@shared/v2/forms-engine/submissionRenderContract";
 import { apiRequest } from "@/lib/queryClient";
 import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import {
   ConfiguredFormRenderer,
   type ConfiguredFormAnswerValue,
   type ConfiguredFormPart,
@@ -393,6 +397,10 @@ export function CompanySubmissionRenderer({
   const form = useQuery({
     queryKey: ["company-form-submission-form", activeSubmissionUuid],
     queryFn: () => fetchCompanySubmissionForm(activeSubmissionUuid),
+    // Pinned content stays immutable, but archive/void/replacement metadata can
+    // change. Revisit the exact submission endpoint instead of a fresh-looking
+    // pre-replacement cache entry inherited from the global two-minute TTL.
+    staleTime: 0,
     retry: false,
     enabled: !!activeSubmissionUuid,
   });
@@ -422,6 +430,9 @@ export function CompanySubmissionRenderer({
   const [voidReason, setVoidReason] = useState("");
   const [isVoiding, setIsVoiding] = useState(false);
   const [voidError, setVoidError] = useState<string | null>(null);
+  const [retirementConfirmation, setRetirementConfirmation] = useState<{
+    submissionUuid: string; archivedAt: string;
+  } | null>(null);
   const [selectedPartUuid, setSelectedPartUuid] = useState("");
   const draftAnswersRef = useRef(draftAnswers);
   const draftAnswerCommentsRef = useRef(draftAnswerComments);
@@ -820,20 +831,29 @@ export function CompanySubmissionRenderer({
     }
   };
 
-  const handleVoidSubmission = async () => {
+  const handleVoidSubmission = async (confirmed = false) => {
     if (!voidReason.trim() || isVoiding) return;
     setIsVoiding(true);
     setVoidError(null);
     try {
+      const current = await fetchCompanySubmissionForm(activeSubmissionUuid);
+      const retiredAt = current.submission.stageKey === "on_board" ? current.form.archivedAt : null;
+      if (retiredAt && (!confirmed || retirementConfirmation?.submissionUuid !== activeSubmissionUuid ||
+        retirementConfirmation.archivedAt !== retiredAt)) {
+        setRetirementConfirmation({ submissionUuid: activeSubmissionUuid, archivedAt: retiredAt });
+        return;
+      }
       await apiRequest(
         "POST",
         `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/void`,
-        { reason: voidReason.trim() },
+        { reason: voidReason.trim(), ...(retiredAt ? { retirementConfirmedAt: retiredAt } : {}) },
       );
+      setRetirementConfirmation(null);
       setVoidReason("");
       await refetchPersistedForm();
     } catch (error) {
       setVoidError(reportSaveFailure(error));
+      await refetchPersistedForm();
     } finally {
       setIsVoiding(false);
     }
@@ -844,6 +864,25 @@ export function CompanySubmissionRenderer({
   const relatedSubmissions = lifecycleForm?.replacementHistory ?? [];
   const submissionStatus = lifecycleForm?.submission.status;
   return React.createElement(React.Fragment, null,
+    React.createElement(AlertDialog, {
+      open: retirementConfirmation !== null,
+      onOpenChange: (open: boolean) => { if (!open) setRetirementConfirmation(null); },
+    },
+      React.createElement(AlertDialogContent, null,
+        React.createElement(AlertDialogHeader, null,
+          React.createElement(AlertDialogTitle, null, "Void retired form?"),
+          React.createElement(AlertDialogDescription, null,
+            "This form has been retired. Voiding will not allow a replacement on this form.")),
+        React.createElement(AlertDialogFooter, null,
+          React.createElement(AlertDialogCancel, { disabled: isVoiding }, "Cancel"),
+          React.createElement("button", {
+            type: "button", disabled: isVoiding,
+            className: "rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground",
+            onClick: () => void handleVoidSubmission(true),
+          }, isVoiding ? "Voiding…" : "Confirm void")))),
+    lifecycleForm?.submission.stageKey === "on_board" && lifecycleForm.form.archivedAt &&
+      submissionStatus === "voided" && !lifecycleForm.submission.replacedBySubmissionUuid &&
+      React.createElement("p", { className: "mb-3 text-sm" }, "No replacement — form retired"),
     lifecycleForm?.systemValuesChangedNotice && React.createElement(
       "div",
       { role: "status", className: "mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" },

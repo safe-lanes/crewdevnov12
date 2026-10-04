@@ -176,6 +176,16 @@ describe("Company Form relationship boundary", () => {
     const ship = await createShipRole(`CF Boundary Ship ${SUFFIX}`, [targetVesselId]);
     shipRoleUuid = ship.roleUuid;
     shipUserId = ship.userId;
+    const shipRank = await db.query(
+      `SELECT rank_id FROM adm_company_ranks_v2
+       WHERE is_deleted = false AND is_role_row = false AND rank_id IS NOT NULL
+       ORDER BY id LIMIT 1`,
+    );
+    expect(shipRank.rows).toHaveLength(1);
+    await db.query(
+      "UPDATE master_users SET fullname = $2, designation = $3 WHERE id = $1",
+      [shipUserId, `Boundary Master ${SUFFIX}`, shipRank.rows[0].rank_id],
+    );
     const wrongVessel = await createShipRole(`CF Boundary Wrong Vessel ${SUFFIX}`, [otherVesselId]);
     wrongVesselRoleUuid = wrongVessel.roleUuid;
     wrongVesselUserId = wrongVessel.userId;
@@ -219,7 +229,7 @@ describe("Company Form relationship boundary", () => {
     await db.query(
       `INSERT INTO adm_form_versions_v2
          (fv_uuid, form_id, version_no, version_date, status, stage_key, is_deleted, released_at)
-       VALUES ($1, $2, '01', '2026-01-01', 'released', 'before_joining', false, NOW())`,
+       VALUES ($1, $2, '01', '2026-01-01', 'released', 'on_board', false, NOW())`,
       [formVersionUuid, form.rows[0].id],
     );
 
@@ -256,10 +266,10 @@ describe("Company Form relationship boundary", () => {
          (section_uuid, form_version_uuid, form_part_uuid, section_code, section_title,
           applicable_vessel_types, responsible_mode, responsible_role_uuid, comment_box_required,
           signature_officer_required, signature_seafarer_required, default_option_set_uuid,
-          layout_preference, sort_order, is_deleted)
+          layout_preference, sort_order, is_deleted, vessel_signature_role_uuids)
         VALUES ($1, $2, $3, 'BOUNDARY', 'Boundary section', $4, 'role', $6, false,
-               false, false, $5, 'auto', 0, false)`,
-      [sectionUuid, formVersionUuid, partUuid, JSON.stringify([vesselTypeUuid]), optionSetUuid, shipRoleUuid],
+               false, false, $5, 'auto', 0, false, $7)`,
+      [sectionUuid, formVersionUuid, partUuid, JSON.stringify([vesselTypeUuid]), optionSetUuid, shipRoleUuid, [shipRoleUuid]],
     );
     await db.query(
       `INSERT INTO frm_questions
@@ -318,7 +328,7 @@ describe("Company Form relationship boundary", () => {
     await db.query(
       `INSERT INTO crew_assignments
          (assign_uuid, crew_uuid, vessel_uuid, assignment_type, is_current, is_deleted)
-       VALUES ($1, $2, $3, 'Planned', false, false)`,
+       VALUES ($1, $2, $3, 'OnBoard', true, false)`,
       [assignUuid, crewUuid, targetVesselUuid],
     );
   }
@@ -327,7 +337,7 @@ describe("Company Form relationship boundary", () => {
     {
       label: "eligible forms",
       method: "get",
-      path: () => `/api/v2/company-form-submissions/subjects/crew_assignment/${assignmentUuid}/eligible-forms?stageKey=before_joining`,
+      path: () => `/api/v2/company-form-submissions/subjects/crew_assignment/${assignmentUuid}/eligible-forms?stageKey=on_board`,
     },
     {
       label: "submission list",
