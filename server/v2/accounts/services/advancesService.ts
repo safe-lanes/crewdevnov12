@@ -323,10 +323,14 @@ export const advancesService = {
   async close(
     advanceUuid: string,
     remark: string,
+    writeOffPeriod: string,
     auditUserUuid?: string,
   ): Promise<AccAdvanceV2> {
     if (!remark?.trim()) {
       throw coded("VALIDATION", "A remark is required to close an advance (write-off reason)");
+    }
+    if (typeof writeOffPeriod !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(writeOffPeriod)) {
+      throw coded("VALIDATION", "A valid write-off period (YYYY-MM) is required");
     }
     const existing = await this.getByUuid(advanceUuid);
     if (existing.status === "cancelled" || existing.status === "closed") {
@@ -343,7 +347,7 @@ export const advancesService = {
       : writeOffNote;
     const updated = await advancesRepository.update(
       advanceUuid,
-      applyAuditUser({ status: "closed", reason, auditUserUuid }, false),
+      applyAuditUser({ status: "closed", reason, writeOffPeriod, auditUserUuid }, false),
     );
     return updated!;
   },

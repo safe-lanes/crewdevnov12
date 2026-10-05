@@ -146,6 +146,7 @@ export function AdvancesTab({
   const [cancelTarget, setCancelTarget] = useState<any | null>(null);
   const [closeTarget, setCloseTarget] = useState<any | null>(null);
   const [closeRemark, setCloseRemark] = useState("");
+  const [closePeriod, setClosePeriod] = useState("");
   const [acting, setActing] = useState(false);
 
   const set = <K extends keyof AdvanceForm>(key: K, value: AdvanceForm[K]) =>
@@ -231,6 +232,7 @@ export function AdvancesTab({
       await accountsApiV2.advances.close(
         closeTarget.advanceUuid,
         closeRemark.trim(),
+        closePeriod,
       );
       queryClient.invalidateQueries({ queryKey: listKey });
       toast({ title: "Advance closed (remainder written off)" });
@@ -336,6 +338,7 @@ export function AdvancesTab({
                     disabled={acting}
                     onClick={() => {
                       setCloseRemark("");
+                      setClosePeriod(period);
                       setCloseTarget(row);
                     }}
                     data-testid={`button-close-advance-${row.advanceUuid}`}
@@ -349,7 +352,7 @@ export function AdvancesTab({
         },
       },
     ],
-    [mayEdit, acting],
+    [mayEdit, acting, period],
   );
 
   return (
@@ -659,6 +662,11 @@ export function AdvancesTab({
             {formatMoney(closeTarget?.outstanding)} for{" "}
             {closeTarget?.crewName}. Nothing further is posted. A remark is
             required.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Write-off period: {formatPeriod(closePeriod)}. On recalculation,
+            saved recoveries before this month are kept; recoveries for this
+            month and later are removed.
           </p>
           <Textarea
             rows={3}

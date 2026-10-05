@@ -1,4 +1,4 @@
-import { eq, and, inArray, lt, lte } from "drizzle-orm";
+import { eq, and, inArray, lt, lte, or, isNull } from "drizzle-orm";
 import { getDb } from "../../db";
 import {
   accTenantConfigV2,
@@ -305,6 +305,10 @@ export class EngineReads {
           eq(accWageLedgerV2.isAdjustment, false),
           eq(accWageLedgerV2.isDeleted, false),
           eq(accAdvancesV2.status, "closed"),
+          or(
+            isNull(accAdvancesV2.writeOffPeriod),
+            lt(accWageLedgerV2.period, accAdvancesV2.writeOffPeriod),
+          ),
           eq(accAdvancesV2.isDeleted, false),
           eq(accPortageBillsV2.isDeleted, false),
         ),
