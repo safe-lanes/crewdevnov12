@@ -12,7 +12,7 @@ export async function discoverCompanyFormTests(directory = "tests") {
     else if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(name)) {
       const content = await fs.readFile(name, "utf8");
       if (/company[-_]?form|submission|configured-form|generic-form-editor|form-(?:category-creation|option-set-migration)/i.test(name) ||
-        /(?:company-forms\/|forms-engine\/|configured-form\/|GenericFormEditor|\/(?:formsService|formsRepository|formStructureService|formStructureRepository)["'])/.test(content) ||
+        /(?:company-forms\/|forms-engine\/|configured-form\/|GenericFormEditor|OnBoardStatusEditDialog_v2|\/(?:formsService|formsRepository|formStructureService|formStructureRepository)["'])/.test(content) ||
         // A Promotions E2E test merely mocks the standard-form picker endpoint;
         // that is not Company Forms/submission coverage. Direct authoring API
         // integration tests are, even without importing the service.

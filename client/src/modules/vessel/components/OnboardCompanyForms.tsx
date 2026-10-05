@@ -44,7 +44,9 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
     void history.refetch();
     void client.invalidateQueries({ queryKey: ["onboard-company-form-counts"] });
   };
-  if (active) return <CompanySubmissionRenderer key={active} submissionUuid={active} onBack={() => { setActive(null); changed(); }} />;
+  if (active) return <CompanySubmissionRenderer key={active} submissionUuid={active}
+    entryStage={{ stageKey: "on_board", submissionUuids: submissions.map(s => s.submissionUuid) }}
+    onBack={() => { setActive(null); changed(); }} />;
   const chosen = eligible.data?.find(form => form.formVersionUuid === selected);
   const existing = chosen && submissions.find(s => s.formUuid === chosen.formUuid && s.status !== "voided");
   return <div className="space-y-4" data-testid="onboard-company-forms">
@@ -83,7 +85,7 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
       <p>{s.systemSnapshotAt ? "Declaration" : "Created"} {sailDate(s.systemSnapshotAt ?? s.createdAt)}</p>
       {s.status === "voided" && s.formArchivedAt && !s.replacedBySubmissionUuid &&
         <p>No replacement — form retired</p>}
-      {s.replacementHistory?.map(link => <p key={link.submissionUuid}>{link.label}{" "}
+      {s.replacementHistory?.filter(link => submissions.some(s => s.submissionUuid === link.submissionUuid)).map(link => <p key={link.submissionUuid}>{link.label}{" "}
         <button className="text-primary underline" onClick={() => setActive(link.submissionUuid)}>
           {link.targetLabel || "Open linked declaration — historical label unavailable"}</button></p>)}
       <Button variant="outline" className="mt-2" onClick={() => setActive(s.submissionUuid)}>

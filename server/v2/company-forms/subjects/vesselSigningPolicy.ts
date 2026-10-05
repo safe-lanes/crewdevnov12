@@ -35,15 +35,32 @@ export async function captureVesselSigner(principal: any, executor: any) {
 
 export const authorizeCrewSectionAction: NonNullable<CompanyFormSubjectAdapter<CrewAssignmentSubject>["authorizeSectionAction"]> = async input => {
   if (input.principal.kind !== "vessel") {
-    if (input.principal.kind === "office" && input.signatureType === "seafarer" && input.stageKey !== "before_joining") {
-      throw new CompanyFormPermissionError("Office witnessing is available for before-joining forms.");
+    if (input.principal.kind === "office" && input.signatureType === "seafarer" &&
+      input.stageKey !== "before_joining" &&
+      !(input.stageKey === "at_sign_off" && input.section.signatureOfficerRequired)) {
+      throw new CompanyFormPermissionError("Office witnessing requires before-joining or a configured Company Representative sign-off route.");
     }
     return;
   }
-  if (input.stageKey !== "on_board" ||
+  if (!["on_board", "at_sign_off"].includes(input.stageKey ?? "") ||
     !input.section.vesselSignatureRoleUuids?.includes(input.principal.roleId) ||
-    input.signatureType === "officer") {
+    input.signatureType === "officer" ||
+    (input.stageKey === "at_sign_off" && !input.section.signatureVesselManagementRequired)) {
     throw new CompanyFormPermissionError("This role is not permitted for on-board signing or witnessing.");
+  }
+  if (!input.subject.isCurrent || input.subject.signOffDate) {
+    const signatures = input.signatures ?? [];
+    const seafarer = signatures.filter(s => !s.isDeleted && s.signatureType === "seafarer");
+    const provenance = seafarer[0]?.subjectProvenance;
+    if (input.stageKey !== "at_sign_off" || input.subject.isDeleted ||
+      input.subject.assignmentType !== "OnBoard" || input.subject.isCurrent || !input.subject.signOffDate ||
+      input.action !== "save_signature" || input.signatureType !== "vessel_management" ||
+      signatures.some(s => s.signatureType === "vessel_management") ||
+      seafarer.length !== 1 || !seafarer[0].signedAt ||
+      provenance?.aboard !== true || provenance.assignmentUuid !== input.subject.assignUuid ||
+      provenance.crewUuid !== input.subject.crewUuid || provenance.vesselUuid !== input.subject.vesselUuid) {
+      throw new CompanyFormPermissionError("After sign-off only a missing Vessel Management signature with proven aboard Seafarer signing is permitted.");
+    }
   }
   await captureVesselSigner(input.principal, input.executor);
   const scope = await resolveTrustedVesselScope(input.principal.userId, input.executor);

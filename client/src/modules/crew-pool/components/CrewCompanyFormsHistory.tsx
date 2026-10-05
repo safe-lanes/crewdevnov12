@@ -23,7 +23,7 @@ export function CrewCompanyFormsHistory(props: Props) {
           <DialogTitle>Company Form history</DialogTitle>
           <DialogDescription>Saved declaration, pinned version and recorded signing information.</DialogDescription>
         </DialogHeader>
-        {active && <CompanySubmissionRenderer key={active} submissionUuid={active} onBack={close} showSubmissionMetadata />}
+        {active && <CompanySubmissionRenderer key={active} submissionUuid={active} onBack={close} showSubmissionMetadata requestContext={{ crewUuid: props.crewUuid }} />}
         <Button type="button" variant="outline" onClick={close} data-testid="button-close-crew-company-form">
           Back to Company Forms
         </Button>

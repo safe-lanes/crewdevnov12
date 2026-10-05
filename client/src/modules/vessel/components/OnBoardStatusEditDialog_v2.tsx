@@ -22,6 +22,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { API_BASE_URL } from '@/config/api';
 import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { SignoffCompanyForms } from "./SignoffCompanyForms";
 
 const SIGN_OFF_REASONS = [
     "Contract Completed",
@@ -84,6 +85,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     const { userType } = usePermissions();
     const queryClient = useQueryClient();
     const { getVesselName } = useVesselLookup();
+    const [signoffFormsOpen, setSignoffFormsOpen] = useState(false);
     const [signOffDateOpen, setSignOffDateOpen] = useState(false);
     const [takeOverDateOpen, setTakeOverDateOpen] = useState(false);
     const [travelEndDateOpen, setTravelEndDateOpen] = useState(false);
@@ -120,6 +122,9 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         setEvidenceNote('');
         setVerifiedAssignUuid(null);
     }, [planningData?.planUuid, open]);
+    React.useEffect(() => {
+        setSignoffFormsOpen(false);
+    }, [open, planningData?.planUuid, planningData?.crewAssignUuid, planningData?.crewUuid, vesselUuid, verifiedAssignUuid]);
     const reconcileIncumbent = async () => {
         if (!planningData?.planUuid || !reviewedAssignUuid || evidenceNote.trim().length < 20) return;
         setReconciling(true);
@@ -570,13 +575,25 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <>
+        <Dialog open={open && !signoffFormsOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-lg font-medium text-[#16569e] border-b border-[#16569e] pb-2">
                         Rank: {rank}
                     </DialogTitle>
                 </DialogHeader>
+
+                {isOnboardCrewAssigned && (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        data-testid="button-open-signoff-forms"
+                        onClick={() => setSignoffFormsOpen(true)}
+                    >
+                        Sign-off forms
+                    </Button>
+                )}
 
                 {!isOnboardCrewAssigned && (
                     <p className="text-xs text-amber-600 mt-2" data-testid="text-no-onboard-crew-message">
@@ -1057,5 +1074,26 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                 </Form>
             </DialogContent>
         </Dialog>
+        <Dialog open={open && signoffFormsOpen} onOpenChange={(value) => {
+            if (!value) setSignoffFormsOpen(false);
+        }}>
+            <DialogContent className="w-[1200px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>At-sign-off Company Forms</DialogTitle>
+                </DialogHeader>
+                {signoffFormsOpen && open && (
+                    <SignoffCompanyForms
+                        planUuid={planningData?.planUuid || ""}
+                        assignmentUuid={planningData?.crewAssignUuid || verifiedAssignUuid || ''}
+                        crewUuid={planningData?.crewUuid || ''}
+                        vesselUuid={vesselUuid}
+                    />
+                )}
+                <Button type="button" variant="outline" onClick={() => setSignoffFormsOpen(false)}>
+                    Back to On Board Status
+                </Button>
+            </DialogContent>
+        </Dialog>
+        </>
     );
 };

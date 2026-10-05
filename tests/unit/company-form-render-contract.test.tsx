@@ -367,6 +367,16 @@ describe("Company Form submission renderer contract", () => {
     expect(model.sectionComments["section-a"]).toBe("Section note");
   });
 
+  it("refuses cross-stage content in operational viewers while G3 remains unscoped", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(formContract()), {
+      status: 200, headers: { "content-type": "application/json" },
+    })));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid}
+      entryStage={{ stageKey: "at_sign_off", submissionUuids: [submissionUuid] }} />);
+    await waitFor(() => expect(activeContainer!.textContent).toContain("Open full history in crew profile G3"));
+    expect(activeContainer!.querySelector('[data-testid="company-submission-metadata"]')).toBeNull();
+  });
+
   it("fetches and renders the pinned form through the submission endpoint and exposes answer editing", async () => {
     const calls: Array<{ url: string; method: string; body?: unknown }> = [];
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -1743,6 +1753,47 @@ describe("Company Form submission renderer contract", () => {
     await waitFor(() => expect(activeContainer?.textContent).toContain(fresh.replacementHistory[0].targetLabel));
     expect(fetch.mock.calls.some(([url]) => String(url) === `/api/v2/company-form-submissions/${targetUuid}/form`)).toBe(true);
     expect(fetch.mock.calls.every(([url]) => !String(url).includes("/admin/"))).toBe(true);
+  });
+
+  it("keeps a late signature-only viewer answer-locked and saves only the missing Vessel Management signature", async () => {
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(() => ({
+      beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), clearRect: vi.fn(),
+    }) as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/png;base64,dGVzdA==");
+    const contract = formContract();
+    contract.submission.canEdit = false;
+    contract.submission.canVoid = false;
+    contract.submission.stageKey = "at_sign_off";
+    contract.version.stageKey = "at_sign_off";
+    contract.version.stageLabel = "At sign-off";
+    const section = contract.parts[0].sections[0];
+    section.canEdit = false;
+    section.canSubmit = false;
+    section.signatureVesselManagementRequired = true;
+    section.canSign = { officer: false, seafarer: false, vessel_management: true };
+    contract.signatureMethodOptions = { vessel_management: [{ method: "vessel_management", label: "Vessel Management" }] };
+    const calls: Array<{ method: string; url: string }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const method = init?.method ?? "GET", url = String(input);
+      calls.push({ method, url });
+      return new Response(JSON.stringify(method === "POST" ? {} : contract), { status: method === "POST" ? 201 : 200,
+        headers: { "content-type": "application/json" } });
+    }));
+    mount(<CompanySubmissionRenderer submissionUuid={submissionUuid} requestContext={{ crewUuid: "exact-crew" }} />);
+    await waitFor(() => expect(activeContainer?.querySelector('[data-testid="live-signature-vessel_management-section-a"]')).not.toBeNull());
+    expect(activeContainer!.querySelector('[data-testid="preview-response-free-text-question"]')).toHaveProperty("readOnly", true);
+    expect(activeContainer!.textContent).toContain("At sign-off");
+    for (const label of ["Save draft", "Submit", "Remove signature", "Void submission"]) {
+      expect([...activeContainer!.querySelectorAll("button")].some(button => button.textContent === label)).toBe(false);
+    }
+    const canvas = activeContainer!.querySelector("canvas[aria-label='Signature canvas']")!;
+    fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 1, clientY: 1 });
+    fireEvent.pointerMove(canvas, { pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(canvas, { pointerId: 1 });
+    fireEvent.click([...activeContainer!.querySelectorAll("button")].find(button => button.textContent?.includes("Save signature"))!);
+    await waitFor(() => expect(calls.some(call => call.method === "POST")).toBe(true));
+    expect(calls.filter(call => call.method !== "GET")).toEqual([{ method: "POST",
+      url: `/api/v2/company-form-submissions/${submissionUuid}/sections/section-a/signatures?crewUuid=exact-crew` }]);
   });
 
   it("requires explicit retirement confirmation and cancellation performs no write", async () => {

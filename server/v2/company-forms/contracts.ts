@@ -125,6 +125,9 @@ export type CompanyFormSubjectAdapter<Context = unknown> = {
   ): Promise<readonly SubjectLookupResult<Context>[] | undefined>;
   groupingIdentifier(subject: Context, subjectRef: string): string;
   homeGroupDisplay?(subject: Context): CompanyFormHomeGroupDisplay;
+  homeActions?(principal: CompanyFormPrincipal, subject: Context): Promise<{
+    startableStages: string[]; unfinishedStageKeys: string[];
+  }>;
   isOutstanding(subject: Context): boolean;
   canStart(subject: Context): boolean;
   linkSubmission(input: {
@@ -147,7 +150,15 @@ export type CompanyFormSubjectAdapter<Context = unknown> = {
   authorizeSectionAction?(input: {
     principal: CompanyFormPrincipal; subject: Context; stageKey: string | null;
     section: any; action: CompanyFormAction; signatureType?: string; executor: any;
+    signatures?: readonly any[];
   }): Promise<void>;
+  /** Server-only provenance captured under the subject lock at signing. */
+  signatureProvenance?(subject: Context): Record<string, unknown>;
+  authorizeVersionStart?(input: {
+    principal: CompanyFormPrincipal; subject: Context; stageKey: string | null;
+    formVersionUuid: string; executor: any;
+  }): Promise<void>;
+  assertRequestContext?(subject: Context, query: Request["query"], executor?: unknown, locked?: boolean): Promise<void>;
   authorize(
     principal: CompanyFormPrincipal,
     action: CompanyFormAction,

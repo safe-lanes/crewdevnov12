@@ -13,6 +13,8 @@ export type CompanyFormSubmissionHome = {
     subjectRef: string;
     groupId: string;
     display?: CompanyFormHomeGroupDisplay;
+    startableStages?: string[];
+    unfinishedStageKeys?: string[];
     submissions: CompanyFormSubmissionSummary[];
     totalCount: number;
     outstandingCount: number;

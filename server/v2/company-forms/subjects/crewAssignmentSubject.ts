@@ -11,6 +11,9 @@ import {
   crewMembersV2,
 } from "../../../../shared/v2/crew-pool/schema";
 import { frmCompanySubmissionAssignments } from "../../../../shared/v2/forms-engine/submissions";
+import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
+import { CompanyFormPermissionError } from "../errors";
+import { frmSections, frmFormParts } from "../../../../shared/v2/forms-engine/schema";
 import {
   SHARED_SYSTEM_FIELDS,
   SUBJECT_SYSTEM_FIELDS,
@@ -317,6 +320,15 @@ export function createCrewAssignmentSubject(
         ...(subject.isDeleted ? [{ label: "Assignment record", value: "Archived history" }] : []),
       ],
     }),
+    homeActions: async (principal, subject) => {
+      const signedOff = !subject.isDeleted && subject.assignmentType === "OnBoard" &&
+        !subject.isCurrent && !!subject.signOffDate;
+      return {
+        startableStages: signedOff && principal.kind === "office" &&
+          await authorizeOffice(principal, "create_submission") ? ["at_sign_off"] : [],
+        unfinishedStageKeys: signedOff ? ["at_sign_off"] : [],
+      };
+    },
     isOutstanding: (subject) =>
       !subject.isDeleted && subject.assignmentType.trim().toLocaleLowerCase() !== "cancelled",
     canStart: (subject) =>
@@ -330,8 +342,61 @@ export function createCrewAssignmentSubject(
     systemFields,
     resolveSystemField: resolveCrewSystemField,
     allowedActions,
+    authorizeVersionStart: async ({ principal, subject, stageKey, formVersionUuid, executor }) => {
+      if (stageKey !== "at_sign_off") return;
+      if (principal.kind === "office") {
+        if (!await authorizeOffice(principal, "read_eligible_forms")) throw new CompanyFormPermissionError();
+        return;
+      }
+      if (principal.kind !== "vessel") return;
+      const sections = await executor.select({ section: frmSections, part: frmFormParts })
+        .from(frmSections).innerJoin(frmFormParts, eq(frmFormParts.formPartUuid, frmSections.formPartUuid))
+        .where(and(eq(frmSections.formVersionUuid, formVersionUuid), eq(frmSections.isDeleted, false),
+          eq(frmFormParts.isDeleted, false)));
+      const candidates = sections.filter((row: any) => !row.part.isOfficeOnly &&
+        row.section.signatureVesselManagementRequired && row.section.vesselSignatureRoleUuids?.includes(principal.roleId));
+      let permitted = false;
+      for (const { section } of candidates) {
+        await authorizeCrewSectionAction({ principal, subject, stageKey, section,
+          action: "create_submission", executor });
+        permitted = true;
+      }
+      if (!permitted) throw new CompanyFormPermissionError("No pinned sign-off section permits this vessel role to start the declaration.");
+    },
+    assertRequestContext: async (subject, query, executor: any = getDb(), locked = false) => {
+      if (query.crewUuid !== undefined && query.crewUuid !== subject.crewUuid) {
+        throw new CompanyFormPermissionError("This declaration does not belong to the requested crew profile.");
+      }
+      if (query.vesselUuid !== undefined && query.vesselUuid !== subject.vesselUuid) {
+        throw new CompanyFormPermissionError("This assignment does not belong to the requested vessel.");
+      }
+      if (query.planUuid !== undefined) {
+        if (typeof query.planUuid !== "string" || !query.crewUuid || !query.vesselUuid) throw new CompanyFormPermissionError();
+        let planningQuery = executor.select().from(vesselPlanningV2).where(eq(vesselPlanningV2.planUuid, query.planUuid)).limit(1);
+        if (locked) planningQuery = planningQuery.for("share");
+        const [planning] = await planningQuery;
+        if (!planning || planning.isDeleted || planning.isArchived ||
+          planning.crewAssignUuid !== subject.assignUuid || planning.crewUuid !== subject.crewUuid ||
+          planning.vesselUuid !== subject.vesselUuid || !subject.isCurrent || subject.signOffDate ||
+          subject.assignmentType !== "OnBoard") {
+          throw new CompanyFormPermissionError("The exact incumbent planning assignment has changed or is unavailable; no assignment will be inferred.");
+        }
+      }
+    },
+    signatureProvenance: (subject) => ({
+      assignmentUuid: subject.assignUuid, crewUuid: subject.crewUuid,
+      vesselUuid: subject.vesselUuid,
+      aboard: subject.isCurrent && subject.assignmentType === "OnBoard" && !subject.signOffDate,
+    }),
     authorizeStageAction: (principal, action, subject, stageKey) => {
       if (action.startsWith("read_") || action === "list_submissions" || action === "count_submissions") return true;
+      if (stageKey === "at_sign_off") {
+        if (subject.isDeleted || subject.assignmentType !== "OnBoard") return false;
+        const aboard = subject.isCurrent && !subject.signOffDate;
+        const signedOff = !subject.isCurrent && !!subject.signOffDate;
+        if (principal.kind === "vessel") return aboard || (signedOff && action === "save_signature");
+        return aboard || signedOff;
+      }
       if (stageKey === "on_board" && (!subject.isCurrent ||
         subject.assignmentType.replace(/[\s_]/g, "").toLowerCase() !== "onboard")) return false;
       return principal.kind !== "vessel" || stageKey === "on_board";

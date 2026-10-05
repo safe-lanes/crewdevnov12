@@ -278,11 +278,29 @@ export class CompanyFormSubmissionsService {
     const principal = await this.resolvePrincipal(req);
     const submission = await this.renderRepository.findSubmission(submissionUuid);
     if (!submission) throw new CompanyFormNotFoundError("Company Form submission not found.");
-    const adapter = this.registry.get(submission.subjectType);
+    const adapter = this.contextAdapter(req, submission.subjectType);
     const subject = await adapter.lookup(submission.subjectRef);
     if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
     await this.authorize(adapter, principal, action, subject.context);
     return { submission, adapter, subject, principal };
+  }
+
+  private contextAdapter(req: Request, subjectType: string): CompanyFormSubjectAdapter<any> {
+    const adapter = this.registry.get(subjectType);
+    if (!adapter.assertRequestContext) return adapter;
+    return {
+      ...adapter,
+      lookup: async (ref, executor) => {
+        const subject = await adapter.lookup(ref, executor);
+        if (subject) await adapter.assertRequestContext!(subject.context, req.query ?? {}, executor);
+        return subject;
+      },
+      lockForStart: async (ref, executor) => {
+        const subject = await adapter.lockForStart(ref, executor);
+        if (subject) await adapter.assertRequestContext!(subject.context, req.query ?? {}, executor, true);
+        return subject;
+      },
+    };
   }
 
   private async canEditSubmission(
@@ -359,6 +377,7 @@ export class CompanyFormSubmissionsService {
     parts: readonly any[];
     questions: readonly any[];
     states: readonly any[];
+    signatures: readonly any[];
     applicableBySection: ReadonlyMap<string, boolean>;
     methodOptions: Partial<Record<CompanyFormSignatureType, CompanyFormSignatureMethodOption[]>>;
   }): Promise<Record<string, CompanyFormSubmissionSectionActions>> {
@@ -400,12 +419,21 @@ export class CompanyFormSubmissionsService {
         const signatureRequired = signatureType === "officer"
           ? section.signatureOfficerRequired
           : signatureType === "vessel_management" ? section.signatureVesselManagementRequired : section.signatureSeafarerRequired;
-        canSign[signatureType] = canEdit && input.canSaveSignatureAction &&
+        const stagePermitsSigning = !input.adapter.authorizeStageAction ||
+          input.adapter.authorizeStageAction(input.principal, "save_signature", input.subject, input.stageKey);
+        canSign[signatureType] = applicable && mutable && stagePermitsSigning && input.canSaveSignatureAction &&
           signatureRequired && (input.methodOptions[signatureType]?.length ?? 0) > 0;
         if (canSign[signatureType]) {
           try {
+            await assertCompanyFormSectionEditable({
+              principal: input.principal, section,
+              part: partByUuid.get(section.formPartUuid) ?? { isOfficeOnly: false }, executor: getDb(),
+            });
             await input.adapter.authorizeSectionAction?.({ principal: input.principal, subject: input.subject,
-              stageKey: input.stageKey, section, action: "save_signature", signatureType, executor: getDb() });
+              stageKey: input.stageKey, section, action: "save_signature", signatureType,
+              signatures: input.signatures.map(row => row.signature ?? row).filter(signature =>
+                signature.sectionStateUuid === input.states.find(state => state.sectionUuid === section.sectionUuid)?.sectionStateUuid),
+              executor: getDb() });
           } catch { canSign[signatureType] = false; }
         }
       }
@@ -643,7 +671,8 @@ export class CompanyFormSubmissionsService {
       principal,
       canEditSubmission: canEdit,
       canSubmitAction,
-      canSaveSignatureAction,
+      canSaveSignatureAction: canSaveSignatureAction && data.submission.status === "in_progress",
+      signatures: data.signatures as any[],
       sections: data.sections as any[],
       parts: data.parts as any[],
       questions: data.questions as any[],
@@ -981,7 +1010,7 @@ export class CompanyFormSubmissionsService {
     subjectRef: string;
     stageKey?: string;
   }): Promise<EligibleCompanyForm[]> {
-    const adapter = this.registry.get(input.subjectType);
+    const adapter = this.contextAdapter(input.req, input.subjectType);
     const principal = await this.resolvePrincipal(input.req);
     const subject = await adapter.lookup(input.subjectRef);
     if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
@@ -1012,7 +1041,7 @@ export class CompanyFormSubmissionsService {
     formUuid: string;
     formVersionUuid: string;
   }): Promise<CompanyFormSubmissionRow> {
-    const adapter = this.registry.get(input.subjectType);
+    const adapter = this.contextAdapter(input.req, input.subjectType);
     const principal = await this.resolvePrincipal(input.req);
     const submission = await this.repository.createPinnedSubmission({
       adapter,
@@ -1023,10 +1052,12 @@ export class CompanyFormSubmissionsService {
       authorizeLockedSubject: async (subject) => {
         await this.authorize(adapter, principal, "create_submission", subject.context);
       },
-      authorizeLockedVersion: async (subject, stageKey) => {
+      authorizeLockedVersion: async (subject, stageKey, executor) => {
         if (adapter.authorizeStageAction && !adapter.authorizeStageAction(principal, "create_submission", subject.context, stageKey)) {
           throw new CompanyFormPermissionError("This actor cannot start a form at this stage.");
         }
+        await adapter.authorizeVersionStart?.({ principal, subject: subject.context,
+          stageKey, formVersionUuid: input.formVersionUuid, executor });
       },
     });
     return submission;
@@ -1037,7 +1068,7 @@ export class CompanyFormSubmissionsService {
     subjectType: string;
     subjectRef: string;
   }) {
-    const adapter = this.registry.get(input.subjectType);
+    const adapter = this.contextAdapter(input.req, input.subjectType);
     const principal = await this.resolvePrincipal(input.req);
     const subject = await adapter.lookup(input.subjectRef);
     if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
@@ -1120,6 +1151,7 @@ export class CompanyFormSubmissionsService {
       return {
         subjectRef: subject.subjectRef,
         display: adapter.homeGroupDisplay?.(subject.context),
+        ...await adapter.homeActions?.(principal, subject.context),
         ...classified,
         submissions: await Promise.all(classified.submissions.map(async row => ({
           ...row,

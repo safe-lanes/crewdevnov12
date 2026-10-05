@@ -97,7 +97,8 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
     staleTime: 0,
   });
   const forms = eligible.data ?? [];
-  const submissions = previouslyVerified && history.isSuccess ? history.data?.submissions ?? [] : [];
+  const submissions = previouslyVerified && history.isSuccess
+    ? (history.data?.submissions ?? []).filter(s => s.stageKey === "before_joining") : [];
   const chosen = forms.find((form) => form.formVersionUuid === selectedVersion);
   const existing = chosen && submissions.find((s) => s.formUuid === chosen.formUuid && s.status !== "voided");
   const ready = previouslyVerified && verification.isSuccess && !verification.isFetching &&
@@ -113,7 +114,7 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
       // must never authorize starting on a cleared or switched reliever.
       await verifyJoiningAssignment(context);
       const current = await read<{ submissions: CompanyFormSubmissionSummary[] }>(`${subjectPath}/submissions`);
-      const parent = current.submissions.find((s) => s.formUuid === chosen.formUuid && s.status !== "voided");
+      const parent = current.submissions.find((s) => s.stageKey === "before_joining" && s.formUuid === chosen.formUuid && s.status !== "voided");
       const result = parent ?? await (await apiRequest("POST", `${subjectPath}/submissions`, {
         formUuid: chosen.formUuid,
         formVersionUuid: chosen.formVersionUuid,
@@ -131,12 +132,13 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
   if (activeSubmission) return <CompanySubmissionRenderer
     key={activeSubmission}
     submissionUuid={activeSubmission}
+    entryStage={{ stageKey: "before_joining", submissionUuids: submissions.map(s => s.submissionUuid) }}
     onBack={() => { setActiveSubmission(null); void history.refetch(); void verification.refetch(); }}
   />;
 
   return <div className="space-y-4" data-testid="joining-company-forms">
     <p className="text-sm text-muted-foreground">
-      Before joining · recorded assignment <span className="font-mono break-all">{context.assignmentUuid || "not linked"}</span>
+      Before-joining Company Forms
     </p>
     {!hasLink && <p role="alert">No recorded reliever assignment is linked. Reconciliation is required; starting a declaration is disabled.</p>}
     {verification.isFetching && <p role="status">Verifying the recorded planning assignment…</p>}
@@ -167,7 +169,7 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
         <div>{submission.formName ?? forms.find((form) => form.formUuid === submission.formUuid)?.formName ?? "Company declaration"} · {submission.status}</div>
         <div className="text-muted-foreground">Version {submission.versionNo?.padStart(2, "0") ?? "unavailable"} · Released {sailDate(submission.releasedAt)}</div>
         <div className="text-muted-foreground">{submission.stageLabel ?? "Stage unavailable"}</div>
-        {submission.replacementHistory?.map(link => <div key={link.submissionUuid}>
+        {submission.replacementHistory?.filter(link => submissions.some(s => s.submissionUuid === link.submissionUuid)).map(link => <div key={link.submissionUuid}>
           {link.label} <button type="button" className="text-primary underline"
             onClick={() => setActiveSubmission(link.submissionUuid)}>
             {link.targetLabel || "Open linked declaration — historical label unavailable"}</button>

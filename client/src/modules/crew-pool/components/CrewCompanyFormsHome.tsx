@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
 import type {
@@ -22,6 +23,48 @@ type CrewCompanyFormsHomeProps = {
 };
 
 const unavailable = "Unavailable";
+
+type EligibleSignoffForm = {
+  formUuid: string;
+  formVersionUuid: string;
+  formName?: string | null;
+  versionNo?: string | null;
+};
+
+type SignoffHomeGroup = CompanyFormSubmissionHome["groups"][number] & {
+  startableStages?: string[];
+  unfinishedStageKeys?: string[];
+};
+
+function queryString(value: string): string {
+  return encodeURIComponent(value);
+}
+
+function readForms(payload: unknown): EligibleSignoffForm[] {
+  if (Array.isArray(payload)) return payload as EligibleSignoffForm[];
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    if (Array.isArray(record.forms)) return record.forms as EligibleSignoffForm[];
+    if (Array.isArray(record.eligibleForms)) return record.eligibleForms as EligibleSignoffForm[];
+  }
+  return [];
+}
+
+function readSubmissions(payload: unknown): CompanyFormSubmissionSummary[] {
+  if (Array.isArray(payload)) return payload as CompanyFormSubmissionSummary[];
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    if (Array.isArray(record.submissions)) return record.submissions as CompanyFormSubmissionSummary[];
+    if (Array.isArray(record.groups)) {
+      return record.groups.flatMap((group) =>
+        group && typeof group === "object" && Array.isArray((group as Record<string, unknown>).submissions)
+          ? ((group as Record<string, unknown>).submissions as CompanyFormSubmissionSummary[])
+          : [],
+      );
+    }
+  }
+  return [];
+}
 
 function valueOrUnavailable(value: string | null | undefined): string {
   return value?.trim() || unavailable;
@@ -53,6 +96,10 @@ export function CrewCompanyFormsHome({
   assignmentHistoryError,
   onOpenSubmission,
 }: CrewCompanyFormsHomeProps) {
+  const queryClient = useQueryClient();
+  const [activePicker, setActivePicker] = useState<string | null>(null);
+  const [selectedForms, setSelectedForms] = useState<Record<string, string>>({});
+  const [startError, setStartError] = useState<{ subjectRef: string; message: string; permission: boolean } | null>(null);
   const home = useQuery<CompanyFormSubmissionHome>({
     queryKey: ["crew-company-forms-home", crewUuid],
     enabled: Boolean(crewUuid),
@@ -63,6 +110,54 @@ export function CrewCompanyFormsHome({
         `/api/v2/company-form-submissions/subjects/crew_assignment/home/${encodeURIComponent(crewUuid!)}/submissions`,
       );
       return (await response.json()) as CompanyFormSubmissionHome;
+    },
+  });
+
+  const eligible = useQuery<EligibleSignoffForm[]>({
+    queryKey: ["crew-company-signoff-eligible", crewUuid, activePicker],
+    enabled: Boolean(crewUuid && activePicker),
+    retry: false,
+    queryFn: async () => {
+      const response = await apiRequest(
+        "GET",
+        `/api/v2/company-form-submissions/subjects/crew_assignment/${queryString(activePicker!)}/eligible-forms?stageKey=at_sign_off&crewUuid=${queryString(crewUuid!)}`,
+      );
+      return readForms(await response.json());
+    },
+  });
+
+  const startSignoff = useMutation({
+    mutationFn: async ({ subjectRef, form }: { subjectRef: string; form: EligibleSignoffForm }) => {
+      if (!crewUuid) throw new Error("Select a crew member before starting a sign-off declaration.");
+      const base = `/api/v2/company-form-submissions/subjects/crew_assignment/${queryString(subjectRef)}/submissions?crewUuid=${queryString(crewUuid)}`;
+      const historyResponse = await apiRequest("GET", base);
+      const existing = readSubmissions(await historyResponse.json()).find((submission) =>
+        submission.status !== "voided" &&
+        submission.formUuid === form.formUuid,
+      );
+      if (existing) return existing.submissionUuid;
+
+      const response = await apiRequest("POST", base, {
+        formUuid: form.formUuid,
+        formVersionUuid: form.formVersionUuid,
+      });
+      const created = await response.json() as { submissionUuid?: string; submission?: { submissionUuid?: string } };
+      const submissionUuid = created.submissionUuid ?? created.submission?.submissionUuid;
+      if (!submissionUuid) throw new Error("The sign-off declaration was created but its submission link was not returned.");
+      return submissionUuid;
+    },
+    onSuccess: (submissionUuid) => {
+      void queryClient.invalidateQueries({ queryKey: ["crew-company-forms-home", crewUuid] });
+      onOpenSubmission?.(submissionUuid);
+      setActivePicker(null);
+      setStartError(null);
+    },
+    onError: (error, variables) => {
+      setStartError({
+        subjectRef: variables.subjectRef,
+        message: errorMessage(error),
+        permission: isPermissionError(error),
+      });
     },
   });
 
@@ -137,7 +232,8 @@ export function CrewCompanyFormsHome({
           )}
           {home.isSuccess && groups.length > 0 && (
             <div className="space-y-3">
-              {groups.map((group) => {
+              {groups.map((rawGroup) => {
+                const group = rawGroup as SignoffHomeGroup;
                 const assignment = assignments.find((item) => item.assignUuid === group.subjectRef);
                 const display = group.display;
                 const heading = valueOrUnavailable(display?.label)
@@ -148,6 +244,11 @@ export function CrewCompanyFormsHome({
                       ? "Crew assignment"
                       : valueOrUnavailable(assignment.assignmentType)
                     : "Historical assignment";
+                const unfinishedSignoffCount = group.unfinishedStageKeys?.includes("at_sign_off")
+                  ? group.submissions.filter((submission) =>
+                    submission.stageKey === "at_sign_off" && submission.status === "in_progress",
+                  ).length
+                  : 0;
 
                 return (
                   <details
@@ -177,9 +278,90 @@ export function CrewCompanyFormsHome({
                           {valueOrUnavailable(display.status)}
                         </span>
                       )}
+                      {unfinishedSignoffCount > 0 && (
+                        <span
+                          className="mt-2 inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-950"
+                          data-testid={`crew-company-forms-unfinished-${group.subjectRef}`}
+                        >
+                          {unfinishedSignoffCount} unfinished sign-off {unfinishedSignoffCount === 1 ? "declaration" : "declarations"}
+                        </span>
+                      )}
                     </summary>
 
                     <div className="space-y-4 border-t border-slate-200 px-3 py-3">
+                      {group.startableStages?.includes("at_sign_off") && (
+                        <div className="rounded-md border border-blue-200 bg-blue-50/70 p-3" data-testid={`crew-company-forms-signoff-picker-${group.subjectRef}`}>
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="font-medium text-slate-900">Create a sign-off declaration</p>
+                              <p className="mt-0.5 text-sm text-slate-600">Choose an eligible form for this assignment.</p>
+                            </div>
+                            <button
+                              type="button"
+                              className="rounded-md border border-blue-700 bg-white px-3 py-1.5 text-sm font-semibold text-blue-800 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                              onClick={() => {
+                                setStartError(null);
+                                setActivePicker(activePicker === group.subjectRef ? null : group.subjectRef);
+                              }}
+                              aria-expanded={activePicker === group.subjectRef}
+                            >
+                              {activePicker === group.subjectRef ? "Hide eligible forms" : "Choose a form"}
+                            </button>
+                          </div>
+                          {activePicker === group.subjectRef && (
+                            <div className="mt-3 border-t border-blue-200 pt-3">
+                              {eligible.isLoading && <p role="status" className="text-sm text-slate-600">Loading eligible forms…</p>}
+                              {eligible.error && (
+                                <p role="alert" className="text-sm text-rose-800">
+                                  {isPermissionError(eligible.error)
+                                    ? "You do not have permission to view eligible sign-off forms."
+                                    : `Eligible forms could not be loaded: ${errorMessage(eligible.error)}`}
+                                  {" "}
+                                  <button type="button" className="font-semibold underline" onClick={() => void eligible.refetch()}>Retry</button>
+                                </p>
+                              )}
+                              {eligible.isSuccess && eligible.data.length === 0 && (
+                                <p role="status" className="text-sm text-slate-600">No sign-off forms are currently eligible for this assignment.</p>
+                              )}
+                              {eligible.isSuccess && eligible.data.length > 0 && (
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                  <label className="sr-only" htmlFor={`signoff-form-${group.subjectRef}`}>Eligible sign-off form</label>
+                                  <select
+                                    id={`signoff-form-${group.subjectRef}`}
+                                    className="min-h-10 flex-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                    value={selectedForms[group.subjectRef] ?? ""}
+                                    onChange={(event) => setSelectedForms((current) => ({ ...current, [group.subjectRef]: event.target.value }))}
+                                  >
+                                    <option value="">Select a form</option>
+                                    {eligible.data.map((form) => (
+                                      <option key={`${form.formUuid}:${form.formVersionUuid}`} value={`${form.formUuid}:${form.formVersionUuid}`}>
+                                        {valueOrUnavailable(form.formName)}{form.versionNo ? ` · Version ${form.versionNo}` : ""}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    disabled={!selectedForms[group.subjectRef] || startSignoff.isPending}
+                                    className="rounded-md bg-blue-800 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-900 disabled:cursor-not-allowed disabled:bg-slate-400"
+                                    onClick={() => {
+                                      const [formUuid, formVersionUuid] = (selectedForms[group.subjectRef] ?? "").split(":");
+                                      const form = eligible.data.find((item) => item.formUuid === formUuid && item.formVersionUuid === formVersionUuid);
+                                      if (form) startSignoff.mutate({ subjectRef: group.subjectRef, form });
+                                    }}
+                                  >
+                                    {startSignoff.isPending && startSignoff.variables?.subjectRef === group.subjectRef ? "Opening…" : "Start or resume"}
+                                  </button>
+                                </div>
+                              )}
+                              {startError?.subjectRef === group.subjectRef && (
+                                <p role="alert" className="mt-2 text-sm text-rose-800">
+                                  {startError.permission ? "You do not have permission to start or open this sign-off declaration." : `Sign-off declaration could not be opened: ${startError.message}`}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {display?.fields && display.fields.length > 0 && (
                         <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
                           {display.fields.map((field, index) => (
@@ -200,6 +382,9 @@ export function CrewCompanyFormsHome({
                       ) : (
                         <ol className="space-y-3">
                           {group.submissions.map((submission) => {
+                            const unfinishedSignoff = group.unfinishedStageKeys?.includes("at_sign_off") === true &&
+                              submission.stageKey === "at_sign_off" &&
+                              submission.status === "in_progress";
                             const recordedAt = submission.systemSnapshotAt
                               ? `Declaration recorded ${sailDate(submission.systemSnapshotAt)}`
                               : `Declaration date unavailable · Created ${sailDate(submission.createdAt)}`;
@@ -217,6 +402,20 @@ export function CrewCompanyFormsHome({
                                     <p className="font-medium text-slate-900">
                                       {valueOrUnavailable(submission.formName)}
                                     </p>
+                                    {unfinishedSignoff && (
+                                      <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs font-semibold text-amber-900" data-testid={`crew-company-forms-unfinished-submission-${submission.submissionUuid}`}>
+                                        <span>Unfinished sign-off declaration</span>
+                                        <a
+                                          href="#company-form-history"
+                                          className="underline decoration-amber-500 underline-offset-2 hover:text-amber-950"
+                                          onClick={(event) => { event.preventDefault(); onOpenSubmission?.(submission.submissionUuid); }}
+                                          aria-disabled={!onOpenSubmission}
+                                          data-testid={`crew-company-forms-unfinished-open-${submission.submissionUuid}`}
+                                        >
+                                          Open declaration
+                                        </a>
+                                      </div>
+                                    )}
                                     <p className="mt-1 text-sm text-slate-600">
                                       Version {valueOrUnavailable(submission.versionNo)}{" "}
                                       <span aria-hidden="true">·</span>{" "}

@@ -29,6 +29,18 @@ function mount(props = context) {
 afterEach(() => { cleanup(); request.mockReset(); });
 
 describe("Joining Company Forms use the recorded planning association", () => {
+  it("shows only before-joining declarations and keeps assignment IDs out of the introduction", async () => {
+    fixture({ submissions: ["before_joining", "on_board", "at_sign_off"].map(stageKey => ({
+      submissionUuid: stageKey, stageKey, formName: `Declaration ${stageKey}`,
+      status: "completed", replacementHistory: [{ submissionUuid: "on_board", label: "Foreign-stage replacement" }],
+    })) });
+    mount();
+    await screen.findByText("Declaration before_joining · completed");
+    expect(screen.queryByText("Declaration on_board · completed")).toBeNull();
+    expect(screen.queryByText("Declaration at_sign_off · completed")).toBeNull();
+    expect(screen.queryByText("Foreign-stage replacement")).toBeNull();
+    expect(screen.queryByText(context.assignmentUuid)).toBeNull();
+  });
   it("uses pinned version metadata and the display stage even outside today's eligible catalogue", async () => {
     fixture({ eligible: [], submissions: [{ submissionUuid: "history", formVersionUuid: "private-uuid",
       formUuid: "archived-form", formName: "Archived declaration", status: "voided",
@@ -117,10 +129,12 @@ describe("Joining Company Forms use the recorded planning association", () => {
     fireEvent.click(screen.getByTestId("button-start-joining-form"));
     await waitFor(() => expect(request.mock.calls.filter((call) => call[0] === "POST")).toHaveLength(1));
     view.rerender(ui(other));
-    await screen.findByText("other-assignment");
+    await waitFor(() => expect(request.mock.calls.some(call =>
+      String(call[1]).includes("/other-assignment/eligible-forms"))).toBe(true));
     await act(async () => { resolveStart(response({ submissionUuid: "late-old-parent" })); });
     expect(screen.queryByText("Persisted renderer late-old-parent")).not.toBeInTheDocument();
-    expect(screen.getByText("other-assignment")).toBeInTheDocument();
+    expect(screen.queryByText(context.assignmentUuid)).toBeNull();
+    expect(screen.queryByText("other-assignment")).toBeNull();
     expect(await screen.findByTestId("select-joining-form-version")).toHaveValue("");
   });
 });

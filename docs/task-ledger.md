@@ -2,6 +2,22 @@
 
 This ledger, not the task panel, is the authoritative record of completed work from task #344 onward.
 
+## Repository test baseline — 2026-10-05
+
+The closing regression ceiling for the stage-specific Company Forms popup
+revision is **162 failed assertions and 67 pending tests**, measured at
+`37967ecd1aa30f1e3000ccd4d3a951fcf5079130`: 115 test files, 1,254 tests,
+1,025 passed. The run selected every repository Vitest test configured by
+`vitest.config.ts`, serialized with `--no-file-parallelism`; configured E2E
+exclusions were unchanged. Source revisions used isolated matching backends
+and databases restored from one current development snapshot, not historical
+database reconstruction. See `.local/verification/full-suite-attribution/`
+for the retained results and attribution.
+
+This baseline is not a passing suite. Closing must not exceed either ceiling.
+The independently inventoried Company Forms/shared-consumer suite must pass
+with **zero skipped, pending, missing or empty suites/tests**.
+
 Append one row whenever a numbered task fully completes. Record its task number, title, completed implementation commit, and that commit's UTC date. Do not record plans, intermediate steps, or unverified completions. If the ledger update is committed separately, reference the implementation commit, not the later ledger-maintenance commit.
 
 | Task | Title | Completion commit | Date (UTC) |
@@ -18,6 +34,7 @@ Append one row whenever a numbered task fully completes. Record its task number,
 | #354 | Start and edit Company Forms safely | `281f5640ca450d653d1260223e26915a605991ec` | 2026-10-01 |
 | #355 | Complete and sign Company Forms | `4684b96a3bbf32bafa85769644c1fdc1d063f340` | 2026-10-02 |
 | #356 | Open joining forms from Planning | `0cf92fceef8117be2d7bafe75710e0507b2f764f` | 2026-10-02 |
+| #358 | Open sign-off forms from Planning; separate stage-scoped operational popups, G3 full history and UUID-free headings | `5817fd94fad9938bc0586502990e76c4a3e2db4f` | 2026-10-05 |
 
 ## Inventory audit — 2026-10-01
 

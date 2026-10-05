@@ -1,0 +1,1147 @@
+[
+  {
+    "file": "tests/unit/forms-permission-route-inventory.test.ts",
+    "name": "Forms Configuration permission route inventory applies exactly the approved explicit route-to-action table",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T1: baseline net-on-board 3,600.00 for full April 2026",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T2: add_element allowance 150 ⇒ 3,750.00",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T3: replace Basic with 3,200 (cumulative) ⇒ 3,950.00",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T4: suppress Fixed OT (cumulative) ⇒ 3,350.00; amount not required",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T5: mid-month effective date — engine applies whole segment (documented deviation from spec's 150.00)",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T6: timing override moves leave 300 on board ⇒ 3,650.00",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T7: pay-item edit refused when every month in the window is locked",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T8: edits refused on an engagement frozen by a submitted settlement",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T8b: contract notes round-trip on an unfrozen engagement",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T7c: pay-item DELETE refused when every month in the window is locked",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T7b: timing override refused when every month in the engagement window is locked",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards T9: full regression — cumulative state still calculates 3,650.00",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards validation: amount required for add/replace; dates must stay in the window",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards RBAC: Ship users are refused on all contract endpoints (403)",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/contract-detail.test.ts",
+    "name": "Contract Detail — pay-item overrides & guards sync preserves a manually set sign-off and reports the difference",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/crew-members.test.ts",
+    "name": "Crew Members API Integration POST /api/crew-members should create new crew member",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/crew-members.test.ts",
+    "name": "Crew Members API Integration POST /api/crew-members should return 400 for missing required fields",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/crew-members.test.ts",
+    "name": "Crew Members API Integration POST /api/crew-members should validate email format when provided",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/ctm-carry-forward.test.ts",
+    "name": "CTM carry-forward: most-recent prior month Case 1: adjacent prior month carries opening balance and sets provenance",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/ctm-carry-forward.test.ts",
+    "name": "CTM carry-forward: most-recent prior month Case 1: editing the opening balance is rejected (guard applies)",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/ctm-carry-forward.test.ts",
+    "name": "CTM carry-forward: most-recent prior month Case 2: two-month gap — balance carries from 2026-03, not 0.00",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/ctm-carry-forward.test.ts",
+    "name": "CTM carry-forward: most-recent prior month Case 2: editing the opening balance is also rejected for non-adjacent carry",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/ctm-carry-forward.test.ts",
+    "name": "CTM carry-forward: most-recent prior month Case 3: no prior records — opening is 0.00 and provenance is null",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/ctm-carry-forward.test.ts",
+    "name": "CTM carry-forward: most-recent prior month Case 3: opening balance is editable when no prior exists",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration POST /api/drug-alcohol-tests should create new drug alcohol test record",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration POST /api/drug-alcohol-tests should return 400 for missing required fields",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration POST /api/drug-alcohol-tests should accept pre-employment test type",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration POST /api/drug-alcohol-tests should accept post-incident test type",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration GET /api/drug-alcohol-tests should list all drug alcohol test records",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration GET /api/drug-alcohol-tests should filter by vessel",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration GET /api/drug-alcohol-tests should filter by test type",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration GET /api/drug-alcohol-tests should filter by result",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration GET /api/drug-alcohol-tests/vessel/:vesselId should get tests for specific vessel",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration GET /api/drug-alcohol-tests/vessel/:vesselId should return empty array for vessel with no tests",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration PUT /api/drug-alcohol-tests/:id should update test result",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration PUT /api/drug-alcohol-tests/:id should update notes",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/drug-alcohol.test.ts",
+    "name": "Drug & Alcohol Testing API Integration DELETE /api/drug-alcohol-tests/:id should delete test record",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/forms.test.ts",
+    "name": "Appraisal Forms API Integration GET /api/appraisals should return a list of appraisal forms",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/forms.test.ts",
+    "name": "Appraisal Forms API Integration GET /api/appraisals should support filtering by status",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/forms.test.ts",
+    "name": "Appraisal Forms API Integration GET /api/appraisals should support filtering by crew member",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/forms.test.ts",
+    "name": "Appraisal Forms API Integration GET /api/appraisals should support filtering by vessel",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/forms.test.ts",
+    "name": "Appraisal Forms API Integration GET /api/appraisals should support filtering by appraisal type",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/forms.test.ts",
+    "name": "Appraisal Forms API Integration GET /api/appraisals should support date range filtering",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/forms.test.ts",
+    "name": "Appraisal Forms API Integration POST /api/appraisals should create new appraisal form",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/forms.test.ts",
+    "name": "Appraisal Forms API Integration POST /api/appraisals should return 400 for missing required fields",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/forms.test.ts",
+    "name": "Appraisal Forms API Integration POST /api/appraisals should validate appraisal type",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/obsolete-crew-assignment-paths.test.ts",
+    "name": "canonical Crew Pool assignment paths rejects obsolete types through generic creation and updates",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/obsolete-crew-assignment-paths.test.ts",
+    "name": "canonical Crew Pool assignment paths still lists and signs off an OnBoard assignment without changing its type",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/portage-auto-lock.test.ts",
+    "name": "Portage auto-lock on final approval locked-month correction path: no unlock endpoint; refusal points to adjustment run",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/promotions.test.ts",
+    "name": "Promotions API Integration POST /api/promotion-hierarchies should create new promotion hierarchy",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/promotions.test.ts",
+    "name": "Promotions API Integration POST /api/promotion-hierarchies should return 400 for missing required fields",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/promotions.test.ts",
+    "name": "Promotions API Integration POST /api/promotion-hierarchies should accept hierarchy with array rank path",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/promotions.test.ts",
+    "name": "Promotions API Integration GET /api/promotion-hierarchies should list all promotion hierarchies",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/promotions.test.ts",
+    "name": "Promotions API Integration GET /api/promotion-hierarchies should return hierarchy with groupName",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/promotions.test.ts",
+    "name": "Promotions API Integration PATCH /api/promotion-hierarchies/:id should update hierarchy",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/promotions.test.ts",
+    "name": "Promotions API Integration DELETE /api/promotion-hierarchies/:id should delete hierarchy",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/promotions.test.ts",
+    "name": "Promotions API Integration GET /api/promotions should list all promotions",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/promotions.test.ts",
+    "name": "Promotions API Integration GET /api/promotions should filter by status",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/promotions.test.ts",
+    "name": "Promotions API Integration GET /api/promotions/crew/:crewMemberId should get promotions for specific crew member",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration POST /api/recruitment-candidates should create new recruitment candidate",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration POST /api/recruitment-candidates should return 400 for missing required fields",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration POST /api/recruitment-candidates should accept candidate with all required fields",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration GET /api/recruitment-candidates should list all recruitment candidates",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration GET /api/recruitment-candidates should filter by status",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration GET /api/recruitment-candidates should filter by rank",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration GET /api/recruitment-candidates should search by name",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration GET /api/recruitment-candidates/:id should get candidate by id",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration PATCH /api/recruitment-candidates/:id should update candidate status",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration PATCH /api/recruitment-candidates/:id should allow partial updates",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration PATCH /api/recruitment-candidates/:id/soft-delete should soft delete candidate",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration DELETE /api/recruitment-candidates/:id should delete candidate",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/recruitment.test.ts",
+    "name": "Recruitment API Integration GET /api/recruitment-candidates/next-file-number should get next file number",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration GET /api/rest-hours-vessel-records should return vessel rest hour records",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration GET /api/rest-hours-vessel-records should support filtering by vessel",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration GET /api/rest-hours-vessel-records should support date range filtering",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration POST /api/rest-hours-vessel-records should create new vessel rest hour record",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration POST /api/rest-hours-vessel-records should handle missing required fields",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration GET /api/rest-hours-crew-records should return crew rest hour records",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration GET /api/rest-hours-crew-records should support filtering by crew member",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration GET /api/rest-hours-crew-records should support filtering by vessel",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration GET /api/rest-hours-violations-by-rank should return violations grouped by rank",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration GET /api/rest-hours-violations-by-rank should support vessel filter",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration GET /api/rest-hours-ncs-by-rank should return NCs grouped by rank",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rest-hours.test.ts",
+    "name": "Rest Hours API Integration GET /api/rest-hours-ncs-by-rank should support vessel filter",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rotation.test.ts",
+    "name": "Rotation API Integration POST /api/rotation-plans should create new rotation plan",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rotation.test.ts",
+    "name": "Rotation API Integration POST /api/rotation-plans should return 400 for missing required fields",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rotation.test.ts",
+    "name": "Rotation API Integration POST /api/rotation-plans should accept plan with assignments",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rotation.test.ts",
+    "name": "Rotation API Integration GET /api/rotation-plans should list all rotation plans",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rotation.test.ts",
+    "name": "Rotation API Integration GET /api/rotation-plans should return plans with correct structure",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rotation.test.ts",
+    "name": "Rotation API Integration PATCH /api/rotation-plans/:id should update rotation plan",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rotation.test.ts",
+    "name": "Rotation API Integration DELETE /api/rotation-plans/:id should delete rotation plan",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rotation.test.ts",
+    "name": "Rotation API Integration GET /api/rotation/proposals should list all rotation proposals",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/rotation.test.ts",
+    "name": "Rotation API Integration GET /api/rotation/due-crew should list crew due for rotation",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/ship-reference-reads.test.ts",
+    "name": "Ship allotments read (own vessel only) GET /allotments?status=active returns own-vessel allotments and none from other vessels",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/ship-reference-reads.test.ts",
+    "name": "Ship wage-scale detail read (own vessel's scales only) GET /wage-scales/:uuid → 200 with lines for a scale referenced on own vessel",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "auto-create on load (create-only) creates the missing engagement and skips the existing one",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "auto-create on load (create-only) is idempotent — second call creates nothing",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "auto-create on load (create-only) Ship user may auto-create own vessel; cross-vessel → 403",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "auto-create on load (create-only) skips entirely when the month is approved or locked",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "vessel sign-off date Ship cross-vessel sign-off → 403; no DB assignment fails closed",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "vessel sign-off date rejects a period that does not match the endDate month (lock-bypass attempt)",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "vessel sign-off date rejects a sign-off before the engagement start",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "vessel sign-off date refuses sign-off on an engagement frozen by a submitted settlement",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "vessel sign-off date Ship own-vessel sign-off sets end date + endDateManual",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "vessel submit auto-runs the calculation submit succeeds, calc completes, sign-off prorates 3,000 → 2,000.00",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "vessel submit auto-runs the calculation sign-off is refused once the month is submitted",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "vessel submit auto-runs the calculation a failing calc does NOT block the submit and is recorded as a failed run",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "broadened stale-calculation indicator fresh run is not stale; a new monthly transaction flips staleInputs",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "broadened stale-calculation indicator an allotment change for the vessel's crew also flips staleInputs (after re-run)",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "DB-authority vessel scope DB assignment grants access to own vessel",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "DB-authority vessel scope JWT vessel claim is ignored — DB is the sole authority",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-initiated-workflow.test.ts",
+    "name": "DB-authority vessel scope missing DB assignment fails closed with 403",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage-category-grids.test.ts",
+    "name": "Vessel Portage category-major grids overtime batch round-trip creates an OT qty entry through the batch endpoint",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage-category-grids.test.ts",
+    "name": "Vessel Portage category-major grids overtime batch round-trip updates and then deletes the entry in single batch calls",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage-category-grids.test.ts",
+    "name": "Vessel Portage category-major grids dated cash advance stores txn_date and auto-creates the linked CTM line",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage-category-grids.test.ts",
+    "name": "Vessel Portage category-major grids dated cash advance batch update syncs the CTM line amount and date",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage-category-grids.test.ts",
+    "name": "Vessel Portage category-major grids dated cash advance batch delete removes the CTM line too",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage-category-grids.test.ts",
+    "name": "Vessel Portage category-major grids allotments are additive (standing + extra) standing 800.00 + extra 500.00 ⇒ TWO ledger lines totalling 1,300.00",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage-category-grids.test.ts",
+    "name": "Vessel Portage category-major grids locking locked month refuses batch creates with 409 and reports the failed op",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage-category-grids.test.ts",
+    "name": "Vessel Portage category-major grids configurable extra tabs accepts a valid slot, round-trips it, and the bound element accepts vessel entries",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage-category-grids.test.ts",
+    "name": "Vessel Portage category-major grids batch partial failure applies ops before the failure and reports both applied and failed",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) rejects a vessel transaction on a scale_lookup element with 400",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) rejects a vessel transaction on a non-vessel category element with 400",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) allows a vessel transaction on an allowed fixed-amount category (bond)",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) CTM cash account math carries opening 5,000.00 from the prior month and locks it",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) CTM cash account math computes closing 13,825.00 server-side",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) CTM cash account math refuses direct edits to an advance-linked CTM line",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) CTM cash account math deleting the 300.00 draft advance ⇒ closing 14,125.00, line removed",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) advance dual-record linkage creates exactly one CTM line per vessel advance",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) advance dual-record linkage accept does not duplicate; reject removes the CTM line",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) vessel-month lifecycle vessel creates 3 draft transactions (origin/status forced)",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) vessel-month lifecycle submit flips drafts to submitted and the portage to submitted",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) vessel-month lifecycle office rejects one (comment persisted) and accepts two",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) vessel-month lifecycle the run includes ONLY the accepted transactions",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) vessel-month lifecycle return → re-open rejected → vessel edits → resubmit → accept",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) vessel-month lifecycle reconciled CTM → return ⇒ CTM reopens and vessel can edit it",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/vessel-portage.test.ts",
+    "name": "Vessel submission package & CTM cash account (Prompt 06) vessel-month lifecycle lock ⇒ vessel edits and creates are refused; CTM locked",
+    "status": "failed"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) H1: Master joins 15-Mar-2026 — 17/30 days, net on board 5777.17",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) H2: promotion 16-May splits the month 15+15 — basic total 2769.00",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) H3: scale-year step on 10-Aug splits 9+21 — basic total 3708.60",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) H4: AB with VarOT + deductions — net on board 239.52",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) H5: April overrides (SUBS→300, +CompAdj 250) — net on board 10545.00",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) February full month pays the full monthly amount (30/30 days)",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) re-running the same engagement/period is deterministic",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) cross-currency lines carry non-null deterministic fxRate/amountFunctional",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) refuses to run a vessel/period whose portage bill is locked (409)",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) H1-override: LV+PF retimed on board — net 6856.67, accrual 0.00, fund 0.00",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) H4 keeps element-default timings — net on board still 239.52",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) balance-carry: period-2 balance_bf = period-1 net on board; leave accumulates",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) fix (a): run-engagement against a locked vessel-period refuses with 409, writes nothing",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) fix (b): successful runs end 'completed'; no run is left 'running'",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) fix (c): replace_scale_value with no base scale line applies the value and warns",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) rejects malformed periods with 400",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) returns 404 for an unknown engagement",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) S1: settlement compute — balance 22768.84, accruals 3191.44, net 26210.28",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) S1: submit → approve → mark paid — engagement settled, post-paid balances 0.00",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) settlement compute with uncalculated months ⇒ 409 naming the missing periods",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) recompute after paid ⇒ 409",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) freeze guard: submit freezes re-runs; revert re-enables; recompute picks up new figures",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) overlap: PATCH reactivating an overlapping engagement ⇒ 409",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) overlap: engagement sync reports the overlap in the errors list",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) freeze guard: run blocked by a submitted settlement on an OVERLAPPING engagement",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) overlap: PATCH date change creating an overlap ⇒ 409; non-overlapping change ⇒ 200",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) overlap: audit endpoint lists the seeded overlap group",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) overlap resolution: run blocked → cancel line-free duplicate → audit clears → run unblocks",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) deactivation guard: blocked by ACTIVE scale refs with supersede message; superseded-only refs deactivate; delete stays blocked",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) Task 190: scale exists but no line for crew's rank ⇒ no_scale_line_for_rank warning with crew name and scale name",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) Task 190: assigned scale UUID missing from DB ⇒ no_active_scale warning with crew name and rank",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) Task 144: all scale elements gated by nationality_conditional ⇒ gate warning naming crew nationality and allowed list",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) Task 148: activating a superseding revision without effective_from is rejected; with it, activation succeeds",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) Task 148: supersede endpoint requires effectiveFrom and stamps it on the new revision",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/integration/api/wage-engine.test.ts",
+    "name": "Wage Calculation Engine (H1–H5) Task 148: skip diagnostic names an unreachable revision (superseding scale missing effective_from)",
+    "status": "skipped"
+  },
+  {
+    "file": "tests/unit/components/formatted-date-input.test.tsx",
+    "name": "formatted date parsing rejects invalid or unsupported input 26/02/2026",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/crew-pool/crew-import.test.ts",
+    "name": "Crew Import — Excel Template Generation should successfully generate a styled multi-sheet Excel template buffer",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/crew-pool/crew-pool-validation.test.ts",
+    "name": "Crew Pool Schema Validation Invalid Crew Member Data should reject missing presentVessel",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/crew-pool/crew-pool-validation.test.ts",
+    "name": "Crew Pool Schema Validation Invalid Crew Member Data should reject missing vesselType",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Valid Test Records should validate complete test record",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Valid Test Records should validate periodic test",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Valid Test Records should validate monthly test",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Valid Test Records should validate post-incident test",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Valid Test Records should validate others test type",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Valid Test Records should accept optional alcoholDrugType",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Valid Test Records should accept placeLocation",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Valid Test Records should accept dateTimeTestCompleted",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Valid Test Records should accept planned test information",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Invalid Test Records should reject missing vesselId",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Invalid Test Records should reject missing testType",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Invalid Test Records should reject null vesselId",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Invalid Test Records should reject null testType",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Invalid Test Records should reject numeric vesselId",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Test History should validate test history format",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Testing Equipment should accept testing equipment JSON",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Testing Equipment should accept equipment not applicable flag",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Data Integrity should preserve all fields after parsing",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/drugs-alcohol/drug-alcohol-testing.test.ts",
+    "name": "Drug & Alcohol Testing Schema Validation Data Integrity should handle VSL-XXX format vessel IDs",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Valid Data should validate complete candidate data",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Valid Data should validate candidate with optional fields",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Valid Data should validate candidate with minimal required fields",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Valid Data should accept various vessel types",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Valid Data should accept string id",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Valid Data should accept fileNo as optional",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Invalid Data - Missing Required Fields should reject missing firstName",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Invalid Data - Missing Required Fields should reject missing familyName",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Invalid Data - Missing Required Fields should reject missing dob",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Invalid Data - Missing Required Fields should reject missing nationality",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Invalid Data - Missing Required Fields should reject missing rankAppliedFor",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Invalid Data - Missing Required Fields should reject missing presentRank",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Invalid Data - Missing Required Fields should reject missing vesselType",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Invalid Data - Missing Required Fields should reject null values for required fields",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Field Type Validation should reject numeric firstName",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Field Type Validation should reject numeric familyName",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Field Type Validation should reject array for string field",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Field Type Validation should reject object for string field",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Business Logic Validation should validate age calculation from dob",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Business Logic Validation should validate rank requirements mapping",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Business Logic Validation should categorize candidates by rank category",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Business Logic Validation should validate nationality for visa requirements",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Data Integrity should preserve all fields after parsing",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Data Integrity should handle special characters in names",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/recruitment/recruitment-validation.test.ts",
+    "name": "Recruitment Candidate Schema Validation Data Integrity should handle unicode characters in names",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/vessel/vessel-management.test.ts",
+    "name": "Vessel Management Schema Validation Vessel Draft - Valid Data should validate complete vessel draft",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/vessel/vessel-management.test.ts",
+    "name": "Vessel Management Schema Validation Vessel Draft - Valid Data should validate draft with revision R2",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/vessel/vessel-management.test.ts",
+    "name": "Vessel Management Schema Validation Vessel Draft - Valid Data should accept complex draft data",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/vessel/vessel-management.test.ts",
+    "name": "Vessel Management Schema Validation Vessel Draft - Invalid Data should reject missing vesselId",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/vessel/vessel-management.test.ts",
+    "name": "Vessel Management Schema Validation Vessel Draft - Invalid Data should reject missing draftData",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/vessel/vessel-management.test.ts",
+    "name": "Vessel Management Schema Validation Vessel Draft - Invalid Data should reject null vesselId",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/vessel/vessel-management.test.ts",
+    "name": "Vessel Management Schema Validation Vessel Draft - Invalid Data should reject null draftData",
+    "status": "failed"
+  },
+  {
+    "file": "tests/unit/modules/vessel/vessel-management.test.ts",
+    "name": "Vessel Management Schema Validation Data Integrity should preserve draft data after parsing",
+    "status": "failed"
+  }
+]

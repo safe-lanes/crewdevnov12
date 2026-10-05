@@ -264,6 +264,7 @@ export const vesselPlanningController = {
           error.message?.includes("Deploy the reliever") ||
           error.message?.includes("Incumbent assignment link is missing") ||
           error.message?.includes("Linked incumbent assignment is inconsistent") ||
+          error.message?.includes("Planning assignment links changed") ||
           error.message?.includes("Planning crew changed")) {
         return res.status(409).json({ error: error.message });
       }
@@ -418,6 +419,7 @@ export const vesselPlanningController = {
         return res.status(409).json({ error: error.message, conflict: error.conflict });
       }
       if (error.message?.includes("assignment link is missing") ||
+          error.message?.includes("Planning assignment links changed") ||
           error.message?.includes("Linked reliever assignment") ||
           error.message?.includes("Reliever planning changed")) {
         return res.status(409).json({ error: error.message });
@@ -507,6 +509,7 @@ export const vesselPlanningController = {
       res.json(planning);
     } catch (error: any) {
       if (error.message?.includes("assignment link is missing") ||
+          error.message?.includes("Planning assignment links changed") ||
           error.message?.includes("Linked incumbent assignment")) {
         return res.status(409).json({ error: error.message });
       }

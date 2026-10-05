@@ -1,4 +1,4 @@
-import { boolean, date, foreignKey, index, integer, pgTable, serial, text, timestamp, uniqueIndex, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { boolean, date, foreignKey, index, integer, jsonb, pgTable, serial, text, timestamp, uniqueIndex, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -333,6 +333,7 @@ export const frmSectionSignatures = pgTable(
     signerRoleUuid: text("signer_role_uuid").references(() => admRoleMasterAc.ruid, { onDelete: "restrict" }),
     witnessUserId: integer("witness_user_id"),
     witnessRank: text("witness_rank"),
+    subjectProvenance: jsonb("subject_provenance"),
     signedAt: timestamp("signed_at").notNull(),
     signedByUuid: text("signed_by_uuid").notNull(),
     signatureMethod: text("signature_method").notNull(),

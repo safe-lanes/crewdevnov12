@@ -22,6 +22,12 @@ import {
 } from "./ConfiguredFormRenderer";
 
 export type CompanySubmissionRenderView = CompanyFormSubmissionRenderContract;
+export type CompanySubmissionRequestContext = { crewUuid?: string; planUuid?: string; vesselUuid?: string };
+function contextSuffix(context?: CompanySubmissionRequestContext): string {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(context ?? {})) if (value) query.set(key, value);
+  return query.size ? `?${query}` : "";
+}
 
 export interface CompanySubmissionDraftAnswer {
   questionUuid: string;
@@ -76,6 +82,7 @@ export function saveCompanySubmissionDraft(
   submissionUuid: string,
   sectionUuid: string,
   draft: CompanySubmissionDraftInput,
+  context?: CompanySubmissionRequestContext,
 ): Promise<void> {
   const answers = draft.answers.map((answer) => ({
     questionUuid: answer.questionUuid,
@@ -88,7 +95,7 @@ export function saveCompanySubmissionDraft(
     .catch(() => undefined)
     .then(() => apiRequest(
       "PUT",
-      `/api/v2/company-form-submissions/${encodeURIComponent(submissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/answers`,
+      `/api/v2/company-form-submissions/${encodeURIComponent(submissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/answers${contextSuffix(context)}`,
       {
         answers,
         ...(draft.sectionComment !== undefined ? { sectionComment: draft.sectionComment } : {}),
@@ -357,12 +364,17 @@ function persistedDraftValue(
   return value;
 }
 
-export async function fetchCompanySubmissionForm(submissionUuid: string): Promise<CompanySubmissionRenderView> {
+export async function fetchCompanySubmissionForm(submissionUuid: string, context?: CompanySubmissionRequestContext): Promise<CompanySubmissionRenderView> {
   const response = await apiRequest(
     "GET",
-    `/api/v2/company-form-submissions/${encodeURIComponent(submissionUuid)}/form`,
+    `/api/v2/company-form-submissions/${encodeURIComponent(submissionUuid)}/form${contextSuffix(context)}`,
   );
-  return await response.json() as CompanySubmissionRenderView;
+  const contract = await response.json() as CompanySubmissionRenderView;
+  const suffix = contextSuffix(context);
+  if (suffix) for (const state of contract.states) for (const signature of state.signatures) {
+    signature.attachment.rawUrl += suffix;
+  }
+  return contract;
 }
 
 export function CompanySubmissionRenderer({
@@ -370,7 +382,9 @@ export function CompanySubmissionRenderer({
   onBack,
   onAnswerChange,
   onAnswerCommentChange,
-  showSubmissionMetadata = false,
+  showSubmissionMetadata = true,
+  requestContext,
+  entryStage,
 }: {
   submissionUuid: string;
   onBack?: () => void;
@@ -378,6 +392,9 @@ export function CompanySubmissionRenderer({
   onAnswerCommentChange?: (questionUuid: string, comment: string) => void;
   /** Profile history needs explicit pinned-version/stage context when opened. */
   showSubmissionMetadata?: boolean;
+  requestContext?: CompanySubmissionRequestContext;
+  /** Operational popups stay within their stage; G3 deliberately omits this scope. */
+  entryStage?: { stageKey: string; submissionUuids: readonly string[] };
 }) {
   const [activeSubmissionUuid, setActiveSubmissionUuid] = useState(submissionUuid);
   const originalSubmissionUuid = useRef(submissionUuid);
@@ -398,8 +415,8 @@ export function CompanySubmissionRenderer({
     acknowledgedSectionCommentRevisionsRef.current = {};
   }, [activeSubmissionUuid]);
   const form = useQuery({
-    queryKey: ["company-form-submission-form", activeSubmissionUuid],
-    queryFn: () => fetchCompanySubmissionForm(activeSubmissionUuid),
+    queryKey: ["company-form-submission-form", activeSubmissionUuid, requestContext],
+    queryFn: () => fetchCompanySubmissionForm(activeSubmissionUuid, requestContext),
     // Pinned content stays immutable, but archive/void/replacement metadata can
     // change. Revisit the exact submission endpoint instead of a fresh-looking
     // pre-replacement cache entry inherited from the global two-minute TTL.
@@ -619,7 +636,7 @@ export function CompanySubmissionRenderer({
     const sectionCommentRevision = draft.sectionComment === undefined
       ? undefined
       : sectionCommentRevisionsRef.current[sectionUuid];
-    return saveCompanySubmissionDraft(activeSubmissionUuid, sectionUuid, draft).then(
+    return saveCompanySubmissionDraft(activeSubmissionUuid, sectionUuid, draft, requestContext).then(
       () => {
         if (activeSubmissionUuidRef.current === saveSubmissionUuid
           && activeSubmissionStatusRef.current === "in_progress"
@@ -751,10 +768,10 @@ export function CompanySubmissionRenderer({
       return next;
     });
     try {
-      await handleSaveDraft(sectionUuid);
+      if (!rendererModel.readOnly) await handleSaveDraft(sectionUuid);
       await apiRequest(
         "POST",
-        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/submit`,
+        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/submit${contextSuffix(requestContext)}`,
       );
       await refetchPersistedForm();
     } catch (error) {
@@ -783,10 +800,10 @@ export function CompanySubmissionRenderer({
       return next;
     });
     try {
-      await handleSaveDraft(sectionUuid);
+      if (!rendererModel.readOnly) await handleSaveDraft(sectionUuid);
       await apiRequest(
         "POST",
-        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/signatures`,
+        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/signatures${contextSuffix(requestContext)}`,
         {
           signatureType: type,
           method: signatureMethod,
@@ -822,7 +839,7 @@ export function CompanySubmissionRenderer({
     try {
       await apiRequest(
         "DELETE",
-        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/signatures/${encodeURIComponent(signatureUuid)}`,
+        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/sections/${encodeURIComponent(sectionUuid)}/signatures/${encodeURIComponent(signatureUuid)}${contextSuffix(requestContext)}`,
       );
       await refetchPersistedForm();
     } catch (error) {
@@ -848,7 +865,7 @@ export function CompanySubmissionRenderer({
       }
       await apiRequest(
         "POST",
-        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/void`,
+        `/api/v2/company-form-submissions/${encodeURIComponent(activeSubmissionUuid)}/void${contextSuffix(requestContext)}`,
         { reason: voidReason.trim(), ...(retiredAt ? { retirementConfirmedAt: retiredAt } : {}) },
       );
       setRetirementConfirmation(null);
@@ -864,7 +881,13 @@ export function CompanySubmissionRenderer({
 
   const visibleSaveErrors = Object.entries(saveErrors)
     .filter(([key]) => key.startsWith(`${activeSubmissionUuid}\u0000`));
-  const relatedSubmissions = lifecycleForm?.replacementHistory ?? [];
+  if (entryStage && lifecycleForm && lifecycleForm.submission.stageKey !== entryStage.stageKey) {
+    return React.createElement("div", { role: "alert" },
+      "This declaration belongs to another stage. Open full history in crew profile G3.",
+      onBack && React.createElement("button", { type: "button", onClick: onBack }, "Back to forms"));
+  }
+  const relatedSubmissions = (lifecycleForm?.replacementHistory ?? [])
+    .filter(link => !entryStage || entryStage.submissionUuids.includes(link.submissionUuid));
   const submissionStatus = lifecycleForm?.submission.status;
   return React.createElement(React.Fragment, null,
     showSubmissionMetadata && lifecycleForm && React.createElement(

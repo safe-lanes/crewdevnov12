@@ -23,6 +23,7 @@ export type LifecycleSection = {
   vesselSignatureRoleUuids?: string[];
   vesselRolePolicyValid?: boolean;
   onBoard?: boolean;
+  atSignOff?: boolean;
   questions: LifecycleQuestion[];
 };
 
@@ -66,8 +67,8 @@ export function validateCompanyFormLifecycle(
     errors.push("Company Form versions must contain at least one section requiring submission.");
   }
   for (const section of requiringSubmission) {
-    if (section.signatureVesselManagementRequired && section.onBoard === false) {
-      errors.push(`Section "${sectionName(section)}" enables Vessel Management outside the on-board stage.`);
+    if (section.signatureVesselManagementRequired && section.onBoard === false && !section.atSignOff) {
+      errors.push(`Section "${sectionName(section)}" enables Vessel Management outside the on-board stage or at-sign-off stage.`);
     }
     if ((section.signatureVesselManagementRequired || (section.onBoard && section.signatureSeafarerRequired)) && !section.vesselSignatureRoleUuids?.length) {
       errors.push(`Section "${sectionName(section)}" requires at least one permitted vessel role.`);
@@ -144,6 +145,7 @@ export async function readCompanyFormLifecycleVersions(
         signatureVesselManagementRequired: row.signatureVesselManagementRequired,
         vesselSignatureRoleUuids: row.vesselSignatureRoleUuids,
         onBoard: row.stageKey === "on_board",
+        atSignOff: row.stageKey === "at_sign_off",
         questions: [],
       };
       lifecycle.sections.push(section);

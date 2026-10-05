@@ -32,6 +32,48 @@ function applyAuditUser<T extends object>(data: T, isCreate = false): T & { crea
   return result;
 }
 
+class PlanningLinksChangedError extends Error {
+  constructor(readonly emptyRelieverWasDeployed: boolean) {
+    super("Planning assignment links changed; reload before editing");
+  }
+}
+
+/** Match Company Form subject-first locks, including two-subject unassigns.
+ * Never acquire a newly discovered assignment while holding Planning: reject
+ * changed links and let the caller reload instead.
+ */
+async function lockPlanningAfterAssignments(
+  tx: any,
+  expected: VesselPlanningV2,
+  additionalAssignments: string[] = [],
+): Promise<VesselPlanningV2> {
+  const assignments = [...new Set([
+    expected.crewAssignUuid, expected.relieverAssignUuid, ...additionalAssignments,
+  ].filter((uuid): uuid is string => !!uuid))].sort();
+  if (assignments.length) {
+    await tx.select({ assignUuid: crewAssignments.assignUuid }).from(crewAssignments)
+      .where(inArray(crewAssignments.assignUuid, assignments))
+      .orderBy(crewAssignments.assignUuid).for("update");
+  }
+  const [locked] = await tx.select().from(vesselPlanningV2)
+    .where(and(eq(vesselPlanningV2.planUuid, expected.planUuid), eq(vesselPlanningV2.isDeleted, false)))
+    .for("update");
+  if (!locked) throw new Error(`Planning record not found: ${expected.planUuid}`);
+  if (locked.crewAssignUuid !== expected.crewAssignUuid ||
+      locked.relieverAssignUuid !== expected.relieverAssignUuid ||
+      locked.crewUuid !== expected.crewUuid ||
+      locked.relieverCrewUuid !== expected.relieverCrewUuid ||
+      locked.vesselUuid !== expected.vesselUuid) {
+    throw new PlanningLinksChangedError(
+      locked.crewAssignUuid === expected.crewAssignUuid &&
+      locked.crewUuid === expected.crewUuid && locked.vesselUuid === expected.vesselUuid &&
+      !expected.relieverAssignUuid && !expected.relieverCrewUuid &&
+      !!locked.relieverAssignUuid && !!locked.relieverCrewUuid,
+    );
+  }
+  return locked;
+}
+
 /**
  * Resolve a port value to its UUID
  * Accepts either a UUID or port name, returns the port_uuid
@@ -1036,17 +1078,11 @@ export const vesselPlanningService = {
 
   let updated;
   if (isRelieverClearRequest) {
-    updated = await db.transaction(async (tx: any) => {
-      const [lockedPlanning] = await tx
-        .select()
-        .from(vesselPlanningV2)
-        .where(
-          and(
-            eq(vesselPlanningV2.planUuid, planUuid),
-            eq(vesselPlanningV2.isDeleted, false),
-          ),
-        )
-        .for("update");
+    // Clearing the slot has historically serialized behind a concurrent
+    // deployment. Its new exact link must be locked in a NEW transaction,
+    // never acquired while holding Planning. All other changed links refuse.
+    const clearLocked = (expected: VesselPlanningV2) => db.transaction(async (tx: any) => {
+      const lockedPlanning = await lockPlanningAfterAssignments(tx, expected);
 
       if (!lockedPlanning) {
         throw new Error(`Planning record not found: ${planUuid}`);
@@ -1099,11 +1135,25 @@ export const vesselPlanningService = {
        await syncIncumbent(tx, lockedPlanning);
       return planning;
     });
+    let expected = existing;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        updated = await clearLocked(expected);
+        break;
+      } catch (error) {
+        if (!(error instanceof PlanningLinksChangedError) ||
+            !error.emptyRelieverWasDeployed || attempt >= 2) throw error;
+        const refreshed = await vesselPlanningRepository.findByPlanUuid(planUuid);
+        if (!refreshed) throw new Error(`Planning record not found: ${planUuid}`);
+        if (refreshed.crewAssignUuid !== existing.crewAssignUuid ||
+            refreshed.crewUuid !== existing.crewUuid ||
+            refreshed.vesselUuid !== existing.vesselUuid) throw error;
+        expected = refreshed;
+      }
+    }
   } else {
      updated = await db.transaction(async (tx: typeof db) => {
-       const [lockedPlanning] = await tx.select().from(vesselPlanningV2)
-         .where(and(eq(vesselPlanningV2.planUuid, planUuid), eq(vesselPlanningV2.isDeleted, false)))
-         .for("update");
+       const lockedPlanning = await lockPlanningAfterAssignments(tx, existing);
        if (!lockedPlanning) throw new Error(`Planning record not found: ${planUuid}`);
        if (lockedPlanning.crewUuid !== existing.crewUuid) {
          throw new Error("Planning crew changed; reload before editing");
@@ -1165,10 +1215,10 @@ export const vesselPlanningService = {
     reviewedBy: string,
   ) {
     const db = getDb();
+    const expected = await vesselPlanningRepository.findByPlanUuid(planUuid);
+    if (!expected) throw new Error(`Planning record not found: ${planUuid}`);
     return db.transaction(async (tx: typeof db) => {
-      const [planning] = await tx.select().from(vesselPlanningV2)
-        .where(and(eq(vesselPlanningV2.planUuid, planUuid), eq(vesselPlanningV2.isDeleted, false)))
-        .for("update");
+      const planning = await lockPlanningAfterAssignments(tx, expected, [assignUuid]);
       if (!planning) throw new Error(`Planning record not found: ${planUuid}`);
       if (planning.isArchived || !planning.crewUuid) {
         throw new Error("Only an active occupied planning position can be reconciled");
@@ -1235,10 +1285,12 @@ export const vesselPlanningService = {
       : undefined;
 
     const { signedOff, crewUuid, vesselUuid } = await db.transaction(async (tx: typeof db) => {
-      const [locked] = await tx.select().from(vesselPlanningV2)
-        .where(and(eq(vesselPlanningV2.planUuid, planUuid), eq(vesselPlanningV2.isDeleted, false)))
-        .for("update");
+      // Company Form starts/signatures lock subject first, then planning when
+      // validating their entry context. Use the same order for departure.
+      if (!planning.crewAssignUuid) throw new Error("Incumbent assignment link is missing; reconcile planning before sign-off");
+      const locked = await lockPlanningAfterAssignments(tx, planning);
       if (!locked) throw new Error(`Planning record not found: ${planUuid}`);
+      if (locked.crewAssignUuid !== planning.crewAssignUuid) throw new Error("Incumbent assignment changed; reload before sign-off");
       if (data.expectedCrewUuid && locked.crewUuid !== data.expectedCrewUuid) {
         throw new Error("Planning crew does not match the requested crew; reload before sign-off");
       }
@@ -1547,9 +1599,7 @@ export const vesselPlanningService = {
     }
 
     const result = await db.transaction(async (tx: typeof db) => {
-      const [locked] = await tx.select().from(vesselPlanningV2)
-        .where(and(eq(vesselPlanningV2.planUuid, planUuid), eq(vesselPlanningV2.isDeleted, false)))
-        .for("update");
+      const locked = await lockPlanningAfterAssignments(tx, planning);
       if (!locked || locked.isArchived || locked.relieverCrewUuid !== relieverCrewUuid ||
           locked.vesselUuid !== vesselUuid) {
         throw new Error("Reliever planning changed during sign-on; reload and try again");

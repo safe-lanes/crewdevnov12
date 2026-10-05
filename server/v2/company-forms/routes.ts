@@ -26,6 +26,9 @@ const homeParamsSchema = z.object({
 }).strict();
 const eligibleQuerySchema = z.object({
   stageKey: z.string().trim().min(1).max(100).optional(),
+  crewUuid: z.string().uuid().optional(),
+  vesselUuid: z.string().uuid().optional(),
+  planUuid: z.string().uuid().optional(),
 }).strict();
 const createBodySchema = z.object({
   formUuid: z.string().uuid(),

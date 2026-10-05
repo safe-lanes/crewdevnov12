@@ -430,8 +430,11 @@ export class CompanyFormSubmissionLifecycleRepository {
       const applicable = await (input.adapter.isSectionApplicable?.(section, subject.context) ?? true);
       if (!applicable) throw new CompanyFormConflictError("This Company Form section does not apply to the subject.");
       await assertCompanyFormSectionEditable({ principal: input.actor, section, part, executor: tx });
+      const existingSignatures = await tx.select().from(frmSectionSignatures)
+        .where(eq(frmSectionSignatures.sectionStateUuid, state.sectionStateUuid));
       await input.adapter.authorizeSectionAction?.({ principal: input.actor, subject: subject.context,
-        stageKey: submission.stageKey, section, action: "save_signature", signatureType: input.signatureType, executor: tx });
+        stageKey: submission.stageKey, section, action: "save_signature", signatureType: input.signatureType,
+        signatures: existingSignatures, executor: tx });
       const declaration = input.adapter.signatories.find((item) => item.signatureType === input.signatureType);
       const allowedMethods = declaration?.methodsByActor?.[input.actor.kind] ??
         (declaration?.allowedActors.includes(input.actor.kind) ? declaration.methods : []);
@@ -498,6 +501,7 @@ export class CompanyFormSubmissionLifecycleRepository {
         at: now,
       });
       const signatureValues = {
+        subjectProvenance: input.adapter.signatureProvenance?.(subject.context) ?? null,
         signatureAttUuid: input.attachment.uuid,
         signerName,
         signerRank,
