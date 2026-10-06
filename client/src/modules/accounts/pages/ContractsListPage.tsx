@@ -253,6 +253,18 @@ export default function ContractsListPage({
               ))}
             </SelectContent>
           </Select>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+            onClick={() => {
+              setVesselFilter("__all__");
+              setStatusFilter("__all__");
+            }}
+            data-testid="button-clear-filters"
+          >
+            Clear
+          </Button>
         </div>
       </div>
 

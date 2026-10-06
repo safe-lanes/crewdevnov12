@@ -496,6 +496,19 @@ export default function AllotmentsPage({
             data-testid="input-search-crew"
           />
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+          onClick={() => {
+            setVesselFilter("all");
+            setStatusFilter("all");
+            setCrewSearch("");
+          }}
+          data-testid="button-clear-filters"
+        >
+          Clear
+        </Button>
         <div className="ml-auto flex gap-2">
           <Button
             size="sm"

@@ -49,7 +49,7 @@ import {
   ACCOUNTS_BASE,
 } from "../api/accountsApiV2";
 import { formatDate, formatMoney } from "../accountsFormat";
-import VesselPeriodBar, { formatPeriod } from "./VesselPeriodBar";
+import VesselPeriodBar, { currentPeriod, formatPeriod } from "./VesselPeriodBar";
 import { useVesselPeriod } from "../vesselPeriodStore";
 import EntryGrid, {
   type EntryColumn,
@@ -166,7 +166,7 @@ export default function VesselPortagePage() {
   const isVessel = userType === "Ship";
   const fixedVesselUuid = isVessel ? (getVesselIds()[0] ?? "") : "";
 
-  const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
+  const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
   useEffect(() => {
     if (isVessel && fixedVesselUuid) setVesselUuid(fixedVesselUuid);
   }, [isVessel, fixedVesselUuid]);
@@ -940,6 +940,33 @@ export default function VesselPortagePage() {
     setVesselUuid(v);
   };
 
+  const clearFiltersInFlight = useRef(false);
+  const handleClearFilters = async () => {
+    if (clearFiltersInFlight.current) return;
+    const defaultVessel = isVessel ? fixedVesselUuid : "";
+    if (vesselUuid === defaultVessel && period === currentPeriod()) return;
+    clearFiltersInFlight.current = true;
+    try {
+      if (totalDirty > 0) {
+        const ok = await saveAllDirty({ silent: true });
+        if (!ok) {
+          toast({
+            title: "Filters not cleared",
+            description:
+              "Unsaved entries could not be saved. Fix the issue (or clear the cells) before clearing filters.",
+            variant: "destructive",
+          });
+          return;
+        }
+        toast({ title: "Changes auto-saved" });
+      }
+      resetFilters(defaultVessel);
+      setSubmitWarnings(null);
+    } finally {
+      clearFiltersInFlight.current = false;
+    }
+  };
+
   // Auto-save on in-app navigation away (component unmount).
   const latestSaveAll = useRef(saveAllDirty);
   const latestTotalDirty = useRef(totalDirty);
@@ -1461,6 +1488,7 @@ export default function VesselPortagePage() {
         period={period}
         onVesselChange={isVessel ? () => {} : handleVesselChange}
         onPeriodChange={handlePeriodChange}
+        onClear={handleClearFilters}
       />
 
       {!hasFilter && (

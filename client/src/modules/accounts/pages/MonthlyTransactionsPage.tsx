@@ -72,7 +72,7 @@ export default function MonthlyTransactionsPage() {
   const mayEdit = canEdit(MENU);
   const mayDelete = canDelete(MENU);
 
-  const { vesselUuid, setVesselUuid, period, setPeriod } = useVesselPeriod();
+  const { vesselUuid, setVesselUuid, period, setPeriod, resetFilters } = useVesselPeriod();
   const [originFilter, setOriginFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const hasFilter = !!vesselUuid && !!period;
@@ -559,6 +559,11 @@ export default function MonthlyTransactionsPage() {
         period={period}
         onVesselChange={setVesselUuid}
         onPeriodChange={setPeriod}
+        onClear={() => {
+          resetFilters();
+          setOriginFilter("all");
+          setStatusFilter("all");
+        }}
       >
         <div className="space-y-1">
           <Label className="text-xs text-gray-600">Origin</Label>

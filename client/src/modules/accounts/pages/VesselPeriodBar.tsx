@@ -1,4 +1,6 @@
 import { useVesselLookup } from "@/hooks/useVesselLookup";
+import { Button } from "@/components/ui/button";
+import { useVesselPeriod } from "../vesselPeriodStore";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -32,6 +34,7 @@ interface VesselPeriodBarProps {
   onVesselChange: (uuid: string) => void;
   onPeriodChange: (period: string) => void;
   children?: React.ReactNode;
+  onClear?: () => void | Promise<void>;
 }
 
 /** Vessel + accounting-period selector shared by the payroll screens. */
@@ -41,6 +44,7 @@ export default function VesselPeriodBar({
   onVesselChange,
   onPeriodChange,
   children,
+  onClear = () => useVesselPeriod.getState().resetFilters(),
 }: VesselPeriodBarProps) {
   const { vessels, isLoading } = useVesselLookup();
 
@@ -77,6 +81,15 @@ export default function VesselPeriodBar({
         />
       </div>
       {children}
+      <Button
+        type="button"
+        variant="outline"
+        className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+        onClick={onClear}
+        data-testid="button-clear-filters"
+      >
+        Clear
+      </Button>
     </div>
   );
 }

@@ -505,6 +505,18 @@ export default function SettlementsPage() {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-8 text-[#8798ad] text-[11px] border-[#e1e8ed] px-3 shrink-0"
+            onClick={() => {
+              setFilterVessel("all");
+              setFilterStatus("all");
+            }}
+            data-testid="button-clear-filters"
+          >
+            Clear
+          </Button>
         </div>
 
         {listLoading ? (
