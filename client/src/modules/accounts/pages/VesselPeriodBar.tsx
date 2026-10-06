@@ -34,6 +34,7 @@ interface VesselPeriodBarProps {
   onVesselChange: (uuid: string) => void;
   onPeriodChange: (period: string) => void;
   children?: React.ReactNode;
+  actions?: React.ReactNode;
   onClear?: () => void | Promise<void>;
 }
 
@@ -44,6 +45,7 @@ export default function VesselPeriodBar({
   onVesselChange,
   onPeriodChange,
   children,
+  actions,
   onClear = () => useVesselPeriod.getState().resetFilters(),
 }: VesselPeriodBarProps) {
   const { vessels, isLoading } = useVesselLookup();
@@ -90,6 +92,7 @@ export default function VesselPeriodBar({
       >
         Clear
       </Button>
+      {actions}
     </div>
   );
 }

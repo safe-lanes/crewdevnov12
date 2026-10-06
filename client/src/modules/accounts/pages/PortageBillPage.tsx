@@ -260,28 +260,29 @@ export default function PortageBillPage() {
           period={period}
           onVesselChange={setVesselUuid}
           onPeriodChange={setPeriod}
-        >
-          <div className="ml-auto flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={exportExcel}
-              disabled={rows.length === 0}
-              data-testid="button-export-portage"
-            >
-              <Download size={14} className="mr-1" /> Export
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => window.print()}
-              disabled={rows.length === 0}
-              data-testid="button-print-portage"
-            >
-              <Printer size={14} className="mr-1" /> Print
-            </Button>
-          </div>
-        </VesselPeriodBar>
+          actions={
+            <div className="ml-auto flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={exportExcel}
+                disabled={rows.length === 0}
+                data-testid="button-export-portage"
+              >
+                <Download size={14} className="mr-1" /> Export
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.print()}
+                disabled={rows.length === 0}
+                data-testid="button-print-portage"
+              >
+                <Printer size={14} className="mr-1" /> Print
+              </Button>
+            </div>
+          }
+        />
       </div>
 
       {!hasFilter && (

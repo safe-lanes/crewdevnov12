@@ -564,6 +564,29 @@ export default function MonthlyTransactionsPage() {
           setOriginFilter("all");
           setStatusFilter("all");
         }}
+        actions={
+          <div className="ml-auto flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={exportCsv}
+              disabled={filteredTxns.length === 0}
+              data-testid="button-export-txns"
+            >
+              <Download size={14} className="mr-1" /> Export
+            </Button>
+            {mayCreate && hasFilter && !isLocked && (
+              <Button
+                size="sm"
+                onClick={openCreate}
+                className="bg-[#16569e] hover:bg-[#1e5fa8]"
+                data-testid="button-add-txn"
+              >
+                <Plus size={14} className="mr-1" /> Add Transaction
+              </Button>
+            )}
+          </div>
+        }
       >
         <div className="space-y-1">
           <Label className="text-xs text-gray-600">Origin</Label>
@@ -598,27 +621,6 @@ export default function MonthlyTransactionsPage() {
               <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="ml-auto flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={exportCsv}
-            disabled={filteredTxns.length === 0}
-            data-testid="button-export-txns"
-          >
-            <Download size={14} className="mr-1" /> Export
-          </Button>
-          {mayCreate && hasFilter && !isLocked && (
-            <Button
-              size="sm"
-              onClick={openCreate}
-              className="bg-[#16569e] hover:bg-[#1e5fa8]"
-              data-testid="button-add-txn"
-            >
-              <Plus size={14} className="mr-1" /> Add Transaction
-            </Button>
-          )}
         </div>
       </VesselPeriodBar>
 

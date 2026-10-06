@@ -170,19 +170,20 @@ export default function GlExportPage() {
         period={period}
         onVesselChange={setVesselUuid}
         onPeriodChange={setPeriod}
-      >
-        <div className="ml-auto">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={exportExcel}
-            disabled={!hasLines}
-            data-testid="button-export-gl"
-          >
-            <Download size={14} className="mr-1" /> Export
-          </Button>
-        </div>
-      </VesselPeriodBar>
+        actions={
+          <div className="ml-auto">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={exportExcel}
+              disabled={!hasLines}
+              data-testid="button-export-gl"
+            >
+              <Download size={14} className="mr-1" /> Export
+            </Button>
+          </div>
+        }
+      />
 
       {hasFilter && data && data.warnings.length > 0 && hasLines && (
         <div

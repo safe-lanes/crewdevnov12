@@ -542,31 +542,32 @@ export default function PayslipsPage() {
             period={period}
             onVesselChange={setVesselUuid}
             onPeriodChange={setPeriod}
-          >
-            <div className="ml-auto flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={exportExcel}
-                disabled={rows.length === 0}
-                data-testid="button-export-payslips"
-              >
-                <Download size={14} className="mr-1" /> Export
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setView({ mode: "all" });
-                  setTimeout(() => window.print(), 400);
-                }}
-                disabled={payslips.length === 0}
-                data-testid="button-print-all-payslips"
-              >
-                <Printer size={14} className="mr-1" /> Print all
-              </Button>
-            </div>
-          </VesselPeriodBar>
+            actions={
+              <div className="ml-auto flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={exportExcel}
+                  disabled={rows.length === 0}
+                  data-testid="button-export-payslips"
+                >
+                  <Download size={14} className="mr-1" /> Export
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setView({ mode: "all" });
+                    setTimeout(() => window.print(), 400);
+                  }}
+                  disabled={payslips.length === 0}
+                  data-testid="button-print-all-payslips"
+                >
+                  <Printer size={14} className="mr-1" /> Print all
+                </Button>
+              </div>
+            }
+          />
 
           {!hasFilter && (
             <div
