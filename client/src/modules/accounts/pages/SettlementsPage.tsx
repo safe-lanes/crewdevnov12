@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";

@@ -4,7 +4,7 @@ import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/contexts/PermissionsContext";
-import AgGridTable from "@/components/AgGrid/AgGridTable";
+import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
