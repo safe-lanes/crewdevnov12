@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -7,6 +7,10 @@ import { usePermissions } from "@/contexts/PermissionsContext";
 import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  FormattedDateInput,
+  formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -61,6 +65,40 @@ const emptyForm: CbaForm = {
   sourceNote: "",
 };
 
+type CbaDateInputProps = Pick<
+  Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid"
+>;
+
+function CbaDateInput({ onDraftValidityChange, ...props }: CbaDateInputProps) {
+  // Keep an unsupported saved value on its original input for this dialog session.
+  const [useNativeInput] = useState(() => Boolean(props.value && !formatIsoDate(props.value)));
+  const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
+    if (input.matches(":disabled") || !input.validity.valid) return;
+    if (input.value === props.value) return;
+    if (input.value !== "" && !formatIsoDate(input.value)) return;
+    // Accept a pending calendar selection before the shared blur handler resets it.
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+
+  if (useNativeInput) return <Input {...props} type="date" />;
+
+  return (
+    <div style={{ display: "contents" }} onBlurCapture={handleBlurCapture}>
+      <FormattedDateInput
+        {...props}
+        mode="date"
+        className="min-w-0 border-input text-base md:text-sm"
+        acceptCalendarInputEvents
+        retainInvalidDraftOnBlur
+        onDraftValidityChange={onDraftValidityChange}
+      />
+    </div>
+  );
+}
+
 export default function CbaReferencePage() {
   const { toast } = useToast();
   const { canCreate, canEdit, canDelete } = usePermissions();
@@ -87,17 +125,26 @@ export default function CbaReferencePage() {
   const [editingUuid, setEditingUuid] = useState<string | null>(null);
   const [form, setForm] = useState<CbaForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [dateFormVersion, setDateFormVersion] = useState(0);
+  const dateValidity = useRef({ effectiveFrom: true, effectiveTo: true });
+
+  const resetDateInputs = () => {
+    dateValidity.current = { effectiveFrom: true, effectiveTo: true };
+    setDateFormVersion((version) => version + 1);
+  };
 
   const set = <K extends keyof CbaForm>(key: K, value: CbaForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const openCreate = () => {
+    resetDateInputs();
     setEditingUuid(null);
     setForm(emptyForm);
     setDialogOpen(true);
   };
 
   const openEdit = (row: any) => {
+    resetDateInputs();
     setEditingUuid(row.cbaRefUuid);
     setForm({
       cbaName: row.cbaName ?? "",
@@ -118,6 +165,14 @@ export default function CbaReferencePage() {
       toast({
         title: "Missing field",
         description: "CBA name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!dateValidity.current.effectiveFrom || !dateValidity.current.effectiveTo) {
+      toast({
+        title: "Invalid date",
+        description: "Correct or clear Effective from and Effective to before saving.",
         variant: "destructive",
       });
       return;
@@ -406,19 +461,25 @@ export default function CbaReferencePage() {
 
             <div className="flex flex-col gap-1.5">
               <Label>Effective from</Label>
-              <Input
-                type="date"
+              <CbaDateInput
+                key={dateFormVersion}
                 value={form.effectiveFrom}
                 onChange={(e) => set("effectiveFrom", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  dateValidity.current.effectiveFrom = valid;
+                }}
                 data-testid="input-cba-effective-from"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Effective to</Label>
-              <Input
-                type="date"
+              <CbaDateInput
+                key={dateFormVersion}
                 value={form.effectiveTo}
                 onChange={(e) => set("effectiveTo", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  dateValidity.current.effectiveTo = valid;
+                }}
                 data-testid="input-cba-effective-to"
               />
             </div>
