@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import WageScaleDateInput from "./WageScaleDateInput";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -100,6 +101,9 @@ export default function WageScaleEditor({
   const [datesSaving, setDatesSaving] = useState(false);
   const [effFrom, setEffFrom] = useState("");
   const [effTo, setEffTo] = useState("");
+  const [dateValidity, setDateValidity] = useState({ from: true, to: true });
+  const reportDateValidity = (field: "from" | "to", valid: boolean) =>
+    setDateValidity((previous) => previous[field] === valid ? previous : { ...previous, [field]: valid });
   useEffect(() => {
     setEffFrom(scale?.effectiveFrom ?? "");
     setEffTo(scale?.effectiveTo ?? "");
@@ -107,7 +111,8 @@ export default function WageScaleEditor({
   const datesDirty =
     !!scale &&
     (effFrom !== (scale.effectiveFrom ?? "") ||
-      effTo !== (scale.effectiveTo ?? ""));
+      effTo !== (scale.effectiveTo ?? "") ||
+      !dateValidity.from || !dateValidity.to);
 
   const revisionDateLimit = useMemo<{
     min: string | undefined;
@@ -137,7 +142,8 @@ export default function WageScaleEditor({
     if (!supersedes) return true;
     const dateError =
       getRevisionDateError(supersedes, effFrom) ||
-      revisionDateLimit.error;
+      revisionDateLimit.error ||
+      (!dateValidity.from ? "Enter a valid Effective From date for the revision." : null);
     if (dateError) {
       toast({
         title: "Invalid revision date",
@@ -169,6 +175,14 @@ export default function WageScaleEditor({
       return;
     }
     if (!validateRevisionDates()) return;
+    if (!dateValidity.from || !dateValidity.to) {
+      toast({
+        title: "Invalid date",
+        description: "Enter valid effective dates, or clear an optional date before saving.",
+        variant: "destructive",
+      });
+      return;
+    }
     setDatesSaving(true);
     try {
       await accountsApiV2.wageScales.update(scaleUuid, {
@@ -678,13 +692,15 @@ export default function WageScaleEditor({
             <Label className="text-xs text-muted-foreground">
               Effective from
             </Label>
-            <Input
-              type="date"
+            <WageScaleDateInput
+              key={`from-${scaleUuid}`}
+              savedValue={scale.effectiveFrom ?? ""}
+              resetKey={JSON.stringify([scale.effectiveFrom, scale.effectiveTo])}
               value={effFrom}
               min={revisionDateLimit.min}
               onChange={(e) => setEffFrom(e.target.value)}
               disabled={!editable}
-              className="h-8 w-40 text-xs"
+              onDraftValidityChange={(valid) => reportDateValidity("from", valid)}
               data-testid="input-editor-effective-from"
             />
           </div>
@@ -692,13 +708,15 @@ export default function WageScaleEditor({
             <Label className="text-xs text-muted-foreground">
               Effective to
             </Label>
-            <Input
-              type="date"
+            <WageScaleDateInput
+              key={`to-${scaleUuid}`}
+              savedValue={scale.effectiveTo ?? ""}
+              resetKey={JSON.stringify([scale.effectiveFrom, scale.effectiveTo])}
               value={effTo}
               onChange={(e) => setEffTo(e.target.value)}
               min={isDraft ? effFrom || undefined : undefined}
               disabled={!editable}
-              className="h-8 w-40 text-xs"
+              onDraftValidityChange={(valid) => reportDateValidity("to", valid)}
               data-testid="input-editor-effective-to"
             />
           </div>
@@ -706,7 +724,7 @@ export default function WageScaleEditor({
             <Button
               size="sm"
               variant="outline"
-              className="h-8"
+              className="h-8 mb-5"
               onClick={handleSaveDates}
               disabled={!editable || datesSaving || !datesDirty}
               data-testid="button-save-dates"

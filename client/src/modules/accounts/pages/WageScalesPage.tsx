@@ -36,6 +36,7 @@ import { accountsApiV2, parseApiError, ACCOUNTS_BASE } from "../api/accountsApiV
 import { formatDate } from "../accountsFormat";
 import { CURRENCIES } from "../accountsConstants";
 import WageScaleEditor from "./WageScaleEditor";
+import WageScaleDateInput from "./WageScaleDateInput";
 import {
   MISSING_SUPERSEDED_FROM,
   getRevisionDateError,
@@ -232,6 +233,8 @@ export default function WageScalesPage() {
   const [supersedeRow, setSupersedeRow] = useState<any | null>(null);
   const [supersedeFrom, setSupersedeFrom] = useState("");
   const [superseding, setSuperseding] = useState(false);
+  const [revisionFormVersion, setRevisionFormVersion] = useState(0);
+  const revisionDateValid = useRef(true);
 
   const supersedeMin = supersedeRow?.effectiveFrom
     ? shiftIsoDate(
@@ -253,6 +256,8 @@ export default function WageScalesPage() {
       1,
     );
     const today = new Date().toISOString().slice(0, 10);
+    revisionDateValid.current = true;
+    setRevisionFormVersion((version) => version + 1);
     setSupersedeRow(row);
     setSupersedeFrom(today < minimum ? minimum : today);
   };
@@ -274,6 +279,14 @@ export default function WageScalesPage() {
       toast({
         title: "Invalid revision date",
         description: dateError,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!revisionDateValid.current) {
+      toast({
+        title: "Invalid revision date",
+        description: "Enter a valid Effective From date for the revision.",
         variant: "destructive",
       });
       return;
@@ -583,11 +596,15 @@ export default function WageScalesPage() {
           </p>
           <div className="flex flex-col gap-1.5">
             <Label>Revision effective from</Label>
-            <Input
-              type="date"
+            <WageScaleDateInput
+              key={revisionFormVersion}
+              savedValue=""
+              resetKey={String(revisionFormVersion)}
+              height={36}
               min={supersedeMin}
               value={supersedeFrom}
               onChange={(e) => setSupersedeFrom(e.target.value)}
+              onDraftValidityChange={(valid) => { revisionDateValid.current = valid; }}
               data-testid="input-supersede-effective-from"
             />
           </div>
