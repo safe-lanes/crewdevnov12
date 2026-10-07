@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -7,6 +7,10 @@ import { usePermissions } from "@/contexts/PermissionsContext";
 import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  FormattedDateInput,
+  formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -55,6 +59,52 @@ import { useVesselPeriod } from "../vesselPeriodStore";
 // Advances & Bond are governed by the combined "Allotments & Cash" screen's
 // menu row (Account Allotments) since the Cash & Bond menu row was retired.
 const MENU = "Account Allotments";
+
+type CashBondDateInputProps = Pick<
+  Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid"
+>;
+
+function CashBondDateInput({ onDraftValidityChange, ...props }: CashBondDateInputProps) {
+  // Keep an unsupported saved value on its original input for this dialog session.
+  const [useNativeInput] = useState(() => Boolean(props.value && !formatIsoDate(props.value)));
+  const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
+    if (input.matches(":disabled") || !input.validity.valid) return;
+    if (input.value === props.value) return;
+    if (input.value !== "" && !formatIsoDate(input.value)) return;
+    // Accept a pending calendar selection before the shared blur handler resets it.
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+
+  if (useNativeInput) return <Input {...props} type="date" />;
+
+  return (
+    <div
+      style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)" }}
+      onBlurCapture={handleBlurCapture}
+    >
+      {/* Reserve the shared error's natural height, including narrow-screen wrapping. */}
+      <div
+        aria-hidden="true"
+        style={{ gridArea: "1 / 1", paddingTop: 36, visibility: "hidden", pointerEvents: "none" }}
+      >
+        <p className="mt-1 text-xs leading-4">Incorrect date/date format</p>
+      </div>
+      <div style={{ gridArea: "1 / 1", minWidth: 0 }}>
+        <FormattedDateInput
+          {...props}
+          mode="date"
+          className="min-w-0 border-input text-base md:text-sm"
+          acceptCalendarInputEvents
+          retainInvalidDraftOnBlur
+          onDraftValidityChange={onDraftValidityChange}
+        />
+      </div>
+    </div>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* Advances tab                                                        */
@@ -142,6 +192,8 @@ export function AdvancesTab({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<AdvanceForm>(emptyAdvanceForm);
   const [saving, setSaving] = useState(false);
+  const [dateFormVersion, setDateFormVersion] = useState(0);
+  const requestDateIsValid = useRef(true);
   const [detailUuid, setDetailUuid] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<any | null>(null);
   const [closeTarget, setCloseTarget] = useState<any | null>(null);
@@ -173,6 +225,14 @@ export function AdvancesTab({
       toast({
         title: "Missing fields",
         description: "Amount and monthly recovery are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!requestDateIsValid.current) {
+      toast({
+        title: "Invalid date",
+        description: "Enter a valid Date or clear it before saving.",
         variant: "destructive",
       });
       return;
@@ -362,6 +422,8 @@ export function AdvancesTab({
           <Button
             size="sm"
             onClick={() => {
+              requestDateIsValid.current = true;
+              setDateFormVersion((version) => version + 1);
               setForm({
                 ...emptyAdvanceForm,
                 requestDate: new Date().toISOString().slice(0, 10),
@@ -437,10 +499,13 @@ export function AdvancesTab({
             </div>
             <div className="space-y-1">
               <Label>Date</Label>
-              <Input
-                type="date"
+              <CashBondDateInput
+                key={dateFormVersion}
                 value={form.requestDate}
                 onChange={(e) => set("requestDate", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  requestDateIsValid.current = valid;
+                }}
                 data-testid="input-advance-date"
               />
             </div>
@@ -813,6 +878,13 @@ export function BondTab({
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<BondForm>(emptyBondForm);
   const [saving, setSaving] = useState(false);
+  const [dateFormVersion, setDateFormVersion] = useState(0);
+  const saleDateIsValid = useRef(true);
+
+  const resetDateInput = () => {
+    saleDateIsValid.current = true;
+    setDateFormVersion((version) => version + 1);
+  };
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -844,6 +916,7 @@ export function BondTab({
   };
 
   const openCreate = () => {
+    resetDateInput();
     setEditing(null);
     setForm({
       ...emptyBondForm,
@@ -853,6 +926,7 @@ export function BondTab({
   };
 
   const openEdit = (row: any) => {
+    resetDateInput();
     setEditing(row);
     setForm({
       crewUuid: row.crewUuid ?? "",
@@ -880,6 +954,14 @@ export function BondTab({
       toast({
         title: "Missing item",
         description: "Item name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!saleDateIsValid.current) {
+      toast({
+        title: "Invalid date",
+        description: "Enter a valid Sale Date or clear it before saving.",
         variant: "destructive",
       });
       return;
@@ -1217,10 +1299,13 @@ export function BondTab({
             </div>
             <div className="space-y-1">
               <Label>Sale Date</Label>
-              <Input
-                type="date"
+              <CashBondDateInput
+                key={dateFormVersion}
                 value={form.saleDate}
                 onChange={(e) => set("saleDate", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  saleDateIsValid.current = valid;
+                }}
                 data-testid="input-bond-sale-date"
               />
             </div>
