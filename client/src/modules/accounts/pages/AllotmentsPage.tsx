@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef, GridApi, GridReadyEvent } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -7,6 +7,10 @@ import { usePermissions } from "@/contexts/PermissionsContext";
 import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  FormattedDateInput,
+  formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -88,6 +92,40 @@ const emptyForm: AllotmentForm = {
   bankVerified: false,
 };
 
+type AllotmentDateInputProps = Pick<
+  Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
+  "value" | "onChange" | "onDraftValidityChange" | "data-testid"
+>;
+
+function AllotmentDateInput({ onDraftValidityChange, ...props }: AllotmentDateInputProps) {
+  // Keep an unsupported saved value on its original input for this dialog session.
+  const [useNativeInput] = useState(() => Boolean(props.value && !formatIsoDate(props.value)));
+  const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
+    if (input.matches(":disabled") || !input.validity.valid) return;
+    if (input.value === props.value) return;
+    if (input.value !== "" && !formatIsoDate(input.value)) return;
+    // Accept a pending calendar selection before the shared blur handler resets it.
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+
+  if (useNativeInput) return <Input {...props} type="date" />;
+
+  return (
+    <div style={{ minHeight: 56 }} onBlurCapture={handleBlurCapture}>
+      <FormattedDateInput
+        {...props}
+        mode="date"
+        className="min-w-0 border-input text-base md:text-sm"
+        acceptCalendarInputEvents
+        retainInvalidDraftOnBlur
+        onDraftValidityChange={onDraftValidityChange}
+      />
+    </div>
+  );
+}
+
 function maskAccount(acct: string | null | undefined): string {
   if (!acct) return "";
   const tail = acct.slice(-4);
@@ -142,6 +180,13 @@ export default function AllotmentsPage({
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState<AllotmentForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [dateFormVersion, setDateFormVersion] = useState(0);
+  const validFromIsValid = useRef(true);
+
+  const resetDateInput = () => {
+    validFromIsValid.current = true;
+    setDateFormVersion((version) => version + 1);
+  };
   const [endTarget, setEndTarget] = useState<any | null>(null);
   const [acting, setActing] = useState(false);
 
@@ -149,6 +194,7 @@ export default function AllotmentsPage({
     setForm((f) => ({ ...f, [key]: value }));
 
   const openCreate = () => {
+    resetDateInput();
     setEditing(null);
     setForm({ ...emptyForm, validFrom: new Date().toISOString().slice(0, 10) });
     setDialogVessel("");
@@ -156,6 +202,7 @@ export default function AllotmentsPage({
   };
 
   const openEdit = (row: any) => {
+    resetDateInput();
     setEditing(row);
     setForm({
       crewUuid: row.crewUuid ?? "",
@@ -201,6 +248,14 @@ export default function AllotmentsPage({
       toast({
         title: "Missing fields",
         description: "Payee name, amount and valid-from are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!validFromIsValid.current) {
+      toast({
+        title: "Invalid date",
+        description: "Enter a valid date in Valid From before saving.",
         variant: "destructive",
       });
       return;
@@ -694,10 +749,13 @@ export default function AllotmentsPage({
             </div>
             <div className="space-y-1">
               <Label>Valid From</Label>
-              <Input
-                type="date"
+              <AllotmentDateInput
+                key={dateFormVersion}
                 value={form.validFrom}
                 onChange={(e) => set("validFrom", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  validFromIsValid.current = valid;
+                }}
                 data-testid="input-allotment-valid-from"
               />
             </div>
