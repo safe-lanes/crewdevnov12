@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type ComponentPropsWithoutRef, type FocusEventHandler } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColDef } from "ag-grid-community";
 import { queryClient } from "@/lib/queryClient";
@@ -8,6 +8,10 @@ import { useNationalitiesV2 } from "@/hooks/v2/useMasterDataV2";
 import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  FormattedDateInput,
+  formatIsoDate,
+} from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,6 +92,44 @@ function natLabel(n: any): string {
   return n?.nationality || n?.countryName || n?.natUuid || "";
 }
 
+type PayElementDateInputProps = Pick<
+  Extract<ComponentPropsWithoutRef<typeof FormattedDateInput>, { mode?: "date" }>,
+  "value" | "onChange" | "onDraftValidityChange" | "min" | "data-testid"
+>;
+
+function PayElementDateInput({ onDraftValidityChange, ...props }: PayElementDateInputProps) {
+  // Keep an unsupported saved value on its original input for this dialog session.
+  const [useNativeInput] = useState(() => Boolean(props.value && !formatIsoDate(props.value)));
+  const draft = useRef(formatIsoDate(props.value));
+  const handleBlurCapture: FocusEventHandler<HTMLDivElement> = (event) => {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
+    if (input.matches(":disabled") || !input.validity.valid) return;
+    if (input.value === props.value) return;
+    if (input.value !== "" && !formatIsoDate(input.value)) return;
+    // Accept a pending calendar selection before the shared blur handler resets it.
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+
+  if (useNativeInput) return <Input {...props} type="date" />;
+
+  return (
+    <div style={{ minHeight: 56 }} onBlurCapture={handleBlurCapture}>
+      <FormattedDateInput
+        {...props}
+        key={props.min || ""}
+        initialDraft={draft.current}
+        onDraftChange={(value) => { draft.current = value; }}
+        mode="date"
+        className="min-w-0 border-input text-base md:text-sm"
+        acceptCalendarInputEvents
+        retainInvalidDraftOnBlur
+        onDraftValidityChange={onDraftValidityChange}
+      />
+    </div>
+  );
+}
+
 export default function PayElementsPage() {
   const { toast } = useToast();
   const { canCreate, canEdit, canDelete } = usePermissions();
@@ -120,17 +162,26 @@ export default function PayElementsPage() {
   const [editingUuid, setEditingUuid] = useState<string | null>(null);
   const [form, setForm] = useState<ElementForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [dateFormVersion, setDateFormVersion] = useState(0);
+  const dateValidity = useRef({ effectiveFrom: true, effectiveTo: true });
+
+  const resetDateInputs = () => {
+    dateValidity.current = { effectiveFrom: true, effectiveTo: true };
+    setDateFormVersion((version) => version + 1);
+  };
 
   const set = <K extends keyof ElementForm>(key: K, value: ElementForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const openCreate = () => {
+    resetDateInputs();
     setEditingUuid(null);
     setForm(emptyForm);
     setDialogOpen(true);
   };
 
   const openEdit = (row: any) => {
+    resetDateInputs();
     setEditingUuid(row.payElementUuid);
     setForm({
       code: row.code ?? "",
@@ -217,6 +268,14 @@ export default function PayElementsPage() {
       toast({
         title: "Invalid effective dates",
         description: "Effective to must be on or after effective from.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!dateValidity.current.effectiveFrom || !dateValidity.current.effectiveTo) {
+      toast({
+        title: "Invalid date",
+        description: "Correct or clear Effective from and Effective to before saving.",
         variant: "destructive",
       });
       return;
@@ -597,20 +656,26 @@ export default function PayElementsPage() {
 
             <div className="flex flex-col gap-1.5">
               <Label>Effective from</Label>
-              <Input
-                type="date"
+              <PayElementDateInput
+                key={dateFormVersion}
                 value={form.effectiveFrom}
                 onChange={(e) => set("effectiveFrom", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  dateValidity.current.effectiveFrom = valid;
+                }}
                 data-testid="input-element-effective-from"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label>Effective to</Label>
-              <Input
-                type="date"
+              <PayElementDateInput
+                key={dateFormVersion}
                 value={form.effectiveTo}
                 min={form.effectiveFrom || undefined}
                 onChange={(e) => set("effectiveTo", e.target.value)}
+                onDraftValidityChange={(valid) => {
+                  dateValidity.current.effectiveTo = valid;
+                }}
                 data-testid="input-element-effective-to"
               />
             </div>
