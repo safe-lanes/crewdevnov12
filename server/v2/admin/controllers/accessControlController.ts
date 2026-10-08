@@ -120,6 +120,7 @@ export const accessControlController = {
       const result = await accessControlService.getMyPermissions(
         roleResolution.role.roleId,
         roleResolution.role.roleName,
+        roleResolution.role.roleType,
       );
       res.json(result);
     } catch (error: any) {

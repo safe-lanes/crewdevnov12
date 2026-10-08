@@ -15,3 +15,12 @@ export function emptyCompanyFormGrants(): CompanyFormGrants {
 export function companyFormPermissionLabel(action: CompanyFormPermission): string {
   return COMPANY_FORM_PERMISSIONS.find(item => item.action === action)!.label;
 }
+/** These actions are always default-deny; never use menu unknown/default-allow. */
+export function hasCompanyFormPermission(grants: Partial<CompanyFormGrants> | undefined,
+  category: string | undefined, action: CompanyFormPermission): boolean {
+  const normalized = category?.trim().toLowerCase();
+  if (!["office", "ship", "vessel", "sail admin"].includes(normalized ?? "")) return false;
+  if (normalized === "sail admin" && action !== "view") return false;
+  if (action === "sign_representative" && normalized !== "office") return false;
+  return grants?.[action] === true;
+}

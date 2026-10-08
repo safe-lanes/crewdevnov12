@@ -1,4 +1,5 @@
 import { AccessControlRepository } from "../repositories/accessControlRepository";
+import { readCompanyFormGrants } from "./actionPermissionsService";
 import { applyAuditUser } from "../utils/auditUser";
 import type { AdmMenuMasterAc, InsertAdmMenuMasterAc, AdmRoleMasterAc, InsertAdmRoleMasterAc, AdmRoleAccessAc } from "../../../../shared/v2/admin/types";
 
@@ -61,9 +62,10 @@ export const accessControlService = {
     return accessControlRepo.findPermissionsByRoleUuid(roleUuid);
   },
 
-  async getMyPermissions(roleId: string, roleName: string) {
+  async getMyPermissions(roleId: string, roleName: string, roleCategory: string = "") {
     const permissions = await accessControlRepo.findPermissionsWithMenusByRoleUuid(roleId);
-    return { permissions, roleName, roleId };
+    return { permissions, roleName, roleId, roleCategory,
+      companyFormGrants: await readCompanyFormGrants(roleId) };
   },
 
   async savePermissions(roleUuid: string, permissions: Array<{ menuId: string; canview: boolean; cancreate: boolean; canedit: boolean; candelete: boolean }>, auditUserUuid: string | null = null): Promise<AdmRoleAccessAc[]> {

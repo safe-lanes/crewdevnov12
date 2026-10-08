@@ -268,6 +268,7 @@ function mapSignatureState(state: CompanyFormSubmissionSectionState) {
     {
       signatureAttUuid: signature.attachment.assetUuid,
       signatureName: signature.signerName,
+      canRemove: signature.canRemove === true,
       signatureRank: signature.signerRank,
       witnessedByName: signature.witnessName,
       witnessedByRank: signature.witnessRank,
@@ -963,10 +964,13 @@ export function CompanySubmissionRenderer({
       React.createElement("p", { className: "mt-1" }, `Voided by ${lifecycleForm.submission.voidedByName ?? "Identity unavailable"} · ${lifecycleForm.submission.voidedByDesignation ?? "Designation not recorded"}`),
       lifecycleForm.submission.voidedAt && React.createElement("p", { className: "mt-1" }, `Voided at ${sailUtcTimestamp(lifecycleForm.submission.voidedAt)}`),
     ),
-    lifecycleForm?.submission.canVoid && submissionStatus !== "voided" && React.createElement(
+    lifecycleForm && (lifecycleForm.submission.canVoid || submissionStatus === "completed") && React.createElement(
       "section",
       { className: "mb-3 space-y-2 rounded-md border p-3", "aria-label": "Void submission" },
       React.createElement("label", { htmlFor: "company-form-void-reason", className: "block text-sm font-medium" }, "Void this submission and keep it in history"),
+      !lifecycleForm.submission.canVoid && React.createElement("p", {
+        className: "text-sm text-destructive", "data-testid": "company-form-void-refusal",
+      }, `Company Forms ${submissionStatus === "completed" ? "Void completed" : "Void"} permission is required. Category and vessel restrictions also apply.`),
       React.createElement("textarea", {
         id: "company-form-void-reason",
         className: "min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm",

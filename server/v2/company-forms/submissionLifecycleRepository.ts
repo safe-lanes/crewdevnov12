@@ -29,6 +29,7 @@ import {
 import { assertCompanyFormSectionEditable, assertCompanyFormSignatureConfigured } from "./draftSectionPolicy";
 import { sectionRequiresSubmission } from "./lifecyclePolicy";
 import { getDb } from "../db";
+import { ownsCompanyFormSignature } from "./signatureOwnership";
 
 type Executor = any;
 type LifecycleAdapter = CompanyFormSubjectAdapter<any>;
@@ -572,10 +573,7 @@ export class CompanyFormSubmissionLifecycleRepository {
       const users = await tx.select({ userUuid: masterUsers.userUuid }).from(masterUsers)
         .where(eq(masterUsers.id, input.actor.userId)).limit(1);
       const signature = signatures[0];
-      const signedByActor = signature.signedByUuid === String(input.actor.userId) ||
-        (!!users[0]?.userUuid && signature.signedByUuid === users[0].userUuid);
-      const witnessedByActor = signature.witnessUserId === input.actor.userId;
-      if (!signedByActor && !witnessedByActor) {
+      if (!ownsCompanyFormSignature(signature, input.actor.userId, users[0]?.userUuid)) {
         throw new CompanyFormPermissionError("Fill in permits removing only an unsubmitted signature you signed or recorded as witness.");
       }
       const now = new Date();

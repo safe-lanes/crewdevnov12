@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COMPANY_FORM_PERMISSIONS, emptyCompanyFormGrants } from "../../shared/v2/admin/companyFormPermissions";
+import { COMPANY_FORM_PERMISSIONS, emptyCompanyFormGrants, hasCompanyFormPermission } from "../../shared/v2/admin/companyFormPermissions";
 
 describe("Company Forms action catalogue", () => {
   it("declares six independent permissions, all off without explicit grants", () => {
@@ -11,5 +11,11 @@ describe("Company Forms action catalogue", () => {
     grants.witness = true;
     expect(grants.fill_in).toBe(false);
     expect(grants.sign_representative).toBe(false);
+  });
+  it("never default-allows missing browser actions or unknown categories", () => {
+    expect(hasCompanyFormPermission(undefined, "Office", "view")).toBe(false);
+    expect(hasCompanyFormPermission({ view: true }, "unknown", "view")).toBe(false);
+    expect(hasCompanyFormPermission({ sign_representative: true }, "Ship", "sign_representative")).toBe(false);
+    expect(hasCompanyFormPermission({ fill_in: true }, "SAIL Admin", "fill_in")).toBe(false);
   });
 });

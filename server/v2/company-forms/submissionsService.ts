@@ -1,4 +1,7 @@
 import type { Request } from "express";
+import { eq } from "drizzle-orm";
+import { masterUsers } from "../../../shared/schema";
+import { ownsCompanyFormSignature } from "./signatureOwnership";
 import type {
   CompanyFormAction,
   CompanyFormPrincipal,
@@ -457,7 +460,11 @@ export class CompanyFormSubmissionsService {
     return result;
   }
 
-  private mapStatesAndAnswers(data: any, formUrl: string) {
+  private async mapStatesAndAnswers(data: any, formUrl: string, principal: CompanyFormPrincipal, canEdit: boolean) {
+    const users = data.signatures.length && canEdit
+      ? await getDb().select({ userUuid: masterUsers.userUuid }).from(masterUsers)
+        .where(eq(masterUsers.id, principal.userId)).limit(1) : [];
+    const statusByState = new Map((data.states as any[]).map(state => [state.sectionStateUuid, state.status]));
     const signaturesByState = new Map<string, CompanyFormSubmissionSectionState["signatures"]>();
     for (const row of data.signatures as any[]) {
       const signatures = signaturesByState.get(row.signature.sectionStateUuid) ?? [];
@@ -473,6 +480,8 @@ export class CompanyFormSubmissionsService {
         signedAt: isoDate(row.signature.signedAt)!,
         signedByUuid: row.signature.signedByUuid,
         signatureMethod: row.signature.signatureMethod,
+        canRemove: canEdit && statusByState.get(row.signature.sectionStateUuid) !== "submitted" &&
+          ownsCompanyFormSignature(row.signature, principal.userId, users[0]?.userUuid),
         attachment: {
           assetUuid: row.attachment.sigAttUuid,
           fileName: row.attachment.fileName,
@@ -519,7 +528,7 @@ export class CompanyFormSubmissionsService {
     const canEdit = await this.canEditSubmission(adapter, principal, subject.context, data.submission.status, data.submission.stageKey);
     const canVoid = await this.canVoidSubmission(adapter, principal, subject.context, data.submission.status);
     const formUrl = `/api/v2/company-form-submissions/${encodeURIComponent(input.submissionUuid)}`;
-    const { states, answers } = this.mapStatesAndAnswers(data, formUrl);
+    const { states, answers } = await this.mapStatesAndAnswers(data, formUrl, principal, canEdit);
     const history = await this.readableHistory(input.req, data.submission);
     return {
       submission: mapSummary({ ...data.submission, formArchivedAt: data.form.archivedAt }, canEdit, canVoid),
@@ -783,7 +792,7 @@ export class CompanyFormSubmissionsService {
     }));
 
     const formUrl = `/api/v2/company-form-submissions/${encodeURIComponent(input.submissionUuid)}`;
-    const { states, answers } = this.mapStatesAndAnswers(data, formUrl);
+    const { states, answers } = await this.mapStatesAndAnswers(data, formUrl, principal, canEdit);
     const history = await this.readableHistory(input.req, data.submission);
     if (systemValuesComparisonError && systemValuesChanged !== true) systemValuesChanged = null;
     return {

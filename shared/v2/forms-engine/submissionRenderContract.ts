@@ -105,6 +105,7 @@ export type CompanyFormSubmissionSignature = {
   signerRoleUuid?: string | null;
   signedAt: string;
   signedByUuid: string;
+  canRemove?: boolean;
   signatureMethod: string;
   attachment: {
     assetUuid: string;

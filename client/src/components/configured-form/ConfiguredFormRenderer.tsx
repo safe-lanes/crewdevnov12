@@ -121,6 +121,7 @@ export interface ConfiguredFormVesselType {
 export type ConfiguredFormAnswerValue = string | string[] | boolean;
 export type ConfiguredSignatureType = "officer" | "seafarer" | "vessel_management";
 export interface ConfiguredSignature {
+  canRemove?: boolean;
   signatureAttUuid?: string | null;
   signatureName?: string | null;
   signatureRank?: string | null;
@@ -376,7 +377,7 @@ function SignatureBlock({
       {type === "seafarer" && <span className="whitespace-nowrap text-muted-foreground">Signed in the presence of {state.witnessedByName || "the witnessing officer"}{state.witnessedByRank ? ` · ${state.witnessedByRank}` : ""}</span>}
       <span className="ml-1 whitespace-nowrap font-semibold" style={{ color: sailDesignSystem.colors.headerText }}>Date:</span>
       <span className="whitespace-nowrap" data-testid={legacy ? `preview-signature-date-${sectionId}` : undefined}>{formatSignatureDate(state.signedAt)}</span>
-      {!readOnly && live?.onDeleteSignature && <Button type="button" variant="outline" size="sm" disabled={signatureActionPending} onClick={async () => {
+      {!readOnly && (!companyForm || state.canRemove === true) && live?.onDeleteSignature && <Button type="button" variant="outline" size="sm" disabled={signatureActionPending} onClick={async () => {
         setSignatureActionPending(true);
         setSignatureActionError(null);
         try {
@@ -1050,13 +1051,13 @@ function ConfiguredSection({
           {mode === "preview" ? <div className="space-y-4 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={section.signature_required ? `preview-signature-${sectionId}` : `preview-signature-officer-${sectionId}`}>
             <p className="text-sm font-semibold">{companyForm ? "Company Representative" : "Officer signature"}</p><p className="text-xs">Signature placeholder — live signing is not available in Preview.</p>
             <SAILFormField label="Date"><p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm" data-testid={section.signature_required ? `preview-signature-date-${sectionId}` : undefined}>Auto-filled when signed</p></SAILFormField>
-          </div> : <SignatureBlock sectionId={sectionId} type="officer" readOnly={readOnly} live={live} legacy={!!section.signature_required} companyForm={companyForm} canSign={!companyForm || section.can_sign?.officer === true} state={state?.signatures?.officer || (state?.signatureAttUuid ? { signatureAttUuid: state.signatureAttUuid, signatureName: state.signatureName, signedAt: state.signedAt, signatureUrl: state.signatureUrl } : undefined)} />}
+          </div> : <SignatureBlock sectionId={sectionId} type="officer" readOnly={readOnly && !(companyForm && section.can_sign?.officer === true && !state?.signatures?.officer)} live={live} legacy={!!section.signature_required} companyForm={companyForm} canSign={!companyForm || section.can_sign?.officer === true} state={state?.signatures?.officer || (state?.signatureAttUuid ? { signatureAttUuid: state.signatureAttUuid, signatureName: state.signatureName, signedAt: state.signedAt, signatureUrl: state.signatureUrl } : undefined)} />}
         </div>
       )}
       {seafarerSignatureRequired && (
         mode === "preview"
           ? <div className="space-y-4 rounded-md border border-dashed px-4 py-4" style={{ borderColor: sailDesignSystem.colors.headerText }} data-testid={`preview-signature-seafarer-${sectionId}`}><p className="text-sm font-semibold">Seafarer signature</p><p className="text-xs">Signature placeholder — live signing is not available in Preview.</p><SAILFormField label="Date"><p className="min-h-10 rounded-md border bg-muted/40 px-3 py-2 text-sm">Auto-filled when signed</p></SAILFormField></div>
-          : <SignatureBlock sectionId={sectionId} type="seafarer" readOnly={readOnly} live={live} companyForm={companyForm} canSign={!companyForm || section.can_sign?.seafarer === true} state={state?.signatures?.seafarer} />
+          : <SignatureBlock sectionId={sectionId} type="seafarer" readOnly={readOnly && !(companyForm && section.can_sign?.seafarer === true && !state?.signatures?.seafarer)} live={live} companyForm={companyForm} canSign={!companyForm || section.can_sign?.seafarer === true} state={state?.signatures?.seafarer} />
       )}
       {(hasFooterContent || !requiresSubmission) && <SectionResponsibility section={section} roles={roles} departments={departments} sectionId={sectionId} />}
       {vesselSignatureRequired && (mode === "preview"

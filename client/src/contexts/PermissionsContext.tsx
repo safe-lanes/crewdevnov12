@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getDecryptedLocalStorageItem, secretKeyAvailable, getDecryptedRawString, safeExtractFields } from '@/lib/encryptionService';
 import type { ExtractedUserProfile } from '@/lib/encryptionService';
 import { adminApiV2 } from '@/modules/admin/api/adminApiV2';
+import { hasCompanyFormPermission, type CompanyFormPermission } from "@shared/v2/admin/companyFormPermissions";
 
 interface MenuPermission {
   menuName: string;
@@ -35,6 +36,7 @@ interface PermissionsContextType {
   canEdit: (menuName: string) => boolean;
   canDelete: (menuName: string) => boolean;
   canViewRoute: (route: string) => boolean;
+  canCompanyFormAction: (action: CompanyFormPermission) => boolean;
   getVesselIds: () => string[];
 }
 
@@ -102,6 +104,8 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
   });
 
   const permissions: MenuPermission[] = data?.permissions || [];
+  const canCompanyFormAction = useCallback((action: CompanyFormPermission) =>
+    hasCompanyFormPermission(data?.companyFormGrants, data?.roleCategory, action), [data]);
 
   const permMap = useMemo(() => {
     const map = new Map<string, MenuPermission>();
@@ -181,8 +185,9 @@ export function PermissionsProvider({ children }: { children: React.ReactNode })
     canEdit,
     canDelete,
     canViewRoute,
+    canCompanyFormAction,
     getVesselIds,
-  }), [permissions, myVessels, roleName, roleId, userId, userType, manningAgent, isLoading, canView, canCreate, canEdit, canDelete, canViewRoute, getVesselIds]);
+  }), [permissions, myVessels, roleName, roleId, userId, userType, manningAgent, isLoading, canView, canCreate, canEdit, canDelete, canViewRoute, canCompanyFormAction, getVesselIds]);
 
   return (
     <PermissionsContext.Provider value={value}>
