@@ -50,3 +50,4 @@
 - [Planned sign-off dates](planned-signoff-date.md) — a proposed date in Planning is not actual sign-off; the exact linked assignment remains the stage authority.
 - [Company Forms stage entry policy](company-forms-stage-entry-policy.md) — operational popups stay within their stage; G3 keeps full history, and headings omit assignment UUIDs.
 - [Parent support category](company-forms-parent-category.md) — SAIL Admin category delivery belongs to parent developers; never infer support from an Office role's name.
+- [Signature removal authority](company-signature-removal-policy.md) — Fill in allows removal by the authenticated signer or recorded witness, never from a submitted section.
