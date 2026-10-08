@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import request from "supertest";
 import { Client } from "pg";
 import { randomUUID } from "node:crypto";
+import { grantCompanyFormFixture, clearCompanyFormFixtures } from "../../helpers/companyFormGrants";
 import type { Server } from "node:http";
 import routes from "@server/v2/company-forms/routes";
 import { fileStorageService } from "@server/v2/shared/fileStorageService";
@@ -82,6 +83,8 @@ describe.sequential("Office void versus trusted Master writes", () => {
       `INSERT INTO adm_roleaccess_ac (rauid, role_id, menu_id, canview, cancreate, canedit, candelete, is_deleted)
        VALUES ($1, $2, $3, true, true, true, false, false)`, [id(), officeRole, menus.rows[0].muid],
     );
+    await grantCompanyFormFixture(db, officeRole, "office");
+    await grantCompanyFormFixture(db, masterRole, "vessel");
     await db.query(
       `INSERT INTO crew_members_v2 (crew_uuid, emp_no, first_name, family_name, present_rank, is_deleted)
        VALUES ($1, $2, 'Test', 'Seafarer', $3, false)`, [crewUuid, suffix, rank.rows[0].rank_id],
@@ -193,6 +196,7 @@ describe.sequential("Office void versus trusted Master writes", () => {
       await db.query("DELETE FROM adm_forms_v2 WHERE form_uuid = $1", [formUuid]);
       await db.query("DELETE FROM crew_assignments WHERE assign_uuid = ANY($1::text[])", [assignments]);
       await db.query("DELETE FROM crew_members_v2 WHERE crew_uuid = $1", [crewUuid]);
+      await clearCompanyFormFixtures(db, [officeRole, masterRole]);
       await db.query("DELETE FROM adm_roleaccess_ac WHERE role_id = $1", [officeRole]);
       await db.query("DELETE FROM master_users WHERE id = ANY($1::int[])", [users]);
       await db.query("DELETE FROM adm_rolemaster_ac WHERE ruid = ANY($1::text[])", [[officeRole, masterRole]]);
@@ -206,6 +210,42 @@ describe.sequential("Office void versus trusted Master writes", () => {
       for (const asset of assets.rows) await fileStorageService.deleteAttachment(asset.file_path);
       if (previousSecret === undefined) delete process.env.JWT_SECRET; else process.env.JWT_SECRET = previousSecret;
       if (previousBypass === undefined) delete process.env.AUTH_BYPASS; else process.env.AUTH_BYPASS = previousBypass;
+    }
+  });
+  it.each([
+    { voidGrant: true, completedGrant: false, expected: 403 },
+    { voidGrant: false, completedGrant: true, expected: 204 },
+  ])("uses the locked completed status rather than pre-lock in-progress status ($expected)", async scenario => {
+    const assignment = id();
+    assignments.push(assignment);
+    await db.query(`INSERT INTO crew_assignments(assign_uuid,crew_uuid,vessel_uuid,assignment_type,is_current,is_deleted)
+      VALUES ($1,$2,$3,'OnBoard',true,false)`, [assignment, crewUuid, vesselUuid]);
+    const started = await api(officeId, "post", `/subjects/crew_assignment/${assignment}/submissions`, { formUuid, formVersionUuid: versionUuid });
+    expect(started.status).toBe(201);
+    const submission = started.body.submissionUuid;
+    submissions.push(submission);
+    await db.query(`UPDATE adm_resource_action_grants SET allowed=CASE action
+      WHEN 'void' THEN $2 WHEN 'void_completed' THEN $3 ELSE allowed END
+      WHERE role_id=$1 AND resource='company_forms'`, [officeRole, scenario.voidGrant, scenario.completedGrant]);
+    const holder = new Client({ connectionString: process.env.DATABASE_URL });
+    await holder.connect();
+    try {
+      await holder.query("BEGIN");
+      const pid = Number((await holder.query("SELECT pg_backend_pid() AS pid")).rows[0].pid);
+      await holder.query("SELECT submission_uuid FROM frm_company_submissions WHERE submission_uuid=$1 FOR UPDATE", [submission]);
+      const voiding = api(officeId, "post", `/${submission}/void`, { reason: "Test-owned locked status transition" }).then(response => response);
+      await waitForBlocked(pid, 1);
+      await holder.query("UPDATE frm_company_submissions SET status='completed',completed_at=now() WHERE submission_uuid=$1", [submission]);
+      await holder.query("COMMIT");
+      const result = await voiding;
+      expect(result.status, JSON.stringify(result.body)).toBe(scenario.expected);
+      if (scenario.expected === 403) expect(JSON.stringify(result.body)).toContain("Void completed");
+      const actual = (await db.query("SELECT status FROM frm_company_submissions WHERE submission_uuid=$1", [submission])).rows[0];
+      expect(actual.status).toBe(scenario.expected === 204 ? "voided" : "completed");
+    } finally {
+      await holder.query("ROLLBACK").catch(() => {});
+      await holder.end();
+      await grantCompanyFormFixture(db, officeRole, "office");
     }
   });
 });

@@ -44,6 +44,7 @@ describe("/my-permissions", () => {
       role: {
         roleId: "resolved-forms-role",
         roleName: "Forms Editor",
+        roleType: "Office",
         masterUserId: 501,
       },
     });
@@ -65,6 +66,7 @@ describe("/my-permissions", () => {
     expect(getMyPermissionsMock).toHaveBeenCalledWith(
       "resolved-forms-role",
       "Forms Editor",
+      "Office",
     );
     expect(json).toHaveBeenCalledWith({
       roleId: "resolved-forms-role",

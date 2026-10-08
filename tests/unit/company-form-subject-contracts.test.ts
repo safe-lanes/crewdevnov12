@@ -208,7 +208,7 @@ describe("trusted Company Form principal and action policy", () => {
     })).rejects.toBeInstanceOf(CompanyFormPermissionError);
   });
 
-  it("resolves office authority independently from vessel scope and uses Crew Database grants by action", async () => {
+  it("resolves office authority independently from vessel scope and uses Company Forms grants by action", async () => {
     const resolveVesselScope = vi.fn();
     const principal = await resolveCompanyFormPrincipal(requestFor(41, "Office", ["untrusted-claim"]), {
       resolveRole: vi.fn().mockResolvedValue(resolvedRole("Office")),
@@ -221,13 +221,13 @@ describe("trusted Company Form principal and action policy", () => {
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(true);
-    expect(await authorizeOfficeAction(principal, "read_submission", { hasOfficePermission: permissions })).toBe(true);
-    expect(await authorizeOfficeAction(principal, "create_submission", { hasOfficePermission: permissions })).toBe(false);
-    expect(await authorizeOfficeAction(principal, "edit_draft", { hasOfficePermission: permissions })).toBe(true);
+    expect(await authorizeOfficeAction(principal, "read_submission", { hasPermission: permissions })).toBe(true);
+    await expect(authorizeOfficeAction(principal, "create_submission", { hasPermission: permissions })).rejects.toThrow("Fill in");
+    expect(await authorizeOfficeAction(principal, "edit_draft", { hasPermission: permissions })).toBe(true);
     expect(permissions.mock.calls).toEqual([
-      ["role-office", "view"],
-      ["role-office", "create"],
-      ["role-office", "edit"],
+      ["role-office", "view", undefined],
+      ["role-office", "fill_in", undefined],
+      ["role-office", "fill_in", undefined],
     ]);
   });
 
@@ -245,6 +245,7 @@ describe("trusted Company Form principal and action policy", () => {
       loadStages: async () => [],
       lookup: async () => assignment,
       authorizeOffice: async () => false,
+      principalDependencies: { hasPermission: async () => true },
     });
     expect(await crew.authorize(principal, "read_submission", assignment)).toBe(true);
     expect(await crew.authorize(principal, "read_submission", { ...assignment, vesselUuid: "other-vessel" })).toBe(false);

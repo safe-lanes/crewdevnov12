@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import request from "supertest";
 import { Client } from "pg";
 import { randomUUID } from "crypto";
+import { grantCompanyFormFixture, clearCompanyFormFixtures } from "../../helpers/companyFormGrants";
 import type { Server } from "http";
 import type { CompanyFormSubmissionRenderContract } from "../../../shared/v2/forms-engine/submissionRenderContract";
 import companyFormSubmissionsRoutes from "@server/v2/company-forms/routes";
@@ -109,6 +110,7 @@ async function createRole(roleName: string, grantCrewDatabase: boolean): Promise
        VALUES ($1, $2, $3, true, true, true, false, false)`,
       [u(), roleUuid, menu.rows[0].muid],
     );
+    await grantCompanyFormFixture(db, roleUuid, "office");
   }
   return { roleUuid, userId };
 }
@@ -128,6 +130,7 @@ async function createShipUser(roleName: string, vesselIds: number[]): Promise<{
      VALUES ('Ship', $1, $2) RETURNING id`,
     [roleName, vesselIds.join(",")],
   );
+  await grantCompanyFormFixture(db, roleUuid, "vessel");
   return { roleUuid, userId: Number(user.rows[0].id) };
 }
 
@@ -282,6 +285,7 @@ describe("Company Form subject-scoped starts and lists", () => {
        WHERE role_id = $1`,
       [viewOnlyRoleUuid],
     );
+    await grantCompanyFormFixture(db, viewOnlyRoleUuid, "view");
     const roleMismatch = await createRole(`CF Start Different Role ${SUFFIX}`, true);
     roleMismatchUuid = roleMismatch.roleUuid;
     roleMismatchUserId = roleMismatch.userId;
@@ -442,6 +446,7 @@ describe("Company Form subject-scoped starts and lists", () => {
       if (forms.length) await db.query("DELETE FROM adm_forms_v2 WHERE form_uuid = ANY($1::text[])", [forms]);
       const roles = [officeRoleUuid, deniedRoleUuid, viewOnlyRoleUuid, roleMismatchUuid, shipRoleUuid].filter(Boolean);
       if (roles.length) {
+        await clearCompanyFormFixtures(db, roles);
         await db.query("DELETE FROM adm_roleaccess_ac WHERE role_id = ANY($1::text[])", [roles]);
         await db.query("DELETE FROM adm_rolemaster_ac WHERE ruid = ANY($1::text[])", [roles]);
       }

@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import request from "supertest";
 import { Client } from "pg";
 import { randomUUID } from "crypto";
+import { grantCompanyFormFixture, clearCompanyFormFixtures } from "../../helpers/companyFormGrants";
 import type { Server } from "http";
 import companyFormSubmissionsRoutes from "@server/v2/company-forms/routes";
 
@@ -129,6 +130,7 @@ describe.sequential("Company Form submission concurrency boundaries", () => {
         rauid, role_id, menu_id, canview, cancreate, canedit, candelete, is_deleted
       ) VALUES ($1, $2, $3, true, true, true, false, false)
     `, [uuid(), roleUuid, menus.rows[0].muid]);
+    await grantCompanyFormFixture(db, roleUuid, "office");
 
     crewUuid = uuid();
     assignmentUuid = uuid();
@@ -216,6 +218,7 @@ describe.sequential("Company Form submission concurrency boundaries", () => {
       if (formUuid) await db.query("DELETE FROM adm_forms_v2 WHERE form_uuid = $1", [formUuid]);
       if (userId) await db.query("DELETE FROM master_users WHERE id = $1", [userId]);
       if (roleUuid) {
+        await clearCompanyFormFixtures(db, [roleUuid]);
         await db.query("DELETE FROM adm_roleaccess_ac WHERE role_id = $1", [roleUuid]);
         await db.query("DELETE FROM adm_rolemaster_ac WHERE ruid = $1", [roleUuid]);
       }

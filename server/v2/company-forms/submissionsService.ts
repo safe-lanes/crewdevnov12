@@ -287,9 +287,10 @@ export class CompanyFormSubmissionsService {
     const adapter = this.contextAdapter(req, submission.subjectType);
     const subject = await adapter.lookup(submission.subjectRef);
     if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
-    const actualAction = action === "void_submission" && submission.status === "completed"
-      ? "void_completed_submission" : action;
-    await this.authorize(adapter, principal, actualAction, subject.context);
+    // Void authority belongs exclusively to the locked actual status below.
+    // A pre-lock status check would refuse a valid completed-void request, or
+    // authorize an in-progress grant against a concurrently completed record.
+    if (action !== "void_submission") await this.authorize(adapter, principal, action, subject.context);
     return { submission, adapter, subject, principal };
   }
 

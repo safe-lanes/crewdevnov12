@@ -11,7 +11,7 @@ export async function discoverCompanyFormTests(directory = "tests") {
     if (entry.isDirectory()) files.push(...await discoverCompanyFormTests(name));
     else if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(name)) {
       const content = await fs.readFile(name, "utf8");
-      if (/company[-_]?form|submission|configured-form|generic-form-editor|form-(?:category-creation|option-set-migration)/i.test(name) ||
+      if (/company[-_]?form|submission|configured-form|generic-form-editor|form-(?:category-creation|option-set-migration)|forms-permission-route-inventory|access-control-my-permissions/i.test(name) ||
         /(?:company-forms\/|forms-engine\/|configured-form\/|GenericFormEditor|OnBoardStatusEditDialog_v2|\/(?:formsService|formsRepository|formStructureService|formStructureRepository)["'])/.test(content) ||
         // A Promotions E2E test merely mocks the standard-form picker endpoint;
         // that is not Company Forms/submission coverage. Direct authoring API

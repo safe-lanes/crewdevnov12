@@ -4,6 +4,7 @@ import { Client } from "pg";
 import request from "supertest";
 import type { Server } from "http";
 import { randomUUID } from "node:crypto";
+import { grantCompanyFormFixture, clearCompanyFormFixtures } from "../../helpers/companyFormGrants";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CompanyFormSubmissionsService } from "@server/v2/company-forms/submissionsService";
 import companyFormSubmissionsRoutes from "@server/v2/company-forms/routes";
@@ -102,6 +103,7 @@ async function createOfficeRole(roleName: string, permission: "all" | "view" | "
        VALUES ($1, $2, $3, true, $4, $5, false, false)`,
       [uuid(), roleUuid, menu.rows[0].muid, permission === "all", permission === "all"],
     );
+    await grantCompanyFormFixture(db, roleUuid, permission === "all" ? "office" : "view");
   }
   return { roleUuid, userId: Number(user.rows[0].id) };
 }
@@ -121,6 +123,7 @@ async function createShipRole(roleName: string, vesselIds: number[] | null): Pro
      VALUES ('Ship', $1, $2) RETURNING id`,
     [roleName, vesselIds?.join(",") ?? null],
   );
+  await grantCompanyFormFixture(db, roleUuid, "vessel");
   return { roleUuid, userId: Number(user.rows[0].id) };
 }
 
@@ -557,6 +560,7 @@ describe("Company Form relationship boundary", () => {
         malformedScopeRoleUuid,
       ].filter(Boolean);
       if (roleIds.length) {
+        await clearCompanyFormFixtures(db, roleIds);
         await db.query("DELETE FROM adm_roleaccess_ac WHERE role_id = ANY($1::text[])", [roleIds]);
         await db.query("DELETE FROM adm_rolemaster_ac WHERE ruid = ANY($1::text[])", [roleIds]);
       }

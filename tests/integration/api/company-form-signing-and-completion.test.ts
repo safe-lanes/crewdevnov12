@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import request from "supertest";
 import { Client } from "pg";
 import { randomUUID } from "crypto";
+import { grantCompanyFormFixture, clearCompanyFormFixtures } from "../../helpers/companyFormGrants";
 import type { Server } from "http";
 import companyFormSubmissionsRoutes from "@server/v2/company-forms/routes";
 import { fileStorageService } from "@server/v2/shared/fileStorageService";
@@ -86,6 +87,7 @@ async function createOffice(roleName: string, grants: "crew" | "readonly" | "non
   const user = { id: Number(userResult.rows[0].id), roleUuid, roleName };
   userIds.push(user.id);
   if (grants === "none") return user;
+  await grantCompanyFormFixture(db, roleUuid, grants === "crew" ? "office" : "view");
 
   const menu = await db.query(
     `SELECT muid FROM adm_menumaster_ac
@@ -116,6 +118,7 @@ async function createShipUser(roleName: string, vesselId: number): Promise<User>
      VALUES ('Ship', $1, $2, $3) RETURNING id`,
     [roleName, String(vesselId), `${roleName} ${SUFFIX}`],
   );
+  await grantCompanyFormFixture(db, roleUuid, "vessel");
   const user = { id: Number(userResult.rows[0].id), roleUuid, roleName: "ship" };
   userIds.push(user.id);
   return user;
@@ -466,6 +469,7 @@ describe("Company Form signing, section submission, completion, and void history
       }
 
       for (const path of attachmentPaths) await fileStorageService.deleteAttachment(path);
+      await clearCompanyFormFixtures(db, roleUuids);
       await db.query("DELETE FROM adm_roleaccess_ac WHERE role_id = ANY($1::text[])", [roleUuids]);
       await db.query("DELETE FROM master_users WHERE id = ANY($1::int[])", [userIds]);
       await db.query("DELETE FROM adm_rolemaster_ac WHERE ruid = ANY($1::text[])", [roleUuids]);

@@ -1109,6 +1109,7 @@ describe("Company Form submission renderer contract", () => {
       signedAt: "2026-06-01T12:00:00.000Z",
       signedByUuid: "actor-office",
       signatureMethod: "officer",
+      canRemove: true,
       attachment: {
         assetUuid: attachmentAssetUuid,
         fileName: "signature.png",

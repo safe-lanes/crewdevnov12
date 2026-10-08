@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import request from "supertest";
 import { Client } from "pg";
 import { randomUUID } from "crypto";
+import { grantCompanyFormFixture, clearCompanyFormFixtures } from "../../helpers/companyFormGrants";
 import type { Server } from "http";
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -176,6 +177,7 @@ describe.sequential("Company Form answer round-trip through the client mapper", 
        VALUES ($1, $2, $3, true, true, true, false, false)`,
       [u(), officeRoleUuid, menu.rows[0].muid],
     );
+    await grantCompanyFormFixture(db, officeRoleUuid, "office");
     const formsGrants = await db.query(
       `SELECT count(*)::int AS total
        FROM adm_roleaccess_ac access
@@ -310,6 +312,7 @@ describe.sequential("Company Form answer round-trip through the client mapper", 
       if (crewUuid) await db.query("DELETE FROM crew_members_v2 WHERE crew_uuid = $1", [crewUuid]);
       if (officeUserId) await db.query("DELETE FROM master_users WHERE id = $1", [officeUserId]);
       if (officeRoleUuid) {
+        await clearCompanyFormFixtures(db, [officeRoleUuid]);
         await db.query("DELETE FROM adm_roleaccess_ac WHERE role_id = $1", [officeRoleUuid]);
         await db.query("DELETE FROM adm_rolemaster_ac WHERE ruid = $1", [officeRoleUuid]);
       }

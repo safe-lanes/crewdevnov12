@@ -15,6 +15,11 @@ const routeKey = (method: string, path: string) =>
   `${method.toUpperCase()} ${path}`;
 
 const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
+  { key: "POST /forms/:id/archive", menuName: "Forms", action: "delete" },
+  { key: "POST /form-versions/:fvUuid/parts", menuName: "Forms", action: "edit" },
+  { key: "PUT /form-versions/:fvUuid/parts/reorder", menuName: "Forms", action: "edit" },
+  { key: "PATCH /form-versions/:fvUuid/parts/:partUuid", menuName: "Forms", action: "edit" },
+  { key: "DELETE /form-versions/:fvUuid/parts/:partUuid", menuName: "Forms", action: "edit" },
   { key: "GET /forms", menuName: "Forms", action: "view" },
   { key: "GET /forms/:id", menuName: "Forms", action: "view" },
   { key: "GET /forms/:id/subject-stages", menuName: "Forms", action: "view" },

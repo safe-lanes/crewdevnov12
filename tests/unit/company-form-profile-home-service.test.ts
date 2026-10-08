@@ -19,7 +19,8 @@ const rows = [
   { submissionUuid: "deleted-form", subjectRef: "deleted", stageKey: "before_joining", status: "completed" },
 ];
 function setup(principal: any) {
-  const adapter = createCrewAssignmentSubject({ authorizeOffice: async () => true });
+  const adapter = createCrewAssignmentSubject({ authorizeOffice: async () => true,
+    principalDependencies: { hasPermission: async () => true } });
   adapter.loadHomeSubjects = async () => subjects.map(context => ({ subjectRef: context.assignUuid, context }));
   const repository = { listForSubjects: vi.fn(async (_type, refs) => rows.filter(row => refs.includes(row.subjectRef))) };
   const service = new CompanyFormSubmissionsService({}, new CompanyFormSubjectRegistry([adapter]), repository as any);
