@@ -2,7 +2,8 @@ import type { Request } from "express";
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "../db";
 import { masterUsers, masterVessels } from "../../../shared/schema";
-import { admMenuMasterAc, admRoleAccessAc } from "../../../shared/v2/admin/schema";
+import type { CompanyFormPermission } from "../../../shared/v2/admin/companyFormPermissions";
+import { authorizeCompanyFormAction } from "./operationalPermissions";
 import { resolveRequestRole, type ResolvedRole } from "../auth/roleResolutionService";
 import {
   CompanyFormAuthenticationError,
@@ -10,29 +11,15 @@ import {
 } from "./errors";
 import type { CompanyFormAction, CompanyFormPrincipal } from "./contracts";
 
-const OFFICE_ACTION_PERMISSION: Partial<Record<CompanyFormAction, "view" | "create" | "edit">> = {
-  read_eligible_forms: "view",
-  list_submissions: "view",
-  count_submissions: "view",
-  read_submission: "view",
-  read_definition: "view",
-  read_asset: "view",
-  create_submission: "create",
-  edit_draft: "edit",
-  submit_section: "edit",
-  save_signature: "edit",
-  remove_signature: "edit",
-  void_submission: "edit",
-};
-
 export type SeafarerCrewLinkResolver = (masterUserId: number) => Promise<string | null>;
 
 export type PrincipalDependencies = {
   resolveRole?: typeof resolveRequestRole;
   resolveVesselScope?: (masterUserId: number) => Promise<readonly string[] | undefined>;
-  hasOfficePermission?: (
+  hasPermission?: (
     roleId: string,
-    permission: "view" | "create" | "edit",
+    permission: CompanyFormPermission,
+    executor?: any,
   ) => Promise<boolean>;
   resolveSeafarerCrewUuid?: SeafarerCrewLinkResolver;
 };
@@ -91,39 +78,6 @@ export async function resolveTrustedVesselScope(masterUserId: number, db: any = 
   return [...new Set(uuids as string[])];
 }
 
-async function hasCrewDatabasePermission(
-  roleId: string,
-  permission: "view" | "create" | "edit",
-): Promise<boolean> {
-  const db = getDb();
-  const menus = await db
-    .select({ menuId: admMenuMasterAc.muid })
-    .from(admMenuMasterAc)
-    .where(and(
-      eq(admMenuMasterAc.name, "Crew Database"),
-      eq(admMenuMasterAc.isActive, true),
-      eq(admMenuMasterAc.isDeleted, false),
-    ));
-  if (menus.length !== 1) return false;
-
-  const grants = await db
-    .select({
-      canview: admRoleAccessAc.canview,
-      cancreate: admRoleAccessAc.cancreate,
-      canedit: admRoleAccessAc.canedit,
-    })
-    .from(admRoleAccessAc)
-    .where(and(
-      eq(admRoleAccessAc.roleId, roleId),
-      eq(admRoleAccessAc.menuId, menus[0].menuId),
-      eq(admRoleAccessAc.isDeleted, false),
-    ));
-  if (grants.length !== 1) return false;
-  return permission === "view" ? grants[0].canview
-    : permission === "create" ? grants[0].cancreate
-      : grants[0].canedit;
-}
-
 function requireAuthenticatedUser(req: Request): { id: number; userType: string } {
   if (!req.user) throw new CompanyFormAuthenticationError();
   if (!Number.isSafeInteger(req.user.id) || req.user.id <= 0 || !req.user.userType?.trim()) {
@@ -167,6 +121,10 @@ export async function resolveCompanyFormPrincipal(
   trustedRoleForActor(role, authenticated.id, authenticated.userType);
 
   const normalizedRoleType = normalize(role.roleType);
+  if (normalizedRoleType === "sail admin" && (normalizedJwtType === "office" || normalizedJwtType === "sail admin")) {
+    return { kind: "office", userId: authenticated.id, roleId: role.roleId,
+      roleName: role.roleName, roleType: "SAIL Admin" };
+  }
   if (normalizedRoleType === "office" && normalizedJwtType === "office") {
     return {
       kind: "office",
@@ -177,7 +135,7 @@ export async function resolveCompanyFormPrincipal(
     };
   }
 
-  if (normalizedRoleType !== "ship" || normalizedJwtType !== "ship") {
+  if (!["ship", "vessel"].includes(normalizedRoleType) || !["ship", "vessel"].includes(normalizedJwtType)) {
     throw new CompanyFormPermissionError();
   }
 
@@ -199,9 +157,8 @@ export async function authorizeOfficeAction(
   principal: CompanyFormPrincipal,
   action: CompanyFormAction,
   dependencies: PrincipalDependencies = {},
+  executor?: any,
 ): Promise<boolean> {
   if (principal.kind !== "office") return false;
-  const permission = OFFICE_ACTION_PERMISSION[action];
-  if (!permission) return false;
-  return (dependencies.hasOfficePermission ?? hasCrewDatabasePermission)(principal.roleId, permission);
+  return authorizeCompanyFormAction(principal, action, dependencies, executor);
 }

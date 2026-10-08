@@ -246,10 +246,12 @@ export class CompanyFormSubmissionsService {
     principal: CompanyFormPrincipal,
     action: CompanyFormAction,
     subject: any,
+    executor?: any,
   ): Promise<void> {
     try {
-      if (await adapter.authorize(principal, action, subject)) return;
-    } catch {
+      if (await adapter.authorize(principal, action, subject, executor)) return;
+    } catch (error) {
+      if (error instanceof CompanyFormPermissionError) throw error;
       // Office grant and relationship lookup failures fail closed.
     }
     throw new CompanyFormPermissionError();
@@ -264,7 +266,8 @@ export class CompanyFormSubmissionsService {
   ): Promise<void> {
     try {
       if (await adapter.authorizeHome(principal, action, homeRef, subjects)) return;
-    } catch {
+    } catch (error) {
+      if (error instanceof CompanyFormPermissionError) throw error;
       // Treat unavailable permission sources as an explicit refusal.
     }
     throw new CompanyFormPermissionError();
@@ -281,7 +284,9 @@ export class CompanyFormSubmissionsService {
     const adapter = this.contextAdapter(req, submission.subjectType);
     const subject = await adapter.lookup(submission.subjectRef);
     if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
-    await this.authorize(adapter, principal, action, subject.context);
+    const actualAction = action === "void_submission" && submission.status === "completed"
+      ? "void_completed_submission" : action;
+    await this.authorize(adapter, principal, actualAction, subject.context);
     return { submission, adapter, subject, principal };
   }
 
@@ -339,18 +344,21 @@ export class CompanyFormSubmissionsService {
     subject: any,
     status: string,
   ): Promise<boolean> {
-    if (principal.kind !== "office" || (status !== "in_progress" && status !== "completed")) return false;
-    return this.canAuthorizeAction(adapter, principal, "void_submission", subject);
+    if (status !== "in_progress" && status !== "completed") return false;
+    return this.canAuthorizeAction(adapter, principal,
+      status === "completed" ? "void_completed_submission" : "void_submission", subject);
   }
 
-  private signatureMethodOptions(
+  private async signatureMethodOptions(
     adapter: CompanyFormSubjectAdapter<any>,
     principal: CompanyFormPrincipal,
     actionAuthorized: boolean,
-  ): Partial<Record<CompanyFormSignatureType, CompanyFormSignatureMethodOption[]>> {
+  ): Promise<Partial<Record<CompanyFormSignatureType, CompanyFormSignatureMethodOption[]>>> {
     const options: Partial<Record<CompanyFormSignatureType, CompanyFormSignatureMethodOption[]>> = {};
     if (!actionAuthorized) return options;
     for (const declaration of adapter.signatories) {
+      try { await adapter.authorizeSignature?.(principal, declaration.signatureType); }
+      catch { continue; }
       const methods = declaration.methodsByActor?.[principal.kind] ??
         (declaration.allowedActors.includes(principal.kind) ? declaration.methods : []);
       if (!methods.length) continue;
@@ -663,7 +671,7 @@ export class CompanyFormSubmissionsService {
     const canSaveSignatureAction = await this.canAuthorizeAction(
       adapter, principal, "save_signature", subject.context,
     );
-    const signatureMethodOptions = this.signatureMethodOptions(
+    const signatureMethodOptions = await this.signatureMethodOptions(
       adapter, principal, canSaveSignatureAction,
     );
     const sectionActions = await this.sectionActions({
@@ -855,7 +863,7 @@ export class CompanyFormSubmissionsService {
       answers: input.answers,
       sectionComment: input.sectionComment,
       lockSubject: (subjectRef, executor) => adapter.lockForStart(subjectRef, executor),
-      assertSubjectWritable: async (lockedSubject) => {
+      assertSubjectWritable: async (lockedSubject, executor) => {
         try {
           if (!adapter.canStart(lockedSubject.context)) {
             throw new CompanyFormConflictError("This Company Form subject no longer accepts draft edits.");
@@ -864,7 +872,7 @@ export class CompanyFormSubmissionsService {
           if (error instanceof CompanyFormConflictError) throw error;
           throw new CompanyFormConflictError("Unable to verify that this subject still accepts draft edits.");
         }
-        await this.authorize(adapter, principal, "edit_draft", lockedSubject.context);
+        await this.authorize(adapter, principal, "edit_draft", lockedSubject.context, executor);
         if (adapter.authorizeStageAction && !adapter.authorizeStageAction(principal, "edit_draft", lockedSubject.context, submission.stageKey)) {
           throw new CompanyFormPermissionError("This actor cannot edit at this stage.");
         }
@@ -911,6 +919,7 @@ export class CompanyFormSubmissionsService {
       input.submissionUuid,
       "save_signature",
     );
+    await adapter.authorizeSignature?.(principal, input.signatureType);
     // The version is immutable. Reject foreign/unconfigured sections before
     // writing a file; the locked repository repeats this check authoritatively.
     const pinned = await this.renderRepository.readPinnedRenderData(input.submissionUuid);

@@ -152,7 +152,9 @@ async function loadLockedContext(
     submission.stageKey !== observed[0].stageKey) {
     throw new CompanyFormConflictError("The Company Form subject or version pin changed; reload the submission.");
   }
-  if (!await adapter.authorize(principal, action, lockedSubject.context)) {
+  const actualAction = action === "void_submission" && submission.status === "completed"
+    ? "void_completed_submission" : action;
+  if (!await adapter.authorize(principal, actualAction, lockedSubject.context, tx)) {
     throw new CompanyFormPermissionError();
   }
   if (adapter.authorizeStageAction && !adapter.authorizeStageAction(principal, action, lockedSubject.context, submission.stageKey)) {
@@ -446,6 +448,7 @@ export class CompanyFormSubmissionLifecycleRepository {
       const user = users[0];
       const userName = user ? actorName(user) : null;
       if (!user || !userName) throw new CompanyFormPermissionError("The authenticated signer identity is unavailable.");
+      await input.adapter.authorizeSignature?.(input.actor, input.signatureType, tx);
       const resolvedIdentity = declaration.resolveIdentity
         ? await declaration.resolveIdentity({
           principal: input.actor,
@@ -566,12 +569,14 @@ export class CompanyFormSubmissionLifecycleRepository {
       if (!signatures[0]) throw new CompanyFormNotFoundError("Company Form signature not found in this section.");
       await input.adapter.authorizeSectionAction?.({ principal: input.actor, subject: subject.context,
         stageKey: submission.stageKey, section, action: "remove_signature", signatureType: signatures[0].signatureType, executor: tx });
-      const declaration = input.adapter.signatories.find((item) =>
-        item.signatureType === signatures[0].signatureType);
-      const allowedMethods = declaration?.methodsByActor?.[input.actor.kind] ??
-        (declaration?.allowedActors.includes(input.actor.kind) ? declaration.methods : []);
-      if (!declaration || !allowedMethods.includes(signatures[0].signatureMethod)) {
-        throw new CompanyFormPermissionError("The current actor is not authorized to remove this signature.");
+      const users = await tx.select({ userUuid: masterUsers.userUuid }).from(masterUsers)
+        .where(eq(masterUsers.id, input.actor.userId)).limit(1);
+      const signature = signatures[0];
+      const signedByActor = signature.signedByUuid === String(input.actor.userId) ||
+        (!!users[0]?.userUuid && signature.signedByUuid === users[0].userUuid);
+      const witnessedByActor = signature.witnessUserId === input.actor.userId;
+      if (!signedByActor && !witnessedByActor) {
+        throw new CompanyFormPermissionError("Fill in permits removing only an unsubmitted signature you signed or recorded as witness.");
       }
       const now = new Date();
       await tx.update(frmSectionSignatures).set({
@@ -594,7 +599,7 @@ export class CompanyFormSubmissionLifecycleRepository {
     actor: CompanyFormPrincipal;
     adapter: LifecycleAdapter;
   }) {
-    if (input.actor.kind !== "office") throw new CompanyFormPermissionError();
+    if (input.actor.kind === "seafarer") throw new CompanyFormPermissionError("Company Forms Void permission is required.");
     const reason = input.reason.trim();
     if (!reason || reason.length > 5000) throw new CompanyFormValidationError("A written void reason of 1 to 5,000 characters is required.");
     return getDb().transaction(async (tx: Executor) => {

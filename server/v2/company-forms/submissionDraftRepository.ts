@@ -45,7 +45,7 @@ type WriteDraftInput<Context> = {
   answers: CompanyFormDraftAnswerInput[];
   sectionComment?: string | null;
   lockSubject: (subjectRef: string, executor: Executor) => Promise<SubjectLock<Context> | undefined>;
-  assertSubjectWritable: (subject: SubjectLock<Context>) => Promise<void>;
+  assertSubjectWritable: (subject: SubjectLock<Context>, executor: Executor) => Promise<void>;
   assertSectionWritable: (
     input: { section: any; part: any; subject: SubjectLock<Context>; executor: Executor },
   ) => Promise<void>;
@@ -215,7 +215,7 @@ export class CompanyFormSubmissionDraftRepository {
       if (subject.subjectRef !== parent.subjectRef) {
         throw new CompanyFormConflictError("The Company Form subject pin changed; reload the submission.");
       }
-      await input.assertSubjectWritable(subject);
+      await input.assertSubjectWritable(subject, tx);
 
       const sectionRows = await tx.select({
         section: frmSections,

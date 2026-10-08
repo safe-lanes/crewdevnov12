@@ -14,6 +14,7 @@ export const COMPANY_FORM_ACTIONS = [
   "save_signature",
   "remove_signature",
   "void_submission",
+  "void_completed_submission",
 ] as const;
 
 export type CompanyFormAction = typeof COMPANY_FORM_ACTIONS[number];
@@ -25,7 +26,7 @@ export type CompanyFormPrincipal =
       userId: number;
       roleId: string;
       roleName: string;
-      roleType: "Office";
+      roleType: "Office" | "SAIL Admin";
     }
   | {
       kind: "vessel";
@@ -154,6 +155,7 @@ export type CompanyFormSubjectAdapter<Context = unknown> = {
   }): Promise<void>;
   /** Server-only provenance captured under the subject lock at signing. */
   signatureProvenance?(subject: Context): Record<string, unknown>;
+  authorizeSignature?(principal: CompanyFormPrincipal, signatureType: string, executor?: any): Promise<void>;
   authorizeVersionStart?(input: {
     principal: CompanyFormPrincipal; subject: Context; stageKey: string | null;
     formVersionUuid: string; executor: any;
@@ -163,6 +165,7 @@ export type CompanyFormSubjectAdapter<Context = unknown> = {
     principal: CompanyFormPrincipal,
     action: CompanyFormAction,
     subject: Context,
+    executor?: any,
   ): Promise<boolean>;
   authorizeHome(
     principal: CompanyFormPrincipal,

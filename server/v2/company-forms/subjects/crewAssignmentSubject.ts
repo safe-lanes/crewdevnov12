@@ -27,6 +27,7 @@ import type {
   SystemFieldResolutionContext,
 } from "../contracts";
 import { authorizeOfficeAction, type PrincipalDependencies } from "../trustedPrincipalService";
+import { authorizeCompanyFormAction, assertCompanyFormSignaturePermission } from "../operationalPermissions";
 import { loadPersistedSubjectStages } from "../subjectStageRepository";
 import { authorizeCrewSectionAction, captureVesselSigner } from "./vesselSigningPolicy";
 
@@ -90,6 +91,7 @@ const allowedActions = {
     "save_signature",
     "remove_signature",
     "void_submission",
+    "void_completed_submission",
   ],
   vessel: [
     "read_eligible_forms",
@@ -103,6 +105,8 @@ const allowedActions = {
     "submit_section",
     "save_signature",
     "remove_signature",
+    "void_submission",
+    "void_completed_submission",
   ],
   seafarer: [
     "read_eligible_forms",
@@ -402,17 +406,21 @@ export function createCrewAssignmentSubject(
       return principal.kind !== "vessel" || stageKey === "on_board";
     },
     authorizeSectionAction: authorizeCrewSectionAction,
-    authorize: async (principal, action, subject) => {
+    authorizeSignature: (principal, signatureType, executor) =>
+      assertCompanyFormSignaturePermission(principal, signatureType, dependencies.principalDependencies, executor),
+    authorize: async (principal, action, subject, executor) => {
       if (!allowedActions[principal.kind].includes(action as never)) return false;
 
       if (principal.kind === "office") {
-        return authorizeOffice(principal, action);
+        return dependencies.authorizeOffice ? authorizeOffice(principal, action) :
+          authorizeOfficeAction(principal, action, dependencies.principalDependencies, executor);
       }
 
       if (principal.kind === "vessel") {
         return principal.roleType === "Ship" &&
           !!subject.vesselUuid &&
-          principal.vesselUuids.includes(subject.vesselUuid);
+          principal.vesselUuids.includes(subject.vesselUuid) &&
+          await authorizeCompanyFormAction(principal, action, dependencies.principalDependencies, executor);
       }
 
       return principal.kind === "seafarer" &&
@@ -424,7 +432,8 @@ export function createCrewAssignmentSubject(
       if (principal.kind === "office") return authorizeOffice(principal, action);
       if (principal.kind === "vessel") {
         return subjects.some((subject) =>
-          !!subject.context.vesselUuid && principal.vesselUuids.includes(subject.context.vesselUuid));
+          !!subject.context.vesselUuid && principal.vesselUuids.includes(subject.context.vesselUuid)) &&
+          await authorizeCompanyFormAction(principal, action, dependencies.principalDependencies);
       }
       return principal.linkageSource === "trusted_server_resolver" &&
         principal.crewUuid === homeRef;
