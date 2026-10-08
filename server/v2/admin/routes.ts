@@ -21,6 +21,7 @@ import {
 import { requirePermission } from "../../middleware/requirePermission";
 import { requireTrustedAccessControlAdmin } from "../../middleware/requireTrustedAccessControlAdmin";
 import { formPartController } from "./controllers/formPartController";
+import { actionPermissionsController } from "./controllers/actionPermissionsController";
 
 const router = Router();
 
@@ -177,6 +178,8 @@ router.delete("/access-control/roles/:ruid", requireTrustedAccessControlAdmin(),
 router.get("/access-control/my-permissions", accessControlController.getMyPermissions);
 router.get("/access-control/roles/:ruid/permissions", requireTrustedAccessControlAdmin(), accessControlController.getPermissions);
 router.put("/access-control/roles/:ruid/permissions", requireTrustedAccessControlAdmin(), accessControlController.savePermissions);
+router.get("/access-control/roles/:ruid/action-permissions", requireTrustedAccessControlAdmin(), actionPermissionsController.get);
+router.put("/access-control/roles/:ruid/action-permissions", requireTrustedAccessControlAdmin(), actionPermissionsController.save);
 
 router.get("/vessel-org-chart", vesselOrgChartController.getAll);
 router.get("/vessel-org-chart/rank-scope", vesselOrgChartController.getRankScope);

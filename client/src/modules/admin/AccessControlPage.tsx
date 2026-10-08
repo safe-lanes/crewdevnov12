@@ -4,6 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { CompanyFormsPermissionEditor } from "./CompanyFormsPermissionEditor";
 import {
   useAccessControlMenusV2,
   useAccessControlRolesV2,
@@ -385,6 +386,7 @@ export default function AccessControlPage() {
           <div className="text-center py-2.5" data-testid="text-header-delete">Delete</div>
         </div>
         <ScrollArea className="flex-1">
+          {selectedRoleUuid && <CompanyFormsPermissionEditor key={selectedRoleUuid} roleId={selectedRoleUuid} />}
           {permissionsLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-[#52baf3]" />
