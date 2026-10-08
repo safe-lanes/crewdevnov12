@@ -27,6 +27,10 @@ async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied
     "SELECT filename FROM schema_migrations ORDER BY filename"
   );
   const appliedMigrations = new Set(appliedResult.rows.map(row => row.filename));
+  // Capture bootstrap versus upgrade BEFORE this run installs any migration.
+  // Seeded roles or earlier migrations installed in this same run are not
+  // evidence that a new tenant previously had operational access.
+  const existingDatabase = appliedMigrations.size > 0;
   const inferredLinkMigrationWasAlreadyApplied = appliedMigrations.has(
     "0219_assignment_identity_and_type_constraint.sql",
   );
@@ -76,6 +80,7 @@ async function runMigrationsOnPool(pool: Pool, label: string): Promise<{ applied
 
       try {
         await client.query("BEGIN");
+        await client.query("SELECT set_config('sail.permission_upgrade', $1, true)", [String(existingDatabase)]);
         await client.query(migrationSQL);
         await client.query("COMMIT");
       } catch (sqlError: any) {
