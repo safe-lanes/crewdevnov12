@@ -6,6 +6,7 @@ import AgGridTable from "./AccountsGridTable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { FormattedDateInput, formatIsoDate } from "@/components/ui/formatted-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -99,6 +100,8 @@ export default function SettlementsPage() {
   const [paidDate, setPaidDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
+  const paidDateDraft = useRef<string | undefined>(undefined);
+  const paidDateValid = useRef(true);
   const [paymentReference, setPaymentReference] = useState("");
   const [paidRemarks, setPaidRemarks] = useState("");
   const [remarksDraft, setRemarksDraft] = useState("");
@@ -359,13 +362,17 @@ export default function SettlementsPage() {
   });
 
   const markPaidMut = useMutation({
-    mutationFn: () =>
-      accountsApiV2.settlements.markPaid(
+    mutationFn: () => {
+      if (!paidDateValid.current) {
+        throw new Error("Enter a valid Paid date before marking the settlement paid.");
+      }
+      return accountsApiV2.settlements.markPaid(
         selectedUuid!,
         paidDate,
         paymentReference.trim() || null,
         paidRemarks.trim() || undefined,
-      ),
+      );
+    },
     onSuccess: () => {
       refresh();
       setPaidOpen(false);
@@ -1167,12 +1174,34 @@ export default function SettlementsPage() {
           <div className="space-y-3">
             <div className="space-y-1">
               <Label>Paid date</Label>
-              <Input
-                type="date"
-                value={paidDate}
-                onChange={(e) => setPaidDate(e.target.value)}
-                data-testid="input-paid-date"
-              />
+              <div
+                style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)" }}
+                onBlurCapture={(event) => {
+                  const input = event.target;
+                  if (!(input instanceof HTMLInputElement) || input.type !== "date") return;
+                  if (!input.validity.valid || input.value === paidDate) return;
+                  if (input.value !== "" && !formatIsoDate(input.value)) return;
+                  input.dispatchEvent(new Event("input", { bubbles: true }));
+                }}
+              >
+                <div aria-hidden="true" style={{ gridArea: "1 / 1", paddingTop: 36, visibility: "hidden", pointerEvents: "none" }}>
+                  <p className="mt-1 text-xs leading-4">Incorrect date/date format</p>
+                </div>
+                <div style={{ gridArea: "1 / 1", minWidth: 0 }}>
+                  <FormattedDateInput
+                    mode="date"
+                    value={paidDate}
+                    onChange={(e) => setPaidDate(e.target.value)}
+                    initialDraft={paidDateDraft.current}
+                    onDraftChange={(draft) => { paidDateDraft.current = draft; }}
+                    onDraftValidityChange={(valid) => { paidDateValid.current = valid; }}
+                    acceptCalendarInputEvents
+                    retainInvalidDraftOnBlur
+                    className="min-w-0 border-input text-base md:text-sm"
+                    data-testid="input-paid-date"
+                  />
+                </div>
+              </div>
             </div>
             <div className="space-y-1">
               <Label>Payment reference (optional)</Label>
