@@ -19,9 +19,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-    FormattedDateInput,
     formatIsoDate,
 } from "@/components/ui/formatted-date-input";
+import { VesselDateInput } from "./VesselDateInput";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -499,7 +499,7 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
                     }
                 }}
             >
-                <FormattedDateInput
+                <VesselDateInput
                     value={getInputDate(field.value)}
                     disabled={!isRelieverAssigned}
                     min={min}

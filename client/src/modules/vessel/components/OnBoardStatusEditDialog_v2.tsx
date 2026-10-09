@@ -9,9 +9,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-    FormattedDateInput,
     formatIsoDate,
 } from "@/components/ui/formatted-date-input";
+import { VesselDateInput } from "./VesselDateInput";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon } from "lucide-react";
@@ -561,7 +561,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                     }
                 }}
             >
-                <FormattedDateInput
+                <VesselDateInput
                     value={getInputDate(field.value)}
                     disabled={!isOnboardCrewAssigned}
                     min={min}

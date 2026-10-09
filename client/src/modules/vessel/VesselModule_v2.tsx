@@ -1,7 +1,7 @@
 import {
-    FormattedDateInput,
     formatIsoDate,
 } from "@/components/ui/formatted-date-input";
+import { VesselDateInput } from "./components/VesselDateInput";
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { usePermissions } from '@/contexts/PermissionsContext';
 import { NoAccessPage } from '@/components/ProtectedRoute';
@@ -492,8 +492,9 @@ const TravelEndDateArchivedCell: React.FC<{ planning: any }> = ({ planning }) =>
     if (editing) {
         return (
             <div className="w-32">
-                <FormattedDateInput
+                <VesselDateInput
                     ref={inputRef}
+                    onTemporaryClearAbandoned={() => setEditing(false)}
                     retainInvalidDraftOnBlur
                     value={planning.travelEndDate || ""}
                     min={minDate}
