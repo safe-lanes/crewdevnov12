@@ -6352,7 +6352,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           <div key={reference.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                               <FormattedDateInput
-                                placeholder="Date"
                                 className="text-sm"
                                 value={reference.date}
                                 onChange={(e) => {
@@ -6825,7 +6824,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                             <div key={authority.id} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                 <FormattedDateInput
-                                  placeholder="Date"
                                   className="text-sm"
                                   value={authority.date}
                                   onChange={(e) => {
@@ -7278,7 +7276,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                             <div key={certificate.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div>
                                 <FormattedDateInput
-                                  placeholder="Date"
                                   className="text-sm"
                                   value={certificate.date}
                                   onChange={(e) => {
@@ -7752,7 +7749,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                             <div key={test.id} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <div>
                                 <FormattedDateInput
-                                  placeholder="Date"
                                   className="text-sm"
                                   value={test.date}
                                   onChange={(e) => {
@@ -8107,7 +8103,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <div>
                                 <FormattedDateInput
-                                  placeholder="Date"
                                   className="text-sm"
                                   value={interview.date}
                                   onChange={(e) => {
@@ -9019,7 +9014,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                               <FormattedDateInput
-                                placeholder="Date"
                                 className="text-sm"
                                 value={approver.date}
                                 onChange={(e) => updateC1Approver(approver.id, 'date', e.target.value)}
