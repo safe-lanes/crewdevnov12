@@ -95,7 +95,10 @@ export async function recordReleaseChanges(versionUuid: string, previousUuid: st
     const previousPolicy = recorded?.policy_snapshot ?? policySnapshot(await readApplicability(previousUuid, tx));
     contentChanged = canonical(content) !== canonical(previousContent);
     applicabilityChanged = canonical(policy) !== canonical(previousPolicy);
-    if (canonical(signingValues(content)) !== canonical(signingValues(previousContent))) details.push("Signing configuration changed");
+    // jsonb changes object-property order on read. Compare a path-sorted
+    // projection, not traversal order; unchanged content cannot gain a detail.
+    const signing = (value: any) => signingValues(value).sort((a, b) => a[0].localeCompare(b[0]));
+    if (contentChanged && canonical(signing(content)) !== canonical(signing(previousContent))) details.push("Signing configuration changed");
     if (canonical(withoutSigning(content)) !== canonical(withoutSigning(previousContent))) details.push("Wording / fields / layout changed");
     if (applicabilityChanged) details.push("Applicability changed");
   } else details.push("Initial release");

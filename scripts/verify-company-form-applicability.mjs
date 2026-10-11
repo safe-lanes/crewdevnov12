@@ -124,6 +124,11 @@ try {
     }));
   }
   report.versions = ok(await api("GET", `/forms/${fixture.formId}/versions`));
+  for (const version of report.versions.filter(v => v.status === "released")) {
+    const original = fixture.versions.find(v => v.fvUuid === version.fvUuid);
+    const signing = version.changeSummary?.details.includes("Signing configuration changed") ?? false;
+    ensure(signing === (original.kind === "signing"), `Incorrect signing-change label on ${original.kind}`);
+  }
   const conditionalRefused = await api("POST", `/form-versions/${fixture.pending.id}/release`);
   ensure(conditionalRefused.status === 400 && /dimension validation/.test(conditionalRefused.body.error), "Conditional release must stay closed");
   report.conditionalRefused = conditionalRefused;
@@ -168,9 +173,9 @@ try {
     report.checks.push(`Version ${index + 1}: ${label}`);
   }
   await page.getByRole("option").getByTestId(`version-policy-${fixture.pending.fvUuid}`).getByText("Applies when conditions match", { exact: false }).waitFor();
-  await page.screenshot({ path: `${root}/version-list.jpg` }); report.screenshots.push(`${root}/version-list.jpg`);
+  await page.screenshot({ path: `${root}/version-list.jpg`, animations: "disabled" }); report.screenshots.push(`${root}/version-list.jpg`);
   await page.keyboard.press("Escape");
-  const legacy = (await db.query(`SELECT f.id,f.name FROM adm_forms_v2 f JOIN adm_form_versions_v2 v ON v.form_id=f.id
+  const legacy = (await db.query(`SELECT f.id,f.name,v.fv_uuid FROM adm_forms_v2 f JOIN adm_form_versions_v2 v ON v.form_id=f.id
     WHERE f.category='dynamic' AND f.is_deleted=false AND f.archived_at IS NULL AND v.is_deleted=false
       AND v.rank_group_id IS NULL AND v.created_at < (
         SELECT applied_at FROM schema_migrations WHERE filename='0237_company_form_applicability_policy.sql'
@@ -180,9 +185,10 @@ try {
   await page.getByTestId("tab-company-forms").click({ timeout: 30000 });
   await page.getByRole("button", { name: `Configure ${legacy.name}`, exact: true }).click();
   await page.getByTestId("select-form-version").click({ timeout: 30000 });
+  await page.getByRole("option").getByTestId(`version-policy-${legacy.fv_uuid}`).waitFor({ timeout: 30000 });
   const legacyOptions = await page.getByRole("option").allTextContents();
   ensure(legacyOptions.length && legacyOptions.every(t => /Manual only/.test(t)), "Upgrade versions must display Manual only");
-  await page.screenshot({ path: `${root}/upgrade-manual-only.jpg` }); report.screenshots.push(`${root}/upgrade-manual-only.jpg`);
+  await page.screenshot({ path: `${root}/upgrade-manual-only.jpg`, animations: "disabled" }); report.screenshots.push(`${root}/upgrade-manual-only.jpg`);
   report.checks.push("Existing upgrade versions display Manual only without fabricated historical comparisons");
   await page.keyboard.press("Escape");
   // Separate test-only history. Do not invent actual sign-off dates on a
@@ -205,7 +211,7 @@ try {
   const option = picker.getByRole("option", { name: new RegExp(fixture.name) });
   await option.waitFor({ state: "attached", timeout: 30000 });
   await picker.getByRole("combobox").selectOption({ label: (await option.textContent()).trim() });
-  await page.screenshot({ path: `${root}/unchanged-manual-picker.jpg` }); report.screenshots.push(`${root}/unchanged-manual-picker.jpg`);
+  await page.screenshot({ path: `${root}/unchanged-manual-picker.jpg`, animations: "disabled" }); report.screenshots.push(`${root}/unchanged-manual-picker.jpg`);
   report.checks.push("Existing manual sign-off picker still offers the released definition; no automatic resolution");
   ensure(Number((await db.query("SELECT count(*) FROM frm_company_submissions WHERE form_uuid=$1", [fixture.formUuid])).rows[0].count) === 0,
     "Opening the picker must not create a declaration");

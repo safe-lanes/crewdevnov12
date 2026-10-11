@@ -78,6 +78,8 @@ clone UUIDs and the server-resolved on-release date.
 Company version-list labels distinguish initial release, no change,
 content-only, applicability-only and both. Signing-only differences have the
 explicit **Signing configuration changed** detail, not a wording-change label.
+Signing projections are compared by stable paths, not JSON object traversal
+order. Unchanged and applicability-only releases have no signing-change detail.
 Released comparison snapshots are frozen; legacy comparison history stays
 unknown until an actual new release supplies a comparison.
 

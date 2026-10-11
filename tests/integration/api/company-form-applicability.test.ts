@@ -193,6 +193,9 @@ describe("Company Form applicability foundation", () => {
         contentChanged: ["content", "both", "signing"].includes(kind),
         applicabilityChanged: ["applicability", "both"].includes(kind) });
       if (kind === "signing") expect(s.details).toEqual(["Signing configuration changed"]);
+      else expect(s.details).not.toContain("Signing configuration changed");
+      if (kind === "none") expect(s.details).toEqual([]);
+      if (kind === "applicability") expect(s.details).toEqual(["Applicability changed"]);
       previous = next;
     }
     const audit = (await pool.query("SELECT released_by FROM frm_version_release_changes WHERE version_uuid=$1", [v.fvUuid])).rows[0];
