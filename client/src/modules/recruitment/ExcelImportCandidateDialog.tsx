@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,10 +10,12 @@ import {
 } from "@/components/ui/dialog";
 import { getCrewUserId } from "@/lib/crewUser";
 import { importRequest } from "./importRequest";
+import { ImportUiError, isCellError, readImportFailure, workbookRecovery } from "./importErrors";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export interface ImportValidationError {
+  section?: string;
   sheet: string;
   cell: string;
   field: string;
@@ -41,18 +43,10 @@ interface ExcelImportCandidateDialogProps {
   onOpenCandidate: (recCanUuid: string) => void;
 }
 
-async function readError(response: Response): Promise<{ message?: string; errors?: ImportValidationError[] }> {
-  try {
-    return await response.json();
-  } catch {
-    return { message: `Request failed (${response.status}). Please try again.` };
-  }
-}
-
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Could not read this file. Please choose it again."));
+    reader.onerror = () => reject(new ImportUiError("Could not read this file. Please choose it again."));
     reader.onload = () => {
       const result = String(reader.result ?? "");
       const comma = result.indexOf(",");
@@ -70,21 +64,32 @@ export function ExcelImportCandidateDialog({
 }: ExcelImportCandidateDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const executeLock = useRef(false);
+  const errorRef = useRef<HTMLElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<ValidationResult | null>(null);
   const [validationErrors, setValidationErrors] = useState<ImportValidationError[]>([]);
   const [busy, setBusy] = useState<"template" | "validate" | "execute" | null>(null);
   const [failure, setFailure] = useState("");
   const [success, setSuccess] = useState<ExecuteResult | null>(null);
+  const [selectedName, setSelectedName] = useState("");
+  const [recovery, setRecovery] = useState("");
+  const [failureStage, setFailureStage] = useState<"file" | "validate" | "execute" | "template">("file");
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  useEffect(() => { if (failure) errorRef.current?.focus(); }, [failure]);
 
   const reset = () => {
+    executeLock.current = false;
     setFile(null);
     setPreview(null);
     setValidationErrors([]);
     setFailure("");
     setSuccess(null);
+    setSelectedName("");
+    setRecovery("");
+    setRefreshFailed(false);
     if (inputRef.current) inputRef.current.value = "";
   };
+  useEffect(() => { if (!open) reset(); }, [open]);
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (busy) return;
@@ -98,15 +103,20 @@ export function ExcelImportCandidateDialog({
     setPreview(null);
     setValidationErrors([]);
     setFailure("");
+    setRecovery("");
+    setFailureStage("file");
+    setSelectedName(next?.name || "");
     setFile(null);
     if (inputRef.current) inputRef.current.value = "";
     if (!next) return;
     if (!next.name.toLowerCase().endsWith(".xlsx")) {
       setFailure("Choose an Excel workbook with the .xlsx file extension.");
+      setRecovery(workbookRecovery);
       return;
     }
     if (next.size > MAX_FILE_SIZE) {
       setFailure("This workbook is larger than 5 MB. Choose a smaller file.");
+      setRecovery(workbookRecovery);
       return;
     }
     setFile(next);
@@ -115,11 +125,13 @@ export function ExcelImportCandidateDialog({
   const downloadTemplate = async () => {
     setBusy("template");
     setFailure("");
+    setRecovery("");
+    setFailureStage("template");
     try {
       const response = await importRequest("template");
       if (!response.ok) {
-        const body = await readError(response);
-        throw new Error(body.message || `Template download failed (${response.status}).`);
+        const body = await readImportFailure(response);
+        throw new ImportUiError(body.message);
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -131,7 +143,7 @@ export function ExcelImportCandidateDialog({
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : "Template download failed. Please try again.");
+      setFailure(error instanceof ImportUiError ? error.message : "Template download failed. Check your connection and try again.");
     } finally {
       setBusy(null);
     }
@@ -143,23 +155,31 @@ export function ExcelImportCandidateDialog({
     setFailure("");
     setPreview(null);
     setValidationErrors([]);
+    setRecovery("");
+    setFailureStage("validate");
     try {
       const fileData = await fileToBase64(file);
       const response = await importRequest("validate", { fileData, fileName: file.name, auditUserUuid: getCrewUserId() });
       const result = response.ok
         ? await response.json() as ValidationResult
-        : await readError(response);
+        : await readImportFailure(response);
       if (!response.ok) {
-        const errorResult = result as { message?: string; errors?: ImportValidationError[] };
+        const errorResult = result as { message: string; recovery: string; errors: ImportValidationError[] };
         setValidationErrors(errorResult.errors ?? []);
-        throw new Error(errorResult.message || `Validation failed (${response.status}).`);
+        setRecovery(errorResult.recovery);
+        throw new ImportUiError(errorResult.message);
       }
       const validation = result as ValidationResult;
+      if (typeof validation.isValid !== "boolean" || !Array.isArray(validation.errors) || !validation.errors.every(isCellError)
+        || !validation.summary || typeof validation.summary !== "object" || validation.status !== "Applied") {
+        throw new ImportUiError("Validation could not finish. Please try again later.");
+      }
+      validation.isValid = validation.isValid && validation.errors.length === 0;
       setPreview(validation);
       setValidationErrors(validation.errors ?? []);
-      if (!validation.isValid) setFailure("Please correct the workbook issues below, then choose the updated file.");
+      if (!validation.isValid) setFailure(`Correct ${validation.errors.length} workbook issue${validation.errors.length === 1 ? "" : "s"} below. Save your corrections in Excel, choose the updated file and validate again.`);
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : "Validation failed. Please try again.");
+      setFailure(error instanceof ImportUiError ? error.message : "Validation could not finish. Check your connection and try again.");
     } finally {
       setBusy(null);
     }
@@ -170,21 +190,31 @@ export function ExcelImportCandidateDialog({
     executeLock.current = true;
     setBusy("execute");
     setFailure("");
+    setRecovery("");
+    setFailureStage("execute");
     try {
       const fileData = await fileToBase64(file);
       const response = await importRequest("execute", { fileData, fileName: file.name, auditUserUuid: getCrewUserId() });
       if (!response.ok) {
-        const body = await readError(response);
+        const body = await readImportFailure(response);
         setValidationErrors(body.errors ?? []);
-        throw new Error(body.message || `Import failed (${response.status}).`);
+        setRecovery(body.recovery);
+        throw new ImportUiError(body.message);
       }
       const result = await response.json() as ExecuteResult;
       // Refresh the active list before offering its deep link. Otherwise the
       // module can treat the new UUID as unknown and redirect back to the list.
-      await onImportSuccess();
+      if (result.success !== true || typeof result.recCanUuid !== "string" || result.status !== "Applied") {
+        throw new ImportUiError("The import result could not be confirmed. Check the candidate list before trying again.");
+      }
+      try { await onImportSuccess(); } catch {
+        // A list refresh is not a failed import. Never encourage a duplicate retry.
+        setRefreshFailed(true);
+      }
       setSuccess(result);
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : "Import failed. Please try again.");
+      setPreview(null);
+      setFailure(error instanceof ImportUiError ? error.message : "The import result could not be confirmed. Check the candidate list before trying again.");
       executeLock.current = false;
     } finally {
       setBusy(null);
@@ -194,12 +224,12 @@ export function ExcelImportCandidateDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-h-[92dvh] w-[calc(100%-1.25rem)] max-w-[600px] overflow-hidden rounded-xl border border-[#d9e2ec] bg-[#fbfcfd] p-0 shadow-[0_24px_70px_rgba(20,48,77,0.22)]"
+        className="flex max-h-[92dvh] w-[calc(100%-1.25rem)] max-w-[600px] flex-col gap-0 overflow-hidden rounded-xl border border-[#d9e2ec] bg-[#fbfcfd] p-0 shadow-[0_24px_70px_rgba(20,48,77,0.22)]"
         onEscapeKeyDown={(event) => { if (busy) event.preventDefault(); }}
         onPointerDownOutside={(event) => { if (busy) event.preventDefault(); }}
         aria-describedby="candidate-import-description"
       >
-        <DialogHeader className="border-b border-[#e3e9ef] bg-[#f2f6f8] px-5 py-4 text-left sm:px-6">
+        <DialogHeader className="shrink-0 border-b border-[#e3e9ef] bg-[#f2f6f8] px-5 py-4 text-left sm:px-6">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#e0edf2] text-[#17617a]">
               <FileSpreadsheet className="h-[18px] w-[18px]" aria-hidden="true" />
@@ -224,7 +254,7 @@ export function ExcelImportCandidateDialog({
           </div>
         </DialogHeader>
 
-        <div className="max-h-[calc(92dvh-76px)] space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
+        <div className="min-h-0 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
           {success ? (
             <section aria-live="polite" className="rounded-lg border border-[#b9ddcc] bg-[#eff8f2] p-5">
               <div className="flex gap-3">
@@ -238,9 +268,11 @@ export function ExcelImportCandidateDialog({
                     type="button"
                     className="mt-4 h-9 bg-[#17617a] px-4 text-xs text-white hover:bg-[#104d62]"
                     onClick={() => onOpenCandidate(success.recCanUuid)}
+                    disabled={refreshFailed}
                   >
                     Open Candidate
                   </Button>
+                  {refreshFailed && <p role="alert" className="mt-3 text-xs">The candidate was imported, but the list could not refresh. Close this dialog and refresh the page before opening the candidate. Do not import it again.</p>}
                 </div>
               </div>
             </section>
@@ -286,7 +318,7 @@ export function ExcelImportCandidateDialog({
                       <Upload className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="max-w-[290px] truncate text-sm font-medium text-[#345365]">{file?.name ?? "No workbook selected"}</p>
+                      <p title={selectedName} className="max-w-[290px] truncate text-sm font-medium text-[#345365]">{selectedName || "No workbook selected"}</p>
                       <p id="candidate-file-help" className="mt-1 text-[11px] text-[#788c98]">.xlsx format · maximum 5 MB</p>
                     </div>
                   </div>
@@ -313,7 +345,17 @@ export function ExcelImportCandidateDialog({
                 )}
               </section>
 
-              {preview && (
+              {failure && (
+                <section ref={errorRef} tabIndex={-1} role="alert" className="rounded-lg border border-[#f0c9b5] bg-[#fff6f1] p-4 text-sm leading-relaxed text-[#77462f]">
+                  <h3 className="font-semibold">{failureStage === "template" ? "Template download failed" : failureStage === "execute" ? "Import not confirmed" : validationErrors.length ? "Validation needs corrections" : "Workbook could not be validated"}</h3>
+                  {selectedName && failureStage !== "template" && <p className="mt-1 break-all text-xs font-medium">File: {selectedName}</p>}
+                  <p className="mt-2">{failure}</p>
+                  <p className="mt-2 text-xs">{failureStage === "execute" ? "Check the candidate list before retrying. Validate this workbook again before another import attempt." : failureStage !== "template" ? "No candidate has been imported. Confirm stays disabled until this workbook passes validation." : ""}</p>
+                  {recovery && <p className="mt-3 border-t border-[#f0c9b5] pt-3 text-xs"><strong>What to do next: </strong>{recovery}</p>}
+                </section>
+              )}
+
+              {preview?.isValid && (
                 <section aria-live="polite" className="rounded-lg border border-[#dbe5ea] bg-white">
                   <div className="flex flex-col gap-2 border-b border-[#e8eef1] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -321,7 +363,7 @@ export function ExcelImportCandidateDialog({
                       <p className="mt-0.5 text-xs text-[#718391]">{preview.candidateName || "Candidate"} · status will be Applied</p>
                     </div>
                     <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-semibold ${preview.isValid ? "bg-[#e9f5ee] text-[#286b4c]" : "bg-[#fff1e9] text-[#a85528]"}`}>
-                      {preview.isValid ? "Ready to import" : "Needs attention"}
+                      {preview.isValid ? "Ready to import" : `${validationErrors.length} issue${validationErrors.length === 1 ? "" : "s"} to correct`}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-px bg-[#e8eef1] sm:grid-cols-3">
@@ -342,25 +384,22 @@ export function ExcelImportCandidateDialog({
                 <section aria-live="polite" className="overflow-hidden rounded-lg border border-[#f0c9b5] bg-[#fffaf7]">
                   <div className="flex items-center gap-2 border-b border-[#f4ded2] px-4 py-3 text-[#92512f]">
                     <AlertCircle className="h-4 w-4" />
-                    <h3 className="text-xs font-semibold">{validationErrors.length} workbook issue{validationErrors.length === 1 ? "" : "s"}</h3>
+                    <h3 className="text-sm font-semibold">{validationErrors.length} workbook issue{validationErrors.length === 1 ? "" : "s"} — correct these cells in Excel</h3>
                   </div>
                   <ul className="max-h-48 divide-y divide-[#f5e5dc] overflow-y-auto">
                     {validationErrors.map((item, index) => (
                       <li key={`${item.sheet}-${item.cell}-${item.field}-${index}`} className="px-4 py-2.5">
                         <p className="text-xs font-medium text-[#77462f]">
-                          {item.sheet} · {item.cell}{item.field ? ` · ${item.field}` : ""}
+                          {item.section ? `${item.section} · ` : ""}{item.field}
+                        </p>
+                        <p className="mt-1 text-xs text-[#77462f]">
+                          Sheet: {item.sheet} · Cell: <strong>{item.cell}</strong>
                         </p>
                         <p className="mt-0.5 text-xs leading-relaxed text-[#8e6652]">{item.message}</p>
                       </li>
                     ))}
                   </ul>
                 </section>
-              )}
-
-              {failure && (
-                <p role="alert" className="rounded-md border border-[#f0c9b5] bg-[#fff6f1] px-3 py-2.5 text-xs leading-relaxed text-[#994b28]">
-                  {failure}
-                </p>
               )}
 
               <div className="flex flex-col-reverse gap-2 border-t border-[#e6ecef] pt-4 sm:flex-row sm:justify-end">

@@ -47,7 +47,7 @@ export const BLOCKS: Block[] = DEFINITIONS.map(block => ({
   ...block, sheet: FORM_SHEET, start: FORM_LAYOUT[block.entity].start,
   placements: FORM_LAYOUT[block.entity].placements, rowStep: FORM_LAYOUT[block.entity].step || 1,
 }));
-export type ImportError = { sheet: string; cell: string; field: string; message: string };
+export type ImportError = { section?: string; sheet: string; cell: string; field: string; message: string };
 export type Catalogs = Record<string, { label: string; value: string }[]>;
 export type Parsed = { data: Record<string, Record<string, string>[]>; errors: ImportError[]; summary: Record<string, number>; candidateName: string; isValid: boolean; status: "Applied" };
 export function cellLocation(block: Block, field: number, row: number): string {

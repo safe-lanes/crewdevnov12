@@ -4,13 +4,14 @@ import { loadCatalogs } from "./catalogs";
 import { generateTemplate } from "./workbook";
 import { decodeFile, parseWorkbook } from "./parser";
 import { persistCandidate, DuplicateImportError } from "./persistence";
+import { WorkbookValidationError, logImportFailure } from "./errors";
 
 export const candidateImportRouter = Router();
 candidateImportRouter.use(async (req, res, next) => {
   try { res.locals.importActor = await authorizeImport(req); next(); }
   catch (error) {
-    if (error instanceof ImportAccessError) res.status(403).json({ message: error.message });
-    else { console.error("[Candidate import] Authorization failed", error); res.status(500).json({ message: "Unable to verify import access. No data was saved." }); }
+    if (error instanceof ImportAccessError) res.status(403).json({ code: "ACCESS_DENIED", message: error.message });
+    else { logImportFailure("authorization", error); res.status(500).json({ code: "AUTH_UNAVAILABLE", message: "Unable to verify import access. No data was saved. Please try again later." }); }
   }
 });
 candidateImportRouter.get("/template", async (_req, res) => {
@@ -24,19 +25,20 @@ candidateImportRouter.get("/template", async (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.send(buffer);
   } catch (error) {
-    console.error("[Candidate import] Template failed", error);
-    res.status(500).json({ message: "Unable to generate the template. Please try again." });
+    logImportFailure("template", error);
+    res.status(500).json({ code: "TEMPLATE_UNAVAILABLE", message: "Unable to generate the template. Please try again later." });
   }
 });
 for (const action of ["validate", "execute"] as const) candidateImportRouter.post(`/${action}`, async (req, res) => {
-  let parsing = true;
+  let stage: "file" | "catalogs" | "parse" | "persist" = "file";
   try {
     const file = decodeFile(req.body?.fileData, req.body?.fileName);
+    stage = "catalogs";
     const catalogs = await loadCatalogs();
     const own = res.locals.importActor.manningAgent;
     if (own) catalogs.agents = catalogs.agents.filter(a => a.value === own);
+    stage = "parse";
     const parsed = await parseWorkbook(file, catalogs);
-    parsing = false;
     if (own && parsed.isValid) {
       if (!parsed.data.personal.length) parsed.data.personal.push({});
       parsed.data.personal[0].manningAgent = own;
@@ -45,17 +47,23 @@ for (const action of ["validate", "execute"] as const) candidateImportRouter.pos
       const { data, ...preview } = parsed; // Do not send all personal data back into UI/logs.
       res.json(preview);
     } else if (!parsed.isValid) {
-      res.status(422).json({ message: "Correct the workbook errors before importing.", errors: parsed.errors });
+      res.status(422).json({ code: "CELL_VALIDATION", message: "Correct the workbook errors before importing.", errors: parsed.errors });
     } else {
+      stage = "persist";
       const recCanUuid = await persistCandidate(parsed, res.locals.importActor.auditUuid);
       res.status(201).json({ success: true, recCanUuid, status: "Applied" });
     }
   } catch (error) {
-    if (error instanceof DuplicateImportError) { res.status(409).json({ message: error.message }); return; }
-    if (parsing && error instanceof Error) {
-      res.status(400).json({ message: error.message }); return;
+    if (error instanceof DuplicateImportError) { res.status(409).json({ code: "DUPLICATE_IMPORT", message: error.message }); return; }
+    if (error instanceof WorkbookValidationError) {
+      res.status(400).json({ code: error.code, message: error.message, recovery: error.recovery }); return;
     }
-    console.error(`[Candidate import] ${action} failed`, error);
-    res.status(500).json({ message: action === "execute" ? "Import failed. No candidate data was saved. Please try again." : "Unable to validate this workbook. Check the file and try again." });
+    logImportFailure(`${action}/${stage}`, error);
+    res.status(500).json({
+      code: "SERVICE_UNAVAILABLE",
+      message: stage === "catalogs" ? "The current master lists are unavailable. Please try again later; you do not need to change your workbook." :
+        action === "execute" ? "Import failed. No candidate data was saved. Please try again later." :
+          "Validation could not finish because of a server problem. Please try again later; you do not need to change your workbook.",
+    });
   }
 });
