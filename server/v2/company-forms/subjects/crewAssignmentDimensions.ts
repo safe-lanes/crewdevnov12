@@ -22,8 +22,8 @@ export const crewAssignmentRuleDimensions: readonly RuleDimension[] = [
   })),
 ];
 
-// Authoritative tenant master stores. Numeric parent/master primary keys remain
-// their real identifiers; never manufacture UUIDs for agent/pool records.
+// Authoritative tenant master stores. Serialize existing primary keys exactly;
+// current agent/pool keys are UUIDs. Never manufacture replacement identifiers.
 const stores: Record<string, { table: string; id: string; label: string; filter: string }> = {
   vessel: { table: "master_vessels", id: "vessel_uuid", label: "vessel", filter: "NOT is_deleted AND is_active" },
   vessel_type: { table: "master_vessel_types", id: "vt_uuid", label: "vessel_type", filter: "NOT is_deleted AND is_active" },

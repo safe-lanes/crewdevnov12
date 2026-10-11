@@ -21,8 +21,8 @@ and first-in-rank company contract. Owner and flag are **not yet available**.
 ## Master values and provenance
 
 Categorical policy values are selected identifiers, not entered labels.
-UUIDs remain UUIDs; agent/pool masters currently use their existing numeric
-primary keys serialized as strings. No replacement UUID catalogue is created.
+UUIDs remain UUIDs; agent/pool masters use their existing UUID primary keys
+serialized as strings. No replacement identifier catalogue is created.
 Legacy text must have exactly one authoritative master match. Blank, unmapped,
 ambiguous or missing provenance is UNRESOLVED, never a default match.
 Fleet/additional group values come from exact parent membership references.
