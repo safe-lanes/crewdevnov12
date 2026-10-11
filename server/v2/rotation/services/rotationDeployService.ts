@@ -7,6 +7,7 @@ import { rotationEntriesRepository, rotationArchiveRepository } from "../reposit
 import { vesselPlanningRepository } from "../../vessel/repositories";
 import { v4 as uuidv4 } from "uuid";
 import { resolveAssignmentVesselUuid } from "../../crew-pool/services/assignmentVesselValidation";
+import { captureDeployRank } from "../../company-forms/subjects/crewAssignmentRuleContext";
 
 function applyAuditUser<T extends object>(data: T, isCreate = false): T & { createdByUuid?: string | null; updatedByUuid?: string | null } {
   const auditUserUuid = (data as any).auditUserUuid || null;
@@ -183,6 +184,7 @@ export const rotationDeployService = {
           planUuid = newPlan.planUuid;
         }
 
+        await captureDeployRank(relieverAssignUuid, planUuid, tx);
         await tx
           .update(rotationEntriesV2)
           .set({
