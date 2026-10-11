@@ -108,7 +108,10 @@ import {
 import { searchVessels } from "../../v2/recruitment/controllers/vesselSearchController";
 import { complianceScreeningController } from "../../v2/recruitment/controllers/complianceScreeningController";
 
+import { candidateImportRouter } from "../../v2/recruitment/import/routes";
+
 const router = Router();
+router.use("/import", candidateImportRouter);
 
 // Vessel search (no role middleware beyond standard recruitment-module auth)
 router.get("/vessel-search", searchVessels);
