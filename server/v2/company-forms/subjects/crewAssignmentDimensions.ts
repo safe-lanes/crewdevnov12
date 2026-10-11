@@ -97,6 +97,15 @@ export async function readCrewRuleDimensions(subject: CrewAssignmentSubject, tx:
       source: { master: store.table, membershipReferences: refs } });
   }
   let history = context?.joining_history;
+  const verified = context?.joining_history_backfill;
+  if (verified) history = {
+    ...verified, ...history,
+    firstEver: history?.firstEver ?? verified.firstEver,
+    firstInRank: history?.firstInRank ?? verified.firstInRank,
+    firstEverReason: history?.firstEver != null ? history.firstEverReason : verified.firstEverReason,
+    firstInRankReason: history?.firstInRank != null ? history.firstInRankReason : verified.firstInRankReason,
+    verifiedBackfill: verified,
+  };
   if (!history && subject.assignmentType === "Planned") {
     history = { ...await readPriorServiceDecision(subject.crewUuid, context?.contract_rank_uuid ?? null,
       subject.signOnDate ?? new Date().toISOString().slice(0, 10), tx), source: "live_planned_history", capturedAt: null };

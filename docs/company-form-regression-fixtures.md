@@ -1,5 +1,17 @@
 # Retained Company Form regression fixtures
 
+## Verified current-history upgrade
+
+The verified current-contract backfill is separate from sign-on captures.
+Its durable per-assignment evidence and reasons are retained in
+`crew_rule_history_backfill_report`; it creates no forms or requirements.
+Initial main-workspace upgrade: 115 candidates, 33 previously missing first-ever
+values filled and 27 previously missing first-in-rank values filled. The report
+contains 41 verified first-ever values (8 already had sign-on captures), and
+27 verified first-in-rank values; 88 retain at least one
+UNRESOLVED value (74 no exact company-service row; 14 missing contract rank).
+Only exactly one seafarer/vessel/sign-on/company-service match can be excluded.
+
 ## Standing fixture retention rule
 
 Test fixtures stay in place and are registered in this document. They are never
@@ -4422,3 +4434,5 @@ Test-owned actors, definition and subject created for permission verification; n
 - Retained test context (2026-10-11T08:14:21.425Z): tests/integration/api/approval-identity.test.ts; target acc_engagements_v2; references schema/context retained (no UUID parameters).
 
 - Retained test context (2026-10-11T08:14:50.229Z): tests/unit/fixture-retention.test.ts; target crew_assignments; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:09:27.028Z): verified-history/cf_verified_history_2b1383d8; target registered_fixture_context; references `fa3f99d2-7097-4aca-ac7b-4251085cc886`, `b64185a7-8296-432c-ab62-51238f9d6987`, `4c2d1083-97d8-4c39-91d8-6f9bb13543b5`, `fd99fd72-155f-497e-8f47-bf5b5caa9434`, `b962ca55-4e46-4ca6-862b-e6591415b598`, `863db664-c23f-48b9-852e-c16a0fc309b5`, `0d388abc-4707-44a4-8a47-4a59a0f997cd`, `f032939c-ee22-4b3f-9dfc-75ebc652fd64`, `541cf540-f9a8-48a1-8620-ce0335f04ce8`, `a92af71a-9a72-461c-b902-eea1e99468dc`.

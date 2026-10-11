@@ -124,6 +124,13 @@ Related project task: #333 (Company Form Submissions).
     flag — appear in the rule editor as "not yet available" until
     the parent application supplies them as master data.
 
+30. GO-LIVE CHECK. When stage triggers are first switched on, the
+    rules check runs once for every open assignment's current
+    stage and is recorded. Under item 24 no rule applies to a
+    stage triggered before the rule's effective date, so these
+    checks require nothing and open their stages for manual
+    starts. Nothing is resolved retrospectively.
+
 ## Trusted vessel-scope prerequisite
 
 Ship-user Company Form access resolves membership from
