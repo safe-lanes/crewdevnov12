@@ -3,6 +3,7 @@ import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
 import { AssignmentDimensionInspector } from "./AssignmentDimensionInspector";
+import { AssignmentFormRequirements } from "./AssignmentFormRequirements";
 import type {
   CompanyFormSubmissionHome,
   CompanyFormSubmissionSummary,
@@ -129,7 +130,7 @@ export function CrewCompanyFormsHome({
 
   const startSignoff = useMutation({
     mutationFn: async ({ subjectRef, form }: { subjectRef: string; form: EligibleSignoffForm }) => {
-      if (!crewUuid) throw new Error("Select a crew member before starting a sign-off declaration.");
+      if (!crewUuid) throw new Error("Select a crew member before starting a sign-off form.");
       const base = `/api/v2/company-form-submissions/subjects/crew_assignment/${queryString(subjectRef)}/submissions?crewUuid=${queryString(crewUuid)}`;
       const historyResponse = await apiRequest("GET", base);
       const existing = readSubmissions(await historyResponse.json()).find((submission) =>
@@ -144,7 +145,7 @@ export function CrewCompanyFormsHome({
       });
       const created = await response.json() as { submissionUuid?: string; submission?: { submissionUuid?: string } };
       const submissionUuid = created.submissionUuid ?? created.submission?.submissionUuid;
-      if (!submissionUuid) throw new Error("The sign-off declaration was created but its submission link was not returned.");
+      if (!submissionUuid) throw new Error("The sign-off form was created but its submission link was not returned.");
       return submissionUuid;
     },
     onSuccess: (submissionUuid) => {
@@ -183,7 +184,7 @@ export function CrewCompanyFormsHome({
           G3. Company Forms
         </h3>
         <p className="mt-1 text-sm text-gray-600">
-          Saved declarations and retained history across assignments.
+          Saved forms and retained history across assignments.
         </p>
       </div>
 
@@ -205,7 +206,7 @@ export function CrewCompanyFormsHome({
           )}
           {home.isLoading && (
             <p className="rounded-md bg-slate-50 px-3 py-3 text-sm text-slate-700" role="status">
-              Loading saved declarations…
+              Loading saved forms…
             </p>
           )}
           {home.error && (
@@ -227,8 +228,8 @@ export function CrewCompanyFormsHome({
           {home.isSuccess && groups.length === 0 && (
             <p className="rounded-md bg-slate-50 px-3 py-3 text-sm text-slate-700" role="status">
               {assignments.length === 0 && !assignmentHistoryLoading
-                ? "No permitted assignment subjects or saved declaration history are available."
-                : "No permitted company-form subjects or saved declarations are available for this crew member."}
+                ? "No permitted assignment subjects or saved form history are available."
+                : "No permitted company-form subjects or saved forms are available for this crew member."}
             </p>
           )}
           {home.isSuccess && groups.length > 0 && (
@@ -284,19 +285,20 @@ export function CrewCompanyFormsHome({
                           className="mt-2 inline-flex rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-950"
                           data-testid={`crew-company-forms-unfinished-${group.subjectRef}`}
                         >
-                          {unfinishedSignoffCount} unfinished sign-off {unfinishedSignoffCount === 1 ? "declaration" : "declarations"}
+                          {unfinishedSignoffCount} unfinished sign-off {unfinishedSignoffCount === 1 ? "form" : "forms"}
                         </span>
                       )}
                     </summary>
 
                     <div className="space-y-4 border-t border-slate-200 px-3 py-3">
+                      <AssignmentFormRequirements subjectRef={group.subjectRef} onOpenSubmission={onOpenSubmission} />
                       <AssignmentDimensionInspector subjectRef={group.subjectRef} />
 
                       {group.startableStages?.includes("at_sign_off") && (
                         <div className="rounded-md border border-blue-200 bg-blue-50/70 p-3" data-testid={`crew-company-forms-signoff-picker-${group.subjectRef}`}>
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                              <p className="font-medium text-slate-900">Create a sign-off declaration</p>
+                              <p className="font-medium text-slate-900">Start a manual sign-off form</p>
                               <p className="mt-0.5 text-sm text-slate-600">Choose an eligible form for this assignment.</p>
                             </div>
                             <button
@@ -358,7 +360,7 @@ export function CrewCompanyFormsHome({
                               )}
                               {startError?.subjectRef === group.subjectRef && (
                                 <p role="alert" className="mt-2 text-sm text-rose-800">
-                                  {startError.permission ? "You do not have permission to start or open this sign-off declaration." : `Sign-off declaration could not be opened: ${startError.message}`}
+                                  {startError.permission ? "You do not have permission to start or open this sign-off form." : `Sign-off form could not be opened: ${startError.message}`}
                                 </p>
                               )}
                             </div>
@@ -380,7 +382,7 @@ export function CrewCompanyFormsHome({
 
                       {group.submissions.length === 0 ? (
                         <p className="rounded bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                          No saved declarations for this assignment.
+                          No saved forms for this assignment.
                         </p>
                       ) : (
                         <ol className="space-y-3">
@@ -389,8 +391,8 @@ export function CrewCompanyFormsHome({
                               submission.stageKey === "at_sign_off" &&
                               submission.status === "in_progress";
                             const recordedAt = submission.systemSnapshotAt
-                              ? `Declaration recorded ${sailDate(submission.systemSnapshotAt)}`
-                              : `Declaration date unavailable · Created ${sailDate(submission.createdAt)}`;
+                              ? `Form recorded ${sailDate(submission.systemSnapshotAt)}`
+                              : `Form date unavailable · Created ${sailDate(submission.createdAt)}`;
                             const openLabel = `${valueOrUnavailable(submission.formName)} · ${sailDate(
                               submission.systemSnapshotAt ?? submission.createdAt,
                             )}`;
@@ -407,7 +409,7 @@ export function CrewCompanyFormsHome({
                                     </p>
                                     {unfinishedSignoff && (
                                       <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs font-semibold text-amber-900" data-testid={`crew-company-forms-unfinished-submission-${submission.submissionUuid}`}>
-                                        <span>Unfinished sign-off declaration</span>
+                                        <span>Unfinished sign-off form</span>
                                         <a
                                           href="#company-form-history"
                                           className="underline decoration-amber-500 underline-offset-2 hover:text-amber-950"
@@ -415,7 +417,7 @@ export function CrewCompanyFormsHome({
                                           aria-disabled={!onOpenSubmission}
                                           data-testid={`crew-company-forms-unfinished-open-${submission.submissionUuid}`}
                                         >
-                                          Open declaration
+                                          Open form
                                         </a>
                                       </div>
                                     )}
@@ -424,6 +426,11 @@ export function CrewCompanyFormsHome({
                                       <span aria-hidden="true">·</span>{" "}
                                       {valueOrUnavailable(submission.stageLabel)}
                                     </p>
+                                    {submission.origin && (
+                                      <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${submission.origin === "REQUIRED" ? "bg-sky-100 text-sky-900" : "bg-slate-200 text-slate-700"}`}>
+                                        {submission.origin === "REQUIRED" ? "Required" : "Manual"}
+                                      </span>
+                                    )}
                                   </div>
                                   <span
                                     className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${

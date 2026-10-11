@@ -5,7 +5,7 @@ export type CompanyFormSubjectType = typeof COMPANY_FORM_SUBJECT_TYPES[number];
 export type SystemFieldDefinition = { key: string; label: string };
 
 export const SHARED_SYSTEM_FIELDS = [
-  { key: "date_of_declaration", label: "Date of declaration" },
+  { key: "date_of_declaration", label: "Form date" },
 ] as const satisfies readonly SystemFieldDefinition[];
 
 export const SUBJECT_SYSTEM_FIELDS = {

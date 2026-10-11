@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { CompanySubmissionRenderer } from "@/components/configured-form/companySubmissionContract";
 import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
 import type { CompanyFormSubmissionSummary } from "@shared/v2/forms-engine/submissionRenderContract";
+import { AssignmentFormRequirements } from "@/modules/crew-pool/components/AssignmentFormRequirements";
 
 export function useOnboardFormCounts(refs: Array<string | null | undefined>) {
   const ids = [...new Set(refs.filter((ref): ref is string => !!ref))].sort();
@@ -51,7 +52,7 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
   const existing = chosen && submissions.find(s => s.formUuid === chosen.formUuid && s.status !== "voided");
   return <div className="space-y-4" data-testid="onboard-company-forms">
     <p className="text-sm text-muted-foreground">{readOnly ? "Historical assignment · read-only" : "On-board Company Forms"}</p>
-    {history.isFetching && <p role="status">Loading saved declarations…</p>}
+    {history.isFetching && <p role="status">Loading saved forms…</p>}
     {history.error && <p role="alert" className="text-destructive">{history.error.message}</p>}
     {eligible.error && <p role="alert" className="text-destructive">{eligible.error.message}</p>}
     {!readOnly && history.isSuccess && eligible.isSuccess && <div className="space-y-2">
@@ -70,26 +71,28 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
           const saved = current.find(s => s.stageKey === "on_board" && s.formUuid === chosen.formUuid && s.status !== "voided");
           const result = saved ?? await (await apiRequest("POST", `${path}/submissions`,
             { formUuid: chosen.formUuid, formVersionUuid: chosen.formVersionUuid })).json();
-          if (!result.submissionUuid) throw new Error("No recorded declaration identity was returned.");
+          if (!result.submissionUuid) throw new Error("No form submission link was returned.");
           setActive(result.submissionUuid); changed();
-        } catch (err) { setError(err instanceof Error ? err.message : "Unable to open declaration."); }
+        } catch (err) { setError(err instanceof Error ? err.message : "Unable to open form."); }
         finally { setBusy(false); }
-      }}>{busy ? "Opening…" : existing ? "Open existing declaration" : "Start selected declaration"}</Button>
+      }}>{busy ? "Opening…" : existing ? "Open existing form" : "Start selected form"}</Button>
     </div>}
     {error && <p role="alert" className="text-destructive">{error}</p>}
-    <h3 className="font-medium">Saved declarations and retained history (total including voided: {submissions.length})</h3>
-    {history.isSuccess && !submissions.length && <p>No on-board declarations have been started.</p>}
+    <AssignmentFormRequirements subjectRef={assignmentUuid} stageKey="on_board" onOpenSubmission={setActive} allowStart={!readOnly} />
+    <h3 className="font-medium">Saved forms and retained history (total including voided: {submissions.length})</h3>
+    {history.isSuccess && !submissions.length && <p>No on-board forms have been started.</p>}
     {submissions.map(s => <div key={s.submissionUuid} className="rounded-md border p-3 text-sm">
-      <p>{s.formName || "Company declaration"} · {s.status}</p>
+      <p>{s.formName || "Company form"} · {s.status}</p>
+      {s.origin && <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{s.origin === "REQUIRED" ? "Required" : "Manual"}</span>}
       <p>Version {s.versionNo?.padStart(2, "0") || "unavailable"} · Released {sailDate(s.releasedAt)}</p>
-      <p>{s.systemSnapshotAt ? "Declaration" : "Created"} {sailDate(s.systemSnapshotAt ?? s.createdAt)}</p>
+      <p>{s.systemSnapshotAt ? "Form recorded" : "Created"} {sailDate(s.systemSnapshotAt ?? s.createdAt)}</p>
       {s.status === "voided" && s.formArchivedAt && !s.replacedBySubmissionUuid &&
         <p>No replacement — form retired</p>}
       {s.replacementHistory?.filter(link => submissions.some(s => s.submissionUuid === link.submissionUuid)).map(link => <p key={link.submissionUuid}>{link.label}{" "}
         <button className="text-primary underline" onClick={() => setActive(link.submissionUuid)}>
-          {link.targetLabel || "Open linked declaration — historical label unavailable"}</button></p>)}
+          {link.targetLabel || "Open linked form — historical label unavailable"}</button></p>)}
       <Button variant="outline" className="mt-2" onClick={() => setActive(s.submissionUuid)}>
-        {s.canEdit && !readOnly ? "Resume declaration" : "Read declaration"}</Button>
+        {s.canEdit && !readOnly ? "Resume form" : "Read form"}</Button>
     </div>)}
     <Button variant="outline" onClick={() => { changed(); if (!readOnly) void eligible.refetch(); }}>Refresh forms</Button>
   </div>;

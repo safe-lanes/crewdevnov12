@@ -405,7 +405,7 @@ function SignatureBlock({
     </label>}
     {companyForm && type === "seafarer" && signatureMethod === "witnessed" && !readOnly && <label className="flex items-start gap-2 text-sm">
       <input type="checkbox" checked={seafarerPresent} onChange={(event) => setSeafarerPresent(event.target.checked)} />
-      <span>The seafarer is present and is signing this witnessed declaration.</span>
+      <span>The seafarer is present and is signing this witnessed form.</span>
     </label>}
     {readOnly ? <p className="text-sm text-muted-foreground">Awaiting signature</p> : companyForm && !canSign
       ? <p className="text-sm text-muted-foreground">Signing is unavailable for this account.</p>

@@ -7,7 +7,7 @@ import { CrewCompanyFormsHome } from "./CrewCompanyFormsHome";
 
 type Props = Omit<Parameters<typeof CrewCompanyFormsHome>[0], "onOpenSubmission">;
 
-/** The profile is a home for saved declarations, never a creation entry point. */
+/** The profile is a home for saved forms, never a creation entry point. */
 export function CrewCompanyFormsHistory(props: Props) {
   const [active, setActive] = useState<string | null>(null);
   const client = useQueryClient();
@@ -21,7 +21,7 @@ export function CrewCompanyFormsHistory(props: Props) {
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto" data-testid="crew-company-form-viewer">
         <DialogHeader>
           <DialogTitle>Company Form history</DialogTitle>
-          <DialogDescription>Saved declaration, pinned version and recorded signing information.</DialogDescription>
+          <DialogDescription>Saved form, pinned version and recorded signing information.</DialogDescription>
         </DialogHeader>
         {active && <CompanySubmissionRenderer key={active} submissionUuid={active} onBack={close} showSubmissionMetadata requestContext={{ crewUuid: props.crewUuid }} />}
         <Button type="button" variant="outline" onClick={close} data-testid="button-close-crew-company-form">

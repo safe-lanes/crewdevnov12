@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { CompanySubmissionRenderer } from "@/components/configured-form/companySubmissionContract";
 import type { CompanyFormSubmissionSummary } from "@shared/v2/forms-engine/submissionRenderContract";
+import { AssignmentFormRequirements } from "@/modules/crew-pool/components/AssignmentFormRequirements";
 
 type EligibleForm = {
   formUuid: string;
@@ -50,7 +51,7 @@ export async function verifyJoiningAssignment(context: Context) {
       assignment.crewUuid !== context.crewUuid ||
       assignment.vesselUuid !== context.vesselUuid ||
       !["Planned", "OnBoard"].includes(assignment.assignmentType)) {
-    throw new Error("The recorded assignment is not a valid deployed reliever assignment. Starting a declaration is unavailable.");
+    throw new Error("The recorded assignment is not a valid deployed reliever assignment. Starting a form is unavailable.");
   }
   return assignment;
 }
@@ -119,10 +120,10 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
         formUuid: chosen.formUuid,
         formVersionUuid: chosen.formVersionUuid,
       })).json() as CompanyFormSubmissionSummary;
-      if (!result.submissionUuid) throw new Error("The submission service did not return a declaration identity.");
+      if (!result.submissionUuid) throw new Error("The form service did not return a submission link.");
       if (mounted.current) setActiveSubmission(result.submissionUuid);
     } catch (error) {
-      if (mounted.current) setActionError(error instanceof Error ? error.message : "Unable to open this declaration.");
+      if (mounted.current) setActionError(error instanceof Error ? error.message : "Unable to open this form.");
     } finally {
       creating.current = false;
       if (mounted.current) setBusy(false);
@@ -140,7 +141,7 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
     <p className="text-sm text-muted-foreground">
       Before-joining Company Forms
     </p>
-    {!hasLink && <p role="alert">No recorded reliever assignment is linked. Reconciliation is required; starting a declaration is disabled.</p>}
+    {!hasLink && <p role="alert">No recorded reliever assignment is linked. Reconciliation is required; starting a form is disabled.</p>}
     {verification.isFetching && <p role="status">Verifying the recorded planning assignment…</p>}
     {verification.error && <p role="alert" className="text-destructive">{verification.error.message}</p>}
     {eligible.error && <p role="alert" className="text-destructive">{eligible.error.message}</p>}
@@ -157,26 +158,28 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
       </select>
       <Button type="button" data-testid="button-start-joining-form" disabled={!chosen || busy}
         onClick={() => void startOrResume()}>
-        {busy ? "Opening…" : existing ? "Open existing declaration" : "Start selected declaration"}
+        {busy ? "Opening…" : existing ? "Open existing form" : "Start selected form"}
       </Button>
     </div>}
     {actionError && <p role="alert" className="text-destructive">{actionError}</p>}
     <section className="space-y-2">
-      <h3 className="font-medium">Declarations and retained history</h3>
-      {history.isFetching && <p role="status">Loading declarations…</p>}
-      {history.isSuccess && submissions.length === 0 && <p className="text-sm text-muted-foreground">No declarations have been started for this assignment.</p>}
+      {previouslyVerified && <AssignmentFormRequirements subjectRef={context.assignmentUuid} stageKey="before_joining" onOpenSubmission={setActiveSubmission} beforeStart={() => verifyJoiningAssignment(context)} />}
+      <h3 className="font-medium">Saved forms and retained history</h3>
+      {history.isFetching && <p role="status">Loading saved forms…</p>}
+      {history.isSuccess && submissions.length === 0 && <p className="text-sm text-muted-foreground">No forms have been started for this assignment.</p>}
       {submissions.map((submission) => <div key={submission.submissionUuid} className="rounded-md border p-3 text-sm">
-        <div>{submission.formName ?? forms.find((form) => form.formUuid === submission.formUuid)?.formName ?? "Company declaration"} · {submission.status}</div>
+        <div>{submission.formName ?? forms.find((form) => form.formUuid === submission.formUuid)?.formName ?? "Company form"} · {submission.status}</div>
+        {submission.origin && <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{submission.origin === "REQUIRED" ? "Required" : "Manual"}</span>}
         <div className="text-muted-foreground">Version {submission.versionNo?.padStart(2, "0") ?? "unavailable"} · Released {sailDate(submission.releasedAt)}</div>
         <div className="text-muted-foreground">{submission.stageLabel ?? "Stage unavailable"}</div>
         {submission.replacementHistory?.filter(link => submissions.some(s => s.submissionUuid === link.submissionUuid)).map(link => <div key={link.submissionUuid}>
           {link.label} <button type="button" className="text-primary underline"
             onClick={() => setActiveSubmission(link.submissionUuid)}>
-            {link.targetLabel || "Open linked declaration — historical label unavailable"}</button>
+          {link.targetLabel || "Open linked form — historical label unavailable"}</button>
         </div>)}
         <Button type="button" variant="outline" className="mt-2"
           onClick={() => setActiveSubmission(submission.submissionUuid)}>
-          {submission.status === "in_progress" && submission.canEdit !== false ? "Resume declaration" : "Read declaration"}
+          {submission.status === "in_progress" && submission.canEdit !== false ? "Resume form" : "Read form"}
         </Button>
       </div>)}
     </section>

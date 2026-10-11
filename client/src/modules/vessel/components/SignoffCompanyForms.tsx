@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { CompanySubmissionRenderer } from "@/components/configured-form/companySubmissionContract";
 import type { CompanyFormSubmissionSummary } from "@shared/v2/forms-engine/submissionRenderContract";
+import { AssignmentFormRequirements } from "@/modules/crew-pool/components/AssignmentFormRequirements";
 
 type EligibleForm = {
   formUuid: string;
@@ -136,10 +137,10 @@ function SignoffCompanyFormsSession({ context }: { context: SignoffCompanyFormsC
         formUuid: chosen.formUuid,
         formVersionUuid: chosen.formVersionUuid,
       })).json() as CompanyFormSubmissionSummary;
-      if (!result.submissionUuid) throw new Error("The submission service did not return a declaration identity.");
+      if (!result.submissionUuid) throw new Error("The form service did not return a submission link.");
       if (mounted.current) setActiveSubmission(result.submissionUuid);
     } catch (error) {
-      if (mounted.current) setActionError(error instanceof Error ? error.message : "Unable to open this declaration.");
+      if (mounted.current) setActionError(error instanceof Error ? error.message : "Unable to open this form.");
     } finally {
       creating.current = false;
       if (mounted.current) setBusy(false);
@@ -164,7 +165,7 @@ function SignoffCompanyFormsSession({ context }: { context: SignoffCompanyFormsC
     <div>
       <h3 className="font-medium text-[#16569e]">Planning at-sign-off forms</h3>
       <p className="mt-1 text-sm text-muted-foreground">
-        Manual declarations for the recorded onboard assignment.
+        Manual forms for the recorded onboard assignment.
       </p>
     </div>
     {!hasLink && <p role="alert" className="text-sm text-destructive">No exact onboard assignment is linked. Assignment reconciliation is required; no assignment will be inferred.</p>}
@@ -183,25 +184,27 @@ function SignoffCompanyFormsSession({ context }: { context: SignoffCompanyFormsC
         {forms.map((form) => <option key={form.formVersionUuid} value={form.formVersionUuid}>{form.formName} — version {form.versionNo}</option>)}
       </select>
       <Button type="button" data-testid="button-start-signoff-form" disabled={!chosen || busy} onClick={() => void startOrResume()}>
-        {busy ? "Opening…" : existing ? "Open existing declaration" : "Start selected declaration"}
+        {busy ? "Opening…" : existing ? "Open existing form" : "Start selected form"}
       </Button>
     </div>}
     {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
     <section className="space-y-2">
-      <h4 className="font-medium">Declarations and retained history</h4>
-      {history.isFetching && <p role="status" className="text-sm">Loading declarations…</p>}
-      {history.isSuccess && submissions.length === 0 && <p className="text-sm text-muted-foreground">No declarations have been started for this assignment.</p>}
+      {previouslyVerified && <AssignmentFormRequirements subjectRef={context.assignmentUuid} stageKey="at_sign_off" onOpenSubmission={setActiveSubmission} beforeStart={() => verifySignoffAssignment(context)} />}
+      <h4 className="font-medium">Saved forms and retained history</h4>
+      {history.isFetching && <p role="status" className="text-sm">Loading saved forms…</p>}
+      {history.isSuccess && submissions.length === 0 && <p className="text-sm text-muted-foreground">No forms have been started for this assignment.</p>}
       {submissions.map((submission) => <div key={submission.submissionUuid} className="rounded-md border bg-background p-3 text-sm">
-        <div>{submission.formName ?? forms.find((form) => form.formUuid === submission.formUuid)?.formName ?? "Company declaration"} · {submission.status}</div>
+        <div>{submission.formName ?? forms.find((form) => form.formUuid === submission.formUuid)?.formName ?? "Company form"} · {submission.status}</div>
+        {submission.origin && <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{submission.origin === "REQUIRED" ? "Required" : "Manual"}</span>}
         <div className="text-muted-foreground">Version {submission.versionNo?.padStart(2, "0") ?? "unavailable"} · Released {sailDate(submission.releasedAt)}</div>
         <div className="text-muted-foreground">{submission.stageLabel ?? "Stage unavailable"}</div>
         {submission.replacementHistory?.filter(link => submissions.some(s => s.submissionUuid === link.submissionUuid)).map((link) => <div key={link.submissionUuid}>
           {link.label} <button type="button" className="text-primary underline" onClick={() => setActiveSubmission(link.submissionUuid)}>
-            {link.targetLabel || "Open linked declaration — historical label unavailable"}
+            {link.targetLabel || "Open linked form — historical label unavailable"}
           </button>
         </div>)}
         <Button type="button" variant="outline" className="mt-2" onClick={() => setActiveSubmission(submission.submissionUuid)}>
-          {submission.status === "in_progress" && submission.canEdit !== false ? "Resume declaration" : "Read declaration"}
+          {submission.status === "in_progress" && submission.canEdit !== false ? "Resume form" : "Read form"}
         </Button>
       </div>)}
     </section>

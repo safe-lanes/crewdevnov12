@@ -884,7 +884,7 @@ export function CompanySubmissionRenderer({
     .filter(([key]) => key.startsWith(`${activeSubmissionUuid}\u0000`));
   if (entryStage && lifecycleForm && lifecycleForm.submission.stageKey !== entryStage.stageKey) {
     return React.createElement("div", { role: "alert" },
-      "This declaration belongs to another stage. Open full history in crew profile G3.",
+      "This form belongs to another stage. Open full history in crew profile G3.",
       onBack && React.createElement("button", { type: "button", onClick: onBack }, "Back to forms"));
   }
   const relatedSubmissions = (lifecycleForm?.replacementHistory ?? [])
@@ -927,7 +927,7 @@ export function CompanySubmissionRenderer({
     lifecycleForm?.systemValuesComparisonError && React.createElement(
       "div",
       { role: "alert", className: "mb-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" },
-      "Current record values could not be compared with this declaration's saved snapshot.",
+      "Current record values could not be compared with this form's saved snapshot.",
     ),
     relatedSubmissions.length > 0 && React.createElement(
       "section",
@@ -943,7 +943,7 @@ export function CompanySubmissionRenderer({
             className: "mt-1 text-primary underline underline-offset-2",
             onClick: () => setActiveSubmissionUuid(relatedSubmission.submissionUuid),
           },
-          relatedSubmission.targetLabel || "Open linked declaration — historical label unavailable",
+          relatedSubmission.targetLabel || "Open linked form — historical label unavailable",
         ),
       )),
     ),

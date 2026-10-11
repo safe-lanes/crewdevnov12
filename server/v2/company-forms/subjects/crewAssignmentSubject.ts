@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
 import { sailDate } from "../../../../shared/v2/forms-engine/displayFormatting";
 import {
@@ -45,6 +45,7 @@ export type CrewAssignmentSubject = {
   assignmentType: string;
   isCurrent: boolean;
   isDeleted: boolean;
+  contractRankLabel?: string | null;
 };
 
 export type CrewAssignmentSubjectDependencies = {
@@ -136,6 +137,7 @@ function mapAssignmentRow(row: any): CrewAssignmentSubject {
     assignmentType: row.assignmentType,
     isCurrent: row.isCurrent === true,
     isDeleted: row.isDeleted === true,
+    contractRankLabel: row.contractRankLabel ?? null,
   };
 }
 
@@ -150,6 +152,8 @@ async function lookupCrewAssignment(
       crewUuid: crewAssignments.crewUuid,
       vesselUuid: crewAssignments.vesselUuid,
       vesselName: masterVessels.vessel,
+      contractRankLabel: sql<string | null>`(SELECT c.contract_rank_label FROM crew_assignment_rule_context c
+        WHERE c.assign_uuid=${crewAssignments.assignUuid})`,
       vesselType: masterVessels.vesselType,
       signOnDate: crewAssignments.signOnDate,
       signOffDate: crewAssignments.signOffDate,
@@ -288,6 +292,8 @@ export function createCrewAssignmentSubject(
         crewUuid: crewAssignments.crewUuid,
         vesselUuid: crewAssignments.vesselUuid,
         vesselName: masterVessels.vessel,
+        contractRankLabel: sql<string | null>`(SELECT c.contract_rank_label FROM crew_assignment_rule_context c
+          WHERE c.assign_uuid=${crewAssignments.assignUuid})`,
         vesselType: masterVessels.vesselType,
         signOnDate: crewAssignments.signOnDate,
         signOffDate: crewAssignments.signOffDate,
@@ -323,8 +329,8 @@ export function createCrewAssignmentSubject(
       fields: [
         { label: "Sign-on date", value: sailDate(subject.signOnDate) },
         { label: "Sign-off date", value: sailDate(subject.signOffDate) },
-        // The assignment does not store a rank. Today's crew rank is not history.
-        { label: "Rank", value: "Not recorded on assignment" },
+        // Contract capture/backfill is authority; never substitute today's crew rank.
+        { label: "Contract rank", value: subject.contractRankLabel || "Contract rank unresolved" },
         ...(subject.isDeleted ? [{ label: "Assignment record", value: "Archived history" }] : []),
       ],
     }),

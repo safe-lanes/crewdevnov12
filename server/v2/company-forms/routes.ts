@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from "express";
+import { requirePermission } from "../../middleware/requirePermission";
 import { z } from "zod";
 import { companyFormSubmissionsService } from "./submissionsService";
 import { fileStorageService } from "../shared/fileStorageService";
@@ -152,7 +153,7 @@ router.get("/:submissionUuid/attachments/:assetUuid/raw", async (req, res) => {
   }
 });
 
-router.get("/subjects/:subjectType/:subjectRef/dimensions", async (req, res) => {
+router.get("/subjects/:subjectType/:subjectRef/dimensions", requirePermission("Forms", "view"), async (req, res) => {
   const params = parseParams(paramsSchema, req, res);
   if (!params) return;
   try { res.json(await companyFormSubmissionsService.dimensions({ req, ...params })); }
