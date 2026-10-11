@@ -238,6 +238,7 @@ export const admRoleMasterAc = pgTable("adm_rolemaster_ac", {
   ruid: text("ruid").notNull().unique(),
   assignedRole: text("assigned_role").notNull(),
   roletype: text("roletype").notNull(),
+  parentOwned: boolean("parent_owned").notNull().default(false),
   orderby: integer("orderby"),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").default(0),

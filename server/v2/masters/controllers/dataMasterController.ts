@@ -7,6 +7,7 @@ import {
   validateMasterSpecificEntry
 } from "../../../vesselMasterSafety";
 import { MastersRepository } from "../repositories/mastersRepository";
+import { parentSyncActor } from "../../admin/services/accessControlParentSync";
 import { tenantConnectionManager } from "../../../utils/tenantConnectionManager";
 import {
   OutboundUrlValidationError,
@@ -345,6 +346,7 @@ export const dataMasterController = {
       );
       apiUrl.searchParams.set("domain", domain);
 
+      const source = await parentSyncActor(req, apiUrl.hostname);
       const results: Record<string, SyncResult> = {};
 
       console.log(`[Sync All] Fetching master data from configured upstream host: ${apiUrl.hostname}`);
@@ -357,12 +359,32 @@ export const dataMasterController = {
       }
       const externalData = await mainResponse.json();
 
+      // Users determine whether parent recovery roles have a real trusted principal.
+      // Commit their mappings and role eligibility as one complete identity snapshot.
+      if (Array.isArray(externalData[API_KEY_MAP.users]) && Array.isArray(externalData[API_KEY_MAP.roles])) {
+        try {
+          const identity = await mastersRepo.syncIdentitySnapshot(externalData[API_KEY_MAP.users], externalData[API_KEY_MAP.roles], source);
+          for (const type of ["users", "roles"] as const) {
+            const result = identity[type];
+            results[type] = { synced: result.count, inserted: result.inserted, updated: result.updated,
+              softDeleted: result.softDeleted, unchanged: result.unchanged, removalSupported: result.removalSupported,
+              ...(result.note ? { note: result.note } : {}) };
+          }
+        } catch (error) {
+          for (const type of ["users", "roles"])
+            results[type] = emptySyncResult(type, `IDENTITY SNAPSHOT REJECTED; users and roles preserved: ${error instanceof Error ? error.message : "Unknown error"}`);
+        }
+      } else {
+        for (const type of ["users", "roles"])
+          results[type] = emptySyncResult(type, "Incomplete parent identity snapshot: both users and roles arrays are required; existing mappings preserved.");
+      }
       for (const type of VALID_MASTER_TYPES) {
+        if (type === "users" || type === "roles") continue;
         try {
           const apiKey = API_KEY_MAP[type];
           const typeData = externalData[apiKey];
           if (typeData && Array.isArray(typeData)) {
-            const result = await mastersRepo.syncMasterData(type, typeData);
+            const result = await mastersRepo.syncMasterData(type, typeData, source);
             results[type] = {
               synced: result.count,
               inserted: result.inserted,

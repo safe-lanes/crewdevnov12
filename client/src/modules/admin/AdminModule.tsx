@@ -551,14 +551,23 @@ interface SeafarerData {
 // Inner AdminModule component (uses EditSessionContext)
 const AdminModuleInner = (): JSX.Element => {
   const [location, navigate] = useLocation();
-  const { canView, canCreate, canEdit, canDelete, permissions, userType } = usePermissions();
+  const { canView, canCreate, canEdit, canDelete, permissions, userType, accessControlManagement } = usePermissions();
   const adminPageToMenu: Record<string, string> = { "forms": "Forms", "rank-admin": "Rank Admin", "masters": "Masters", "training-matrix": "Admin Training Matrix", "access-control": "Access Control", "approval-workflow": "Approval Workflow" };
   const adminAllowedPages = useMemo(() => {
     const all = ["forms", "rank-admin", "masters", "training-matrix", "access-control", "approval-workflow"];
-    const standardPages = permissions.length === 0 ? all : all.filter(p => canView(adminPageToMenu[p] || p));
-    return standardPages;
-  }, [permissions, canView, userType]);
+    const standardPages = permissions.length === 0
+      ? (accessControlManagement ? [] : all.filter(page => page !== "access-control"))
+      : all.filter(page => page !== "access-control" && (accessControlManagement
+        ? permissions.some(permission => permission.menuName.toLowerCase() === (adminPageToMenu[page] || page).toLowerCase() && permission.canview)
+        : canView(adminPageToMenu[page] || page)));
+    return accessControlManagement ? [...standardPages, "access-control"] : standardPages;
+  }, [permissions, canView, accessControlManagement, userType]);
   const [selectedAdminPage, setSelectedAdminPage] = useState("forms");
+  useEffect(() => {
+    if (adminAllowedPages.length > 0 && !adminAllowedPages.includes(selectedAdminPage)) {
+      setSelectedAdminPage(adminAllowedPages[0]);
+    }
+  }, [adminAllowedPages, selectedAdminPage]);
   const [selectedRankAdminTab, setSelectedRankAdminTab] = useState("rank-master");
   const [isVesselZipUploadOpen, setIsVesselZipUploadOpen] = useState(false);
   const [isCrewImportOpen, setIsCrewImportOpen] = useState(false);

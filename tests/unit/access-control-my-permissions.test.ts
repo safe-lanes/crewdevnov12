@@ -17,6 +17,9 @@ vi.mock("@server/v2/auth/roleResolutionService", () => ({
 }));
 
 import { accessControlController } from "@server/v2/admin/controllers/accessControlController";
+vi.mock("@server/v2/admin/services/accessControlManagement", () => ({
+  accessControlAuthority: vi.fn(async () => ({ allowed: false })),
+}));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -52,6 +55,7 @@ describe("/my-permissions", () => {
       roleId: "resolved-forms-role",
       roleName: "Forms Editor",
       permissions: [],
+      accessControlManagement: false,
     });
     const { response, json } = responseSpy();
     const req = {
@@ -72,6 +76,7 @@ describe("/my-permissions", () => {
       roleId: "resolved-forms-role",
       roleName: "Forms Editor",
       permissions: [],
+      accessControlManagement: false,
     });
   });
 

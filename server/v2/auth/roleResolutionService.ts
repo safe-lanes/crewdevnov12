@@ -48,8 +48,8 @@ function rememberResolution(req: Request, resolution: RoleResolution): RoleResol
  * role. The JWT-to-master_users ID mapping is intentionally guarded by a
  * userType assertion, so an incorrect cross-application mapping fails closed.
  */
-export async function resolveRequestRole(req: Request): Promise<RoleResolution> {
-  if (req.resolvedRole) {
+export async function resolveRequestRole(req: Request, executor?: any): Promise<RoleResolution> {
+  if (!executor && req.resolvedRole) {
     return req.resolvedRole;
   }
 
@@ -58,7 +58,7 @@ export async function resolveRequestRole(req: Request): Promise<RoleResolution> 
   }
 
   try {
-    const db = getDb();
+    const db = executor ?? getDb();
     const users = await db
       .select({
         id: masterUsers.id,

@@ -543,6 +543,28 @@ export const adminApiV2 = {
     return res.json();
   },
 
+  async getAccessControlState() {
+    const res = await apiRequest('GET', `${V2_BASE}/access-control/state`);
+    return res.json();
+  },
+
+  async getRoleManagementGrant(ruid: string) {
+    const res = await apiRequest('GET', `${V2_BASE}/access-control/roles/${encodeURIComponent(ruid)}/management`);
+    return res.json();
+  },
+
+  async saveRoleManagementGrant(ruid: string, allowed: boolean) {
+    const res = await apiRequest('PUT', `${V2_BASE}/access-control/roles/${encodeURIComponent(ruid)}/management`, { allowed });
+    return res.json();
+  },
+
+  async getAccessControlAudit(filter: string, roleId?: string) {
+    const params = new URLSearchParams({ filter });
+    if (roleId) params.set('roleId', roleId);
+    const res = await apiRequest('GET', `${V2_BASE}/access-control/audit?${params.toString()}`);
+    return res.json();
+  },
+
   async getRankScope(rank: string): Promise<{
     rank: string;
     rankId: string;

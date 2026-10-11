@@ -1,3 +1,13 @@
+# Access Control management
+
+Access Control administration is now an explicit UUID-keyed management grant,
+not a permanently privileged role-name whitelist. The exact interim zero-manager
+predicate, support self-grant, trusted parent category-readiness evidence,
+replacement behavior and parent-sync recovery/rejection requirements are defined
+in [Access Control management requirements](../access-control-management-requirements.md).
+This supersedes earlier Access Control whitelist requirements only; all Company
+Forms operational category, signature, scope and independent permission rules remain unchanged.
+
 # Company Form submission service — agreed requirements
 
 Related project task: #333 (Company Form Submissions).

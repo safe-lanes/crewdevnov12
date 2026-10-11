@@ -176,6 +176,10 @@ router.put("/access-control/roles/:ruid", requireTrustedAccessControlAdmin(), ac
 router.delete("/access-control/roles/:ruid", requireTrustedAccessControlAdmin(), accessControlController.deleteRole);
 
 router.get("/access-control/my-permissions", accessControlController.getMyPermissions);
+router.get("/access-control/state", requireTrustedAccessControlAdmin(), accessControlController.state);
+router.get("/access-control/audit", requireTrustedAccessControlAdmin(), accessControlController.audit);
+router.get("/access-control/roles/:ruid/management", requireTrustedAccessControlAdmin(), accessControlController.getManagement);
+router.put("/access-control/roles/:ruid/management", requireTrustedAccessControlAdmin(), accessControlController.saveManagement);
 router.get("/access-control/roles/:ruid/permissions", requireTrustedAccessControlAdmin(), accessControlController.getPermissions);
 router.put("/access-control/roles/:ruid/permissions", requireTrustedAccessControlAdmin(), accessControlController.savePermissions);
 router.get("/access-control/roles/:ruid/action-permissions", requireTrustedAccessControlAdmin(), actionPermissionsController.get);

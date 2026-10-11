@@ -1,6 +1,8 @@
 import { eq, and, desc, asc, sql, getTableName, inArray } from "drizzle-orm";
 import { getDb } from "../../db";
 import { admRoleMasterAc } from "../../../../shared/v2/admin/schema";
+import { roleSyncTransition } from "../../admin/services/accessControlParentSync";
+import type { AuditActor } from "../../admin/services/accessControlManagement";
 import {
   masterNationalities,
   masterVessels,
@@ -1050,14 +1052,25 @@ export class MastersRepository {
     return true;
   }
 
-  async syncMasterData(masterType: string, data: any[]): Promise<MasterSyncAudit> {
+  async syncIdentitySnapshot(users: any[], roles: any[], source: AuditActor) {
+    return roleSyncTransition(getDb(), source, async tx => ({
+      users: await this.reconcileMasterData("users", users, source, tx),
+      roles: await this.reconcileMasterData("roles", roles, source, tx),
+    }));
+  }
+
+  async syncMasterData(masterType: string, data: any[], source?: AuditActor): Promise<MasterSyncAudit> {
+    return this.reconcileMasterData(masterType, data, source);
+  }
+
+  private async reconcileMasterData(masterType: string, data: any[], source?: AuditActor, executor?: any): Promise<MasterSyncAudit> {
     const config = MASTER_SYNC_CONFIG[masterType];
     const removalSupported = config?.supportsSoftDelete ?? false;
     const removalNote = removalSupported
       ? undefined
       : `Removal not supported for ${masterType}; rows absent from the payload are left untouched.`;
 
-    if (!data || data.length === 0) {
+    if ((!data || data.length === 0) && masterType !== "roles") {
       console.log(`[MastersRepository] syncMasterData(${masterType}): No data`);
       return {
         count: 0,
@@ -1113,10 +1126,18 @@ export class MastersRepository {
         if (config.supportsSoftDelete && !Object.prototype.hasOwnProperty.call(row, 'isDeleted')) {
           row.isDeleted = false;
         }
+        if (masterType === "roles") {
+          // Parent UUID/category/provenance is set solely from the configured upstream response.
+          row.parentOwned = true;
+          row.isSync = true;
+          if (row.isActive === undefined) row.isActive = true;
+          if (typeof row.assignedRole !== "string" || !row.assignedRole.trim() || typeof row.roletype !== "string" || !row.roletype.trim())
+            throw new Error("Invalid parent role snapshot: role name and category required.");
+        }
         return row;
       });
 
-      if (insertData.length === 0) {
+      if (insertData.length === 0 && masterType !== "roles") {
         console.log(`[MastersRepository] syncMasterData(${masterType}): No valid data to insert`);
         return {
           count: 0,
@@ -1140,7 +1161,7 @@ export class MastersRepository {
         throw new Error(`[MastersRepository] Invalid ${masterType} payload: duplicate ${config.keyField} values`);
       }
 
-      const audit = await db.transaction(async (tx: any): Promise<MasterSyncAudit> => {
+      const replace = async (tx: any): Promise<MasterSyncAudit> => {
         await tx.execute(sql.raw(`LOCK TABLE ${tableName} IN SHARE ROW EXCLUSIVE MODE`));
         const existingRows = await tx.select().from(table);
         const existingByKey = new Map<string, Record<string, any>[]>();
@@ -1188,6 +1209,12 @@ export class MastersRepository {
 
         const incomingKeySet = new Set(payloadKeys);
         for (const existingRow of existingRows as Record<string, any>[]) {
+          // The parent is authoritative only over its UUID-owned mirror.
+          // An absent local role is not a removed parent role.
+          if (masterType === "roles" && existingRow.parentOwned !== true) {
+            result.unchanged++;
+            continue;
+          }
           const key = normalizeBusinessKey(existingRow[config.keyField]);
           if (incomingKeySet.has(key)) {
             continue;
@@ -1215,7 +1242,9 @@ export class MastersRepository {
         }
 
         return result;
-      });
+      };
+      const audit = executor ? await replace(executor) :
+        masterType === "roles" ? await roleSyncTransition(db, source, replace) : await db.transaction(replace);
 
       console.log(
         `[MastersRepository] syncMasterData(${masterType}): ` +

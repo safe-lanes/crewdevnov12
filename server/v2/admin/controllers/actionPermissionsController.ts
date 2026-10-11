@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { COMPANY_FORM_PERMISSIONS } from "../../../../shared/v2/admin/companyFormPermissions";
-import { readCompanyFormGrants, saveCompanyFormGrants } from "../services/actionPermissionsService";
+import { readCompanyFormGrants } from "../services/actionPermissionsService";
+import { saveActionDecisions } from "../services/accessControlManagement";
 
 const grantsSchema = z.object({
   view: z.boolean(), fill_in: z.boolean(), witness: z.boolean(),
@@ -19,14 +20,14 @@ export const actionPermissionsController = {
     }
   },
   async save(req: Request, res: Response) {
-    const parsed = grantsSchema.safeParse(req.body?.grants);
+    const parsed = z.object({ grants: grantsSchema }).strict().safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Supply all six Company Forms permission flags." });
     if (!req.user || !Number.isSafeInteger(req.user.id)) return res.status(403).json({ message: "Authenticated grant editor unavailable." });
     try {
-      res.json({ grants: await saveCompanyFormGrants(req.params.ruid, parsed.data, String(req.user.id)) });
-    } catch (error) {
+      res.json({ grants: await saveActionDecisions(req, req.params.ruid, "company_forms", parsed.data.grants) });
+    } catch (error: any) {
       console.error("[ActionPermissions] save failed", error);
-      res.status(400).json({ message: "Unable to save Company Forms permissions for an active role." });
+      res.status(error.status ?? 500).json({ message: error.status ? error.message : "Unable to save Company Forms permissions." });
     }
   },
 };

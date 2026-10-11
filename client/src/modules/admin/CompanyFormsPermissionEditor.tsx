@@ -24,6 +24,8 @@ export function CompanyFormsPermissionEditor({ roleId }: { roleId: string }) {
       await apiRequest("PUT", url, { grants });
       await client.invalidateQueries({ queryKey: [url] });
       await client.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/my-permissions"] });
+      await client.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/state"] });
+      await client.invalidateQueries({ queryKey: ["/api/v2/admin/access-control/audit"] });
       setDirty(false);
     } catch { setError("Unable to save Company Forms permissions. Please retry."); }
     finally { setSaving(false); }

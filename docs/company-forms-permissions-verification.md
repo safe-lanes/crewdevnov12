@@ -1,3 +1,13 @@
+# Access Control management update
+
+The historical whitelist statement below describes the earlier verification
+only. Access Control management now uses an explicit UUID-keyed grant with the
+narrow zero-eligible-manager interim fallback. See
+[management requirements](access-control-management-requirements.md) for the
+exact trusted predicate, readiness switch and recovery rules, and
+[management verification](access-control-management-verification.md) for current
+test counts and main-preview evidence. Company Forms operational rules are unchanged.
+
 # Company Forms independent permissions
 
 ## Delivered policy
