@@ -4436,3 +4436,19 @@ Test-owned actors, definition and subject created for permission verification; n
 - Retained test context (2026-10-11T08:14:50.229Z): tests/unit/fixture-retention.test.ts; target crew_assignments; references schema/context retained (no UUID parameters).
 
 - Retained test context (2026-10-11T12:09:27.028Z): verified-history/cf_verified_history_2b1383d8; target registered_fixture_context; references `fa3f99d2-7097-4aca-ac7b-4251085cc886`, `b64185a7-8296-432c-ab62-51238f9d6987`, `4c2d1083-97d8-4c39-91d8-6f9bb13543b5`, `fd99fd72-155f-497e-8f47-bf5b5caa9434`, `b962ca55-4e46-4ca6-862b-e6591415b598`, `863db664-c23f-48b9-852e-c16a0fc309b5`, `0d388abc-4707-44a4-8a47-4a59a0f997cd`, `f032939c-ee22-4b3f-9dfc-75ebc652fd64`, `541cf540-f9a8-48a1-8620-ce0335f04ce8`, `a92af71a-9a72-461c-b902-eea1e99468dc`.
+
+- Retained test context (2026-10-11T12:13:42.928Z): requirement harness roots; target registered_fixture_context; references `f42371cb-9320-4ac2-9d62-c1493da2118b`, `4b5c6440-e428-4dfc-8a9f-cb9295313e0a`, `e333bc79-cefb-4ca1-b86f-cc67421fd245`, `7c15cdba-f96b-4af4-9cba-1ffd7dea495c`.
+
+- Retained test context (2026-10-11T12:14:09.213Z): requirement harness roots; target registered_fixture_context; references `c0028b3d-592d-4858-b7e8-3fceaf97c327`, `2197bb4b-9e50-4f2c-89cd-dc0eab90f276`, `b1295af5-d3c3-42da-87ac-8570d85ac94e`, `52267635-9a95-4a94-8212-689a55ff1ae2`.
+
+- Retained test context (2026-10-11T12:14:50.499Z): requirement harness roots; target registered_fixture_context; references `13c1571c-52c1-4bf4-8225-7624833b7646`, `2f437ba5-4df3-4e2d-9ef0-777a04ae9870`, `a5afa126-3a42-4bbd-8fbe-4344d00c3fda`, `0b5b0685-1c53-4754-a7a9-82371fdb8906`.
+
+- Retained test context (2026-10-11T12:14:50.836Z): requirement harness pinned content; target registered_fixture_context; references `a84fcac8-e5ce-49e8-8920-d2b66cd68091`, `d5e41418-85a8-41d1-b828-494e78ba75e7`, `bc389dca-4006-4a28-a200-ff89cee3e73f`, `a870b787-cf2c-48a4-b3fe-b2bc052297c9`.
+
+- Retained test context (2026-10-11T12:15:23.943Z): requirement harness roots; target registered_fixture_context; references `e1c4b131-0b26-4aca-ace4-5ef96af4d2c7`, `ac92c653-aa76-459d-9874-ee5c7962b191`, `2a2cae60-d92b-48c6-8dfb-16f0f629ee4d`, `6976183e-3b66-4bfb-a465-a7d38296ab6f`.
+
+- Retained test context (2026-10-11T12:15:24.092Z): requirement harness pinned content; target registered_fixture_context; references `8ec91f59-ddf9-452f-a185-1122e2eeaaae`, `aca42512-8ce9-4044-bc4c-d5e11ff405b5`, `6ec13d75-26f7-4bad-b160-25cbcadf09d8`, `06bd1938-7655-4bf8-8c10-fd0a709cf87d`.
+
+- Retained test context (2026-10-11T12:15:24.340Z): empty requirement run; target registered_fixture_context; references `170cfe96-2e48-40c6-8d62-b98ddc7f8690`.
+
+- Retained test context (2026-10-11T12:15:24.399Z): pinned requirement and resolution; target registered_fixture_context; references `8a5d6cda-8fe7-4991-9515-c919e8883d8e`, `a8568913-872a-4d79-9d7d-322d482d02c0`.
