@@ -55,6 +55,8 @@ const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
     action: "edit",
   },
   { key: "GET /form-versions/:id", menuName: "Forms", action: "view" },
+  { key: "GET /form-versions/:id/applicability", menuName: "Forms", action: "view" },
+  { key: "PUT /form-versions/:id/applicability", menuName: "Forms", action: "edit" },
   { key: "PUT /form-versions/:id", menuName: "Forms", action: "edit" },
   {
     key: "DELETE /form-versions/:id",
