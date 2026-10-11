@@ -1303,7 +1303,7 @@ describe("Company Form signing, section submission, completion, and void history
         direction: "replaces",
         label: "Replaces a voided submission",
         submissionUuid,
-        targetLabel: expect.stringContaining(`CF lifecycle signing ${SUFFIX} — Declaration `),
+        targetLabel: expect.stringContaining(`CF lifecycle signing ${SUFFIX} — Form `),
       }),
     ]));
     expect(replacement.body.replacementHistory[0].targetLabel)

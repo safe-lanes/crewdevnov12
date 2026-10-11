@@ -44,10 +44,10 @@ describe("Crew List popup preserves retained history and refreshes the column", 
         { ...old, submissionUuid: "before", formName: "Before-joining declaration", stageKey: "before_joining" },
         { ...old, submissionUuid: "off", formName: "Sign-off declaration", stageKey: "at_sign_off" }] })));
     mount(<OnboardCompanyForms assignmentUuid="assignment" />);
-    await screen.findByText("Saved declarations and retained history (total including voided: 1)");
+    await screen.findByText("Saved forms and retained history (total including voided: 1)");
     expect(screen.getByText("Retired test form · voided")).toBeTruthy();
     expect(screen.getByText("No replacement — form retired")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Read declaration" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Read form" })).toBeTruthy();
     expect(screen.queryByText("Before-joining declaration · voided")).toBeNull();
     expect(screen.queryByText("Sign-off declaration · voided")).toBeNull();
   });

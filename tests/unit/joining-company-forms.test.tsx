@@ -100,7 +100,7 @@ describe("Joining Company Forms use the recorded planning association", () => {
     fixture({ eligible: [], submissions: [{ submissionUuid: "voided-history", formUuid: "archived-form", formVersionUuid: "old-version", stageKey: "before_joining", status: "voided", replacedBySubmissionUuid: "replacement" }] });
     mount();
     expect(await screen.findByText("No released, lifecycle-valid before-joining forms are eligible for this assignment.")).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: "Read declaration" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Read form" }));
     expect(await screen.findByText("Persisted renderer voided-history")).toBeInTheDocument();
   });
   it("shows a permission error rather than reporting empty eligibility", async () => {

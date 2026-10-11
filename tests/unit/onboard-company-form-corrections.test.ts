@@ -43,7 +43,7 @@ describe("Crew List count and reciprocal labels", () => {
     const links = await (service as any).readableHistory({}, row);
     expect(authorize).toHaveBeenCalledWith({}, "target", "read_submission");
     expect(links[0].submissionUuid).toBe("target");
-    expect(links[0].targetLabel).toContain("Actual On-board Declaration — Declaration 03-Oct-2026");
+    expect(links[0].targetLabel).toContain("Actual On-board Declaration — Form 03-Oct-2026");
     expect(links[0].targetLabel).toContain(direction === "replaces"
       ? "Voided by Saved Target Original — Voided 01-Oct-2026"
       : "Voided by Saved Office Original — Voided 02-Oct-2026");
@@ -59,7 +59,7 @@ describe("Crew List count and reciprocal labels", () => {
     } as any);
     vi.spyOn(service as any, "authorizeSubmission").mockResolvedValue({});
     const [link] = await (service as any).readableHistory({}, { replacedBySubmissionUuid: "target" });
-    expect(link.targetLabel).toBe("Saved form — Created (declaration date unavailable) 20-Sep-2026 — Voided by Historical voiding identity unavailable — Voided Unavailable");
+    expect(link.targetLabel).toBe("Saved form — Created (form date unavailable) 20-Sep-2026 — Voided by Historical voiding identity unavailable — Voided Unavailable");
   });
 
   it("refuses labels for an unauthorized related submission", async () => {

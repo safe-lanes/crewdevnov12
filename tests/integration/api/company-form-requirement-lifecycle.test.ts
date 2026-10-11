@@ -62,6 +62,7 @@ describe("atomic required form lifecycle and preserved cancellation history", ()
     await requirementPool.query("UPDATE crew_assignments SET assignment_type='Cancelled' WHERE assign_uuid=$1", [f.assignUuid]);
     const history = await requirementApi.get(`${base()}/requirements`).set("Authorization", `Bearer ${requirementToken}`);
     expect(history.status).toBe(200); expect(history.body.outstandingEligible).toBe(false);
+    expect(history.body.activeRequirements).toEqual([]);
     expect(history.body.requirements[0].history).toHaveLength(5);
     expect((await post(`${base()}/requirements/${r.requirement_uuid}/start`)).status).toBe(409);
   });
@@ -89,6 +90,13 @@ describe("atomic required form lifecycle and preserved cancellation history", ()
     expect(data.requirements[0].status).toBe("UNRESOLVED");
     const root2 = `/api/v2/company-form-submissions/subjects/crew_assignment/${unresolved.assignUuid}`;
     expect((await post(`${root2}/requirements/${data.requirements[0].requirement_uuid}/start`)).status).toBe(409);
+    const checked = await unresolved.record("facts-now-known", [{ formVersionUuid: unresolved.version.fvUuid,
+      status: "OUTSTANDING", matchedSetUuids: [], values: { nationality: "Verified by retained harness" } }]);
+    const verified = (await readRequirements("crew_assignment", unresolved.assignUuid)).requirements[0];
+    expect(verified.requirement_uuid).toBe(data.requirements[0].requirement_uuid);
+    expect(verified.form_version_uuid).toBe(unresolved.version.fvUuid);
+    expect(verified.status).toBe("OUTSTANDING");
+    expect(verified.history.at(-1).run_uuid).toBe(checked.run.run_uuid);
     const { recordResolution } = await import("../../../server/v2/company-forms/requirementsRepository");
     const failed = await recordResolution({ ...unresolved.base, cycleUuid: randomUUID(), eventKey: "failed",
       outcome: "FAILED", failureReason: "Retained failed-check evidence", decisions: [] });

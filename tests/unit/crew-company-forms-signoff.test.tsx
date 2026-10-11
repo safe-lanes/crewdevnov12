@@ -3,6 +3,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CrewCompanyFormsHome } from "../../client/src/modules/crew-pool/components/CrewCompanyFormsHome";
+vi.mock("../../client/src/contexts/PermissionsContext", () => ({
+  usePermissions: () => ({ permissions: [], userId: "fixture", roleId: "fixture" }),
+}));
 
 afterEach(() => {
   cleanup();
@@ -151,7 +154,7 @@ describe("G3 office sign-off creation and unfinished indicators", () => {
     vi.stubGlobal("fetch", fetchMock);
     mount();
     await screen.findByTestId("crew-company-forms-group-signed-off");
-    expect(screen.getByTestId("crew-company-forms-unfinished-signed-off").textContent).toContain("1 unfinished sign-off declaration");
+    expect(screen.getByTestId("crew-company-forms-unfinished-signed-off").textContent).toContain("1 unfinished sign-off form");
     expect(screen.getByTestId("crew-company-forms-unfinished-submission-unfinished-one")).toBeTruthy();
     expect(screen.queryByTestId("crew-company-forms-unfinished-submission-finished")).toBeNull();
     expect(screen.queryByTestId("crew-company-forms-unfinished-cancelled")).toBeNull();

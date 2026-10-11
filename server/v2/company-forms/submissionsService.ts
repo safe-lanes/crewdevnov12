@@ -226,7 +226,7 @@ export class CompanyFormSubmissionsService {
        // Both directions describe the related record, but audit the original void.
        const original = link.direction === "replaces" ? target.submission : row;
        const date = target.submission.systemSnapshotAt ?? target.submission.createdAt;
-       return { ...link, targetLabel: `${target.form.name || "Form name unavailable"} — ${target.submission.systemSnapshotAt ? "Declaration" : "Created (declaration date unavailable)"} ${sailDate(date)} — Voided by ${original.voidedByName || "Historical voiding identity unavailable"} — Voided ${sailDate(original.voidedAt)}` };
+       return { ...link, targetLabel: `${target.form.name || "Form name unavailable"} — ${target.submission.systemSnapshotAt ? "Form" : "Created (form date unavailable)"} ${sailDate(date)} — Voided by ${original.voidedByName || "Historical voiding identity unavailable"} — Voided ${sailDate(original.voidedAt)}` };
     }));
   }
   constructor(

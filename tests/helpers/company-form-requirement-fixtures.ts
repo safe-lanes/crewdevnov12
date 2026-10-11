@@ -4,7 +4,7 @@ import request from "supertest";
 import { randomUUID } from "node:crypto";
 import { retainFixtureReferences } from "./fixture-retention";
 import { companyFormSubjectRegistry } from "../../server/v2/company-forms/registry";
-import { recordResolution } from "../../server/v2/company-forms/requirementsRepository";
+import { recordResolution, readRequirements } from "../../server/v2/company-forms/requirementsRepository";
 
 export const requirementPool = new Pool({ connectionString: process.env.DATABASE_URL });
 const enc = (x: object) => Buffer.from(JSON.stringify(x)).toString("base64url");
@@ -52,6 +52,11 @@ export async function createRequirementFixture() {
     source: "retained_test_harness", outcome: "COMPLETED" as const,
     evidence: { fixture: true }, decisions: [] };
   return { crewUuid, assignUuid, formUuid, formId: f.id, version: v, section, question, cycleUuid, base,
-    record: (eventKey: string, decisions: Parameters<typeof recordResolution>[0]["decisions"] = []) =>
-      recordResolution({ ...base, eventKey, decisions }) };
+    record: async (eventKey: string, decisions: Parameters<typeof recordResolution>[0]["decisions"] = []) => {
+      const result = await recordResolution({ ...base, eventKey, decisions });
+      const ledger = await readRequirements("crew_assignment", assignUuid);
+      retainFixtureReferences("requirement harness complete ledger graph",
+        [...ledger.runs, ...ledger.requirements]);
+      return result;
+    } };
 }

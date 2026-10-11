@@ -60,6 +60,10 @@ try {
   await loaded;
   await group.getByText("Vessel type", { exact: true }).waitFor();
   await group.getByText("First-in-rank", { exact: true }).waitFor();
+  await group.getByText("Contract rank", { exact: true }).waitFor();
+  const rank = dimensions.dimensions.find(dimension => dimension.key === "rank");
+  for (const label of rank?.labels ?? []) await group.getByText(label, { exact: true }).first().waitFor();
+  ensure(!(await group.innerText()).includes("Not recorded on assignment"), "G3 must use captured contract rank");
   await group.evaluate(element => element.scrollIntoView({ block: "start" }));
   await page.screenshot({ path: `${directory}/closing-inspector.jpg`, fullPage: true, animations: "disabled" });
   ensure(head() === initialHead && pid() === initialPid, "HEAD/PID changed during closing evidence");

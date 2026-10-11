@@ -286,7 +286,7 @@ describe("GenericFormEditor shared Preview shell", () => {
 
     click(previewButton);
     await flushAsyncWork();
-    expect(editor.textContent).toContain("Date of declaration");
+    expect(editor.textContent).toContain("Form date");
     expect(editor.textContent).toContain("Filled from the record when opened");
   });
 

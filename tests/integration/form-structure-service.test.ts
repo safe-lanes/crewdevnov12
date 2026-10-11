@@ -269,7 +269,7 @@ describe.sequential("form structure service integration", () => {
       partUuid, structure: systemStructure("date_of_declaration"),
     }], null);
     expect(shared.parts[0].sections[0].questions[0]).toMatchObject({
-      system_field_key: "date_of_declaration", question_text: "Date of declaration",
+      system_field_key: "date_of_declaration", question_text: "Form date",
     });
     const before = await getDb().execute(sql`
       SELECT system_field_key FROM frm_questions WHERE question_uuid =

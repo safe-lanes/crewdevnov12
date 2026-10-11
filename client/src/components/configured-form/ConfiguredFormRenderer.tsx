@@ -204,6 +204,8 @@ function vesselTypeName(type: ConfiguredFormVesselType): string {
 }
 
 function systemFieldLabel(question: ConfiguredFormQuestion, subjectType?: string | null): string {
+  // This shared field belongs to the form, even before a subject is selected.
+  if (question.system_field_key === "date_of_declaration") return "Form date";
   const field = isCompanyFormSubjectType(subjectType)
     ? getSystemFieldsForSubject(subjectType).find((candidate) => candidate.key === question.system_field_key)
     : undefined;

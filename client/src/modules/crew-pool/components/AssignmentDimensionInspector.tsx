@@ -17,15 +17,17 @@ function dimensionValue(dimension: RuleDimensionValue): string {
   if (dimension.value === null) return dimension.labels.length ? dimension.labels.join(", ") : "No value";
   if (typeof dimension.value === "boolean") return dimension.value ? "Yes" : "No";
   if (Array.isArray(dimension.value)) {
-    return dimension.labels.length ? dimension.labels.join(", ") : dimension.value.join(", ");
+    return dimension.labels.length ? dimension.labels.join(", ") : "Recorded label unavailable";
   }
+  if (typeof dimension.value === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(dimension.value))
+    return dimension.labels.length ? dimension.labels.join(", ") : "Recorded label unavailable";
   return dimension.labels.length ? dimension.labels.join(", ") : dimension.value;
 }
 
 export function AssignmentDimensionInspector({ subjectRef }: AssignmentDimensionInspectorProps) {
   const { permissions, userId, roleId } = usePermissions();
   const [open, setOpen] = useState(false);
-  const canSeeFacts = permissions.some(p => p.menuName.trim().toLowerCase() === "forms" && p.canview === true);
+  const canSeeFacts = Array.isArray(permissions) && permissions.some(p => p.menuName.trim().toLowerCase() === "forms" && p.canview === true);
   const dimensions = useQuery<AssignmentDimensionReport>({
     queryKey: ["crew-assignment-dimensions", subjectRef, userId, roleId],
     enabled: open && canSeeFacts && Boolean(subjectRef),

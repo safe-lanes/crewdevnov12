@@ -260,7 +260,7 @@ describe("configured form renderer preview", () => {
     renderPreview([section], "all", true);
     click(screen.getByTestId("button-step-part-b"));
     const previewRow = screen.getByTestId("preview-system-field-declaration-date");
-    expect(previewRow).toHaveTextContent("Date of declaration");
+    expect(previewRow).toHaveTextContent("Form date");
     expect(previewRow).toHaveTextContent("Filled from the record when opened");
     expect(previewRow.textContent).not.toContain("INTERNAL_SYSTEM_CODE");
     expect(previewRow.textContent).not.toContain("1.1.2");
@@ -278,7 +278,7 @@ describe("configured form renderer preview", () => {
         live={{ answers: {}, onAnswerChange: vi.fn() }}
       />,
     );
-    expect(screen.getByTestId("preview-system-field-declaration-date")).toHaveTextContent("Date of declaration");
+    expect(screen.getByTestId("preview-system-field-declaration-date")).toHaveTextContent("Form date");
     expect(screen.getByTestId("preview-system-field-declaration-date")).toHaveTextContent("Filled from the record when opened");
     expect(screen.queryByTestId("preview-response-declaration-date")).toBeNull();
   });

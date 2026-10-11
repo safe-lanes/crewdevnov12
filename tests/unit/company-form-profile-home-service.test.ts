@@ -6,7 +6,7 @@ import { CompanyFormSubmissionsService } from "@server/v2/company-forms/submissi
 import { CompanyFormPermissionError } from "@server/v2/company-forms/errors";
 
 const subjects = [
-  { assignUuid: "a", crewUuid: "crew", vesselUuid: "v1", vesselName: "Vessel One", assignmentType: "OnBoard", isCurrent: true, isDeleted: false, signOnDate: "2026-10-03", signOffDate: null },
+  { assignUuid: "a", crewUuid: "crew", vesselUuid: "v1", vesselName: "Vessel One", contractRankLabel: "Pumpman", assignmentType: "OnBoard", isCurrent: true, isDeleted: false, signOnDate: "2026-10-03", signOffDate: null },
   { assignUuid: "cancelled", crewUuid: "crew", vesselUuid: "v2", vesselName: "Vessel Two", assignmentType: "Cancelled", isCurrent: false, isDeleted: false, signOnDate: null, signOffDate: null },
   { assignUuid: "deleted", crewUuid: "crew", vesselUuid: "v1", assignmentType: "OnBoard", isCurrent: false, isDeleted: true, signOnDate: null, signOffDate: null },
   { assignUuid: "deleted-empty", crewUuid: "crew", vesselUuid: "v1", assignmentType: "Planned", isCurrent: false, isDeleted: true, signOnDate: null, signOffDate: null },
@@ -40,7 +40,7 @@ describe("existing submission home enriches rather than filters complete history
     expect(result.groups[1].submissions[0].canEdit).toBe(false);
     expect(result.groups[0].display?.fields[0].value).toBe("03-Oct-2026");
     expect(result.groups[2].display?.historyOnly).toBe(true);
-    expect(result.groups[0].display?.fields.find(f => f.label === "Rank")?.value).toBe("Not recorded on assignment");
+    expect(result.groups[0].display?.fields.find(f => f.label === "Contract rank")?.value).toBe("Pumpman");
   });
   it("limits vessel groups to trusted membership instead of unioning all profile assignments", async () => {
     const { service, repository } = setup({ kind: "vessel", userId: 1, roleId: "ship", roleName: "Master", roleType: "Ship", vesselUuids: ["v1"] });

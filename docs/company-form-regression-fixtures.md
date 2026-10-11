@@ -4576,3 +4576,2291 @@ Test-owned actors, definition and subject created for permission verification; n
 - Retained test context (2026-10-11T12:34:41.619Z): unresolved obligation; target registered_fixture_context; references `8d8aae71-78da-4c4a-94f9-ee9d9ea5f6bf`.
 
 - Retained test context (2026-10-11T12:34:41.653Z): failed run; target registered_fixture_context; references `64f430ba-ec3a-4cb1-a44a-ec0f8f5c45d1`.
+
+- Retained test context (2026-10-11T12:39:48.065Z): requirement harness roots; target registered_fixture_context; references `3ae95280-975e-4340-8078-baf92bdbd85a`, `a0ab942b-afdc-4b88-be50-a806718f6d03`, `5438154c-bc93-458e-8e5f-f41b6c99dc06`, `85b4b425-59f0-43f9-b1a3-4b8bc5100f88`.
+
+- Retained test context (2026-10-11T12:39:48.368Z): requirement harness pinned content; target registered_fixture_context; references `cf2325ad-c044-459d-95bc-6c2714b57b6f`, `ec6236bc-afc7-41d4-acd7-0894445f5319`, `10d56d50-67e8-426e-954e-08d08cd09942`, `0002ef7d-ac1b-4f69-8676-428217438ec9`.
+
+- Retained test context (2026-10-11T12:39:48.530Z): requirement harness roots; target registered_fixture_context; references `d76f6674-5418-4219-a97d-2373539cdbb7`, `2f85dbcd-0eff-4369-bca3-d9b9ac344fbe`, `3e5785d1-999c-43cf-be11-42ad11d53fe5`, `bd31c18e-3efb-40db-8528-ffe22293de45`.
+
+- Retained test context (2026-10-11T12:39:48.692Z): requirement harness pinned content; target registered_fixture_context; references `b1254bce-9526-460c-a2b7-55717ff0700a`, `a9a73e78-cd64-4640-93a7-146f618454cb`, `ec0172ba-b44c-409f-b865-f6fa89ba4780`, `0590753d-617f-4622-b0b4-0be06d27c4e5`.
+
+- Retained test context (2026-10-11T12:39:48.821Z): required start obligation; target registered_fixture_context; references `544c9390-1155-4830-b0f5-93cf2ebd79c2`.
+
+- Retained test context (2026-10-11T12:39:48.855Z): newer release for old-pin start; target registered_fixture_context; references `ab3717cc-df0b-462a-9ee0-93a4adec24c8`.
+
+- Retained test context (2026-10-11T12:39:48.957Z): manual without stage check; target registered_fixture_context; references `2c24ae77-8729-4f3c-9723-6b4bbfd6cb34`.
+
+- Retained test context (2026-10-11T12:39:49.022Z): required old-pin form; target registered_fixture_context; references `2b670f64-5f7e-4d1c-a2ab-2ae4413bb17e`.
+
+- Retained test context (2026-10-11T12:39:54.151Z): tests/unit/company-form-planning-lock-order.test.ts; target "cf_lock_91dc8b5a9d5c400f98db977632ab067c"; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:39:59.920Z): requirement harness roots; target registered_fixture_context; references `8744a038-ea92-4527-9f0f-20aa06544a94`, `6398fe90-c564-4d31-97a0-d3ac73d0f55f`, `f5ba6fd5-3462-4c06-aa06-d6f13be479c2`, `cb48b44d-b155-46a9-8fb9-0913b0d3c2c5`.
+
+- Retained test context (2026-10-11T12:40:00.090Z): requirement harness pinned content; target registered_fixture_context; references `f5d090d9-c61f-43e5-9a9a-6b6fc81643bd`, `835f7317-6100-4803-9db5-a12768312fe3`, `50ae2e1e-f02c-4328-b7f4-167ebf9c7e7e`, `868bdda4-353b-495a-b398-5a05654d54ca`.
+
+- Retained test context (2026-10-11T12:40:00.216Z): required lifecycle obligation; target registered_fixture_context; references `e9fd5656-dadf-4033-9d29-b0be8e8aae33`.
+
+- Retained test context (2026-10-11T12:40:00.274Z): lifecycle initial form; target registered_fixture_context; references `3b5d1a55-5dd2-4c69-9702-5c92c5d8489f`.
+
+- Retained test context (2026-10-11T12:40:00.472Z): required replacement form; target registered_fixture_context; references `1942a184-6c02-4bcb-a5af-d5840f10fcf9`.
+
+- Retained test context (2026-10-11T12:40:00.507Z): requirement harness roots; target registered_fixture_context; references `e9b72ec4-1e4c-4427-add2-7ff3577cb355`, `f8c09176-426d-4034-930b-fffdbd8719e2`, `a76d7f93-bef0-41d8-962c-f6ec2b05b25a`, `4c23e372-7dc0-46f3-914d-ead5ecb2dae0`.
+
+- Retained test context (2026-10-11T12:40:00.554Z): requirement harness pinned content; target registered_fixture_context; references `14de2975-a770-4946-9045-86c642efa769`, `55233cca-6bac-4b77-90d1-1e8d790815d1`, `d56b76fa-72a1-448f-aeb9-7a38a6ab5371`, `ab0c64f1-33e4-4985-9bf9-8f98270011c3`.
+
+- Retained test context (2026-10-11T12:40:00.708Z): earlier manual collision; target registered_fixture_context; references `154e302c-1112-4a33-87f5-03c24d22a4e5`, `a01912c4-9bb7-40db-afec-30e04f5e13c3`, `7a66a51f-24e4-4730-86ea-fe8045da6b71`.
+
+- Retained test context (2026-10-11T12:40:00.774Z): manual conflict required replacement; target registered_fixture_context; references `64812505-735f-4f34-989e-f63e04934a27`.
+
+- Retained test context (2026-10-11T12:40:00.774Z): requirement harness roots; target registered_fixture_context; references `982a7723-affd-40a7-bab3-e9937f90ac8a`, `13624967-d144-499d-82fe-04c59d866b3b`, `93e838de-c511-4438-bcd7-83cdd1460e23`, `ab427dd8-7d2d-43e0-a6da-86a58fee2b77`.
+
+- Retained test context (2026-10-11T12:40:00.815Z): requirement harness pinned content; target registered_fixture_context; references `256d125d-d2af-492b-a31c-3786311923d8`, `114a54df-9a22-4af2-9268-36fbf290adea`, `5c0319cd-4521-41c7-9522-5b21330c8435`, `6290ce75-3233-4ea1-b771-16a07b21953a`.
+
+- Retained test context (2026-10-11T12:40:00.918Z): unresolved obligation; target registered_fixture_context; references `c783e8e2-2fc0-4110-9ea3-27c210dca3c2`.
+
+- Retained test context (2026-10-11T12:40:00.941Z): failed run; target registered_fixture_context; references `3ada2128-55b0-402e-8570-da1724d09424`.
+
+- Retained test context (2026-10-11T12:40:09.365Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_signatures; references `4bb27ea6-7fef-45ce-92b1-fc24fd24c40b`, `be7d8603-de2d-4808-83e0-4528618c527f`.
+
+- Retained test context (2026-10-11T12:40:09.366Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_signature_attachments; references `4bb27ea6-7fef-45ce-92b1-fc24fd24c40b`, `be7d8603-de2d-4808-83e0-4528618c527f`.
+
+- Retained test context (2026-10-11T12:40:09.367Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `323162a6-6b1f-4b18-8996-cdb261967e4a`, `681b2b9c-be38-4787-b180-6c61a0e070e4`, `aaf1628b-d252-4b2b-af68-c3c88518954b`, `b8bd489a-3d31-4d20-a614-7ad3a43e57e8`.
+
+- Retained test context (2026-10-11T12:40:09.367Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `323162a6-6b1f-4b18-8996-cdb261967e4a`, `681b2b9c-be38-4787-b180-6c61a0e070e4`, `aaf1628b-d252-4b2b-af68-c3c88518954b`, `b8bd489a-3d31-4d20-a614-7ad3a43e57e8`.
+
+- Retained test context (2026-10-11T12:40:09.368Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `6c2ad488-7a50-4c1e-9e15-46a6748f7d8c`.
+
+- Retained test context (2026-10-11T12:40:09.369Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `6c2ad488-7a50-4c1e-9e15-46a6748f7d8c`.
+
+- Retained test context (2026-10-11T12:40:09.369Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submission_assignments; references `85214ad3-83c2-428e-adf3-557559997d10`, `f9447b9e-6ed7-4271-9267-01a2aed9d92f`, `cbba0973-c41f-4bc3-83b7-d067db1036f4`, `ef4e36da-b1d0-44a0-a274-6c0b43dd230f`, `4218f696-2a1b-4ed7-a808-a29bc8524831`.
+
+- Retained test context (2026-10-11T12:40:09.369Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submissions; references `85214ad3-83c2-428e-adf3-557559997d10`, `f9447b9e-6ed7-4271-9267-01a2aed9d92f`, `cbba0973-c41f-4bc3-83b7-d067db1036f4`, `ef4e36da-b1d0-44a0-a274-6c0b43dd230f`, `4218f696-2a1b-4ed7-a808-a29bc8524831`.
+
+- Retained test context (2026-10-11T12:40:09.370Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_assignments; references `85214ad3-83c2-428e-adf3-557559997d10`, `f9447b9e-6ed7-4271-9267-01a2aed9d92f`, `cbba0973-c41f-4bc3-83b7-d067db1036f4`, `ef4e36da-b1d0-44a0-a274-6c0b43dd230f`, `4218f696-2a1b-4ed7-a808-a29bc8524831`.
+
+- Retained test context (2026-10-11T12:40:09.371Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_members_v2; references `871660ae-8153-40a3-b796-7813e88e9dda`.
+
+- Retained test context (2026-10-11T12:40:09.371Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_questions; references `1d486a25-65f9-4a2b-bc23-2fb42aaa37d2`, `87fdbe8e-2116-4fb9-abcd-eca99b2c5318`, `843f8c14-fbc0-4045-a2fd-7b402894f3d2`, `f72aac47-4406-4574-9fd9-b863b237305d`.
+
+- Retained test context (2026-10-11T12:40:09.372Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_sections; references `1d486a25-65f9-4a2b-bc23-2fb42aaa37d2`, `87fdbe8e-2116-4fb9-abcd-eca99b2c5318`, `843f8c14-fbc0-4045-a2fd-7b402894f3d2`, `f72aac47-4406-4574-9fd9-b863b237305d`.
+
+- Retained test context (2026-10-11T12:40:09.372Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_options; references `0cde9585-f05e-4cf4-9f71-5c71665b1dac`, `ee85ce6c-d45c-4ec1-a986-48aa17dac2b6`, `e0b40842-be9e-4195-af0f-60afd8e7c178`, `68a89f5a-6f2f-4972-b26f-5c81b04ff316`.
+
+- Retained test context (2026-10-11T12:40:09.373Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_option_sets; references `0cde9585-f05e-4cf4-9f71-5c71665b1dac`, `ee85ce6c-d45c-4ec1-a986-48aa17dac2b6`, `e0b40842-be9e-4195-af0f-60afd8e7c178`, `68a89f5a-6f2f-4972-b26f-5c81b04ff316`.
+
+- Retained test context (2026-10-11T12:40:09.373Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_form_parts; references `c18b5e48-60da-4db9-b081-ac03a4adbd24`, `ec706733-728b-4a4c-a13c-f360057e2979`, `0327c331-be81-45f4-ad70-5b72c0b67826`, `241b7775-bc3b-4681-a482-fff877911e8a`.
+
+- Retained test context (2026-10-11T12:40:09.373Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessel_types; references `71d4a357-8cc1-42cc-988d-65fb1933e5d7`.
+
+- Retained test context (2026-10-11T12:40:09.374Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_form_versions_v2; references `44200572-139b-4a9e-a67c-c78416e086bd`, `896aea41-9415-4afc-ab7c-53ee83a3128a`, `3482376e-6e3b-498b-b1ac-55051494f7df`, `073f8e6b-e916-4765-b24e-b13b940304e3`, `a2804d5e-6a4f-448e-830c-e239b04e8002`.
+
+- Retained test context (2026-10-11T12:40:09.374Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_forms_v2; references `2289b62e-e78c-412e-9bcf-456a35966933`, `f294cff4-7bf8-404c-9fdd-30382baf8019`, `2e154664-c4cd-481c-97eb-aae3e10181ce`.
+
+- Retained test context (2026-10-11T12:40:09.375Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_resource_action_grants; references `18823b13-6699-4eb3-91f5-5e2bb98decdc`, `44abba57-9375-4511-9ecf-f255c4418c7b`, `212d6d6f-decb-4266-bffa-d5ef95aad4a5`, `66f1220e-2e65-4c37-bf45-e08c82f529cb`, `699554a4-3cea-403d-bb9f-4d87296aa82a`.
+
+- Retained test context (2026-10-11T12:40:09.375Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_roleaccess_ac; references `18823b13-6699-4eb3-91f5-5e2bb98decdc`, `44abba57-9375-4511-9ecf-f255c4418c7b`, `212d6d6f-decb-4266-bffa-d5ef95aad4a5`, `66f1220e-2e65-4c37-bf45-e08c82f529cb`, `699554a4-3cea-403d-bb9f-4d87296aa82a`.
+
+- Retained test context (2026-10-11T12:40:09.376Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_rolemaster_ac; references `18823b13-6699-4eb3-91f5-5e2bb98decdc`, `44abba57-9375-4511-9ecf-f255c4418c7b`, `212d6d6f-decb-4266-bffa-d5ef95aad4a5`, `66f1220e-2e65-4c37-bf45-e08c82f529cb`, `699554a4-3cea-403d-bb9f-4d87296aa82a`.
+
+- Retained test context (2026-10-11T12:40:09.376Z): tests/integration/api/company-form-submission-starts.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:09.377Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `94b39442-6bb8-48d1-93f8-ddee7448f149`.
+
+- Retained test context (2026-10-11T12:40:09.377Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `c9c3b64d-430c-445b-9ee0-a632da967822`.
+
+- Retained test context (2026-10-11T12:40:09.382Z): tests/integration/api/company-form-submission-starts.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:12.867Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:12.868Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:12.869Z): tests/integration/api/company-form-signing-and-completion.test.ts; target cleanup context; references `989688c1-9acf-441e-8fec-0a94ab9ddb16`, `a08f5e37-267c-467e-9b39-acbc9a3f5871`, `142a5966-5865-491f-88bf-695518207c84`, `5164d814-e8aa-4d41-a3a1-1ad50c4267a4`, `658cdebc-00eb-4d0d-adb8-8b1df65d309f`.
+
+- Retained test context (2026-10-11T12:40:12.869Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_signatures; references `989688c1-9acf-441e-8fec-0a94ab9ddb16`, `a08f5e37-267c-467e-9b39-acbc9a3f5871`, `142a5966-5865-491f-88bf-695518207c84`, `5164d814-e8aa-4d41-a3a1-1ad50c4267a4`, `658cdebc-00eb-4d0d-adb8-8b1df65d309f`.
+
+- Retained test context (2026-10-11T12:40:12.870Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_signature_attachments; references `72dc80cb-5211-487f-ab17-c22cd1dd4b9a`, `51a0622d-1ea4-4365-93fd-f2d8e37d2504`, `5cfe34a3-762c-40f5-b640-4dd6c37a536b`, `55014478-0c5c-4c64-99fa-cbd794274199`, `9320223f-685f-4872-b82a-732011e8bcb8`, `c6c6b939-537d-442d-9ef5-d9103ee9503e`.
+
+- Retained test context (2026-10-11T12:40:12.870Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references `989688c1-9acf-441e-8fec-0a94ab9ddb16`, `a08f5e37-267c-467e-9b39-acbc9a3f5871`, `142a5966-5865-491f-88bf-695518207c84`, `5164d814-e8aa-4d41-a3a1-1ad50c4267a4`, `658cdebc-00eb-4d0d-adb8-8b1df65d309f`.
+
+- Retained test context (2026-10-11T12:40:12.870Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_answers; references `989688c1-9acf-441e-8fec-0a94ab9ddb16`, `a08f5e37-267c-467e-9b39-acbc9a3f5871`, `142a5966-5865-491f-88bf-695518207c84`, `5164d814-e8aa-4d41-a3a1-1ad50c4267a4`, `658cdebc-00eb-4d0d-adb8-8b1df65d309f`.
+
+- Retained test context (2026-10-11T12:40:12.871Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_states; references `989688c1-9acf-441e-8fec-0a94ab9ddb16`, `a08f5e37-267c-467e-9b39-acbc9a3f5871`, `142a5966-5865-491f-88bf-695518207c84`, `5164d814-e8aa-4d41-a3a1-1ad50c4267a4`, `658cdebc-00eb-4d0d-adb8-8b1df65d309f`.
+
+- Retained test context (2026-10-11T12:40:12.871Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_assignments; references `989688c1-9acf-441e-8fec-0a94ab9ddb16`, `a08f5e37-267c-467e-9b39-acbc9a3f5871`, `142a5966-5865-491f-88bf-695518207c84`, `5164d814-e8aa-4d41-a3a1-1ad50c4267a4`, `658cdebc-00eb-4d0d-adb8-8b1df65d309f`.
+
+- Retained test context (2026-10-11T12:40:12.871Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references `989688c1-9acf-441e-8fec-0a94ab9ddb16`, `a08f5e37-267c-467e-9b39-acbc9a3f5871`, `142a5966-5865-491f-88bf-695518207c84`, `5164d814-e8aa-4d41-a3a1-1ad50c4267a4`, `658cdebc-00eb-4d0d-adb8-8b1df65d309f`.
+
+- Retained test context (2026-10-11T12:40:12.872Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_questions; references `9460a5a9-6930-4add-b6ee-be0fa00cf122`, `67ea1895-42f2-4f98-b2a7-01f1d7649a0d`, `4c388d7e-8713-433b-8ecf-749a2d97d07b`, `a6035931-7f38-408d-92a5-fbd362f4ab94`.
+
+- Retained test context (2026-10-11T12:40:12.872Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_sections; references `9460a5a9-6930-4add-b6ee-be0fa00cf122`, `67ea1895-42f2-4f98-b2a7-01f1d7649a0d`, `4c388d7e-8713-433b-8ecf-749a2d97d07b`, `a6035931-7f38-408d-92a5-fbd362f4ab94`.
+
+- Retained test context (2026-10-11T12:40:12.873Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_form_parts; references `9460a5a9-6930-4add-b6ee-be0fa00cf122`, `67ea1895-42f2-4f98-b2a7-01f1d7649a0d`, `4c388d7e-8713-433b-8ecf-749a2d97d07b`, `a6035931-7f38-408d-92a5-fbd362f4ab94`.
+
+- Retained test context (2026-10-11T12:40:12.873Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_form_versions_v2; references `9460a5a9-6930-4add-b6ee-be0fa00cf122`, `67ea1895-42f2-4f98-b2a7-01f1d7649a0d`, `4c388d7e-8713-433b-8ecf-749a2d97d07b`, `a6035931-7f38-408d-92a5-fbd362f4ab94`.
+
+- Retained test context (2026-10-11T12:40:12.873Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_forms_v2; references `89c058f8-525c-45c5-91c4-9633c0054ee6`, `b3458815-9f9a-4a2f-90de-35e3dcb0dbf6`.
+
+- Retained test context (2026-10-11T12:40:12.873Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_assignments; references `3eeb7748-ae0c-4bfb-81b4-ddc8a610ec4e`, `2f1784a8-3773-455e-a85e-03fdea131e55`, `a3723fd5-401a-4f8b-b97a-9d9203a7064d`, `c3b8dc5a-a714-4e55-b0ec-a276abc4acb8`.
+
+- Retained test context (2026-10-11T12:40:12.873Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_members_v2; references `12dae9c1-31b9-4d00-acda-e6b5406c5614`.
+
+- Retained test context (2026-10-11T12:40:12.874Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `5ed94e11-fa1d-46d4-8e51-df83fc185de8`.
+
+- Retained test context (2026-10-11T12:40:12.874Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `171fa93d-734c-421b-acdb-3068077ecfb3`.
+
+- Retained test context (2026-10-11T12:40:12.875Z): tests/integration/api/company-form-signing-and-completion.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:12.876Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_resource_action_grants; references `770cfdcf-3c88-4812-870f-af48fa2a5ebe`, `ddeff09d-13db-4efa-ac37-694363ee4268`, `ca1a67ee-e91e-44ea-a4b3-102fd26b43ee`, `80f5511a-4ed5-4b86-a183-6444a33cf994`.
+
+- Retained test context (2026-10-11T12:40:12.877Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_roleaccess_ac; references `770cfdcf-3c88-4812-870f-af48fa2a5ebe`, `ddeff09d-13db-4efa-ac37-694363ee4268`, `ca1a67ee-e91e-44ea-a4b3-102fd26b43ee`, `80f5511a-4ed5-4b86-a183-6444a33cf994`.
+
+- Retained test context (2026-10-11T12:40:12.878Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:12.878Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_rolemaster_ac; references `770cfdcf-3c88-4812-870f-af48fa2a5ebe`, `ddeff09d-13db-4efa-ac37-694363ee4268`, `ca1a67ee-e91e-44ea-a4b3-102fd26b43ee`, `80f5511a-4ed5-4b86-a183-6444a33cf994`.
+
+- Retained test context (2026-10-11T12:40:15.950Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `e4f89a3c-a350-42f4-9123-1bbb633ccc5f`.
+
+- Retained test context (2026-10-11T12:40:15.952Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `e4f89a3c-a350-42f4-9123-1bbb633ccc5f`.
+
+- Retained test context (2026-10-11T12:40:15.953Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `e4f89a3c-a350-42f4-9123-1bbb633ccc5f`.
+
+- Retained test context (2026-10-11T12:40:15.953Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `e4f89a3c-a350-42f4-9123-1bbb633ccc5f`.
+
+- Retained test context (2026-10-11T12:40:15.954Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `e4f89a3c-a350-42f4-9123-1bbb633ccc5f`.
+
+- Retained test context (2026-10-11T12:40:15.955Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `52bc0de3-a575-4bae-a6c6-e6f486939185`.
+
+- Retained test context (2026-10-11T12:40:15.955Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `52bc0de3-a575-4bae-a6c6-e6f486939185`.
+
+- Retained test context (2026-10-11T12:40:15.956Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `52bc0de3-a575-4bae-a6c6-e6f486939185`.
+
+- Retained test context (2026-10-11T12:40:15.957Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `52bc0de3-a575-4bae-a6c6-e6f486939185`.
+
+- Retained test context (2026-10-11T12:40:15.958Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `52bc0de3-a575-4bae-a6c6-e6f486939185`.
+
+- Retained test context (2026-10-11T12:40:15.958Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `e4cdfd4d-6e44-4d36-96cc-a79e120f38a0`.
+
+- Retained test context (2026-10-11T12:40:15.959Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `e4cdfd4d-6e44-4d36-96cc-a79e120f38a0`.
+
+- Retained test context (2026-10-11T12:40:15.960Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `e4cdfd4d-6e44-4d36-96cc-a79e120f38a0`.
+
+- Retained test context (2026-10-11T12:40:15.960Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `e4cdfd4d-6e44-4d36-96cc-a79e120f38a0`.
+
+- Retained test context (2026-10-11T12:40:15.961Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `e4cdfd4d-6e44-4d36-96cc-a79e120f38a0`.
+
+- Retained test context (2026-10-11T12:40:15.962Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `2f9a6613-4f70-4966-8451-bb330b2fc584`.
+
+- Retained test context (2026-10-11T12:40:15.962Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `2f9a6613-4f70-4966-8451-bb330b2fc584`.
+
+- Retained test context (2026-10-11T12:40:15.963Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `2f9a6613-4f70-4966-8451-bb330b2fc584`.
+
+- Retained test context (2026-10-11T12:40:15.964Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `2f9a6613-4f70-4966-8451-bb330b2fc584`.
+
+- Retained test context (2026-10-11T12:40:15.964Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `2f9a6613-4f70-4966-8451-bb330b2fc584`.
+
+- Retained test context (2026-10-11T12:40:15.965Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `2cf3c7ec-a8b5-409a-9907-d97f91251962`.
+
+- Retained test context (2026-10-11T12:40:15.966Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `2cf3c7ec-a8b5-409a-9907-d97f91251962`.
+
+- Retained test context (2026-10-11T12:40:15.967Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `2cf3c7ec-a8b5-409a-9907-d97f91251962`.
+
+- Retained test context (2026-10-11T12:40:15.967Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `2cf3c7ec-a8b5-409a-9907-d97f91251962`.
+
+- Retained test context (2026-10-11T12:40:15.968Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `2cf3c7ec-a8b5-409a-9907-d97f91251962`.
+
+- Retained test context (2026-10-11T12:40:15.969Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `59dbcc3b-6260-45d4-af7e-b42b2bbb8dd8`.
+
+- Retained test context (2026-10-11T12:40:15.969Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `59dbcc3b-6260-45d4-af7e-b42b2bbb8dd8`.
+
+- Retained test context (2026-10-11T12:40:15.970Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `59dbcc3b-6260-45d4-af7e-b42b2bbb8dd8`.
+
+- Retained test context (2026-10-11T12:40:15.971Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `59dbcc3b-6260-45d4-af7e-b42b2bbb8dd8`.
+
+- Retained test context (2026-10-11T12:40:15.971Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `59dbcc3b-6260-45d4-af7e-b42b2bbb8dd8`.
+
+- Retained test context (2026-10-11T12:40:15.972Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `8674dceb-a074-41b9-9b0f-b3023a7eb3e3`.
+
+- Retained test context (2026-10-11T12:40:15.972Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `8674dceb-a074-41b9-9b0f-b3023a7eb3e3`.
+
+- Retained test context (2026-10-11T12:40:15.973Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `8674dceb-a074-41b9-9b0f-b3023a7eb3e3`.
+
+- Retained test context (2026-10-11T12:40:15.974Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `8674dceb-a074-41b9-9b0f-b3023a7eb3e3`.
+
+- Retained test context (2026-10-11T12:40:15.974Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `8674dceb-a074-41b9-9b0f-b3023a7eb3e3`.
+
+- Retained test context (2026-10-11T12:40:15.975Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `fbe815d2-0b9e-4dd0-ae7d-7c514ea6a85f`.
+
+- Retained test context (2026-10-11T12:40:15.976Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `fbe815d2-0b9e-4dd0-ae7d-7c514ea6a85f`.
+
+- Retained test context (2026-10-11T12:40:15.976Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `fbe815d2-0b9e-4dd0-ae7d-7c514ea6a85f`.
+
+- Retained test context (2026-10-11T12:40:15.977Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `fbe815d2-0b9e-4dd0-ae7d-7c514ea6a85f`.
+
+- Retained test context (2026-10-11T12:40:15.978Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `fbe815d2-0b9e-4dd0-ae7d-7c514ea6a85f`.
+
+- Retained test context (2026-10-11T12:40:15.978Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `aab0aa2d-139e-4f55-9b59-deeb6f6f7385`.
+
+- Retained test context (2026-10-11T12:40:15.979Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `aab0aa2d-139e-4f55-9b59-deeb6f6f7385`.
+
+- Retained test context (2026-10-11T12:40:15.979Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `aab0aa2d-139e-4f55-9b59-deeb6f6f7385`.
+
+- Retained test context (2026-10-11T12:40:15.980Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `aab0aa2d-139e-4f55-9b59-deeb6f6f7385`.
+
+- Retained test context (2026-10-11T12:40:15.981Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `aab0aa2d-139e-4f55-9b59-deeb6f6f7385`.
+
+- Retained test context (2026-10-11T12:40:15.981Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `8c45b667-f459-4437-80a6-ff0fad58a44f`.
+
+- Retained test context (2026-10-11T12:40:15.982Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `8c45b667-f459-4437-80a6-ff0fad58a44f`.
+
+- Retained test context (2026-10-11T12:40:15.983Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `8c45b667-f459-4437-80a6-ff0fad58a44f`.
+
+- Retained test context (2026-10-11T12:40:15.984Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `8c45b667-f459-4437-80a6-ff0fad58a44f`.
+
+- Retained test context (2026-10-11T12:40:15.984Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `8c45b667-f459-4437-80a6-ff0fad58a44f`.
+
+- Retained test context (2026-10-11T12:40:21.859Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_signatures; references `b79b6437-5b54-4839-9062-0383a831b9c2`, `4152f9a9-9be7-4e58-8ee2-5067413bf363`.
+
+- Retained test context (2026-10-11T12:40:21.860Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_answers; references `b79b6437-5b54-4839-9062-0383a831b9c2`, `4152f9a9-9be7-4e58-8ee2-5067413bf363`.
+
+- Retained test context (2026-10-11T12:40:21.860Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_states; references `b79b6437-5b54-4839-9062-0383a831b9c2`, `4152f9a9-9be7-4e58-8ee2-5067413bf363`.
+
+- Retained test context (2026-10-11T12:40:21.861Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submission_assignments; references `b79b6437-5b54-4839-9062-0383a831b9c2`, `4152f9a9-9be7-4e58-8ee2-5067413bf363`.
+
+- Retained test context (2026-10-11T12:40:21.861Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submissions; references `b79b6437-5b54-4839-9062-0383a831b9c2`, `4152f9a9-9be7-4e58-8ee2-5067413bf363`.
+
+- Retained test context (2026-10-11T12:40:21.861Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_signature_attachments; references `3f0f9a5d-51ed-4151-a26f-e92fbc0e29da`.
+
+- Retained test context (2026-10-11T12:40:21.862Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_assignments; references `ca1d35a9-b1b7-4d19-8ac4-ba8d5af62840`, `94f65c56-9beb-4ea1-83da-6257dc2e5d2d`.
+
+- Retained test context (2026-10-11T12:40:21.862Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_members_v2; references `c35ca2ae-8886-49de-93a7-1971b5885171`.
+
+- Retained test context (2026-10-11T12:40:21.862Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_questions; references `d4181b31-4f95-42b9-bac8-23f6d7405693`.
+
+- Retained test context (2026-10-11T12:40:21.863Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_sections; references `76f85426-0013-4613-9c6a-eac77784ecd3`.
+
+- Retained test context (2026-10-11T12:40:21.863Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_form_parts; references `223f871d-64aa-43bd-a5bb-63dc218be3a0`.
+
+- Retained test context (2026-10-11T12:40:21.864Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_options; references `842ee37e-1e50-4280-b0ed-0cdcfea28d1c`.
+
+- Retained test context (2026-10-11T12:40:21.864Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_option_sets; references `842ee37e-1e50-4280-b0ed-0cdcfea28d1c`.
+
+- Retained test context (2026-10-11T12:40:21.864Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_form_versions_v2; references `c0ffef06-e315-4d20-9f72-58148ddb8138`.
+
+- Retained test context (2026-10-11T12:40:21.864Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_forms_v2; references `e25434fa-5985-42e4-bd27-fc0757607cdf`.
+
+- Retained test context (2026-10-11T12:40:21.865Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_resource_action_grants; references `aefbbf57-0d21-43b3-b19a-9871b6e81f64`, `99de9831-82a6-43a5-a688-8f5fa59c670b`, `1ee0623f-519a-49a3-a0fd-e2027fe16917`, `8925f313-0f4d-4acf-bbc1-0c15ed836102`, `7466aba1-5abf-48f7-a7a6-3ab2c5ce23be`, `7fb71ddb-1dc0-40bc-969c-e6384a7830d0`, `ac904885-021d-4422-b2a0-4eb9c83b99ba`.
+
+- Retained test context (2026-10-11T12:40:21.865Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_roleaccess_ac; references `aefbbf57-0d21-43b3-b19a-9871b6e81f64`, `99de9831-82a6-43a5-a688-8f5fa59c670b`, `1ee0623f-519a-49a3-a0fd-e2027fe16917`, `8925f313-0f4d-4acf-bbc1-0c15ed836102`, `7466aba1-5abf-48f7-a7a6-3ab2c5ce23be`, `7fb71ddb-1dc0-40bc-969c-e6384a7830d0`, `ac904885-021d-4422-b2a0-4eb9c83b99ba`.
+
+- Retained test context (2026-10-11T12:40:21.866Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_rolemaster_ac; references `aefbbf57-0d21-43b3-b19a-9871b6e81f64`, `99de9831-82a6-43a5-a688-8f5fa59c670b`, `1ee0623f-519a-49a3-a0fd-e2027fe16917`, `8925f313-0f4d-4acf-bbc1-0c15ed836102`, `7466aba1-5abf-48f7-a7a6-3ab2c5ce23be`, `7fb71ddb-1dc0-40bc-969c-e6384a7830d0`, `ac904885-021d-4422-b2a0-4eb9c83b99ba`.
+
+- Retained test context (2026-10-11T12:40:21.866Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:21.866Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `ab82c7de-04c6-4278-9907-f5bf0ca5dadc`.
+
+- Retained test context (2026-10-11T12:40:21.867Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `5b7641e9-a573-4779-9fed-3c9a7b7e6f0d`.
+
+- Retained test context (2026-10-11T12:40:21.867Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessel_types; references `b3a5ed6b-bf83-4cd8-828b-47255e5bba24`.
+
+- Retained test context (2026-10-11T12:40:21.871Z): tests/integration/api/company-form-submission-boundary.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:24.313Z): tests/integration/company-form-stage-less-runtime.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:24.397Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:24.397Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references `4e553a73-52a1-4211-a01d-dbea874f3b09`, `ae3f31f3-b047-456a-8b0d-b87745f227ed`, `c01302a2-7773-4a0c-981f-de38e524a310`, `64d7a5f9-3443-4626-8d61-d234f7a52c76`, `52d7fe44-e3e8-4ecf-8d8e-ca7c310b3bc5`.
+
+- Retained test context (2026-10-11T12:40:24.398Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_signatures; references `4e553a73-52a1-4211-a01d-dbea874f3b09`, `ae3f31f3-b047-456a-8b0d-b87745f227ed`, `c01302a2-7773-4a0c-981f-de38e524a310`, `64d7a5f9-3443-4626-8d61-d234f7a52c76`, `52d7fe44-e3e8-4ecf-8d8e-ca7c310b3bc5`.
+
+- Retained test context (2026-10-11T12:40:24.400Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_answers; references `4e553a73-52a1-4211-a01d-dbea874f3b09`, `ae3f31f3-b047-456a-8b0d-b87745f227ed`, `c01302a2-7773-4a0c-981f-de38e524a310`, `64d7a5f9-3443-4626-8d61-d234f7a52c76`, `52d7fe44-e3e8-4ecf-8d8e-ca7c310b3bc5`.
+
+- Retained test context (2026-10-11T12:40:24.400Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_states; references `4e553a73-52a1-4211-a01d-dbea874f3b09`, `ae3f31f3-b047-456a-8b0d-b87745f227ed`, `c01302a2-7773-4a0c-981f-de38e524a310`, `64d7a5f9-3443-4626-8d61-d234f7a52c76`, `52d7fe44-e3e8-4ecf-8d8e-ca7c310b3bc5`.
+
+- Retained test context (2026-10-11T12:40:24.401Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submissions; references `4e553a73-52a1-4211-a01d-dbea874f3b09`, `ae3f31f3-b047-456a-8b0d-b87745f227ed`, `c01302a2-7773-4a0c-981f-de38e524a310`, `64d7a5f9-3443-4626-8d61-d234f7a52c76`, `52d7fe44-e3e8-4ecf-8d8e-ca7c310b3bc5`.
+
+- Retained test context (2026-10-11T12:40:24.401Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_signature_attachments; references `f711c565-1c40-447a-9b76-dec2db36a54d`, `cb1e905b-749b-4b89-aa98-dc96532c92d2`, `42ed5c06-3bc3-43bf-8177-7b13a8f9a22a`, `2d2eedf0-f533-403e-93d2-429e3fa4ba5b`, `c52f38eb-cdab-41ce-beff-d99e20a61497`, `a487c6ca-4436-4194-9d1e-05d75e7e085e`.
+
+- Retained test context (2026-10-11T12:40:24.401Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_questions; references `ddd5b41d-4c6f-4e16-bd98-8c9d399ae535`, `7d22487a-ed03-40c9-a906-98866df25ea4`, `d4a411d2-b8c0-4e4f-9af1-0f13440577b2`, `e5742b3a-fd9e-41ef-bc32-2bd173affc3c`, `30dce17f-4011-4e7e-b363-0894cace269b`, `64937ba5-bc56-4f6b-9233-fc2e056eb1b3`, `45315115-a9c0-411e-89fe-9fd2d82e1c19`.
+
+- Retained test context (2026-10-11T12:40:24.402Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_sections; references `1a13ffff-3968-48e7-a2e1-86aa5c051035`, `710cbe8b-d5b8-4736-bf14-91757794638f`, `f8299298-ef49-4fc7-a2be-cb4aca8f5ced`, `a151fed5-7b02-4d35-a025-f07fb068cbe7`, `f0e8ee75-20a7-4f63-b73c-3e041612ab47`.
+
+- Retained test context (2026-10-11T12:40:24.402Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_form_parts; references `0a641fd6-239b-4c08-ab74-dcd59961a972`.
+
+- Retained test context (2026-10-11T12:40:24.402Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_form_versions_v2; references `8e8d8cec-9e5b-4c80-8f02-3d9ddb215504`.
+
+- Retained test context (2026-10-11T12:40:24.403Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_forms_v2; references `f348c825-cc83-47a4-a2e8-cb3c9fb409ad`.
+
+- Retained test context (2026-10-11T12:40:24.403Z): tests/integration/company-form-stage-less-runtime.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:24.403Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_roleaccess_ac; references `fcbe2909-5296-4bd6-890f-43d38a3d510c`.
+
+- Retained test context (2026-10-11T12:40:24.403Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_rolemaster_ac; references `fcbe2909-5296-4bd6-890f-43d38a3d510c`.
+
+- Retained test context (2026-10-11T12:40:24.404Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_subject_types; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:27.168Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_answers; references `a9eb82fb-9f81-49b1-a9a8-b23cc56307e9`.
+
+- Retained test context (2026-10-11T12:40:27.169Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_section_states; references `a9eb82fb-9f81-49b1-a9a8-b23cc56307e9`.
+
+- Retained test context (2026-10-11T12:40:27.170Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submission_assignments; references `a9eb82fb-9f81-49b1-a9a8-b23cc56307e9`.
+
+- Retained test context (2026-10-11T12:40:27.171Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submissions; references `a9eb82fb-9f81-49b1-a9a8-b23cc56307e9`.
+
+- Retained test context (2026-10-11T12:40:27.171Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_questions; references `afb7e4b6-5d5d-4243-a4a8-fcf150ced8be`, `08f1ef0b-e7e9-49ab-9a08-f824b1986165`, `2e94986a-fa35-4c51-b19a-9d6756f0955d`, `68b5b29a-89a3-4446-b240-109a119193f3`, `17d57414-6523-4cd3-af40-0546ce1fd983`, `3267c3ab-f606-4406-933e-3980b31c1c03`, `d18fe016-01a3-4cea-bc13-9034fb5cf255`, `b1c26568-cdef-4c7d-af78-27a0c192425b`, `6ab41b5f-3a59-4a3a-b255-5bbcf5f436ef`, `e76f13fe-42ab-4e4f-9ea3-6098033d4660`, `854eba18-6d14-47e3-a16a-3f897050ac4d`, `4fee31b4-fa4d-4344-9a18-9bbcc66ff771`, `d443f098-e733-4fc2-ae99-fd505787d040`.
+
+- Retained test context (2026-10-11T12:40:27.172Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_sections; references `c7e0836f-9e47-4a5d-8719-3c553e0bd9c5`.
+
+- Retained test context (2026-10-11T12:40:27.172Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_form_parts; references `e04b6fea-e83e-48ea-8366-638670927858`.
+
+- Retained test context (2026-10-11T12:40:27.173Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_options; references `a95310ca-ae3f-4085-a0f5-d6ac052004a7`.
+
+- Retained test context (2026-10-11T12:40:27.173Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_option_sets; references `a95310ca-ae3f-4085-a0f5-d6ac052004a7`.
+
+- Retained test context (2026-10-11T12:40:27.175Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_form_versions_v2; references `5d47b6cf-a081-4400-aa8e-d101bb943bc6`.
+
+- Retained test context (2026-10-11T12:40:27.175Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_forms_v2; references `99a21650-949e-42d4-a954-de92a95a57c7`.
+
+- Retained test context (2026-10-11T12:40:27.176Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_assignments; references `b0d52978-51a7-4b62-92b3-e87fc4e7e37f`.
+
+- Retained test context (2026-10-11T12:40:27.176Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_members_v2; references `c93ba0bd-cc47-446f-b62b-9ba918554238`.
+
+- Retained test context (2026-10-11T12:40:27.177Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:27.178Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_resource_action_grants; references `e5cfe760-5d38-403a-a2b4-fdc2fc4f56d7`.
+
+- Retained test context (2026-10-11T12:40:27.178Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_roleaccess_ac; references `e5cfe760-5d38-403a-a2b4-fdc2fc4f56d7`.
+
+- Retained test context (2026-10-11T12:40:27.179Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_rolemaster_ac; references `e5cfe760-5d38-403a-a2b4-fdc2fc4f56d7`.
+
+- Retained test context (2026-10-11T12:40:29.257Z): tests/integration/api/company-form-submission-void-races.test.ts; target cleanup context; references `b8074dc9-aa42-44fd-88f5-7900490ced0b`.
+
+- Retained test context (2026-10-11T12:40:29.361Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_signatures; references `e5b9f0ea-6692-49d0-805e-37e5d870c466`, `3a1581d7-acfe-4f2d-9b5a-c927419aed48`, `403b5bc1-8c68-4e2e-b934-197be834f845`, `a132d2e8-5b88-43d1-8097-a25e0073d62f`.
+
+- Retained test context (2026-10-11T12:40:29.361Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_answers; references `e5b9f0ea-6692-49d0-805e-37e5d870c466`, `3a1581d7-acfe-4f2d-9b5a-c927419aed48`, `403b5bc1-8c68-4e2e-b934-197be834f845`, `a132d2e8-5b88-43d1-8097-a25e0073d62f`.
+
+- Retained test context (2026-10-11T12:40:29.362Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_system_snapshots; references `e5b9f0ea-6692-49d0-805e-37e5d870c466`, `3a1581d7-acfe-4f2d-9b5a-c927419aed48`, `403b5bc1-8c68-4e2e-b934-197be834f845`, `a132d2e8-5b88-43d1-8097-a25e0073d62f`.
+
+- Retained test context (2026-10-11T12:40:29.362Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_states; references `e5b9f0ea-6692-49d0-805e-37e5d870c466`, `3a1581d7-acfe-4f2d-9b5a-c927419aed48`, `403b5bc1-8c68-4e2e-b934-197be834f845`, `a132d2e8-5b88-43d1-8097-a25e0073d62f`.
+
+- Retained test context (2026-10-11T12:40:29.362Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_assignments; references `e5b9f0ea-6692-49d0-805e-37e5d870c466`, `3a1581d7-acfe-4f2d-9b5a-c927419aed48`, `403b5bc1-8c68-4e2e-b934-197be834f845`, `a132d2e8-5b88-43d1-8097-a25e0073d62f`.
+
+- Retained test context (2026-10-11T12:40:29.363Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submissions; references `e5b9f0ea-6692-49d0-805e-37e5d870c466`, `3a1581d7-acfe-4f2d-9b5a-c927419aed48`, `403b5bc1-8c68-4e2e-b934-197be834f845`, `a132d2e8-5b88-43d1-8097-a25e0073d62f`.
+
+- Retained test context (2026-10-11T12:40:29.363Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_signature_attachments; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:29.363Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_questions; references `cb034119-f837-4677-8235-744f0bbe8afb`.
+
+- Retained test context (2026-10-11T12:40:29.364Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_sections; references `742a48fb-42c1-4f51-8c88-3780ab2ace75`.
+
+- Retained test context (2026-10-11T12:40:29.364Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_form_parts; references `afddf1e1-8b88-475b-80d4-73a22cd4936a`.
+
+- Retained test context (2026-10-11T12:40:29.364Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_form_versions_v2; references `b2fd7c90-2cb6-437a-badc-4059b7be77e7`.
+
+- Retained test context (2026-10-11T12:40:29.365Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_forms_v2; references `9935c18b-2820-4b0d-9a03-3730f292cf0d`.
+
+- Retained test context (2026-10-11T12:40:29.365Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_assignments; references `556fefd1-2385-480f-bbd8-f0d523e2a221`, `3919c02b-af86-4086-908f-5d09e37e42ac`, `2ed0f16d-7ea1-48f3-9104-5e0bbf9aac7b`, `3d1ee06a-228e-4ad5-80d6-47dbfa8398de`.
+
+- Retained test context (2026-10-11T12:40:29.365Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_members_v2; references `f1e0afd4-de43-4c6c-b233-362248c1cf31`.
+
+- Retained test context (2026-10-11T12:40:29.366Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_resource_action_grants; references `b8074dc9-aa42-44fd-88f5-7900490ced0b`, `fc3951d8-3d4b-4daf-bfb7-cddece92f5c9`.
+
+- Retained test context (2026-10-11T12:40:29.366Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_roleaccess_ac; references `b8074dc9-aa42-44fd-88f5-7900490ced0b`.
+
+- Retained test context (2026-10-11T12:40:29.366Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:29.367Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_rolemaster_ac; references `b8074dc9-aa42-44fd-88f5-7900490ced0b`, `fc3951d8-3d4b-4daf-bfb7-cddece92f5c9`.
+
+- Retained test context (2026-10-11T12:40:29.367Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_vessels; references `09c61d2e-029a-4b82-8307-5da96f77f4d0`.
+
+- Retained test context (2026-10-11T12:40:29.374Z): tests/integration/api/company-form-submission-void-races.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:35.254Z): tests/integration/api/company-form-submission-races.test.ts; target frm_answers; references `2baecaa7-6d8d-433e-af15-dfcd3b0b6a0f`, `ab66c446-e697-4f21-a8a5-15ae6b1d4aaa`, `ac6db822-ac01-482b-9300-df157b874ceb`.
+
+- Retained test context (2026-10-11T12:40:35.255Z): tests/integration/api/company-form-submission-races.test.ts; target frm_section_states; references `2baecaa7-6d8d-433e-af15-dfcd3b0b6a0f`, `ab66c446-e697-4f21-a8a5-15ae6b1d4aaa`, `ac6db822-ac01-482b-9300-df157b874ceb`.
+
+- Retained test context (2026-10-11T12:40:35.256Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submission_assignments; references `2baecaa7-6d8d-433e-af15-dfcd3b0b6a0f`, `ab66c446-e697-4f21-a8a5-15ae6b1d4aaa`, `ac6db822-ac01-482b-9300-df157b874ceb`.
+
+- Retained test context (2026-10-11T12:40:35.256Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submissions; references `2baecaa7-6d8d-433e-af15-dfcd3b0b6a0f`, `ab66c446-e697-4f21-a8a5-15ae6b1d4aaa`, `ac6db822-ac01-482b-9300-df157b874ceb`.
+
+- Retained test context (2026-10-11T12:40:35.257Z): tests/integration/api/company-form-submission-races.test.ts; target crew_assignments; references `5294c5c6-15f2-43a1-9dea-0659a39a367f`, `0b091964-1275-44bd-ba26-80332821f9ad`, `ef0c2657-8622-433a-9322-ef6dc2c9ca59`, `1fa6aeb7-2288-49a9-b5f0-be2dfe5c90e0`, `b011f923-39db-4b49-b417-e7abe2198c1e`.
+
+- Retained test context (2026-10-11T12:40:35.257Z): tests/integration/api/company-form-submission-races.test.ts; target frm_questions; references `60a7f9fd-dce4-452b-b2fc-0af93d13c335`.
+
+- Retained test context (2026-10-11T12:40:35.258Z): tests/integration/api/company-form-submission-races.test.ts; target frm_sections; references `82670194-5071-4b3b-a1f8-4742c5ad2d15`.
+
+- Retained test context (2026-10-11T12:40:35.258Z): tests/integration/api/company-form-submission-races.test.ts; target frm_form_parts; references `af2f8de8-0c2e-4b20-b778-c412ba2bbf9c`.
+
+- Retained test context (2026-10-11T12:40:35.258Z): tests/integration/api/company-form-submission-races.test.ts; target adm_form_versions_v2; references `c8aef49d-bfd6-48b0-8ab9-6471fddaf75f`.
+
+- Retained test context (2026-10-11T12:40:35.259Z): tests/integration/api/company-form-submission-races.test.ts; target adm_forms_v2; references `3e431b95-bea5-456f-8c00-61452c549501`.
+
+- Retained test context (2026-10-11T12:40:35.259Z): tests/integration/api/company-form-submission-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:35.260Z): tests/integration/api/company-form-submission-races.test.ts; target adm_resource_action_grants; references `33cbb2c3-8df2-4bae-b25a-bfcbb4de26c6`.
+
+- Retained test context (2026-10-11T12:40:35.260Z): tests/integration/api/company-form-submission-races.test.ts; target adm_roleaccess_ac; references `33cbb2c3-8df2-4bae-b25a-bfcbb4de26c6`.
+
+- Retained test context (2026-10-11T12:40:35.260Z): tests/integration/api/company-form-submission-races.test.ts; target adm_rolemaster_ac; references `33cbb2c3-8df2-4bae-b25a-bfcbb4de26c6`.
+
+- Retained test context (2026-10-11T12:40:36.429Z): requirement harness roots; target registered_fixture_context; references `d9f6cb4f-1f22-4619-bca8-0d0e550bc4fe`, `7d72e796-6fc9-46ae-877d-f2f5ad4259e3`, `09ec0684-0d94-466f-bffe-d5481f4b9d45`, `3b60c921-4ba5-4ba1-981f-0e585b851922`.
+
+- Retained test context (2026-10-11T12:40:36.551Z): requirement harness pinned content; target registered_fixture_context; references `12a8c696-d47c-41a6-a1a9-aa58b308c742`, `96aacd65-ac86-4aeb-b8da-7b087b871fad`, `b36bd639-6817-4e19-91c4-e24b5368390e`, `9c73a9e3-98cb-4673-87e0-30ceac18ed84`.
+
+- Retained test context (2026-10-11T12:40:36.656Z): empty requirement run; target registered_fixture_context; references `abe58709-dcce-408e-a79c-56773ecbbffb`.
+
+- Retained test context (2026-10-11T12:40:36.701Z): pinned requirement and resolution; target registered_fixture_context; references `3349069d-abf9-4e51-8b44-f51d9d49a230`, `86ec7862-2fed-4cbc-b590-0d2023774ad0`.
+
+- Retained test context (2026-10-11T12:40:39.273Z): dimension context cf_dimensions_22c91147; target registered_fixture_context; references `8624b9b1-1f2a-417d-b774-8ee90a432e7b`, `a40abc23-943c-42f3-be79-2389a87d1d5b`, `c0ea1a99-17d1-493d-9969-7f14dd6c7cc9`, `2930911f-88de-4ea1-9976-ed317f149f6a`.
+
+- Retained test context (2026-10-11T12:40:39.484Z): cf_dimensions_22c91147.adm_available_ranks_v2 canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:39.565Z): cf_dimensions_22c91147.adm_company_ranks_v2 canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:39.656Z): cf_dimensions_22c91147.master_vessels canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:39.672Z): cf_dimensions_22c91147.master_vessel_types canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:39.691Z): cf_dimensions_22c91147.master_nationalities canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:39.706Z): cf_dimensions_22c91147.master_manning_agents canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:39.721Z): cf_dimensions_22c91147.master_crew_pools canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:39.735Z): cf_dimensions_22c91147.master_fleet_groups canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:39.750Z): cf_dimensions_22c91147.master_additional_groups canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:39.779Z): canonical master copies cf_dimensions_22c91147; target registered_fixture_context; references `55d4c4b0-8e9c-479c-a9f0-9f3fbe95e0e5`, `743feb08-841a-11ed-aa7c-7003bca91a86`.
+
+- Retained test context (2026-10-11T12:40:42.094Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_signatures; references `c812d7ad-c3e5-49dd-9a3d-f3e926eae8c1`.
+
+- Retained test context (2026-10-11T12:40:42.100Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_signature_attachments; references `07627f63-a2ab-4c7d-84b8-ce8e7cdfa9c6`, `e84bf5a9-dea0-4331-843f-8a1b96e46aad`.
+
+- Retained test context (2026-10-11T12:40:42.100Z): tests/integration/debriefing-submission.acceptance.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:42.101Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_answers; references `c812d7ad-c3e5-49dd-9a3d-f3e926eae8c1`.
+
+- Retained test context (2026-10-11T12:40:42.101Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_states; references `c812d7ad-c3e5-49dd-9a3d-f3e926eae8c1`.
+
+- Retained test context (2026-10-11T12:40:42.102Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefing_submissions; references `c812d7ad-c3e5-49dd-9a3d-f3e926eae8c1`.
+
+- Retained test context (2026-10-11T12:40:42.102Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_questions; references `e93b2466-b4bc-4c12-9d33-870f2d08af8d`.
+
+- Retained test context (2026-10-11T12:40:42.103Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_sections; references `6f8af873-6da7-48a1-8028-387fc590fdac`, `5386e163-4dc9-4096-a88a-6db84c406223`, `cf1d1283-ba18-43f7-8e6d-e81c4a42c587`.
+
+- Retained test context (2026-10-11T12:40:42.103Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_form_parts; references `0b3f585c-d0e2-46b3-ade6-291b82544d9c`.
+
+- Retained test context (2026-10-11T12:40:42.104Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_form_versions_v2; references `0b028394-8e3e-4385-9b79-910ba9ae72c9`, `23511723-ef15-49d6-acb3-c2e791496b06`.
+
+- Retained test context (2026-10-11T12:40:42.104Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_rank_groups_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:42.104Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_forms_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:42.105Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefings; references `f3af6e5d-86ad-4adc-be2f-74f08d0384da`, `c1f9c361-f522-4930-9f6e-09d56f7d0d40`, `61112a4a-7d46-48e2-8464-a90673db9822`.
+
+- Retained test context (2026-10-11T12:40:42.105Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_members_v2; references `165610b7-cc08-4ed7-899c-9c7208c98eb3`.
+
+- Retained test context (2026-10-11T12:40:42.105Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessels; references `196e7d80-69c9-4b3b-9c3e-33bac02afbff`.
+
+- Retained test context (2026-10-11T12:40:42.106Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessel_types; references `440b8ebf-092f-4f16-8d9d-266c55d2d74e`.
+
+- Retained test context (2026-10-11T12:40:42.106Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:45.895Z): verified-history/cf_verified_history_884ae870; target registered_fixture_context; references `e9e73112-b4cf-4da2-9226-7347063e5aef`, `51c89044-bc5a-4a9d-90ed-f29afcebe81e`, `c81e4efe-c606-484e-a868-670bf192d925`, `ca05b168-94d7-40b2-9ca3-bc4142d77bbb`, `6797585b-765c-4c5b-80ff-ba21fa0ab841`, `ef7e0b20-cac7-427b-a42f-18b4dfa2509c`, `dfde9072-c579-4ebb-a98e-b559219c68c7`, `ebbec285-5aae-41e1-836b-e7e14ad20724`, `3ef2346b-59b2-472d-a7d7-54fd4100327d`, `7dc65ea1-8891-40fc-9885-79b856ed0efb`.
+
+- Retained test context (2026-10-11T12:40:48.933Z): dimension release definition; target registered_fixture_context; references `12000fb3-353d-4300-a41b-22aba33713a8`, `72eac91a-6667-4a72-8ba5-3938a135467e`.
+
+- Retained test context (2026-10-11T12:40:49.048Z): dimension release draft content; target registered_fixture_context; references `e8af58f2-449a-4920-b7bf-d79de303c6de`, `466be83d-3f71-4e11-ba83-27f1b5a1dba5`, `bb0d9a30-3fc7-4a49-a2b1-dccbe99cf0f2`, `87f0f0df-6edb-4e98-85f6-5000353ea4d5`.
+
+- Retained test context (2026-10-11T12:40:49.131Z): dimension release condition data; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:40:49.309Z): dimension release copied draft; target registered_fixture_context; references `04b125bd-53c7-45c1-ae46-62906eb16871`.
+
+- Retained test context (2026-10-11T12:48:12.565Z): tests/unit/company-form-planning-lock-order.test.ts; target "cf_lock_15e52f0eaaa8475ca763e559c705ee84"; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:18.368Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_signatures; references `0313e1f7-0501-492b-8607-8d633c7ff70b`, `5ca8ad2b-b315-48fd-89e0-a3b4171a6904`.
+
+- Retained test context (2026-10-11T12:48:18.369Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_signature_attachments; references `0313e1f7-0501-492b-8607-8d633c7ff70b`, `5ca8ad2b-b315-48fd-89e0-a3b4171a6904`.
+
+- Retained test context (2026-10-11T12:48:18.370Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `712569a2-0ddc-4009-964a-1a28bdf0c7d8`, `21a9e233-d45c-43b5-ac3a-6f633862fc47`, `0f8253ab-5b7d-4359-951e-21ab47e8dcd1`, `5a8bcadc-1d59-4b40-a879-433d8c5431e9`.
+
+- Retained test context (2026-10-11T12:48:18.370Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `712569a2-0ddc-4009-964a-1a28bdf0c7d8`, `21a9e233-d45c-43b5-ac3a-6f633862fc47`, `0f8253ab-5b7d-4359-951e-21ab47e8dcd1`, `5a8bcadc-1d59-4b40-a879-433d8c5431e9`.
+
+- Retained test context (2026-10-11T12:48:18.371Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `5690eb0c-1dd9-42c1-8746-c3e9de2fd83e`.
+
+- Retained test context (2026-10-11T12:48:18.371Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `5690eb0c-1dd9-42c1-8746-c3e9de2fd83e`.
+
+- Retained test context (2026-10-11T12:48:18.372Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submission_assignments; references `5553e2e4-ecfa-4625-97a6-b9c572e381d2`, `0dd770c5-80e1-4e67-be87-015c6570b19a`, `f2de4ee1-8ada-42cd-adf1-15e728803ec7`, `0cb7b079-fb4f-4c15-bdfe-695dd8668670`, `25f2d16b-a577-4609-aee2-9a4df9dc180e`.
+
+- Retained test context (2026-10-11T12:48:18.372Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submissions; references `5553e2e4-ecfa-4625-97a6-b9c572e381d2`, `0dd770c5-80e1-4e67-be87-015c6570b19a`, `f2de4ee1-8ada-42cd-adf1-15e728803ec7`, `0cb7b079-fb4f-4c15-bdfe-695dd8668670`, `25f2d16b-a577-4609-aee2-9a4df9dc180e`.
+
+- Retained test context (2026-10-11T12:48:18.373Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_assignments; references `5553e2e4-ecfa-4625-97a6-b9c572e381d2`, `0dd770c5-80e1-4e67-be87-015c6570b19a`, `f2de4ee1-8ada-42cd-adf1-15e728803ec7`, `0cb7b079-fb4f-4c15-bdfe-695dd8668670`, `25f2d16b-a577-4609-aee2-9a4df9dc180e`.
+
+- Retained test context (2026-10-11T12:48:18.373Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_members_v2; references `6081c30b-615c-4019-811e-575529bc2c11`.
+
+- Retained test context (2026-10-11T12:48:18.374Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_questions; references `c32a04ba-3910-4245-8215-038502e4a653`, `049f50d9-319d-4960-a9cb-fe65c63d9699`, `2d6a7b1c-6ef9-4c87-8a6b-25d4de68c718`, `6fad1690-baa6-4ff3-8890-56ec60e6f8db`.
+
+- Retained test context (2026-10-11T12:48:18.375Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_sections; references `c32a04ba-3910-4245-8215-038502e4a653`, `049f50d9-319d-4960-a9cb-fe65c63d9699`, `2d6a7b1c-6ef9-4c87-8a6b-25d4de68c718`, `6fad1690-baa6-4ff3-8890-56ec60e6f8db`.
+
+- Retained test context (2026-10-11T12:48:18.376Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_options; references `b7c57749-49a7-424b-8b05-699eb93ded5a`, `e2291c09-5dc6-4ea4-a01d-06af8bf07f9e`, `39d04917-7590-464a-b378-a0c0de63168a`, `c202af6e-7590-42ec-86bb-6120f2394f1b`.
+
+- Retained test context (2026-10-11T12:48:18.376Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_option_sets; references `b7c57749-49a7-424b-8b05-699eb93ded5a`, `e2291c09-5dc6-4ea4-a01d-06af8bf07f9e`, `39d04917-7590-464a-b378-a0c0de63168a`, `c202af6e-7590-42ec-86bb-6120f2394f1b`.
+
+- Retained test context (2026-10-11T12:48:18.377Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_form_parts; references `53dceb9d-dbf4-4959-b6a1-b0afa98629d9`, `f93cc92a-996b-4e59-9650-85e95706ee55`, `b820c334-bacd-4282-97bb-de5cd51f9da6`, `acc3cb88-a453-4d49-a431-a0e5910d1e30`.
+
+- Retained test context (2026-10-11T12:48:18.377Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessel_types; references `a4f6cf98-8106-4510-b1f5-b3caee83c0c2`.
+
+- Retained test context (2026-10-11T12:48:18.378Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_form_versions_v2; references `ddce8498-d44a-4111-ae26-3a2abcffd1a5`, `b63e8c3b-eea0-414f-90ca-2ef06105bd75`, `9a21d5c8-1d25-4394-bf90-9d4edd156bea`, `aaddcad3-c22c-4c41-8cc1-afcfd7c2234b`, `b3b1aa5a-67a9-4170-85cd-e649ea655284`.
+
+- Retained test context (2026-10-11T12:48:18.378Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_forms_v2; references `d2235168-6f49-4158-b3f8-daa0f8855227`, `fdaab85c-08d3-4cf4-ab86-b00e571f30fe`, `74e95495-1671-44d4-819a-ded52fc0e190`.
+
+- Retained test context (2026-10-11T12:48:18.379Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_resource_action_grants; references `29dcc9fd-7e2e-46f6-90ac-0b1abcbe8e20`, `cf2d0e84-9eaf-4333-8e27-3e190e967b51`, `a765ce86-7f08-43d4-a46b-c791924d7131`, `bb1cd834-7e7a-48b1-9852-acd405e5fd8a`, `daeac597-3569-4441-b23f-2637ca64f39c`.
+
+- Retained test context (2026-10-11T12:48:18.380Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_roleaccess_ac; references `29dcc9fd-7e2e-46f6-90ac-0b1abcbe8e20`, `cf2d0e84-9eaf-4333-8e27-3e190e967b51`, `a765ce86-7f08-43d4-a46b-c791924d7131`, `bb1cd834-7e7a-48b1-9852-acd405e5fd8a`, `daeac597-3569-4441-b23f-2637ca64f39c`.
+
+- Retained test context (2026-10-11T12:48:18.380Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_rolemaster_ac; references `29dcc9fd-7e2e-46f6-90ac-0b1abcbe8e20`, `cf2d0e84-9eaf-4333-8e27-3e190e967b51`, `a765ce86-7f08-43d4-a46b-c791924d7131`, `bb1cd834-7e7a-48b1-9852-acd405e5fd8a`, `daeac597-3569-4441-b23f-2637ca64f39c`.
+
+- Retained test context (2026-10-11T12:48:18.381Z): tests/integration/api/company-form-submission-starts.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:18.381Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `5828b543-2f65-49a5-9018-e3ee551311d5`.
+
+- Retained test context (2026-10-11T12:48:18.381Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `1f720bc3-6383-4d5c-8da2-0bda33264e28`.
+
+- Retained test context (2026-10-11T12:48:18.388Z): tests/integration/api/company-form-submission-starts.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:33.406Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:33.408Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:33.409Z): tests/integration/api/company-form-signing-and-completion.test.ts; target cleanup context; references `93a60e0e-a758-4097-9c0b-5501c32977e8`, `c4050d75-54db-4c7a-8a35-de7f74f792ca`, `1a99ca80-da83-4fde-a9cb-57d4cc543121`, `3106ee85-ac52-411f-8b94-39e01b8d36c9`, `c7b84405-816c-4761-b813-85a7777dc94c`.
+
+- Retained test context (2026-10-11T12:48:33.415Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_signatures; references `93a60e0e-a758-4097-9c0b-5501c32977e8`, `c4050d75-54db-4c7a-8a35-de7f74f792ca`, `1a99ca80-da83-4fde-a9cb-57d4cc543121`, `3106ee85-ac52-411f-8b94-39e01b8d36c9`, `c7b84405-816c-4761-b813-85a7777dc94c`.
+
+- Retained test context (2026-10-11T12:48:33.418Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_signature_attachments; references `070123a7-ad3b-4c11-a2d7-c20265e9dd5d`, `0b09af73-71ba-4a9e-9f4c-b9f0b1665602`, `38f0fe42-8914-4551-bc82-36aa7b99bb5f`, `42960fcf-da14-4948-bca7-04d1e8eddfb9`, `ae7f3d6c-13f9-457a-a44d-0b10d72ec1b9`, `eb7333a5-d28a-4467-89d7-17f2d364c871`.
+
+- Retained test context (2026-10-11T12:48:33.419Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references `93a60e0e-a758-4097-9c0b-5501c32977e8`, `c4050d75-54db-4c7a-8a35-de7f74f792ca`, `1a99ca80-da83-4fde-a9cb-57d4cc543121`, `3106ee85-ac52-411f-8b94-39e01b8d36c9`, `c7b84405-816c-4761-b813-85a7777dc94c`.
+
+- Retained test context (2026-10-11T12:48:33.419Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_answers; references `93a60e0e-a758-4097-9c0b-5501c32977e8`, `c4050d75-54db-4c7a-8a35-de7f74f792ca`, `1a99ca80-da83-4fde-a9cb-57d4cc543121`, `3106ee85-ac52-411f-8b94-39e01b8d36c9`, `c7b84405-816c-4761-b813-85a7777dc94c`.
+
+- Retained test context (2026-10-11T12:48:33.420Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_states; references `93a60e0e-a758-4097-9c0b-5501c32977e8`, `c4050d75-54db-4c7a-8a35-de7f74f792ca`, `1a99ca80-da83-4fde-a9cb-57d4cc543121`, `3106ee85-ac52-411f-8b94-39e01b8d36c9`, `c7b84405-816c-4761-b813-85a7777dc94c`.
+
+- Retained test context (2026-10-11T12:48:33.421Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_assignments; references `93a60e0e-a758-4097-9c0b-5501c32977e8`, `c4050d75-54db-4c7a-8a35-de7f74f792ca`, `1a99ca80-da83-4fde-a9cb-57d4cc543121`, `3106ee85-ac52-411f-8b94-39e01b8d36c9`, `c7b84405-816c-4761-b813-85a7777dc94c`.
+
+- Retained test context (2026-10-11T12:48:33.427Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references `93a60e0e-a758-4097-9c0b-5501c32977e8`, `c4050d75-54db-4c7a-8a35-de7f74f792ca`, `1a99ca80-da83-4fde-a9cb-57d4cc543121`, `3106ee85-ac52-411f-8b94-39e01b8d36c9`, `c7b84405-816c-4761-b813-85a7777dc94c`.
+
+- Retained test context (2026-10-11T12:48:33.428Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_questions; references `420caed5-0d90-4fcc-87fd-6795730ff285`, `43e062e6-147f-4052-b1d3-7a9dedaaa26a`, `1719a831-4f2f-4aa7-b81b-e583f635c7c3`, `38a6ee61-f060-4988-8a36-e10c572b5d14`.
+
+- Retained test context (2026-10-11T12:48:33.428Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_sections; references `420caed5-0d90-4fcc-87fd-6795730ff285`, `43e062e6-147f-4052-b1d3-7a9dedaaa26a`, `1719a831-4f2f-4aa7-b81b-e583f635c7c3`, `38a6ee61-f060-4988-8a36-e10c572b5d14`.
+
+- Retained test context (2026-10-11T12:48:33.432Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_form_parts; references `420caed5-0d90-4fcc-87fd-6795730ff285`, `43e062e6-147f-4052-b1d3-7a9dedaaa26a`, `1719a831-4f2f-4aa7-b81b-e583f635c7c3`, `38a6ee61-f060-4988-8a36-e10c572b5d14`.
+
+- Retained test context (2026-10-11T12:48:33.432Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_form_versions_v2; references `420caed5-0d90-4fcc-87fd-6795730ff285`, `43e062e6-147f-4052-b1d3-7a9dedaaa26a`, `1719a831-4f2f-4aa7-b81b-e583f635c7c3`, `38a6ee61-f060-4988-8a36-e10c572b5d14`.
+
+- Retained test context (2026-10-11T12:48:33.433Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_forms_v2; references `eca22594-7bad-4b9e-9270-dd461a663378`, `6ab56b76-b2b1-460b-85ce-1a8ef252a414`.
+
+- Retained test context (2026-10-11T12:48:33.433Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_assignments; references `6ee1b4a0-847c-4c90-9f5a-5cf9796904ed`, `bb0fd49e-f8e5-40d3-9982-c7f842f5ac13`, `5e94f21b-6a9d-4e54-ada0-c6ae55509485`, `4e95f583-69c1-44b8-b805-3626a6f3deaf`.
+
+- Retained test context (2026-10-11T12:48:33.433Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_members_v2; references `4f8b32cc-7a75-47a2-9159-d791261e50cd`.
+
+- Retained test context (2026-10-11T12:48:33.434Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `ac782961-5ef9-44eb-b53e-02d88d36685f`.
+
+- Retained test context (2026-10-11T12:48:33.434Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `93550251-c63d-4d18-9387-1b84fb06fc88`.
+
+- Retained test context (2026-10-11T12:48:33.438Z): tests/integration/api/company-form-signing-and-completion.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:33.452Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_resource_action_grants; references `bcfd6604-59fb-4a41-8080-fe8a09127c4a`, `d9440e0f-2a12-49c9-ad8f-8a3c2464b9dc`, `bfc326e3-5bf1-482a-b687-8e5a040368d9`, `4d8281d3-12bb-4aa2-9ace-f50879fcb3dc`.
+
+- Retained test context (2026-10-11T12:48:33.452Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_roleaccess_ac; references `bcfd6604-59fb-4a41-8080-fe8a09127c4a`, `d9440e0f-2a12-49c9-ad8f-8a3c2464b9dc`, `bfc326e3-5bf1-482a-b687-8e5a040368d9`, `4d8281d3-12bb-4aa2-9ace-f50879fcb3dc`.
+
+- Retained test context (2026-10-11T12:48:33.453Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:33.453Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_rolemaster_ac; references `bcfd6604-59fb-4a41-8080-fe8a09127c4a`, `d9440e0f-2a12-49c9-ad8f-8a3c2464b9dc`, `bfc326e3-5bf1-482a-b687-8e5a040368d9`, `4d8281d3-12bb-4aa2-9ace-f50879fcb3dc`.
+
+- Retained test context (2026-10-11T12:48:42.735Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `b4ffbf10-8b19-42b1-9b6d-036845d2fed8`.
+
+- Retained test context (2026-10-11T12:48:42.739Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `b4ffbf10-8b19-42b1-9b6d-036845d2fed8`.
+
+- Retained test context (2026-10-11T12:48:42.741Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `b4ffbf10-8b19-42b1-9b6d-036845d2fed8`.
+
+- Retained test context (2026-10-11T12:48:42.741Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `b4ffbf10-8b19-42b1-9b6d-036845d2fed8`.
+
+- Retained test context (2026-10-11T12:48:42.742Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `b4ffbf10-8b19-42b1-9b6d-036845d2fed8`.
+
+- Retained test context (2026-10-11T12:48:42.742Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `d5411153-7d97-4baa-822e-4b93ea846b95`.
+
+- Retained test context (2026-10-11T12:48:42.743Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `d5411153-7d97-4baa-822e-4b93ea846b95`.
+
+- Retained test context (2026-10-11T12:48:42.744Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `d5411153-7d97-4baa-822e-4b93ea846b95`.
+
+- Retained test context (2026-10-11T12:48:42.745Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `d5411153-7d97-4baa-822e-4b93ea846b95`.
+
+- Retained test context (2026-10-11T12:48:42.745Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `d5411153-7d97-4baa-822e-4b93ea846b95`.
+
+- Retained test context (2026-10-11T12:48:42.746Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `d204a0a2-2193-4f3e-a2a9-a8b859fc4199`.
+
+- Retained test context (2026-10-11T12:48:42.746Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `d204a0a2-2193-4f3e-a2a9-a8b859fc4199`.
+
+- Retained test context (2026-10-11T12:48:42.747Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `d204a0a2-2193-4f3e-a2a9-a8b859fc4199`.
+
+- Retained test context (2026-10-11T12:48:42.748Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `d204a0a2-2193-4f3e-a2a9-a8b859fc4199`.
+
+- Retained test context (2026-10-11T12:48:42.749Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `d204a0a2-2193-4f3e-a2a9-a8b859fc4199`.
+
+- Retained test context (2026-10-11T12:48:42.749Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `d479a3ad-1045-482b-b130-c33708bfebf6`.
+
+- Retained test context (2026-10-11T12:48:42.750Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `d479a3ad-1045-482b-b130-c33708bfebf6`.
+
+- Retained test context (2026-10-11T12:48:42.750Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `d479a3ad-1045-482b-b130-c33708bfebf6`.
+
+- Retained test context (2026-10-11T12:48:42.751Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `d479a3ad-1045-482b-b130-c33708bfebf6`.
+
+- Retained test context (2026-10-11T12:48:42.751Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `d479a3ad-1045-482b-b130-c33708bfebf6`.
+
+- Retained test context (2026-10-11T12:48:42.754Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `5afee054-b1eb-4481-a03e-4f0b57445f72`.
+
+- Retained test context (2026-10-11T12:48:42.755Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `5afee054-b1eb-4481-a03e-4f0b57445f72`.
+
+- Retained test context (2026-10-11T12:48:42.755Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `5afee054-b1eb-4481-a03e-4f0b57445f72`.
+
+- Retained test context (2026-10-11T12:48:42.758Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `5afee054-b1eb-4481-a03e-4f0b57445f72`.
+
+- Retained test context (2026-10-11T12:48:42.759Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `5afee054-b1eb-4481-a03e-4f0b57445f72`.
+
+- Retained test context (2026-10-11T12:48:42.759Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `766e308a-9874-464d-ac28-2cfa492018fc`.
+
+- Retained test context (2026-10-11T12:48:42.760Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `766e308a-9874-464d-ac28-2cfa492018fc`.
+
+- Retained test context (2026-10-11T12:48:42.760Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `766e308a-9874-464d-ac28-2cfa492018fc`.
+
+- Retained test context (2026-10-11T12:48:42.760Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `766e308a-9874-464d-ac28-2cfa492018fc`.
+
+- Retained test context (2026-10-11T12:48:42.761Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `766e308a-9874-464d-ac28-2cfa492018fc`.
+
+- Retained test context (2026-10-11T12:48:42.761Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `9ac751c8-b09a-4a34-ac62-21062a6b4982`.
+
+- Retained test context (2026-10-11T12:48:42.762Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `9ac751c8-b09a-4a34-ac62-21062a6b4982`.
+
+- Retained test context (2026-10-11T12:48:42.762Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `9ac751c8-b09a-4a34-ac62-21062a6b4982`.
+
+- Retained test context (2026-10-11T12:48:42.763Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `9ac751c8-b09a-4a34-ac62-21062a6b4982`.
+
+- Retained test context (2026-10-11T12:48:42.763Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `9ac751c8-b09a-4a34-ac62-21062a6b4982`.
+
+- Retained test context (2026-10-11T12:48:42.763Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `6330716b-5f3e-4e6d-9471-67e43882045b`.
+
+- Retained test context (2026-10-11T12:48:42.764Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `6330716b-5f3e-4e6d-9471-67e43882045b`.
+
+- Retained test context (2026-10-11T12:48:42.764Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `6330716b-5f3e-4e6d-9471-67e43882045b`.
+
+- Retained test context (2026-10-11T12:48:42.764Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `6330716b-5f3e-4e6d-9471-67e43882045b`.
+
+- Retained test context (2026-10-11T12:48:42.765Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `6330716b-5f3e-4e6d-9471-67e43882045b`.
+
+- Retained test context (2026-10-11T12:48:42.765Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `c90b2eff-5301-44d2-b07e-04ae6a286625`.
+
+- Retained test context (2026-10-11T12:48:42.766Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `c90b2eff-5301-44d2-b07e-04ae6a286625`.
+
+- Retained test context (2026-10-11T12:48:42.766Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `c90b2eff-5301-44d2-b07e-04ae6a286625`.
+
+- Retained test context (2026-10-11T12:48:42.767Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `c90b2eff-5301-44d2-b07e-04ae6a286625`.
+
+- Retained test context (2026-10-11T12:48:42.767Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `c90b2eff-5301-44d2-b07e-04ae6a286625`.
+
+- Retained test context (2026-10-11T12:48:42.767Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `dfc04fdc-207d-4daf-86c8-e97618b49892`.
+
+- Retained test context (2026-10-11T12:48:42.767Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `dfc04fdc-207d-4daf-86c8-e97618b49892`.
+
+- Retained test context (2026-10-11T12:48:42.768Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `dfc04fdc-207d-4daf-86c8-e97618b49892`.
+
+- Retained test context (2026-10-11T12:48:42.768Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `dfc04fdc-207d-4daf-86c8-e97618b49892`.
+
+- Retained test context (2026-10-11T12:48:42.768Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `dfc04fdc-207d-4daf-86c8-e97618b49892`.
+
+- Retained test context (2026-10-11T12:48:48.676Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_signatures; references `058f62e9-b915-4752-b1ad-93d9dd4738e4`, `e0591233-dda2-4d8d-ae5f-d2cb13875f05`.
+
+- Retained test context (2026-10-11T12:48:48.677Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_answers; references `058f62e9-b915-4752-b1ad-93d9dd4738e4`, `e0591233-dda2-4d8d-ae5f-d2cb13875f05`.
+
+- Retained test context (2026-10-11T12:48:48.678Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_states; references `058f62e9-b915-4752-b1ad-93d9dd4738e4`, `e0591233-dda2-4d8d-ae5f-d2cb13875f05`.
+
+- Retained test context (2026-10-11T12:48:48.678Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submission_assignments; references `058f62e9-b915-4752-b1ad-93d9dd4738e4`, `e0591233-dda2-4d8d-ae5f-d2cb13875f05`.
+
+- Retained test context (2026-10-11T12:48:48.679Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submissions; references `058f62e9-b915-4752-b1ad-93d9dd4738e4`, `e0591233-dda2-4d8d-ae5f-d2cb13875f05`.
+
+- Retained test context (2026-10-11T12:48:48.679Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_signature_attachments; references `512de593-2d6d-4697-a81a-b5cbca6ccc91`.
+
+- Retained test context (2026-10-11T12:48:48.680Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_assignments; references `98315de1-c66d-4750-9f63-d70f1d07f2fb`, `8f219a95-4678-4b60-b673-4648417734b6`.
+
+- Retained test context (2026-10-11T12:48:48.680Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_members_v2; references `3363cfe7-f4ed-4573-b13f-6d69b1402be2`.
+
+- Retained test context (2026-10-11T12:48:48.681Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_questions; references `c0848cd4-ee21-4642-a73c-6c8f111578a7`.
+
+- Retained test context (2026-10-11T12:48:48.682Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_sections; references `70a159ab-f7cc-4643-93ca-520e5ce5264a`.
+
+- Retained test context (2026-10-11T12:48:48.684Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_form_parts; references `40184b8b-2295-4a65-b4eb-e535d7c956d0`.
+
+- Retained test context (2026-10-11T12:48:48.684Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_options; references `2d6d0242-725d-4980-bb99-a45d979a6d1d`.
+
+- Retained test context (2026-10-11T12:48:48.685Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_option_sets; references `2d6d0242-725d-4980-bb99-a45d979a6d1d`.
+
+- Retained test context (2026-10-11T12:48:48.685Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_form_versions_v2; references `1c520f3b-f218-4666-a448-226d4602d93a`.
+
+- Retained test context (2026-10-11T12:48:48.685Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_forms_v2; references `d76e58cb-272b-46ac-b518-36e0d9a99340`.
+
+- Retained test context (2026-10-11T12:48:48.686Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_resource_action_grants; references `d5c06d8f-6eff-4e02-b307-5c150b188aa1`, `16bdad6b-6703-4164-81b1-11c8a52cfe01`, `f616fea4-b071-484c-a449-77d802728672`, `5bae509e-29a4-47f0-b8e1-6602dfe43994`, `d7d9593e-8187-4188-8faf-8be1cb2560ba`, `d9a072da-5398-40b4-8b16-5bca1d3dbb1d`, `72b593e8-3908-4b71-9bc1-54e3e9513054`.
+
+- Retained test context (2026-10-11T12:48:48.687Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_roleaccess_ac; references `d5c06d8f-6eff-4e02-b307-5c150b188aa1`, `16bdad6b-6703-4164-81b1-11c8a52cfe01`, `f616fea4-b071-484c-a449-77d802728672`, `5bae509e-29a4-47f0-b8e1-6602dfe43994`, `d7d9593e-8187-4188-8faf-8be1cb2560ba`, `d9a072da-5398-40b4-8b16-5bca1d3dbb1d`, `72b593e8-3908-4b71-9bc1-54e3e9513054`.
+
+- Retained test context (2026-10-11T12:48:48.687Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_rolemaster_ac; references `d5c06d8f-6eff-4e02-b307-5c150b188aa1`, `16bdad6b-6703-4164-81b1-11c8a52cfe01`, `f616fea4-b071-484c-a449-77d802728672`, `5bae509e-29a4-47f0-b8e1-6602dfe43994`, `d7d9593e-8187-4188-8faf-8be1cb2560ba`, `d9a072da-5398-40b4-8b16-5bca1d3dbb1d`, `72b593e8-3908-4b71-9bc1-54e3e9513054`.
+
+- Retained test context (2026-10-11T12:48:48.688Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:48.688Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `82f9cbe3-23b5-4bae-9be7-3f2118ebde17`.
+
+- Retained test context (2026-10-11T12:48:48.688Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `a68063fb-e8e5-44dc-bb25-3c77080561fa`.
+
+- Retained test context (2026-10-11T12:48:48.689Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessel_types; references `bb2a6534-c50a-4f54-a90e-88446c584d7b`.
+
+- Retained test context (2026-10-11T12:48:48.695Z): tests/integration/api/company-form-submission-boundary.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:54.661Z): tests/integration/company-form-stage-less-runtime.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:54.994Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:54.995Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references `847b816e-b3a3-44ce-a532-58091ede96e7`, `a82ad62e-98dd-4e83-91f8-7198e6226dee`, `ef6fe3af-09a3-499b-95d7-183c72e227ef`, `fa4ca008-5703-4894-963b-d13a4a827bd5`, `357ef736-5312-48a0-84b0-aaab5b92a2ed`.
+
+- Retained test context (2026-10-11T12:48:55.002Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_signatures; references `847b816e-b3a3-44ce-a532-58091ede96e7`, `a82ad62e-98dd-4e83-91f8-7198e6226dee`, `ef6fe3af-09a3-499b-95d7-183c72e227ef`, `fa4ca008-5703-4894-963b-d13a4a827bd5`, `357ef736-5312-48a0-84b0-aaab5b92a2ed`.
+
+- Retained test context (2026-10-11T12:48:55.005Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_answers; references `847b816e-b3a3-44ce-a532-58091ede96e7`, `a82ad62e-98dd-4e83-91f8-7198e6226dee`, `ef6fe3af-09a3-499b-95d7-183c72e227ef`, `fa4ca008-5703-4894-963b-d13a4a827bd5`, `357ef736-5312-48a0-84b0-aaab5b92a2ed`.
+
+- Retained test context (2026-10-11T12:48:55.006Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_states; references `847b816e-b3a3-44ce-a532-58091ede96e7`, `a82ad62e-98dd-4e83-91f8-7198e6226dee`, `ef6fe3af-09a3-499b-95d7-183c72e227ef`, `fa4ca008-5703-4894-963b-d13a4a827bd5`, `357ef736-5312-48a0-84b0-aaab5b92a2ed`.
+
+- Retained test context (2026-10-11T12:48:55.006Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submissions; references `847b816e-b3a3-44ce-a532-58091ede96e7`, `a82ad62e-98dd-4e83-91f8-7198e6226dee`, `ef6fe3af-09a3-499b-95d7-183c72e227ef`, `fa4ca008-5703-4894-963b-d13a4a827bd5`, `357ef736-5312-48a0-84b0-aaab5b92a2ed`.
+
+- Retained test context (2026-10-11T12:48:55.007Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_signature_attachments; references `7f284f0a-6359-4fb5-b850-9bd0dc7e628b`, `ed4c5867-c1d2-44f5-8cdc-2409be45f0f8`, `215be1f4-9c2b-41d0-a6af-e45fc2a27f57`, `d811b57e-6400-4da4-a1cd-401e06996456`, `d4e40a32-0caf-4f90-9f67-b36ba12d7b34`, `b04b16e0-558f-45f1-9715-4e99e27124d7`.
+
+- Retained test context (2026-10-11T12:48:55.007Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_questions; references `7935c2ee-c98c-4bcd-b90f-7fc326cab4b0`, `80825621-e41f-4d25-ba2e-5138f4af6bd4`, `dbb42902-7395-4efa-b00b-63243e61790b`, `b92c119b-1281-406c-9b04-7d9b1b743572`, `d96527c7-6437-4699-9257-90daea4e2cc2`, `4a648547-4101-4168-92bd-2fd422298a4c`, `2fb647db-e8ef-46f0-95b1-a06b5c47df93`.
+
+- Retained test context (2026-10-11T12:48:55.008Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_sections; references `a9f04627-1f94-4725-8999-5d6f6dd2b118`, `e5d51990-827c-4c85-9ff7-4775a57c0e8f`, `895ecbf6-267f-4693-8557-039b0748f779`, `c1c57aca-c3f8-4ea5-b0da-83d4e5328e87`, `1da647e9-0f84-4501-bf50-f1a407ec0986`.
+
+- Retained test context (2026-10-11T12:48:55.008Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_form_parts; references `6bbadf41-64cb-41c8-915d-58942e165d58`.
+
+- Retained test context (2026-10-11T12:48:55.009Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_form_versions_v2; references `26acaede-dac6-4b55-a408-296ac3ab84e8`.
+
+- Retained test context (2026-10-11T12:48:55.009Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_forms_v2; references `a9fe4e29-f078-4508-a2e0-9688b8ec28bc`.
+
+- Retained test context (2026-10-11T12:48:55.009Z): tests/integration/company-form-stage-less-runtime.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:55.010Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_roleaccess_ac; references `bcd87753-e01c-4406-a774-a57dc1f074dd`.
+
+- Retained test context (2026-10-11T12:48:55.010Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_rolemaster_ac; references `bcd87753-e01c-4406-a774-a57dc1f074dd`.
+
+- Retained test context (2026-10-11T12:48:55.011Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_subject_types; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:59.644Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_answers; references `09cdf358-ae8f-43d4-a498-0758943e3c9d`.
+
+- Retained test context (2026-10-11T12:48:59.645Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_section_states; references `09cdf358-ae8f-43d4-a498-0758943e3c9d`.
+
+- Retained test context (2026-10-11T12:48:59.646Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submission_assignments; references `09cdf358-ae8f-43d4-a498-0758943e3c9d`.
+
+- Retained test context (2026-10-11T12:48:59.646Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submissions; references `09cdf358-ae8f-43d4-a498-0758943e3c9d`.
+
+- Retained test context (2026-10-11T12:48:59.647Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_questions; references `e2f2a2aa-57c7-4e13-8b12-75a21f0e9b13`, `684cbec9-bbd4-4bfc-80e7-f8499f4080e2`, `20bcabae-ff14-47f1-9161-115b498e9dd4`, `2f17e645-bafd-48e4-bb27-5d10c6bef025`, `a4f2e91d-c497-4d02-af04-d25af133d9a6`, `43749820-a45c-4a3a-9d12-908f17b0bb90`, `102d75d8-7832-41e6-b07c-470ab72ef329`, `537e4568-a644-40ce-a243-61df47c3cd98`, `4cdb2abd-d1ea-4f43-b0a7-cc5a94bb45e6`, `77020b2a-f902-4cb6-a4e7-f240f7600051`, `d27d64bc-63a1-42cb-8c33-c9ef75f2f69e`, `82686212-5d4c-4173-a548-2da9bbf5c1f6`, `43365638-bf0a-475a-a4da-9653551f0b57`.
+
+- Retained test context (2026-10-11T12:48:59.647Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_sections; references `08bbacdf-8863-421f-8b2f-493cbcaa53cf`.
+
+- Retained test context (2026-10-11T12:48:59.649Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_form_parts; references `6a32a40a-4cd9-4a9e-8f53-dd2ff9f3080f`.
+
+- Retained test context (2026-10-11T12:48:59.650Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_options; references `afde4033-f72e-4f78-8e9e-41ea6c0bff27`.
+
+- Retained test context (2026-10-11T12:48:59.650Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_option_sets; references `afde4033-f72e-4f78-8e9e-41ea6c0bff27`.
+
+- Retained test context (2026-10-11T12:48:59.651Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_form_versions_v2; references `3d759b8a-7f3f-46c4-be7a-50736bb24fde`.
+
+- Retained test context (2026-10-11T12:48:59.652Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_forms_v2; references `45f3d7f2-f0bb-4a4f-9e76-248d0ccbf99a`.
+
+- Retained test context (2026-10-11T12:48:59.652Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_assignments; references `42a3108c-84eb-4c62-b118-d3dc0b60de99`.
+
+- Retained test context (2026-10-11T12:48:59.652Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_members_v2; references `87f9653e-65a9-457d-b695-00f2603abc39`.
+
+- Retained test context (2026-10-11T12:48:59.653Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:48:59.653Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_resource_action_grants; references `23f2f30b-81df-4492-89a6-6a1a797544ab`.
+
+- Retained test context (2026-10-11T12:48:59.654Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_roleaccess_ac; references `23f2f30b-81df-4492-89a6-6a1a797544ab`.
+
+- Retained test context (2026-10-11T12:48:59.654Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_rolemaster_ac; references `23f2f30b-81df-4492-89a6-6a1a797544ab`.
+
+- Retained test context (2026-10-11T12:49:01.920Z): requirement harness roots; target registered_fixture_context; references `66500298-38f7-427e-b790-aaf2a9aca076`, `026d2aa5-8bfd-4a8d-99ac-3cbe0c971377`, `f401955b-2994-492c-b205-d69483700270`, `0e67fd6b-04d9-4d70-a7e6-24b3beb2343d`.
+
+- Retained test context (2026-10-11T12:49:02.270Z): requirement harness pinned content; target registered_fixture_context; references `d17d6922-7162-4dd0-9da3-610832bc79a4`, `1b1ae814-0df8-4457-9d01-fc80024f934a`, `d79aca40-d645-415f-ac75-47e9d4ffb525`, `229847e8-bccf-4c01-affe-1d0b60a3bdde`.
+
+- Retained test context (2026-10-11T12:49:02.533Z): requirement harness complete ledger graph; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:02.536Z): required lifecycle obligation; target registered_fixture_context; references `1bc1e410-b215-4896-a548-1c4e41d30921`.
+
+- Retained test context (2026-10-11T12:49:02.704Z): lifecycle initial form; target registered_fixture_context; references `ee9ab921-6806-4865-af36-8a66f3d440e0`.
+
+- Retained test context (2026-10-11T12:49:03.168Z): required replacement form; target registered_fixture_context; references `9558feb0-049d-4252-aff9-65634c34c47d`.
+
+- Retained test context (2026-10-11T12:49:03.242Z): requirement harness roots; target registered_fixture_context; references `b1836cd8-5ab2-4abd-8e4f-93434ab82265`, `c01a4f4a-cbbb-48de-90b5-9eac3c85ff59`, `2228961f-d306-4ff7-9c20-de608b2a583a`, `55e2c800-a96b-4448-a333-6b1f9cd1fcab`.
+
+- Retained test context (2026-10-11T12:49:03.427Z): requirement harness pinned content; target registered_fixture_context; references `990ea244-1026-4c5f-aa42-79d028e974b6`, `d98b48ef-6f8e-4dc7-a522-5bfcd69a6b9f`, `97b7c83e-b22d-49d9-8a87-463bbd3838d7`, `cc10bef2-a31d-411d-874b-5899cbfa9923`.
+
+- Retained test context (2026-10-11T12:49:03.761Z): earlier manual collision; target registered_fixture_context; references `0a9c2f53-d73e-40de-935d-45190a438da3`, `89340ea6-e0c0-4918-acd1-8abc774e3448`, `e3260a01-392f-4eb2-b39b-57935c6b6388`.
+
+- Retained test context (2026-10-11T12:49:03.904Z): manual conflict required replacement; target registered_fixture_context; references `0e498610-2369-4d10-86dd-e642974f7f4f`.
+
+- Retained test context (2026-10-11T12:49:03.904Z): requirement harness roots; target registered_fixture_context; references `bcf527f4-e837-4160-8320-b2470185250a`, `1d5feb1c-95a3-4078-bf52-aea0a9dac994`, `b406ae76-6790-42c0-abcc-1770463eeb46`, `72b0c9cb-c3d6-40cd-9052-d14ad2597fc7`.
+
+- Retained test context (2026-10-11T12:49:03.969Z): requirement harness pinned content; target registered_fixture_context; references `93ce0756-fa8b-48df-81be-33b2e7fd1f5f`, `cf735a8b-bd40-42dd-9b2a-b2edb928a5c6`, `4da9a900-e4d8-44c5-bda5-bf1b184a9be8`, `ac2f19d8-cdd5-4de1-822f-4660f414bf89`.
+
+- Retained test context (2026-10-11T12:49:04.102Z): unresolved obligation; target registered_fixture_context; references `1b8f2152-84cf-4c19-83ba-2a24ca3a534f`.
+
+- Retained test context (2026-10-11T12:49:04.193Z): failed run; target registered_fixture_context; references `7028038e-89da-4603-804b-e686f69a6304`.
+
+- Retained test context (2026-10-11T12:49:05.992Z): requirement harness roots; target registered_fixture_context; references `9810eda1-708b-4ec1-9c99-a885aa9f060a`, `41079905-abcb-48cf-9642-c05be615421e`, `05c6efc8-25e4-4a19-8525-eb0423646e6f`, `26885ecc-3b6a-4872-81fa-323796c729f5`.
+
+- Retained test context (2026-10-11T12:49:07.402Z): requirement harness pinned content; target registered_fixture_context; references `eff1c573-f928-4a5b-8079-6c683a1e54d0`, `8dfbda77-305d-4c8b-81f1-8bd42bc081c5`, `5450f583-3236-49eb-80b2-659e5fda5e34`, `f6b31536-7edb-4124-86eb-db4f6da90690`.
+
+- Retained test context (2026-10-11T12:49:07.959Z): requirement harness roots; target registered_fixture_context; references `5e894c46-0f49-4fcb-bd77-e0c196d05b59`, `9367d790-ef94-4833-b4b6-333d08548459`, `944505b1-88e6-4978-993d-b59a88ead6dc`, `8d6bc3f7-6c5f-4cd2-8810-483d04782fe8`.
+
+- Retained test context (2026-10-11T12:49:08.179Z): requirement harness pinned content; target registered_fixture_context; references `7843c194-321c-47a1-b687-74eab27874fa`, `af1d3bb8-dcd6-4b2f-a55c-cd9a25f154d2`, `b969c1bf-0141-4fd8-a06a-c9d6d3bdd3b6`, `74efbd16-6cff-4706-9057-d2ee615ccbba`.
+
+- Retained test context (2026-10-11T12:49:08.770Z): requirement harness complete ledger graph; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:08.776Z): required start obligation; target registered_fixture_context; references `2799f61d-8b45-4584-9468-dc4dc6b3a2a5`.
+
+- Retained test context (2026-10-11T12:49:08.960Z): newer release for old-pin start; target registered_fixture_context; references `a75ad744-dca3-437e-afc2-1115608e9605`.
+
+- Retained test context (2026-10-11T12:49:09.475Z): manual without stage check; target registered_fixture_context; references `a9d0696f-2a3c-4d03-8283-a57cc244eff6`.
+
+- Retained test context (2026-10-11T12:49:09.670Z): required old-pin form; target registered_fixture_context; references `d9c89e10-c2a1-4882-b8ba-90bb90a1f49c`.
+
+- Retained test context (2026-10-11T12:49:24.960Z): tests/integration/api/company-form-submission-void-races.test.ts; target cleanup context; references `d59dcb64-a9be-4bcf-9327-17064d0d0e42`.
+
+- Retained test context (2026-10-11T12:49:25.366Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_signatures; references `8de7a988-787f-4c7b-b6c4-70d334b2deb5`, `ce4b13da-dc7e-4672-a912-7407232b941f`, `2795799a-fade-49ac-a0ad-e23c3927819b`, `c6042c19-b5ef-4d06-8902-624234eb11e8`.
+
+- Retained test context (2026-10-11T12:49:25.367Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_answers; references `8de7a988-787f-4c7b-b6c4-70d334b2deb5`, `ce4b13da-dc7e-4672-a912-7407232b941f`, `2795799a-fade-49ac-a0ad-e23c3927819b`, `c6042c19-b5ef-4d06-8902-624234eb11e8`.
+
+- Retained test context (2026-10-11T12:49:25.367Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_system_snapshots; references `8de7a988-787f-4c7b-b6c4-70d334b2deb5`, `ce4b13da-dc7e-4672-a912-7407232b941f`, `2795799a-fade-49ac-a0ad-e23c3927819b`, `c6042c19-b5ef-4d06-8902-624234eb11e8`.
+
+- Retained test context (2026-10-11T12:49:25.368Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_states; references `8de7a988-787f-4c7b-b6c4-70d334b2deb5`, `ce4b13da-dc7e-4672-a912-7407232b941f`, `2795799a-fade-49ac-a0ad-e23c3927819b`, `c6042c19-b5ef-4d06-8902-624234eb11e8`.
+
+- Retained test context (2026-10-11T12:49:25.368Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_assignments; references `8de7a988-787f-4c7b-b6c4-70d334b2deb5`, `ce4b13da-dc7e-4672-a912-7407232b941f`, `2795799a-fade-49ac-a0ad-e23c3927819b`, `c6042c19-b5ef-4d06-8902-624234eb11e8`.
+
+- Retained test context (2026-10-11T12:49:25.370Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submissions; references `8de7a988-787f-4c7b-b6c4-70d334b2deb5`, `ce4b13da-dc7e-4672-a912-7407232b941f`, `2795799a-fade-49ac-a0ad-e23c3927819b`, `c6042c19-b5ef-4d06-8902-624234eb11e8`.
+
+- Retained test context (2026-10-11T12:49:25.372Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_signature_attachments; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:25.372Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_questions; references `07c97bc0-4c03-4e80-8e46-29929a5731c0`.
+
+- Retained test context (2026-10-11T12:49:25.373Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_sections; references `ed92fdfb-1aaf-4253-9200-0f470738848c`.
+
+- Retained test context (2026-10-11T12:49:25.374Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_form_parts; references `4be40043-474e-49a3-be72-7ff825c7c161`.
+
+- Retained test context (2026-10-11T12:49:25.375Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_form_versions_v2; references `6cf7da00-3b90-4d57-88b8-2e938b9f2d9f`.
+
+- Retained test context (2026-10-11T12:49:25.375Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_forms_v2; references `b0d5d4fc-d13c-47ee-a2b1-7bff0d89496f`.
+
+- Retained test context (2026-10-11T12:49:25.376Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_assignments; references `57c47b73-82a0-4c27-9325-d7175947baf0`, `85e68aea-f1af-4014-bc8c-d59ac915368a`, `d97e8d5f-e113-4449-a4b4-182ad37dec83`, `d9feedcd-9f9c-48d8-8e22-eb43f6b3b188`.
+
+- Retained test context (2026-10-11T12:49:25.377Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_members_v2; references `a5ebd13e-902c-4d1e-87d1-41edaba9d927`.
+
+- Retained test context (2026-10-11T12:49:25.378Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_resource_action_grants; references `d59dcb64-a9be-4bcf-9327-17064d0d0e42`, `133d5ca5-fe05-47fa-81f6-d3083c203482`.
+
+- Retained test context (2026-10-11T12:49:25.379Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_roleaccess_ac; references `d59dcb64-a9be-4bcf-9327-17064d0d0e42`.
+
+- Retained test context (2026-10-11T12:49:25.380Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:25.382Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_rolemaster_ac; references `d59dcb64-a9be-4bcf-9327-17064d0d0e42`, `133d5ca5-fe05-47fa-81f6-d3083c203482`.
+
+- Retained test context (2026-10-11T12:49:25.383Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_vessels; references `88941048-f99d-461a-961b-08a603a73903`.
+
+- Retained test context (2026-10-11T12:49:25.402Z): tests/integration/api/company-form-submission-void-races.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:31.080Z): dimension context cf_dimensions_800f846e; target registered_fixture_context; references `226722ae-2e43-487d-a8fb-8cc99339e9e2`, `ce4f7ccc-dd45-40b0-8d33-1c1c0e813ee4`, `127648d5-c198-468c-8161-391848df10f5`, `718310db-54e2-43d6-a580-e2c2bf7050e3`.
+
+- Retained test context (2026-10-11T12:49:31.523Z): cf_dimensions_800f846e.adm_available_ranks_v2 canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:31.549Z): cf_dimensions_800f846e.adm_company_ranks_v2 canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:31.590Z): cf_dimensions_800f846e.master_vessels canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:31.620Z): cf_dimensions_800f846e.master_vessel_types canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:31.720Z): cf_dimensions_800f846e.master_nationalities canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:31.944Z): cf_dimensions_800f846e.master_manning_agents canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:31.969Z): cf_dimensions_800f846e.master_crew_pools canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:32.014Z): cf_dimensions_800f846e.master_fleet_groups canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:32.037Z): cf_dimensions_800f846e.master_additional_groups canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:32.118Z): canonical master copies cf_dimensions_800f846e; target registered_fixture_context; references `55d4c4b0-8e9c-479c-a9f0-9f3fbe95e0e5`, `743feb08-841a-11ed-aa7c-7003bca91a86`.
+
+- Retained test context (2026-10-11T12:49:35.127Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_signatures; references `e0a8b35c-8c04-4aa8-8439-d2d24d414c41`.
+
+- Retained test context (2026-10-11T12:49:35.128Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_signature_attachments; references `6b1c8ad2-9bfb-438d-b5b7-be0c9249a237`, `f60576d5-65f0-4022-a3c7-0d0e105e8456`.
+
+- Retained test context (2026-10-11T12:49:35.129Z): tests/integration/debriefing-submission.acceptance.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:35.130Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_answers; references `e0a8b35c-8c04-4aa8-8439-d2d24d414c41`.
+
+- Retained test context (2026-10-11T12:49:35.131Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_states; references `e0a8b35c-8c04-4aa8-8439-d2d24d414c41`.
+
+- Retained test context (2026-10-11T12:49:35.131Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefing_submissions; references `e0a8b35c-8c04-4aa8-8439-d2d24d414c41`.
+
+- Retained test context (2026-10-11T12:49:35.132Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_questions; references `06f0e3a4-d2de-40a9-9b07-4fcb32e75186`.
+
+- Retained test context (2026-10-11T12:49:35.132Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_sections; references `6fd25eda-2555-49e4-88f2-bb38d92839c9`, `e483c4fe-9f1b-4045-8d45-f9adcb6815ac`, `3a1c58e3-40c1-4606-bb2a-840ccad03807`.
+
+- Retained test context (2026-10-11T12:49:35.133Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_form_parts; references `0bb66c1f-fb06-4fc2-a4a4-8c4a8ee85642`.
+
+- Retained test context (2026-10-11T12:49:35.135Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_form_versions_v2; references `16ad3afe-e5ca-4bc2-937a-1ea3493428cd`, `5bfb1f58-2b27-4503-b406-89ff6372e8b5`.
+
+- Retained test context (2026-10-11T12:49:35.136Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_rank_groups_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:35.136Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_forms_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:35.137Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefings; references `c99ea4ea-3829-4f41-8c8e-831d09da4d8a`, `a853dd42-97e4-4c97-acce-4b2cf2cd340e`, `5a8135b1-c01b-4932-8513-91394f310cd2`.
+
+- Retained test context (2026-10-11T12:49:35.137Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_members_v2; references `f0f0070b-8cb0-48da-8bab-39af93ce9825`.
+
+- Retained test context (2026-10-11T12:49:35.138Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessels; references `d51d56da-88ae-4131-8784-70cbda34eb13`.
+
+- Retained test context (2026-10-11T12:49:35.138Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessel_types; references `54f386ce-47fa-4e5a-b2ed-8152cb989e9d`.
+
+- Retained test context (2026-10-11T12:49:35.139Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:38.100Z): tests/integration/api/company-form-submission-races.test.ts; target frm_answers; references `079d796a-57fd-4513-ae78-f3fe166760d5`, `ef1cfa61-7f43-41d7-a7e3-2c31c797deb8`, `d20aaa06-2b79-4c72-af8e-dd38cb7b883a`.
+
+- Retained test context (2026-10-11T12:49:38.102Z): tests/integration/api/company-form-submission-races.test.ts; target frm_section_states; references `079d796a-57fd-4513-ae78-f3fe166760d5`, `ef1cfa61-7f43-41d7-a7e3-2c31c797deb8`, `d20aaa06-2b79-4c72-af8e-dd38cb7b883a`.
+
+- Retained test context (2026-10-11T12:49:38.103Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submission_assignments; references `079d796a-57fd-4513-ae78-f3fe166760d5`, `ef1cfa61-7f43-41d7-a7e3-2c31c797deb8`, `d20aaa06-2b79-4c72-af8e-dd38cb7b883a`.
+
+- Retained test context (2026-10-11T12:49:38.103Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submissions; references `079d796a-57fd-4513-ae78-f3fe166760d5`, `ef1cfa61-7f43-41d7-a7e3-2c31c797deb8`, `d20aaa06-2b79-4c72-af8e-dd38cb7b883a`.
+
+- Retained test context (2026-10-11T12:49:38.104Z): tests/integration/api/company-form-submission-races.test.ts; target crew_assignments; references `d85beca6-7864-44b8-b273-797312ec0065`, `7134c6f8-1f88-463b-8732-46c18852f4d5`, `0f36f69c-627d-4de2-be96-0f67e20744f9`, `e39e9765-1309-4a25-8d9d-0f446da9d496`, `fd26a829-43dd-4765-a5b8-d29818b3464d`.
+
+- Retained test context (2026-10-11T12:49:38.104Z): tests/integration/api/company-form-submission-races.test.ts; target frm_questions; references `4a17bded-7ba2-48fd-8e35-c6861e01024d`.
+
+- Retained test context (2026-10-11T12:49:38.105Z): tests/integration/api/company-form-submission-races.test.ts; target frm_sections; references `0a2fd0af-522e-46fa-b83b-d49114cfa6da`.
+
+- Retained test context (2026-10-11T12:49:38.105Z): tests/integration/api/company-form-submission-races.test.ts; target frm_form_parts; references `c45463a5-bd67-43d7-8462-fd5e2d1a78a8`.
+
+- Retained test context (2026-10-11T12:49:38.105Z): tests/integration/api/company-form-submission-races.test.ts; target adm_form_versions_v2; references `2e922746-fd08-42f8-a135-62bc49bf6bf5`.
+
+- Retained test context (2026-10-11T12:49:38.106Z): tests/integration/api/company-form-submission-races.test.ts; target adm_forms_v2; references `3d99c4d0-a3eb-4d91-9c02-c09ac2f731c1`.
+
+- Retained test context (2026-10-11T12:49:38.107Z): tests/integration/api/company-form-submission-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:38.107Z): tests/integration/api/company-form-submission-races.test.ts; target adm_resource_action_grants; references `35ca9cf2-3918-4a18-ba8c-b7092060f2ad`.
+
+- Retained test context (2026-10-11T12:49:38.108Z): tests/integration/api/company-form-submission-races.test.ts; target adm_roleaccess_ac; references `35ca9cf2-3918-4a18-ba8c-b7092060f2ad`.
+
+- Retained test context (2026-10-11T12:49:38.108Z): tests/integration/api/company-form-submission-races.test.ts; target adm_rolemaster_ac; references `35ca9cf2-3918-4a18-ba8c-b7092060f2ad`.
+
+- Retained test context (2026-10-11T12:49:39.831Z): dimension release definition; target registered_fixture_context; references `bf77ef7b-c66f-4109-b8b6-4c801775c897`, `ec5550c6-096d-4f1f-9b9f-e14179f73362`.
+
+- Retained test context (2026-10-11T12:49:40.292Z): dimension release draft content; target registered_fixture_context; references `4e6dcc59-c632-43ca-b5a2-404df485253d`, `f482adc8-c2a4-4220-b139-226e687ef719`, `e7b3aa7a-dd4a-420a-8b6b-5afbde43cd7d`, `8fd387c6-50ff-4a48-a770-ed2d863b7faf`.
+
+- Retained test context (2026-10-11T12:49:40.805Z): dimension release condition data; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:49:41.905Z): dimension release copied draft; target registered_fixture_context; references `4f98e829-e8ef-499e-a5b1-6a59a9a5f502`.
+
+- Retained test context (2026-10-11T12:50:14.800Z): requirement harness roots; target registered_fixture_context; references `e524df97-b280-4eed-bdbd-57a0262a1e86`, `8d3ceaaf-8e2b-485f-bb66-b9450a6652d5`, `f23397fe-293f-46ac-850b-941e27a2aff9`, `30a4e263-61f2-4d49-bdee-36dd93c999a2`.
+
+- Retained test context (2026-10-11T12:50:15.491Z): requirement harness pinned content; target registered_fixture_context; references `8a0919b5-cbcd-482c-bc9d-999830ad863b`, `d52c52b6-06a1-4a7d-ae4a-99ab1493fa38`, `bb540ecf-baa9-4e28-a02d-33bbbac64d9b`, `8c4c3b9a-62fa-4803-8001-7989428ff2b8`.
+
+- Retained test context (2026-10-11T12:50:16.191Z): requirement harness complete ledger graph; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:50:16.193Z): empty requirement run; target registered_fixture_context; references `b9290363-ddbd-43e2-9165-af335e3f8533`.
+
+- Retained test context (2026-10-11T12:50:16.462Z): pinned requirement and resolution; target registered_fixture_context; references `cc86246e-7ff6-42ff-81c5-c3c4cc368d23`, `be1ec325-b056-4a18-9e48-2313a081d994`.
+
+- Retained test context (2026-10-11T12:50:18.985Z): verified-history/cf_verified_history_7b1f6652; target registered_fixture_context; references `f188e880-452d-4f0a-a8e0-92697525ee8e`, `a5f22211-1811-4549-ac7e-981e97146a07`, `4dad7820-47e8-4520-a8af-be1e17f71be5`, `bf05ad72-b0dc-4bc0-b190-c710ab73a81f`, `c6d8dc87-75e6-423c-84d5-58e295d5b983`, `36475ee4-360e-4be3-bf93-333dd902f952`, `3da78bd0-f1af-4db9-9081-bd6c0e52e95e`, `eb5d31f7-4fac-4188-864d-1fa6008d1dd0`, `afc82e3b-e767-436a-b3a2-de57c74849da`, `2f05efd0-8e30-4142-9930-e657fcba649e`.
+
+- Retained test context (2026-10-11T12:55:51.744Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:55:51.801Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:55:51.804Z): tests/integration/api/company-form-signing-and-completion.test.ts; target cleanup context; references `6a018be4-c328-4af2-b750-80505d202a0f`, `bc679d05-6ef4-44ef-a918-dba8c31f93f1`, `176b228c-fccf-4887-be21-c7366e6f3329`, `c340936f-7b58-4605-b8bb-4ab7ff70fed2`, `7b605fc3-fc69-48e3-93bb-12ca1a59c005`.
+
+- Retained test context (2026-10-11T12:55:51.804Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_signatures; references `6a018be4-c328-4af2-b750-80505d202a0f`, `bc679d05-6ef4-44ef-a918-dba8c31f93f1`, `176b228c-fccf-4887-be21-c7366e6f3329`, `c340936f-7b58-4605-b8bb-4ab7ff70fed2`, `7b605fc3-fc69-48e3-93bb-12ca1a59c005`.
+
+- Retained test context (2026-10-11T12:55:51.805Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_signature_attachments; references `d23bc61a-23e6-4338-bc71-4944d26e3801`, `106981b6-b44d-4297-b6d3-ccaf925a60c9`, `443f0d98-4685-4a57-a769-c48a27e4478e`, `fd20e96f-f470-4a71-9eb6-7a1510b0c90a`, `d219a046-b106-4cab-a501-96cd290b3f09`, `13209ef3-0468-4f55-bbdd-d1900ee13b69`.
+
+- Retained test context (2026-10-11T12:55:51.805Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references `6a018be4-c328-4af2-b750-80505d202a0f`, `bc679d05-6ef4-44ef-a918-dba8c31f93f1`, `176b228c-fccf-4887-be21-c7366e6f3329`, `c340936f-7b58-4605-b8bb-4ab7ff70fed2`, `7b605fc3-fc69-48e3-93bb-12ca1a59c005`.
+
+- Retained test context (2026-10-11T12:55:51.806Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_answers; references `6a018be4-c328-4af2-b750-80505d202a0f`, `bc679d05-6ef4-44ef-a918-dba8c31f93f1`, `176b228c-fccf-4887-be21-c7366e6f3329`, `c340936f-7b58-4605-b8bb-4ab7ff70fed2`, `7b605fc3-fc69-48e3-93bb-12ca1a59c005`.
+
+- Retained test context (2026-10-11T12:55:51.806Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_states; references `6a018be4-c328-4af2-b750-80505d202a0f`, `bc679d05-6ef4-44ef-a918-dba8c31f93f1`, `176b228c-fccf-4887-be21-c7366e6f3329`, `c340936f-7b58-4605-b8bb-4ab7ff70fed2`, `7b605fc3-fc69-48e3-93bb-12ca1a59c005`.
+
+- Retained test context (2026-10-11T12:55:51.806Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_assignments; references `6a018be4-c328-4af2-b750-80505d202a0f`, `bc679d05-6ef4-44ef-a918-dba8c31f93f1`, `176b228c-fccf-4887-be21-c7366e6f3329`, `c340936f-7b58-4605-b8bb-4ab7ff70fed2`, `7b605fc3-fc69-48e3-93bb-12ca1a59c005`.
+
+- Retained test context (2026-10-11T12:55:51.807Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references `6a018be4-c328-4af2-b750-80505d202a0f`, `bc679d05-6ef4-44ef-a918-dba8c31f93f1`, `176b228c-fccf-4887-be21-c7366e6f3329`, `c340936f-7b58-4605-b8bb-4ab7ff70fed2`, `7b605fc3-fc69-48e3-93bb-12ca1a59c005`.
+
+- Retained test context (2026-10-11T12:55:51.808Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_questions; references `ff58f9d1-4c8c-4287-9a9e-904938cac0d6`, `d03a0d88-97e7-4e64-8411-0aea03212b6d`, `bda2aee9-7b20-4bdf-bc25-015d71e88fec`, `ffca56d4-52b1-4ac3-b04c-ad14d29f417f`.
+
+- Retained test context (2026-10-11T12:55:51.808Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_sections; references `ff58f9d1-4c8c-4287-9a9e-904938cac0d6`, `d03a0d88-97e7-4e64-8411-0aea03212b6d`, `bda2aee9-7b20-4bdf-bc25-015d71e88fec`, `ffca56d4-52b1-4ac3-b04c-ad14d29f417f`.
+
+- Retained test context (2026-10-11T12:55:51.808Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_form_parts; references `ff58f9d1-4c8c-4287-9a9e-904938cac0d6`, `d03a0d88-97e7-4e64-8411-0aea03212b6d`, `bda2aee9-7b20-4bdf-bc25-015d71e88fec`, `ffca56d4-52b1-4ac3-b04c-ad14d29f417f`.
+
+- Retained test context (2026-10-11T12:55:51.809Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_form_versions_v2; references `ff58f9d1-4c8c-4287-9a9e-904938cac0d6`, `d03a0d88-97e7-4e64-8411-0aea03212b6d`, `bda2aee9-7b20-4bdf-bc25-015d71e88fec`, `ffca56d4-52b1-4ac3-b04c-ad14d29f417f`.
+
+- Retained test context (2026-10-11T12:55:51.809Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_forms_v2; references `56b13aa7-95a8-444f-8960-b3d83970af30`, `1b039b4b-2fbd-4414-bd4a-e82378f12cd1`.
+
+- Retained test context (2026-10-11T12:55:51.810Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_assignments; references `5ee46bed-cb97-4ce1-96d4-c46451d5b58c`, `6ab36691-e71e-44d5-9c8e-36db9c9b79d1`, `a55ac963-1311-48c5-932b-348a729d0baf`, `d6d0b0aa-2dc2-4b14-8e0a-b1527be64d17`.
+
+- Retained test context (2026-10-11T12:55:51.810Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_members_v2; references `e9b1f1c6-72a9-4b25-aeb1-b222d683801d`.
+
+- Retained test context (2026-10-11T12:55:51.810Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `321244d3-1a91-4c0e-8b70-fa7bc515cbb6`.
+
+- Retained test context (2026-10-11T12:55:51.811Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `53f7acc1-0875-4e60-a5a0-463c89b5b43c`.
+
+- Retained test context (2026-10-11T12:55:51.813Z): tests/integration/api/company-form-signing-and-completion.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:55:51.815Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_resource_action_grants; references `cb31b27a-3058-4c27-aae1-618f5771ed5f`, `4495119c-3c8a-4b85-ad92-1d0b35e73d3b`, `ff11569b-2c92-4d9e-81f3-bbfafc4f66db`, `f54eb23b-699e-4a4a-9c3b-8def2a5d33c4`.
+
+- Retained test context (2026-10-11T12:55:51.816Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_roleaccess_ac; references `cb31b27a-3058-4c27-aae1-618f5771ed5f`, `4495119c-3c8a-4b85-ad92-1d0b35e73d3b`, `ff11569b-2c92-4d9e-81f3-bbfafc4f66db`, `f54eb23b-699e-4a4a-9c3b-8def2a5d33c4`.
+
+- Retained test context (2026-10-11T12:55:51.816Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:55:51.816Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_rolemaster_ac; references `cb31b27a-3058-4c27-aae1-618f5771ed5f`, `4495119c-3c8a-4b85-ad92-1d0b35e73d3b`, `ff11569b-2c92-4d9e-81f3-bbfafc4f66db`, `f54eb23b-699e-4a4a-9c3b-8def2a5d33c4`.
+
+- Retained test context (2026-10-11T12:56:14.480Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `92c2d712-cbcc-42cd-91d3-241801c14e10`.
+
+- Retained test context (2026-10-11T12:56:14.482Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `92c2d712-cbcc-42cd-91d3-241801c14e10`.
+
+- Retained test context (2026-10-11T12:56:14.482Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `92c2d712-cbcc-42cd-91d3-241801c14e10`.
+
+- Retained test context (2026-10-11T12:56:14.483Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `92c2d712-cbcc-42cd-91d3-241801c14e10`.
+
+- Retained test context (2026-10-11T12:56:14.483Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `92c2d712-cbcc-42cd-91d3-241801c14e10`.
+
+- Retained test context (2026-10-11T12:56:14.483Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `9895eb0c-57b8-4753-a6f7-4cb292d541a9`.
+
+- Retained test context (2026-10-11T12:56:14.484Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `9895eb0c-57b8-4753-a6f7-4cb292d541a9`.
+
+- Retained test context (2026-10-11T12:56:14.485Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `9895eb0c-57b8-4753-a6f7-4cb292d541a9`.
+
+- Retained test context (2026-10-11T12:56:14.485Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `9895eb0c-57b8-4753-a6f7-4cb292d541a9`.
+
+- Retained test context (2026-10-11T12:56:14.487Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `9895eb0c-57b8-4753-a6f7-4cb292d541a9`.
+
+- Retained test context (2026-10-11T12:56:14.487Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `3a560920-5b17-4603-86ca-efcb42171282`.
+
+- Retained test context (2026-10-11T12:56:14.488Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `3a560920-5b17-4603-86ca-efcb42171282`.
+
+- Retained test context (2026-10-11T12:56:14.488Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `3a560920-5b17-4603-86ca-efcb42171282`.
+
+- Retained test context (2026-10-11T12:56:14.489Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `3a560920-5b17-4603-86ca-efcb42171282`.
+
+- Retained test context (2026-10-11T12:56:14.490Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `3a560920-5b17-4603-86ca-efcb42171282`.
+
+- Retained test context (2026-10-11T12:56:14.490Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `7789a746-4faf-4a8e-8f09-eeb643982fa0`.
+
+- Retained test context (2026-10-11T12:56:14.491Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `7789a746-4faf-4a8e-8f09-eeb643982fa0`.
+
+- Retained test context (2026-10-11T12:56:14.491Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `7789a746-4faf-4a8e-8f09-eeb643982fa0`.
+
+- Retained test context (2026-10-11T12:56:14.492Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `7789a746-4faf-4a8e-8f09-eeb643982fa0`.
+
+- Retained test context (2026-10-11T12:56:14.492Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `7789a746-4faf-4a8e-8f09-eeb643982fa0`.
+
+- Retained test context (2026-10-11T12:56:14.493Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `af7c83bd-6f4a-48b6-8e08-34f39b4dbc78`.
+
+- Retained test context (2026-10-11T12:56:14.493Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `af7c83bd-6f4a-48b6-8e08-34f39b4dbc78`.
+
+- Retained test context (2026-10-11T12:56:14.493Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `af7c83bd-6f4a-48b6-8e08-34f39b4dbc78`.
+
+- Retained test context (2026-10-11T12:56:14.494Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `af7c83bd-6f4a-48b6-8e08-34f39b4dbc78`.
+
+- Retained test context (2026-10-11T12:56:14.494Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `af7c83bd-6f4a-48b6-8e08-34f39b4dbc78`.
+
+- Retained test context (2026-10-11T12:56:14.495Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `145e0508-783c-4590-9bd3-b6234bbbc636`.
+
+- Retained test context (2026-10-11T12:56:14.495Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `145e0508-783c-4590-9bd3-b6234bbbc636`.
+
+- Retained test context (2026-10-11T12:56:14.495Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `145e0508-783c-4590-9bd3-b6234bbbc636`.
+
+- Retained test context (2026-10-11T12:56:14.496Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `145e0508-783c-4590-9bd3-b6234bbbc636`.
+
+- Retained test context (2026-10-11T12:56:14.496Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `145e0508-783c-4590-9bd3-b6234bbbc636`.
+
+- Retained test context (2026-10-11T12:56:14.496Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `4f890fce-8f1e-4f5f-8199-523c33e185c8`.
+
+- Retained test context (2026-10-11T12:56:14.497Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `4f890fce-8f1e-4f5f-8199-523c33e185c8`.
+
+- Retained test context (2026-10-11T12:56:14.497Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `4f890fce-8f1e-4f5f-8199-523c33e185c8`.
+
+- Retained test context (2026-10-11T12:56:14.498Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `4f890fce-8f1e-4f5f-8199-523c33e185c8`.
+
+- Retained test context (2026-10-11T12:56:14.498Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `4f890fce-8f1e-4f5f-8199-523c33e185c8`.
+
+- Retained test context (2026-10-11T12:56:14.498Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `2d00b178-285a-4675-9288-32de741685cc`.
+
+- Retained test context (2026-10-11T12:56:14.499Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `2d00b178-285a-4675-9288-32de741685cc`.
+
+- Retained test context (2026-10-11T12:56:14.499Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `2d00b178-285a-4675-9288-32de741685cc`.
+
+- Retained test context (2026-10-11T12:56:14.500Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `2d00b178-285a-4675-9288-32de741685cc`.
+
+- Retained test context (2026-10-11T12:56:14.500Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `2d00b178-285a-4675-9288-32de741685cc`.
+
+- Retained test context (2026-10-11T12:56:14.500Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `cce7b272-f508-4a0e-b0fb-8a524fa88904`.
+
+- Retained test context (2026-10-11T12:56:14.501Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `cce7b272-f508-4a0e-b0fb-8a524fa88904`.
+
+- Retained test context (2026-10-11T12:56:14.501Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `cce7b272-f508-4a0e-b0fb-8a524fa88904`.
+
+- Retained test context (2026-10-11T12:56:14.503Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `cce7b272-f508-4a0e-b0fb-8a524fa88904`.
+
+- Retained test context (2026-10-11T12:56:14.504Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `cce7b272-f508-4a0e-b0fb-8a524fa88904`.
+
+- Retained test context (2026-10-11T12:56:14.504Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `5d51e01f-df12-4b50-a2c5-e0614f84a5fa`.
+
+- Retained test context (2026-10-11T12:56:14.505Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `5d51e01f-df12-4b50-a2c5-e0614f84a5fa`.
+
+- Retained test context (2026-10-11T12:56:14.506Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `5d51e01f-df12-4b50-a2c5-e0614f84a5fa`.
+
+- Retained test context (2026-10-11T12:56:14.506Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `5d51e01f-df12-4b50-a2c5-e0614f84a5fa`.
+
+- Retained test context (2026-10-11T12:56:14.507Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `5d51e01f-df12-4b50-a2c5-e0614f84a5fa`.
+
+- Retained test context (2026-10-11T12:56:37.204Z): tests/unit/company-form-planning-lock-order.test.ts; target "cf_lock_087c43e9d41647868f8194a9a82aca25"; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:41.973Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_signatures; references `557a2eae-9672-47de-9f43-4ddcd9b32164`, `9f850b0b-f5a6-4446-a691-9d997076a505`.
+
+- Retained test context (2026-10-11T12:56:41.975Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_signature_attachments; references `557a2eae-9672-47de-9f43-4ddcd9b32164`, `9f850b0b-f5a6-4446-a691-9d997076a505`.
+
+- Retained test context (2026-10-11T12:56:41.975Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `08aa117b-de45-41be-b7e8-f9622cd7b51c`, `80b027c2-0e6a-499c-b32a-2c032079ce49`, `d6cdaa68-7649-4ec5-b3b0-b482683df947`, `49477b61-605c-42e9-addc-797d3d4bfb7c`.
+
+- Retained test context (2026-10-11T12:56:41.975Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `08aa117b-de45-41be-b7e8-f9622cd7b51c`, `80b027c2-0e6a-499c-b32a-2c032079ce49`, `d6cdaa68-7649-4ec5-b3b0-b482683df947`, `49477b61-605c-42e9-addc-797d3d4bfb7c`.
+
+- Retained test context (2026-10-11T12:56:41.976Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `b30d2e1e-d84e-4ce0-86c5-16983790bb1f`.
+
+- Retained test context (2026-10-11T12:56:41.976Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `b30d2e1e-d84e-4ce0-86c5-16983790bb1f`.
+
+- Retained test context (2026-10-11T12:56:41.976Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submission_assignments; references `32ad0798-4839-455f-b8f3-592e4a1bcfb0`, `7cd0f1c6-5f32-426a-9bc7-26bfb8b11ae9`, `fc442124-1cfb-41c3-98d2-0d783a2e85e2`, `b3efbf77-6d26-4726-953e-56f3673e0546`, `9b22bf8d-76e2-4aa6-bb7e-a908ee3e659b`.
+
+- Retained test context (2026-10-11T12:56:41.977Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submissions; references `32ad0798-4839-455f-b8f3-592e4a1bcfb0`, `7cd0f1c6-5f32-426a-9bc7-26bfb8b11ae9`, `fc442124-1cfb-41c3-98d2-0d783a2e85e2`, `b3efbf77-6d26-4726-953e-56f3673e0546`, `9b22bf8d-76e2-4aa6-bb7e-a908ee3e659b`.
+
+- Retained test context (2026-10-11T12:56:41.977Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_assignments; references `32ad0798-4839-455f-b8f3-592e4a1bcfb0`, `7cd0f1c6-5f32-426a-9bc7-26bfb8b11ae9`, `fc442124-1cfb-41c3-98d2-0d783a2e85e2`, `b3efbf77-6d26-4726-953e-56f3673e0546`, `9b22bf8d-76e2-4aa6-bb7e-a908ee3e659b`.
+
+- Retained test context (2026-10-11T12:56:41.978Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_members_v2; references `0da3243b-c746-4738-836e-9291d474b085`.
+
+- Retained test context (2026-10-11T12:56:41.978Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_questions; references `16e76c0d-fa26-4ac8-b31e-411b9b4c0396`, `31108b3f-5617-4af6-a1d3-e65247d9438b`, `ce619815-03d8-493a-ac08-d8c82f33442e`, `bce463fe-daa9-4dc7-be7a-9b32eaaf8aa1`.
+
+- Retained test context (2026-10-11T12:56:41.978Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_sections; references `16e76c0d-fa26-4ac8-b31e-411b9b4c0396`, `31108b3f-5617-4af6-a1d3-e65247d9438b`, `ce619815-03d8-493a-ac08-d8c82f33442e`, `bce463fe-daa9-4dc7-be7a-9b32eaaf8aa1`.
+
+- Retained test context (2026-10-11T12:56:41.979Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_options; references `3b015a0d-5fa3-4522-bbf7-19d08d7a1f61`, `38c14e51-f0c9-41e5-b441-5572554baaf8`, `4eb173c0-f7e5-465a-b035-68439a3f09cb`, `4075aab9-21cb-436a-9043-a5307979591e`.
+
+- Retained test context (2026-10-11T12:56:41.979Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_option_sets; references `3b015a0d-5fa3-4522-bbf7-19d08d7a1f61`, `38c14e51-f0c9-41e5-b441-5572554baaf8`, `4eb173c0-f7e5-465a-b035-68439a3f09cb`, `4075aab9-21cb-436a-9043-a5307979591e`.
+
+- Retained test context (2026-10-11T12:56:41.979Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_form_parts; references `0991cbb8-32ed-4f2d-8761-fee7d66107a1`, `ff26e132-8a68-4ed8-a51b-07d44fa9c25b`, `79d3b5a7-9c1a-488a-aa62-23d67b554815`, `36dcf8e5-ae07-487d-81cc-d5f7c06157f8`.
+
+- Retained test context (2026-10-11T12:56:41.980Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessel_types; references `603bfbd1-59a6-4189-a523-72c76c46e609`.
+
+- Retained test context (2026-10-11T12:56:41.980Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_form_versions_v2; references `7d10d85c-6f84-4563-bf0e-1a20b6c8dbff`, `555c6b9d-4168-4f1c-92f3-6f10b4cce57e`, `ddcf75e6-083d-4663-ac13-84f7c50b8b4d`, `483854c1-24ab-4022-a272-1c5e96470565`, `4a10483c-e9db-4fa4-a161-183807f53b93`.
+
+- Retained test context (2026-10-11T12:56:41.980Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_forms_v2; references `ec8fe7a7-dfb2-412d-a44e-7af44e42f1b5`, `c834120e-f2e5-40f9-a771-9c30b6dea418`, `3337f94c-6cf3-4684-8816-51e79ab66a86`.
+
+- Retained test context (2026-10-11T12:56:41.981Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_resource_action_grants; references `d474601e-6f1d-4248-820e-dfee8dc49bda`, `ae7a3856-43a0-4580-a304-99d64f96ca7d`, `69c21735-f7aa-48db-8fe7-4ebf96ffe23a`, `07988d07-f98c-4b9a-abd8-9698038f9f3e`, `f31a4579-d1ae-4d02-8825-667461545e24`.
+
+- Retained test context (2026-10-11T12:56:41.981Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_roleaccess_ac; references `d474601e-6f1d-4248-820e-dfee8dc49bda`, `ae7a3856-43a0-4580-a304-99d64f96ca7d`, `69c21735-f7aa-48db-8fe7-4ebf96ffe23a`, `07988d07-f98c-4b9a-abd8-9698038f9f3e`, `f31a4579-d1ae-4d02-8825-667461545e24`.
+
+- Retained test context (2026-10-11T12:56:41.982Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_rolemaster_ac; references `d474601e-6f1d-4248-820e-dfee8dc49bda`, `ae7a3856-43a0-4580-a304-99d64f96ca7d`, `69c21735-f7aa-48db-8fe7-4ebf96ffe23a`, `07988d07-f98c-4b9a-abd8-9698038f9f3e`, `f31a4579-d1ae-4d02-8825-667461545e24`.
+
+- Retained test context (2026-10-11T12:56:41.982Z): tests/integration/api/company-form-submission-starts.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:41.982Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `e9e90415-657c-4b0f-9720-fab1ce544fb0`.
+
+- Retained test context (2026-10-11T12:56:41.983Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `6583c272-424a-4270-9022-6b59155f9e68`.
+
+- Retained test context (2026-10-11T12:56:41.987Z): tests/integration/api/company-form-submission-starts.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:43.243Z): requirement harness roots; target registered_fixture_context; references `e8106621-c7f8-4161-9542-4934d87e2cb8`, `659d9a7b-5cf0-43cd-a00b-4eb44b49a74d`, `40dd7c37-8190-42d1-9f90-a90112ea6063`, `40fa1fdd-0a3f-4b8b-86fb-896b5e33ba10`.
+
+- Retained test context (2026-10-11T12:56:43.361Z): requirement harness pinned content; target registered_fixture_context; references `bd9dcf51-93c7-4784-99c2-1bfb6e684a48`, `ffe369b9-3f17-4dc4-b366-813a6a1599af`, `60cf2b91-6024-48cc-951a-897845617437`, `98d6aedb-f275-4f03-b2c4-c08a955d6d7e`.
+
+- Retained test context (2026-10-11T12:56:43.422Z): requirement harness roots; target registered_fixture_context; references `4d20ff9b-9d8e-4ca5-be46-feaa53462695`, `f017915a-24a9-4878-ac17-e9bbe9d2fcec`, `73d53f51-efcf-4a8a-9bda-c010b03ee1a6`, `929b469a-3a74-43c3-9a66-0132a96c66fb`.
+
+- Retained test context (2026-10-11T12:56:43.464Z): requirement harness pinned content; target registered_fixture_context; references `4f546aff-b39e-40ee-bf31-47d5ba178a36`, `b45118c5-086d-4868-8049-f4a130abbab1`, `1f658aae-5211-493b-80ac-919ef073ee59`, `224709e0-1340-41c0-bc65-080e4ba09bd2`.
+
+- Retained test context (2026-10-11T12:56:43.572Z): requirement harness complete ledger graph; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:43.575Z): required start obligation; target registered_fixture_context; references `84c4a3c8-deab-4730-8e28-fb32422da8ff`.
+
+- Retained test context (2026-10-11T12:56:43.609Z): newer release for old-pin start; target registered_fixture_context; references `b3734c18-f695-4965-94a0-bbfd59b7d161`.
+
+- Retained test context (2026-10-11T12:56:43.701Z): manual without stage check; target registered_fixture_context; references `45921514-941a-4c6a-a8c5-dea71027b970`.
+
+- Retained test context (2026-10-11T12:56:43.783Z): required old-pin form; target registered_fixture_context; references `99c4f60e-9ca0-4820-bb20-baf2608f9771`.
+
+- Retained test context (2026-10-11T12:56:47.494Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_signatures; references `cb6122a7-2268-42b7-aa1b-ebd12f0828a2`, `b40c0dba-3b31-4a10-8ff6-e32fb85cc617`.
+
+- Retained test context (2026-10-11T12:56:47.495Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_answers; references `cb6122a7-2268-42b7-aa1b-ebd12f0828a2`, `b40c0dba-3b31-4a10-8ff6-e32fb85cc617`.
+
+- Retained test context (2026-10-11T12:56:47.495Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_states; references `cb6122a7-2268-42b7-aa1b-ebd12f0828a2`, `b40c0dba-3b31-4a10-8ff6-e32fb85cc617`.
+
+- Retained test context (2026-10-11T12:56:47.496Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submission_assignments; references `cb6122a7-2268-42b7-aa1b-ebd12f0828a2`, `b40c0dba-3b31-4a10-8ff6-e32fb85cc617`.
+
+- Retained test context (2026-10-11T12:56:47.496Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submissions; references `cb6122a7-2268-42b7-aa1b-ebd12f0828a2`, `b40c0dba-3b31-4a10-8ff6-e32fb85cc617`.
+
+- Retained test context (2026-10-11T12:56:47.497Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_signature_attachments; references `c752404e-abb9-4ec4-9b05-374c92eea876`.
+
+- Retained test context (2026-10-11T12:56:47.497Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_assignments; references `e29ba5d1-d184-41aa-b333-1506f19ce581`, `8fc7f9e4-1e68-4a6e-ad60-d3332e54f041`.
+
+- Retained test context (2026-10-11T12:56:47.498Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_members_v2; references `03c74a9e-95d2-4715-b880-7c47c03f1d92`.
+
+- Retained test context (2026-10-11T12:56:47.498Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_questions; references `85c2a4fa-a0d2-43eb-9e43-e8dfb3f6ad9c`.
+
+- Retained test context (2026-10-11T12:56:47.498Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_sections; references `326b76f2-7dee-4e38-b76e-1bb7a36cad77`.
+
+- Retained test context (2026-10-11T12:56:47.499Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_form_parts; references `287e88ba-c9e2-4137-bacc-5a6a4ef52bfa`.
+
+- Retained test context (2026-10-11T12:56:47.499Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_options; references `e503812b-4e2d-4675-bc2f-d1b65ab4eacf`.
+
+- Retained test context (2026-10-11T12:56:47.500Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_option_sets; references `e503812b-4e2d-4675-bc2f-d1b65ab4eacf`.
+
+- Retained test context (2026-10-11T12:56:47.500Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_form_versions_v2; references `36538cd2-0d62-427b-9ba1-8a39ed25ee25`.
+
+- Retained test context (2026-10-11T12:56:47.500Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_forms_v2; references `86986058-598f-4e44-9ff8-8031ff67a67a`.
+
+- Retained test context (2026-10-11T12:56:47.501Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_resource_action_grants; references `fdda72fe-ceb3-4100-acf7-f60e6e93743f`, `fcd05a63-adf6-4445-8905-b8432186e27e`, `3c2ae27c-d59f-4e09-9b73-d021aee1b567`, `08f7aec9-283f-41c8-86f7-305e0d993a2c`, `2a421cf2-f63e-4186-8dd8-f75f82fe41e2`, `104d56a2-17ee-4f5b-b392-b4ddb4d1b45e`, `c79d4043-2065-46e1-91a1-e3df9c6a06a6`.
+
+- Retained test context (2026-10-11T12:56:47.502Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_roleaccess_ac; references `fdda72fe-ceb3-4100-acf7-f60e6e93743f`, `fcd05a63-adf6-4445-8905-b8432186e27e`, `3c2ae27c-d59f-4e09-9b73-d021aee1b567`, `08f7aec9-283f-41c8-86f7-305e0d993a2c`, `2a421cf2-f63e-4186-8dd8-f75f82fe41e2`, `104d56a2-17ee-4f5b-b392-b4ddb4d1b45e`, `c79d4043-2065-46e1-91a1-e3df9c6a06a6`.
+
+- Retained test context (2026-10-11T12:56:47.502Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_rolemaster_ac; references `fdda72fe-ceb3-4100-acf7-f60e6e93743f`, `fcd05a63-adf6-4445-8905-b8432186e27e`, `3c2ae27c-d59f-4e09-9b73-d021aee1b567`, `08f7aec9-283f-41c8-86f7-305e0d993a2c`, `2a421cf2-f63e-4186-8dd8-f75f82fe41e2`, `104d56a2-17ee-4f5b-b392-b4ddb4d1b45e`, `c79d4043-2065-46e1-91a1-e3df9c6a06a6`.
+
+- Retained test context (2026-10-11T12:56:47.502Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:47.503Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `6fa0ea31-3db8-437a-b09d-1299b4ab83de`.
+
+- Retained test context (2026-10-11T12:56:47.503Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `7ec2011f-7876-4747-b559-c49314b0c0bf`.
+
+- Retained test context (2026-10-11T12:56:47.503Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessel_types; references `649260fe-93ce-4310-82f5-007d604b32f9`.
+
+- Retained test context (2026-10-11T12:56:47.507Z): tests/integration/api/company-form-submission-boundary.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:50.566Z): tests/integration/company-form-stage-less-runtime.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:50.771Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:50.772Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references `6da07dec-f6b3-4a9e-8988-7537f6296a65`, `edba0851-67dc-44e3-abdd-9e601afc0fb7`, `2cf43055-8450-4619-9c4c-cd3ce376fbb1`, `164eb71d-06f4-4ac9-9652-0a45840202e5`, `c1b760aa-6d89-4af4-bfe5-2aac212041da`.
+
+- Retained test context (2026-10-11T12:56:50.773Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_signatures; references `6da07dec-f6b3-4a9e-8988-7537f6296a65`, `edba0851-67dc-44e3-abdd-9e601afc0fb7`, `2cf43055-8450-4619-9c4c-cd3ce376fbb1`, `164eb71d-06f4-4ac9-9652-0a45840202e5`, `c1b760aa-6d89-4af4-bfe5-2aac212041da`.
+
+- Retained test context (2026-10-11T12:56:50.778Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_answers; references `6da07dec-f6b3-4a9e-8988-7537f6296a65`, `edba0851-67dc-44e3-abdd-9e601afc0fb7`, `2cf43055-8450-4619-9c4c-cd3ce376fbb1`, `164eb71d-06f4-4ac9-9652-0a45840202e5`, `c1b760aa-6d89-4af4-bfe5-2aac212041da`.
+
+- Retained test context (2026-10-11T12:56:50.778Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_states; references `6da07dec-f6b3-4a9e-8988-7537f6296a65`, `edba0851-67dc-44e3-abdd-9e601afc0fb7`, `2cf43055-8450-4619-9c4c-cd3ce376fbb1`, `164eb71d-06f4-4ac9-9652-0a45840202e5`, `c1b760aa-6d89-4af4-bfe5-2aac212041da`.
+
+- Retained test context (2026-10-11T12:56:50.779Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submissions; references `6da07dec-f6b3-4a9e-8988-7537f6296a65`, `edba0851-67dc-44e3-abdd-9e601afc0fb7`, `2cf43055-8450-4619-9c4c-cd3ce376fbb1`, `164eb71d-06f4-4ac9-9652-0a45840202e5`, `c1b760aa-6d89-4af4-bfe5-2aac212041da`.
+
+- Retained test context (2026-10-11T12:56:50.780Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_signature_attachments; references `60347225-96fd-4db7-b72e-1974e0e6a0bb`, `a246d7e4-f824-4688-b76c-5cbbf3b43a00`, `7833aa29-cc5a-4fc8-8faa-53255cf5e2c9`, `ae635615-8865-44d3-8d36-dc4e7eba4e7d`, `130cae0d-372e-4de3-acc0-daf65bee3969`, `11ca9822-9ca0-4298-8557-9a09bc8b0180`.
+
+- Retained test context (2026-10-11T12:56:50.780Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_questions; references `51c435c3-f7b6-43b3-ab75-a05d2bd9a973`, `c9c334ad-19cd-40d9-971e-fec2110480d3`, `f99ba5d1-361d-47b3-9df8-e07c940945cc`, `bcc9ad1d-6541-4ac8-b4fd-34cb44a609ce`, `e22c44bd-a5e9-4a78-a584-301905681fd0`, `782d08ed-fe9a-493b-9c74-e219909be7d2`, `31754260-fa73-4545-9882-18a2397d2728`.
+
+- Retained test context (2026-10-11T12:56:50.781Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_sections; references `5bfc563f-2724-4c4d-85c6-b7197413e4dd`, `c9dac156-9957-4391-aa6d-742275b3008a`, `a7736f21-68ef-426b-b17e-03c7b88133b9`, `1b9327fa-2165-4502-834f-e1904a5e33e4`, `8336d5dd-3b27-47ef-8f10-58e4d481524b`.
+
+- Retained test context (2026-10-11T12:56:50.781Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_form_parts; references `eaffd9de-8f7f-4307-82ce-28ce47a7d0fa`.
+
+- Retained test context (2026-10-11T12:56:50.782Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_form_versions_v2; references `734dcb04-a160-4d4a-bc2d-e7473896720c`.
+
+- Retained test context (2026-10-11T12:56:50.782Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_forms_v2; references `d3f13e12-eb6c-4d0c-abee-b5f2a98a6939`.
+
+- Retained test context (2026-10-11T12:56:50.783Z): tests/integration/company-form-stage-less-runtime.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:50.784Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_roleaccess_ac; references `fafe2156-a0fb-4724-a012-c29e9aaed667`.
+
+- Retained test context (2026-10-11T12:56:50.784Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_rolemaster_ac; references `fafe2156-a0fb-4724-a012-c29e9aaed667`.
+
+- Retained test context (2026-10-11T12:56:50.785Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_subject_types; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:53.623Z): tests/integration/api/company-form-submission-void-races.test.ts; target cleanup context; references `95490f4c-8df4-49df-a08b-54bbc4b77188`.
+
+- Retained test context (2026-10-11T12:56:53.738Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_signatures; references `3b846ea2-9af9-405c-a2eb-80b8343dfff7`, `97ddba09-f9ba-4607-8808-9a35b29835bb`, `3288d4d9-ecca-4645-8059-9d536a748e4d`, `0b88e9c1-86c1-404e-adc1-6cb94fd705d6`.
+
+- Retained test context (2026-10-11T12:56:53.739Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_answers; references `3b846ea2-9af9-405c-a2eb-80b8343dfff7`, `97ddba09-f9ba-4607-8808-9a35b29835bb`, `3288d4d9-ecca-4645-8059-9d536a748e4d`, `0b88e9c1-86c1-404e-adc1-6cb94fd705d6`.
+
+- Retained test context (2026-10-11T12:56:53.739Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_system_snapshots; references `3b846ea2-9af9-405c-a2eb-80b8343dfff7`, `97ddba09-f9ba-4607-8808-9a35b29835bb`, `3288d4d9-ecca-4645-8059-9d536a748e4d`, `0b88e9c1-86c1-404e-adc1-6cb94fd705d6`.
+
+- Retained test context (2026-10-11T12:56:53.740Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_states; references `3b846ea2-9af9-405c-a2eb-80b8343dfff7`, `97ddba09-f9ba-4607-8808-9a35b29835bb`, `3288d4d9-ecca-4645-8059-9d536a748e4d`, `0b88e9c1-86c1-404e-adc1-6cb94fd705d6`.
+
+- Retained test context (2026-10-11T12:56:53.740Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_assignments; references `3b846ea2-9af9-405c-a2eb-80b8343dfff7`, `97ddba09-f9ba-4607-8808-9a35b29835bb`, `3288d4d9-ecca-4645-8059-9d536a748e4d`, `0b88e9c1-86c1-404e-adc1-6cb94fd705d6`.
+
+- Retained test context (2026-10-11T12:56:53.741Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submissions; references `3b846ea2-9af9-405c-a2eb-80b8343dfff7`, `97ddba09-f9ba-4607-8808-9a35b29835bb`, `3288d4d9-ecca-4645-8059-9d536a748e4d`, `0b88e9c1-86c1-404e-adc1-6cb94fd705d6`.
+
+- Retained test context (2026-10-11T12:56:53.741Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_signature_attachments; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:53.742Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_questions; references `15712349-5a08-4fce-8fcc-2272e2d44d0b`.
+
+- Retained test context (2026-10-11T12:56:53.742Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_sections; references `cc582fc5-2c3d-49ec-a41f-9ce3fb1c3939`.
+
+- Retained test context (2026-10-11T12:56:53.743Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_form_parts; references `1b111b34-8deb-4939-8ec8-cc5e5d1472c2`.
+
+- Retained test context (2026-10-11T12:56:53.743Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_form_versions_v2; references `372b2405-0cdf-44c6-ba6f-e50e2057d85d`.
+
+- Retained test context (2026-10-11T12:56:53.743Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_forms_v2; references `a85546c4-9849-4de3-9ff2-76330333d979`.
+
+- Retained test context (2026-10-11T12:56:53.744Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_assignments; references `9a8b4e0c-f234-46c8-8e32-bcc8dcdcf4d4`, `be9ec8d9-5b24-4f85-94ef-cee78b3bc669`, `02bcb298-b54a-4f18-9860-dd32c2be3272`, `6f84ebf0-a8d1-4931-a18f-099dffc96670`.
+
+- Retained test context (2026-10-11T12:56:53.744Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_members_v2; references `a5865efd-8560-47df-9500-98cfb6dc605c`.
+
+- Retained test context (2026-10-11T12:56:53.744Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_resource_action_grants; references `95490f4c-8df4-49df-a08b-54bbc4b77188`, `bc4dc1e8-826b-4fbd-bf9c-aa89387c9665`.
+
+- Retained test context (2026-10-11T12:56:53.745Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_roleaccess_ac; references `95490f4c-8df4-49df-a08b-54bbc4b77188`.
+
+- Retained test context (2026-10-11T12:56:53.745Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:53.746Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_rolemaster_ac; references `95490f4c-8df4-49df-a08b-54bbc4b77188`, `bc4dc1e8-826b-4fbd-bf9c-aa89387c9665`.
+
+- Retained test context (2026-10-11T12:56:53.746Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_vessels; references `18a8e967-6b78-4a7e-8738-f58ad3ca0425`.
+
+- Retained test context (2026-10-11T12:56:53.750Z): tests/integration/api/company-form-submission-void-races.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:55.223Z): requirement harness roots; target registered_fixture_context; references `b32ca797-9460-4806-b7c6-ecd9a0b7a5ad`, `7935f08b-0dc6-4677-bb80-1588c00f0d7c`, `c543f20e-717c-4a54-bf49-6000e85f1ce1`, `cc9ea199-c786-43cf-9df8-af8cd00ed418`.
+
+- Retained test context (2026-10-11T12:56:55.349Z): requirement harness pinned content; target registered_fixture_context; references `df543ddb-193b-4ecc-850f-e5d16de7c6f0`, `b41181aa-9c78-48ee-b317-937e654f234d`, `e539152f-9b58-4bf2-858c-83fc16c91b68`, `12cb363f-7a01-46ee-8fa7-3405f6254a45`.
+
+- Retained test context (2026-10-11T12:56:55.514Z): requirement harness complete ledger graph; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:56:55.517Z): required lifecycle obligation; target registered_fixture_context; references `172154cd-f184-4900-aa53-597e915e5465`.
+
+- Retained test context (2026-10-11T12:56:55.610Z): lifecycle initial form; target registered_fixture_context; references `afe64303-e030-4b91-8198-6eca7aaa3d5f`.
+
+- Retained test context (2026-10-11T12:56:55.880Z): required replacement form; target registered_fixture_context; references `d84808f2-5093-44c5-861b-5adc5dab6130`.
+
+- Retained test context (2026-10-11T12:56:55.941Z): requirement harness roots; target registered_fixture_context; references `b4debedc-c03c-45ed-8881-bc85f87aeb0a`, `7eb8f736-9002-403c-9152-783c946d2422`, `901f15b7-9a3b-4109-96c1-33b9f99884cf`, `5aea81fd-1c80-4e88-af06-567b081976d7`.
+
+- Retained test context (2026-10-11T12:56:55.989Z): requirement harness pinned content; target registered_fixture_context; references `75fa68d3-b80d-488a-90a1-22f4ae0bdc13`, `8ff3cca5-35f6-468e-9906-ea2b4d4ac0df`, `d5a81eb8-a45b-49ed-8eb5-0b4a8032421e`, `6a52a40e-a575-4fd0-a56b-e608b1f6db43`.
+
+- Retained test context (2026-10-11T12:56:56.140Z): earlier manual collision; target registered_fixture_context; references `c21e6d36-1f28-444f-9073-3693ccfcf7f9`, `ecbb9411-4431-486e-a54c-ae9e7877e3e1`, `e41c207c-b436-42fb-afbb-af2071a53b8b`.
+
+- Retained test context (2026-10-11T12:56:56.208Z): manual conflict required replacement; target registered_fixture_context; references `e1d5ca86-0200-4388-9797-d9a342b79c75`.
+
+- Retained test context (2026-10-11T12:56:56.209Z): requirement harness roots; target registered_fixture_context; references `feed0633-e172-4c62-9c36-9e8eca77c165`, `feb34f3f-acd9-453c-8981-c1818b454d04`, `321901ba-f3bb-45ff-aaef-d5def2e0d10a`, `b625703c-50b6-4093-98c4-d6f9b1253d38`.
+
+- Retained test context (2026-10-11T12:56:56.277Z): requirement harness pinned content; target registered_fixture_context; references `c619337b-bba3-41a5-a11a-ac5359ffd666`, `4e52083a-941d-4833-accb-60a0d50b351e`, `e1264a93-c637-4839-bfcf-8433c5163577`, `15447871-438e-4c42-b947-f3c64a3c0171`.
+
+- Retained test context (2026-10-11T12:56:56.366Z): unresolved obligation; target registered_fixture_context; references `01f76ca5-5b1f-40ce-9f17-097f5d79624e`.
+
+- Retained test context (2026-10-11T12:56:56.408Z): failed run; target registered_fixture_context; references `be5120ff-6dee-4798-8504-5e17fd2d5c9a`.
+
+- Retained test context (2026-10-11T12:57:04.744Z): dimension release definition; target registered_fixture_context; references `07054655-55cd-4ffa-96cf-43d32466c9d2`, `8fdbc927-1b64-4142-88b1-1f10cd1b137d`.
+
+- Retained test context (2026-10-11T12:57:04.852Z): dimension release draft content; target registered_fixture_context; references `4a28cab6-0b67-4eb4-b1d0-568b1f1b678a`, `461e27f1-d7a5-44b1-b7ae-79b4c110ede1`, `91b206cf-6837-4415-9289-be5fea09a95c`, `18867d45-b4fb-4577-a01e-fb59632fd27b`.
+
+- Retained test context (2026-10-11T12:57:04.923Z): dimension release condition data; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:05.126Z): dimension release copied draft; target registered_fixture_context; references `e608b9ef-09a7-4788-a411-42a5eea884de`.
+
+- Retained test context (2026-10-11T12:57:09.911Z): requirement harness roots; target registered_fixture_context; references `bca0a4bc-c924-47a3-85c8-664ca3e0207d`, `798e305c-9810-43a4-ad24-f957d6a4f575`, `9b68d8cd-0508-4ebb-9176-72999fa55bb1`, `f89200f2-9327-4863-ba79-831d6f649409`.
+
+- Retained test context (2026-10-11T12:57:10.315Z): requirement harness pinned content; target registered_fixture_context; references `7f14716b-5120-4963-966f-4f2546da21c3`, `15d0c9f7-ee13-4435-b4b1-6b04788982c7`, `8978520f-93cc-4696-96a0-7936c98bd1e4`, `d4193bb0-57c4-428a-adf4-7f075960f067`.
+
+- Retained test context (2026-10-11T12:57:10.519Z): requirement harness complete ledger graph; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:10.520Z): empty requirement run; target registered_fixture_context; references `cff47bf4-76c1-485a-b8f8-7abc5045329e`.
+
+- Retained test context (2026-10-11T12:57:10.575Z): pinned requirement and resolution; target registered_fixture_context; references `9ed9d79b-3127-47e3-8374-7a6c9477a5ff`, `b98a7c10-85f9-45ef-8f26-d180bea44cc1`.
+
+- Retained test context (2026-10-11T12:57:15.769Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_answers; references `5002de64-42bb-4717-9009-a4210c70c3dd`.
+
+- Retained test context (2026-10-11T12:57:15.771Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_section_states; references `5002de64-42bb-4717-9009-a4210c70c3dd`.
+
+- Retained test context (2026-10-11T12:57:15.771Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submission_assignments; references `5002de64-42bb-4717-9009-a4210c70c3dd`.
+
+- Retained test context (2026-10-11T12:57:15.772Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submissions; references `5002de64-42bb-4717-9009-a4210c70c3dd`.
+
+- Retained test context (2026-10-11T12:57:15.772Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_questions; references `39f0319b-81c7-4fe2-9864-634e3f7cb0f8`, `cb9f672d-49b9-4662-88d1-94bee4308923`, `5b773b0b-b459-4651-a9ce-a0e4d709941e`, `3c90d836-addb-42d8-a9b0-c8893fca9829`, `b55edc5f-cd76-4d6d-aab7-768f7f69b851`, `ed793526-3779-4a88-a61f-a008562a5e87`, `df4f6811-df5e-4293-abe6-d00c2a2084a1`, `11727049-d67b-42c5-96c4-8e06158737df`, `18853828-cdf8-4e08-84f1-aa99bf5e0473`, `7e9a8f96-b5e8-4103-ab25-b8d4743b9b93`, `3584c7f1-cb8b-4a7e-a788-7298c5052fe0`, `c41df8b4-6b02-4f2a-abd2-fe0acd6caeff`, `6388b039-de79-46aa-a81c-d7d6d2259b13`.
+
+- Retained test context (2026-10-11T12:57:15.775Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_sections; references `c1980a6f-8445-4f77-b321-238e05aab52b`.
+
+- Retained test context (2026-10-11T12:57:15.775Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_form_parts; references `24b1b61e-fc71-40c5-a59e-1917bf36c506`.
+
+- Retained test context (2026-10-11T12:57:15.775Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_options; references `4f63d9cc-5d1c-4d5e-a0b6-22905f93d1ce`.
+
+- Retained test context (2026-10-11T12:57:15.776Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_option_sets; references `4f63d9cc-5d1c-4d5e-a0b6-22905f93d1ce`.
+
+- Retained test context (2026-10-11T12:57:15.776Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_form_versions_v2; references `ff6a6062-779b-44e4-8390-596db249f0d5`.
+
+- Retained test context (2026-10-11T12:57:15.778Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_forms_v2; references `1b32bd24-71ff-4326-8f39-f8e963200c33`.
+
+- Retained test context (2026-10-11T12:57:15.779Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_assignments; references `bd95fc24-afb6-474d-b195-3136670f796b`.
+
+- Retained test context (2026-10-11T12:57:15.779Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_members_v2; references `a44ada0f-b3db-4d8e-b646-7c305ec57d04`.
+
+- Retained test context (2026-10-11T12:57:15.780Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:15.780Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_resource_action_grants; references `7d66d71c-a7f3-47d8-bb3b-c09ab6945de9`.
+
+- Retained test context (2026-10-11T12:57:15.781Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_roleaccess_ac; references `7d66d71c-a7f3-47d8-bb3b-c09ab6945de9`.
+
+- Retained test context (2026-10-11T12:57:15.781Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_rolemaster_ac; references `7d66d71c-a7f3-47d8-bb3b-c09ab6945de9`.
+
+- Retained test context (2026-10-11T12:57:16.906Z): verified-history/cf_verified_history_8e3b138e; target registered_fixture_context; references `f913aed4-a1f9-45fd-991e-8aea42ee1c99`, `6fe43a25-0031-49f9-9a5c-78700db5588f`, `ec0c35ea-15d4-4039-bb92-9d902d62d475`, `56774e75-43cb-4471-b020-ee80098f9b5d`, `ec19d604-fd9d-4962-b0bc-4fdd878ad3b1`, `9722bca9-7bd6-408d-8387-4a48e824dce6`, `c443be2e-34f6-494d-8283-79285d710975`, `9b3d17b7-6574-43d4-8141-7455608bf37a`, `c231b339-2f57-4a77-a388-0f80ae867169`, `d3edd96f-cf0b-45a6-9f8a-e68bfc198d72`.
+
+- Retained test context (2026-10-11T12:57:18.806Z): dimension context cf_dimensions_087c3967; target registered_fixture_context; references `973a30d3-624b-4407-a998-e05860d22e82`, `72d5a39c-2832-45e2-b069-cbf0c3ae9bcd`, `4be3ddde-f320-4ae8-922d-61f73803190d`, `569f5497-e6fb-4b2f-8e62-76edd3eb7f16`.
+
+- Retained test context (2026-10-11T12:57:19.537Z): cf_dimensions_087c3967.adm_available_ranks_v2 canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:19.647Z): cf_dimensions_087c3967.adm_company_ranks_v2 canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:19.726Z): cf_dimensions_087c3967.master_vessels canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:19.769Z): cf_dimensions_087c3967.master_vessel_types canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:19.829Z): cf_dimensions_087c3967.master_nationalities canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:19.881Z): cf_dimensions_087c3967.master_manning_agents canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:19.925Z): cf_dimensions_087c3967.master_crew_pools canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:19.956Z): cf_dimensions_087c3967.master_fleet_groups canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:20.009Z): cf_dimensions_087c3967.master_additional_groups canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:20.126Z): canonical master copies cf_dimensions_087c3967; target registered_fixture_context; references `55d4c4b0-8e9c-479c-a9f0-9f3fbe95e0e5`, `743feb08-841a-11ed-aa7c-7003bca91a86`.
+
+- Retained test context (2026-10-11T12:57:24.815Z): tests/integration/api/company-form-submission-races.test.ts; target frm_answers; references `a25644e7-55bc-4caf-8f4b-74cdda7c7b19`, `a7afc84a-70d2-4672-9851-08c0172b0342`, `6b1bd582-4142-40c4-a2c4-ea0ec57ae429`.
+
+- Retained test context (2026-10-11T12:57:24.817Z): tests/integration/api/company-form-submission-races.test.ts; target frm_section_states; references `a25644e7-55bc-4caf-8f4b-74cdda7c7b19`, `a7afc84a-70d2-4672-9851-08c0172b0342`, `6b1bd582-4142-40c4-a2c4-ea0ec57ae429`.
+
+- Retained test context (2026-10-11T12:57:24.818Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submission_assignments; references `a25644e7-55bc-4caf-8f4b-74cdda7c7b19`, `a7afc84a-70d2-4672-9851-08c0172b0342`, `6b1bd582-4142-40c4-a2c4-ea0ec57ae429`.
+
+- Retained test context (2026-10-11T12:57:24.819Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submissions; references `a25644e7-55bc-4caf-8f4b-74cdda7c7b19`, `a7afc84a-70d2-4672-9851-08c0172b0342`, `6b1bd582-4142-40c4-a2c4-ea0ec57ae429`.
+
+- Retained test context (2026-10-11T12:57:24.819Z): tests/integration/api/company-form-submission-races.test.ts; target crew_assignments; references `29f964fa-fcf9-4420-a0ae-42b99cf6df5e`, `aa4a08cb-1892-4139-88bc-35fdd6d5d5e6`, `4fabca41-8f3d-40f8-89ae-8efefbd38459`, `7efe3183-4bd3-4427-a755-76f520e6008e`, `eba80918-41fc-4c6e-b7eb-cb61758acf63`.
+
+- Retained test context (2026-10-11T12:57:24.820Z): tests/integration/api/company-form-submission-races.test.ts; target frm_questions; references `975ab1e0-8c40-437b-a657-aeeb4b3a7154`.
+
+- Retained test context (2026-10-11T12:57:24.821Z): tests/integration/api/company-form-submission-races.test.ts; target frm_sections; references `ec1c997a-2e04-4552-91b3-53e378e72978`.
+
+- Retained test context (2026-10-11T12:57:24.821Z): tests/integration/api/company-form-submission-races.test.ts; target frm_form_parts; references `cb126af0-80be-453e-8d46-f2b4c223a264`.
+
+- Retained test context (2026-10-11T12:57:24.821Z): tests/integration/api/company-form-submission-races.test.ts; target adm_form_versions_v2; references `e1d9573a-0e11-4a31-ad93-ec9bbc975df6`.
+
+- Retained test context (2026-10-11T12:57:24.822Z): tests/integration/api/company-form-submission-races.test.ts; target adm_forms_v2; references `e8069a66-a0fc-4c06-bb34-b16753f2a4a9`.
+
+- Retained test context (2026-10-11T12:57:24.823Z): tests/integration/api/company-form-submission-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:24.823Z): tests/integration/api/company-form-submission-races.test.ts; target adm_resource_action_grants; references `8ea31419-d8c7-4877-ac70-03823256360a`.
+
+- Retained test context (2026-10-11T12:57:24.824Z): tests/integration/api/company-form-submission-races.test.ts; target adm_roleaccess_ac; references `8ea31419-d8c7-4877-ac70-03823256360a`.
+
+- Retained test context (2026-10-11T12:57:24.825Z): tests/integration/api/company-form-submission-races.test.ts; target adm_rolemaster_ac; references `8ea31419-d8c7-4877-ac70-03823256360a`.
+
+- Retained test context (2026-10-11T12:57:32.479Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_signatures; references `61ab99b6-e246-4813-be79-9fae5891d786`.
+
+- Retained test context (2026-10-11T12:57:32.480Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_signature_attachments; references `72a0adfb-b93f-431d-b7d5-8e85d543d7e2`, `9a657188-1e85-49f5-999d-6ae42612d186`.
+
+- Retained test context (2026-10-11T12:57:32.481Z): tests/integration/debriefing-submission.acceptance.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:32.482Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_answers; references `61ab99b6-e246-4813-be79-9fae5891d786`.
+
+- Retained test context (2026-10-11T12:57:32.483Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_states; references `61ab99b6-e246-4813-be79-9fae5891d786`.
+
+- Retained test context (2026-10-11T12:57:32.483Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefing_submissions; references `61ab99b6-e246-4813-be79-9fae5891d786`.
+
+- Retained test context (2026-10-11T12:57:32.484Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_questions; references `58a03751-0480-4d72-83f7-457bf93f7030`.
+
+- Retained test context (2026-10-11T12:57:32.484Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_sections; references `faa244c8-e687-40fb-9e91-2cae8dc1fcd6`, `223e36ab-7f11-4eef-978e-7cec3615ce83`, `bbcbdedd-1e47-4311-bf66-3b1fbf44bc65`.
+
+- Retained test context (2026-10-11T12:57:32.485Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_form_parts; references `ad9b6d11-4f3a-4792-9459-fd6ed3782d75`.
+
+- Retained test context (2026-10-11T12:57:32.486Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_form_versions_v2; references `903e7c95-e222-4d14-96ae-3064e600b1af`, `7b01fd59-238b-44e6-993e-0838ba00ed62`.
+
+- Retained test context (2026-10-11T12:57:32.486Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_rank_groups_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:32.487Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_forms_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T12:57:32.487Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefings; references `4c333cd5-5aef-4bde-a79e-962d1cd8d1b9`, `67495a85-51aa-42b1-8191-b1a1f6f754c4`, `c248482b-eaa9-42cb-8295-1bf2b35094ef`.
+
+- Retained test context (2026-10-11T12:57:32.488Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_members_v2; references `21647d3d-053f-40c1-80fb-58a036a77974`.
+
+- Retained test context (2026-10-11T12:57:32.489Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessels; references `1b005ad1-7158-4de9-94cf-c89937b0d96a`.
+
+- Retained test context (2026-10-11T12:57:32.489Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessel_types; references `253bd6c1-8c3c-4cd4-942e-c0a6c9f0311f`.
+
+- Retained test context (2026-10-11T12:57:32.490Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:11.201Z): tests/integration/api/obsolete-crew-assignment-paths.test.ts; target vessel_planning_v2; references `d555e290-bae0-471f-9c03-de813e23b743`.
+
+- Retained test context (2026-10-11T13:01:11.202Z): tests/integration/api/obsolete-crew-assignment-paths.test.ts; target crew_members_v2; references `c249b8f1-fde9-4493-a2de-5920aaf2daa5`.
+
+- Retained test context (2026-10-11T13:01:14.996Z): tests/integration/api/ship-reference-reads.test.ts; target acc_allotments_v2; references `43e103ab-c067-49ec-9f8a-d180ee8104f3`, `997cfd54-12fc-417d-9cfc-d5ebb7d2675d`, `62e3139a-a68f-4897-ac3d-9879002fc11b`.
+
+- Retained test context (2026-10-11T13:01:14.998Z): tests/integration/api/ship-reference-reads.test.ts; target acc_engagements_v2; references `f4bf4894-3e83-45a7-a6f0-f5b3abe74e97`, `7fc365d1-784c-4c6e-871e-5d3494a62bbb`.
+
+- Retained test context (2026-10-11T13:01:14.999Z): tests/integration/api/ship-reference-reads.test.ts; target acc_wage_scale_lines_v2; references `f6aa6c01-a0a1-42ba-b6a2-18addda242be`, `7443764f-8e10-47a3-9af3-15c973a0a3b3`.
+
+- Retained test context (2026-10-11T13:01:14.999Z): tests/integration/api/ship-reference-reads.test.ts; target acc_wage_scales_v2; references `f6aa6c01-a0a1-42ba-b6a2-18addda242be`, `7443764f-8e10-47a3-9af3-15c973a0a3b3`.
+
+- Retained test context (2026-10-11T13:01:15.000Z): tests/integration/api/ship-reference-reads.test.ts; target acc_pay_elements_v2; references `da0758cf-7ac0-405b-8129-9c9e8cba48d8`, `a956d860-39fc-4285-900e-fd526d1a04bc`, `3f72015e-79db-400d-98ed-036724a774d2`, `3f4d6136-bb07-451a-a458-3a296af844a0`, `7cb3befd-f7ce-47a9-b376-4f41c6d46c79`, `aca4c520-9f69-4ef2-9e5a-83140c592ec8`.
+
+- Retained test context (2026-10-11T13:01:22.237Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_wage_ledger_v2; references `fc84fc1f-53ea-4cf2-97cd-22daa5cc67fd`, `1c34b525-fd95-4d0c-93fc-30632326bd3c`.
+
+- Retained test context (2026-10-11T13:01:22.239Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_calculation_runs_v2; references `fc84fc1f-53ea-4cf2-97cd-22daa5cc67fd`, `1c34b525-fd95-4d0c-93fc-30632326bd3c`.
+
+- Retained test context (2026-10-11T13:01:22.240Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_monthly_transactions_v2; references `fc84fc1f-53ea-4cf2-97cd-22daa5cc67fd`, `1c34b525-fd95-4d0c-93fc-30632326bd3c`.
+
+- Retained test context (2026-10-11T13:01:22.252Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_ctm_lines_v2; references `fc84fc1f-53ea-4cf2-97cd-22daa5cc67fd`, `1c34b525-fd95-4d0c-93fc-30632326bd3c`.
+
+- Retained test context (2026-10-11T13:01:22.254Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_ctm_v2; references `fc84fc1f-53ea-4cf2-97cd-22daa5cc67fd`, `1c34b525-fd95-4d0c-93fc-30632326bd3c`.
+
+- Retained test context (2026-10-11T13:01:22.255Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_portage_bills_v2; references `fc84fc1f-53ea-4cf2-97cd-22daa5cc67fd`, `1c34b525-fd95-4d0c-93fc-30632326bd3c`.
+
+- Retained test context (2026-10-11T13:01:22.255Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_settlements_v2; references `a84b408b-b907-4e8c-be71-bc6adb757349`.
+
+- Retained test context (2026-10-11T13:01:22.256Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_allotments_v2; references `2adefc1b-a5cb-45b0-8e0e-b74e208eccbd`, `dbfc4cee-d92a-4816-a699-61c71dbbc62b`, `29a0b0e0-b5a9-4e48-b0ae-ce214ad649c1`, `37b1fdbe-42bf-4afb-bbb6-57a8e33d3b7d`.
+
+- Retained test context (2026-10-11T13:01:22.256Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_engagements_v2; references `fc84fc1f-53ea-4cf2-97cd-22daa5cc67fd`, `1c34b525-fd95-4d0c-93fc-30632326bd3c`.
+
+- Retained test context (2026-10-11T13:01:22.259Z): tests/integration/api/vessel-initiated-workflow.test.ts; target crew_assignments; references `0e599f38-e58a-4a32-b1a0-a4c93e3ca599`, `74ca6bd6-b560-4e7c-af43-c10dbaee8224`.
+
+- Retained test context (2026-10-11T13:01:22.260Z): tests/integration/api/vessel-initiated-workflow.test.ts; target crew_members_v2; references `2adefc1b-a5cb-45b0-8e0e-b74e208eccbd`, `dbfc4cee-d92a-4816-a699-61c71dbbc62b`, `29a0b0e0-b5a9-4e48-b0ae-ce214ad649c1`, `37b1fdbe-42bf-4afb-bbb6-57a8e33d3b7d`.
+
+- Retained test context (2026-10-11T13:01:22.260Z): tests/integration/api/vessel-initiated-workflow.test.ts; target adm_company_ranks_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:22.261Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_wage_scale_lines_v2; references `eafaaf97-406b-4ec7-b8c6-1d58c23a28c2`.
+
+- Retained test context (2026-10-11T13:01:22.261Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_wage_scales_v2; references `eafaaf97-406b-4ec7-b8c6-1d58c23a28c2`.
+
+- Retained test context (2026-10-11T13:01:22.262Z): tests/integration/api/vessel-initiated-workflow.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:22.263Z): tests/integration/api/vessel-initiated-workflow.test.ts; target master_vessels; references `fc84fc1f-53ea-4cf2-97cd-22daa5cc67fd`, `1c34b525-fd95-4d0c-93fc-30632326bd3c`.
+
+- Retained test context (2026-10-11T13:01:22.264Z): tests/integration/api/vessel-initiated-workflow.test.ts; target master_vessel_types; references `237bbf84-a3ce-4566-a7ab-25154bc80ba4`.
+
+- Retained test context (2026-10-11T13:01:22.264Z): tests/integration/api/vessel-initiated-workflow.test.ts; target acc_pay_elements_v2; references `d40d4ae1-d428-4205-ae33-954fd459cfb5`, `e6b4d274-e54c-4042-9051-36f51f8ef75a`.
+
+- Retained test context (2026-10-11T13:01:22.265Z): tests/integration/api/vessel-initiated-workflow.test.ts; target cleanup context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:24.482Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_ctm_lines_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:24.484Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_ctm_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:24.485Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_monthly_transactions_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:24.486Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_wage_ledger_v2; references `6e5705d4-add7-4d3c-a1ff-2062e3426b83`.
+
+- Retained test context (2026-10-11T13:01:24.487Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_calculation_runs_v2; references `bc5ba5bf-e14d-422c-833b-0f19997937c2`, `09801354-ddf4-45d8-8d1f-337706986673`, `4aa75c1e-359c-4eb6-aeef-75bb5381540e`, `de8a61f9-d98e-4c54-a7d6-3b0161b3b36a`.
+
+- Retained test context (2026-10-11T13:01:24.487Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_portage_bills_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:24.488Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_allotments_v2; references `ac12f084-2b30-4ef2-9b80-c327a1643feb`.
+
+- Retained test context (2026-10-11T13:01:24.488Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_engagements_v2; references `6e5705d4-add7-4d3c-a1ff-2062e3426b83`.
+
+- Retained test context (2026-10-11T13:01:24.489Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_wage_scale_lines_v2; references `9fe6cbb0-d12c-4d3f-9651-175595ec99e4`.
+
+- Retained test context (2026-10-11T13:01:24.490Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_wage_scales_v2; references `9fe6cbb0-d12c-4d3f-9651-175595ec99e4`.
+
+- Retained test context (2026-10-11T13:01:24.491Z): tests/integration/api/vessel-portage-category-grids.test.ts; target acc_pay_elements_v2; references `a02ef728-002d-461e-b920-9c5f0380a98f`, `5ae00e45-0869-4a40-ace0-f3dc2b20b39b`, `ed135bd7-8065-4469-b501-5da0783fc0c7`, `a7b1c003-31f8-4de8-938d-17082ba47a21`, `8d38046b-f14a-4d78-8c9f-d754c6257f2f`.
+
+- Retained test context (2026-10-11T13:01:25.991Z): tests/integration/api/vessel-portage.test.ts; target acc_ctm_lines_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:25.993Z): tests/integration/api/vessel-portage.test.ts; target acc_ctm_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:25.994Z): tests/integration/api/vessel-portage.test.ts; target acc_monthly_transactions_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:25.995Z): tests/integration/api/vessel-portage.test.ts; target acc_wage_ledger_v2; references `0a2a4203-1efe-4574-9333-26460471d1d4`.
+
+- Retained test context (2026-10-11T13:01:25.996Z): tests/integration/api/vessel-portage.test.ts; target acc_calculation_runs_v2; references `c404ca02-9a59-49b8-86b5-36ec07dec632`.
+
+- Retained test context (2026-10-11T13:01:25.996Z): tests/integration/api/vessel-portage.test.ts; target acc_portage_bills_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:25.997Z): tests/integration/api/vessel-portage.test.ts; target acc_engagements_v2; references `0a2a4203-1efe-4574-9333-26460471d1d4`.
+
+- Retained test context (2026-10-11T13:01:25.998Z): tests/integration/api/vessel-portage.test.ts; target acc_wage_scale_lines_v2; references `c3efb1fa-9797-4cb1-af0a-6b6d08ef3a29`.
+
+- Retained test context (2026-10-11T13:01:25.998Z): tests/integration/api/vessel-portage.test.ts; target acc_wage_scales_v2; references `c3efb1fa-9797-4cb1-af0a-6b6d08ef3a29`.
+
+- Retained test context (2026-10-11T13:01:25.999Z): tests/integration/api/vessel-portage.test.ts; target acc_pay_elements_v2; references `84156691-a2a4-4c29-8bf3-711f854f6494`, `c8052fa7-14ef-4309-920c-d29449b8d86e`, `81174472-e070-45de-837e-82a784928618`, `e1bd7509-f3bc-405c-85dc-79a450db24b1`, `0efd31aa-036c-4e77-9e01-ec6595429768`.
+
+- Retained test context (2026-10-11T13:01:27.436Z): tests/integration/api/portage-auto-lock.test.ts; target cleanup context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:27.527Z): tests/integration/api/portage-auto-lock.test.ts; target acc_wage_ledger_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:27.528Z): tests/integration/api/portage-auto-lock.test.ts; target acc_portage_approvals_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:27.529Z): tests/integration/api/portage-auto-lock.test.ts; target acc_monthly_transactions_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:27.532Z): tests/integration/api/portage-auto-lock.test.ts; target acc_ctm_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:27.532Z): tests/integration/api/portage-auto-lock.test.ts; target acc_portage_bills_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:27.533Z): tests/integration/api/portage-auto-lock.test.ts; target acc_engagements_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:27.534Z): tests/integration/api/portage-auto-lock.test.ts; target acc_pay_elements_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:29.603Z): tests/integration/api/wage-engine.test.ts; target acc_settlement_approvals_v2; references `56d28166-d111-4891-9aec-4968ae1b9ded`, `b4754e8b-469d-4bb1-9907-ab439c523f2f`, `efccbc49-1476-475f-a086-aea493744f7b`, `72a38307-a922-4a42-85fe-bdae3968bb71`, `57c0ac2b-f13d-4932-a048-93586db6a81a`, `48ceaaca-f45f-420d-8601-3274ba59e05a`, `5b6ac600-1c44-4797-b39d-4271d926961a`, `f4898897-7dae-4b53-876d-68205b252f0b`, `1049c6d0-b3d6-4558-8257-51806ae990fc`, `e8c4a104-9ea4-49d4-824f-a93f0355fca5`, `cf619373-252c-452d-8ef3-1b7760399372`, `7b770d62-da5a-4f84-a761-dd185abb922f`, `27d4e3fe-befd-4acf-b523-18f67bbb8de1`, `a0fb21af-20b4-4bbf-9db2-a1dc610743d8`, `c383fffb-1c69-43e8-9e3a-c9e21947beca`, `1614e4b1-c2bf-4f2e-947b-e586b5f39046`, `bc007633-06ce-4b53-a7c9-1fc3e04c8d90`, `b43735da-8b6b-426b-b352-0189fdd6c94b`, `2b22c2a1-d82d-4231-8499-167c15517263`, `e660a1f1-33ae-4f2b-a915-6d5da2902628`, `22f43d7d-5ae3-42dd-a057-3965de81dc4a`.
+
+- Retained test context (2026-10-11T13:01:29.607Z): tests/integration/api/wage-engine.test.ts; target acc_settlement_adjustments_v2; references `56d28166-d111-4891-9aec-4968ae1b9ded`, `b4754e8b-469d-4bb1-9907-ab439c523f2f`, `efccbc49-1476-475f-a086-aea493744f7b`, `72a38307-a922-4a42-85fe-bdae3968bb71`, `57c0ac2b-f13d-4932-a048-93586db6a81a`, `48ceaaca-f45f-420d-8601-3274ba59e05a`, `5b6ac600-1c44-4797-b39d-4271d926961a`, `f4898897-7dae-4b53-876d-68205b252f0b`, `1049c6d0-b3d6-4558-8257-51806ae990fc`, `e8c4a104-9ea4-49d4-824f-a93f0355fca5`, `cf619373-252c-452d-8ef3-1b7760399372`, `7b770d62-da5a-4f84-a761-dd185abb922f`, `27d4e3fe-befd-4acf-b523-18f67bbb8de1`, `a0fb21af-20b4-4bbf-9db2-a1dc610743d8`, `c383fffb-1c69-43e8-9e3a-c9e21947beca`, `1614e4b1-c2bf-4f2e-947b-e586b5f39046`, `bc007633-06ce-4b53-a7c9-1fc3e04c8d90`, `b43735da-8b6b-426b-b352-0189fdd6c94b`, `2b22c2a1-d82d-4231-8499-167c15517263`, `e660a1f1-33ae-4f2b-a915-6d5da2902628`, `22f43d7d-5ae3-42dd-a057-3965de81dc4a`.
+
+- Retained test context (2026-10-11T13:01:29.610Z): tests/integration/api/wage-engine.test.ts; target acc_settlements_v2; references `56d28166-d111-4891-9aec-4968ae1b9ded`, `b4754e8b-469d-4bb1-9907-ab439c523f2f`, `efccbc49-1476-475f-a086-aea493744f7b`, `72a38307-a922-4a42-85fe-bdae3968bb71`, `57c0ac2b-f13d-4932-a048-93586db6a81a`, `48ceaaca-f45f-420d-8601-3274ba59e05a`, `5b6ac600-1c44-4797-b39d-4271d926961a`, `f4898897-7dae-4b53-876d-68205b252f0b`, `1049c6d0-b3d6-4558-8257-51806ae990fc`, `e8c4a104-9ea4-49d4-824f-a93f0355fca5`, `cf619373-252c-452d-8ef3-1b7760399372`, `7b770d62-da5a-4f84-a761-dd185abb922f`, `27d4e3fe-befd-4acf-b523-18f67bbb8de1`, `a0fb21af-20b4-4bbf-9db2-a1dc610743d8`, `c383fffb-1c69-43e8-9e3a-c9e21947beca`, `1614e4b1-c2bf-4f2e-947b-e586b5f39046`, `bc007633-06ce-4b53-a7c9-1fc3e04c8d90`, `b43735da-8b6b-426b-b352-0189fdd6c94b`, `2b22c2a1-d82d-4231-8499-167c15517263`, `e660a1f1-33ae-4f2b-a915-6d5da2902628`, `22f43d7d-5ae3-42dd-a057-3965de81dc4a`.
+
+- Retained test context (2026-10-11T13:01:29.610Z): tests/integration/api/wage-engine.test.ts; target crew_assignments; references `18910f7a-9db5-4678-a38b-a41c9a0a0bb2`.
+
+- Retained test context (2026-10-11T13:01:29.611Z): tests/integration/api/wage-engine.test.ts; target acc_engagements_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:29.614Z): tests/integration/api/wage-engine.test.ts; target acc_wage_ledger_v2; references `56d28166-d111-4891-9aec-4968ae1b9ded`, `b4754e8b-469d-4bb1-9907-ab439c523f2f`, `efccbc49-1476-475f-a086-aea493744f7b`, `72a38307-a922-4a42-85fe-bdae3968bb71`, `57c0ac2b-f13d-4932-a048-93586db6a81a`, `48ceaaca-f45f-420d-8601-3274ba59e05a`, `5b6ac600-1c44-4797-b39d-4271d926961a`, `f4898897-7dae-4b53-876d-68205b252f0b`, `1049c6d0-b3d6-4558-8257-51806ae990fc`, `e8c4a104-9ea4-49d4-824f-a93f0355fca5`, `cf619373-252c-452d-8ef3-1b7760399372`, `7b770d62-da5a-4f84-a761-dd185abb922f`, `27d4e3fe-befd-4acf-b523-18f67bbb8de1`, `a0fb21af-20b4-4bbf-9db2-a1dc610743d8`, `c383fffb-1c69-43e8-9e3a-c9e21947beca`, `1614e4b1-c2bf-4f2e-947b-e586b5f39046`, `bc007633-06ce-4b53-a7c9-1fc3e04c8d90`, `b43735da-8b6b-426b-b352-0189fdd6c94b`, `2b22c2a1-d82d-4231-8499-167c15517263`, `e660a1f1-33ae-4f2b-a915-6d5da2902628`, `22f43d7d-5ae3-42dd-a057-3965de81dc4a`.
+
+- Retained test context (2026-10-11T13:01:29.614Z): tests/integration/api/wage-engine.test.ts; target acc_calculation_runs_v2; references `56d28166-d111-4891-9aec-4968ae1b9ded`, `b4754e8b-469d-4bb1-9907-ab439c523f2f`, `efccbc49-1476-475f-a086-aea493744f7b`, `72a38307-a922-4a42-85fe-bdae3968bb71`, `57c0ac2b-f13d-4932-a048-93586db6a81a`, `48ceaaca-f45f-420d-8601-3274ba59e05a`, `5b6ac600-1c44-4797-b39d-4271d926961a`, `f4898897-7dae-4b53-876d-68205b252f0b`, `1049c6d0-b3d6-4558-8257-51806ae990fc`, `e8c4a104-9ea4-49d4-824f-a93f0355fca5`, `cf619373-252c-452d-8ef3-1b7760399372`, `7b770d62-da5a-4f84-a761-dd185abb922f`, `27d4e3fe-befd-4acf-b523-18f67bbb8de1`, `a0fb21af-20b4-4bbf-9db2-a1dc610743d8`, `c383fffb-1c69-43e8-9e3a-c9e21947beca`, `1614e4b1-c2bf-4f2e-947b-e586b5f39046`, `bc007633-06ce-4b53-a7c9-1fc3e04c8d90`, `b43735da-8b6b-426b-b352-0189fdd6c94b`, `2b22c2a1-d82d-4231-8499-167c15517263`, `e660a1f1-33ae-4f2b-a915-6d5da2902628`, `22f43d7d-5ae3-42dd-a057-3965de81dc4a`.
+
+- Retained test context (2026-10-11T13:01:29.615Z): tests/integration/api/wage-engine.test.ts; target acc_portage_bills_v2; references `1cf26b89-a655-4cd5-87ab-c86d375c286d`.
+
+- Retained test context (2026-10-11T13:01:29.616Z): tests/integration/api/wage-engine.test.ts; target acc_engagement_pay_elements_v2; references `80e84007-9199-4b66-ac4c-37d9bcb8f2f9`, `c58560a7-d59d-4e93-8ee7-37663d30cd10`, `d60b5000-480a-429d-a743-cb413922657a`, `20d73c78-c126-4540-9e50-a4ed5edb6e7a`, `aa095eb4-d4c7-43a5-9bd1-fc0a1852fe4a`.
+
+- Retained test context (2026-10-11T13:01:29.616Z): tests/integration/api/wage-engine.test.ts; target acc_monthly_transactions_v2; references `61d1c9be-f233-4864-b176-953e5599e65d`, `8f216063-8311-4479-a754-e540d8b1938a`, `943eeafc-0c48-4e7a-b21e-bc3c371def3d`, `1120ea08-85a9-487b-aa22-69a03bcc10de`.
+
+- Retained test context (2026-10-11T13:01:29.617Z): tests/integration/api/wage-engine.test.ts; target acc_allotments_v2; references `321bd520-aa57-40c3-89be-bbf6e7609071`.
+
+- Retained test context (2026-10-11T13:01:29.617Z): tests/integration/api/wage-engine.test.ts; target acc_advances_v2; references `606e578d-af77-469e-b244-6f815d60c5d2`.
+
+- Retained test context (2026-10-11T13:01:29.618Z): tests/integration/api/wage-engine.test.ts; target acc_bond_items_v2; references `37b20545-df1c-4d52-b8f5-b6a72460cfab`.
+
+- Retained test context (2026-10-11T13:01:29.619Z): tests/integration/api/wage-engine.test.ts; target promo_execution_ledger_v2; references `ba89ce5e-3923-430c-9203-5d1ab608359a`.
+
+- Retained test context (2026-10-11T13:01:29.619Z): tests/integration/api/wage-engine.test.ts; target acc_engagements_v2; references `56d28166-d111-4891-9aec-4968ae1b9ded`, `b4754e8b-469d-4bb1-9907-ab439c523f2f`, `efccbc49-1476-475f-a086-aea493744f7b`, `72a38307-a922-4a42-85fe-bdae3968bb71`, `57c0ac2b-f13d-4932-a048-93586db6a81a`, `48ceaaca-f45f-420d-8601-3274ba59e05a`, `5b6ac600-1c44-4797-b39d-4271d926961a`, `f4898897-7dae-4b53-876d-68205b252f0b`, `1049c6d0-b3d6-4558-8257-51806ae990fc`, `e8c4a104-9ea4-49d4-824f-a93f0355fca5`, `cf619373-252c-452d-8ef3-1b7760399372`, `7b770d62-da5a-4f84-a761-dd185abb922f`, `27d4e3fe-befd-4acf-b523-18f67bbb8de1`, `a0fb21af-20b4-4bbf-9db2-a1dc610743d8`, `c383fffb-1c69-43e8-9e3a-c9e21947beca`, `1614e4b1-c2bf-4f2e-947b-e586b5f39046`, `bc007633-06ce-4b53-a7c9-1fc3e04c8d90`, `b43735da-8b6b-426b-b352-0189fdd6c94b`, `2b22c2a1-d82d-4231-8499-167c15517263`, `e660a1f1-33ae-4f2b-a915-6d5da2902628`, `22f43d7d-5ae3-42dd-a057-3965de81dc4a`.
+
+- Retained test context (2026-10-11T13:01:29.619Z): tests/integration/api/wage-engine.test.ts; target crew_members_v2; references `3cf43719-9cd0-45f8-b255-054b3cf857c3`.
+
+- Retained test context (2026-10-11T13:01:29.620Z): tests/integration/api/wage-engine.test.ts; target acc_wage_scale_lines_v2; references `44dcdf5c-93a5-4f69-834f-d9605bedb7e0`, `31909be2-c35f-4318-af9d-7ea4b3d9e44d`, `f10a88ed-2991-4a64-9ecf-0d73991dceea`, `07374b6a-8c3e-4e74-b0f0-18e62a00b3aa`.
+
+- Retained test context (2026-10-11T13:01:29.620Z): tests/integration/api/wage-engine.test.ts; target acc_wage_scales_v2; references `44dcdf5c-93a5-4f69-834f-d9605bedb7e0`, `31909be2-c35f-4318-af9d-7ea4b3d9e44d`, `f10a88ed-2991-4a64-9ecf-0d73991dceea`, `07374b6a-8c3e-4e74-b0f0-18e62a00b3aa`.
+
+- Retained test context (2026-10-11T13:01:29.621Z): tests/integration/api/wage-engine.test.ts; target acc_pay_elements_v2; references `bf208025-c6c7-4701-9d7c-dd3030241014`, `9132b1ed-c1ee-4447-9d27-fb0455ef98be`, `1fea45c7-0593-40fc-bf82-70dbaed1cdf5`, `8372c71c-0733-4d44-9a09-d0a2d9c358f4`, `7ae4c0cc-ca73-4cd8-9da3-3e9be1095733`, `7b2fe355-3f8b-4340-8090-443024235275`, `5a3fdb4b-d2ba-418d-bfd1-a8025a95c8d5`, `210234e6-e1b8-4820-9ee4-0bf9cc8a20ef`, `56f1c0f8-64c1-4a4a-a99c-4d55bca3f5af`, `32a617ce-97a5-4960-b114-ef1344f95319`, `ae49b5b3-538d-4dff-b883-03d89c7b438b`, `dedfd71d-c075-49db-a745-dd152c10b043`, `3b3cdca0-c688-4864-980b-217f6814a079`, `32ea2f1d-f7a8-4a21-974b-449b0df07022`.
+
+- Retained test context (2026-10-11T13:01:29.621Z): tests/integration/api/wage-engine.test.ts; target cleanup context; references `64fe0f62-d6c1-4ae1-96f3-06836b2f4ed9`.
+
+- Retained test context (2026-10-11T13:01:30.873Z): tests/integration/api/contract-detail.test.ts; target acc_wage_ledger_v2; references `95fb2c87-f599-464f-b006-9d1f11f69f06`, `42f9b735-a7ba-4e28-851c-542f67e169cc`, `34311aa0-405a-4bed-8feb-aa8ebaaa7082`, `98ad4164-4c30-4386-8839-20cf70414cf7`.
+
+- Retained test context (2026-10-11T13:01:30.875Z): tests/integration/api/contract-detail.test.ts; target acc_engagement_pay_elements_v2; references `95fb2c87-f599-464f-b006-9d1f11f69f06`, `42f9b735-a7ba-4e28-851c-542f67e169cc`, `34311aa0-405a-4bed-8feb-aa8ebaaa7082`, `98ad4164-4c30-4386-8839-20cf70414cf7`.
+
+- Retained test context (2026-10-11T13:01:30.876Z): tests/integration/api/contract-detail.test.ts; target acc_portage_bills_v2; references `102743fc-826e-470a-93c7-6ade74c397d3`.
+
+- Retained test context (2026-10-11T13:01:30.877Z): tests/integration/api/contract-detail.test.ts; target acc_engagements_v2; references `95fb2c87-f599-464f-b006-9d1f11f69f06`, `42f9b735-a7ba-4e28-851c-542f67e169cc`, `34311aa0-405a-4bed-8feb-aa8ebaaa7082`, `98ad4164-4c30-4386-8839-20cf70414cf7`.
+
+- Retained test context (2026-10-11T13:01:30.878Z): tests/integration/api/contract-detail.test.ts; target crew_assignments; references `a2ef4648-6135-40fc-bef4-1c4b75f8b188`.
+
+- Retained test context (2026-10-11T13:01:30.878Z): tests/integration/api/contract-detail.test.ts; target acc_wage_scale_lines_v2; references `e902db6d-4075-4087-9dfc-ac46121b1c5d`.
+
+- Retained test context (2026-10-11T13:01:30.879Z): tests/integration/api/contract-detail.test.ts; target acc_wage_scales_v2; references `e902db6d-4075-4087-9dfc-ac46121b1c5d`.
+
+- Retained test context (2026-10-11T13:01:30.879Z): tests/integration/api/contract-detail.test.ts; target acc_pay_elements_v2; references `24be67c1-d58d-4c5b-a656-5efe9b77808e`, `d08cdd02-4f75-48dc-b0ee-0a56764f0232`, `de0b8c09-1036-489a-b540-05686a8870e8`, `f70e6bbb-85ba-4d89-a97f-1a8a2040c39a`, `ea4bb1dc-2fe9-45c0-a540-ab0195d1f4d5`.
+
+- Retained test context (2026-10-11T13:01:30.880Z): tests/integration/api/contract-detail.test.ts; target cleanup context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:31.999Z): tests/integration/api/ctm-carry-forward.test.ts; target acc_ctm_lines_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:01:32.001Z): tests/integration/api/ctm-carry-forward.test.ts; target acc_ctm_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:16.052Z): tests/integration/access-control-management.test.ts; target test_ac_22aeebe385cb4fcebc935c590c51427a; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:25.922Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:25.923Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:25.924Z): tests/integration/api/company-form-signing-and-completion.test.ts; target cleanup context; references `3a3e5ebc-c40d-4fc5-981e-c3b4d050d62b`, `5c485ba2-3ba0-41d0-b2b7-6379a8a4ab2a`, `4a2f578c-1190-4a5c-bdcc-03c60516df41`, `a8fb6bf9-5de2-4af9-84ad-cca8a70b4922`, `7606d542-6ccb-424a-b4e0-3c8b9ea782ed`.
+
+- Retained test context (2026-10-11T13:02:25.925Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_signatures; references `3a3e5ebc-c40d-4fc5-981e-c3b4d050d62b`, `5c485ba2-3ba0-41d0-b2b7-6379a8a4ab2a`, `4a2f578c-1190-4a5c-bdcc-03c60516df41`, `a8fb6bf9-5de2-4af9-84ad-cca8a70b4922`, `7606d542-6ccb-424a-b4e0-3c8b9ea782ed`.
+
+- Retained test context (2026-10-11T13:02:25.925Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_signature_attachments; references `2fb923b7-402c-42cb-9e5b-53ab24d1625e`, `ee7b8293-b9a6-4c52-8fa3-a057e5002dab`, `0b31b92a-765d-4dfe-a012-a330f3a57de2`, `47d3da49-102c-454b-b3ce-3354d2abc3fe`, `f98e2aee-9172-4b34-9215-59b5f6a64d9a`, `fb16c7ab-ac6c-4758-ab53-ddce9998daf8`.
+
+- Retained test context (2026-10-11T13:02:25.925Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_system_snapshots; references `3a3e5ebc-c40d-4fc5-981e-c3b4d050d62b`, `5c485ba2-3ba0-41d0-b2b7-6379a8a4ab2a`, `4a2f578c-1190-4a5c-bdcc-03c60516df41`, `a8fb6bf9-5de2-4af9-84ad-cca8a70b4922`, `7606d542-6ccb-424a-b4e0-3c8b9ea782ed`.
+
+- Retained test context (2026-10-11T13:02:25.925Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_answers; references `3a3e5ebc-c40d-4fc5-981e-c3b4d050d62b`, `5c485ba2-3ba0-41d0-b2b7-6379a8a4ab2a`, `4a2f578c-1190-4a5c-bdcc-03c60516df41`, `a8fb6bf9-5de2-4af9-84ad-cca8a70b4922`, `7606d542-6ccb-424a-b4e0-3c8b9ea782ed`.
+
+- Retained test context (2026-10-11T13:02:25.926Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_section_states; references `3a3e5ebc-c40d-4fc5-981e-c3b4d050d62b`, `5c485ba2-3ba0-41d0-b2b7-6379a8a4ab2a`, `4a2f578c-1190-4a5c-bdcc-03c60516df41`, `a8fb6bf9-5de2-4af9-84ad-cca8a70b4922`, `7606d542-6ccb-424a-b4e0-3c8b9ea782ed`.
+
+- Retained test context (2026-10-11T13:02:25.926Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submission_assignments; references `3a3e5ebc-c40d-4fc5-981e-c3b4d050d62b`, `5c485ba2-3ba0-41d0-b2b7-6379a8a4ab2a`, `4a2f578c-1190-4a5c-bdcc-03c60516df41`, `a8fb6bf9-5de2-4af9-84ad-cca8a70b4922`, `7606d542-6ccb-424a-b4e0-3c8b9ea782ed`.
+
+- Retained test context (2026-10-11T13:02:25.927Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_company_submissions; references `3a3e5ebc-c40d-4fc5-981e-c3b4d050d62b`, `5c485ba2-3ba0-41d0-b2b7-6379a8a4ab2a`, `4a2f578c-1190-4a5c-bdcc-03c60516df41`, `a8fb6bf9-5de2-4af9-84ad-cca8a70b4922`, `7606d542-6ccb-424a-b4e0-3c8b9ea782ed`.
+
+- Retained test context (2026-10-11T13:02:25.927Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_questions; references `7d890e71-7ed3-4b59-a681-cc21f121332c`, `387dbbb7-d0bb-447b-8d9b-db72b231441f`, `8a602f0e-3e44-4135-981a-a5de7d9e6c2c`, `0033ffaa-d2d7-4365-8a85-64dbeeca4df7`.
+
+- Retained test context (2026-10-11T13:02:25.928Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_sections; references `7d890e71-7ed3-4b59-a681-cc21f121332c`, `387dbbb7-d0bb-447b-8d9b-db72b231441f`, `8a602f0e-3e44-4135-981a-a5de7d9e6c2c`, `0033ffaa-d2d7-4365-8a85-64dbeeca4df7`.
+
+- Retained test context (2026-10-11T13:02:25.928Z): tests/integration/api/company-form-signing-and-completion.test.ts; target frm_form_parts; references `7d890e71-7ed3-4b59-a681-cc21f121332c`, `387dbbb7-d0bb-447b-8d9b-db72b231441f`, `8a602f0e-3e44-4135-981a-a5de7d9e6c2c`, `0033ffaa-d2d7-4365-8a85-64dbeeca4df7`.
+
+- Retained test context (2026-10-11T13:02:25.929Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_form_versions_v2; references `7d890e71-7ed3-4b59-a681-cc21f121332c`, `387dbbb7-d0bb-447b-8d9b-db72b231441f`, `8a602f0e-3e44-4135-981a-a5de7d9e6c2c`, `0033ffaa-d2d7-4365-8a85-64dbeeca4df7`.
+
+- Retained test context (2026-10-11T13:02:25.929Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_forms_v2; references `7fb8cd92-0e46-4cfb-9880-3b3f3693a34d`, `aeea2c84-2842-4f5a-977d-44e31f415313`.
+
+- Retained test context (2026-10-11T13:02:25.929Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_assignments; references `fd176c5c-43ae-4f5f-9d82-480745ce86a8`, `d228c01e-4af9-4e8a-828a-4ba829215473`, `3179a6fb-0376-4561-b10c-b0a76bf773b2`, `8c510f9e-d0d2-4aed-a580-e8f0e7732755`.
+
+- Retained test context (2026-10-11T13:02:25.930Z): tests/integration/api/company-form-signing-and-completion.test.ts; target crew_members_v2; references `f792300c-7d0b-47bf-9672-4a00a0a9ccb6`.
+
+- Retained test context (2026-10-11T13:02:25.930Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `4d935459-8e4e-4767-ac0c-91d40fffbbcc`.
+
+- Retained test context (2026-10-11T13:02:25.930Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_vessels; references `4ebff656-8d80-4a9c-8e5c-131bdb773181`.
+
+- Retained test context (2026-10-11T13:02:25.931Z): tests/integration/api/company-form-signing-and-completion.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:25.932Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_resource_action_grants; references `7fa4eb38-b01f-44aa-8095-a78866c60c73`, `2b2ab670-6e36-4162-8867-1b8c1f246180`, `d9693660-229e-4ea2-b538-e4ee0dd0e3a1`, `e033c627-f480-45a3-ba02-6da7087ff9e9`.
+
+- Retained test context (2026-10-11T13:02:25.933Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_roleaccess_ac; references `7fa4eb38-b01f-44aa-8095-a78866c60c73`, `2b2ab670-6e36-4162-8867-1b8c1f246180`, `d9693660-229e-4ea2-b538-e4ee0dd0e3a1`, `e033c627-f480-45a3-ba02-6da7087ff9e9`.
+
+- Retained test context (2026-10-11T13:02:25.933Z): tests/integration/api/company-form-signing-and-completion.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:25.933Z): tests/integration/api/company-form-signing-and-completion.test.ts; target adm_rolemaster_ac; references `7fa4eb38-b01f-44aa-8095-a78866c60c73`, `2b2ab670-6e36-4162-8867-1b8c1f246180`, `d9693660-229e-4ea2-b538-e4ee0dd0e3a1`, `e033c627-f480-45a3-ba02-6da7087ff9e9`.
+
+- Retained test context (2026-10-11T13:02:31.130Z): tests/unit/company-form-planning-lock-order.test.ts; target "cf_lock_116c9ef04c3f4cef9808395ad8c68c24"; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:34.785Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_signatures; references `53ddc7b6-f75c-469c-97e2-c44892654dc8`, `ba0dad09-5e04-4213-9de0-473455d9cd3e`.
+
+- Retained test context (2026-10-11T13:02:34.786Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_signature_attachments; references `53ddc7b6-f75c-469c-97e2-c44892654dc8`, `ba0dad09-5e04-4213-9de0-473455d9cd3e`.
+
+- Retained test context (2026-10-11T13:02:34.787Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `446d0c9e-939e-4d0b-bd61-8e8d79063032`, `2daccfbf-f8f2-47c9-aab1-0eaa0675f12a`, `dd8d7e1f-0e52-4e92-a926-13bd0aa677b7`, `bca6a3ae-72cf-4913-8bc0-21b83b705617`.
+
+- Retained test context (2026-10-11T13:02:34.787Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `446d0c9e-939e-4d0b-bd61-8e8d79063032`, `2daccfbf-f8f2-47c9-aab1-0eaa0675f12a`, `dd8d7e1f-0e52-4e92-a926-13bd0aa677b7`, `bca6a3ae-72cf-4913-8bc0-21b83b705617`.
+
+- Retained test context (2026-10-11T13:02:34.787Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_answers; references `26506df4-225b-4bce-ab32-9d2e5ba49cf0`.
+
+- Retained test context (2026-10-11T13:02:34.788Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_section_states; references `26506df4-225b-4bce-ab32-9d2e5ba49cf0`.
+
+- Retained test context (2026-10-11T13:02:34.788Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submission_assignments; references `6e2fd89a-bc8d-4d19-9538-cc57195b6f9f`, `87064eee-e3a4-4bc6-ae81-2ab7c8c2cb3d`, `cdbc1f8f-a3b3-4cb8-ab8a-4a124d79b5f2`, `6171ca98-d613-41ca-8241-702404aab9cf`, `c7b860cd-c7fa-4746-80de-83beddf02466`.
+
+- Retained test context (2026-10-11T13:02:34.788Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_company_submissions; references `6e2fd89a-bc8d-4d19-9538-cc57195b6f9f`, `87064eee-e3a4-4bc6-ae81-2ab7c8c2cb3d`, `cdbc1f8f-a3b3-4cb8-ab8a-4a124d79b5f2`, `6171ca98-d613-41ca-8241-702404aab9cf`, `c7b860cd-c7fa-4746-80de-83beddf02466`.
+
+- Retained test context (2026-10-11T13:02:34.789Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_assignments; references `6e2fd89a-bc8d-4d19-9538-cc57195b6f9f`, `87064eee-e3a4-4bc6-ae81-2ab7c8c2cb3d`, `cdbc1f8f-a3b3-4cb8-ab8a-4a124d79b5f2`, `6171ca98-d613-41ca-8241-702404aab9cf`, `c7b860cd-c7fa-4746-80de-83beddf02466`.
+
+- Retained test context (2026-10-11T13:02:34.789Z): tests/integration/api/company-form-submission-starts.test.ts; target crew_members_v2; references `fe0615ae-f73d-43f6-93d6-3812a8f399a0`.
+
+- Retained test context (2026-10-11T13:02:34.789Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_questions; references `92cc4684-5760-43d7-99a1-4fb947981b3e`, `aac57592-4084-4506-8d25-d9057b39e28a`, `b719cf18-e8ad-4bc0-a23a-978780865f93`, `e987e745-9c91-45f0-a527-7db2c75f6b1b`.
+
+- Retained test context (2026-10-11T13:02:34.790Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_sections; references `92cc4684-5760-43d7-99a1-4fb947981b3e`, `aac57592-4084-4506-8d25-d9057b39e28a`, `b719cf18-e8ad-4bc0-a23a-978780865f93`, `e987e745-9c91-45f0-a527-7db2c75f6b1b`.
+
+- Retained test context (2026-10-11T13:02:34.790Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_options; references `ae93dc69-fd93-4e5c-9120-c9f3f9b41e43`, `2a927e31-5ccf-4d30-b246-950205f9bafd`, `4fb98a19-57a0-41f2-8db7-c9b5bd597ece`, `0e53791f-132f-4cd8-9d03-420cb5477845`.
+
+- Retained test context (2026-10-11T13:02:34.791Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_option_sets; references `ae93dc69-fd93-4e5c-9120-c9f3f9b41e43`, `2a927e31-5ccf-4d30-b246-950205f9bafd`, `4fb98a19-57a0-41f2-8db7-c9b5bd597ece`, `0e53791f-132f-4cd8-9d03-420cb5477845`.
+
+- Retained test context (2026-10-11T13:02:34.791Z): tests/integration/api/company-form-submission-starts.test.ts; target frm_form_parts; references `33bde56a-61c4-42f8-9e1c-b48bdc87cb84`, `c0990268-14b0-4c3e-8c64-b72e5c19bf04`, `e7a60f53-6a92-4500-9d99-0a20bc676a80`, `9073adab-4750-4dd6-a092-a1f64788e32f`.
+
+- Retained test context (2026-10-11T13:02:34.792Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessel_types; references `fb4caa09-f138-41b3-ba3a-72a76e367f9a`.
+
+- Retained test context (2026-10-11T13:02:34.792Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_form_versions_v2; references `c98dd49a-27bb-407f-a71f-25f476d4eb57`, `51cfcc5d-1479-48c8-8403-883cdd5d3738`, `a11b8bb8-2075-44df-a654-757b1a2a694f`, `67c4cc96-7a44-484f-a787-31ed6d9e42f9`, `2b5f618f-1fe2-472e-a269-1e888046ca2a`.
+
+- Retained test context (2026-10-11T13:02:34.792Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_forms_v2; references `a17544b9-6a66-46ff-ae01-732297544e32`, `2127c918-2ae0-41d1-8351-45587ea2b034`, `3fc29e6e-d4d4-4d3d-843e-7a9e96557511`.
+
+- Retained test context (2026-10-11T13:02:34.793Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_resource_action_grants; references `67cc1259-098d-4da3-9396-9cfce459b960`, `9bee5e7d-3f3d-4c33-bafd-db6874ad9c65`, `c9e14b68-6fc1-4766-ab63-46c6331ddbde`, `cfe6c1cd-748d-4488-b11e-d37e1f45a2e0`, `c1d65f65-706b-460b-a2fb-90ccba45d955`.
+
+- Retained test context (2026-10-11T13:02:34.793Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_roleaccess_ac; references `67cc1259-098d-4da3-9396-9cfce459b960`, `9bee5e7d-3f3d-4c33-bafd-db6874ad9c65`, `c9e14b68-6fc1-4766-ab63-46c6331ddbde`, `cfe6c1cd-748d-4488-b11e-d37e1f45a2e0`, `c1d65f65-706b-460b-a2fb-90ccba45d955`.
+
+- Retained test context (2026-10-11T13:02:34.793Z): tests/integration/api/company-form-submission-starts.test.ts; target adm_rolemaster_ac; references `67cc1259-098d-4da3-9396-9cfce459b960`, `9bee5e7d-3f3d-4c33-bafd-db6874ad9c65`, `c9e14b68-6fc1-4766-ab63-46c6331ddbde`, `cfe6c1cd-748d-4488-b11e-d37e1f45a2e0`, `c1d65f65-706b-460b-a2fb-90ccba45d955`.
+
+- Retained test context (2026-10-11T13:02:34.794Z): tests/integration/api/company-form-submission-starts.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:34.794Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `6a52b31b-9254-4778-abca-a415201ffc99`.
+
+- Retained test context (2026-10-11T13:02:34.794Z): tests/integration/api/company-form-submission-starts.test.ts; target master_vessels; references `3770c75c-76f3-4e83-84f9-7c213792b9a7`.
+
+- Retained test context (2026-10-11T13:02:34.799Z): tests/integration/api/company-form-submission-starts.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:40.112Z): tests/integration/api/reliever-unassign-assignment.test.ts; target rotation_archive_v2; references `458035b7-86ff-4596-8e81-26e2fef55f2a`, `4f4f1b8f-ee89-403e-ac8a-83c06d13e073`, `30f54a70-c5d9-4b38-9cef-dc68e442b12e`, `079b28df-f585-455a-b173-4f7aa6a9bd32`, `fd3c9c2d-9133-4a2d-81dc-6b064ef2e0d9`, `ff4db31b-6727-4769-98ce-a28c5f8a1042`, `3993f52c-719a-4e0b-9877-4431c21c6b0c`, `542961b6-c220-45ec-8221-28b2c716c7ee`, `f5ad34aa-a3d9-45c4-8e8e-dd9257f728e4`.
+
+- Retained test context (2026-10-11T13:02:40.113Z): tests/integration/api/reliever-unassign-assignment.test.ts; target rotation_entries_v2; references `458035b7-86ff-4596-8e81-26e2fef55f2a`, `4f4f1b8f-ee89-403e-ac8a-83c06d13e073`, `30f54a70-c5d9-4b38-9cef-dc68e442b12e`, `079b28df-f585-455a-b173-4f7aa6a9bd32`, `fd3c9c2d-9133-4a2d-81dc-6b064ef2e0d9`, `ff4db31b-6727-4769-98ce-a28c5f8a1042`, `3993f52c-719a-4e0b-9877-4431c21c6b0c`, `542961b6-c220-45ec-8221-28b2c716c7ee`, `f5ad34aa-a3d9-45c4-8e8e-dd9257f728e4`.
+
+- Retained test context (2026-10-11T13:02:40.114Z): tests/integration/api/reliever-unassign-assignment.test.ts; target vessel_planning_reliever_clear_audit; references `e9c308d4-7cb6-455e-9536-d7913fb0dbe5`, `a796896b-6c7a-46ae-929f-df56422feef7`, `1455fb81-99a7-4e21-afef-33c5bb37d59a`, `7ce7b7b2-466e-4d88-808b-1174c7f1a071`, `1e16ab99-0cba-456a-8e36-ce1360718090`, `08fc5977-c152-424e-9c48-ea17a83f1820`, `257f414c-f22c-4b6f-a521-c81d0a986b57`, `20a437d2-edfa-4657-8f2a-86b32f8ace91`, `b6db88de-66c6-4a8d-a16e-f9878a7ddf7f`, `98c679c4-e4e1-40e8-8851-eccb8e860fe9`, `15836d61-d845-47dd-bffe-2dc29e048b4c`, `ee8b21b5-a0e9-4801-8798-e7fcbf7bf09f`, `696c4c7c-56aa-46c0-b93d-8dada118cc54`, `4b99175f-55e8-49d3-a29f-71712214e6a7`, `941ea97f-07a0-4508-94ec-e9a97c5816ea`, `2d034fc5-2a35-40e6-af4d-17457bdfca18`, `82b3a67a-a87d-48da-bd81-eff2c5a8bba7`, `1cb75db2-ef16-4a55-8fcd-553c77a763e3`, `0d49ec70-72b7-43ca-a58f-72563851e21b`, `3efd33e2-baa7-4ac0-b09a-f9dc9c69951c`, `ea99a3ac-dd27-4a30-a9c0-a406aa1beeaf`, `342d3dbe-733e-4ce6-8692-12d2e3a434e2`, `b766e1bc-b5da-4720-b181-549a362206aa`, `98d9d13d-ec1a-4267-b104-b2f691c66e2a`, `503f024b-9f07-4d19-a7b4-3f909d9e1984`, `5cc8c065-7043-4288-9d5e-04b156fdb339`, `4495852f-2789-493d-84ea-32a8c9101b1b`, `94b31ee8-3ada-4632-bd24-083a358ca429`, `4d1c0310-4759-498b-9b5e-3f2bab860e5f`, `d9e5b9a3-7283-4758-9086-3575c50da237`, `fd4f8b2b-f7a2-4f0c-9b3e-a1386f087780`, `ad34ac9d-d8ca-486d-b2d8-4e9632eff71e`, `afdf0add-2251-463e-b3ac-818186ba5c78`, `f0b8cd3a-ec84-46f0-b4f9-377dbf413d0d`, `0b4243df-d0e8-49f1-9263-cbc0985ea7b6`, `d91eab8a-36c1-42f0-8cb4-352b567171c8`, `3dca99a9-f58c-4779-9c0b-387a7b6e1053`, `08409614-470e-40ba-b47e-fd5c71686845`, `63a45793-69ac-4ad1-8cd7-9370d1e8b3f0`, `0ab986a6-0e81-4fcb-bfaf-a10171e3bf7d`, `6e63b1d5-c666-444a-bb7d-5ef94ff1ff55`, `49b408f4-25ff-41e0-908a-b5a2c888f050`.
+
+- Retained test context (2026-10-11T13:02:40.114Z): tests/integration/api/reliever-unassign-assignment.test.ts; target vessel_planning_assignment_reconciliations; references `e9c308d4-7cb6-455e-9536-d7913fb0dbe5`, `a796896b-6c7a-46ae-929f-df56422feef7`, `1455fb81-99a7-4e21-afef-33c5bb37d59a`, `7ce7b7b2-466e-4d88-808b-1174c7f1a071`, `1e16ab99-0cba-456a-8e36-ce1360718090`, `08fc5977-c152-424e-9c48-ea17a83f1820`, `257f414c-f22c-4b6f-a521-c81d0a986b57`, `20a437d2-edfa-4657-8f2a-86b32f8ace91`, `b6db88de-66c6-4a8d-a16e-f9878a7ddf7f`, `98c679c4-e4e1-40e8-8851-eccb8e860fe9`, `15836d61-d845-47dd-bffe-2dc29e048b4c`, `ee8b21b5-a0e9-4801-8798-e7fcbf7bf09f`, `696c4c7c-56aa-46c0-b93d-8dada118cc54`, `4b99175f-55e8-49d3-a29f-71712214e6a7`, `941ea97f-07a0-4508-94ec-e9a97c5816ea`, `2d034fc5-2a35-40e6-af4d-17457bdfca18`, `82b3a67a-a87d-48da-bd81-eff2c5a8bba7`, `1cb75db2-ef16-4a55-8fcd-553c77a763e3`, `0d49ec70-72b7-43ca-a58f-72563851e21b`, `3efd33e2-baa7-4ac0-b09a-f9dc9c69951c`, `ea99a3ac-dd27-4a30-a9c0-a406aa1beeaf`, `342d3dbe-733e-4ce6-8692-12d2e3a434e2`, `b766e1bc-b5da-4720-b181-549a362206aa`, `98d9d13d-ec1a-4267-b104-b2f691c66e2a`, `503f024b-9f07-4d19-a7b4-3f909d9e1984`, `5cc8c065-7043-4288-9d5e-04b156fdb339`, `4495852f-2789-493d-84ea-32a8c9101b1b`, `94b31ee8-3ada-4632-bd24-083a358ca429`, `4d1c0310-4759-498b-9b5e-3f2bab860e5f`, `d9e5b9a3-7283-4758-9086-3575c50da237`, `fd4f8b2b-f7a2-4f0c-9b3e-a1386f087780`, `ad34ac9d-d8ca-486d-b2d8-4e9632eff71e`, `afdf0add-2251-463e-b3ac-818186ba5c78`, `f0b8cd3a-ec84-46f0-b4f9-377dbf413d0d`, `0b4243df-d0e8-49f1-9263-cbc0985ea7b6`, `d91eab8a-36c1-42f0-8cb4-352b567171c8`, `3dca99a9-f58c-4779-9c0b-387a7b6e1053`, `08409614-470e-40ba-b47e-fd5c71686845`, `63a45793-69ac-4ad1-8cd7-9370d1e8b3f0`, `0ab986a6-0e81-4fcb-bfaf-a10171e3bf7d`, `6e63b1d5-c666-444a-bb7d-5ef94ff1ff55`, `49b408f4-25ff-41e0-908a-b5a2c888f050`.
+
+- Retained test context (2026-10-11T13:02:40.115Z): tests/integration/api/reliever-unassign-assignment.test.ts; target vessel_planning_v2; references `e9c308d4-7cb6-455e-9536-d7913fb0dbe5`, `a796896b-6c7a-46ae-929f-df56422feef7`, `1455fb81-99a7-4e21-afef-33c5bb37d59a`, `7ce7b7b2-466e-4d88-808b-1174c7f1a071`, `1e16ab99-0cba-456a-8e36-ce1360718090`, `08fc5977-c152-424e-9c48-ea17a83f1820`, `257f414c-f22c-4b6f-a521-c81d0a986b57`, `20a437d2-edfa-4657-8f2a-86b32f8ace91`, `b6db88de-66c6-4a8d-a16e-f9878a7ddf7f`, `98c679c4-e4e1-40e8-8851-eccb8e860fe9`, `15836d61-d845-47dd-bffe-2dc29e048b4c`, `ee8b21b5-a0e9-4801-8798-e7fcbf7bf09f`, `696c4c7c-56aa-46c0-b93d-8dada118cc54`, `4b99175f-55e8-49d3-a29f-71712214e6a7`, `941ea97f-07a0-4508-94ec-e9a97c5816ea`, `2d034fc5-2a35-40e6-af4d-17457bdfca18`, `82b3a67a-a87d-48da-bd81-eff2c5a8bba7`, `1cb75db2-ef16-4a55-8fcd-553c77a763e3`, `0d49ec70-72b7-43ca-a58f-72563851e21b`, `3efd33e2-baa7-4ac0-b09a-f9dc9c69951c`, `ea99a3ac-dd27-4a30-a9c0-a406aa1beeaf`, `342d3dbe-733e-4ce6-8692-12d2e3a434e2`, `b766e1bc-b5da-4720-b181-549a362206aa`, `98d9d13d-ec1a-4267-b104-b2f691c66e2a`, `503f024b-9f07-4d19-a7b4-3f909d9e1984`, `5cc8c065-7043-4288-9d5e-04b156fdb339`, `4495852f-2789-493d-84ea-32a8c9101b1b`, `94b31ee8-3ada-4632-bd24-083a358ca429`, `4d1c0310-4759-498b-9b5e-3f2bab860e5f`, `d9e5b9a3-7283-4758-9086-3575c50da237`, `fd4f8b2b-f7a2-4f0c-9b3e-a1386f087780`, `ad34ac9d-d8ca-486d-b2d8-4e9632eff71e`, `afdf0add-2251-463e-b3ac-818186ba5c78`, `f0b8cd3a-ec84-46f0-b4f9-377dbf413d0d`, `0b4243df-d0e8-49f1-9263-cbc0985ea7b6`, `d91eab8a-36c1-42f0-8cb4-352b567171c8`, `3dca99a9-f58c-4779-9c0b-387a7b6e1053`, `08409614-470e-40ba-b47e-fd5c71686845`, `63a45793-69ac-4ad1-8cd7-9370d1e8b3f0`, `0ab986a6-0e81-4fcb-bfaf-a10171e3bf7d`, `6e63b1d5-c666-444a-bb7d-5ef94ff1ff55`, `49b408f4-25ff-41e0-908a-b5a2c888f050`.
+
+- Retained test context (2026-10-11T13:02:40.115Z): tests/integration/api/reliever-unassign-assignment.test.ts; target crew_assignments; references `ca25d211-f001-462b-8558-ed44955e64d5`, `35ec9ffe-5dec-4df6-95e3-a14e4361f02f`, `7e14eca6-6756-4b7c-bd3b-ea71537681db`, `822788fa-c33d-4fff-8cef-ecba4241fd80`, `8d7ac440-418b-4a85-b427-8cc91fabe26f`, `9dd30dc1-0200-4b44-893b-9f04c56d3820`, `083e5e43-eda8-4f72-98f9-bf94cd7492e0`, `e4911777-d217-471b-b27d-6897c99d6f5d`, `35b44b62-3e75-46d2-b430-2646ca69182b`, `622e33db-b884-458b-91ed-0abbc9ea2bed`, `ae86cf8f-43f8-4b4e-929b-21a78841ebb4`, `17ef148c-1807-499e-a76e-fed054861628`, `df0e9cfc-3da3-4a6b-b714-469ce79dfd6f`, `f011c32c-3673-4dab-aee6-08618ba6eee8`, `377f0e0f-322f-41ea-8523-3881b249944b`, `4928d766-ea30-4147-b0a3-9c5deba79d42`, `b9982368-d606-4969-b34a-953bad63c180`, `e79b5c2c-b7b8-44ca-bbde-cfa63c166c4d`, `42daff40-deff-417f-9d92-863e93b84eb1`, `d1c722c5-fded-4eec-b764-91794e04542c`, `8fd36346-62b3-40fa-8959-699e87ea7804`, `5b62fad0-288e-436f-b608-994b7bd620f6`, `75404316-e137-462a-8e2d-7db6bb48dd5d`, `426e709e-782a-4eb0-a777-1e39ca832e60`, `ed20b796-58ff-4b09-b723-de57e8a743b2`, `a9ac70db-1fb0-46b9-8263-14f0925603e0`, `ef83785a-2528-461f-a509-e4ec1c0524e4`, `4a078803-11f8-4fb4-ab0c-6fb5f3ce7614`, `b7d9a3ef-9de5-40d1-a0bd-73b8e22c0b55`, `12f00b44-cb48-40a7-a6c4-1a63e6d03195`, `b53db80e-5d8f-4298-a4ef-762ad06ad278`, `1fea886a-9015-4128-ae8d-998ead0adee3`, `9c1661cc-3d91-4bf1-82a9-035022d78c11`, `24245341-5f7a-4ec2-9b09-73a64b908275`, `4fee88ff-9743-4519-9fb3-6cf9290306d3`, `adc5727a-faa6-4e0a-8157-2033b70b2dc1`, `2026d089-063d-4ffa-8fc2-a9ab446e757b`, `d3ff70d8-348f-4e09-a7fa-dc8a9e99d76a`, `f628632f-7c42-4a2b-8ba6-3a62193c6ad6`, `a24110a1-3cff-4db2-a34c-133f76b0c832`, `81f51c30-ea8c-4ef3-a6c5-c42faa86a2ed`, `9c350da7-b37e-4c27-a501-c30b8c0ef1af`, `acccd5f0-03e4-45d1-8692-db3566ff5699`, `7c5c6c6f-bd90-41d1-b718-a963271407af`, `1b9e8bc8-cb7d-444e-afb3-d8a36eb47580`.
+
+- Retained test context (2026-10-11T13:02:40.122Z): tests/integration/api/reliever-unassign-assignment.test.ts; target crew_sea_service; references `3b9988c0-6290-47de-bc34-1d3b8a34f138`, `96b5fa9f-868c-422d-9630-bce0b68b738b`, `cf7be3fd-508a-490c-952c-ddded55aee49`, `9449ad87-cf5b-4bed-84e4-d039123aced1`, `d3b7d949-4b08-48b4-ac02-1de96d959003`, `201c267f-8802-4be8-8afa-ce73abf57b8e`, `fdcf2634-cefb-455e-a4b3-992c39fe827e`, `68d0c60f-96c9-4dbb-9015-6fc453fbdfe4`, `598c2599-c607-476b-8106-68f5d262b67b`, `dc71d9e1-f875-47cf-92a2-285a49e1df6c`, `32b6f4df-fcac-4646-b7db-3a415044134f`, `993fd321-67ad-46e9-8ee6-97cddc436a8c`, `3b060e75-3f54-404d-89f1-50dc9c503c25`, `cf54adc1-6dba-493d-a403-eeff2c8c4529`, `147b3c22-175d-435d-ad41-0ad33c1e8ce8`, `5d1837d7-7094-4656-9eae-3bbd6fd9601b`, `041b5d6b-d282-445f-9e3f-57372d12ac27`, `bf129df6-d309-4f31-acbf-e7aba759812d`, `be60539e-701b-4409-ad00-c6838bab7cb6`, `4ea0b752-9b93-4b32-a843-0a5caf353d2b`, `12a9f7e3-728f-425b-bb47-d7386b17ea3b`, `acf1f730-ee07-411d-8927-33ffdb0c816f`, `03bd3594-a15c-425e-8cb6-0b7628a67c05`, `9588a0ef-b9d5-4193-8a80-4e7b6964e5b3`, `3a0c2733-6901-44a7-93e5-8c88e74c6be2`, `f61e6ffa-3855-4088-b3de-3aa895dc46aa`, `cc58a526-f17a-43b1-b935-31ba1f989a44`.
+
+- Retained test context (2026-10-11T13:02:40.122Z): tests/integration/api/reliever-unassign-assignment.test.ts; target crew_members_v2; references `3b9988c0-6290-47de-bc34-1d3b8a34f138`, `96b5fa9f-868c-422d-9630-bce0b68b738b`, `cf7be3fd-508a-490c-952c-ddded55aee49`, `9449ad87-cf5b-4bed-84e4-d039123aced1`, `d3b7d949-4b08-48b4-ac02-1de96d959003`, `201c267f-8802-4be8-8afa-ce73abf57b8e`, `fdcf2634-cefb-455e-a4b3-992c39fe827e`, `68d0c60f-96c9-4dbb-9015-6fc453fbdfe4`, `598c2599-c607-476b-8106-68f5d262b67b`, `dc71d9e1-f875-47cf-92a2-285a49e1df6c`, `32b6f4df-fcac-4646-b7db-3a415044134f`, `993fd321-67ad-46e9-8ee6-97cddc436a8c`, `3b060e75-3f54-404d-89f1-50dc9c503c25`, `cf54adc1-6dba-493d-a403-eeff2c8c4529`, `147b3c22-175d-435d-ad41-0ad33c1e8ce8`, `5d1837d7-7094-4656-9eae-3bbd6fd9601b`, `041b5d6b-d282-445f-9e3f-57372d12ac27`, `bf129df6-d309-4f31-acbf-e7aba759812d`, `be60539e-701b-4409-ad00-c6838bab7cb6`, `4ea0b752-9b93-4b32-a843-0a5caf353d2b`, `12a9f7e3-728f-425b-bb47-d7386b17ea3b`, `acf1f730-ee07-411d-8927-33ffdb0c816f`, `03bd3594-a15c-425e-8cb6-0b7628a67c05`, `9588a0ef-b9d5-4193-8a80-4e7b6964e5b3`, `3a0c2733-6901-44a7-93e5-8c88e74c6be2`, `f61e6ffa-3855-4088-b3de-3aa895dc46aa`, `cc58a526-f17a-43b1-b935-31ba1f989a44`.
+
+- Retained test context (2026-10-11T13:02:40.123Z): tests/integration/api/reliever-unassign-assignment.test.ts; target master_vessels; references `30b6d691-45eb-4f40-8b8c-142d33a268ff`, `f6ae2e51-9bcd-40e2-b3c1-ee8562de1670`, `bcef71b2-6c6d-452c-ae5c-ef861bffdbee`, `3b180eaa-a18f-489c-8e78-42258920733a`, `2a2718c0-439b-4baf-835d-0e67655f513e`, `5f58b8bb-9243-491f-b93b-49df7220567c`, `3f85a6b3-3d39-4eb3-9257-286046744692`, `f7aca8b4-08e3-4d44-aab9-55de0a8ebc0f`, `5edddc88-b653-414a-a5f1-bba71ffb39e2`, `72679f65-278b-4b04-9485-55d0ddbab03a`, `a7fde877-08d4-4a8b-a66b-cd0ff0a4bc2f`, `3658d18c-a741-4583-9ba9-8fe2944110d6`, `e4870d13-b9be-45db-a1bb-6e40c8a8ae76`, `cf5c39af-5371-46c9-95eb-31cc6d12d906`, `abf5cb39-dc17-4869-81b2-d16a6b04be79`, `27be5b39-4f6d-4484-a5ea-685f8f2284ac`, `88f2ebde-8d16-4276-9ac0-dfa062019459`, `585bfe61-cb3e-4b1a-900d-28596032d41a`, `489547d5-009a-48a1-994b-ee98d900b9b3`, `4eb6ddf8-035f-4daa-9005-716a9572a689`, `f76f19c1-7f76-4585-ba8d-30a9707dc1b8`, `797f1bf3-d58f-4030-8f7f-8e7a292286e6`, `0e776726-2868-47be-b570-0857e54c911f`, `890900bc-ad04-42e0-a0d1-e910691028a9`, `04ae4b2f-8b87-4600-914d-999057644d5d`, `c6b4e4c7-de89-4ba2-b58f-8fffbbce938d`, `26ad6d46-891d-4d90-944b-2bad20759200`, `9cd3817a-0c40-4f08-85f2-209a23f0dd94`, `f193e5c4-d6fa-4339-bef9-f9030fa61905`, `65f6a259-73fc-42b9-a723-ff52a415093a`, `de2064e9-d7a1-4257-8e25-72f53610fedd`, `41d207eb-775a-46b4-9a2a-aaa4d7c10385`, `ed0bf436-58fb-45a4-a2de-5b9b57d1ce1e`, `856b183f-2ebd-46b3-b138-de768932a567`, `ce50a6b2-b202-48da-a378-8e994749dd4c`.
+
+- Retained test context (2026-10-11T13:02:40.124Z): tests/integration/api/reliever-unassign-assignment.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:43.207Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `866de169-d455-432a-b14b-9545a2351d45`.
+
+- Retained test context (2026-10-11T13:02:43.208Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `866de169-d455-432a-b14b-9545a2351d45`.
+
+- Retained test context (2026-10-11T13:02:43.209Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `866de169-d455-432a-b14b-9545a2351d45`.
+
+- Retained test context (2026-10-11T13:02:43.210Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `866de169-d455-432a-b14b-9545a2351d45`.
+
+- Retained test context (2026-10-11T13:02:43.210Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `866de169-d455-432a-b14b-9545a2351d45`.
+
+- Retained test context (2026-10-11T13:02:43.211Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `e515b78b-0b77-4020-9beb-4b895f7bc935`.
+
+- Retained test context (2026-10-11T13:02:43.211Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `e515b78b-0b77-4020-9beb-4b895f7bc935`.
+
+- Retained test context (2026-10-11T13:02:43.212Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `e515b78b-0b77-4020-9beb-4b895f7bc935`.
+
+- Retained test context (2026-10-11T13:02:43.212Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `e515b78b-0b77-4020-9beb-4b895f7bc935`.
+
+- Retained test context (2026-10-11T13:02:43.213Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `e515b78b-0b77-4020-9beb-4b895f7bc935`.
+
+- Retained test context (2026-10-11T13:02:43.213Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `4a915249-75d4-4c9e-a707-715f67e162ff`.
+
+- Retained test context (2026-10-11T13:02:43.213Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `4a915249-75d4-4c9e-a707-715f67e162ff`.
+
+- Retained test context (2026-10-11T13:02:43.214Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `4a915249-75d4-4c9e-a707-715f67e162ff`.
+
+- Retained test context (2026-10-11T13:02:43.214Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `4a915249-75d4-4c9e-a707-715f67e162ff`.
+
+- Retained test context (2026-10-11T13:02:43.214Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `4a915249-75d4-4c9e-a707-715f67e162ff`.
+
+- Retained test context (2026-10-11T13:02:43.215Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `074cb4eb-d807-43ec-a23d-02facf7acdf2`.
+
+- Retained test context (2026-10-11T13:02:43.215Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `074cb4eb-d807-43ec-a23d-02facf7acdf2`.
+
+- Retained test context (2026-10-11T13:02:43.216Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `074cb4eb-d807-43ec-a23d-02facf7acdf2`.
+
+- Retained test context (2026-10-11T13:02:43.216Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `074cb4eb-d807-43ec-a23d-02facf7acdf2`.
+
+- Retained test context (2026-10-11T13:02:43.217Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `074cb4eb-d807-43ec-a23d-02facf7acdf2`.
+
+- Retained test context (2026-10-11T13:02:43.217Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `2f49a572-cb8e-48f0-9fb1-820274d5f244`.
+
+- Retained test context (2026-10-11T13:02:43.218Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `2f49a572-cb8e-48f0-9fb1-820274d5f244`.
+
+- Retained test context (2026-10-11T13:02:43.218Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `2f49a572-cb8e-48f0-9fb1-820274d5f244`.
+
+- Retained test context (2026-10-11T13:02:43.219Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `2f49a572-cb8e-48f0-9fb1-820274d5f244`.
+
+- Retained test context (2026-10-11T13:02:43.219Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `2f49a572-cb8e-48f0-9fb1-820274d5f244`.
+
+- Retained test context (2026-10-11T13:02:43.220Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `fac83fc7-91a6-427a-8e78-21213099c913`.
+
+- Retained test context (2026-10-11T13:02:43.220Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `fac83fc7-91a6-427a-8e78-21213099c913`.
+
+- Retained test context (2026-10-11T13:02:43.220Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `fac83fc7-91a6-427a-8e78-21213099c913`.
+
+- Retained test context (2026-10-11T13:02:43.221Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `fac83fc7-91a6-427a-8e78-21213099c913`.
+
+- Retained test context (2026-10-11T13:02:43.221Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `fac83fc7-91a6-427a-8e78-21213099c913`.
+
+- Retained test context (2026-10-11T13:02:43.222Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `ffef6ab4-9114-402b-9113-af5be4762edb`.
+
+- Retained test context (2026-10-11T13:02:43.222Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `ffef6ab4-9114-402b-9113-af5be4762edb`.
+
+- Retained test context (2026-10-11T13:02:43.223Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `ffef6ab4-9114-402b-9113-af5be4762edb`.
+
+- Retained test context (2026-10-11T13:02:43.224Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `ffef6ab4-9114-402b-9113-af5be4762edb`.
+
+- Retained test context (2026-10-11T13:02:43.225Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `ffef6ab4-9114-402b-9113-af5be4762edb`.
+
+- Retained test context (2026-10-11T13:02:43.226Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `b2b7c50e-b53f-474f-82ad-c04489d15433`.
+
+- Retained test context (2026-10-11T13:02:43.226Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `b2b7c50e-b53f-474f-82ad-c04489d15433`.
+
+- Retained test context (2026-10-11T13:02:43.226Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `b2b7c50e-b53f-474f-82ad-c04489d15433`.
+
+- Retained test context (2026-10-11T13:02:43.227Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `b2b7c50e-b53f-474f-82ad-c04489d15433`.
+
+- Retained test context (2026-10-11T13:02:43.228Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `b2b7c50e-b53f-474f-82ad-c04489d15433`.
+
+- Retained test context (2026-10-11T13:02:43.228Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `4cffa8c4-8558-403b-9ffa-e5168875e373`.
+
+- Retained test context (2026-10-11T13:02:43.230Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `4cffa8c4-8558-403b-9ffa-e5168875e373`.
+
+- Retained test context (2026-10-11T13:02:43.231Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `4cffa8c4-8558-403b-9ffa-e5168875e373`.
+
+- Retained test context (2026-10-11T13:02:43.231Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `4cffa8c4-8558-403b-9ffa-e5168875e373`.
+
+- Retained test context (2026-10-11T13:02:43.232Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `4cffa8c4-8558-403b-9ffa-e5168875e373`.
+
+- Retained test context (2026-10-11T13:02:43.232Z): tests/integration/api/company-form-applicability.test.ts; target frm_questions; references `92dc8842-daf6-4cfb-911f-a0be78a1bd5e`.
+
+- Retained test context (2026-10-11T13:02:43.233Z): tests/integration/api/company-form-applicability.test.ts; target frm_sections; references `92dc8842-daf6-4cfb-911f-a0be78a1bd5e`.
+
+- Retained test context (2026-10-11T13:02:43.233Z): tests/integration/api/company-form-applicability.test.ts; target frm_form_parts; references `92dc8842-daf6-4cfb-911f-a0be78a1bd5e`.
+
+- Retained test context (2026-10-11T13:02:43.234Z): tests/integration/api/company-form-applicability.test.ts; target adm_form_versions_v2; references `92dc8842-daf6-4cfb-911f-a0be78a1bd5e`.
+
+- Retained test context (2026-10-11T13:02:43.234Z): tests/integration/api/company-form-applicability.test.ts; target adm_forms_v2; references `92dc8842-daf6-4cfb-911f-a0be78a1bd5e`.
+
+- Retained test context (2026-10-11T13:02:49.468Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_signatures; references `e6e1f60c-d536-4f9c-a27b-f8011dbefc3c`, `c700b1c1-3f5b-43fe-b943-cb2cc6acc9f8`.
+
+- Retained test context (2026-10-11T13:02:49.468Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_answers; references `e6e1f60c-d536-4f9c-a27b-f8011dbefc3c`, `c700b1c1-3f5b-43fe-b943-cb2cc6acc9f8`.
+
+- Retained test context (2026-10-11T13:02:49.469Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_section_states; references `e6e1f60c-d536-4f9c-a27b-f8011dbefc3c`, `c700b1c1-3f5b-43fe-b943-cb2cc6acc9f8`.
+
+- Retained test context (2026-10-11T13:02:49.469Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submission_assignments; references `e6e1f60c-d536-4f9c-a27b-f8011dbefc3c`, `c700b1c1-3f5b-43fe-b943-cb2cc6acc9f8`.
+
+- Retained test context (2026-10-11T13:02:49.470Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_company_submissions; references `e6e1f60c-d536-4f9c-a27b-f8011dbefc3c`, `c700b1c1-3f5b-43fe-b943-cb2cc6acc9f8`.
+
+- Retained test context (2026-10-11T13:02:49.470Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_signature_attachments; references `6fd219ba-c8e8-46d3-84c2-b1608134842a`.
+
+- Retained test context (2026-10-11T13:02:49.471Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_assignments; references `1ce20c9d-2e10-4e85-ae2a-83eab99ebfda`, `afed7a0f-cfe7-4c6c-a67b-a7e15e38b9bd`.
+
+- Retained test context (2026-10-11T13:02:49.471Z): tests/integration/api/company-form-submission-boundary.test.ts; target crew_members_v2; references `817fde9e-77ff-4315-8391-34f383aafaf3`.
+
+- Retained test context (2026-10-11T13:02:49.471Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_questions; references `04f4a474-0e59-4a92-9576-58ec2b3f1008`.
+
+- Retained test context (2026-10-11T13:02:49.472Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_sections; references `2d49b894-a580-4766-ab39-d21ac652e656`.
+
+- Retained test context (2026-10-11T13:02:49.472Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_form_parts; references `683d487c-29f6-4a54-b812-c3db5bb59d98`.
+
+- Retained test context (2026-10-11T13:02:49.473Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_options; references `9db6cf05-0fcc-41b1-9c22-87603555a1c8`.
+
+- Retained test context (2026-10-11T13:02:49.473Z): tests/integration/api/company-form-submission-boundary.test.ts; target frm_option_sets; references `9db6cf05-0fcc-41b1-9c22-87603555a1c8`.
+
+- Retained test context (2026-10-11T13:02:49.473Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_form_versions_v2; references `1c0896cf-3664-4aac-b517-d7d255b4c9c0`.
+
+- Retained test context (2026-10-11T13:02:49.474Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_forms_v2; references `f977fe67-0bae-4c08-a9fd-0d8073213a62`.
+
+- Retained test context (2026-10-11T13:02:49.474Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_resource_action_grants; references `8138e8c9-ed6e-49fa-bc70-d42635212938`, `5dd78994-7c25-424a-b44d-69cf2a3e085e`, `684b91df-493d-4658-935c-7f842e3040a8`, `ca49af92-c597-491c-a08d-d0c2ddbdea08`, `c6775673-fe4d-4e1e-8123-a86f52c86642`, `09b1b83e-8ccb-4ab7-95a7-51414b12bef2`, `0ae1badf-adf4-4c49-9426-d7642b2c9c19`.
+
+- Retained test context (2026-10-11T13:02:49.475Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_roleaccess_ac; references `8138e8c9-ed6e-49fa-bc70-d42635212938`, `5dd78994-7c25-424a-b44d-69cf2a3e085e`, `684b91df-493d-4658-935c-7f842e3040a8`, `ca49af92-c597-491c-a08d-d0c2ddbdea08`, `c6775673-fe4d-4e1e-8123-a86f52c86642`, `09b1b83e-8ccb-4ab7-95a7-51414b12bef2`, `0ae1badf-adf4-4c49-9426-d7642b2c9c19`.
+
+- Retained test context (2026-10-11T13:02:49.475Z): tests/integration/api/company-form-submission-boundary.test.ts; target adm_rolemaster_ac; references `8138e8c9-ed6e-49fa-bc70-d42635212938`, `5dd78994-7c25-424a-b44d-69cf2a3e085e`, `684b91df-493d-4658-935c-7f842e3040a8`, `ca49af92-c597-491c-a08d-d0c2ddbdea08`, `c6775673-fe4d-4e1e-8123-a86f52c86642`, `09b1b83e-8ccb-4ab7-95a7-51414b12bef2`, `0ae1badf-adf4-4c49-9426-d7642b2c9c19`.
+
+- Retained test context (2026-10-11T13:02:49.475Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:49.476Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `7abebc05-dcc3-4825-9683-98575755f607`.
+
+- Retained test context (2026-10-11T13:02:49.476Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessels; references `fa17ff9c-bece-4617-88f5-d153b2db7e3e`.
+
+- Retained test context (2026-10-11T13:02:49.476Z): tests/integration/api/company-form-submission-boundary.test.ts; target master_vessel_types; references `862943bb-dde1-42b7-9e35-7072d83d9347`.
+
+- Retained test context (2026-10-11T13:02:49.483Z): tests/integration/api/company-form-submission-boundary.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:55.238Z): tests/integration/company-form-stage-less-runtime.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:55.339Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:55.340Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submission_system_snapshots; references `18c18256-8576-42f7-8306-7491f669983f`, `c9836ced-07de-415b-9ca8-2980e1670c0d`, `a4f2f683-e057-4b4d-aa07-f5783f55b187`, `fe1b82a1-9cb5-4f75-8511-adf386d03a48`, `0cfd4e92-70b9-4a1f-a2d1-026353179223`.
+
+- Retained test context (2026-10-11T13:02:55.343Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_signatures; references `18c18256-8576-42f7-8306-7491f669983f`, `c9836ced-07de-415b-9ca8-2980e1670c0d`, `a4f2f683-e057-4b4d-aa07-f5783f55b187`, `fe1b82a1-9cb5-4f75-8511-adf386d03a48`, `0cfd4e92-70b9-4a1f-a2d1-026353179223`.
+
+- Retained test context (2026-10-11T13:02:55.345Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_answers; references `18c18256-8576-42f7-8306-7491f669983f`, `c9836ced-07de-415b-9ca8-2980e1670c0d`, `a4f2f683-e057-4b4d-aa07-f5783f55b187`, `fe1b82a1-9cb5-4f75-8511-adf386d03a48`, `0cfd4e92-70b9-4a1f-a2d1-026353179223`.
+
+- Retained test context (2026-10-11T13:02:55.345Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_section_states; references `18c18256-8576-42f7-8306-7491f669983f`, `c9836ced-07de-415b-9ca8-2980e1670c0d`, `a4f2f683-e057-4b4d-aa07-f5783f55b187`, `fe1b82a1-9cb5-4f75-8511-adf386d03a48`, `0cfd4e92-70b9-4a1f-a2d1-026353179223`.
+
+- Retained test context (2026-10-11T13:02:55.345Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_company_submissions; references `18c18256-8576-42f7-8306-7491f669983f`, `c9836ced-07de-415b-9ca8-2980e1670c0d`, `a4f2f683-e057-4b4d-aa07-f5783f55b187`, `fe1b82a1-9cb5-4f75-8511-adf386d03a48`, `0cfd4e92-70b9-4a1f-a2d1-026353179223`.
+
+- Retained test context (2026-10-11T13:02:55.346Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_signature_attachments; references `2d2ffefd-6a77-4819-942a-336befd8e116`, `cc5b40d5-e238-4151-8256-d4af8237d24a`, `cdab38d7-23e3-4508-a190-d5bd566c38b6`, `4c065cb5-8933-48c4-ab85-c12699e38268`, `f69856f5-b8ab-4429-ab7c-2744c4f1527d`, `e2f25fe8-098b-4580-b23f-92ecb4a757ee`.
+
+- Retained test context (2026-10-11T13:02:55.346Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_questions; references `1d583e3a-c7ce-43da-a35c-204c225db9a3`, `e3fe1a44-e1dc-4a63-8d3c-1aaaeeb68be6`, `c5557add-9544-4bf6-84a3-005deef6a6f2`, `ad67ad18-56f0-4398-a840-8fd504b100c0`, `f3ef39c6-e3b5-4d4f-b3d4-0ed5f910dbb4`, `ab07df8d-6f4c-421e-9f81-0e9bd43b5c32`, `806a4e0f-2373-4d39-a385-4998a169a88d`.
+
+- Retained test context (2026-10-11T13:02:55.347Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_sections; references `468ca665-ebec-4b3b-a6df-badd5c78fd29`, `aa4e6434-695e-44c9-b72f-147f44bf7322`, `49734c18-d687-4324-bf91-388dfe88d063`, `0452ab62-160f-4d5d-9578-a6aa4746116d`, `2cdac3b2-288c-4426-9672-e56a982211cf`.
+
+- Retained test context (2026-10-11T13:02:55.347Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_form_parts; references `97a5181f-327d-4cf7-90cd-256c4e8ea350`.
+
+- Retained test context (2026-10-11T13:02:55.347Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_form_versions_v2; references `4b006429-1b92-45dc-887f-fbaf58aae97c`.
+
+- Retained test context (2026-10-11T13:02:55.347Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_forms_v2; references `01fea290-4f45-44a8-8146-f29373705c1a`.
+
+- Retained test context (2026-10-11T13:02:55.348Z): tests/integration/company-form-stage-less-runtime.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:55.348Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_roleaccess_ac; references `c3a486a6-8a49-4c13-9441-b698dce8f2ac`.
+
+- Retained test context (2026-10-11T13:02:55.348Z): tests/integration/company-form-stage-less-runtime.test.ts; target adm_rolemaster_ac; references `c3a486a6-8a49-4c13-9441-b698dce8f2ac`.
+
+- Retained test context (2026-10-11T13:02:55.349Z): tests/integration/company-form-stage-less-runtime.test.ts; target frm_subject_types; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:57.018Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_signatures; references `b4b54c63-d692-48d3-ab96-3231f8ed88bd`.
+
+- Retained test context (2026-10-11T13:02:57.019Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_signature_attachments; references `5063aaf6-55ad-4c03-82b2-5444763dca42`, `9167f636-9cd5-47b0-82b6-376d9d4dc88c`.
+
+- Retained test context (2026-10-11T13:02:57.020Z): tests/integration/debriefing-submission.acceptance.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:57.021Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_answers; references `b4b54c63-d692-48d3-ab96-3231f8ed88bd`.
+
+- Retained test context (2026-10-11T13:02:57.021Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_section_states; references `b4b54c63-d692-48d3-ab96-3231f8ed88bd`.
+
+- Retained test context (2026-10-11T13:02:57.022Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefing_submissions; references `b4b54c63-d692-48d3-ab96-3231f8ed88bd`.
+
+- Retained test context (2026-10-11T13:02:57.023Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_questions; references `90f8806d-115f-448e-9da4-decc6b3501e5`.
+
+- Retained test context (2026-10-11T13:02:57.023Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_sections; references `e204714e-11ca-4729-abbe-84932d4c8b9b`, `9bf4fc28-f941-453f-853c-5ac63039bb8a`, `2d28835d-f247-44ec-b276-4bdde729eb57`.
+
+- Retained test context (2026-10-11T13:02:57.024Z): tests/integration/debriefing-submission.acceptance.test.ts; target frm_form_parts; references `ac6e547a-de80-4310-81bc-1ec9421b1469`.
+
+- Retained test context (2026-10-11T13:02:57.024Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_form_versions_v2; references `85cc8538-ed11-4d03-9b37-415649cfce2b`, `789bdabb-694f-4581-a96a-bb6696d6d858`.
+
+- Retained test context (2026-10-11T13:02:57.024Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_rank_groups_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:57.025Z): tests/integration/debriefing-submission.acceptance.test.ts; target adm_forms_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:57.025Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_debriefings; references `de7b57d6-a8aa-4344-ae64-a923957bbe56`, `061a7c70-4a44-4b1c-a16e-cac6bdc2c598`, `74b8ce2e-9a80-4363-badb-32746084d08e`.
+
+- Retained test context (2026-10-11T13:02:57.026Z): tests/integration/debriefing-submission.acceptance.test.ts; target crew_members_v2; references `f2efe7a3-ea80-4bb8-9cb1-b0d17a66de46`.
+
+- Retained test context (2026-10-11T13:02:57.026Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessels; references `44cf7e73-1d4d-453a-a5b9-72ee68e50361`.
+
+- Retained test context (2026-10-11T13:02:57.027Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_vessel_types; references `778111eb-f9cd-433c-a508-687bc8e200f0`.
+
+- Retained test context (2026-10-11T13:02:57.027Z): tests/integration/debriefing-submission.acceptance.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:58.123Z): dimension context cf_dimensions_28423c79; target registered_fixture_context; references `b389cd73-c7d3-4145-9cfc-ab45766f0158`, `61f11873-6dcf-4347-89c2-954d298cec97`, `733e7cdf-ad01-49a2-a401-495244b9a4a1`, `3dce07f6-3eba-42c0-a59f-b8086a77e5b9`.
+
+- Retained test context (2026-10-11T13:02:58.333Z): cf_dimensions_28423c79.adm_available_ranks_v2 canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:58.449Z): cf_dimensions_28423c79.adm_company_ranks_v2 canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:58.476Z): cf_dimensions_28423c79.master_vessels canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:58.496Z): cf_dimensions_28423c79.master_vessel_types canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:58.517Z): cf_dimensions_28423c79.master_nationalities canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:58.533Z): cf_dimensions_28423c79.master_manning_agents canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:58.551Z): cf_dimensions_28423c79.master_crew_pools canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:58.566Z): cf_dimensions_28423c79.master_fleet_groups canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:58.581Z): cf_dimensions_28423c79.master_additional_groups canonical master copies; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:02:58.608Z): canonical master copies cf_dimensions_28423c79; target registered_fixture_context; references `55d4c4b0-8e9c-479c-a9f0-9f3fbe95e0e5`, `743feb08-841a-11ed-aa7c-7003bca91a86`.
+
+- Retained test context (2026-10-11T13:03:01.590Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_answers; references `ff1d9154-30f7-4366-992d-f52febfcad1a`.
+
+- Retained test context (2026-10-11T13:03:01.591Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_section_states; references `ff1d9154-30f7-4366-992d-f52febfcad1a`.
+
+- Retained test context (2026-10-11T13:03:01.592Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submission_assignments; references `ff1d9154-30f7-4366-992d-f52febfcad1a`.
+
+- Retained test context (2026-10-11T13:03:01.593Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_company_submissions; references `ff1d9154-30f7-4366-992d-f52febfcad1a`.
+
+- Retained test context (2026-10-11T13:03:01.593Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_questions; references `44974613-c3c5-4316-93e1-93fbc195aed4`, `68ba39ad-dcbc-4437-ae4e-762bfd697519`, `3c6d2449-ccd5-4523-bf88-aa8ee731d02f`, `ab1a5b14-22a2-494b-afea-66a26b19ab0d`, `15b8777c-d9f6-47d8-af78-fbbff29b81f2`, `692676cc-23d8-45c2-8895-27e0bb8691de`, `842a99e2-9559-42c5-ba53-217ba4a4cd4f`, `78a352cb-b32a-483e-b4a9-39ebcd03a0c3`, `70d8b224-80d1-4ff4-bd0e-b88ebfb1b80f`, `6eb17516-19a2-4193-8738-6fb8307cf7ea`, `4b2df960-f042-417a-9bfa-1ddc31027c9d`, `74f5dcdd-2b89-4cd7-bcd4-256e25e77766`, `e6f19d91-234f-4700-b019-5d2b855e3036`.
+
+- Retained test context (2026-10-11T13:03:01.593Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_sections; references `c5f75e6f-0c1c-46d4-9e21-8d14f0421e0e`.
+
+- Retained test context (2026-10-11T13:03:01.594Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_form_parts; references `39f38888-8845-40e5-addf-d3548e7f047b`.
+
+- Retained test context (2026-10-11T13:03:01.594Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_options; references `b43166cc-5ec2-428d-9153-3aa7327d97b0`.
+
+- Retained test context (2026-10-11T13:03:01.595Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target frm_option_sets; references `b43166cc-5ec2-428d-9153-3aa7327d97b0`.
+
+- Retained test context (2026-10-11T13:03:01.596Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_form_versions_v2; references `ceb4e4bf-b208-47ca-b41f-84e0afd88609`.
+
+- Retained test context (2026-10-11T13:03:01.596Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_forms_v2; references `6204e40b-10b4-4baa-b90d-897f08913673`.
+
+- Retained test context (2026-10-11T13:03:01.596Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_assignments; references `2336ce1b-af30-4ec7-9515-ee0dc7039916`.
+
+- Retained test context (2026-10-11T13:03:01.597Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target crew_members_v2; references `764e304c-7f89-45d9-a67c-816f1dbbaca5`.
+
+- Retained test context (2026-10-11T13:03:01.597Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:01.598Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_resource_action_grants; references `8324a03d-d9d3-47ec-9637-64dc5045c7da`.
+
+- Retained test context (2026-10-11T13:03:01.598Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_roleaccess_ac; references `8324a03d-d9d3-47ec-9637-64dc5045c7da`.
+
+- Retained test context (2026-10-11T13:03:01.599Z): tests/integration/api/company-form-submission-answer-roundtrip.test.ts; target adm_rolemaster_ac; references `8324a03d-d9d3-47ec-9637-64dc5045c7da`.
+
+- Retained test context (2026-10-11T13:03:02.827Z): requirement harness roots; target registered_fixture_context; references `e587a0a7-dcdd-43ee-ab8e-ae53803448aa`, `eea6e8b3-b1a8-4905-b96e-5a88d1f14cf5`, `2e30a4d9-a0b7-4fc3-ad08-fb05674b26d3`, `f92b0fe9-1583-4148-913b-20da6f2d1fcb`.
+
+- Retained test context (2026-10-11T13:03:02.931Z): requirement harness pinned content; target registered_fixture_context; references `7d90227c-7c3c-499f-ad97-2175b72a3ed9`, `46375d3b-71a4-4937-a003-f4e5e6b1cf3b`, `3f759f3d-c6a9-428c-bf81-89b484b9f3f7`, `aacd5a3a-b54f-4eb0-99a1-1a893b14d003`.
+
+- Retained test context (2026-10-11T13:03:03.033Z): requirement harness complete ledger graph; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:03.036Z): required lifecycle obligation; target registered_fixture_context; references `3677a7a2-6d63-4316-8da6-b436656f2e3f`.
+
+- Retained test context (2026-10-11T13:03:03.080Z): lifecycle initial form; target registered_fixture_context; references `48d3b436-7ba1-4bc7-9725-689da7a56079`.
+
+- Retained test context (2026-10-11T13:03:03.239Z): required replacement form; target registered_fixture_context; references `81022ea3-b16f-41eb-a45d-27caeb67964e`.
+
+- Retained test context (2026-10-11T13:03:03.283Z): requirement harness roots; target registered_fixture_context; references `cb2b60e4-ce4b-460f-9b21-1392fd7be514`, `ebe91eb2-7490-407b-92f9-0b07226783a9`, `3719419b-9720-4835-9c25-97a40902c6b9`, `08af22f4-9deb-4556-9e21-5f51531b5c71`.
+
+- Retained test context (2026-10-11T13:03:03.321Z): requirement harness pinned content; target registered_fixture_context; references `25d8b6bd-eadd-48d3-925d-c4d6598de52d`, `beef62bd-6c67-4082-a9f4-01b544428db3`, `245bda4b-fbdf-4e2c-b3c1-dd39fb8a6021`, `34d21e01-1ff7-4894-baf6-75fd9e2413bd`.
+
+- Retained test context (2026-10-11T13:03:03.440Z): earlier manual collision; target registered_fixture_context; references `451aa8da-3b0c-4dcb-8125-0bcc98ee3af4`, `97dd69e9-8c15-473b-a3ca-26b24c6c697f`, `ae07ae7d-0833-4c2e-a176-23c9c6291201`.
+
+- Retained test context (2026-10-11T13:03:03.492Z): manual conflict required replacement; target registered_fixture_context; references `95548d12-dff0-4c92-8e41-602eab49efdf`.
+
+- Retained test context (2026-10-11T13:03:03.493Z): requirement harness roots; target registered_fixture_context; references `5a8d7a2e-aa44-4e0e-be8a-46e1bc8f73e5`, `3fb53c57-f230-4745-9ca6-145e748b4055`, `50fdd620-2a2c-42ec-bd02-02b29e1d6474`, `8351f972-a523-4314-b646-26d681331728`.
+
+- Retained test context (2026-10-11T13:03:03.552Z): requirement harness pinned content; target registered_fixture_context; references `b8c05bc8-e58c-418d-a703-d35e2d2cba9a`, `6007ccc9-6ba9-4b83-8fcf-2ea27e9f69b3`, `6d79c9d7-6158-4a57-b94f-2388f20ecc25`, `aee2ff38-3b74-45ef-ae9c-bfa71c9be303`.
+
+- Retained test context (2026-10-11T13:03:03.639Z): unresolved obligation; target registered_fixture_context; references `1571668c-326a-4923-ad44-ef9917ea4318`.
+
+- Retained test context (2026-10-11T13:03:03.677Z): failed run; target registered_fixture_context; references `471f67ad-082c-4dce-8db1-ac3ee5245bb2`.
+
+- Retained test context (2026-10-11T13:03:05.712Z): tests/integration/api/company-form-submission-void-races.test.ts; target cleanup context; references `b8b8aec7-507a-46bf-be74-1488b534c00b`.
+
+- Retained test context (2026-10-11T13:03:05.807Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_signatures; references `4cb3239e-2de9-4dc0-a2cc-00e3dd69b564`, `d4fe179c-9947-408b-a7b7-da870b66ce26`, `41194d20-e474-4e66-b73e-f3171ba1b646`, `2c8ec002-67bb-4e84-91db-037ed0922727`.
+
+- Retained test context (2026-10-11T13:03:05.808Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_answers; references `4cb3239e-2de9-4dc0-a2cc-00e3dd69b564`, `d4fe179c-9947-408b-a7b7-da870b66ce26`, `41194d20-e474-4e66-b73e-f3171ba1b646`, `2c8ec002-67bb-4e84-91db-037ed0922727`.
+
+- Retained test context (2026-10-11T13:03:05.809Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_system_snapshots; references `4cb3239e-2de9-4dc0-a2cc-00e3dd69b564`, `d4fe179c-9947-408b-a7b7-da870b66ce26`, `41194d20-e474-4e66-b73e-f3171ba1b646`, `2c8ec002-67bb-4e84-91db-037ed0922727`.
+
+- Retained test context (2026-10-11T13:03:05.809Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_section_states; references `4cb3239e-2de9-4dc0-a2cc-00e3dd69b564`, `d4fe179c-9947-408b-a7b7-da870b66ce26`, `41194d20-e474-4e66-b73e-f3171ba1b646`, `2c8ec002-67bb-4e84-91db-037ed0922727`.
+
+- Retained test context (2026-10-11T13:03:05.810Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submission_assignments; references `4cb3239e-2de9-4dc0-a2cc-00e3dd69b564`, `d4fe179c-9947-408b-a7b7-da870b66ce26`, `41194d20-e474-4e66-b73e-f3171ba1b646`, `2c8ec002-67bb-4e84-91db-037ed0922727`.
+
+- Retained test context (2026-10-11T13:03:05.810Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_company_submissions; references `4cb3239e-2de9-4dc0-a2cc-00e3dd69b564`, `d4fe179c-9947-408b-a7b7-da870b66ce26`, `41194d20-e474-4e66-b73e-f3171ba1b646`, `2c8ec002-67bb-4e84-91db-037ed0922727`.
+
+- Retained test context (2026-10-11T13:03:05.811Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_signature_attachments; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:05.811Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_questions; references `bb7e6351-04f3-4150-a64c-bef2651b1b22`.
+
+- Retained test context (2026-10-11T13:03:05.812Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_sections; references `f55a4b03-8a32-4a33-ba02-88608da01939`.
+
+- Retained test context (2026-10-11T13:03:05.812Z): tests/integration/api/company-form-submission-void-races.test.ts; target frm_form_parts; references `3147831a-9718-423d-a84c-33e0ddfb8b9f`.
+
+- Retained test context (2026-10-11T13:03:05.812Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_form_versions_v2; references `54d69d31-e204-49fc-8438-0e0ce3888f36`.
+
+- Retained test context (2026-10-11T13:03:05.813Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_forms_v2; references `9a64c821-734b-4c8a-bacb-57fe9af9c98d`.
+
+- Retained test context (2026-10-11T13:03:05.813Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_assignments; references `04af7267-422b-49b1-8f26-4fa590e2f893`, `eb2f01c9-c3e1-4c40-8cc1-02a97cf5e3fa`, `3d551148-b42c-482b-9b3b-833031297a97`, `76c49571-0b8f-4254-bb80-150679b504f1`.
+
+- Retained test context (2026-10-11T13:03:05.814Z): tests/integration/api/company-form-submission-void-races.test.ts; target crew_members_v2; references `2f35e7f1-e8d4-44ea-8897-d876b5a7af93`.
+
+- Retained test context (2026-10-11T13:03:05.814Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_resource_action_grants; references `b8b8aec7-507a-46bf-be74-1488b534c00b`, `522a52b8-11f2-4e92-a526-218aa376cf9b`.
+
+- Retained test context (2026-10-11T13:03:05.815Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_roleaccess_ac; references `b8b8aec7-507a-46bf-be74-1488b534c00b`.
+
+- Retained test context (2026-10-11T13:03:05.815Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:05.815Z): tests/integration/api/company-form-submission-void-races.test.ts; target adm_rolemaster_ac; references `b8b8aec7-507a-46bf-be74-1488b534c00b`, `522a52b8-11f2-4e92-a526-218aa376cf9b`.
+
+- Retained test context (2026-10-11T13:03:05.816Z): tests/integration/api/company-form-submission-void-races.test.ts; target master_vessels; references `839afebb-4530-471b-8d5c-b0667777d78c`.
+
+- Retained test context (2026-10-11T13:03:05.820Z): tests/integration/api/company-form-submission-void-races.test.ts; target retained_file_assets; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:07.716Z): tests/integration/api/crew-finance.test.ts; target acc_settlement_adjustments_v2; references `ec4c36a7-c1a4-4b66-9ede-c8846e01466e`, `a4a1f3af-8db5-4968-b868-c42cbe5e7dd8`, `7461b8c2-aff2-4e57-a040-2385c4698716`, `0af3c817-cb79-405c-8a7f-3f3d3e09c2fb`.
+
+- Retained test context (2026-10-11T13:03:07.718Z): tests/integration/api/crew-finance.test.ts; target acc_settlement_approvals_v2; references `ec4c36a7-c1a4-4b66-9ede-c8846e01466e`, `a4a1f3af-8db5-4968-b868-c42cbe5e7dd8`, `7461b8c2-aff2-4e57-a040-2385c4698716`, `0af3c817-cb79-405c-8a7f-3f3d3e09c2fb`.
+
+- Retained test context (2026-10-11T13:03:07.719Z): tests/integration/api/crew-finance.test.ts; target acc_settlements_v2; references `ec4c36a7-c1a4-4b66-9ede-c8846e01466e`, `a4a1f3af-8db5-4968-b868-c42cbe5e7dd8`, `7461b8c2-aff2-4e57-a040-2385c4698716`, `0af3c817-cb79-405c-8a7f-3f3d3e09c2fb`.
+
+- Retained test context (2026-10-11T13:03:07.719Z): tests/integration/api/crew-finance.test.ts; target acc_wage_ledger_v2; references `ec4c36a7-c1a4-4b66-9ede-c8846e01466e`, `a4a1f3af-8db5-4968-b868-c42cbe5e7dd8`, `7461b8c2-aff2-4e57-a040-2385c4698716`, `0af3c817-cb79-405c-8a7f-3f3d3e09c2fb`.
+
+- Retained test context (2026-10-11T13:03:07.720Z): tests/integration/api/crew-finance.test.ts; target acc_calculation_runs_v2; references `5e872836-6eb7-4cf6-be88-9755a7e421b3`, `97445aa2-2ebd-4843-a16a-ad0bedb66e35`, `98d2a36f-3ae1-4eea-9c3b-a5b13321f986`, `a95d69a2-2a46-4190-8a38-c60eb4204800`, `c852e367-83ba-4b31-a876-d89b78f5da51`, `73125c6d-a31f-43b9-96da-2b06449f7895`, `09b67853-7f1b-471d-9e38-5f4269190063`, `dc4c9e2c-1566-4669-a18b-ef0a4168473d`, `3d70ee8b-e5f8-4da7-b34b-288d9f94c0ab`, `41e7f8f3-4877-4637-bb0b-f916ab6be480`, `c5eb916b-d52c-43cd-9d41-4ed2347cf32c`, `aad67793-dd77-46bb-a1fa-4748926ea3db`, `ca27670a-35a2-405d-9b50-96118ee152ea`, `581a36ce-295b-46bb-9687-613a87c1e3eb`.
+
+- Retained test context (2026-10-11T13:03:07.721Z): tests/integration/api/crew-finance.test.ts; target acc_calculation_runs_v2; references `ec4c36a7-c1a4-4b66-9ede-c8846e01466e`, `a4a1f3af-8db5-4968-b868-c42cbe5e7dd8`, `7461b8c2-aff2-4e57-a040-2385c4698716`, `0af3c817-cb79-405c-8a7f-3f3d3e09c2fb`.
+
+- Retained test context (2026-10-11T13:03:07.721Z): tests/integration/api/crew-finance.test.ts; target acc_monthly_transactions_v2; references `18aac64c-15c8-4b3f-b7be-82f5f6b585db`, `fa3c6e80-2bc4-4540-8648-4b70b17789ef`, `663760de-68b7-4f9b-8e89-5f39ca4768fd`, `da1980fa-7bc1-4547-b2db-913dbed69d30`.
+
+- Retained test context (2026-10-11T13:03:07.722Z): tests/integration/api/crew-finance.test.ts; target acc_bond_items_v2; references `18aac64c-15c8-4b3f-b7be-82f5f6b585db`, `da1980fa-7bc1-4547-b2db-913dbed69d30`.
+
+- Retained test context (2026-10-11T13:03:07.722Z): tests/integration/api/crew-finance.test.ts; target acc_advances_v2; references `fa3c6e80-2bc4-4540-8648-4b70b17789ef`, `da1980fa-7bc1-4547-b2db-913dbed69d30`.
+
+- Retained test context (2026-10-11T13:03:07.723Z): tests/integration/api/crew-finance.test.ts; target acc_allotments_v2; references `663760de-68b7-4f9b-8e89-5f39ca4768fd`, `da1980fa-7bc1-4547-b2db-913dbed69d30`.
+
+- Retained test context (2026-10-11T13:03:07.723Z): tests/integration/api/crew-finance.test.ts; target acc_engagements_v2; references `ec4c36a7-c1a4-4b66-9ede-c8846e01466e`, `a4a1f3af-8db5-4968-b868-c42cbe5e7dd8`, `7461b8c2-aff2-4e57-a040-2385c4698716`, `0af3c817-cb79-405c-8a7f-3f3d3e09c2fb`.
+
+- Retained test context (2026-10-11T13:03:07.724Z): tests/integration/api/crew-finance.test.ts; target crew_members_v2; references `18aac64c-15c8-4b3f-b7be-82f5f6b585db`, `fa3c6e80-2bc4-4540-8648-4b70b17789ef`, `663760de-68b7-4f9b-8e89-5f39ca4768fd`, `da1980fa-7bc1-4547-b2db-913dbed69d30`.
+
+- Retained test context (2026-10-11T13:03:07.724Z): tests/integration/api/crew-finance.test.ts; target acc_wage_scale_lines_v2; references `c70e66f1-79da-4934-aba4-7858d0d31c29`.
+
+- Retained test context (2026-10-11T13:03:07.725Z): tests/integration/api/crew-finance.test.ts; target acc_wage_scales_v2; references `c70e66f1-79da-4934-aba4-7858d0d31c29`.
+
+- Retained test context (2026-10-11T13:03:07.725Z): tests/integration/api/crew-finance.test.ts; target acc_pay_elements_v2; references `2b6880d9-fa12-49e8-9583-a960d3f59d35`, `5c5b7953-529a-4945-80ba-e098e1f454e1`, `cf605de9-a0ca-44e4-a984-f7c0ff447a02`, `6a2dcdd1-31d0-45c3-8d75-89107a840b59`.
+
+- Retained test context (2026-10-11T13:03:09.753Z): tests/integration/api/company-form-submission-races.test.ts; target frm_answers; references `a5eb84de-8d5b-4f80-b79f-e66b580296b6`, `60dca937-15d7-4ced-86a1-bc528b263653`, `102a0380-554b-4a82-8cce-9983096839b8`.
+
+- Retained test context (2026-10-11T13:03:09.754Z): tests/integration/api/company-form-submission-races.test.ts; target frm_section_states; references `a5eb84de-8d5b-4f80-b79f-e66b580296b6`, `60dca937-15d7-4ced-86a1-bc528b263653`, `102a0380-554b-4a82-8cce-9983096839b8`.
+
+- Retained test context (2026-10-11T13:03:09.755Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submission_assignments; references `a5eb84de-8d5b-4f80-b79f-e66b580296b6`, `60dca937-15d7-4ced-86a1-bc528b263653`, `102a0380-554b-4a82-8cce-9983096839b8`.
+
+- Retained test context (2026-10-11T13:03:09.755Z): tests/integration/api/company-form-submission-races.test.ts; target frm_company_submissions; references `a5eb84de-8d5b-4f80-b79f-e66b580296b6`, `60dca937-15d7-4ced-86a1-bc528b263653`, `102a0380-554b-4a82-8cce-9983096839b8`.
+
+- Retained test context (2026-10-11T13:03:09.755Z): tests/integration/api/company-form-submission-races.test.ts; target crew_assignments; references `73947076-6b0a-4b6b-940e-ee0a7a04621e`, `d3869eac-0a57-4fd5-9e4a-b43e01a519fd`, `50d80fa2-5307-43f6-ac1a-68f73d521cd4`, `68a74312-a5d0-4e5f-a401-e28626f5c41e`, `79787ed7-3106-484b-a18e-4e7659493e14`.
+
+- Retained test context (2026-10-11T13:03:09.756Z): tests/integration/api/company-form-submission-races.test.ts; target frm_questions; references `d875b2fb-fb35-4136-ba0d-cbe05edbe1a9`.
+
+- Retained test context (2026-10-11T13:03:09.756Z): tests/integration/api/company-form-submission-races.test.ts; target frm_sections; references `c19981eb-0985-423f-9cbc-2d83e158f664`.
+
+- Retained test context (2026-10-11T13:03:09.756Z): tests/integration/api/company-form-submission-races.test.ts; target frm_form_parts; references `8d849ca8-29b1-42d2-bd3c-5d4e218c6c59`.
+
+- Retained test context (2026-10-11T13:03:09.757Z): tests/integration/api/company-form-submission-races.test.ts; target adm_form_versions_v2; references `ceb15784-6207-4580-8139-98c9172e1210`.
+
+- Retained test context (2026-10-11T13:03:09.757Z): tests/integration/api/company-form-submission-races.test.ts; target adm_forms_v2; references `23f94f88-2722-481d-864f-22b3692422ee`.
+
+- Retained test context (2026-10-11T13:03:09.757Z): tests/integration/api/company-form-submission-races.test.ts; target master_users; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:09.758Z): tests/integration/api/company-form-submission-races.test.ts; target adm_resource_action_grants; references `fef7a9bd-7c38-4385-9d08-bb1c88fd60c7`.
+
+- Retained test context (2026-10-11T13:03:09.758Z): tests/integration/api/company-form-submission-races.test.ts; target adm_roleaccess_ac; references `fef7a9bd-7c38-4385-9d08-bb1c88fd60c7`.
+
+- Retained test context (2026-10-11T13:03:09.758Z): tests/integration/api/company-form-submission-races.test.ts; target adm_rolemaster_ac; references `fef7a9bd-7c38-4385-9d08-bb1c88fd60c7`.
+
+- Retained test context (2026-10-11T13:03:13.077Z): requirement harness roots; target registered_fixture_context; references `f98579ba-94b9-4318-858f-03dd902613a8`, `346583cc-0bf1-46cc-af2e-75dc5cc09ac9`, `4b79502b-9f7e-44b7-a064-17b09b20b1f5`, `4e652695-eb4e-4fe0-9a71-4b48b3e7a662`.
+
+- Retained test context (2026-10-11T13:03:13.212Z): requirement harness pinned content; target registered_fixture_context; references `912d2e81-155c-461a-a2fe-ab46e44cdc70`, `4ef5b95f-e683-4ae7-9d29-6d8932381cb2`, `edcdfb09-a51b-458f-b2c1-1e048f040f9b`, `09d134f6-85c8-4519-9efd-bc6972114c44`.
+
+- Retained test context (2026-10-11T13:03:13.341Z): requirement harness complete ledger graph; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:13.341Z): empty requirement run; target registered_fixture_context; references `28860795-ec20-48c0-8d1a-79f7b2dbbd7e`.
+
+- Retained test context (2026-10-11T13:03:13.376Z): pinned requirement and resolution; target registered_fixture_context; references `9acdf158-30a1-4570-9b5b-68995a267a99`, `ad05ceb5-e99c-4331-ab57-802d17fbd836`.
+
+- Retained test context (2026-10-11T13:03:19.607Z): requirement harness roots; target registered_fixture_context; references `731ebc7f-eef2-4077-8a7a-30be95441bdc`, `921d5c70-ed97-4099-a153-edcb8ce6350c`, `54f0b4ee-e67d-453d-b777-32d20ddcdb8b`, `494581a9-6dcf-4a7d-a911-13d426126479`.
+
+- Retained test context (2026-10-11T13:03:19.750Z): requirement harness pinned content; target registered_fixture_context; references `4d37752c-8ee1-4ffb-842c-bc9d86cccfc0`, `5005fb6a-5823-4d39-8a63-39835d2f942d`, `5c1758b6-706c-434d-9c9e-ec028697357e`, `19720817-d95d-4daa-afb0-1b99036d8517`.
+
+- Retained test context (2026-10-11T13:03:19.809Z): requirement harness roots; target registered_fixture_context; references `bc4c69e3-9808-457b-9502-f199c21948eb`, `baf740f1-f285-4b92-bf2b-0a3182802af4`, `fb70f135-6c0f-4c25-beca-d67c289769ef`, `61016a0a-f93e-43a1-8cdf-74cf81a21139`.
+
+- Retained test context (2026-10-11T13:03:19.844Z): requirement harness pinned content; target registered_fixture_context; references `eb697d76-7de2-424d-be10-e6181cd08b55`, `57d5d61b-79a7-4e5d-a97e-0af1ef403a55`, `df7506e4-0050-4ce6-a395-6ce4d5591172`, `87ca2536-d6d7-4eb2-843b-711e7ea477bd`.
+
+- Retained test context (2026-10-11T13:03:19.971Z): requirement harness complete ledger graph; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:19.973Z): required start obligation; target registered_fixture_context; references `9cfaea9c-338e-4d0d-b63a-8acdfb181172`.
+
+- Retained test context (2026-10-11T13:03:20.004Z): newer release for old-pin start; target registered_fixture_context; references `a3f154cc-08c6-4629-be1f-9a7c67716daf`.
+
+- Retained test context (2026-10-11T13:03:20.083Z): manual without stage check; target registered_fixture_context; references `21ae7d9b-b560-4fd7-9131-e929a430ff2a`.
+
+- Retained test context (2026-10-11T13:03:20.155Z): required old-pin form; target registered_fixture_context; references `fedd92e7-d6b6-4e96-89b5-6722d2544c6a`.
+
+- Retained test context (2026-10-11T13:03:21.165Z): verified-history/cf_verified_history_4eb3d8d1; target registered_fixture_context; references `8d02ca8e-db04-4637-a2e9-70169282e1d0`, `409a107f-343a-4630-809a-5f752f5c7475`, `56b4a60e-ef12-41e2-9832-bffd5f7d06a0`, `26ea3df4-4a16-422c-8b4c-df29c066d897`, `a8ae7e48-6609-4b35-81a3-25a2fa885e5c`, `bf5069fe-6e2f-40b8-8e6e-49893d7e44cc`, `1b26d3f6-5feb-432a-adb8-e94e269b116e`, `daf32f4d-038e-44d3-adc1-fc13acc70862`, `7d769ff2-2d05-4ae2-aa98-926fef45d3db`, `6d72573f-e40f-4a08-ba30-970a3b6cf53c`.
+
+- Retained test context (2026-10-11T13:03:26.268Z): dimension release definition; target registered_fixture_context; references `ceba6e23-500b-44ae-b108-4577c87892cf`, `e394ccd6-3cf8-4e50-b0e0-4884a4579522`.
+
+- Retained test context (2026-10-11T13:03:26.369Z): dimension release draft content; target registered_fixture_context; references `8d9ccb03-abd2-4613-aef1-8c44257c0c94`, `75eecb2a-728c-432b-9570-8a1692e3e72e`, `4c16bcac-ab7c-40a4-aa96-5eb9b4a13cae`, `664ae4e4-50d5-4cb8-a83b-b2ebcc12feab`.
+
+- Retained test context (2026-10-11T13:03:26.409Z): dimension release condition data; target registered_fixture_context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:26.556Z): dimension release copied draft; target registered_fixture_context; references `347c6259-4e4c-4205-8a1f-c15b61ac2140`.
+
+- Retained test context (2026-10-11T13:03:32.327Z): tests/integration/api/approval-identity.test.ts; target acc_settlement_approvals_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:32.328Z): tests/integration/api/approval-identity.test.ts; target acc_settlements_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:32.329Z): tests/integration/api/approval-identity.test.ts; target acc_portage_approvals_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:32.329Z): tests/integration/api/approval-identity.test.ts; target acc_portage_bills_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:32.330Z): tests/integration/api/approval-identity.test.ts; target acc_engagements_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:33.926Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_settlements_v2; references `48732330-ba6f-4441-b737-1cff17daadb3`, `4cba78a7-84e3-4e21-9288-a24e824dc014`, `0760bad9-64e9-4a38-b5bf-fbd0fa3924a4`.
+
+- Retained test context (2026-10-11T13:03:33.928Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_wage_ledger_v2; references `48732330-ba6f-4441-b737-1cff17daadb3`, `4cba78a7-84e3-4e21-9288-a24e824dc014`, `0760bad9-64e9-4a38-b5bf-fbd0fa3924a4`.
+
+- Retained test context (2026-10-11T13:03:33.929Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_calculation_runs_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:33.929Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_calculation_runs_v2; references `48732330-ba6f-4441-b737-1cff17daadb3`, `4cba78a7-84e3-4e21-9288-a24e824dc014`, `0760bad9-64e9-4a38-b5bf-fbd0fa3924a4`.
+
+- Retained test context (2026-10-11T13:03:33.930Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_portage_bills_v2; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:33.930Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_monthly_transactions_v2; references `084aafab-7e19-47f3-a618-c1d17d8c5e9c`.
+
+- Retained test context (2026-10-11T13:03:33.931Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_engagements_v2; references `48732330-ba6f-4441-b737-1cff17daadb3`, `4cba78a7-84e3-4e21-9288-a24e824dc014`, `0760bad9-64e9-4a38-b5bf-fbd0fa3924a4`.
+
+- Retained test context (2026-10-11T13:03:33.931Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_wage_scale_lines_v2; references `681a8ffc-3fbe-43dc-ab8a-f2a291168131`.
+
+- Retained test context (2026-10-11T13:03:33.932Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_wage_scales_v2; references `681a8ffc-3fbe-43dc-ab8a-f2a291168131`.
+
+- Retained test context (2026-10-11T13:03:33.933Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target acc_pay_elements_v2; references `30d8d756-6f02-4f21-90c7-c9d3c902eb80`, `751b62c0-898c-4dbf-bc95-0225729d4233`.
+
+- Retained test context (2026-10-11T13:03:33.933Z): tests/integration/api/wage-engine-settlement-skip.test.ts; target cleanup context; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-11T13:03:40.109Z): tests/integration/api/accounts-reports.test.ts; target cleanup context; references `64fe0f62-d6c1-4ae1-96f3-06836b2f4ed9`.
+
+- Retained test context (2026-10-11T13:03:40.154Z): tests/integration/api/accounts-reports.test.ts; target acc_wage_ledger_v2; references `4aea8ea5-f925-4eaf-83b6-4735730d94de`, `88db49df-1b5a-46ef-9e21-a84e90d561b3`, `46fadcee-b48b-4151-8c1e-b97f3a78b14f`, `7d19ea28-9a29-44b9-a5ca-c474fd56faa6`, `9b0fe77c-90a7-4cf5-96d9-d52c8acc2c10`, `d9410069-e0d8-4b28-8394-6e0e6c07ec6b`, `fd270b4e-25ba-4086-9a67-460127692386`, `593d63a3-d5e4-44e4-b024-42f32ca91808`, `2c10926a-ff12-4713-b53b-5f918213d432`, `4368428f-33c7-4178-bdd2-f5eed02017fa`, `4995282b-ade8-46bc-8289-1adcbfede31c`, `907ccd63-63c9-49f3-a0f9-21ad6df8f59c`, `79d870e3-3a59-40b0-9c54-c6579d5482fb`.
+
+- Retained test context (2026-10-11T13:03:40.155Z): tests/integration/api/accounts-reports.test.ts; target acc_portage_bills_v2; references `8ca7cc73-3823-4fcf-8362-a6e9df0dc0d0`.
+
+- Retained test context (2026-10-11T13:03:40.156Z): tests/integration/api/accounts-reports.test.ts; target acc_engagements_v2; references `7e8dbe89-5a64-4fc9-9fe2-f5cfed655f29`, `0f718489-2a9a-49dd-bb55-71dca7f2c471`, `066dbae0-ba62-4005-909d-5afd11d3c8c7`, `575ec6f2-efc8-4a86-b07a-fe05b1f1e4b1`.
+
+- Retained test context (2026-10-11T13:03:40.156Z): tests/integration/api/accounts-reports.test.ts; target crew_members_v2; references `879b2c8c-e179-4b7f-af58-7d8e6eea0d6d`, `f6bfa7e2-aebd-45bf-9cea-96104533f3bf`, `afe4f20d-91a5-4659-aa9a-0b5a65a300fd`.
+
+- Retained test context (2026-10-11T13:03:40.157Z): tests/integration/api/accounts-reports.test.ts; target acc_pay_elements_v2; references `ce8ad356-0031-4d47-93e8-30db73e0d6fb`, `0f91b273-1f54-42ad-a865-cd4c78b54581`, `56925aa0-1005-4606-9c14-8e9973ef6064`, `9781161a-92e8-4288-8cc7-e30139091db8`, `0db190dd-3da5-4799-9f26-197bff3d6360`.
+
+- Retained test context (2026-10-11T13:03:55.312Z): tests/unit/fixture-retention.test.ts; target crew_assignments; references schema/context retained (no UUID parameters).

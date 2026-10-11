@@ -4,6 +4,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CrewCompanyFormsHome } from "../../client/src/modules/crew-pool/components/CrewCompanyFormsHome";
 import { CrewCompanyFormsHistory } from "../../client/src/modules/crew-pool/components/CrewCompanyFormsHistory";
+vi.mock("../../client/src/contexts/PermissionsContext", () => ({
+  usePermissions: () => ({ permissions: [], userId: "fixture", roleId: "fixture" }),
+}));
 
 vi.mock("../../client/src/components/configured-form/companySubmissionContract", () => ({
   CompanySubmissionRenderer: ({ submissionUuid, onBack, showSubmissionMetadata }: any) =>
@@ -46,7 +49,7 @@ describe("G3 complete crew Company Form history", () => {
     expect(screen.getAllByText("Completed")).toHaveLength(2);
     expect(screen.getByTestId("crew-company-forms-group-old")).toBeTruthy();
     expect(screen.queryByTestId("crew-company-forms-group-unpermitted")).toBeNull();
-    expect(screen.getByText("No saved declarations for this assignment.")).toBeTruthy();
+    expect(screen.getByText("No saved forms for this assignment.")).toBeTruthy();
     expect(document.body.textContent).toContain("03-Oct-2026");
     expect(document.body.textContent).not.toContain("before_joining");
     expect(fetch.mock.calls.every((call: any[]) => String(call[0]).includes("/api/v2/company-form-submissions/"))).toBe(true);

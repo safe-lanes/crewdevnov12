@@ -29,6 +29,10 @@ describe("pinned required and unchanged manual starting", () => {
     retainFixtureReferences("manual without stage check", [result.body.submissionUuid]);
   });
   it("rejects browser pins and manual bypass, and starts the older pinned version", async () => {
+    const picker = await requirementApi.get(`${base()}/eligible-forms?stageKey=before_joining`)
+      .set("Authorization", `Bearer ${requirementToken}`);
+    expect(picker.status).toBe(200);
+    expect(picker.body.some((form: any) => form.formUuid === f.formUuid)).toBe(false);
     const url = `${base()}/requirements/${requirement.requirement_uuid}/start`;
     expect((await requirementApi.post(url).set("Authorization", `Bearer ${requirementToken}`)
       .send({ formVersionUuid: f.version.fvUuid, actorUuid: "forged" })).status).toBe(400);
@@ -43,5 +47,7 @@ describe("pinned required and unchanged manual starting", () => {
     retainFixtureReferences("required old-pin form", [start.body.submissionUuid]);
     expect((await readRequirements("crew_assignment", f.assignUuid)).requirements[0].status).toBe("STARTED");
     expect((await requirementApi.post(url).set("Authorization", `Bearer ${requirementToken}`).send({})).status).toBe(409);
+    expect((await requirementApi.post(`/api/v2/company-form-submissions/subjects/crew_assignment/${manual.assignUuid}/requirements/${requirement.requirement_uuid}/start`)
+      .set("Authorization", `Bearer ${requirementToken}`).send({})).status).toBe(404);
   });
 });

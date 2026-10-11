@@ -1974,7 +1974,7 @@ describe("Company Form submission renderer contract", () => {
     }));
     await waitFor(() => expect(activeContainer?.textContent).toContain("Replaces a voided submission"));
     fireEvent.click([...activeContainer!.querySelectorAll("button")]
-      .find((button) => button.textContent?.includes("Open linked declaration — historical label unavailable"))!);
+      .find((button) => button.textContent?.includes("Open linked form — historical label unavailable"))!);
     await waitFor(() => expect(activeContainer?.textContent).toContain("Voided — replaced by"));
     expect(activeContainer?.textContent).toContain("Replacement declaration — 03-Oct-2026");
     expect(activeContainer?.textContent).not.toContain(replacementUuid);
