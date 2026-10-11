@@ -332,7 +332,7 @@ export class CandidateService {
       )
       .leftJoin(
         masterNationalities,
-        eq(recruitmentCandidatesV2.nationalityUuid, masterNationalities.natUuid)
+        and(eq(recruitmentCandidatesV2.nationalityUuid, masterNationalities.natUuid), eq(masterNationalities.isDeleted, false))
       )
       .leftJoin(
         candRecruitmentDecision,
@@ -439,7 +439,7 @@ export class CandidateService {
       .from(recruitmentCandidatesV2)
       .leftJoin(
         masterNationalities,
-        eq(recruitmentCandidatesV2.nationalityUuid, masterNationalities.natUuid)
+        and(eq(recruitmentCandidatesV2.nationalityUuid, masterNationalities.natUuid), eq(masterNationalities.isDeleted, false))
       )
       .where(eq(recruitmentCandidatesV2.recCanUuid, recCanUuid))
       .limit(1);
@@ -592,7 +592,7 @@ export class CandidateService {
       .from(candVesselTypesApplied)
       .leftJoin(
         masterVesselTypes,
-        eq(candVesselTypesApplied.vesselTypeUuid, masterVesselTypes.vtUuid)
+        and(eq(candVesselTypesApplied.vesselTypeUuid, masterVesselTypes.vtUuid), eq(masterVesselTypes.isDeleted, false))
       )
       .where(
         and(
@@ -740,11 +740,11 @@ export class CandidateService {
       .from(candPersonalDetails)
       .leftJoin(
         masterCountries,
-        eq(candPersonalDetails.placeOfBirthCountryUuid, masterCountries.countryUuid)
+        and(eq(candPersonalDetails.placeOfBirthCountryUuid, masterCountries.countryUuid), eq(masterCountries.isDeleted, false))
       )
       .leftJoin(
         masterLanguages,
-        eq(candPersonalDetails.nativeLanguageUuid, masterLanguages.langUuid)
+        and(eq(candPersonalDetails.nativeLanguageUuid, masterLanguages.langUuid), eq(masterLanguages.isDeleted, false))
       )
       .where(eq(candPersonalDetails.recCanUuid, recCanUuid))
       .limit(1);
@@ -889,7 +889,7 @@ export class CandidateService {
       .from(candAddresses)
       .leftJoin(
         masterCountries,
-        eq(candAddresses.countryOfResidenceUuid, masterCountries.countryUuid)
+        and(eq(candAddresses.countryOfResidenceUuid, masterCountries.countryUuid), eq(masterCountries.isDeleted, false))
       )
       .where(eq(candAddresses.recCanUuid, recCanUuid))
       .limit(1);

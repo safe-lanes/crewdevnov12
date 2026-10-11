@@ -185,6 +185,7 @@ import type { TrainingCourseTemplate } from '@/utils/data/trainingCourseTemplate
 import type { TravelDocumentTemplate } from '@/utils/data/travelDocumentTemplates';
 import type { VisaCountryTemplate } from '@/utils/data/visaCountryTemplates';
 import { resolveCountryUuidToName } from '@/utils/data/visaCountryTemplates';
+import { masterLabel, masterReference, recruitmentDisplayData, type DisplayCatalogs } from './masterLabels';
 import { VesselSearchDialog, type VesselSearchResult } from './VesselSearchDialog';
 
 interface RecruitmentApplicationFormV2Props {
@@ -259,6 +260,7 @@ interface LocalFormData {
     id: string;
     serverId?: number;
     countryId?: string;
+    countryName?: string;
     issuingCountry: string;
     serialNo: string;
     issued: string;
@@ -310,6 +312,7 @@ interface LocalFormData {
     serverId?: number;
     vesselName: string;
     vesselType: string;
+    vesselTypeName?: string;
     deadweight: string;
     engineTypePower: string;
     ownerOperator: string;
@@ -955,6 +958,21 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
     return [];
   }, [externalVesselTypesData]);
 
+  const displayCatalogs: DisplayCatalogs = {
+    countries: ((externalCountriesData as any)?.countries || externalCountriesData || []).map((c: any) => ({ id: c.countryUuid || c.uuid, label: c.countryName || c.name })),
+    nationalities: ((externalNationalitiesData as any)?.nationalities || externalNationalitiesData || []).map((n: any) => ({ id: n.natUuid || n.uuid, label: n.nationality || n.name })),
+    languages: ((externalLanguagesData as any)?.languages || externalLanguagesData || []).map((l: any) => ({ id: l.langUuid || l.uuid, label: l.languageName || l.name })),
+    vesselTypes: ((externalVesselTypesData as any)?.vesseltypes || (externalVesselTypesData as any)?.vesselTypes || externalVesselTypesData || []).map((v: any) => ({ id: v.vtUuid || v.uuid, label: v.vesselType || v.name })),
+  };
+  const visaCountryLabel = (visa: LocalFormData['visas'][number]) => {
+    const legacyName = resolveCountryUuidToName(visa.issuingCountry, masterDataEntries);
+    return masterLabel(visa.issuingCountry, displayCatalogs.countries, 'country',
+      visa.issuingCountry === visa.countryId && visa.countryName ? visa.countryName :
+        legacyName !== visa.issuingCountry ? legacyName : undefined);
+  };
+  const displayFormData = recruitmentDisplayData(formData, displayCatalogs);
+  displayFormData.visas = formData.visas.map(visa => ({ ...visa, issuingCountry: visaCountryLabel(visa) }));
+
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const b7TrainingNamesKey = formData.b7TrainingNeeds.map(t => t.training || '').join('||');
@@ -1206,7 +1224,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
         id: visa.visaUuid,
         serverId: visa.id,
         countryId: visa.countryUuid || '',
-        issuingCountry: resolveCountryUuidToName(visa.countryUuid || '', masterDataEntries),
+        countryName: (visa as any).countryName,
+        issuingCountry: visa.countryUuid || '',
         source: (visa.source === 'database' ? 'database' : 'manual') as 'manual' | 'database',
         serialNo: visa.serialNo || '',
         issued: visa.issued || '',
@@ -1216,7 +1235,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       }));
       setFormData(prev => ({ ...prev, visas: mapped }));
     }
-  }, [visasData, masterDataEntries]);
+  }, [visasData]);
 
   useEffect(() => {
     if (educationData && educationData.length > 0) {
@@ -1299,6 +1318,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
           serverId: service.id,
           vesselName: service.vesselName || '',
           vesselType: service.vesselTypeUuid || '',
+          vesselTypeName: (service as any).vesselTypeName,
           deadweight: service.deadweight || '',
           engineTypePower: service.engineTypePower || '',
           ownerOperator: service.ownerOperator || '',
@@ -1966,7 +1986,8 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const updateVisa = (id: string, field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
-      visas: prev.visas.map(v => v.id === id ? { ...v, [field]: value } : v)
+      visas: prev.visas.map(v => v.id === id ? { ...v, [field]: value,
+        ...(field === 'issuingCountry' ? { countryId: undefined, countryName: undefined } : {}) } : v)
     }));
   };
 
@@ -2139,6 +2160,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       const updatedServices = prev.seaService.map(s => {
         if (s.id === id) {
           const updated = { ...s, [field]: value };
+          if (field === 'vesselType') updated.vesselTypeName = undefined;
           if (field === 'from' || field === 'to') {
             updated.periodMonths = calculatePeriod(updated.from, updated.to);
           }
@@ -2933,7 +2955,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       // Visas - save with attachments
       nonEmptyVisas.forEach((visa, index) => {
         const visaPayload = {
-          countryUuid: visa.issuingCountry || visa.countryId || null,
+          countryUuid: masterReference(visa.issuingCountry, displayCatalogs.countries) || null,
           source: visa.source || 'manual',
           serialNo: visa.serialNo || null,
           issued: visa.issued || null,
@@ -3092,7 +3114,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
       nonEmptySeaService.forEach((sea, index) => {
         const seaPayload = {
           vesselName: sea.vesselName || null,
-          vesselTypeUuid: sea.vesselType || null,
+          vesselTypeUuid: masterReference(sea.vesselType, displayCatalogs.vesselTypes) || null,
           deadweight: sea.deadweight || null,
           engineTypePower: sea.engineTypePower || null,
           ownerOperator: sea.ownerOperator || null,
@@ -3295,7 +3317,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
   const handleExport = async () => {
     try {
       const candidateName = `${formData.firstName || 'Unknown'} ${formData.familyName || 'Candidate'}`;
-      await generateRecruitmentPDF(formData as any, candidateName);
+      await generateRecruitmentPDF(displayFormData as any, candidateName);
       toast({
         title: "Export Successful",
         description: `Recruitment form exported as PDF for ${candidateName}`,
@@ -4328,7 +4350,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           key={vesselType}
                           className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                         >
-                          {vesselType}
+                          {masterLabel(vesselType, displayCatalogs.vesselTypes, 'vessel type')}
                           <button
                             type="button"
                             onClick={() => handleVesselTypeSelection(vesselType)}
@@ -4368,7 +4390,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                             key={vesselType}
                             className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
                           >
-                            {vesselType}
+                            {masterLabel(vesselType, displayCatalogs.vesselTypes, 'vessel type')}
                           </span>
                         ))}
                       </div>
@@ -4459,16 +4481,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               {isEditing ? (
                 <Select value={formData.nationality} onValueChange={(value) => updateFormData('nationality', value)}>
                   <SelectTrigger className="mt-1" data-testid="select-nationality">
-                    <SelectValue placeholder="Select nationality" />
+                    <SelectValue placeholder="Select nationality">{displayFormData.nationality || undefined}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
+                    {formData.nationality && !NATIONALITIES.includes(formData.nationality) && <SelectItem value={formData.nationality}>{displayFormData.nationality}</SelectItem>}
                     {NATIONALITIES.map((nat: string) => (
                       <SelectItem key={nat} value={nat}>{nat}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-nationality">{formData.nationality}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-nationality">{displayFormData.nationality}</div>
               )}
             </div>
             <div>
@@ -4542,16 +4565,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               {isEditing ? (
                 <Select value={formData.placeOfBirthCountry} onValueChange={(value) => updateFormData('placeOfBirthCountry', value)}>
                   <SelectTrigger className="mt-1" data-testid="select-pob-country">
-                    <SelectValue placeholder="Select country" />
+                    <SelectValue placeholder="Select country">{displayFormData.placeOfBirthCountry || undefined}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
+                    {formData.placeOfBirthCountry && !countryMasterData.includes(formData.placeOfBirthCountry) && <SelectItem value={formData.placeOfBirthCountry}>{displayFormData.placeOfBirthCountry}</SelectItem>}
                     {countryMasterData.map((country: string) => (
                       <SelectItem key={country} value={country}>{country}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-pob-country">{formData.placeOfBirthCountry}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-pob-country">{displayFormData.placeOfBirthCountry}</div>
               )}
             </div>
             <div>
@@ -4589,16 +4613,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               {isEditing ? (
                 <Select value={formData.nativeLanguage} onValueChange={(value) => updateFormData('nativeLanguage', value)}>
                   <SelectTrigger className="mt-1" data-testid="select-native-language">
-                    <SelectValue placeholder="Select language" />
+                    <SelectValue placeholder="Select language">{displayFormData.nativeLanguage || undefined}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
+                    {formData.nativeLanguage && !languageMasterData.includes(formData.nativeLanguage) && <SelectItem value={formData.nativeLanguage}>{displayFormData.nativeLanguage}</SelectItem>}
                     {languageMasterData.map((lang: string) => (
                       <SelectItem key={lang} value={lang}>{lang}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               ) : (
-                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-native-language">{formData.nativeLanguage}</div>
+                <div className="mt-1 text-sm text-gray-900 break-words" data-testid="text-native-language">{displayFormData.nativeLanguage}</div>
               )}
             </div>
             <div>
@@ -4741,16 +4766,17 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 setMobileError(err || '');
               }}>
                 <SelectTrigger className="mt-1" data-testid="select-country-residence">
-                  <SelectValue placeholder="Select country of residence" />
+                  <SelectValue placeholder="Select country of residence">{displayFormData.countryOfResidence || undefined}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
+                  {formData.countryOfResidence && !countryMasterData.includes(formData.countryOfResidence) && <SelectItem value={formData.countryOfResidence}>{displayFormData.countryOfResidence}</SelectItem>}
                   {countryMasterData.map((country: string) => (
                     <SelectItem key={country} value={country}>{country}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             ) : (
-              <div className="mt-1 text-sm text-gray-900 break-words">{formData.countryOfResidence}</div>
+              <div className="mt-1 text-sm text-gray-900 break-words">{displayFormData.countryOfResidence}</div>
             )}
           </div>
           <div>
@@ -5288,10 +5314,10 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <TableRow key={visa.id} className="border-b border-gray-200">
                 <TableCell className="p-3">
                   {visa.source === 'database' ? (
-                    <Input value={visa.issuingCountry} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
+                    <Input value={visaCountryLabel(visa)} readOnly className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto bg-transparent cursor-default" tabIndex={-1} />
                   ) : (
                     <>
-                      <Input value={visa.issuingCountry} onChange={(e) => { updateVisa(visa.id, 'issuingCountry', e.target.value); if (visaDateErrors[visa.id]?.issuingCountry && e.target.value.trim()) setVisaDateErrors(prev => { const n = { ...prev }; if (n[visa.id]) { const { issuingCountry: _, ...rest } = n[visa.id]; n[visa.id] = rest; } return n; }); }}
+                      <Input value={visaCountryLabel(visa)} onChange={(e) => { updateVisa(visa.id, 'issuingCountry', e.target.value); if (visaDateErrors[visa.id]?.issuingCountry && e.target.value.trim()) setVisaDateErrors(prev => { const n = { ...prev }; if (n[visa.id]) { const { issuingCountry: _, ...rest } = n[visa.id]; n[visa.id] = rest; } return n; }); }}
                         onBlur={() => { if (!(visa.issuingCountry || '').trim()) setVisaDateErrors(prev => ({ ...prev, [visa.id]: { ...prev[visa.id], issuingCountry: 'Issuing country is required.' } })); }}
                         className={`text-[13px] border ${visaDateErrors[visa.id]?.issuingCountry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} maxLength={50} />
                       {visaDateErrors[visa.id]?.issuingCountry && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issuingCountry}</p>}
@@ -5317,7 +5343,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                 </TableCell>
                 <TableCell className="p-3">
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('visa', visa.id, visa.issuingCountry || 'Visa', visa.serverId)} data-testid={`button-attach-visa-${visa.id}`}>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-blue-600 relative" onClick={() => openAttachmentDialog('visa', visa.id, visaCountryLabel(visa) || 'Visa', visa.serverId)} data-testid={`button-attach-visa-${visa.id}`}>
                       <Paperclip className="h-3 w-3" />
                       {(visa.attachments?.filter(a => !a.isDeleted)?.length || 0) > 0 && (
                         <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[9px] rounded-full h-3.5 w-3.5 flex items-center justify-center">{visa.attachments?.filter(a => !a.isDeleted)?.length}</span>
@@ -5743,13 +5769,13 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                         }}
                       >
                         <SelectTrigger className={`text-[13px] border ${seaRequiredErrors[service.id]?.vesselType ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`}>
-                          <SelectValue placeholder="Select type" />
+                          <SelectValue placeholder="Select type">{masterLabel(service.vesselType, displayCatalogs.vesselTypes, 'vessel type', service.vesselTypeName) || undefined}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {/* Render returned API vesselType even if not in master list */}
                           {service.vesselType && !vesselTypeMasterData.includes(service.vesselType) && (
                             <SelectItem key={service.vesselType} value={service.vesselType}>
-                              {service.vesselType}
+                              {masterLabel(service.vesselType, displayCatalogs.vesselTypes, 'vessel type', service.vesselTypeName)}
                             </SelectItem>
                           )}
                           {vesselTypeMasterData.map((vt: string) => (
