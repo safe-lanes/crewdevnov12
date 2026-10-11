@@ -22,6 +22,7 @@ import { requirePermission } from "../../middleware/requirePermission";
 import { requireTrustedAccessControlAdmin } from "../../middleware/requireTrustedAccessControlAdmin";
 import { formPartController } from "./controllers/formPartController";
 import { actionPermissionsController } from "./controllers/actionPermissionsController";
+import { applicabilityController } from "./controllers/applicabilityController";
 
 const router = Router();
 
@@ -69,6 +70,8 @@ router.put(
   requirePermission("Forms", "edit"),
   formStructureController.replaceStructures,
 );
+router.get("/form-versions/:id/applicability", requirePermission("Forms", "view"), applicabilityController.read);
+router.put("/form-versions/:id/applicability", requirePermission("Forms", "edit"), applicabilityController.write);
 router.get("/form-versions/:id", requirePermission("Forms", "view"), formsController.getVersionById);
 router.put("/form-versions/:id", requirePermission("Forms", "edit"), formsController.updateVersion);
 router.post("/form-versions/:id/release", requirePermission("Forms", "edit"), formsController.releaseVersion);

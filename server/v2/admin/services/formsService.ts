@@ -12,6 +12,7 @@ import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersion
 import { getBaseRank } from "../../../../shared/crew-mapping";
 import { v4 as uuidv4 } from "uuid";
 import { validatePersistedCompanyFormLifecycle } from "../../company-forms/lifecyclePolicy";
+import { copyApplicability } from "./applicabilityService";
 
 const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
@@ -589,6 +590,7 @@ export const formsService = {
       } as any, true), tx);
       if (sourceVersion?.fvUuid) {
         await copyFormVersionStructure(sourceVersion.fvUuid, created.fvUuid, tx);
+        if (isCompanyForm) await copyApplicability(sourceVersion.fvUuid, created.fvUuid, tx);
       } else {
         await formStructureRepository.initializePartsFromTemplates(form.formUuid, created.fvUuid, tx);
       }
