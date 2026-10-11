@@ -60,7 +60,7 @@ try {
   await loaded;
   await group.getByText("Vessel type", { exact: true }).waitFor();
   await group.getByText("First-in-rank", { exact: true }).waitFor();
-  await group.getByText("Contract rank", { exact: true }).waitFor();
+  await group.locator("dt").filter({ hasText: /^Contract rank$/ }).waitFor();
   const rank = dimensions.dimensions.find(dimension => dimension.key === "rank");
   for (const label of rank?.labels ?? []) await group.getByText(label, { exact: true }).first().waitFor();
   ensure(!(await group.innerText()).includes("Not recorded on assignment"), "G3 must use captured contract rank");

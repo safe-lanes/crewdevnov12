@@ -57,7 +57,7 @@ try {
   }, { actor, token });
   const page = await context.newPage(), errors = [];
   page.on("pageerror", error => errors.push(error.message));
-  await page.goto(`${base}/crewing/crew-pool?crewUuid=${fixture.crew_uuid}&crewFormSection=G3`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${base}/crew-pool?crew=${fixture.crew_uuid}&section=G`, { waitUntil: "domcontentloaded" });
   const group = page.getByTestId(`crew-company-forms-group-${fixture.subject_ref}`);
   await group.waitFor({ timeout: 45000 });
   if (!(await group.evaluate(element => element.open))) await group.locator(":scope > summary").click();
