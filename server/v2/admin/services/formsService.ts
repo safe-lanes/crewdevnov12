@@ -12,7 +12,7 @@ import type { AdmFormV2, InsertAdmFormV2, AdmFormVersionV2, InsertAdmFormVersion
 import { getBaseRank } from "../../../../shared/crew-mapping";
 import { v4 as uuidv4 } from "uuid";
 import { validatePersistedCompanyFormLifecycle } from "../../company-forms/lifecyclePolicy";
-import { copyApplicability } from "./applicabilityService";
+import { copyApplicability, validateApplicabilityRelease } from "./applicabilityService";
 
 const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
@@ -71,7 +71,8 @@ function assertNoClientStageSubjectType(data: Record<string, unknown>) {
 
 function assertImmutableVersionOwnership(data: Record<string, unknown>) {
   assertNoClientStageSubjectType(data);
-  for (const field of ["formId", "fvUuid", "rankGroupId", "status", "releasedAt"]) {
+  for (const field of ["formId", "fvUuid", "rankGroupId", "status", "releasedAt",
+    "applicability", "policy", "changeSummary", "effectiveFrom", "contentChanged", "applicabilityChanged"]) {
     if (Object.prototype.hasOwnProperty.call(data, field)) {
       throw new FormStageValidationError(`${field} is immutable and cannot be changed through version update.`);
     }
@@ -631,6 +632,7 @@ export const formsService = {
     return getDb().transaction(async (tx: any) => {
       const { form, version: existing } = await lockWritableVersion(tx, id);
       if (existing.status !== "draft") throw new Error("Only draft versions can be released.");
+      if (form.category === "dynamic") await validateApplicabilityRelease(existing.fvUuid, tx);
       const stages = form.category === "dynamic" ? await getDeclaredStages(form.subjectType, tx) : [];
       if (stages.length > 0 && (!existing.stageKey || !stages.some((stage) => stage.stageKey === existing.stageKey))) {
         throw new FormStageValidationError("Select a subject stage before releasing this Company Form version.");

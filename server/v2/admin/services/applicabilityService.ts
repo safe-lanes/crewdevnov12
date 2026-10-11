@@ -122,3 +122,15 @@ export async function copyApplicability(sourceUuid: string, destinationUuid: str
     setUuid: uuid(), conditions: s.conditions.map(c => ({ ...c, conditionUuid: uuid() })),
   })), tx);
 }
+
+export async function validateApplicabilityRelease(versionUuid: string, tx: any) {
+  const policy = await readApplicability(versionUuid, tx);
+  // A fail-closed seam: the dimension slice must supply trusted validation,
+  // including its database release guard. Never accept client "ready" flags.
+  if (policy.mode === "conditional")
+    throw new ApplicabilityError("Conditional applicability cannot be released until server-side dimension validation is available");
+  const result = await tx.execute(sql`SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD') AS day`);
+  const releaseDay = result.rows[0].day as string;
+  if (policy.effectiveKind === "specific_date" && policy.specificDate! < releaseDay)
+    throw new ApplicabilityError(`Effective-from date ${policy.specificDate} is earlier than release date ${releaseDay}; a rule cannot claim applicability before it existed and requirements are never resolved retrospectively`);
+}
