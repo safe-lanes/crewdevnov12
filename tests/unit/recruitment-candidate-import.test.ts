@@ -4,7 +4,8 @@ import ExcelJS from "exceljs";
 import { getTableName } from "drizzle-orm";
 import { generateTemplate } from "../../server/v2/recruitment/import/workbook";
 import { parseWorkbook, strictDate, decodeFile } from "../../server/v2/recruitment/import/parser";
-import { BLOCKS, cellLocation, type Catalogs, type Parsed } from "../../server/v2/recruitment/import/contract";
+import { BLOCKS, VERSION, cellLocation, labelLocation, type Catalogs, type Parsed } from "../../server/v2/recruitment/import/contract";
+import { FORM_SHEET, FORM_LAST_ROW, LOOKUP_START_COLUMN } from "../../server/v2/recruitment/import/formLayout";
 import { candidateFingerprint, persistCandidate, writeCandidate } from "../../server/v2/recruitment/import/persistence";
 import { authorizeImport } from "../../server/v2/recruitment/import/access";
 import { accessControlService } from "../../server/v2/admin/services/accessControlService";
@@ -86,8 +87,8 @@ describe("Recruitment A1-A5 workbook", () => {
   it("reports partially populated rows instead of dropping them", async () => {
     const parsed = await parse({ candidate: [core], documents: [{ number: "00123" }], sea: [{ ownerOperator: "Example" }], education: [{ institution: "School" }] });
     expect(parsed.isValid).toBe(false);
-    expect(parsed.errors.some(e => e.sheet === "A2 Documents" && e.cell === "A6")).toBe(true);
-    expect(parsed.errors.some(e => e.sheet === "A3 Education")).toBe(true);
+    expect(parsed.errors.some(e => e.sheet === FORM_SHEET && e.cell === "A134")).toBe(true);
+    expect(parsed.errors.some(e => e.field === "Qualification" && e.cell === "Y29")).toBe(true);
     expect(parsed.data.documents).toHaveLength(1);
   });
   it("resolves labels to UUIDs and preserves leading-zero text", async () => {
@@ -104,8 +105,8 @@ describe("Recruitment A1-A5 workbook", () => {
   it("rejects ambiguous catalog labels", async () => {
     const book = new ExcelJS.Workbook();
     await book.xlsx.load(template as any);
-    book.getWorksheet("A1 Personal")!.getCell("D6").value = "Import";
-    book.getWorksheet("A1 Personal")!.getCell("D11").value = "Indian";
+    book.getWorksheet(FORM_SHEET)!.getCell("F8").value = "Import";
+    book.getWorksheet(FORM_SHEET)!.getCell("F15").value = "Indian";
     const parsed = await parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), { ...catalogs, nationalities: [...catalogs.nationalities, { label: "Indian", value: "another-uuid" }] });
     expect(parsed.errors.some(e => e.message.includes("Ambiguous"))).toBe(true);
   });
@@ -133,23 +134,89 @@ describe("Recruitment A1-A5 workbook", () => {
     book.addWorksheet("Second candidate");
     await expect(parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs)).rejects.toThrow("unsupported sheets");
     book.removeWorksheet("Second candidate");
-    book.getWorksheet("Instructions")!.getCell("A1").value = "Old";
+    book.getWorksheet(FORM_SHEET)!.getCell("A1").value = "Old";
     await expect(parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs)).rejects.toThrow("version");
   });
   it("rejects renamed headings and extra rows that would lose data", async () => {
     const book = new ExcelJS.Workbook();
     await book.xlsx.load(template as any);
-    book.getWorksheet("A1 Personal")!.getCell("D6").value = "Import";
-    book.getWorksheet("A1 Children")!.getCell("A14").value = "Extra";
+    book.getWorksheet(FORM_SHEET)!.getCell("F8").value = "Import";
+    book.getWorksheet(FORM_SHEET)!.getCell(`A${FORM_LAST_ROW + 1}`).value = "Extra";
     const parsed = await parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs);
     expect(parsed.errors.some(e => e.field === "Outside input area")).toBe(true);
-    book.getWorksheet("A1 Personal")!.getCell("A6").value = "Changed";
+    book.getWorksheet(FORM_SHEET)!.getCell("A8").value = "Changed";
     await expect(parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs)).rejects.toThrow("heading");
   });
   it("rejects legacy and oversized upload data", () => {
     expect(() => decodeFile(template.toString("base64"), "file.xls")).toThrow(".xlsx");
     expect(() => decodeFile("A".repeat(7 * 1024 * 1024), "file.xlsx")).toThrow("5 MB");
     expect(decodeFile(template.toString("base64"), "file.xlsx")).toEqual(template);
+  });
+  it("generates exactly one reference-style worksheet with same-sheet dropdowns outside printing", async () => {
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(template as any);
+    expect(book.worksheets.map(s => s.name)).toEqual([FORM_SHEET]);
+    const sheet = book.worksheets[0];
+    expect(sheet.getCell("A1").value).toBe(VERSION);
+    expect(sheet.getCell("A2").value).toBe("APPLICATION FOR EMPLOYMENT");
+    expect(sheet.getCell("A2").fill).toMatchObject({ fgColor: { argb: "FFC0C0C0" } });
+    expect(sheet.getCell("F8").fill).toMatchObject({ fgColor: { argb: "FFFFFFFF" } });
+    expect(sheet.pageSetup.printArea).toBe(`A1:AF${FORM_LAST_ROW}`);
+    expect(sheet.getColumn(LOOKUP_START_COLUMN).hidden).toBe(true);
+    expect(sheet.getCell("F15").dataValidation.formulae?.[0]).toMatch(/^\$[A-Z]+\$2:\$[A-Z]+\$\d+$/);
+    expect(sheet.getCell("AC4").value).toContain("Not imported");
+    for (const block of BLOCKS) block.fields.forEach((field, j) => expect(sheet.getCell(labelLocation(block, j)).value).toBe(field.label));
+    const locations = BLOCKS.flatMap(block => Array.from({ length: block.rows || 1 }, (_, row) => block.fields.map((_, j) => cellLocation(block, j, row))).flat());
+    expect(new Set(locations).size).toBe(locations.length);
+  });
+  it("parses separated optional tables and stacked From/To sea rows without treating later sections as overflow", async () => {
+    const row = { vesselName: "Ship", vesselTypeUuid: "Bulk Carrier", rank: "Master", fromDate: "2021-01-01", toDate: "2021-02-01" };
+    const parsed = await parse({ candidate: [core], children: [{}, {}, { firstName: "Child" }], sea: [{}, row, {}, { ...row, fromDate: "2020-01-01", toDate: "2020-02-01" }], training: [{}, { trainingCourse: "Safety" }], additional: [{}, { information: "Note" }] });
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.data.sea).toHaveLength(2);
+    expect(parsed.data.sea[0]).toMatchObject({ fromDate: "2021-01-01", toDate: "2021-02-01", __row: "1" });
+    expect(parsed.data.children).toHaveLength(1);
+    expect(parsed.data.training).toHaveLength(1);
+  });
+  it("reports real single-sheet anchors for overlap, duplicate vessels and required first name", async () => {
+    const row = { vesselName: "Ship", vesselTypeUuid: "Bulk Carrier", rank: "Master", fromDate: "2021-01-01", toDate: "2021-04-01" };
+    const parsed = await parse({ sea: [row, { ...row, fromDate: "2021-03-01" }], vesselTypes: [{ vesselTypeUuid: "Bulk Carrier" }, { vesselTypeUuid: "Bulk Carrier" }] });
+    expect(parsed.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ sheet: FORM_SHEET, cell: "F8", field: "First name" }),
+      expect.objectContaining({ sheet: FORM_SHEET, cell: "I53", field: "From" }),
+      expect.objectContaining({ sheet: FORM_SHEET, cell: "Y40", field: "Vessel type" }),
+    ]));
+  });
+  it("rejects data in gaps or beyond any designated table rather than silently ignoring it", async () => {
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(template as any);
+    const sheet = book.getWorksheet(FORM_SHEET)!;
+    sheet.getCell("F8").value = "Import";
+    sheet.getCell("A131").value = "Extra sea service";
+    sheet.getCell("A227").value = "Extra additional information";
+    sheet.getCell("AG5").value = "Unmapped";
+    const parsed = await parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs);
+    expect(parsed.errors.map(e => e.cell).sort()).toEqual(["A131", "A227", "AG5"]);
+  });
+  it("does not trust edited lookup labels for master resolution", async () => {
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(template as any);
+    const sheet = book.getWorksheet(FORM_SHEET)!;
+    sheet.getCell("F8").value = "Import";
+    sheet.getCell(2, LOOKUP_START_COLUMN + 1).value = "Forged nationality";
+    sheet.getCell("F15").value = "Forged nationality";
+    const parsed = await parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs);
+    expect(parsed.errors.some(e => e.cell === "F15" && e.message.includes("Unknown"))).toBe(true);
+  });
+  it("rejects old multi-sheet templates and structural changes with a redownload instruction", async () => {
+    const old = new ExcelJS.Workbook();
+    old.addWorksheet("Instructions").getCell("A1").value = "Recruitment A1-A5 / 1";
+    old.addWorksheet("A1 Personal").getCell("D6").value = "Import";
+    await expect(parseWorkbook(Buffer.from(await old.xlsx.writeBuffer()), catalogs)).rejects.toThrow("Download");
+    const book = new ExcelJS.Workbook();
+    await book.xlsx.load(template as any);
+    book.getWorksheet(FORM_SHEET)!.unMergeCells("F8:P8");
+    await expect(parseWorkbook(Buffer.from(await book.xlsx.writeBuffer()), catalogs)).rejects.toThrow("Modified form layout");
   });
   it("full A1-A5 workbook creates all 14 table groups with one candidate relationship", async () => {
     const parsed = await parse({

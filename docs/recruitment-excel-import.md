@@ -1,6 +1,10 @@
 # Recruitment Excel import
 
-In Recruitment → In Progress, **Import Candidate** downloads the current single-candidate `.xlsx` form. Fill yellow cells, upload, validate, then confirm.
+In Recruitment → In Progress, **Import Candidate** downloads the current single-candidate `.xlsx` form. It contains exactly one **APPLICATION FORM** worksheet, styled like the supplied Crew Bio Data Form with grey section headings, bordered white input boxes and side-by-side details. Fill white boxes, upload, validate, then confirm.
+
+All A1–A5 sections, instructions and dropdown lookup values are on this worksheet. Lookup columns are hidden outside the A:AF print area; there are no extra or hidden sheets. Sea-service entries use paired rows (From above To), as in the reference. Photos are explicitly marked for separate upload; unsupported bank, clothing-size and reference-only fields are not collected.
+
+The previous multi-sheet format is no longer accepted. Download a fresh template and transfer values; an older workbook gives an explicit version/redownload error, never guesses the mapping. Do not insert rows, move fields or alter merged boxes.
 
 - A1: personal, contact, family, children, next of kin and applied vessel types.
 - A2: travel documents and visas.
@@ -24,7 +28,7 @@ Missing verified identity, role permission or agency scope returns a clear 403 a
 
 ## Verification
 
-- Unit/regression: `npx vitest run tests/unit/recruitment-candidate-import.test.ts`
+- Unit/regression: `npx vitest run tests/unit/recruitment-candidate-import.test.ts tests/unit/recruitment-import-request.test.ts tests/unit/recruitment-import-auth-transport.test.ts`
 - Browser smoke (running development workflow): `node tests/e2e/recruitment-import-smoke.cjs`
 - Cleanup its exact synthetic record: `NODE_ENV=development npx tsx tests/e2e/recruitment-import-cleanup.ts`
 

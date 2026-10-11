@@ -249,7 +249,7 @@ export function ExcelImportCandidateDialog({
               <div className="flex flex-col gap-3 rounded-lg border border-[#dbe5ea] bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-[#29475a]">Start with the workbook template</p>
-                  <p className="mt-1 text-xs leading-relaxed text-[#718391]">Use the provided sheet and column headings for a clean import.</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[#718391]">Fill A1–A5 on the single-sheet application form. Leave unused boxes blank; keep the layout unchanged.</p>
                 </div>
                 <Button
                   type="button"

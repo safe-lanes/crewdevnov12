@@ -1,14 +1,15 @@
 // Fixed, versioned cell locations are shared by the generator and reader.
 // Uploaded workbooks cannot supply field/table mappings or identity/status values.
-export const VERSION = "Recruitment A1-A5 / 1";
+import { FORM_LAYOUT, FORM_SHEET, type Placement } from "./formLayout";
+export const VERSION = "Recruitment A1-A5 / 2 — Single sheet";
 export type Field = { key: string; label: string; date?: boolean; catalog?: string; choices?: string[]; max?: number };
-export type Block = { sheet: string; section: string; entity: string; uuid: string; fields: Field[]; rows?: number; start: number };
+export type Block = { sheet: string; section: string; entity: string; uuid: string; fields: Field[]; rows?: number; start: number; placements: Placement[]; rowStep: number };
 const f = (key: string, label: string, extra: Partial<Field> = {}): Field => ({ key, label, ...extra });
 const date = (key: string, label: string) => f(key, label, { date: true });
 const country = (key: string, label: string) => f(key, label, { catalog: "countries" });
 const names = [f("firstName", "First name"), f("middleName", "Middle name"), f("familyName", "Family name")];
 const certificateFields = [f("abbr", "Abbreviation"), f("requirement", "Requirement"), f("certificateNo", "Certificate no."), f("issuingAuthority", "Issuing authority"), country("issuingCountryUuid", "Issuing country"), date("issued", "Issued"), date("expiry", "Expiry")];
-export const BLOCKS: Block[] = [
+const DEFINITIONS: Omit<Block, "placements" | "rowStep">[] = [
   { sheet: "A1 Personal", section: "A1", entity: "candidate", uuid: "recCanUuid", start: 6, fields: [
     ...names, f("gender", "Gender", { choices: ["Male", "Female"] }), date("dob", "Date of birth"),
     f("nationalityUuid", "Nationality", { catalog: "nationalities" }), f("presentRank", "Present rank", { catalog: "ranks" }), f("rankAppliedFor", "Rank applied for", { catalog: "ranks" }),
@@ -41,9 +42,21 @@ export const BLOCKS: Block[] = [
   ] },
   { sheet: "A5 Additional", section: "A5", entity: "additional", uuid: "infoUuid", start: 6, rows: 15, fields: [f("information", "Information", { max: 1000 }), f("response", "Response", { max: 1000 })] },
 ];
+// Keep entity order stable: it is also used for duplicate-import fingerprints.
+export const BLOCKS: Block[] = DEFINITIONS.map(block => ({
+  ...block, sheet: FORM_SHEET, start: FORM_LAYOUT[block.entity].start,
+  placements: FORM_LAYOUT[block.entity].placements, rowStep: FORM_LAYOUT[block.entity].step || 1,
+}));
 export type ImportError = { sheet: string; cell: string; field: string; message: string };
 export type Catalogs = Record<string, { label: string; value: string }[]>;
 export type Parsed = { data: Record<string, Record<string, string>[]>; errors: ImportError[]; summary: Record<string, number>; candidateName: string; isValid: boolean; status: "Applied" };
 export function cellLocation(block: Block, field: number, row: number): string {
-  return block.rows ? `${String.fromCharCode(65 + field)}${block.start + row}` : `D${block.start + field}`;
+  return inputRange(block, field, row).split(":")[0];
+}
+export function inputRange(block: Block, field: number, row: number): string {
+  const r = block.start + row * block.rowStep;
+  return block.placements[field].input.replaceAll("{r}", String(r)).replaceAll("{s}", String(r + 1));
+}
+export function labelLocation(block: Block, field: number): string {
+  return block.placements[field].label.split(":")[0];
 }
