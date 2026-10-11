@@ -26,6 +26,8 @@ export type CompanyFormSubmissionRow = {
   formVersionUuid: string;
   stageKey: string | null;
   status: "in_progress" | "completed" | "voided";
+  origin?: string;
+  requirementUuid?: string | null;
   completedAt: Date | null;
   replacesSubmissionUuid: string | null;
   replacedBySubmissionUuid: string | null;
@@ -163,6 +165,8 @@ export class CompanyFormSubmissionsRepository {
         systemSnapshotEvent: frmCompanySubmissions.systemSnapshotEvent,
         stageLabel: frmSubjectStages.label,
         status: frmCompanySubmissions.status,
+        origin: frmCompanySubmissions.origin,
+        requirementUuid: frmCompanySubmissions.requirementUuid,
         completedAt: frmCompanySubmissions.completedAt,
         replacesSubmissionUuid: frmCompanySubmissions.replacesSubmissionUuid,
         replacedBySubmissionUuid: frmCompanySubmissions.replacedBySubmissionUuid,
@@ -188,6 +192,8 @@ export class CompanyFormSubmissionsRepository {
     subjectRef: string;
     formUuid: string;
     formVersionUuid: string;
+    requirementUuid?: string;
+    actorUuid?: string;
     authorizeLockedSubject: (subject: SubjectLookupResult<any>) => Promise<void>;
     authorizeLockedVersion?: (subject: SubjectLookupResult<any>, stageKey: string | null, executor: any) => Promise<void>;
   }): Promise<CompanyFormSubmissionRow> {
@@ -199,6 +205,20 @@ export class CompanyFormSubmissionsRepository {
         await input.authorizeLockedSubject(subject);
         if (!input.adapter.canStart(subject.context)) {
           throw new CompanyFormConflictError("This subject is no longer eligible to start a Company Form.");
+        }
+        const obligation = input.requirementUuid ? (await tx.execute(sql`SELECT * FROM frm_requirements
+          WHERE requirement_uuid=${input.requirementUuid} FOR UPDATE`)).rows[0] : null;
+        if (input.requirementUuid && (!obligation || obligation.subject_type !== input.subjectType
+          || obligation.subject_ref !== input.subjectRef || obligation.form_uuid !== input.formUuid
+          || obligation.form_version_uuid !== input.formVersionUuid || obligation.status !== "OUTSTANDING"))
+          throw new CompanyFormConflictError("This requirement is not outstanding or its pinned form is unavailable.");
+        if (!input.requirementUuid) {
+          const required = (await tx.execute(sql`SELECT requirement_uuid FROM frm_requirements
+            WHERE subject_type=${input.subjectType} AND subject_ref=${input.subjectRef}
+            AND form_uuid=${input.formUuid} AND status<>'WITHDRAWN'
+            AND stage_key IS NOT DISTINCT FROM
+              (SELECT stage_key FROM adm_form_versions_v2 WHERE fv_uuid=${input.formVersionUuid})`)).rows;
+          if (required.length) throw new CompanyFormConflictError("This form is required. Start it from its requirement.");
         }
 
         // Match Admin archive/release lock order: form, version, then the
@@ -265,7 +285,7 @@ export class CompanyFormSubmissionsRepository {
           throw new CompanyFormConflictError("Selected Company Form version is no longer eligible for this subject.");
         }
         const eligibleVersions = await this.findEligibleForms(input.subjectType, selectedStage, tx);
-        if (!eligibleVersions.some((candidate) =>
+        if (!input.requirementUuid && !eligibleVersions.some((candidate) =>
           candidate.formUuid === form.formUuid &&
           candidate.formVersionUuid === version.formVersionUuid)) {
           throw new CompanyFormConflictError(
@@ -309,6 +329,9 @@ export class CompanyFormSubmissionsRepository {
         const replacedSubmissionUuid = replacedRows[0]?.submissionUuid ?? null;
         const submissionUuid = uuidv4();
         const inserted = await tx.insert(frmCompanySubmissions).values({
+          origin: input.requirementUuid ? "REQUIRED" : "MANUAL",
+          requirementUuid: input.requirementUuid ?? null,
+          createdByUuid: input.actorUuid ?? null,
           submissionUuid,
           subjectType: input.subjectType,
           subjectRef: subject.subjectRef,
@@ -328,6 +351,8 @@ export class CompanyFormSubmissionsRepository {
           formVersionUuid: frmCompanySubmissions.formVersionUuid,
           stageKey: frmCompanySubmissions.stageKey,
           status: frmCompanySubmissions.status,
+          origin: frmCompanySubmissions.origin,
+          requirementUuid: frmCompanySubmissions.requirementUuid,
           completedAt: frmCompanySubmissions.completedAt,
           replacesSubmissionUuid: frmCompanySubmissions.replacesSubmissionUuid,
           replacedBySubmissionUuid: frmCompanySubmissions.replacedBySubmissionUuid,

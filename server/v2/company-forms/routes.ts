@@ -4,6 +4,20 @@ import { companyFormSubmissionsService } from "./submissionsService";
 import { fileStorageService } from "../shared/fileStorageService";
 
 const router = Router();
+router.get("/subjects/:subjectType/:subjectRef/requirements", async (req, res) => {
+  const parsed = paramsSchema.safeParse(req.params);
+  if (!parsed.success) { res.status(400).json({ error: "invalid_request" }); return; }
+  try { res.json(await companyFormSubmissionsService.requirements({ req, ...parsed.data })); }
+  catch (error) { sendError(res, error); }
+});
+router.post("/subjects/:subjectType/:subjectRef/requirements/:requirementUuid/start", async (req, res) => {
+  const parsed = paramsSchema.extend({ requirementUuid: z.string().uuid() }).safeParse(req.params);
+  if (!parsed.success || !z.object({}).strict().safeParse(req.body).success) {
+    res.status(400).json({ error: "invalid_request", message: "Only the requirement identity may be supplied." }); return;
+  }
+  try { res.status(201).json(await companyFormSubmissionsService.startRequirement({ req, ...parsed.data })); }
+  catch (error) { sendError(res, error); }
+});
 router.post("/subjects/:subjectType/submission-counts", async (req, res) => {
   const body = z.object({ subjectRefs: z.array(z.string().uuid()).min(1).max(200),
     stageKey: z.string().min(1).max(100) }).strict().safeParse(req.body);

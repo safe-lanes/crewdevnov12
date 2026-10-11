@@ -56,6 +56,8 @@ export type CompanyFormRenderResponseType =
   | "system_field";
 
 export type CompanyFormSubmissionSummary = {
+  origin?: "MANUAL" | "REQUIRED";
+  requirementUuid?: string | null;
   submissionUuid: string;
   subjectType: string;
   subjectRef: string;

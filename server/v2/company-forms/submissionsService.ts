@@ -56,6 +56,8 @@ import { randomUUID } from "node:crypto";
 import { getDb } from "../db";
 import { sectionRequiresSubmission } from "./lifecyclePolicy";
 import { sailDate } from "../../../shared/v2/forms-engine/displayFormatting";
+import { sql } from "drizzle-orm";
+import { readRequirements } from "./requirementsRepository";
 
 function isoDate(value: Date | string | null | undefined): string | null {
   if (value === null || value === undefined) return null;
@@ -78,6 +80,8 @@ function mapSummary(row: any, canEdit: boolean, canVoid: boolean): CompanyFormSu
     formVersionUuid: row.formVersionUuid,
     stageKey: row.stageKey,
     status: row.status,
+    origin: row.origin ?? "MANUAL",
+    requirementUuid: row.requirementUuid ?? null,
     canEdit,
     canVoid,
     formArchivedAt: isoDate(row.formArchivedAt),
@@ -1060,7 +1064,11 @@ export class CompanyFormSubmissionsService {
     }
 
     if (!adapter.canStart(subject.context)) return [];
-    return this.repository.findEligibleForms(input.subjectType, stageKey);
+    const eligible = await this.repository.findEligibleForms(input.subjectType, stageKey);
+    const required = (await getDb().execute(sql`SELECT form_uuid FROM frm_requirements
+      WHERE subject_type=${input.subjectType} AND subject_ref=${input.subjectRef}
+      AND stage_key IS NOT DISTINCT FROM ${stageKey} AND status<>'WITHDRAWN'`)).rows as { form_uuid: string }[];
+    return eligible.filter(form => !required.some(r => r.form_uuid === form.formUuid));
   }
 
   async create(input: {
@@ -1078,6 +1086,7 @@ export class CompanyFormSubmissionsService {
       subjectRef: input.subjectRef,
       formUuid: input.formUuid,
       formVersionUuid: input.formVersionUuid,
+      actorUuid: String(principal.userId),
       authorizeLockedSubject: async (subject) => {
         await this.authorize(adapter, principal, "create_submission", subject.context);
       },
@@ -1090,6 +1099,38 @@ export class CompanyFormSubmissionsService {
       },
     });
     return submission;
+  }
+
+  async requirements(input: { req: Request; subjectType: string; subjectRef: string }) {
+    const adapter = this.contextAdapter(input.req, input.subjectType);
+    const principal = await this.resolvePrincipal(input.req);
+    const subject = await adapter.lookup(input.subjectRef);
+    if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
+    await this.authorize(adapter, principal, "list_submissions", subject.context);
+    const data = await readRequirements(input.subjectType, input.subjectRef);
+    return { ...data, outstandingEligible: adapter.isOutstanding(subject.context) };
+  }
+
+  async startRequirement(input: { req: Request; subjectType: string; subjectRef: string; requirementUuid: string }) {
+    const adapter = this.contextAdapter(input.req, input.subjectType);
+    const principal = await this.resolvePrincipal(input.req);
+    const requirement = (await getDb().execute(sql`SELECT * FROM frm_requirements WHERE requirement_uuid=${input.requirementUuid}
+      AND subject_type=${input.subjectType} AND subject_ref=${input.subjectRef}`)).rows[0];
+    if (!requirement) throw new CompanyFormNotFoundError("Form requirement not found.");
+    return this.repository.createPinnedSubmission({
+      adapter, subjectType: input.subjectType, subjectRef: input.subjectRef,
+      requirementUuid: input.requirementUuid, formUuid: requirement.form_uuid,
+      formVersionUuid: requirement.form_version_uuid, actorUuid: String(principal.userId),
+      authorizeLockedSubject: async subject => {
+        await this.authorize(adapter, principal, "create_submission", subject.context);
+      },
+      authorizeLockedVersion: async (subject, stageKey, executor) => {
+        if (adapter.authorizeStageAction && !adapter.authorizeStageAction(principal, "create_submission", subject.context, stageKey))
+          throw new CompanyFormPermissionError("This actor cannot start a form at this stage.");
+        await adapter.authorizeVersionStart?.({ principal, subject: subject.context, stageKey,
+          formVersionUuid: requirement.form_version_uuid, executor });
+      },
+    });
   }
 
   async listForSubject(input: {
