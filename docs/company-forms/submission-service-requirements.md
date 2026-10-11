@@ -87,23 +87,42 @@ Related project task: #333 (Company Form Submissions).
     stage's trigger occurs on or after that date — not by the date
     the assignment was created.
 
-25. BLOCKING. Mandatory unsigned before-joining requirements block
-    the Deployment Checklist toggle. Sign-off is NEVER blocked by
+25. BLOCKING. Mandatory before-joining requirements not yet COMPLETED
+    block the Deployment Checklist toggle. Sign-off is NEVER blocked by
     outstanding forms: the seafarer's sign-off is recorded whatever
     is owed, and outstanding sign-off requirements remain outstanding
     afterwards, clearly flagged on the crew profile and in the
     outstanding report.
 
-26. DECIDED NOT TO BUILD: no resolution trigger for promotions on
-    board. If a need arises, it is more likely a Standard Form.
-    STILL OPEN: whether manual selection remains alongside
-    applicability; how first-in-rank treats rank served on relief.
+26. DECIDED.
+    - Manual starting remains alongside applicability. A manually
+      started form is recorded as MANUAL: never mandatory, never
+      blocking, never satisfying or skipping a requirement.
+    - First-in-rank: any prior service in that rank in the
+      seafarer's company sea service, including relief service,
+      means the contract is not his first in that rank.
+    - No resolution trigger for promotions on board.
 
 27. SIGN-OFF WITNESSING. A seafarer's signature on a sign-off stage
     form may be witnessed EITHER by a vessel user holding a permitted
     role, or by an office crewing user. The form's configured
     signatures decide which applies: Vessel Management for forms
     signed aboard, Company Representative for debriefs done ashore.
+
+28. STAGE AVAILABILITY. A stage's forms can be started only after
+    that stage's rules have run: before joining after Deploy; on
+    board after sign-on; at sign-off after Relief Status first
+    becomes Planned or Confirmed, or after sign-off itself if
+    neither occurred. Until then the entry point states why it is
+    unavailable; it is never silently hidden. The manual picker
+    never offers a form already required for that assignment and
+    stage. If a form started manually in an earlier relief cycle
+    becomes required in a later cycle, it is shown clearly and may
+    be voided with a reason; it is never linked automatically.
+
+29. DIMENSIONS without a master list — currently vessel owner and
+    flag — appear in the rule editor as "not yet available" until
+    the parent application supplies them as master data.
 
 ## Trusted vessel-scope prerequisite
 
