@@ -72,10 +72,14 @@ export async function contentSnapshot(versionUuid: string, tx: any) {
     if (typeof v === "string") return ids.get(v) ?? v;
     if (Array.isArray(v)) return v.map(normalize);
     if (v && typeof v === "object") return Object.fromEntries(Object.entries(v)
-      .filter(([k]) => !identityFields.has(k)).map(([k, val]) => [k, normalize(val)]));
+      .map(([k, val]) => [k, normalize(val)]));
     return v;
   };
-  return normalize({ ...entities, configuration: parseConfig(version.configuration),
+  // Strip database identity/audit columns only on database rows. An "id"
+  // inside authored configuration/validation/layout is meaningful content.
+  const cleanEntities = Object.fromEntries(Object.entries(entities).map(([kind, rows]) =>
+    [kind, rows.map(row => Object.fromEntries(Object.entries(row).filter(([k]) => !identityFields.has(k))))]));
+  return normalize({ ...cleanEntities, configuration: parseConfig(version.configuration),
     sharedConfig: parseConfig(version.shared_config), stageKey: version.stage_key, subjectType: version.stage_subject_type });
 }
 

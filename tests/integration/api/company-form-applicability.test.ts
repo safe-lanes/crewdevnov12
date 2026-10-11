@@ -208,6 +208,21 @@ describe("Company Form applicability foundation", () => {
       expect((await call("post", `/form-versions/${v.id}/release`, body)).status).toBe(400);
   });
 
+  it("preserves authored IDs inside configuration while excluding cloned database identities", async () => {
+    const { f, v } = await fixture();
+    const content = { id: "authored-system-field-a", layout: { id: "authored-layout-a" } };
+    await call("put", `/form-versions/${v.id}`, { configuration: JSON.stringify(content) });
+    expect((await call("post", `/form-versions/${v.id}/release`)).status).toBe(200);
+    const identical = await clone(f);
+    await call("put", `/form-versions/${identical.id}`, { configuration: JSON.stringify(content) });
+    expect((await call("post", `/form-versions/${identical.id}/release`)).status).toBe(200);
+    expect((await summary(f, identical)).changeSummary.contentChanged).toBe(false);
+    const changed = await clone(f);
+    await call("put", `/form-versions/${changed.id}`, { configuration: JSON.stringify({ ...content, layout: { id: "authored-layout-b" } }) });
+    expect((await call("post", `/form-versions/${changed.id}/release`)).status).toBe(200);
+    expect((await summary(f, changed)).changeSummary).toMatchObject({ contentChanged: true, applicabilityChanged: false });
+  });
+
   it("serializes a release versus a policy edit without changing a frozen release", async () => {
     const { v } = await fixture();
     const [release, write] = await Promise.all([
