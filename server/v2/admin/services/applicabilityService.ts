@@ -3,6 +3,8 @@ import { z } from "zod";
 import { v4 as uuid } from "uuid";
 import { getDb } from "../../db";
 import type { VersionApplicability } from "../../../../shared/v2/admin/applicability";
+import { companyFormSubjectRegistry } from "../../company-forms/registry";
+import { validateDimensionCondition } from "../../company-forms/ruleDimensionValidation";
 
 export class ApplicabilityError extends Error {
   constructor(message: string, readonly statusCode = 400) { super(message); }
@@ -35,7 +37,7 @@ export async function readApplicability(versionUuid: string, tx: any = getDb()):
   const sets = await tx.execute(sql`SELECT set_uuid AS "setUuid" FROM frm_applicability_sets
     WHERE version_uuid=${versionUuid} ORDER BY set_uuid`);
   const conditions = await tx.execute(sql`SELECT c.condition_uuid AS "conditionUuid",
-    c.set_uuid AS "setUuid",c.dimension_key AS "dimensionKey",c.operator,c.value
+    c.set_uuid AS "setUuid",c.dimension_key AS "dimensionKey",c.operator,c.value,c.value_labels AS "valueLabels"
     FROM frm_applicability_conditions c JOIN frm_applicability_sets s ON s.set_uuid=c.set_uuid
     WHERE s.version_uuid=${versionUuid} ORDER BY c.condition_uuid`);
   return { ...policy, sets: sets.rows.map((s: any) => ({
@@ -49,7 +51,7 @@ export async function getPolicyVersion(id: number, tx: any, lock = false) {
   if (!initial.rows[0]) throw new ApplicabilityError("Form version not found", 404);
   const formId = initial.rows[0].form_id;
   if (lock) await tx.execute(sql`SELECT id FROM adm_forms_v2 WHERE id=${formId} FOR UPDATE`);
-  const query = sql`SELECT v.fv_uuid,v.status,f.category,f.archived_at FROM adm_form_versions_v2 v
+  const query = sql`SELECT v.fv_uuid,v.status,f.category,f.subject_type,f.archived_at FROM adm_form_versions_v2 v
     JOIN adm_forms_v2 f ON f.id=v.form_id WHERE v.id=${id} AND v.is_deleted=false`;
   const result = await tx.execute(lock ? sql`${query} FOR UPDATE OF v` : query);
   const row = result.rows[0];
@@ -100,6 +102,20 @@ export async function writeApplicability(id: number, input: unknown): Promise<Ve
       obligation=${p.obligation ?? null},effective_kind=${effectiveKind},specific_date=${p.specificDate ?? null}
       WHERE version_uuid=${version.fv_uuid}`);
     await insertSets(version.fv_uuid, sets, tx);
+    if (p.mode === "conditional" && version.subject_type) {
+      const adapter = companyFormSubjectRegistry.get(version.subject_type);
+      for (const set of sets) for (const c of set.conditions) {
+        const definition = adapter.ruleDimensions?.find(d => d.key === c.dimensionKey);
+        if (!definition?.available || !adapter.ruleMasterChoices || !Array.isArray(c.value)) continue;
+        const choices = await adapter.ruleMasterChoices(c.dimensionKey, tx);
+        const labels = c.value.flatMap(id => {
+          const matching = choices.filter(choice => choice.id === id);
+          return matching.length === 1 ? matching : [];
+        });
+        await tx.execute(sql`UPDATE frm_applicability_conditions SET value_labels=${JSON.stringify(labels)}::jsonb
+          WHERE condition_uuid=${c.conditionUuid}`);
+      }
+    }
     return readApplicability(version.fv_uuid, tx);
   });
 }
@@ -108,8 +124,9 @@ async function insertSets(versionUuid: string, sets: VersionApplicability["sets"
   for (const s of sets) {
     await tx.execute(sql`INSERT INTO frm_applicability_sets(set_uuid,version_uuid) VALUES(${s.setUuid},${versionUuid})`);
     for (const c of s.conditions) await tx.execute(sql`INSERT INTO frm_applicability_conditions
-      (condition_uuid,set_uuid,dimension_key,operator,value)
-      VALUES(${c.conditionUuid},${s.setUuid},${c.dimensionKey},${c.operator},${JSON.stringify(c.value)}::jsonb)`);
+      (condition_uuid,set_uuid,dimension_key,operator,value,value_labels)
+      VALUES(${c.conditionUuid},${s.setUuid},${c.dimensionKey},${c.operator},${JSON.stringify(c.value)}::jsonb,
+        ${JSON.stringify(c.valueLabels ?? [])}::jsonb)`);
   }
 }
 
@@ -127,8 +144,27 @@ export async function validateApplicabilityRelease(versionUuid: string, tx: any)
   const policy = await readApplicability(versionUuid, tx);
   // A fail-closed seam: the dimension slice must supply trusted validation,
   // including its database release guard. Never accept client "ready" flags.
-  if (policy.mode === "conditional")
-    throw new ApplicabilityError("Conditional applicability cannot be released until server-side dimension validation is available");
+  if (policy.mode === "conditional") {
+    if (!policy.sets.length || policy.sets.some(set => !set.conditions.length))
+      throw new ApplicabilityError("Conditional applicability requires at least one nonempty condition set");
+    const row = (await tx.execute(sql`SELECT f.subject_type FROM adm_forms_v2 f
+      JOIN adm_form_versions_v2 v ON v.form_id=f.id WHERE v.fv_uuid=${versionUuid}`)).rows[0];
+    if (!row?.subject_type) throw new ApplicabilityError("Conditional applicability requires a registered subject");
+    const adapter = companyFormSubjectRegistry.get(row.subject_type);
+    const evidence = [];
+    try {
+      for (const set of policy.sets) for (const condition of set.conditions) {
+        const labels = await validateDimensionCondition(adapter, condition, tx);
+        await tx.execute(sql`UPDATE frm_applicability_conditions SET value_labels=${JSON.stringify(labels)}::jsonb
+          WHERE condition_uuid=${condition.conditionUuid}`);
+        evidence.push({ conditionUuid: condition.conditionUuid, dimensionKey: condition.dimensionKey, valueLabels: labels });
+      }
+    } catch (error) { throw new ApplicabilityError((error as Error).message); }
+    await tx.execute(sql`INSERT INTO frm_applicability_release_proof(version_uuid,subject_type,policy_digest,validation_txid,evidence)
+      VALUES(${versionUuid},${row.subject_type},frm_applicability_fingerprint(${versionUuid}),txid_current(),${JSON.stringify(evidence)}::jsonb)
+      ON CONFLICT(version_uuid) DO UPDATE SET subject_type=EXCLUDED.subject_type,policy_digest=EXCLUDED.policy_digest,
+        validation_txid=EXCLUDED.validation_txid,validated_at=now(),evidence=EXCLUDED.evidence`);
+  }
   const result = await tx.execute(sql`SELECT to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD') AS day`);
   const releaseDay = result.rows[0].day as string;
   if (policy.effectiveKind === "specific_date" && policy.specificDate! < releaseDay)

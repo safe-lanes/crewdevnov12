@@ -4,6 +4,7 @@ export type ApplicabilityCondition = {
   dimensionKey: string;
   operator: "in" | "not_in" | "contains_any" | "contains_all" | "is";
   value: string[] | boolean;
+  valueLabels?: Array<{ id: string; label: string }>;
 };
 export type ApplicabilitySet = { setUuid: string; conditions: ApplicabilityCondition[] };
 export type VersionApplicability = {
