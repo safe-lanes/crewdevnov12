@@ -2,6 +2,9 @@ import { beforeAll, afterAll, afterEach, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import fs from 'fs';
 import path from 'path';
+import { installFixtureRetention } from './helpers/fixture-retention';
+
+installFixtureRetention();
 
 // Create test results directories
 const directories = [

@@ -1,5 +1,27 @@
 # Retained Company Form regression fixtures
 
+## Standing fixture retention rule
+
+Test fixtures stay in place and are registered in this document. They are never
+hard-deleted, including temporary crew and assignment fixtures. Retain their
+linked Planning, sea-service, submission, signature and audit context too.
+Use distinct clearly labelled fixtures for new mutation tests; do not reset or
+delete protected fixtures to repeat an acceptance check.
+
+The applicability preview collector registers its crew/assignment pair even on
+failure. The shared Vitest retention guard disables SQL DELETE, TRUNCATE and
+DROP teardown in test cleanup/finally blocks and records the affected context
+identifiers below. Negative database-refusal tests remain real database checks;
+they must not remove a persisted fixture.
+
+Step 0 tooling audit: the direct-delete helper in
+scripts/verify-company-form-applicability.mjs was replaced with retained
+registration. Other integration-test cleanup DELETE/ORM calls are disabled by
+tests/helpers/fixture-retention.ts at the Pool and Client entry points.
+The assignment deletion in company-form-stage-persistence.test.ts is an
+expected foreign-key rejection, not a cleanup deletion. Do not disable or
+count that refusal as a successful deletion.
+
 Review closing uses existing vessel 03. Its multi-position AB and OS ranks
 must use the actual configured role labels **AB_1** and **OS_1**. The newly
 inserted test-owned rows `bd612319-89be-45ca-b370-578984e37284` and
@@ -1934,3 +1956,5 @@ Test-owned actors, definition and subject created for permission verification; n
   "sectionUuid": "9cd8ec46-bdc9-4102-be0e-d2fffe46fd56",
   "vesselUuid": "7440571a-841a-11ed-aa7c-7003bca91a86"
 }
+
+- Retained test context (2026-10-11T07:32:29.189Z): tests/unit/fixture-retention.test.ts; target crew_assignments; references schema/context retained (no UUID parameters).

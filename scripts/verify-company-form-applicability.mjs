@@ -46,15 +46,15 @@ async function refusedSQL(statement, params) {
   } finally { await c.query("ROLLBACK"); c.release(); }
 }
 let browser, temporaryCrewUuid, temporaryAssignmentUuid;
-async function removeTemporaryFixture() {
-  if (temporaryAssignmentUuid) {
-    await db.query("DELETE FROM crew_assignments WHERE assign_uuid=$1", [temporaryAssignmentUuid]);
-    temporaryAssignmentUuid = undefined;
-  }
-  if (temporaryCrewUuid) {
-    await db.query("DELETE FROM crew_members_v2 WHERE crew_uuid=$1", [temporaryCrewUuid]);
-    temporaryCrewUuid = undefined;
-  }
+async function registerRetainedFixture() {
+  if (!temporaryCrewUuid && !temporaryAssignmentUuid) return;
+  await fs.appendFile("docs/company-form-regression-fixtures.md",
+    `\n### Applicability preview fixture — ${new Date().toISOString()}\n\n` +
+    `- Crew: \`${temporaryCrewUuid ?? "not created"}\`\n` +
+    `- Assignment: \`${temporaryAssignmentUuid ?? "not created"}\`\n` +
+    "- Created by scripts/verify-company-form-applicability.mjs; retained, including failed captures. No cleanup DELETE.\n");
+  temporaryCrewUuid = undefined;
+  temporaryAssignmentUuid = undefined;
 }
 try {
   let fixture;
@@ -215,8 +215,8 @@ try {
   report.checks.push("Existing manual sign-off picker still offers the released definition; no automatic resolution");
   ensure(Number((await db.query("SELECT count(*) FROM frm_company_submissions WHERE form_uuid=$1", [fixture.formUuid])).rows[0].count) === 0,
     "Opening the picker must not create a declaration");
-  report.temporaryPickerFixture = { crewUuid, assignmentUuid, cleanup: "Removed after capture; no existing assignment changed" };
-  await removeTemporaryFixture();
+  report.temporaryPickerFixture = { crewUuid, assignmentUuid, cleanup: "Retained and registered; no existing assignment changed" };
+  await registerRetainedFixture();
   if (!preflight) {
     ok(await api("POST", `/forms/${fixture.formId}/archive`));
     report.fixture.archivedAfterCapture = true;
@@ -228,6 +228,6 @@ try {
     backendStartedAt: report.backendStartedAt, checks: report.checks, report: `${root}/report.json` }, null, 2));
 } finally {
   if (browser) await browser.close();
-  await removeTemporaryFixture();
+  await registerRetainedFixture();
   await db.end();
 }
