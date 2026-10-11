@@ -68,11 +68,22 @@ export async function recordResolution(input: ResolutionCommand, executor = getD
       ${input.failureReason ?? null})`);
     await tx.execute(sql`SELECT set_config('sail.forms_actor',${String(input.actor.userId)},true)`);
     for (const { pin, decision } of pins) {
-      const prior = (await tx.execute(sql`SELECT requirement_uuid FROM frm_requirements
+      const prior = (await tx.execute(sql`SELECT requirement_uuid,form_version_uuid,status,cycle_uuid FROM frm_requirements
         WHERE subject_type=${input.subjectType} AND subject_ref=${input.subjectRef}
         AND stage_key IS NOT DISTINCT FROM ${input.stageKey} AND form_uuid=${pin.form_uuid}
         AND (cycle_uuid=${input.cycleUuid} OR status IN('STARTED','COMPLETED')) FOR UPDATE`)).rows;
-      if (prior.length) continue;
+      if (prior.length) {
+        // A later trusted check may settle missing facts, never repin an obligation.
+        const pending = prior.find((r: any) => r.cycle_uuid === input.cycleUuid
+          && r.form_version_uuid === pin.fv_uuid && r.status === "UNRESOLVED");
+        if (pending && decision.status === "OUTSTANDING") {
+          await tx.execute(sql`SELECT set_config('sail.forms_run_uuid',${runUuid},true),
+            set_config('sail.forms_reason','Previously missing facts verified by a later check',true)`);
+          await tx.execute(sql`UPDATE frm_requirements SET status='OUTSTANDING',unresolved_reason=NULL,updated_at=now()
+            WHERE requirement_uuid=${pending.requirement_uuid}`);
+        }
+        continue;
+      }
       await tx.execute(sql`INSERT INTO frm_requirements(requirement_uuid,run_uuid,subject_type,subject_ref,
         stage_key,cycle_uuid,form_uuid,form_version_uuid,mandatory,status,deciding_evidence,unresolved_reason)
         VALUES(${randomUUID()},${runUuid},${input.subjectType},${input.subjectRef},${input.stageKey},

@@ -4492,3 +4492,87 @@ Test-owned actors, definition and subject created for permission verification; n
 - Retained test context (2026-10-11T12:18:45.785Z): manual without stage check; target registered_fixture_context; references `20e267b6-6950-4a7e-b237-bd98633bd027`.
 
 - Retained test context (2026-10-11T12:18:46.176Z): required old-pin form; target registered_fixture_context; references `2adb0140-bc6b-4d08-98a1-94a4ef2a93b2`.
+
+- Retained test context (2026-10-11T12:20:47.664Z): requirement harness roots; target registered_fixture_context; references `fc3c8df2-8a4b-4854-9a76-606da65df583`, `42fcd77c-904e-46a3-a597-2c1273b00c7e`, `a0454023-2bbf-4b2e-8e53-a0d1d882380e`, `d927ec02-5045-40b9-b0f2-09de0066c983`.
+
+- Retained test context (2026-10-11T12:20:49.031Z): requirement harness pinned content; target registered_fixture_context; references `832770d4-9b16-4856-9d60-44905fe713a5`, `48e6d0f4-7989-45e3-bcd8-a5a1d8666afa`, `34ba3413-1aba-44b0-b74a-b7da16ddf29b`, `6be7720a-c17c-4fb7-a490-cdf9e0d9f587`.
+
+- Retained test context (2026-10-11T12:20:49.803Z): required lifecycle obligation; target registered_fixture_context; references `80223941-e569-44e2-93da-83231847fc85`.
+
+- Retained test context (2026-10-11T12:20:50.173Z): lifecycle initial form; target registered_fixture_context; references `be741923-cb5a-48ba-8623-1e3d7332c068`.
+
+- Retained test context (2026-10-11T12:20:50.498Z): requirement harness roots; target registered_fixture_context; references `b268d502-60ff-436e-b06e-44b8c02b85dd`, `2bba47bc-5770-40fd-95f8-81e4b099372d`, `51e8dc35-c756-41de-abcd-80990375a21c`, `6ab9a36c-909c-4e50-af88-032d3245d3e7`.
+
+- Retained test context (2026-10-11T12:20:50.598Z): requirement harness pinned content; target registered_fixture_context; references `bf115450-a7f5-4569-982f-ce4092a79ead`, `de303d4c-63ec-473f-812c-e5274249fd4a`, `f5e945ce-cdb2-42b0-a0d6-2d70ec37fcd6`, `b0cdd873-6bd8-4899-ae3f-bbb8b091d48f`.
+
+- Retained test context (2026-10-11T12:20:51.289Z): earlier manual collision; target registered_fixture_context; references `1f98b0b3-b83f-4f7d-baad-931a4ab5341a`, `8913e799-20dd-45d7-b6a7-c0845882ed6c`, `7ac83915-a4d0-43f2-8bbc-30a9d0f7adf8`.
+
+- Retained test context (2026-10-11T12:20:51.384Z): manual conflict required replacement; target registered_fixture_context; references `f584339f-ae37-4e31-8186-9b2a9236609d`.
+
+- Retained test context (2026-10-11T12:20:51.385Z): requirement harness roots; target registered_fixture_context; references `30a80e34-b210-4279-8ab7-c42a75de579a`, `26c68590-dc77-457d-aa10-753fa7785491`, `d5919c6d-7d16-4a40-bca0-30701657262f`, `ada820ee-9cfb-43ad-823d-ee1ebf0ae5b7`.
+
+- Retained test context (2026-10-11T12:20:51.548Z): requirement harness pinned content; target registered_fixture_context; references `62ce1073-063b-4126-9b16-13947f0b4cbd`, `f8da25ae-28d1-4636-a376-6989ab43f763`, `9e18099a-4a45-4954-812e-43b12348b029`, `eec333ff-6c25-4c05-bb2d-6e7612ffc398`.
+
+- Retained test context (2026-10-11T12:20:51.853Z): unresolved obligation; target registered_fixture_context; references `8593bdb5-c3c9-4d29-8465-87b24802d0c5`.
+
+- Retained test context (2026-10-11T12:20:51.933Z): failed run; target registered_fixture_context; references `0ab16f1d-e768-4425-adc2-feb928458a6b`.
+
+- Retained test context (2026-10-11T12:23:46.067Z): requirement harness roots; target registered_fixture_context; references `3c5b5e33-1389-40c7-9208-a63cc73178c7`, `20a23c03-45ae-4074-98c1-eb20733de255`, `bbebb644-aee8-4a44-a33b-ba23a8db418e`, `7c5e26bb-4a55-4e40-8470-2efc84606957`.
+
+- Retained test context (2026-10-11T12:26:08.813Z): requirement harness roots; target registered_fixture_context; references `a733188d-7462-484a-9f3d-f8c31007580b`, `dc406dc5-5bce-40da-9eb9-3bcece38ecc0`, `115db964-318c-491c-9adf-7e5a74143766`, `9d498b89-3495-4c34-959d-25912832753c`.
+
+- Retained test context (2026-10-11T12:26:13.285Z): requirement harness pinned content; target registered_fixture_context; references `fdb2bd40-a9d9-44a7-810c-2a098722913e`, `965a8586-3a6d-48ba-b6b7-e764e120a3fa`, `8695f79c-27f2-4702-9447-684d2eb995ca`, `f4afbe72-d5e5-4a4e-90b1-24e5e96c890f`.
+
+- Retained test context (2026-10-11T12:26:17.842Z): required lifecycle obligation; target registered_fixture_context; references `3ac922f1-e5fc-4b81-8448-5d4e3322ff6c`.
+
+- Retained test context (2026-10-11T12:31:35.291Z): requirement harness roots; target registered_fixture_context; references `0d591784-83eb-45d8-b669-0831a1f67532`, `37e75e13-1a7c-4db0-9cbb-208404b0f786`, `9952174f-1208-497f-90dc-a2144d899ba6`, `96ff2c80-46b2-43b6-99fd-718fd6f54d7e`.
+
+- Retained test context (2026-10-11T12:32:58.229Z): requirement harness roots; target registered_fixture_context; references `e2ed2579-0712-441c-a924-02d1c57ca327`, `11b14b42-31be-4a3c-8055-c8231024bcde`, `ce708f6b-bbd2-452e-a9b0-9eb252fb93ff`, `8111fafa-03a0-4245-8921-59df88552053`.
+
+- Retained test context (2026-10-11T12:32:58.432Z): requirement harness pinned content; target registered_fixture_context; references `f4830a11-11b5-4d47-93fe-6b01e34d91ee`, `1509d8aa-8d6f-4cae-b9ea-fffb7e7875b3`, `9f08fd95-1add-4cbb-82f6-4dcba88f8a1a`, `7fa901c4-efe6-44d5-957a-9cce72eab2ba`.
+
+- Retained test context (2026-10-11T12:32:58.728Z): required lifecycle obligation; target registered_fixture_context; references `9c702a4f-47bf-41ea-8895-740e8aac6f7d`.
+
+- Retained test context (2026-10-11T12:32:58.865Z): lifecycle initial form; target registered_fixture_context; references `2261e398-0404-4a7c-86bd-bb7bd5087f0c`.
+
+- Retained test context (2026-10-11T12:32:59.078Z): requirement harness roots; target registered_fixture_context; references `a41cc4d0-38e0-4e98-a713-4ffb45cf7275`, `e0a549b2-eae0-4152-a7d3-e27a7a7c2f34`, `8239ee4c-5f58-457a-8156-ed64f420d2b4`, `adc790fd-0e9f-4a0d-ab6b-4a0d59f44ef4`.
+
+- Retained test context (2026-10-11T12:32:59.199Z): requirement harness pinned content; target registered_fixture_context; references `f66f7669-e9a8-4f08-af29-9bae89dc93d5`, `23c8dc7c-31d2-407a-bbcf-82b5e8b4f08d`, `8fc4096e-4505-45b9-8e80-4ca85b4a779b`, `63126fa3-f301-409e-8dd7-3d551286ea9d`.
+
+- Retained test context (2026-10-11T12:32:59.394Z): earlier manual collision; target registered_fixture_context; references `dba1f547-1442-4b2b-bee9-abbff6e75d66`, `c45f5c9e-c32c-4f3e-976c-3ed9b5244501`, `e8982355-f008-41ca-94d2-dcb65e950549`.
+
+- Retained test context (2026-10-11T12:32:59.459Z): manual conflict required replacement; target registered_fixture_context; references `05aab362-77ec-4add-a10b-ba36c9024ac2`.
+
+- Retained test context (2026-10-11T12:32:59.460Z): requirement harness roots; target registered_fixture_context; references `2486e6c5-2c0f-4c7a-af49-21c9334321dd`, `970fc7d1-f0f4-4fa5-814e-4966579b479e`, `e6a06a20-9eb3-4af2-b4f3-243558df88df`, `31c43700-1c7c-475e-ae49-e8821d02ebbd`.
+
+- Retained test context (2026-10-11T12:32:59.507Z): requirement harness pinned content; target registered_fixture_context; references `98999cd5-aa9c-4263-a709-a32a2b513cea`, `97dc095b-025a-41cb-af27-5b065ab4370e`, `e5b7bdd6-f7f3-4c73-a980-df4769b832fc`, `a05a6733-8d91-4123-80c3-b598e3599cb2`.
+
+- Retained test context (2026-10-11T12:32:59.583Z): unresolved obligation; target registered_fixture_context; references `4dbbfe7c-af1a-4a6d-bf70-c67d4b45bc16`.
+
+- Retained test context (2026-10-11T12:32:59.604Z): failed run; target registered_fixture_context; references `2956b42c-9d10-4979-9fd3-5bc8d59f73c6`.
+
+- Retained test context (2026-10-11T12:34:39.211Z): requirement harness roots; target registered_fixture_context; references `e2c8b934-ca93-416d-848c-277ef4c258f8`, `56f5f183-62ff-4159-b25c-b2ed4cdef0b8`, `2639cc2c-5b22-4327-b5b8-59805a5c2c0a`, `6e35bbd7-a455-433b-a8ee-b55d76887426`.
+
+- Retained test context (2026-10-11T12:34:39.417Z): requirement harness pinned content; target registered_fixture_context; references `ae518d58-d105-4c79-ace0-f8cf8193d008`, `44acf2d5-c5ff-49fe-86f7-c2f49458f515`, `15c2c88a-cfa0-43f2-9717-ddb647a3a312`, `5cf45e7c-e3f4-48ba-8a62-f205d41ae548`.
+
+- Retained test context (2026-10-11T12:34:39.823Z): required lifecycle obligation; target registered_fixture_context; references `38eef8a2-d8c7-4acd-856f-995eb81f79f0`.
+
+- Retained test context (2026-10-11T12:34:40.079Z): lifecycle initial form; target registered_fixture_context; references `88e9073c-642e-4841-9355-b1fe76e19293`.
+
+- Retained test context (2026-10-11T12:34:40.576Z): required replacement form; target registered_fixture_context; references `8b1395df-ef48-4426-a862-ca937b5b60c7`.
+
+- Retained test context (2026-10-11T12:34:40.672Z): requirement harness roots; target registered_fixture_context; references `3b24773a-7950-4c4a-b186-8340accb6d84`, `b7de1eba-0f59-48bc-a456-b29942995f21`, `2845f829-9a2b-40cf-aef4-1c303b5a97e1`, `748df5c0-0147-41ca-a526-5401fe93a52f`.
+
+- Retained test context (2026-10-11T12:34:40.790Z): requirement harness pinned content; target registered_fixture_context; references `e3d6e8eb-153c-4a83-b925-05c98f9ed22a`, `ea3d371a-b97b-45ff-ab6a-285289796d30`, `611442d3-eddf-4ba1-8f50-cfa52e998192`, `00bf3b19-3e15-45cb-8a18-923e05ee6e23`.
+
+- Retained test context (2026-10-11T12:34:41.083Z): earlier manual collision; target registered_fixture_context; references `78a85bfb-cb02-41a2-81fd-6c99d8ed0c0a`, `703edc6f-3f1e-4f81-bc4b-66ae8fc14440`, `22256642-524c-48af-93f0-aa3fbeb1e62d`.
+
+- Retained test context (2026-10-11T12:34:41.227Z): manual conflict required replacement; target registered_fixture_context; references `ede9266e-4bcc-4386-9d0b-f1190dfcac67`.
+
+- Retained test context (2026-10-11T12:34:41.228Z): requirement harness roots; target registered_fixture_context; references `ff67463f-88d7-413a-b2fa-ed9796477c08`, `22a30055-cad8-4d23-af06-11a84daeb9c5`, `cc4de3eb-1ce4-4bce-ac69-9580c18ab157`, `d895f775-2f86-49dc-b06e-cb8f2db848c7`.
+
+- Retained test context (2026-10-11T12:34:41.283Z): requirement harness pinned content; target registered_fixture_context; references `6ae33c18-50c5-4518-bfba-5ccd16d65ebf`, `a77e2a98-c916-4649-8695-6284dffaa2d1`, `641600ca-67a0-44c8-b1d8-74d7c05d44df`, `7b343f82-d6a1-48e8-8f4a-b846aae86a49`.
+
+- Retained test context (2026-10-11T12:34:41.619Z): unresolved obligation; target registered_fixture_context; references `8d8aae71-78da-4c4a-94f9-ee9d9ea5f6bf`.
+
+- Retained test context (2026-10-11T12:34:41.653Z): failed run; target registered_fixture_context; references `64f430ba-ec3a-4cb1-a44a-ec0f8f5c45d1`.

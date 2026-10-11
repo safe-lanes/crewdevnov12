@@ -8,7 +8,9 @@ import { recordResolution } from "../../server/v2/company-forms/requirementsRepo
 
 export const requirementPool = new Pool({ connectionString: process.env.DATABASE_URL });
 const enc = (x: object) => Buffer.from(JSON.stringify(x)).toString("base64url");
-export const requirementToken = `${enc({ alg: "none", typ: "JWT" })}.${enc({ id: 24, userType: "Office", domain: "test" })}.devsig`;
+export const requirementTokenFor = (id: number) =>
+  `${enc({ alg: "none", typ: "JWT" })}.${enc({ id, userType: "Office", domain: "test" })}.devsig`;
+export const requirementToken = requirementTokenFor(24);
 export const requirementApi = request("http://127.0.0.1:5000");
 export const formCall = (method: "get" | "post" | "put", path: string, body: object = {}) =>
   requirementApi[method](`/api/v2/admin${path}`).set("Authorization", `Bearer ${requirementToken}`).send(body);

@@ -1108,7 +1108,10 @@ export class CompanyFormSubmissionsService {
     if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
     await this.authorize(adapter, principal, "list_submissions", subject.context);
     const data = await readRequirements(input.subjectType, input.subjectRef);
-    return { ...data, outstandingEligible: adapter.isOutstanding(subject.context) };
+    const outstandingEligible = adapter.isOutstanding(subject.context);
+    return { ...data, outstandingEligible,
+      activeRequirements: outstandingEligible
+        ? data.requirements.filter((r: any) => ["OUTSTANDING", "STARTED", "UNRESOLVED"].includes(r.status)) : [] };
   }
 
   async startRequirement(input: { req: Request; subjectType: string; subjectRef: string; requirementUuid: string }) {
