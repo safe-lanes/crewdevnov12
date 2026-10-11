@@ -7,8 +7,12 @@ export async function captureDeployRank(assignUuid: string, planUuid: string, tx
       AND p.reliever_assign_uuid=a.assign_uuid AND p.reliever_crew_uuid=a.crew_uuid
     FOR SHARE OF p`)).rows[0];
   if (!planning) throw new Error("Deploy rank capture requires the exact recorded reliever planning link");
-  const ranks = (await tx.execute(sql`SELECT ar_uuid,name FROM adm_available_ranks_v2
-    WHERE NOT is_deleted AND (ar_uuid=${planning.rank_id} OR rank_id=${planning.rank_id}) FOR SHARE`)).rows;
+  const ranks = (await tx.execute(sql`SELECT r.ar_uuid,r.name FROM adm_available_ranks_v2 r
+    WHERE NOT r.is_deleted AND (r.ar_uuid=${planning.rank_id} OR r.rank_id=${planning.rank_id} OR EXISTS(
+      SELECT 1 FROM adm_company_ranks_v2 c WHERE NOT c.is_deleted
+        AND ${planning.rank_id} IN(c.cr_uuid,c.id,c.rank_id)
+        AND coalesce(c.original_rank_id,c.rank_id) IN(r.ar_uuid,r.rank_id)
+    )) FOR SHARE OF r`)).rows;
   const rank = ranks.length === 1 ? ranks[0] : undefined;
   const provenance = { method: "deploy_planning_link", planningUuids: [planUuid], rankReferences: [planning.rank_id] };
   await tx.execute(sql`INSERT INTO crew_assignment_rule_context

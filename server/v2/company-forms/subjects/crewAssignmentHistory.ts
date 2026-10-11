@@ -3,10 +3,14 @@ import { sql } from "drizzle-orm";
 export type PriorService = { sea_uuid: string; rank: string | null; from_date: string | null; service_type: string };
 export type RankReference = { reference: string; rankUuid: string };
 
+function validDay(date: string | null): date is string {
+  return !!date && /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date))
+    && new Date(date).toISOString().slice(0, 10) === date;
+}
+
 export function decideFirstService(rows: PriorService[], rankUuid: string | null, references: RankReference[], cutoff: string) {
   const company = rows.filter(r => r.service_type === "company");
-  const validDate = (date: string | null): date is string => !!date && /^\d{4}-\d{2}-\d{2}$/.test(date)
-    && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date;
+  const validDate = validDay;
   const badDates = company.filter(r => !validDate(r.from_date));
   const sameDay = company.filter(r => r.from_date === cutoff);
   const prior = company.filter(r => validDate(r.from_date) && r.from_date < cutoff);
@@ -37,6 +41,7 @@ export function decideFirstService(rows: PriorService[], rankUuid: string | null
 }
 
 export async function readPriorServiceDecision(crewUuid: string, rankUuid: string | null, cutoff: string, tx: any) {
+  if (!validDay(cutoff)) return decideFirstService([], rankUuid, [], cutoff);
   const rows = (await tx.execute(sql`SELECT sea_uuid,rank,from_date,service_type FROM crew_sea_service
     WHERE crew_uuid=${crewUuid} AND NOT is_deleted AND service_type='company' FOR SHARE`)).rows;
   const roots = (await tx.execute(sql`SELECT ar_uuid,rank_id,name,label FROM adm_available_ranks_v2 WHERE NOT is_deleted FOR SHARE`)).rows;

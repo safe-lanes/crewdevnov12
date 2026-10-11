@@ -21,6 +21,7 @@ const EXPECTED_FORMS_GUARDS: GuardedRoute[] = [
   { key: "PATCH /form-versions/:fvUuid/parts/:partUuid", menuName: "Forms", action: "edit" },
   { key: "DELETE /form-versions/:fvUuid/parts/:partUuid", menuName: "Forms", action: "edit" },
   { key: "GET /forms", menuName: "Forms", action: "view" },
+  { key: "GET /forms/:id/rule-dimensions", menuName: "Forms", action: "view" },
   { key: "GET /forms/:id", menuName: "Forms", action: "view" },
   { key: "GET /forms/:id/subject-stages", menuName: "Forms", action: "view" },
   { key: "GET /forms/:id/parts", menuName: "Forms", action: "view" },

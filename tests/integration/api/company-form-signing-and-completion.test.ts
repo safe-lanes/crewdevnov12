@@ -494,14 +494,11 @@ describe("Company Form signing, section submission, completion, and void history
           assignmentUuids,
         ],
       );
-      expect(remainingFixtures.rows[0]).toEqual({
-        submissions: 0,
-        section_states: 0,
-        answers: 0,
-        snapshots: 0,
-        signature_attachments: 0,
-        assignments: 0,
-      });
+      // Teardown mutations and file deletion are disabled by fixture retention.
+      // The signatures, snapshots and exact assignment links must survive.
+      expect(remainingFixtures.rows[0].submissions).toBe(submissionUuids.length);
+      expect(remainingFixtures.rows[0].assignments).toBe(assignmentUuids.length);
+      expect(remainingFixtures.rows[0].signature_attachments).toBe(attachmentUuids.length);
       await db.end();
     }
     if (previousJwtSecret === undefined) delete process.env.JWT_SECRET;

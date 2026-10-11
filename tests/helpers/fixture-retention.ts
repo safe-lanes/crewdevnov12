@@ -43,6 +43,9 @@ export function cleanupOrigin(stack: string): string | undefined {
 }
 
 const registered = new Set<string>();
+export function retainFixtureReferences(origin: string, references: unknown[]) {
+  register(origin, "TABLE registered_fixture_context", references);
+}
 function register(origin: string, sql: string, values: unknown[]) {
   // Only UUIDs, never SQL literals, names, credentials or arbitrary parameters.
   const ids = [...new Set(values.flatMap(v => {
@@ -68,7 +71,7 @@ export function installFixtureRetention() {
     const original = prototype.query;
     prototype.query = function(...args: any[]) {
       const text: string = typeof args[0] === "string" ? args[0] : args[0]?.text ?? "";
-      const origin = /\b(?:DELETE\s+FROM|TRUNCATE|DROP\s+(?:SCHEMA|TABLE))\b/i.test(text)
+      const origin = /\b(?:DELETE\s+FROM|UPDATE|INSERT\s+INTO|TRUNCATE|DROP\s+(?:SCHEMA|TABLE)|ALTER\s+TABLE)\b/i.test(text)
         ? cleanupOrigin(new Error().stack ?? "") : undefined;
       if (!origin) return original.apply(this, args);
       register(origin, text, (Array.isArray(args[1]) ? args[1] : args[0]?.values) ?? []);
@@ -76,6 +79,15 @@ export function installFixtureRetention() {
       const callback = [...args].reverse().find((arg: any) => typeof arg === "function");
       if (callback) { queueMicrotask(() => callback(null, result)); return undefined; }
       return Promise.resolve(result);
+    };
+  }
+  for (const method of ["unlink", "rm", "rmdir"] as const) {
+    const original = fs.promises[method] as any;
+    (fs.promises as any)[method] = async function(...args: any[]) {
+      const origin = cleanupOrigin(new Error().stack ?? "");
+      if (!origin) return original.apply(this, args);
+      register(origin, "TABLE retained_file_assets", [String(args[0])]);
+      console.warn(`[fixture-retention] Kept linked file asset in ${origin}`);
     };
   }
 }

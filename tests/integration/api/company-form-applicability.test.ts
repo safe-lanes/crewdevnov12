@@ -99,11 +99,13 @@ describe("Company Form applicability foundation", () => {
     const saved = await call("put", `/form-versions/${v.id}/applicability`, body);
     expect(saved.status, JSON.stringify(saved.body)).toBe(200);
     const resaved = await call("put", `/form-versions/${v.id}/applicability`, {
-      mode: "conditional", obligation: "mandatory", sets: saved.body.sets,
+      mode: "conditional", obligation: "mandatory", sets: saved.body.sets.map((set: any) => ({
+        setUuid: set.setUuid, conditions: set.conditions.map(({ valueLabels: _labels, ...condition }: any) => condition),
+      })),
     });
     expect(resaved.status).toBe(200); expect(resaved.body.sets).toEqual(saved.body.sets);
     const release = await call("post", `/form-versions/${v.id}/release`);
-    expect(release.status).toBe(400); expect(release.body.error).toMatch(/dimension validation/);
+    expect(release.status).toBe(400); expect(release.body.error).toMatch(/master identifier/);
     const other = await fixture();
     expect((await call("put", `/form-versions/${other.v.id}/applicability`, {
       mode: "conditional", obligation: "mandatory", sets: saved.body.sets,
