@@ -13,6 +13,8 @@ export const frmCompanySubmissions = pgTable("frm_company_submissions", {
   formVersionUuid: text("form_version_uuid").notNull(),
   stageKey: text("stage_key"),
   status: text("status").notNull().default("in_progress"),
+  origin: text("origin").notNull().default("MANUAL"),
+  requirementUuid: text("requirement_uuid"),
   completedAt: timestamp("completed_at"),
   voidedAt: timestamp("voided_at"),
   voidedByUuid: text("voided_by_uuid"),
