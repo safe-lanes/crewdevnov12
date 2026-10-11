@@ -1,4 +1,4 @@
-import { foreignKey, pgTable, serial, text, boolean, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { foreignKey, pgTable, serial, text, boolean, timestamp, integer, uniqueIndex, date, jsonb } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { frmSubjectStages, frmSubjectTypes } from "../forms-engine/subjectRegistry";
 
@@ -68,6 +68,27 @@ export const admFormVersionsV2 = pgTable("adm_form_versions_v2", {
     foreignColumns: [admFormsV2.id, admFormsV2.subjectType],
   }).onDelete("restrict").onUpdate("restrict"),
 }));
+
+export const frmVersionApplicability = pgTable("frm_version_applicability", {
+  versionUuid: text("version_uuid").primaryKey().references(() => admFormVersionsV2.fvUuid, { onDelete: "cascade" }),
+  mode: text("mode").notNull().default("manual_only"),
+  obligation: text("obligation"),
+  effectiveKind: text("effective_kind"),
+  specificDate: date("specific_date"),
+  effectiveFrom: date("effective_from"),
+  copiedFromVersionUuid: text("copied_from_version_uuid"),
+});
+export const frmApplicabilitySets = pgTable("frm_applicability_sets", {
+  setUuid: text("set_uuid").primaryKey(),
+  versionUuid: text("version_uuid").notNull().references(() => frmVersionApplicability.versionUuid, { onDelete: "cascade" }),
+});
+export const frmApplicabilityConditions = pgTable("frm_applicability_conditions", {
+  conditionUuid: text("condition_uuid").primaryKey(),
+  setUuid: text("set_uuid").notNull().references(() => frmApplicabilitySets.setUuid, { onDelete: "cascade" }),
+  dimensionKey: text("dimension_key").notNull(),
+  operator: text("operator").notNull(),
+  value: jsonb("value").notNull().$type<string[] | boolean>(),
+});
 
 export const admRankGroupsV2 = pgTable("adm_rank_groups_v2", {
   id: serial("id").primaryKey(),
