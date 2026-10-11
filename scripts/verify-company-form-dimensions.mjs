@@ -39,14 +39,14 @@ ensure(dimensions.dimensions.filter(d => ["owner", "flag"].includes(d.key)).ever
 const browser = await chromium.launch({ executablePath: shell("which", ["chromium"]), args: ["--no-sandbox"] });
 let report;
 try {
-  const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 1100 } });
+  const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 1800 } });
   await context.addInitScript(({ actor, token }) => {
-    localStorage.setItem("devPersona", "crewing-executive");
     localStorage.setItem("devAuthToken", token);
-    localStorage.setItem("userProfile", JSON.stringify({
+    const profile = {
       personaKey: "crewing-executive", masterUserId: actor.id, userId: String(actor.id),
       role: actor.role, roleId: actor.ruid, userType: actor.user_type, myVessels: [],
-    }));
+    };
+    for (const key of ["userProfile", "devPersona"]) localStorage.setItem(key, JSON.stringify(profile));
   }, { actor, token });
   const page = await context.newPage();
   const errors = [];
@@ -60,6 +60,7 @@ try {
   await loaded;
   await group.getByText("Vessel type", { exact: true }).waitFor();
   await group.getByText("First-in-rank", { exact: true }).waitFor();
+  await group.evaluate(element => element.scrollIntoView({ block: "start" }));
   await page.screenshot({ path: `${directory}/closing-inspector.jpg`, fullPage: true, animations: "disabled" });
   ensure(head() === initialHead && pid() === initialPid, "HEAD/PID changed during closing evidence");
   ensure(errors.length === 0, `Browser errors: ${errors.join("; ")}`);
