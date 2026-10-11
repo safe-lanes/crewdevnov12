@@ -30,7 +30,7 @@ import { authorizeOfficeAction, type PrincipalDependencies } from "../trustedPri
 import { authorizeCompanyFormAction, assertCompanyFormSignaturePermission } from "../operationalPermissions";
 import { loadPersistedSubjectStages } from "../subjectStageRepository";
 import { authorizeCrewSectionAction, captureVesselSigner } from "./vesselSigningPolicy";
-import { crewAssignmentRuleDimensions } from "./crewAssignmentDimensions";
+import { crewAssignmentRuleDimensions, crewRuleMasterChoices, readCrewRuleDimensions } from "./crewAssignmentDimensions";
 
 export const CREW_ASSIGNMENT_SUBJECT_TYPE = "crew_assignment";
 
@@ -262,6 +262,8 @@ export function createCrewAssignmentSubject(
 
   return {
     ruleDimensions: crewAssignmentRuleDimensions,
+    ruleMasterChoices: crewRuleMasterChoices,
+    readRuleDimensions: readCrewRuleDimensions,
     subjectType: CREW_ASSIGNMENT_SUBJECT_TYPE,
     label: "Crew assignment",
     loadStages: (executor) =>

@@ -138,6 +138,13 @@ router.get("/:submissionUuid/attachments/:assetUuid/raw", async (req, res) => {
   }
 });
 
+router.get("/subjects/:subjectType/:subjectRef/dimensions", async (req, res) => {
+  const params = parseParams(paramsSchema, req, res);
+  if (!params) return;
+  try { res.json(await companyFormSubmissionsService.dimensions({ req, ...params })); }
+  catch (error) { sendError(res, error); }
+});
+
 router.get("/:submissionUuid/form", async (req, res) => {
   const params = parseParams(submissionParamsSchema, req, res);
   if (!params) return;

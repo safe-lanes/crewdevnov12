@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
+import { AssignmentDimensionInspector } from "./AssignmentDimensionInspector";
 import type {
   CompanyFormSubmissionHome,
   CompanyFormSubmissionSummary,
@@ -289,6 +290,8 @@ export function CrewCompanyFormsHome({
                     </summary>
 
                     <div className="space-y-4 border-t border-slate-200 px-3 py-3">
+                      <AssignmentDimensionInspector subjectRef={group.subjectRef} />
+
                       {group.startableStages?.includes("at_sign_off") && (
                         <div className="rounded-md border border-blue-200 bg-blue-50/70 p-3" data-testid={`crew-company-forms-signoff-picker-${group.subjectRef}`}>
                           <div className="flex flex-wrap items-center justify-between gap-3">

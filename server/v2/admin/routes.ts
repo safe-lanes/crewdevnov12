@@ -27,6 +27,7 @@ import { applicabilityController } from "./controllers/applicabilityController";
 const router = Router();
 
 router.get("/forms", requirePermission("Forms", "view"), formsController.getAll);
+router.get("/forms/:id/rule-dimensions", requirePermission("Forms", "view"), formsController.getRuleDimensions);
 // Retired in favor of the relationship-scoped Company Form submission API.
 // Keep this exact route ahead of /forms/:id so the old path cannot resolve as
 // a form ID or fall through to the SPA.

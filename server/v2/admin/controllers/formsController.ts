@@ -3,8 +3,25 @@ import { formsService } from "../services";
 import { insertAdmFormV2Schema, insertAdmFormVersionV2Schema } from "../../../../shared/v2/admin/types";
 import { z } from "zod";
 import { getAuditUserUuid } from "../../accounts/controllers/_auth";
+import { companyFormSubjectRegistry } from "../../company-forms/registry";
+import { getDb } from "../../db";
 
 export const formsController = {
+  async getRuleDimensions(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: "Invalid form ID" });
+      const form = await formsService.getById(id);
+      if (form.category !== "dynamic" || !form.subjectType) return res.status(400).json({ error: "Company Form subject required" });
+      const adapter = companyFormSubjectRegistry.get(form.subjectType);
+      res.json(await Promise.all((adapter.ruleDimensions ?? []).map(async dimension => ({
+        ...dimension, choices: dimension.available && adapter.ruleMasterChoices
+          ? await adapter.ruleMasterChoices(dimension.key, getDb()) : [],
+      }))));
+    } catch (error: any) {
+      res.status(error.statusCode ?? (error.message?.includes("not found") ? 404 : 500)).json({ error: error.message });
+    }
+  },
   async getAll(req: Request, res: Response) {
     try {
       const includeArchived = req.query.showArchived !== "false";

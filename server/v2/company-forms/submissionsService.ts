@@ -1023,6 +1023,16 @@ export class CompanyFormSubmissionsService {
     });
   }
 
+  async dimensions(input: { req: Request; subjectType: string; subjectRef: string }) {
+    const adapter = this.contextAdapter(input.req, input.subjectType);
+    const principal = await this.resolvePrincipal(input.req);
+    const subject = await adapter.lookup(input.subjectRef);
+    if (!subject) throw new CompanyFormNotFoundError("Company Form subject not found.");
+    await this.authorize(adapter, principal, "read_eligible_forms", subject.context);
+    if (!adapter.readRuleDimensions) throw new CompanyFormValidationError("This subject does not declare rule dimensions");
+    return adapter.readRuleDimensions(subject.context, getDb());
+  }
+
   async eligibleForms(input: {
     req: Request;
     subjectType: string;
