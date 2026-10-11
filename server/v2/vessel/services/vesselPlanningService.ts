@@ -1,3 +1,4 @@
+import { captureJoiningHistory } from "../../company-forms/subjects/crewAssignmentHistory";
 import { vesselPlanningRepository, vesselPlanningAttachmentsRepository } from "../repositories";
 import type { VesselPlanningV2, InsertVesselPlanningV2, VesselPlanningAttachmentsV2, InsertVesselPlanningAttachmentsV2 } from "../../../../shared/v2/vessel/schema";
 import { vesselPlanningV2, vesselPlanningRelieverClearAudit } from "../../../../shared/v2/vessel/schema";
@@ -1627,6 +1628,7 @@ export const vesselPlanningService = {
         err.conflict = conflict;
         throw err;
       }
+      await captureJoiningHistory(linkedAssignUuid, signOnDate, tx);
       const hasPrimaryCrew = !!locked.crewUuid;
       if (hasPrimaryCrew) {
         console.log(`🔄 [VESSEL-PLANNING-V2] CASE A: Primary crew exists (${planning.crewUuid}) — creating secondary record for reliever ${relieverCrewUuid}`);
