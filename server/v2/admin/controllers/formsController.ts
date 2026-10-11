@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { formsService } from "../services";
 import { insertAdmFormV2Schema, insertAdmFormVersionV2Schema } from "../../../../shared/v2/admin/types";
 import { z } from "zod";
+import { getAuditUserUuid } from "../../accounts/controllers/_auth";
 
 export const formsController = {
   async getAll(req: Request, res: Response) {
@@ -343,7 +344,11 @@ export const formsController = {
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid version ID" });
       }
-      const auditUserUuid = req.body?.auditUserUuid ?? null;
+      const candidate = await formsService.getVersionById(id);
+      const form = await formsService.getById(candidate.formId);
+      if (form.category === "dynamic" && Object.keys(req.body ?? {}).length)
+        return res.status(400).json({ error: "Release comparison, identity and time are server-derived; release accepts no browser fields." });
+      const auditUserUuid = form.category === "dynamic" ? getAuditUserUuid(req) ?? null : req.body?.auditUserUuid ?? null;
       const version = await formsService.releaseVersionById(id, auditUserUuid);
       res.json(version);
     } catch (error: any) {
@@ -355,6 +360,7 @@ export const formsController = {
         return res.status(409).json({ error: msg });
       }
       if (error?.statusCode === 400) return res.status(400).json({ error: msg });
+      if (error?.code === "23514") return res.status(400).json({ error: msg });
       if (msg.includes("Only draft versions can be released")) {
         return res.status(400).json({ error: msg });
       }

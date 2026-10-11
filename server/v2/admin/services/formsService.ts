@@ -13,6 +13,7 @@ import { getBaseRank } from "../../../../shared/crew-mapping";
 import { v4 as uuidv4 } from "uuid";
 import { validatePersistedCompanyFormLifecycle } from "../../company-forms/lifecyclePolicy";
 import { copyApplicability, validateApplicabilityRelease } from "./applicabilityService";
+import { enrichCompanyVersions, recordReleaseChanges } from "./versionChanges";
 
 const formsRepo = new FormsRepository();
 const formVersionsRepo = new FormVersionsRepository();
@@ -508,7 +509,7 @@ export const formsService = {
     if (!form) throw new Error(`Form not found: ${formId}`);
     if (form.category === "dynamic") {
       if (rankGroupId !== undefined) throw new Error("Company Forms do not use rank groups.");
-      return formVersionsRepo.findByFormId(form.id, null);
+      return enrichCompanyVersions(await formVersionsRepo.findByFormId(form.id, null));
     }
     return formVersionsRepo.findByFormId(form.id, rankGroupId);
   },
@@ -518,7 +519,7 @@ export const formsService = {
     if (!form) throw new Error(`Form not found: ${formUuid}`);
     if (form.category === "dynamic") {
       if (rankGroupId !== undefined) throw new Error("Company Forms do not use rank groups.");
-      return formVersionsRepo.findByFormId(form.id, null);
+      return enrichCompanyVersions(await formVersionsRepo.findByFormId(form.id, null));
     }
     return formVersionsRepo.findByFormId(form.id, rankGroupId);
   },
@@ -653,6 +654,10 @@ export const formsService = {
         year: "numeric",
       }).replace(/ /g, "-");
       const versionDate = isValidVersionDate(existing.versionDate) ? existing.versionDate! : todayStr;
+      if (form.category === "dynamic") {
+        const previous = await formVersionsRepo.findLatestReleasedByFormId(form.id, tx);
+        await recordReleaseChanges(existing.fvUuid, previous?.fvUuid ?? null, auditUserUuid, tx);
+      }
       const version = await formVersionsRepo.updateById(id, applyAuditUser({
         status: "released",
         versionDate,

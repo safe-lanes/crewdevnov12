@@ -95,6 +95,8 @@ interface VersionRow {
   configuration?: string | null;
   stageKey?: string | null;
   stageSubjectType?: string | null;
+  applicability?: import("@shared/v2/admin/applicability").VersionApplicability;
+  changeSummary?: import("@shared/v2/admin/applicability").VersionChangeSummary | null;
 }
 
 interface SubjectStageRow {
@@ -1887,6 +1889,20 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
               {sortedVersions.map((version) => (
                 <SelectItem value={version.fvUuid} key={version.fvUuid}>
                   v{version.versionNo} · {version.status === "draft" ? "Draft" : "Released"}
+                  {isCompanyForm && version.applicability && (
+                    <span data-testid={`version-policy-${version.fvUuid}`}>
+                      {" · "}{version.applicability.mode === "manual_only" ? "Manual only" :
+                        version.applicability.mode === "all" ? "Applies to all" : "Applies when conditions match"}
+                      {version.status === "released" && <> · {version.changeSummary
+                        ? !version.changeSummary.previousVersionUuid ? "Initial release"
+                          : version.changeSummary.contentChanged && version.changeSummary.applicabilityChanged ? "Content + applicability changed"
+                            : version.changeSummary.contentChanged ? "Content changed"
+                              : version.changeSummary.applicabilityChanged ? "Applicability changed" : "No change"
+                        : "Legacy — change history unavailable"}
+                        {version.changeSummary?.details.includes("Signing configuration changed") && " · Signing configuration changed"}
+                      </>}
+                    </span>
+                  )}
                 </SelectItem>
               ))}
             </SelectContent>

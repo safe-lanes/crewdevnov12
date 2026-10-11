@@ -89,6 +89,17 @@ export const frmApplicabilityConditions = pgTable("frm_applicability_conditions"
   operator: text("operator").notNull(),
   value: jsonb("value").notNull().$type<string[] | boolean>(),
 });
+export const frmVersionReleaseChanges = pgTable("frm_version_release_changes", {
+  versionUuid: text("version_uuid").primaryKey().references(() => admFormVersionsV2.fvUuid, { onDelete: "cascade" }),
+  previousVersionUuid: text("previous_version_uuid"),
+  contentChanged: boolean("content_changed").notNull(),
+  applicabilityChanged: boolean("applicability_changed").notNull(),
+  details: jsonb("details").notNull().$type<string[]>(),
+  contentSnapshot: jsonb("content_snapshot").notNull(),
+  policySnapshot: jsonb("policy_snapshot").notNull(),
+  releasedBy: text("released_by"),
+  recordedAt: timestamp("recorded_at").notNull().defaultNow(),
+});
 
 export const admRankGroupsV2 = pgTable("adm_rank_groups_v2", {
   id: serial("id").primaryKey(),
