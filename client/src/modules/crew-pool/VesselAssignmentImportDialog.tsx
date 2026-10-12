@@ -130,6 +130,7 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
 
   const [stage2Status, setStage2Status] = useState<"idle" | "importing" | "success" | "error">("idle");
   const [stage2Result, setStage2Result] = useState<any>(null);
+  const [recheckingHistory, setRecheckingHistory] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
@@ -317,6 +318,22 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
         description: err.message || "An error occurred during hierarchy import.",
       });
     }
+  };
+
+  const handleRecheckHistory = async () => {
+    setRecheckingHistory(true);
+    try {
+      const res = await fetch("/api/v2/vessel/import/first-service-backfill", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignmentUuids: stage2Result.importedAssignmentUuids }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error("The first-service check could not be completed. Check your access and try again.");
+      setStage2Result((old: any) => ({ ...old, firstServiceBackfill: data.firstServiceBackfill }));
+      queryClient.invalidateQueries({ queryKey: ["crew-pool"] });
+    } catch {
+      toast({ title: "First-service check unavailable", description: "Check your access and company sea service, then try again.", variant: "destructive" });
+    } finally { setRecheckingHistory(false); }
   };
 
   // Stage 2: Import Crew Assignments
@@ -608,11 +625,27 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
                 <div className="mb-3 text-xs bg-white p-3 rounded border border-[#e2e8f0] text-gray-700 space-y-1">
                   <p>• Primary Onboard Assigned: <span className="font-semibold text-emerald-600">{stage2Result.primaryAssignedCount}</span></p>
                   <p>• Secondary Relievers Assigned: <span className="font-semibold text-blue-600">{stage2Result.secondaryAssignedCount}</span></p>
+                  <p>Existing assignments updated: {stage2Result.alreadyImportedCount ?? 0}</p>
                   {stage2Result.seaService && <p>Company sea service: {stage2Result.seaService.filter((r: any) => r.status === "CREATED").length} added,
                     {" "}{stage2Result.seaService.filter((r: any) => r.status === "ALREADY_PRESENT").length} already present,
                     {" "}{stage2Result.seaService.filter((r: any) => r.status === "REVIEW").length} need review.</p>}
                   {stage2Result.warnings?.length > 0 && <div role="status" className="mt-2 text-amber-800 space-y-1">
                     {stage2Result.warnings.map((warning: string, i: number) => <p key={i}>{warning}</p>)}
+                  </div>}
+                  {stage2Result.firstServiceBackfill && <div className="mt-2 border-t pt-2 space-y-1">
+                    <p className="font-semibold">First-service facts checked after import</p>
+                    <p>{stage2Result.firstServiceBackfill.filter((r: any) => r.status === "RECALCULATED").length} verified;
+                      {" "}{stage2Result.firstServiceBackfill.filter((r: any) => r.status === "UNRESOLVED").length} need review;
+                      {" "}{stage2Result.firstServiceBackfill.filter((r: any) => r.status === "SKIPPED").length} unchanged;
+                      {" "}{stage2Result.firstServiceBackfill.filter((r: any) => r.status === "FAILED").length} could not be checked.</p>
+                    {stage2Result.firstServiceBackfill.map((r: any, i: number) => <p key={r.assignmentUuid}>
+                      {stage2Result.assignmentLabels?.[r.assignmentUuid] ?? `Assignment ${i + 1}`}: {r.reason ?? `First-ever ${r.firstEver ? "Yes" : "No"}; first-in-rank ${r.firstInRank ? "Yes" : "No"}.`}
+                      {r.previous && ` Previously: first-ever ${r.previous.firstEver === null ? "Unresolved" : r.previous.firstEver ? "Yes" : "No"}; first-in-rank ${r.previous.firstInRank === null ? "Unresolved" : r.previous.firstInRank ? "Yes" : "No"}.`}
+                    </p>)}
+                    <p>Added history later? Recheck these assignments, or import the same crew list again. Sign-on captures and resolved requirements stay unchanged.</p>
+                    <Button variant="outline" size="sm" disabled={recheckingHistory} onClick={handleRecheckHistory}>
+                      {recheckingHistory ? "Checking first-service facts…" : "Recheck first-service facts"}
+                    </Button>
                   </div>}
                   {stage2Result.skippedCount > 0 && (
                     <p>• Skipped Rows: <span className="font-semibold text-amber-600">{stage2Result.skippedCount}</span></p>

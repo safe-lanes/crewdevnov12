@@ -20176,3 +20176,91 @@ The closing journey edits registered draft identities only; it never creates an 
 - Retained test context (2026-10-12T10:10:06.606Z): crew-import/cf_crew_import_1c05c747/retained; target registered_fixture_context; references `97321f28-37a2-4817-b5d0-548c39601190`, `20901229-4982-481c-89fa-abba082b8530`, `08da22fb-5eab-4dc9-bf74-d74f58062a99`, `d68d6747-8c8f-45d8-ba60-f0498f79b97b`.
 
 - Retained test context (2026-10-12T10:10:06.665Z): crew-import/cf_crew_import_1c05c747/result; target registered_fixture_context; references `ad636435-b90d-4330-b47b-73f016e99187`, `d68d6747-8c8f-45d8-ba60-f0498f79b97b`.
+
+- Retained test context (2026-10-12T10:18:19.001Z): crew-import/cf_crew_import_af57b76e/schema; target registered_fixture_context; references `055fb041-b8d7-42b3-8b94-fd30b1190d56`.
+
+- Retained test context (2026-10-12T10:18:19.007Z): crew-import/cf_crew_import_af57b76e/retained; target registered_fixture_context; references `0f45bae5-41f5-4ab6-903c-c247043ec7de`, `4d6323cf-6f5c-48e9-af44-dd4762cc2a8b`, `18efee92-4a75-44cb-a8f0-e77d9faa498a`.
+
+- Retained test context (2026-10-12T10:18:19.196Z): crew-import/cf_crew_import_af57b76e/result; target registered_fixture_context; references `bad089f0-d4a6-42a0-9607-d31fddc07f6f`, `78423f09-2d3a-45c6-bd43-6d5a21e5a838`.
+
+- Retained test context (2026-10-12T10:18:19.244Z): crew-import/cf_crew_import_af57b76e/retained; target registered_fixture_context; references `d88433d1-322f-4a56-8e49-150126cbac8a`, `355db94d-9179-4a50-9a38-b569f6d73511`, `60304a97-0bdd-4b9c-8185-96f3e4c04141`, `35affe81-7fd7-4317-a6d9-c5ed2eb3c6a1`.
+
+- Retained test context (2026-10-12T10:18:19.303Z): crew-import/cf_crew_import_af57b76e/result; target registered_fixture_context; references `4887f23d-1423-480c-8d99-e47e8fda3684`, `35affe81-7fd7-4317-a6d9-c5ed2eb3c6a1`.
+
+- Retained test context (2026-10-12T10:18:19.307Z): crew-import/cf_crew_import_af57b76e/retained; target registered_fixture_context; references `08685ba0-5944-46f8-b4a3-a7c3583bef1e`, `29de1e85-d835-4d67-9244-2292bf0f0dc1`, `ab4dec4d-39d3-413e-8653-9d1718bbec86`, `b4175f65-f1d2-4674-a67c-981b3471d4da`.
+
+- Retained test context (2026-10-12T10:18:19.370Z): crew-import/cf_crew_import_af57b76e/result; target registered_fixture_context; references `97f01635-a7c5-47fe-a755-b3aaeef76d44`, `b4175f65-f1d2-4674-a67c-981b3471d4da`.
+
+- Retained test context (2026-10-12T10:18:19.374Z): crew-import/cf_crew_import_af57b76e/retained; target registered_fixture_context; references `a1c4a60d-913b-4bfa-9ccc-220346a57685`, `abc756f0-238d-4348-a8e4-ab62545b28ab`, `8bbb073a-4d9b-4015-a9bb-de24596a0ea7`.
+
+- Retained test context (2026-10-12T10:18:19.426Z): crew-import/cf_crew_import_af57b76e/result; target registered_fixture_context; references `ed195bd0-6a6e-404f-a404-6e2879e07088`, `ae7c5ec7-2cf3-431c-b93a-2676c97231a8`.
+
+- Retained test context (2026-10-12T10:18:19.441Z): crew-import/cf_crew_import_af57b76e/frozen-requirement; target registered_fixture_context; references `9dde6c9d-cb88-4474-a76e-11cf2d0c5b1f`, `9989b048-788d-4941-9789-fcb021bcfee6`, `9d471bd3-38e2-4469-9466-446d5aae6bbb`, `92834d05-ee2d-47d7-9c68-8bfb21c1733c`, `ed195bd0-6a6e-404f-a404-6e2879e07088`.
+
+- Retained test context (2026-10-12T10:18:19.445Z): crew-import/cf_crew_import_af57b76e/retained; target registered_fixture_context; references `8e598611-9eb9-4b8c-b8bb-f9b787f3129c`, `499dd5de-c1f4-4a4a-945c-e6510b9d70d9`, `f3b6bcf0-07d2-4acc-9ad7-667352478bd4`.
+
+- Retained test context (2026-10-12T10:18:19.523Z): crew-import/cf_crew_import_af57b76e/result; target registered_fixture_context; references `26d1e884-6473-4a1a-8120-dda12f963588`, `534dee01-c990-40bf-a265-a853967444a0`.
+
+- Retained test context (2026-10-12T10:18:19.534Z): crew-import/cf_crew_import_af57b76e/retained; target registered_fixture_context; references `b1539dcf-597e-45d3-a463-4c989e823f70`, `04c5ffb2-1e95-4fbb-b375-772387472495`, `b46230a2-37e7-45b0-8284-f99a8e004582`, `253aab36-cfce-4e8c-9eef-c7337ccf4311`.
+
+- Retained test context (2026-10-12T10:18:19.585Z): crew-import/cf_crew_import_af57b76e/result; target registered_fixture_context; references `f3bb7cab-f700-46b5-8484-0d19f0a3a71b`, `253aab36-cfce-4e8c-9eef-c7337ccf4311`.
+
+- Retained test context (2026-10-12T10:18:20.676Z): verified-history/cf_verified_history_b58b0ddb; target registered_fixture_context; references `d38d62d3-e8bf-433b-851e-09651e7140a3`, `c8eebbfa-a162-4fa5-9b7f-f459489844e1`, `3f743516-5fbf-4fe5-b17f-a65493be2a4a`, `b331ee09-152c-40f2-8657-335697779e44`, `712575c3-93ad-49a3-8d00-919c7a34498f`, `d331b867-15ff-41bf-a22e-a2ad9dd915f2`, `d1f915e3-06f1-493a-bb15-bf2238a4462d`, `c10eb79b-e4a7-4bd7-a7c4-32bd1e57a24f`, `b8f17bcb-934d-4cfc-9d9e-2face1c881d9`, `8fbc06a5-2a34-4dd5-9cd3-ac609c0dfb24`.
+
+- Retained test context (2026-10-12T10:19:49.836Z): crew-import/cf_crew_import_2e5717ba/schema; target registered_fixture_context; references `055fb041-b8d7-42b3-8b94-fd30b1190d56`.
+
+- Retained test context (2026-10-12T10:19:49.841Z): crew-import/cf_crew_import_2e5717ba/retained; target registered_fixture_context; references `87943aa3-e587-496e-a202-3ef9e2e61ee7`, `c84e7aec-8b03-45ab-9095-2e5de246694c`, `6eb8bdfa-24f4-4fa0-98b4-c8c2f70a8645`.
+
+- Retained test context (2026-10-12T10:19:50.031Z): crew-import/cf_crew_import_2e5717ba/result; target registered_fixture_context; references `d87300a7-1c64-4841-983f-1e9d7391160c`, `071c201a-992a-4de1-ad4f-46c1ffeffd38`.
+
+- Retained test context (2026-10-12T10:19:50.101Z): crew-import/cf_crew_import_2e5717ba/retained; target registered_fixture_context; references `bc80d6d5-4a06-4d4a-adcf-043d8ae740ba`, `4e6521c0-4034-4081-9d06-32cf0be0ce70`, `f025610c-762e-468d-86c9-5ee046be73d1`, `7c731a41-a347-4698-b39c-d3dcfaa6927b`.
+
+- Retained test context (2026-10-12T10:19:50.166Z): crew-import/cf_crew_import_2e5717ba/result; target registered_fixture_context; references `d01ff48a-4e90-4a27-a22b-d4021e26fd3b`, `7c731a41-a347-4698-b39c-d3dcfaa6927b`.
+
+- Retained test context (2026-10-12T10:19:50.168Z): crew-import/cf_crew_import_2e5717ba/retained; target registered_fixture_context; references `33538d8d-c581-40e1-bc62-57999b6ffe7b`, `8a16f4ba-e166-4de1-b4a3-d4e367d67ba6`, `157d0670-7d3b-49e8-8181-c978af7b3972`, `7eeb9679-639f-42ee-af04-9b76c58e8a0a`.
+
+- Retained test context (2026-10-12T10:19:50.217Z): crew-import/cf_crew_import_2e5717ba/result; target registered_fixture_context; references `3844d3e3-4d77-4604-90f5-541941d4f6d7`, `7eeb9679-639f-42ee-af04-9b76c58e8a0a`.
+
+- Retained test context (2026-10-12T10:19:50.219Z): crew-import/cf_crew_import_2e5717ba/retained; target registered_fixture_context; references `ad0461b7-c4eb-4b95-8f50-09ffa3b59daa`, `e41e26c9-081f-4eb5-8a02-e5d017c2a7a3`, `fc0ec48a-53bb-41b7-9464-32f4aada5bd3`.
+
+- Retained test context (2026-10-12T10:19:50.268Z): crew-import/cf_crew_import_2e5717ba/result; target registered_fixture_context; references `bd071bd5-c50d-4105-89de-9c6dd57472d6`, `cc6ea8e3-6759-45c8-b284-f13a3bd51ce3`.
+
+- Retained test context (2026-10-12T10:19:50.283Z): crew-import/cf_crew_import_2e5717ba/frozen-requirement; target registered_fixture_context; references `7651cb6d-b1d8-49f4-99ea-897c5b2a3cd0`, `0520803c-d87f-449e-8ca5-2eb8ad8abdb2`, `135b7d9c-f5fe-409f-b889-4c1bf90c49cb`, `61eac86d-8f46-4708-9740-71c770b0d73d`, `bd071bd5-c50d-4105-89de-9c6dd57472d6`.
+
+- Retained test context (2026-10-12T10:19:50.294Z): crew-import/cf_crew_import_2e5717ba/retained; target registered_fixture_context; references `94bc47bb-f92c-47b8-aa8f-a4869f9fb928`, `9807252b-34dd-4f47-93e1-30b5f58bc788`, `396f449f-f15f-4239-ae0a-f174f6f03b6b`.
+
+- Retained test context (2026-10-12T10:19:50.365Z): crew-import/cf_crew_import_2e5717ba/result; target registered_fixture_context; references `f8b49008-1132-40a8-a1d7-8e47ef43878c`, `7059cfe1-9e3b-4552-beb4-874400061647`.
+
+- Retained test context (2026-10-12T10:19:50.378Z): crew-import/cf_crew_import_2e5717ba/retained; target registered_fixture_context; references `58345e3e-29fd-45cc-bda6-708cde586acb`, `4e3989dd-d06c-4eed-a976-e27a2bd85847`, `d181dca3-bf7a-4b0a-8e36-40f84dcfc3ba`, `09a7c53b-bb16-4a0d-97e4-c714b1281b67`.
+
+- Retained test context (2026-10-12T10:19:50.421Z): crew-import/cf_crew_import_2e5717ba/result; target registered_fixture_context; references `6c3bc020-f0ba-4f1a-a1cc-f9dd69dd00da`, `09a7c53b-bb16-4a0d-97e4-c714b1281b67`.
+
+- Retained test context (2026-10-12T10:20:51.504Z): crew-import/cf_crew_import_7e3fe6e0/schema; target registered_fixture_context; references `055fb041-b8d7-42b3-8b94-fd30b1190d56`.
+
+- Retained test context (2026-10-12T10:20:51.506Z): crew-import/cf_crew_import_7e3fe6e0/retained; target registered_fixture_context; references `40051a44-65aa-4850-ba6c-4c473b4ce934`, `854b31a1-4c4d-468f-aa12-4675946e3181`, `c3b8042f-5665-4ef7-b368-10312d9c7d4c`.
+
+- Retained test context (2026-10-12T10:20:51.648Z): crew-import/cf_crew_import_7e3fe6e0/result; target registered_fixture_context; references `fade0976-1fae-4da0-866d-36c9f534d976`, `4951af18-6702-43b6-9c95-af629b627772`.
+
+- Retained test context (2026-10-12T10:20:51.724Z): crew-import/cf_crew_import_7e3fe6e0/retained; target registered_fixture_context; references `2502f991-ad15-4722-9519-57e90e2e9b8f`, `fcb75c48-325b-4d15-85b1-3af160a340f7`, `7aa0ab2a-0945-41d2-8b18-b0c4938e132b`, `c37364d6-0d77-40e4-8693-05d182d76ad2`.
+
+- Retained test context (2026-10-12T10:20:51.792Z): crew-import/cf_crew_import_7e3fe6e0/result; target registered_fixture_context; references `57b4d102-1d2c-4622-9bc0-21c2b4959e52`, `c37364d6-0d77-40e4-8693-05d182d76ad2`.
+
+- Retained test context (2026-10-12T10:20:51.796Z): crew-import/cf_crew_import_7e3fe6e0/retained; target registered_fixture_context; references `2040243d-0c7f-4763-a8fd-a099a87e1ae2`, `bd653ad9-60e4-4f79-8f63-39e1431bc35a`, `bada1107-309f-4a89-b0e6-2e7de2bec288`, `f78ba64f-5f22-4707-bde2-fd90d1032e69`.
+
+- Retained test context (2026-10-12T10:20:51.841Z): crew-import/cf_crew_import_7e3fe6e0/result; target registered_fixture_context; references `5f7d92b9-d29f-496a-8b08-dc0018007560`, `f78ba64f-5f22-4707-bde2-fd90d1032e69`.
+
+- Retained test context (2026-10-12T10:20:51.843Z): crew-import/cf_crew_import_7e3fe6e0/retained; target registered_fixture_context; references `1843d606-7f3f-4b7a-bfca-8360aaa823ab`, `fd00e03f-4803-4587-baf9-a6cc079cf028`, `5d46cf71-5735-4bee-8214-de887432a249`.
+
+- Retained test context (2026-10-12T10:20:51.893Z): crew-import/cf_crew_import_7e3fe6e0/result; target registered_fixture_context; references `9edacc83-8ad2-4f53-a91d-bbb86aefa814`, `d40a3cdb-af87-4874-98ce-a04b59f3350d`.
+
+- Retained test context (2026-10-12T10:20:51.908Z): crew-import/cf_crew_import_7e3fe6e0/frozen-requirement; target registered_fixture_context; references `de6ce670-17ea-4ae9-a24a-371667cfc9ae`, `0640e67a-191f-465b-b0b4-5fc8f4cc640d`, `c5f67f48-6efc-4730-9bb7-8e25ed40a4cd`, `c86e3f31-c6a6-4c21-8821-b3861312d6a0`, `9edacc83-8ad2-4f53-a91d-bbb86aefa814`.
+
+- Retained test context (2026-10-12T10:20:52.001Z): crew-import/cf_crew_import_7e3fe6e0/resolution; target registered_fixture_context; references `eb68a7b3-a43f-4325-9702-1631229a4a61`, `9edacc83-8ad2-4f53-a91d-bbb86aefa814`, `c5f67f48-6efc-4730-9bb7-8e25ed40a4cd`, `0640e67a-191f-465b-b0b4-5fc8f4cc640d`.
+
+- Retained test context (2026-10-12T10:20:52.034Z): crew-import/cf_crew_import_7e3fe6e0/retained; target registered_fixture_context; references `73075708-dd0e-41f5-af46-3fabc5b3cf11`, `c15d7fce-ffc6-46de-a611-e81a73b3efa8`, `7483e91e-2a5d-413e-97e0-bbc60e872eb2`.
+
+- Retained test context (2026-10-12T10:20:52.108Z): crew-import/cf_crew_import_7e3fe6e0/result; target registered_fixture_context; references `1e0c05cd-5b2a-4391-9696-c37acb441365`, `7d12178c-c695-4d5a-8a9e-e30cc146659f`.
+
+- Retained test context (2026-10-12T10:20:52.121Z): crew-import/cf_crew_import_7e3fe6e0/retained; target registered_fixture_context; references `74d9a4c1-7147-4b2a-899b-2e7606ddeb6c`, `94bd954f-f12d-4066-ba12-5c5037a2f383`, `bca74084-36f4-4d91-bbdf-c2bad3715544`, `a23a5041-fd8f-4ed3-bfa8-a913b6ed0a33`.
+
+- Retained test context (2026-10-12T10:20:52.173Z): crew-import/cf_crew_import_7e3fe6e0/result; target registered_fixture_context; references `1b03224f-f247-4b45-b50b-293c0a7bf806`, `a23a5041-fd8f-4ed3-bfa8-a913b6ed0a33`.

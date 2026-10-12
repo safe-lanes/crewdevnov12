@@ -98,7 +98,7 @@ export async function readCrewRuleDimensions(subject: CrewAssignmentSubject, tx:
   }
   let history = context?.joining_history;
   const verified = context?.joining_history_backfill;
-  if (verified) history = {
+  if (verified && !history) history = {
     ...verified, ...history,
     firstEver: history?.firstEver ?? verified.firstEver,
     firstInRank: history?.firstInRank ?? verified.firstInRank,

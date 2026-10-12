@@ -32,6 +32,7 @@ export interface HierarchyImportResult {
 
 export interface AssignmentsImportResult {
   importedAssignmentUuids: string[];
+  assignmentLabels: Record<string, string>;
   seaService: ImportSeaServiceOutcome[];
   totalRowsProcessed: number;
   primaryAssignedCount: number;
@@ -641,6 +642,7 @@ export async function importCrewAssignments(
 ): Promise<AssignmentsImportResult> {
   const result: AssignmentsImportResult = {
     importedAssignmentUuids: [],
+    assignmentLabels: {},
     seaService: [],
     totalRowsProcessed: 0,
     primaryAssignedCount: 0,
@@ -1362,6 +1364,7 @@ export async function importCrewAssignments(
           matchedSlot.relieverAssignUuid = assignmentUuid;
         }
         result.importedAssignmentUuids.push(assignmentUuid);
+        result.assignmentLabels[assignmentUuid] = `${[crew.firstName, crew.familyName].filter(Boolean).join(" ")} (${item.employeeId})`;
         if (isPrimary) {
           const service = await recordImportedCompanyService(tx, assignmentUuid, matchedSlot.planUuid, auditUserUuid);
           result.seaService.push(service);
@@ -1378,6 +1381,7 @@ export async function importCrewAssignments(
     result.secondaryAssignedCount = 0;
     result.alreadyImportedCount = 0;
     result.importedAssignmentUuids = [];
+    result.assignmentLabels = {};
     result.seaService = [];
 
     const rawMsg = err.message || String(err);

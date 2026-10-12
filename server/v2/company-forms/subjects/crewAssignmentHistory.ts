@@ -40,22 +40,25 @@ export function decideFirstService(rows: PriorService[], rankUuid: string | null
   };
 }
 
-export async function readPriorServiceDecision(crewUuid: string, rankUuid: string | null, cutoff: string, tx: any) {
+export async function readPriorServiceDecision(crewUuid: string, rankUuid: string | null, cutoff: string, tx: any,
+  options: { excludeSeaUuid?: string; identifiersOnly?: boolean } = {}) {
   if (!validDay(cutoff)) return decideFirstService([], rankUuid, [], cutoff);
   const rows = (await tx.execute(sql`SELECT sea_uuid,rank,from_date,service_type FROM crew_sea_service
-    WHERE crew_uuid=${crewUuid} AND NOT is_deleted AND service_type='company' FOR SHARE`)).rows;
+    WHERE crew_uuid=${crewUuid} AND NOT is_deleted AND service_type='company'
+      AND sea_uuid<>${options.excludeSeaUuid ?? ""} FOR SHARE`)).rows;
   const roots = (await tx.execute(sql`SELECT ar_uuid,rank_id,name,label FROM adm_available_ranks_v2 WHERE NOT is_deleted FOR SHARE`)).rows;
-  const aliases = (await tx.execute(sql`SELECT cr_uuid,rank,role,rank_id,original_rank_id FROM adm_company_ranks_v2
+  const aliases = (await tx.execute(sql`SELECT id,cr_uuid,rank,role,rank_id,original_rank_id FROM adm_company_ranks_v2
     WHERE NOT is_deleted FOR SHARE`)).rows;
   const references: RankReference[] = [];
-  for (const r of roots) for (const value of [r.ar_uuid, r.rank_id, r.name, r.label]) {
+  for (const r of roots) for (const value of options.identifiersOnly
+    ? [r.ar_uuid, r.rank_id] : [r.ar_uuid, r.rank_id, r.name, r.label]) {
     if (value) references.push({ reference: value, rankUuid: r.ar_uuid });
   }
   for (const a of aliases) {
     const key = a.original_rank_id || a.rank_id;
     const mapped = roots.filter((r: any) => r.rank_id === key || r.ar_uuid === key);
     if (mapped.length !== 1) continue;
-    for (const value of [a.cr_uuid, a.rank, a.role, a.rank_id]) {
+    for (const value of options.identifiersOnly ? [a.cr_uuid, a.id, a.rank_id] : [a.cr_uuid, a.rank, a.role, a.rank_id]) {
       if (value) references.push({ reference: value, rankUuid: mapped[0].ar_uuid });
     }
   }

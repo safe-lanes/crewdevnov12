@@ -24,6 +24,8 @@ router.post("/import/generate-workbook",      importUploadMiddleware, tenantCont
 router.post("/import/generate-workbook-from-db",                      tenantContextGuard, vesselImportController.generateWorkbookFromDb);
 router.post("/import/hierarchy",              importUploadMiddleware, tenantContextGuard, vesselImportController.importHierarchy);
 router.post("/import/assignments",            importUploadMiddleware, tenantContextGuard, vesselImportController.importAssignments);
+router.post("/import/first-service-backfill", tenantContextGuard,
+  requirePermission("Vessel", "edit"), vesselImportController.rerunFirstService);
 
 // Get all planning records for conflict detection (used by Rotation V2)
 router.get("/planning", vesselPlanningController.getAll);

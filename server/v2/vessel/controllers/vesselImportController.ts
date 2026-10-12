@@ -7,6 +7,9 @@ import {
   importCrewAssignments,
 } from "../services";
 import { getAuditUserUuid } from "../../accounts/controllers/_auth";
+import { z } from "zod";
+import { backfillCurrentAssignmentHistory } from "../../company-forms/subjects/crewAssignmentHistoryBackfill";
+import { resolveCompanyFormPrincipal } from "../../company-forms/trustedPrincipalService";
 import { MAX_IMPORT_BYTES } from "../middleware/importUpload";
 
 // ── Size-limit error for the raw-stream fallback path ────────────────────────
@@ -273,11 +276,29 @@ export const vesselImportController = {
           ...result,
         });
       }
-      res.json(result);
+      // Assignment/E1 transaction is committed. A check failure must not undo
+      // imported crew; the result carries actionable retry information.
+      const firstServiceBackfill = await backfillCurrentAssignmentHistory(
+        result.importedAssignmentUuids, auditUserUuid, "post_import",
+      );
+      res.json({ ...result, firstServiceBackfill });
     } catch (error: any) {
       if (handle413(error, res)) return;
       console.error("[VESSEL IMPORT] Error importing assignments:", error);
       res.status(500).json({ error: "Failed to import crew assignments" });
+    }
+  },
+  async rerunFirstService(req: Request, res: Response) {
+    const parsed = z.object({ assignmentUuids: z.array(z.string().uuid()).min(1).max(5000) }).strict().safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Choose the imported assignments to check. Do not supply audit or identity fields." });
+    try {
+      const actor = await resolveCompanyFormPrincipal(req);
+      if (actor.kind !== "office") return res.status(403).json({ error: "An authorised office user must recheck imported company sea service." });
+      const results = await backfillCurrentAssignmentHistory(parsed.data.assignmentUuids, String(actor.userId), "rerun");
+      res.json({ firstServiceBackfill: results });
+    } catch (error) {
+      console.error("[Crew import first-service recheck]", error);
+      res.status(403).json({ error: "The check could not be authorised. Ask your administrator to check your access, then try again." });
     }
   },
 };
