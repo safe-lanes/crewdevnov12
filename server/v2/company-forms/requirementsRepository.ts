@@ -15,6 +15,7 @@ export type ResolutionCommand = {
   adapter: CompanyFormSubjectAdapter<any>; actor: CompanyFormPrincipal;
   subjectType: string; subjectRef: string; stageKey: string | null;
   cycleUuid: string; eventKey: string; triggerAt: string; source: string;
+  effectiveDate?: string;
   outcome: "COMPLETED" | "FAILED"; evidence: unknown; failureReason?: string;
   decisions: RequirementDecision[];
 };
@@ -25,6 +26,9 @@ export async function recordResolution(input: ResolutionCommand, executor = getD
   if (!Number.isFinite(trigger.getTime()) || trigger > new Date() || !input.actor.userId
     || !input.cycleUuid || !input.eventKey || !input.source)
     throw new CompanyFormValidationError("A trusted actor and valid past trigger are required.");
+  const effectiveDay = input.effectiveDate ?? trigger.toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDay) || !Number.isFinite(new Date(effectiveDay).getTime()))
+    throw new CompanyFormValidationError("A valid effective business date is required.");
   if (input.outcome === "FAILED" && (!input.failureReason?.trim() || input.decisions.length))
     throw new CompanyFormValidationError("Failed checks require a reason and cannot create requirements.");
   return executor.transaction(async (tx: any) => {
@@ -48,7 +52,7 @@ export async function recordResolution(input: ResolutionCommand, executor = getD
       if (!pin || pin.status !== "released" || pin.subject_type !== input.subjectType
         || pin.stage_key !== input.stageKey || pin.mode === "manual_only"
         || !pin.released_at || new Date(pin.released_at) > trigger
-        || !pin.effective_day || pin.effective_day > trigger.toISOString().slice(0, 10))
+        || !pin.effective_day || pin.effective_day > effectiveDay)
         throw new CompanyFormValidationError("Requirement pin is not an automatic policy effective at the trigger.");
       const sets = (await tx.execute(sql`SELECT set_uuid FROM frm_applicability_sets
         WHERE version_uuid=${decision.formVersionUuid}`)).rows as { set_uuid: string }[];
@@ -60,12 +64,12 @@ export async function recordResolution(input: ResolutionCommand, executor = getD
     }
     const runUuid = randomUUID();
     await tx.execute(sql`INSERT INTO frm_resolution_runs(run_uuid,subject_type,subject_ref,stage_key,
-      cycle_uuid,event_key,trigger_at,outcome,actor_uuid,source,evidence,failure_reason)
+      cycle_uuid,event_key,trigger_at,outcome,actor_uuid,source,evidence,failure_reason,effective_date)
       VALUES(${runUuid},${input.subjectType},${input.subjectRef},${input.stageKey},${input.cycleUuid},
       ${input.eventKey},${trigger.toISOString()},${input.outcome},${String(input.actor.userId)},${input.source},
       ${JSON.stringify({ captured: input.evidence, candidates: pins.map(({ pin, decision }) =>
         ({ versionUuid: pin.fv_uuid, mandatory: pin.mandatory, mode: pin.mode, ...decision })) })}::jsonb,
-      ${input.failureReason ?? null})`);
+      ${input.failureReason ?? null},${effectiveDay})`);
     await tx.execute(sql`SELECT set_config('sail.forms_actor',${String(input.actor.userId)},true)`);
     for (const { pin, decision } of pins) {
       const prior = (await tx.execute(sql`SELECT requirement_uuid,form_version_uuid,status,cycle_uuid FROM frm_requirements

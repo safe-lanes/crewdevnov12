@@ -130,6 +130,12 @@ Related project task: #333 (Company Form Submissions).
     stage triggered before the rule's effective date, so these
     checks require nothing and open their stages for manual
     starts. Nothing is resolved retrospectively.
+    Go-live and activation run independently at each tenant's upgrade.
+    Completion is recorded in that tenant's database; enforcement is
+    enabled only after that tenant's own go-live check completes.
+    Retrying a failed or pending check requires Company Forms Fill in
+    on the exact assignment, with normal tenant and vessel scope, not
+    Forms authoring. Retry reuses the original facts, dates and pins.
 
 ## Trusted vessel-scope prerequisite
 
