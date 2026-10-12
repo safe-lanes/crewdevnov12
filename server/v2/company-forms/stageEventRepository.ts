@@ -51,8 +51,15 @@ export async function assertStageReady(subjectRef: string, stage: string | null,
 
 export async function appendAttempt(eventUuid: string, actor: string, outcome: string,
   reason: string | null = null, runUuid: string | null = null, executor: any = getDb()) {
-  await executor.execute(sql`INSERT INTO frm_stage_attempts(attempt_uuid,event_uuid,actor_uuid,outcome,reason,run_uuid)
-    VALUES(${randomUUID()},${eventUuid},${actor},${outcome},${reason},${runUuid})`);
+  // Pending/failed attempts participate in the same subject-first serialization
+  // as checklist decisions, not just the later requirement-resolution write.
+  await executor.transaction(async (tx: any) => {
+    await tx.execute(sql`SELECT a.assign_uuid FROM crew_assignments a
+      JOIN frm_stage_events e ON e.subject_ref=a.assign_uuid
+      WHERE e.event_uuid=${eventUuid} FOR UPDATE OF a`);
+    await tx.execute(sql`INSERT INTO frm_stage_attempts(attempt_uuid,event_uuid,actor_uuid,outcome,reason,run_uuid)
+      VALUES(${randomUUID()},${eventUuid},${actor},${outcome},${reason},${runUuid})`);
+  });
 }
 
 export async function stageAudit(actor: string, subjectRef: string | null, stage: string | null,

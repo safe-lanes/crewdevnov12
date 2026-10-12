@@ -51,6 +51,22 @@ const reliefStatusFormSchema = z.object({
 });
 
 type ReliefStatusFormData = z.infer<typeof reliefStatusFormSchema>;
+type ChecklistBlocker = { kind: "requirement" | "check"; status: string; formName?: string; reason?: string; requirementUuid?: string; eventUuid?: string };
+type ChecklistConflict = { message: string; blockers: ChecklistBlocker[]; canOverride: boolean };
+
+function parseChecklistConflict(error: unknown): ChecklistConflict | null {
+    if (!(error instanceof Error)) return null;
+    const body = error.message.replace(/^\d{3}:\s*/, "");
+    try {
+        const value = JSON.parse(body);
+        if (value?.error !== "company_forms_checklist_blocked" || typeof value.message !== "string" || !Array.isArray(value.blockers) || typeof value.canOverride !== "boolean") return null;
+        const blockers = value.blockers.filter((item: any) =>
+            item && (item.kind === "requirement" || item.kind === "check") && typeof item.status === "string"
+        ) as ChecklistBlocker[];
+        if (blockers.length !== value.blockers.length) return null;
+        return { message: value.message, blockers, canOverride: value.canOverride };
+    } catch { return null; }
+}
 
 const formatDateOnly = (dateString: string | null | undefined): string => {
     if (!dateString) return '';
@@ -108,7 +124,11 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [joiningFormsOpen, setJoiningFormsOpen] = useState(false);
-    const { permissions, roleName, userType } = usePermissions();
+    const { permissions, roleName, userType, canCompanyFormAction } = usePermissions();
+    const canOverrideChecklist = canCompanyFormAction("override_checklist");
+    const [checklistConflict, setChecklistConflict] = useState<ChecklistConflict | null>(null);
+    const [overrideReason, setOverrideReason] = useState("");
+    const [pendingChecklistPayload, setPendingChecklistPayload] = useState<Record<string, unknown> | null>(null);
     const canClearUnlinked = roleName?.trim().toLowerCase() === 'admin'
         && userType?.trim().toLowerCase() !== 'ship'
         && permissions.some(p => p.menuName.toLowerCase() === 'vessel' && p.candelete);
@@ -314,15 +334,61 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
             onOpenChange(false);
         } catch (error: any) {
             console.error('Relief status save error:', error);
-            const errorMessage = error instanceof Error ? error.message : 
-                                 typeof error === 'string' ? error :
-                                 error?.message || "Failed to save relief status";
+            const conflict = parseChecklistConflict(error);
+            const eligibleBlockers = conflict?.blockers.length
+                ? conflict.blockers.every((blocker) =>
+                    (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
+                    (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
+                )
+                : false;
+            if (conflict && data.deploymentChecklistCompleted === true && planningData?.planUuid) {
+                setChecklistConflict(conflict);
+                setPendingChecklistPayload({
+                    relieverContractPeriodMonths: data.relieverContractPeriodMonths,
+                    relieverContractEndRangeStartMonths: data.relieverContractEndRangeStartMonths,
+                    relieverContractEndRangeEndMonths: data.relieverContractEndRangeEndMonths,
+                    deploymentChecklistCompleted: data.deploymentChecklistCompleted,
+                    applicableDocsChecked: data.applicableDocsChecked,
+                    joiningStatus: data.signOnStatus,
+                    relieverSignOnDate: data.relieverSignOnDate || null,
+                    joiningPortUuid: data.relieverSignOnPort,
+                    plannedConfirmedDate: data.plannedConfirmedDate || null,
+                    travelStartDate: data.travelStartDate || null,
+                });
+                if (!eligibleBlockers || !conflict.canOverride || !canOverrideChecklist) {
+                    toast({ title: "Forms must be completed", description: conflict.message, variant: "destructive", duration: 7000 });
+                }
+                return;
+            }
             toast({
                 title: "Error",
-                description: errorMessage,
+                description: "Unable to save relief status. Please review the information and try again.",
                 variant: "destructive",
                 duration: 5000,
             });
+        }
+    };
+
+    const confirmChecklistOverride = async () => {
+        if (!planningData?.planUuid || !pendingChecklistPayload || !overrideReason.trim() ||
+            !checklistConflict?.canOverride || !canOverrideChecklist) return;
+        try {
+            await updatePlanningV2.mutateAsync({
+                planUuid: planningData.planUuid,
+                data: { ...pendingChecklistPayload, checklistOverride: { reason: overrideReason.trim() } } as any,
+            });
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }),
+                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel/crew-counts'] }),
+            ]);
+            setChecklistConflict(null);
+            setPendingChecklistPayload(null);
+            setOverrideReason("");
+            toast({ title: "Success", description: "Relief status saved with the recorded checklist override." });
+            onOpenChange(false);
+        } catch (error) {
+            const conflict = parseChecklistConflict(error);
+            toast({ title: "Unable to override checklist", description: conflict?.message ?? "The checklist override was not accepted. Review the forms and try again.", variant: "destructive" });
         }
     };
 
@@ -529,6 +595,50 @@ export const ReliefStatusEditDialog_v2: React.FC<ReliefStatusEditDialogV2Props> 
 
     return (
         <>
+            <AlertDialog open={Boolean(checklistConflict)} onOpenChange={(next) => {
+                if (!next) { setChecklistConflict(null); setPendingChecklistPayload(null); setOverrideReason(""); }
+            }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Company Forms checklist is incomplete</AlertDialogTitle>
+                        <AlertDialogDescription>{checklistConflict?.message}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {checklistConflict?.blockers.map((blocker, index) => (
+                        <p key={`${blocker.kind}-${blocker.requirementUuid ?? blocker.eventUuid ?? index}`} className="text-sm text-amber-900">
+                            {blocker.formName || (blocker.kind === "check" ? "Stage check" : "Required form")} · {blocker.status}
+                            {blocker.reason ? ` — ${blocker.reason}` : ""}
+                        </p>
+                    ))}
+                    {checklistConflict?.canOverride && canOverrideChecklist &&
+                        checklistConflict.blockers.length > 0 &&
+                        checklistConflict.blockers.every((blocker) =>
+                            (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
+                            (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
+                        ) ? (
+                        <div className="space-y-2">
+                            <Label htmlFor="checklist-override-reason">Reason for override</Label>
+                            <Textarea id="checklist-override-reason" value={overrideReason}
+                                onChange={(event) => setOverrideReason(event.target.value)}
+                                placeholder="Record why deployment is proceeding before the checklist is clear." />
+                            <AlertDialogDescription>This reason will be recorded with the planning change. The override does not complete any form.</AlertDialogDescription>
+                        </div>
+                    ) : null}
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Return to forms</AlertDialogCancel>
+                        {checklistConflict?.canOverride && canOverrideChecklist &&
+                            checklistConflict.blockers.length > 0 &&
+                            checklistConflict.blockers.every((blocker) =>
+                                (blocker.kind === "requirement" && blocker.status.toUpperCase() === "UNRESOLVED") ||
+                                (blocker.kind === "check" && ["PENDING", "FAILED"].includes(blocker.status.toUpperCase()))
+                            ) && (
+                            <AlertDialogAction disabled={!overrideReason.trim() || updatePlanningV2.isPending}
+                                onClick={(event) => { event.preventDefault(); void confirmChecklistOverride(); }}>
+                                {updatePlanningV2.isPending ? "Saving…" : "Confirm override"}
+                            </AlertDialogAction>
+                        )}
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
             <Dialog open={open && !joiningFormsOpen} onOpenChange={onOpenChange}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>

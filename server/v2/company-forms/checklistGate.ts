@@ -26,11 +26,16 @@ export async function verifyChecklistYes(tx: any, planning: {
   vesselUuid: string; deploymentChecklistCompleted?: boolean | null;
 }, req?: Request): Promise<void> {
   if (!req) throw new ChecklistGateError("Open the seafarer's linked Planning record to complete the deployment checklist.");
-  if (["actor", "actorId", "auditUserUuid", "updatedByUuid", "createdByUuid"].some(key => key in (req.body ?? {})))
+  if (["actor", "actorId", "actor_uuid", "actorUuid", "userId", "auditIdentity", "auditUserUuid", "updatedByUuid", "createdByUuid"].some(key => key in (req.body ?? {})))
     throw new ChecklistGateError("Audit identity comes from your signed-in account. Remove supplied audit details and retry.");
   if (!planning.relieverAssignUuid)
     throw new ChecklistGateError("Deploy the reliever to establish the linked assignment before completing the checklist.");
   const principal = await resolveCompanyFormPrincipal(req);
+  if (principal.kind !== "seafarer") {
+    await tx.execute(sql`SELECT ruid FROM adm_rolemaster_ac WHERE ruid=${principal.roleId} FOR SHARE`);
+    await tx.execute(sql`SELECT role_id FROM adm_resource_action_grants
+      WHERE role_id=${principal.roleId} AND resource='company_forms' AND action='override_checklist' FOR SHARE`);
+  }
   const assignment = (await tx.execute(sql`SELECT assign_uuid,crew_uuid,vessel_uuid,assignment_type,is_deleted
     FROM crew_assignments WHERE assign_uuid=${planning.relieverAssignUuid}`)).rows[0];
   if (!assignment || assignment.is_deleted || assignment.assignment_type === "Cancelled" ||
@@ -60,6 +65,8 @@ export async function verifyChecklistYes(tx: any, planning: {
   const canOverride = hasOverride && checklistOverrideEligible(blockers);
   const requested = req.body?.checklistOverride;
   if (requested !== undefined) {
+    if (blockers.some(b => b.kind === "requirement" && ["OUTSTANDING", "STARTED"].includes(b.status)))
+      throw new ChecklistGateError(checklistBlockerMessage(blockers), blockers, false);
     const parsed = z.object({ reason: z.string().trim().min(1).max(2000) }).strict().safeParse(requested);
     if (!parsed.success) throw new ChecklistGateError("Write a reason before overriding the checklist.", blockers, canOverride);
     if (!canOverride) throw new ChecklistGateError(blockers.some(b => b.kind === "requirement" &&
