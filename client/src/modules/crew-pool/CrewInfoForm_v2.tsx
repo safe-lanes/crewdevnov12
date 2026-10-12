@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { RuleAwareDateInput } from '@/modules/recruitment/RuleAwareDateInput';
 import { FormattedDateInput } from '@/components/ui/formatted-date-input';
 import { formatDate } from '@/utils/format';
 import { Label } from '@/components/ui/label';
@@ -917,6 +918,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   };
   const [isNextAvailabilityEditOpen, setIsNextAvailabilityEditOpen] = useState(false);
   const [tempNextAvailability, setTempNextAvailability] = useState<string>('');
+  const [isNextAvailabilityDraftValid, setIsNextAvailabilityDraftValid] = useState(false);
   const [isRecruitmentDateEditOpen, setIsRecruitmentDateEditOpen] = useState(false);
   const [tempRecruitmentDate, setTempRecruitmentDate] = useState<string>('');
   const [isLicenseDialogOpen, setIsLicenseDialogOpen] = useState(false);
@@ -4409,7 +4411,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
           <div>
             <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
             {isEditing ? (
-              <FormattedDateInput
+              <RuleAwareDateInput
                 value={formData.dateOfBirth}
                 onChange={(e) => { updateFormData('dateOfBirth', e.target.value); if (dobError) setDobError(''); }}
                 onBlur={() => { const err = validateDob(formData.dateOfBirth); setDobError(err); }}
@@ -5216,7 +5218,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={doc.issued}
                     onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); if (docDateErrors[doc.id]?.issued) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), issued: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].issued; if (!n[doc.id].expiry) delete n[doc.id]; } return n; }); }}
@@ -5226,7 +5228,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {docDateErrors[doc.id]?.issued && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={doc.expiry}
                     onChange={(e) => { updateDocument(doc.id, 'expiry', e.target.value); if (docDateErrors[doc.id]?.expiry) setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(doc.expiry, doc.issued); if (err) setDocDateErrors(prev => ({...prev, [doc.id]: {...(prev[doc.id] || {}), expiry: err}})); else setDocDateErrors(prev => { const n = {...prev}; if (n[doc.id]) { delete n[doc.id].expiry; if (!n[doc.id].issued) delete n[doc.id]; } return n; }); }}
@@ -5345,7 +5347,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={visa.issued}
                     onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); if (visaDateErrors[visa.id]?.issued) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), issued: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].issued; if (!n[visa.id].expiry) delete n[visa.id]; } return n; }); }}
@@ -5355,7 +5357,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {visaDateErrors[visa.id]?.issued && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={visa.expiry}
                     onChange={(e) => { updateVisa(visa.id, 'expiry', e.target.value); if (visaDateErrors[visa.id]?.expiry) setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(visa.expiry, visa.issued); if (err) setVisaDateErrors(prev => ({...prev, [visa.id]: {...(prev[visa.id] || {}), expiry: err}})); else setVisaDateErrors(prev => { const n = {...prev}; if (n[visa.id]) { delete n[visa.id].expiry; if (!n[visa.id].issued) delete n[visa.id]; } return n; }); }}
@@ -5633,7 +5635,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   </Select>
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={license.issued}
                     onChange={(e) => { updateLicense(license.id, 'issued', e.target.value); if (licDateErrors[license.id]?.issued) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
                     onBlur={() => { const err = validateIssuedDate(license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), issued: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].issued; if (!n[license.id].expiry) delete n[license.id]; } return n; }); }}
@@ -5643,7 +5645,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {licDateErrors[license.id]?.issued && <p className="text-xs text-red-500 mt-1">{licDateErrors[license.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={license.expiry}
                     onChange={(e) => { updateLicense(license.id, 'expiry', e.target.value); if (licDateErrors[license.id]?.expiry) setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
                     onBlur={() => { const err = validateExpiryDate(license.expiry, license.issued); if (err) setLicDateErrors(prev => ({...prev, [license.id]: {...(prev[license.id] || {}), expiry: err}})); else setLicDateErrors(prev => { const n = {...prev}; if (n[license.id]) { delete n[license.id].expiry; if (!n[license.id].issued) delete n[license.id]; } return n; }); }}
@@ -5868,7 +5870,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   />
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={course.issued}
                       disabled={Boolean(
                         course.matrixDefault &&
@@ -5882,7 +5884,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
                   {trainDateErrors[course.id]?.issued && <p className="text-xs text-red-500 mt-1">{trainDateErrors[course.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={course.expiry}
                       disabled={Boolean(
                         course.matrixDefault &&
@@ -9453,8 +9455,13 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
   const today = new Date();
   const todayDateString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
+  const canSaveNextAvailability = Boolean(tempNextAvailability)
+    && isNextAvailabilityDraftValid
+    && tempNextAvailability >= todayDateString;
+
   // Handle updating next availability date
   const handleUpdateNextAvailability = () => {
+    if (!canSaveNextAvailability) return;
     // V2: Use crewUuid as the primary identifier
     const crewId = crewMember?.crewUuid || crewMember?.id || createdCrewId;
     if (crewId && tempNextAvailability) {
@@ -10453,6 +10460,8 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
               onChange={(e) => setTempNextAvailability(e.target.value)}
               className="mt-1"
               min={todayDateString}
+              minDateErrorMessage="Next Availability Date cannot be before today"
+              onDraftValidityChange={setIsNextAvailabilityDraftValid}
               data-testid="input-next-availability"
             />
           </div>
@@ -10460,7 +10469,7 @@ export const CrewInfoForm_v2: React.FC<CrewInfoFormProps> = ({ isOpen, onClose, 
             <Button variant="outline" onClick={() => setIsNextAvailabilityEditOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateNextAvailability} disabled={!tempNextAvailability}>
+            <Button onClick={handleUpdateNextAvailability} disabled={!canSaveNextAvailability}>
               Save
             </Button>
           </DialogFooter>

@@ -341,6 +341,7 @@ export const Training = (): JSX.Element => {
         field: "targetDate",
         flex: 0.9,
         valueFormatter: (p) => p.value || "-",
+        cellRenderer: (p: ICellRendererParams) => formatIsoDate(p.value || "") || p.value || "-",
         cellStyle: { fontSize: "13px", color: "#4f5863" },
         filter: "agDateColumnFilter",
         sortable: true,

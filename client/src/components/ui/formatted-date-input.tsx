@@ -10,6 +10,7 @@ interface FormattedDateInputProps {
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   className?: string;
   min?: string;
+  minDateErrorMessage?: string;
   max?: string;
   placeholder?: string;
   disabled?: boolean;
@@ -79,7 +80,7 @@ function isRealDate(year: number, month: number, day: number): boolean {
 }
 
 const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
-  ({ value, onChange, onBlur, className, min, max, placeholder, disabled = false, acceptCalendarInputEvents = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
+  ({ value, onChange, onBlur, className, min, minDateErrorMessage, max, placeholder, disabled = false, acceptCalendarInputEvents = false, retainInvalidDraftOnBlur = false, initialDraft, onDraftChange, onDraftValidityChange, "data-testid": dataTestId }, ref) => {
     const calendarInputRef = React.useRef<HTMLInputElement>(null);
     const [draft, setDraft] = React.useState(
       () => initialDraft ?? formatIsoDate(value),
@@ -103,6 +104,11 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
         || Boolean(min && canonicalValue < min)
         || Boolean(max && canonicalValue > max);
     };
+
+    const parsedDraft = parseManualDate(draft);
+    const errorMessage = minDateErrorMessage && min && parsedDraft && parsedDraft < min
+      ? minDateErrorMessage
+      : "Incorrect date/date format";
 
     const isVisibleDraftValid = !isDraftInvalid(draft);
     React.useLayoutEffect(() => {
@@ -319,7 +325,7 @@ const DateOnlyInput = React.forwardRef<HTMLDivElement, FormattedDateInputProps>(
       </div>
       {isInvalid && (
         <p id={errorId} role="alert" className="mt-1 text-xs leading-4 text-red-500">
-          Incorrect date/date format
+          {errorMessage}
         </p>
       )}
       </div>

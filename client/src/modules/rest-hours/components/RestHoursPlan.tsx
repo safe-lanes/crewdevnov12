@@ -177,7 +177,7 @@ export const RestHoursPlan = (): JSX.Element => {
     if (isPhone) {
       return (
         <div className="flex flex-col gap-3 mb-4 p-3 bg-transparent rounded-lg" data-testid="filter-container">
-          <PeriodFilter value={periodValue} onChange={setPeriodValue} />
+          <PeriodFilter value={periodValue} onChange={setPeriodValue} acceptCalendarInputEvents={selectedTab === "fixed"} />
 
           <Select value={draftSelectedVessel} onValueChange={setDraftSelectedVessel}>
             <SelectTrigger 
@@ -219,7 +219,7 @@ export const RestHoursPlan = (): JSX.Element => {
     // Tablet and Desktop: horizontal layout
     return (
       <div className="flex flex-wrap gap-4 mb-4 p-4 pl-0 bg-transparent rounded-lg" data-testid="filter-container">
-        <PeriodFilter value={periodValue} onChange={setPeriodValue} />
+        <PeriodFilter value={periodValue} onChange={setPeriodValue} acceptCalendarInputEvents={selectedTab === "fixed"} />
 
         <Select value={draftSelectedVessel} onValueChange={setDraftSelectedVessel}>
           <SelectTrigger 

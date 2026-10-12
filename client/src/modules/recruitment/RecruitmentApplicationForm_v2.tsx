@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { StandardFormPopup } from '@/components/ui/form-popup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { RuleAwareDateInput } from './RuleAwareDateInput';
 import { FormattedDateInput } from '@/components/ui/formatted-date-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -4515,7 +4516,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
               <Label className="text-xs text-gray-500 tracking-wide">Date of birth</Label>
               {isEditing ? (
                 <>
-                  <FormattedDateInput
+                  <RuleAwareDateInput
                     value={formData.dateOfBirth}
                     onChange={(e) => { updateFormData('dateOfBirth', e.target.value); if (dobError) { const err = validateDob(e.target.value); setDobError(err); } }}
                     onBlur={() => setDobError(validateDob(formData.dateOfBirth))}
@@ -5245,11 +5246,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={doc.number} onChange={(e) => updateDocument(doc.id, 'number', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={30} />
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput value={doc.issued} onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, doc.expiry); setDocDateErrors(prev => ({ ...prev, [doc.id]: { ...prev[doc.id], ...(errs.issued ? { issued: errs.issued } : {}), ...(!errs.issued ? (() => { const n = { ...prev[doc.id] }; delete n.issued; return n; })() : {}) } })); }} onBlur={() => { const errs = validateRowDates(doc.issued, doc.expiry); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${docDateErrors[doc.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <RuleAwareDateInput value={doc.issued} onChange={(e) => { updateDocument(doc.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, doc.expiry); setDocDateErrors(prev => ({ ...prev, [doc.id]: { ...prev[doc.id], ...(errs.issued ? { issued: errs.issued } : {}), ...(!errs.issued ? (() => { const n = { ...prev[doc.id] }; delete n.issued; return n; })() : {}) } })); }} onBlur={() => { const errs = validateRowDates(doc.issued, doc.expiry); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${docDateErrors[doc.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {docDateErrors[doc.id]?.issued && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput value={doc.expiry} onChange={(e) => { updateDocument(doc.id, 'expiry', e.target.value); const errs = validateRowDates(doc.issued, e.target.value); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(doc.issued, doc.expiry); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} min={doc.issued || undefined} className={`text-[13px] border ${docDateErrors[doc.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <RuleAwareDateInput value={doc.expiry} onChange={(e) => { updateDocument(doc.id, 'expiry', e.target.value); const errs = validateRowDates(doc.issued, e.target.value); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(doc.issued, doc.expiry); setDocDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[doc.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[doc.id] = rowErrs; return n; }); }} min={doc.issued || undefined} className={`text-[13px] border ${docDateErrors[doc.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {docDateErrors[doc.id]?.expiry && <p className="text-xs text-red-500 mt-1">{docDateErrors[doc.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -5321,11 +5322,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={visa.serialNo} onChange={(e) => updateVisa(visa.id, 'serialNo', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={30} />
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput value={visa.issued} onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(visa.issued, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${visaDateErrors[visa.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <RuleAwareDateInput value={visa.issued} onChange={(e) => { updateVisa(visa.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(visa.issued, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${visaDateErrors[visa.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {visaDateErrors[visa.id]?.issued && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput value={visa.expiry} onChange={(e) => { updateVisa(visa.id, 'expiry', e.target.value); const errs = validateRowDates(visa.issued, e.target.value); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(visa.issued, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} min={visa.issued || undefined} className={`text-[13px] border ${visaDateErrors[visa.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <RuleAwareDateInput value={visa.expiry} onChange={(e) => { updateVisa(visa.id, 'expiry', e.target.value); const errs = validateRowDates(visa.issued, e.target.value); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(visa.issued, visa.expiry); setVisaDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[visa.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[visa.id] = rowErrs; return n; }); }} min={visa.issued || undefined} className={`text-[13px] border ${visaDateErrors[visa.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {visaDateErrors[visa.id]?.expiry && <p className="text-xs text-red-500 mt-1">{visaDateErrors[visa.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -5480,11 +5481,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={lic.issuingAuthority} onChange={(e) => updateLicense(lic.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={100} />
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput value={lic.issued} onChange={(e) => { updateLicense(lic.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(lic.issued, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${licDateErrors[lic.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <RuleAwareDateInput value={lic.issued} onChange={(e) => { updateLicense(lic.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(lic.issued, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${licDateErrors[lic.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {licDateErrors[lic.id]?.issued && <p className="text-xs text-red-500 mt-1">{licDateErrors[lic.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput value={lic.expiry} onChange={(e) => { updateLicense(lic.id, 'expiry', e.target.value); const errs = validateRowDates(lic.issued, e.target.value); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(lic.issued, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} min={lic.issued || undefined} className={`text-[13px] border ${licDateErrors[lic.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <RuleAwareDateInput value={lic.expiry} onChange={(e) => { updateLicense(lic.id, 'expiry', e.target.value); const errs = validateRowDates(lic.issued, e.target.value); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(lic.issued, lic.expiry); setLicDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[lic.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[lic.id] = rowErrs; return n; }); }} min={lic.issued || undefined} className={`text-[13px] border ${licDateErrors[lic.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {licDateErrors[lic.id]?.expiry && <p className="text-xs text-red-500 mt-1">{licDateErrors[lic.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -5610,11 +5611,11 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                   <Input value={course.issuingAuthority} onChange={(e) => updateTrainingCourse(course.id, 'issuingAuthority', e.target.value)} className="text-[13px] border border-[#EAEBEF] shadow-none p-0 h-auto" maxLength={100} />
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput value={course.issued} onChange={(e) => { updateTrainingCourse(course.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(course.issued, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${trainingDateErrors[course.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <RuleAwareDateInput value={course.issued} onChange={(e) => { updateTrainingCourse(course.id, 'issued', e.target.value); const errs = validateRowDates(e.target.value, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(course.issued, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.issued) rowErrs.issued = errs.issued; else delete rowErrs.issued; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} max={todayStr} className={`text-[13px] border ${trainingDateErrors[course.id]?.issued ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {trainingDateErrors[course.id]?.issued && <p className="text-xs text-red-500 mt-1">{trainingDateErrors[course.id].issued}</p>}
                 </TableCell>
                 <TableCell className="p-3">
-                  <FormattedDateInput value={course.expiry} onChange={(e) => { updateTrainingCourse(course.id, 'expiry', e.target.value); const errs = validateRowDates(course.issued, e.target.value); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(course.issued, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} min={course.issued || undefined} className={`text-[13px] border ${trainingDateErrors[course.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
+                  <RuleAwareDateInput value={course.expiry} onChange={(e) => { updateTrainingCourse(course.id, 'expiry', e.target.value); const errs = validateRowDates(course.issued, e.target.value); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} onBlur={() => { const errs = validateRowDates(course.issued, course.expiry); setTrainingDateErrors(prev => { const n = { ...prev }; const rowErrs = { ...n[course.id] }; if (errs.expiry) rowErrs.expiry = errs.expiry; else delete rowErrs.expiry; n[course.id] = rowErrs; return n; }); }} min={course.issued || undefined} className={`text-[13px] border ${trainingDateErrors[course.id]?.expiry ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                   {trainingDateErrors[course.id]?.expiry && <p className="text-xs text-red-500 mt-1">{trainingDateErrors[course.id].expiry}</p>}
                 </TableCell>
                 <TableCell className="p-3">
@@ -5849,7 +5850,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                     {/* From Date */}
                     <TableCell className="p-3">
                       <FormattedDateInput value={service.from} onChange={(e) => { updateSeaService(service.id, 'from', e.target.value); if (seaRequiredErrors[service.id]?.from && e.target.value) setSeaRequiredErrors(prev => { const n = { ...prev }; if (n[service.id]) { const { from: _, ...rest } = n[service.id]; n[service.id] = rest; } return n; }); }}
-                        onBlur={() => { if (!(service.from || '').trim()) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], from: 'From date is required.' } })); setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
+                        onBlur={(e) => { if (!(service.from || '').trim() && !e.currentTarget.value) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], from: 'From date is required.' } })); setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
                         className={`text-[13px] border ${(seaRequiredErrors[service.id]?.from || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                       {seaRequiredErrors[service.id]?.from && <p className="text-xs text-red-500 mt-1">{seaRequiredErrors[service.id].from}</p>}
                       {!seaRequiredErrors[service.id]?.from && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1">{seaServiceDateErrors[service.id]}</p>}
@@ -5857,7 +5858,7 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
 
                     {/* To Date */}
                     <TableCell className="p-3">
-                      <FormattedDateInput value={service.to} onChange={(e) => { updateSeaService(service.id, 'to', e.target.value); if (e.target.value) { const errs = { ...seaRequiredErrors[service.id] }; delete errs.to; if (service.from && e.target.value < service.from) errs.to = 'To date cannot be earlier than from date.'; setSeaRequiredErrors(prev => ({ ...prev, [service.id]: errs })); } }} onBlur={() => { if (!(service.to || '').trim()) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date is required.' } })); } else if (service.from && service.to < service.from) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date cannot be earlier than from date.' } })); } setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
+                      <FormattedDateInput value={service.to} onChange={(e) => { updateSeaService(service.id, 'to', e.target.value); if (e.target.value) { const errs = { ...seaRequiredErrors[service.id] }; delete errs.to; if (service.from && e.target.value < service.from) errs.to = 'To date cannot be earlier than from date.'; setSeaRequiredErrors(prev => ({ ...prev, [service.id]: errs })); } }} onBlur={(e) => { if (!(service.to || '').trim()) { if (!e.currentTarget.value) setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date is required.' } })); } else if (service.from && service.to < service.from) { setSeaRequiredErrors(prev => ({ ...prev, [service.id]: { ...prev[service.id], to: 'To date cannot be earlier than from date.' } })); } setSeaServiceDateErrors(prev => { const overlapErrs = runSeaServiceOverlapCheck(); const merged: Record<string, string> = {}; Object.entries(prev).forEach(([k, v]) => { if (!v.includes('overlap')) merged[k] = v; }); return { ...merged, ...overlapErrs }; }); }}
                         className={`text-[13px] border ${(seaRequiredErrors[service.id]?.to || seaServiceDateErrors[service.id]) ? 'border-red-500' : 'border-[#EAEBEF]'} shadow-none p-0 h-auto`} />
                       {seaRequiredErrors[service.id]?.to && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-${service.id}`}>{seaRequiredErrors[service.id].to}</p>}
                       {!seaRequiredErrors[service.id]?.to && seaServiceDateErrors[service.id] && <p className="text-xs text-red-500 mt-1" data-testid={`text-sea-to-error-legacy-${service.id}`}>{seaServiceDateErrors[service.id]}</p>}
@@ -6372,7 +6373,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           <div key={reference.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                               <FormattedDateInput
-                                placeholder="Date"
                                 className="text-sm"
                                 value={reference.date}
                                 onChange={(e) => {
@@ -6847,7 +6847,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                             <div key={authority.id} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
                                 <FormattedDateInput
-                                  placeholder="Date"
                                   className="text-sm"
                                   value={authority.date}
                                   onChange={(e) => {
@@ -7302,7 +7301,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                             <div key={certificate.id} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div>
                                 <FormattedDateInput
-                                  placeholder="Date"
                                   className="text-sm"
                                   value={certificate.date}
                                   onChange={(e) => {
@@ -7778,7 +7776,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                             <div key={test.id} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <div>
                                 <FormattedDateInput
-                                  placeholder="Date"
                                   className="text-sm"
                                   value={test.date}
                                   onChange={(e) => {
@@ -8134,7 +8131,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                               <div>
                                 <FormattedDateInput
-                                  placeholder="Date"
                                   className="text-sm"
                                   value={interview.date}
                                   onChange={(e) => {
@@ -9070,7 +9066,6 @@ export const RecruitmentApplicationFormV2: React.FC<RecruitmentApplicationFormV2
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                               <FormattedDateInput
-                                placeholder="Date"
                                 className="text-sm"
                                 value={approver.date}
                                 onChange={(e) => updateC1Approver(approver.id, 'date', e.target.value)}
