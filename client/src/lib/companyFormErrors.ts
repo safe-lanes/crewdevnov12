@@ -57,7 +57,7 @@ const knownCodes: Record<string, string> = {
   FORM_NOT_ELIGIBLE: "This form is not currently available for this assignment. Refresh the eligible forms list.",
   FORM_ALREADY_VOIDED: "This form has already been voided. Refresh the saved forms list.",
   VOID_REASON_REQUIRED: "Enter a reason before voiding this form.",
-  RANK_NOT_ELIGIBLE: "The seafarer's rank could not be verified. Ask an administrator to check the crew rank, then try again.",
+  RANK_NOT_ELIGIBLE: "The rank could not be verified. Ask an administrator to check the assignment's contract rank and crew record, then try again.",
   CREW_RANK_NOT_APPLICABLE: "This form does not apply to the selected crew rank. Choose another eligible form or ask an administrator to review applicability.",
   RANK_NOT_ALLOWED: "This form is not available for the selected crew rank. Choose another eligible form or ask an administrator to review applicability.",
   EFFECTIVE_DATE_BEFORE_RELEASE: "This applicability date is earlier than the version's release date. Choose On release or a date on or after release; rules cannot apply retrospectively.",

@@ -30,8 +30,10 @@ async function main() {
       JOIN adm_form_versions_v2 v ON v.form_id=f.id
       WHERE f.name='SL01 Pre-Joining Declaration' AND v.version_no='01' AND v.status='released'`)).rows[0];
     if (!version) throw new Error("The reported released SL01 version must exist.");
-    const rank = (await db.query("SELECT ar_uuid,name FROM adm_available_ranks_v2 WHERE name='Pumpman' AND NOT is_deleted")).rows;
-    if (rank.length !== 1) throw new Error("Exactly one eligible Pumpman master is needed.");
+    const rank = (await db.query(`SELECT r.ar_uuid,r.name FROM crew_assignment_rule_context c
+      JOIN adm_available_ranks_v2 r ON r.ar_uuid=c.contract_rank_uuid AND NOT r.is_deleted
+      WHERE c.assign_uuid=$1`, ["042e9b59-37dc-46ad-b803-67583e9ab159"])).rows;
+    if (rank.length !== 1) throw new Error("The original assignment must have one eligible captured contract rank.");
     const vessel = randomUUID(), crew = randomUUID(), assignment = randomUUID(), cycle = randomUUID();
     const event = randomUUID(), attempt = randomUUID();
     retainFixtureReferences("SL01 main-preview signing regression roots", [vessel, crew, assignment, cycle, event, attempt]);

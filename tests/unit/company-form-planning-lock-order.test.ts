@@ -1,4 +1,4 @@
-import { openHarnessStages } from "../helpers/company-form-stage-fixtures";
+import { openHarnessStages, captureHarnessContractRank } from "../helpers/company-form-stage-fixtures";
 // @vitest-environment node
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
@@ -50,6 +50,10 @@ beforeAll(async () => {
   crew = fixture.crews.find((c: any) => c.key === "viewers");
   if (!crew) throw Error("Private aboard fixture is required");
   await admin.query(`CREATE SCHEMA "${namespace}"`);
+  // The signing authority belongs to this private assignment, not public
+  // operations. Retain context rows between cases rather than truncating them.
+  await admin.query(`CREATE TABLE "${namespace}"."crew_assignment_rule_context"
+    (LIKE public."crew_assignment_rule_context" INCLUDING ALL)`);
   // Private schema: real PostgreSQL locks, no public operational row writes,
   // no new vessel, no public Planning position and no protected record edits.
   for (const table of tables) {
@@ -78,6 +82,7 @@ beforeEach(async () => {
   await pool.query(`INSERT INTO crew_assignments(assign_uuid,crew_uuid,vessel_uuid,assignment_type,is_current,sign_on_date,is_deleted)
     VALUES ($1,$2,$3,'OnBoard',true,'2026-01-01',false)`, [assignment, crew.crewUuid, crew.vesselUuid]);
   await openHarnessStages(pool, assignment);
+  await captureHarnessContractRank(pool, assignment, "R001");
   await pool.query(`INSERT INTO vessel_planning_v2(plan_uuid,crew_uuid,vessel_uuid,crew_assign_uuid,rank_id,rank,is_deleted)
     VALUES ($1,$2,$3,$4,'R001','Master',false)`, [plan, crew.crewUuid, crew.vesselUuid, assignment]);
   const form = fixture.forms[0];

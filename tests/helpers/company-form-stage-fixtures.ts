@@ -1,6 +1,19 @@
 import { randomUUID } from "node:crypto";
 import { retainFixtureReferences } from "./fixture-retention";
 
+/** Explicit fixture provenance; not a runtime backfill or a name-matching fallback. */
+export async function captureHarnessContractRank(db: { query: (...args: any[]) => Promise<any> },
+  assignUuid: string, rankIdentifier: string) {
+  const ranks = (await db.query(`SELECT ar_uuid,name FROM adm_available_ranks_v2
+    WHERE NOT is_deleted AND (ar_uuid=$1 OR rank_id=$1)`, [rankIdentifier])).rows;
+  if (ranks.length !== 1) throw new Error("Signing fixture needs one eligible rank identifier");
+  const rank = ranks[0];
+  retainFixtureReferences("explicit signing contract-rank harness", [assignUuid, rank.ar_uuid]);
+  await db.query(`INSERT INTO crew_assignment_rule_context(assign_uuid,contract_rank_uuid,contract_rank_label,rank_source)
+    VALUES($1,$2,$3,'{"method":"retained_test_harness"}') ON CONFLICT(assign_uuid) DO NOTHING`,
+    [assignUuid, rank.ar_uuid, rank.name]);
+}
+
 /** Explicit test harness for tests of starts/writes, not a production trigger or API. */
 export async function openHarnessStages(db: { query: (...args: any[]) => Promise<any> }, assignUuid: string,
   stages = ["before_joining", "on_board", "at_sign_off"]) {

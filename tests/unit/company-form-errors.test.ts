@@ -36,7 +36,7 @@ describe("Company Form safe error presentation", () => {
     expect(companyFormErrorMessage(
       new Error('409: {"code":"RANK_NOT_ELIGIBLE","rankUuid":"private-id"}'),
       "start",
-    )).toBe("The seafarer's rank could not be verified. Ask an administrator to check the crew rank, then try again.");
+    )).toBe("The rank could not be verified. Ask an administrator to check the assignment's contract rank and crew record, then try again.");
   });
 
   it("allows explicit safe assignment guidance and masks unknown backend reasons", () => {

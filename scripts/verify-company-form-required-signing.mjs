@@ -111,12 +111,17 @@ try {
     throw Error("Both persisted signatures and the authenticated witness are required.");
   report.result = result;
   report.signatures = signatures;
+  report.contractRank = (await db.query(`SELECT c.contract_rank_uuid,r.name AS rank
+    FROM crew_assignment_rule_context c JOIN adm_available_ranks_v2 r ON r.ar_uuid=c.contract_rank_uuid
+    WHERE c.assign_uuid=$1`, [fixture.assignment])).rows[0];
+  if (signatures.find(s => s.signature_type === "seafarer").signer_rank !== report.contractRank?.rank)
+    throw Error("The signature rank did not match the captured contract UUID.");
   if (!closing) {
     const refs = [result.submission_uuid, ...signatures.flatMap(s => [s.section_signature_uuid, s.signature_att_uuid])];
     await fs.appendFile("docs/company-form-regression-fixtures.md",
       `\n- SL01 clicked-through required-form signing descendants retained: ${refs.map(id => `\`${id}\``).join(", ")}. Original released definition unchanged; no crew or assignment deletion.\n`);
   }
-  if (report.operations.some(op => op.status >= 400) || report.errors.length) throw Error("Browser request or rendering failure.");
+  if (report.operations.some(op => op.status >= 400) || report.errors.length) throw Error("Unexpected browser request or rendering failure.");
   if (shell("git", ["rev-parse", "HEAD"]) !== report.head) throw Error("HEAD changed during verification.");
   if (!shell("ps", ["-p", String(report.backendPid), "-o", "pid="])) throw Error("Main backend changed during verification.");
   report.passed = true;

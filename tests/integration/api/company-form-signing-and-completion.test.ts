@@ -1,4 +1,4 @@
-import { openHarnessStages } from "../../helpers/company-form-stage-fixtures";
+import { openHarnessStages, captureHarnessContractRank } from "../../helpers/company-form-stage-fixtures";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import jwt from "jsonwebtoken";
@@ -246,6 +246,7 @@ async function createCrewAssignment(assignmentType: string, vesselUuid = subject
     [assignUuid, subjectUuid, vesselUuid, assignmentType],
   );
   await openHarnessStages(db, assignUuid);
+  await captureHarnessContractRank(db, assignUuid, masterRankId);
   assignmentUuids.push(assignUuid);
   return assignUuid;
 }
@@ -293,7 +294,7 @@ describe("Company Form signing, section submission, completion, and void history
     wrongVesselUuid = wrongVessel.rows[0].vessel_uuid;
     shipUser = await createShipUser(`CF Life Cycle Ship ${SUFFIX}`, Number(wrongVessel.rows[0].id));
 
-    // present_rank stores the master rank ID, never its display label.
+    // The profile uses an ID here; signing uses the independently captured contract UUID.
     const ranks = await db.query(
       `SELECT rank_id, MIN(rank) AS rank FROM adm_company_ranks_v2
        WHERE is_deleted = false AND is_role_row = false AND rank_id IS NOT NULL AND rank IS NOT NULL

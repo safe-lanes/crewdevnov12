@@ -15,7 +15,7 @@ export const requirementApi = request("http://127.0.0.1:5000");
 export const formCall = (method: "get" | "post" | "put", path: string, body: object = {}) =>
   requirementApi[method](`/api/v2/admin${path}`).set("Authorization", `Bearer ${requirementToken}`).send(body);
 
-export async function createRequirementFixture(stageKey = "before_joining", options: { signatures?: boolean } = {}) {
+export async function createRequirementFixture(stageKey = "before_joining", options: { signatures?: boolean; unresolvedContractRank?: boolean } = {}) {
   if (process.env.NODE_ENV === "production") throw new Error("Fixture harness is not permitted in production");
   const crewUuid = randomUUID(), assignUuid = randomUUID(), formUuid = randomUUID(), templatePart = randomUUID();
   retainFixtureReferences("requirement harness roots", [crewUuid, assignUuid, formUuid, templatePart]);
@@ -31,6 +31,10 @@ export async function createRequirementFixture(stageKey = "before_joining", opti
     VALUES($1,$2,'TEST ONLY','Requirement ledger',$3)`, [crewUuid, `REQ-${crewUuid.slice(0, 8)}`, rank.name]);
   await requirementPool.query(`INSERT INTO crew_assignments(assign_uuid,crew_uuid,vessel_uuid,assignment_type,is_current)
     VALUES($1,$2,$3,'Planned',false)`, [assignUuid, crewUuid, vessel.vessel_uuid]);
+  if (options.signatures) await requirementPool.query(`INSERT INTO crew_assignment_rule_context
+    (assign_uuid,contract_rank_uuid,contract_rank_label,rank_source)
+    VALUES($1,$2,$3,'{"method":"retained_test_harness"}')`,
+    [assignUuid, options.unresolvedContractRank ? null : rank.ar_uuid, rank.name]);
   const f = (await requirementPool.query(`INSERT INTO adm_forms_v2(form_uuid,name,category,subject_type,rank_group,version_no,version_date)
     VALUES($1,$2,'dynamic','crew_assignment','','00','11-Oct-2026') RETURNING id`,
     [formUuid, `TEST ONLY Requirement form ${formUuid.slice(0, 8)}`])).rows[0];
@@ -62,7 +66,7 @@ export async function createRequirementFixture(stageKey = "before_joining", opti
     stageKey, cycleUuid, triggerAt: new Date().toISOString(),
     source: "retained_test_harness", outcome: "COMPLETED" as const,
     evidence: { fixture: true }, decisions: [] };
-  return { crewUuid, assignUuid, formUuid, formId: f.id, version: v, section, question, cycleUuid, base,
+  return { crewUuid, assignUuid, formUuid, formId: f.id, version: v, section, question, cycleUuid, base, rank,
     matchedSetUuids: (policy.body.sets ?? []).map((set: { setUuid: string }) => set.setUuid),
     record: async (eventKey: string, decisions: Parameters<typeof recordResolution>[0]["decisions"] = []) => {
       const result = await recordResolution({ ...base, eventKey, decisions });

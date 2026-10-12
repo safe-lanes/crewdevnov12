@@ -26,8 +26,8 @@ describe("Company Form readable system values", () => {
     expect(await adapter.resolveSystemField("rank", { crewUuid: "synthetic" } as any, { ...context, raw: true }, executor)).toBe("R017");
   });
 
-  it.each(["Pumpman", "11111111-1111-4111-8111-111111111111"])(
-    "resolves an imported label or base-rank UUID only through one eligible master: %s",
+  it.each(["11111111-1111-4111-8111-111111111111", "R017"])(
+    "resolves a base-rank UUID or ID only through an eligible master: %s",
     async reference => {
       const rows = [[{ presentRank: reference }], [], [{ rank: "Pumpman" }]];
       const executor: any = { select: () => executor, from: () => executor, where: () => executor, limit: async () => rows.shift() };
@@ -35,6 +35,13 @@ describe("Company Form readable system values", () => {
         { submission: { dateOfDeclaration: null } }, executor)).toBe("Pumpman");
     },
   );
+
+  it("does not match a crew profile rank by display label", async () => {
+    const rows = [[{ presentRank: "Pumpman" }], [], []];
+    const executor: any = { select: () => executor, from: () => executor, where: () => executor, limit: async () => rows.shift() };
+    await expect(createCrewAssignmentSubject().resolveSystemField("rank", { crewUuid: "synthetic" } as any,
+      { submission: { dateOfDeclaration: null } }, executor)).rejects.toMatchObject({ statusCode: 400, code: "RANK_NOT_ELIGIBLE" });
+  });
 
   it("refuses ambiguous masters instead of choosing a signature identity", async () => {
     const rows = [[{ presentRank: "R017" }], [{ rank: "Pumpman" }, { rank: "Pumpman" }]];

@@ -208,7 +208,7 @@ async function resolveCrewSystemField(
       firstName: crewMembersV2.firstName,
       middleName: crewMembersV2.middleName,
       familyName: crewMembersV2.familyName,
-      presentRank: crewMembersV2.presentRank,
+      presentRank: key === "rank" ? crewMembersV2.presentRank : sql<string | null>`NULL`,
       nationalityUuid: crewMembersV2.nationalityUuid,
     }).from(crewMembersV2)
       .where(eq(crewMembersV2.crewUuid, subject.crewUuid))
@@ -223,8 +223,7 @@ async function resolveCrewSystemField(
     }
     if (key === "rank") {
       if (context.raw || !crew.presentRank) return crew.presentRank;
-      // Existing crew records contain rank IDs, UUIDs and imported display
-      // labels. Resolve against eligible masters; never echo an unknown value.
+      // System-field references resolve by identifier only, never by name.
       const ranks = await db.select({ rank: admCompanyRanksV2.rank })
         .from(admCompanyRanksV2).where(and(
           or(
@@ -240,21 +239,10 @@ async function resolveCrewSystemField(
         const available = await db.select({ rank: admAvailableRanksV2.name })
           .from(admAvailableRanksV2).where(and(
             or(eq(admAvailableRanksV2.arUuid, crew.presentRank),
-              eq(admAvailableRanksV2.rankId, crew.presentRank),
-              eq(admAvailableRanksV2.name, crew.presentRank)),
+              eq(admAvailableRanksV2.rankId, crew.presentRank)),
             eq(admAvailableRanksV2.isDeleted, false),
           )).limit(2);
         if (available.length === 1) return available[0].rank;
-        // A company-specific rank need not exist in the parent's base list.
-        if (!available.length) {
-          const labels = await db.select({ rank: admCompanyRanksV2.rank })
-            .from(admCompanyRanksV2).where(and(
-              eq(admCompanyRanksV2.rank, crew.presentRank),
-              eq(admCompanyRanksV2.isDeleted, false),
-              eq(admCompanyRanksV2.isRoleRow, false),
-            )).limit(2);
-          if (labels.length === 1) return labels[0].rank;
-        }
       }
       throw new CompanyFormValidationError(
         "The seafarer's rank cannot be matched to the rank list. Ask your administrator to check the crew rank, then try again.",
@@ -282,6 +270,19 @@ async function resolveCrewSystemField(
   }
 
   return null;
+}
+
+/** Signing is assignment-bound; the mutable crew profile is not its rank authority. */
+async function resolveSigningContractRank(subject: CrewAssignmentSubject, executor: any): Promise<string> {
+  const rows = (await executor.execute(sql`SELECT r.name AS rank
+    FROM crew_assignment_rule_context c
+    JOIN adm_available_ranks_v2 r ON r.ar_uuid=c.contract_rank_uuid
+    WHERE c.assign_uuid=${subject.assignUuid} AND NOT r.is_deleted`)).rows;
+  if (rows.length === 1 && rows[0].rank?.trim()) return rows[0].rank;
+  throw new CompanyFormValidationError(
+    "The assignment's captured contract rank cannot be verified. Ask your administrator to check the assignment's deployment rank, then try again.",
+    "RANK_NOT_ELIGIBLE",
+  );
 }
 
 export function createCrewAssignmentSubject(
@@ -541,7 +542,7 @@ export function createCrewAssignmentSubject(
           };
           const [name, rank] = await Promise.all([
             resolveCrewSystemField("seafarer_name", crewSubject, context, executor),
-            resolveCrewSystemField("rank", crewSubject, context, executor),
+            resolveSigningContractRank(crewSubject, executor),
           ]);
           return { name, rank };
         },

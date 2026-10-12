@@ -1,4 +1,5 @@
-import { openHarnessStages } from "../../helpers/company-form-stage-fixtures";
+import { openHarnessStages, captureHarnessContractRank } from "../../helpers/company-form-stage-fixtures";
+let signingFixtureRankId = "";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import express from "express";
 import jwt from "jsonwebtoken";
@@ -90,6 +91,7 @@ describe.sequential("Office void versus trusted Master writes", () => {
       `INSERT INTO crew_members_v2 (crew_uuid, emp_no, first_name, family_name, present_rank, is_deleted)
        VALUES ($1, $2, 'Test', 'Seafarer', $3, false)`, [crewUuid, suffix, rank.rows[0].rank_id],
     );
+    signingFixtureRankId = rank.rows[0].rank_id;
     const form = await db.query(
       `INSERT INTO adm_forms_v2 (form_uuid, name, category, subject_type, rank_group, version_no, version_date, is_deleted)
        VALUES ($1, $2, 'dynamic', 'crew_assignment', '', '01', '2026-10-03', false) RETURNING id`,
@@ -126,6 +128,7 @@ describe.sequential("Office void versus trusted Master writes", () => {
          VALUES ($1, $2, $3, 'OnBoard', true, false)`, [assignment, crewUuid, vesselUuid],
       );
       await openHarnessStages(db, assignment);
+      await captureHarnessContractRank(db, assignment, signingFixtureRankId);
       const started = await api(officeId, "post", `/subjects/crew_assignment/${assignment}/submissions`, { formUuid, formVersionUuid: versionUuid });
       expect(started.status).toBe(201);
       const submission = started.body.submissionUuid;

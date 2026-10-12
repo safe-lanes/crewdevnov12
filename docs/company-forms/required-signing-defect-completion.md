@@ -37,9 +37,12 @@ in the main preview; all those writes succeeded and the requirement completed.
 
 ## Correction and regression coverage
 
-- Rank display/signing resolves eligible company IDs/UUIDs and eligible base
-  master IDs/UUIDs or imported labels. Missing or ambiguous matches are refused,
-  never guessed or echoed as a signature identity.
+- Signing resolves the assignment's captured `contract_rank_uuid` through
+  `adm_available_ranks_v2.ar_uuid` only. It does not use the mutable
+  `crew_members_v2.present_rank`, a captured display label, or a name lookup.
+  Missing or ineligible captured references are refused, never guessed.
+- General rank system-field lookups remain identifier-only; the recovered
+  implementation's label fallback has been removed.
 - An unresolved rank produces HTTP 400 with server code `RANK_NOT_ELIGIBLE` and
   administrator guidance, not an unexpected server error.
 - The required-form API regression starts its pinned requirement, saves the
@@ -47,7 +50,11 @@ in the main preview; all those writes succeeded and the requirement completed.
   and checks both the form and requirement completion.
 - A second API regression verifies an unknown rank returns actionable validation
   and does not satisfy the requirement or persist a seafarer signature.
-- Readable-rank tests cover IDs, imported labels, base UUIDs and ambiguity.
+- Readable-rank tests cover IDs, base UUIDs, ambiguity and refusal to resolve
+  a display label. The REQUIRED signing regression changes the crew's current
+  rank and verifies the signature still uses the captured contract rank.
+  Another fixture starts with an unresolved capture and a valid profile UUID,
+  proving neither the profile nor a stored label supplies a fallback.
 - Company Forms errors pass through safe, action-specific presentation.
   Unknown HTTP bodies, SQL text, stacks, identifiers and untrusted messages
   are not displayed. Known permission, rank, applicability/date and fact
@@ -86,9 +93,9 @@ Evidence is retained under `.local/verification/required-signing/`:
 - `initial-evidence.json`: clicked-through signing and submission.
 - `closing-evidence.json`: final HEAD, commit time, backend PID/start time,
   completed requirement and both signatures reopened through the screen.
-- `full-suite-certified.json` and `gates-final.json`: full and complete Company
+- `full-suite-contract-certified.json` and `gates-final.json`: full and complete Company
   Forms-area results, with skipped/missing Company Forms cases rejected.
-- `typescript-final.log` and `build-final.log`: final compiler/build checks.
+- `typescript-contract.log` and `build-contract.log`: final compiler/build checks.
 - `officer-saved.jpg`, `seafarer-saved.jpg`, `submitted.jpg`,
   `closing-completed.jpg`, `closing-signed-form.jpg`: screen captures.
 
@@ -97,7 +104,43 @@ commit, and requires HEAD and backend PID to remain stable during the browser
 check. The original seafarer's form remains available for the user to finish;
 the agent did not sign or submit it on their behalf.
 
-## Standing gates
+## Recovery and rank-source investigation
+
+Recovered uncommitted work was committed with the user's exact message:
+`a4fc6aa3d6c3f8a7f1ccadae4882628222921593`,
+12 October 2026, 08:57:26 UTC. That recovered implementation included name
+fallbacks; the subsequent revision removes them.
+
+`Pumpman` is stored in **`crew_members_v2.present_rank`**. The old signature
+hook called the general crew system-field rank getter rather than the
+deployment-captured context. This was an integration omission, not a requirement
+to use the current crew rank.
+
+The affected assignment has `crew_assignment_rule_context.contract_rank_uuid`
+`31a79f68-b075-4252-b8c0-cd96293c88f5`, with provenance
+`deploy_planning_link`. An exact UUID join resolves the eligible Pumpman master.
+Deploy capture is in `server/v2/company-forms/subjects/crewAssignmentRuleContext.ts`
+lines 3–22; signing lookup is in
+`server/v2/company-forms/subjects/crewAssignmentSubject.ts` lines 275–285,
+called by the seafarer identity hook at lines 543–545.
+
+Captured contract rank is database-enforced immutable. Tests create valid or
+unresolved context at fixture setup with explicit harness provenance.
+No constraint was disabled, and the original assignment was not changed.
+
+The revised main-preview evidence was clicked through the screen on a fresh
+retained synthetic subject using unchanged released SL01 v01:
+Start required form → Representative save 201 → witnessed seafarer save 201 →
+Submit 200 → Completed requirement. SQL verifies that the saved signing rank
+equals the master reached by the captured UUID.
+
+Failure masking is covered by presentation/renderer regressions. An unsuccessful
+attempt to inject a browser failure response is archived separately and is not
+claimed as backend-refusal evidence; the certified screen journey uses actual
+successful backend saves. Real missing-capture refusal is tested through the
+public API regression.
+
+## Recovered gates before the contract-source revision
 
 The certified full-project run includes the entire discovered Company Forms
 area, not a selected subset:
@@ -114,3 +157,17 @@ Earlier failed validation attempts are retained separately. Obsolete assertions
 expecting raw errors were corrected; the final certified run was then executed
 against the settled source. Exact final commit and backend times are reported
 by the closing evidence, after commit and restart.
+
+## Final certified gates after the contract-source revision
+
+- Company Forms: **79 suites, 485 passed, zero failed, zero skipped**, with no
+  missing or empty suites.
+- Full project: **1,208 passed, 161 failed, 67 pending** out of 1,436 tests.
+- TypeScript: **222 diagnostics**.
+- Build: **passed**.
+
+The full run exposed an isolated Planning concurrency fixture without a private
+captured-rank context. Its setup now creates and retains that context explicitly;
+the four concurrency tests pass, and the complete suite was rerun successfully
+within the standing ceilings. Runtime permission and locking rules were not
+weakened to fix that fixture.
