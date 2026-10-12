@@ -60,7 +60,9 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
     {history.isFetching && <p role="status">Loading saved forms…</p>}
     {history.error && <p role="alert" className="text-destructive">{companyFormErrorMessage(history.error, "loadHistory")}</p>}
     {eligible.error && <p role="alert" className="text-destructive">{companyFormErrorMessage(eligible.error, "loadEligible")}</p>}
-    {!readOnly && history.isSuccess && eligible.isSuccess && <div className="space-y-2">
+    {!readOnly && <section className="space-y-2 rounded-md border border-sky-200 bg-sky-50/40 p-3">
+      <h3 className="font-semibold text-sky-950">Other forms you can start</h3>
+    {history.isSuccess && eligible.isSuccess && <div className="space-y-2">
       <label className="block text-sm font-medium" htmlFor="onboard-form-version">Select a released on-board form</label>
       <select id="onboard-form-version" data-testid="select-onboard-form-version" className="h-10 w-full rounded-md border px-3 text-sm"
         value={selected} onChange={e => setSelected(e.target.value)} disabled={busy || formStageBlocked}>
@@ -89,8 +91,12 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
         finally { setBusy(false); }
       }}>{busy ? "Opening…" : existing ? "Open existing form" : "Start selected form"}</Button>
     </div>}
+    </section>}
     {error && <p role="alert" className="text-destructive">{error}</p>}
-    <AssignmentFormRequirements subjectRef={assignmentUuid} stageKey="on_board" onOpenSubmission={setActive} allowStart={!readOnly} />
+    <section className="space-y-2">
+      <h3 className="font-semibold text-sky-950">Required forms</h3>
+      <AssignmentFormRequirements subjectRef={assignmentUuid} stageKey="on_board" onOpenSubmission={setActive} allowStart={!readOnly} />
+    </section>
     <h3 className="font-medium">Saved forms and retained history (total including voided: {submissions.length})</h3>
     {history.isSuccess && !submissions.length && <p>No on-board forms have been started.</p>}
     {submissions.map(s => <div key={s.submissionUuid} className="rounded-md border p-3 text-sm">

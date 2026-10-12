@@ -191,6 +191,8 @@ function SignoffCompanyFormsSession({ context }: { context: SignoffCompanyFormsC
     {formStageBlocked && <p role={assignmentRequirements.isError ? "alert" : "status"} className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{formStageMessage}</p>}
     {eligible.isFetching && <p role="status" className="text-sm">Loading released at-sign-off forms…</p>}
     {ready && !formStageBlocked && forms.length === 0 && <p className="text-sm text-muted-foreground">No released, lifecycle-valid at-sign-off forms are eligible for this assignment.</p>}
+    <section className="space-y-2 rounded-md border border-sky-200 bg-white p-3">
+      <h4 className="font-semibold text-sky-950">Other forms you can start</h4>
     {ready && (forms.length > 0 || formStageBlocked) && <div className="space-y-2">
       <label htmlFor="signoff-form-version" className="text-sm font-medium">Select a released form and version</label>
       <select id="signoff-form-version" data-testid="select-signoff-form-version"
@@ -204,8 +206,12 @@ function SignoffCompanyFormsSession({ context }: { context: SignoffCompanyFormsC
       </Button>
     </div>}
     {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
+    </section>
     <section className="space-y-2">
+      <h4 className="font-semibold text-sky-950">Required forms</h4>
       {previouslyVerified && <AssignmentFormRequirements subjectRef={context.assignmentUuid} stageKey="at_sign_off" onOpenSubmission={setActiveSubmission} beforeStart={() => verifySignoffAssignment(context)} />}
+    </section>
+    <section className="space-y-2">
       <h4 className="font-medium">Saved forms and retained history</h4>
       {history.isFetching && <p role="status" className="text-sm">Loading saved forms…</p>}
       {history.isSuccess && submissions.length === 0 && <p className="text-sm text-muted-foreground">No forms have been started for this assignment.</p>}

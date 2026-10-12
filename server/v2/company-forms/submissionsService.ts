@@ -864,7 +864,7 @@ export class CompanyFormSubmissionsService {
       systemValuesChanged,
       systemValuesComparisonError,
       systemValuesChangedNotice: systemValuesChanged
-        ? "The record has changed since signing began. This declaration shows the values at the time of first signature."
+        ? "The record has changed since signing began. This form shows the values at the time of first signature."
         : null,
       voidedReplacement: history[0]
         ? { label: history[0].label, submissionUuid: history[0].submissionUuid }

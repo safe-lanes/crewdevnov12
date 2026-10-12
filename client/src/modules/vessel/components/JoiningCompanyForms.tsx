@@ -157,6 +157,8 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
     </p>}
     {eligible.isFetching && <p role="status">Loading released before-joining forms…</p>}
     {ready && !beforeJoiningBlocked && forms.length === 0 && <p>No released, lifecycle-valid before-joining forms are eligible for this assignment.</p>}
+    <section className="space-y-2 rounded-md border border-sky-200 bg-sky-50/40 p-3">
+      <h3 className="font-semibold text-sky-950">Other forms you can start</h3>
     {ready && (forms.length > 0 || beforeJoiningBlocked) && <div className="space-y-2">
       <label htmlFor="joining-form-version" className="text-sm font-medium">Select a released form and version</label>
       <select id="joining-form-version" data-testid="select-joining-form-version"
@@ -171,8 +173,12 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
       </Button>
     </div>}
     {actionError && <p role="alert" className="text-destructive">{actionError}</p>}
+    </section>
     <section className="space-y-2">
+      <h3 className="font-semibold text-sky-950">Required forms</h3>
       {previouslyVerified && <AssignmentFormRequirements subjectRef={context.assignmentUuid} stageKey="before_joining" onOpenSubmission={setActiveSubmission} beforeStart={() => verifyJoiningAssignment(context)} />}
+    </section>
+    <section className="space-y-2">
       <h3 className="font-medium">Saved forms and retained history</h3>
       {history.isFetching && <p role="status">Loading saved forms…</p>}
       {history.isSuccess && submissions.length === 0 && <p className="text-sm text-muted-foreground">No forms have been started for this assignment.</p>}
