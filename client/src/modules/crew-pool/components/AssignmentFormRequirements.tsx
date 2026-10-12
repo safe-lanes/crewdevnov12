@@ -38,12 +38,13 @@ function historyEventLabel(event: string) {
   return labels[event.toLowerCase()] ?? "Requirement updated";
 }
 
-export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmission, beforeStart, allowStart = true }: {
+export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmission, beforeStart, allowStart = true, requirementUuid }: {
   subjectRef: string;
   stageKey?: string;
   onOpenSubmission?: (submissionUuid: string) => void;
   beforeStart?: () => Promise<unknown>;
   allowStart?: boolean;
+  requirementUuid?: string;
 }) {
   const queryClient = useQueryClient();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -51,7 +52,8 @@ export function AssignmentFormRequirements({ subjectRef, stageKey, onOpenSubmiss
   const [error, setError] = useState("");
   const query = useAssignmentFormRequirements(subjectRef);
   const queryKey = ["assignment-form-requirements", subjectRef];
-  const requirements = (query.data?.requirements ?? []).filter((r) => !stageKey || r.stage_key === stageKey);
+  const requirements = (query.data?.requirements ?? []).filter((r) =>
+    (!stageKey || r.stage_key === stageKey) && (!requirementUuid || r.requirement_uuid === requirementUuid));
   const runs = (query.data?.runs ?? []).filter((r) => !stageKey || r.stage_key === stageKey);
   const stageChecks = query.data?.stageChecks;
   const visibleStageChecks = (stageChecks?.stages ?? []).filter((stage) => !stageKey || stage.stage_key === stageKey);

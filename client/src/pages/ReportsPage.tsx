@@ -40,6 +40,7 @@ import { useViewport, getLayoutConfig } from "@/hooks/useViewport";
 import { useToast } from "@/hooks/use-toast";
 import { useCompanyRanks } from "@/hooks/useCompanyRanks";
 import { useNationalitiesV2, useVesselsV2 } from "@/hooks/v2/useMasterDataV2";
+import { CompanyFormsOutstandingReport } from "@/components/reports/CompanyFormsOutstandingReport";
 
 interface ReportLeaf {
   id: string;
@@ -55,6 +56,12 @@ interface ReportCategory {
 }
 
 const REPORT_TREE: ReportCategory[] = [
+  {
+    id: "company-forms",
+    label: "Company Forms",
+    icon: ClipboardList,
+    children: [{ id: "forms-outstanding", label: "Outstanding forms" }],
+  },
   {
     id: "recruitment",
     label: "Recruitment",
@@ -1096,6 +1103,8 @@ function ReportsContent(): JSX.Element {
                 Select a report from the tree on the left to view its filters.
               </div>
             </div>
+          ) : selected.leaf.id === "forms-outstanding" ? (
+            <CompanyFormsOutstandingReport />
           ) : selected.leaf.comingSoon ? (
             <div
               className="flex flex-col items-center text-center justify-center flex-1"
