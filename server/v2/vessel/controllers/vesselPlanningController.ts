@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { sendChecklistGateError } from "../../company-forms/checklistGate";
 import { vesselPlanningService, getAllForConflictDetection } from "../services";
 import { insertVesselPlanningV2Schema } from "../../../../shared/v2/vessel/schema";
 import { z } from "zod";
@@ -239,13 +240,14 @@ export const vesselPlanningController = {
         .omit({ planUuid: true, relieverAssignUuid: true })
         .parse(req.body);
       const auditUserUuid = getAuditUserUuid(req);
-      const planning = await vesselPlanningService.create({ ...validatedData, auditUserUuid });
+      const planning = await vesselPlanningService.create({ ...validatedData, auditUserUuid }, req);
       res.status(201).json(planning);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: "Validation failed", details: error.errors });
       }
       console.error("Error creating planning:", error);
+      if (sendChecklistGateError(error, res)) return;
       if (error.message?.includes("Linked incumbent assignment is inconsistent")) {
         return res.status(409).json({ error: error.message });
       }
@@ -261,9 +263,10 @@ export const vesselPlanningController = {
         ...updateBody,
         // Audit identity is server-derived and cannot be spoofed by the client.
         auditUserUuid: getAuditUserUuid(req),
-      });
+      }, req);
       res.json(planning);
     } catch (error: any) {
+      if (sendChecklistGateError(error, res)) return;
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
@@ -451,6 +454,8 @@ export const vesselPlanningController = {
    * For status changes: Planned -> Confirmed -> In Transit
    */
   async updateRelieverStatus(req: Request, res: Response) {
+    if ("deploymentChecklistCompleted" in (req.body ?? {}) || "checklistOverride" in (req.body ?? {}))
+      return res.status(400).json({ message: "Complete the deployment checklist through the linked Planning screen, not a status shortcut." });
     try {
       const { planUuid } = req.params;
       const { joiningStatus, relieverSignOnDate, joiningPortUuid, relieverContractPeriodMonths, contractEndRangeStartMonths, contractEndRangeEndMonths } = req.body;
