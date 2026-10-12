@@ -277,14 +277,14 @@ export function createCrewAssignmentSubject(
         ? sql`a.vessel_uuid IN (${sql.join(principal.vesselUuids.map(id => sql`${id}`), sql`,`)})`
         : sql`a.crew_uuid=${principal.crewUuid}`;
       const rows = await executor.execute(sql`SELECT a.assign_uuid,
-        concat_ws(' ',c.first_name,c.last_name) AS name,v.vessel,
+        concat_ws(' ',c.first_name,c.family_name) AS name,v.vessel,
         a.sign_on_date,a.assignment_type,r.contract_rank_label
         FROM crew_assignments a JOIN crew_members_v2 c ON c.crew_uuid=a.crew_uuid
         LEFT JOIN master_vessels v ON v.vessel_uuid=a.vessel_uuid
         LEFT JOIN crew_assignment_rule_context r ON r.assign_uuid=a.assign_uuid
         WHERE a.is_deleted=false AND c.is_deleted=false AND ${scope}
-        AND concat_ws(' ',c.first_name,c.last_name,v.vessel) ILIKE ${`%${search}%`}
-        ORDER BY c.first_name,c.last_name,a.sign_on_date DESC NULLS LAST,a.assign_uuid LIMIT 30`);
+        AND concat_ws(' ',c.first_name,c.family_name,v.vessel) ILIKE ${`%${search}%`}
+        ORDER BY c.first_name,c.family_name,a.sign_on_date DESC NULLS LAST,a.assign_uuid LIMIT 30`);
       return rows.rows.map((r: any) => ({ subjectRef: r.assign_uuid,
         label: [r.name, r.vessel ?? "Vessel not recorded", r.contract_rank_label ?? "Contract rank unresolved",
           r.assignment_type, r.sign_on_date ?? "Joining date not recorded"].join(" · ") }));

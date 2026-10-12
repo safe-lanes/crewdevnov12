@@ -46,6 +46,7 @@ import { COMPANY_FORM_SUBJECT_TYPES, getSystemFieldsForSubject } from "@shared/v
 import { SharedFormShell } from "@/components/SharedFormShell";
 import { FormTable } from "@/components/BaseSubmoduleForm";
 import { getTableClasses, sailDesignSystem } from "@/config/sailDesignSystem";
+import { CompanyFormApplicabilityEditor } from "@/components/company-forms/CompanyFormApplicabilityEditor";
 
 export interface ConfigurableFormPart {
   formPartUuid: string;
@@ -611,6 +612,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingStage, setIsSavingStage] = useState(false);
+  const [isApplicabilityBusy, setIsApplicabilityBusy] = useState(false);
+  const [isApplicabilityDirty, setIsApplicabilityDirty] = useState(false);
   const [isReleasing, setIsReleasing] = useState(false);
   const [isPartMutating, setIsPartMutating] = useState(false);
   const [addPartOpen, setAddPartOpen] = useState(false);
@@ -1598,7 +1601,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   };
 
   const handleClose = () => {
-    if (isDirty) {
+    if (isApplicabilityBusy && isApplicabilityDirty) return;
+    if (isDirty || isApplicabilityDirty) {
       setPendingVersionUuid(null);
       setShowLeaveDialog(true);
     } else {
@@ -1701,7 +1705,8 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
   };
 
   const requestVersionChange = (versionUuid: string) => {
-    if (shouldConfirmVersionChange(isDirty, selectedVersion?.fvUuid || "", versionUuid)) {
+    if (isApplicabilityBusy && isApplicabilityDirty) return;
+    if (shouldConfirmVersionChange(isDirty || isApplicabilityDirty, selectedVersion?.fvUuid || "", versionUuid)) {
       setPendingVersionUuid(versionUuid);
       setShowLeaveDialog(true);
       return;
@@ -1946,13 +1951,26 @@ export const GenericFormEditor: React.FC<GenericFormEditorProps> = ({
           )}
         </div>
       )}
+      {isCompanyForm && selectedVersion && (
+        <CompanyFormApplicabilityEditor
+          formId={realFormId}
+          versionId={selectedVersion.id}
+          versionUuid={selectedVersion.fvUuid}
+          status={selectedVersion.status}
+          stageKey={currentStageKey}
+          readOnly={readOnly}
+          onBusyChange={setIsApplicabilityBusy}
+          onDirtyChange={setIsApplicabilityDirty}
+          onSaved={async () => { await refetchVersions(); }}
+        />
+      )}
     </div>
   );
 
   const editorFooter = (
     <div className="border-t bg-[#f8fafc] px-6 py-3 flex items-center justify-between">
       <Button variant="ghost" onClick={handleClose} data-testid="button-close-generic-editor"><ArrowLeft className="h-4 w-4 mr-2" /> Back</Button>
-      <div className="text-xs text-gray-500">{isDirty ? "Unsaved changes" : "All changes saved"} · option values stay hidden and stable after creation</div>
+      <div className="text-xs text-gray-500">{isDirty || isApplicabilityDirty ? "Unsaved changes" : "All changes saved"}{isApplicabilityBusy ? " · applicability loading or saving" : ""} · option values stay hidden and stable after creation</div>
     </div>
   );
   const tableClasses = getTableClasses();
