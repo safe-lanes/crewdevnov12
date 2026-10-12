@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { getDb } from "../db";
 import type { AssignmentDimensionReport } from "../../../shared/v2/forms-engine/ruleDimensions";
 import type { VersionApplicability } from "../../../shared/v2/admin/applicability";
+import { CompanyFormConflictError } from "./errors";
 
 export type StageSnapshot = {
   facts: AssignmentDimensionReport | null;
@@ -27,7 +28,21 @@ export async function stageStatus(subjectRef: string, executor: any = getDb()) {
     LEFT JOIN LATERAL (SELECT * FROM frm_stage_attempts a WHERE a.event_uuid=e.event_uuid
       ORDER BY recorded_at DESC,attempt_uuid DESC LIMIT 1) a ON true
     WHERE c.subject_ref=${subjectRef}`)).rows;
-  return { enforcementEnabled: Boolean(rollout?.enforcement_enabled), completedAt: rollout?.completed_at ?? null, stages };
+  const failures = (await executor.execute(sql`SELECT stage_key,evidence,recorded_at FROM frm_stage_audit
+    WHERE subject_ref=${subjectRef} AND event='CAPTURE_FAILED' ORDER BY recorded_at DESC`)).rows;
+  return { enforcementEnabled: Boolean(rollout?.enforcement_enabled), completedAt: rollout?.completed_at ?? null, stages, failures };
+}
+
+export async function assertStageReady(subjectRef: string, stage: string | null, executor: any = getDb()) {
+  if (!stage) return;
+  const status = await stageStatus(subjectRef, executor);
+  if (!status.enforcementEnabled) return;
+  const current = status.stages.find((s: any) => s.stage_key === stage);
+  if (current && !current.deferred && current.outcome === "COMPLETED") return;
+  if (current && !current.deferred && ["FAILED", "PENDING"].includes(current.outcome))
+    throw new CompanyFormConflictError("The form check is pending or failed. Retry the check before starting a form; the vessel operation is unaffected.");
+  throw new CompanyFormConflictError(stage === "at_sign_off" ? "Available once Relief Status is Planned or Confirmed" :
+    stage === "on_board" ? "Available after sign-on and its form check." : "Available after Deploy and its form check.");
 }
 
 export async function appendAttempt(eventUuid: string, actor: string, outcome: string,

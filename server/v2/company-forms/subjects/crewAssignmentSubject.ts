@@ -1,3 +1,4 @@
+import { assertStageReady } from "../stageEventRepository";
 import { and, eq, sql } from "drizzle-orm";
 import { admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
 import { sailDate } from "../../../../shared/v2/forms-engine/displayFormatting";
@@ -378,6 +379,7 @@ export function createCrewAssignmentSubject(
     resolveSystemField: resolveCrewSystemField,
     allowedActions,
     authorizeVersionStart: async ({ principal, subject, stageKey, formVersionUuid, executor }) => {
+      await assertStageReady(subject.assignUuid, stageKey, executor);
       if (stageKey !== "at_sign_off") return;
       if (principal.kind === "office") {
         if (!await authorizeOffice(principal, "read_eligible_forms")) throw new CompanyFormPermissionError();

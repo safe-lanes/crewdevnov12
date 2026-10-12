@@ -6,6 +6,7 @@ import { CompanySubmissionRenderer } from "@/components/configured-form/companyS
 import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
 import type { CompanyFormSubmissionSummary } from "@shared/v2/forms-engine/submissionRenderContract";
 import { AssignmentFormRequirements } from "@/modules/crew-pool/components/AssignmentFormRequirements";
+import { stageCheckBlocksActions, useAssignmentFormRequirements } from "@/modules/crew-pool/components/assignmentFormRequirementsQuery";
 
 export function useOnboardFormCounts(refs: Array<string | null | undefined>) {
   const ids = [...new Set(refs.filter((ref): ref is string => !!ref))].sort();
@@ -31,6 +32,9 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
   const [selected, setSelected] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const assignmentRequirements = useAssignmentFormRequirements(assignmentUuid, !readOnly);
+  const formStageBlocked = readOnly || assignmentRequirements.isLoading || assignmentRequirements.isError ||
+    stageCheckBlocksActions(assignmentRequirements.data, "on_board");
   const path = `/api/v2/company-form-submissions/subjects/crew_assignment/${encodeURIComponent(assignmentUuid)}`;
   const history = useQuery({
     queryKey: ["onboard-company-form-history", assignmentUuid], retry: false, staleTime: 0,
@@ -58,13 +62,20 @@ export function OnboardCompanyForms({ assignmentUuid, readOnly = false }: { assi
     {!readOnly && history.isSuccess && eligible.isSuccess && <div className="space-y-2">
       <label className="block text-sm font-medium" htmlFor="onboard-form-version">Select a released on-board form</label>
       <select id="onboard-form-version" data-testid="select-onboard-form-version" className="h-10 w-full rounded-md border px-3 text-sm"
-        value={selected} onChange={e => setSelected(e.target.value)} disabled={busy}>
+        value={selected} onChange={e => setSelected(e.target.value)} disabled={busy || formStageBlocked}>
         <option value="">Select a form…</option>
         {eligible.data.map(form => <option key={form.formVersionUuid} value={form.formVersionUuid}>{form.formName} — version {form.versionNo}</option>)}
       </select>
-      {!eligible.data.length && <p>No released, lifecycle-valid on-board forms are eligible.</p>}
-      <Button data-testid="button-start-onboard-form" disabled={!chosen || busy} onClick={async () => {
-        if (!chosen || busy) return;
+      {!eligible.data.length && !formStageBlocked && <p>No released, lifecycle-valid on-board forms are eligible.</p>}
+      {formStageBlocked && <p role={assignmentRequirements.isError ? "alert" : "status"} className="text-sm text-amber-900">
+        {assignmentRequirements.isError
+          ? "Form stage availability could not be verified. Form selection is disabled until the check can be loaded."
+          : assignmentRequirements.isLoading
+            ? "Checking on-board form stage availability…"
+            : "Form selection is unavailable until the enforced on-board check is completed."}
+      </p>}
+      <Button data-testid="button-start-onboard-form" disabled={!chosen || busy || formStageBlocked} onClick={async () => {
+        if (!chosen || busy || formStageBlocked) return;
         setBusy(true); setError(null);
         try {
           const current = (await (await apiRequest("GET", `${path}/submissions`)).json()).submissions as CompanyFormSubmissionSummary[];

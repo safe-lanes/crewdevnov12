@@ -1,9 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { sailDate } from "@shared/v2/forms-engine/displayFormatting";
 import { AssignmentDimensionInspector } from "./AssignmentDimensionInspector";
 import { AssignmentFormRequirements } from "./AssignmentFormRequirements";
+import { assignmentFormRequirementsQuery, stageCheckBlocksActions, stageCheckFor } from "./assignmentFormRequirementsQuery";
 import type {
   CompanyFormSubmissionHome,
   CompanyFormSubmissionSummary,
@@ -114,6 +115,14 @@ export function CrewCompanyFormsHome({
       return (await response.json()) as CompanyFormSubmissionHome;
     },
   });
+  const rawGroupsForChecks = home.data?.groups ?? [];
+  const stageCheckQueries = useQueries({
+    queries: rawGroupsForChecks.map((group) => assignmentFormRequirementsQuery(group.subjectRef)),
+  });
+  const requirementStateBySubject = new Map(rawGroupsForChecks.map((group, index) => [
+    group.subjectRef,
+    stageCheckQueries[index],
+  ]));
 
   const eligible = useQuery<EligibleSignoffForm[]>({
     queryKey: ["crew-company-signoff-eligible", crewUuid, activePicker],
@@ -251,6 +260,12 @@ export function CrewCompanyFormsHome({
                     submission.stageKey === "at_sign_off" && submission.status === "in_progress",
                   ).length
                   : 0;
+                const requirementState = requirementStateBySubject.get(group.subjectRef);
+                const signoffCheck = stageCheckFor(requirementState?.data, "at_sign_off");
+                const signoffBlocked = !requirementState || requirementState.isLoading || requirementState.isError ||
+                  stageCheckBlocksActions(requirementState.data, "at_sign_off");
+                const showSignoffPicker = group.startableStages?.includes("at_sign_off") ||
+                  requirementState?.data?.stageChecks?.enforcementEnabled === true;
 
                 return (
                   <details
@@ -294,7 +309,7 @@ export function CrewCompanyFormsHome({
                       <AssignmentFormRequirements subjectRef={group.subjectRef} onOpenSubmission={onOpenSubmission} />
                       <AssignmentDimensionInspector subjectRef={group.subjectRef} />
 
-                      {group.startableStages?.includes("at_sign_off") && (
+                      {showSignoffPicker && (
                         <div className="rounded-md border border-blue-200 bg-blue-50/70 p-3" data-testid={`crew-company-forms-signoff-picker-${group.subjectRef}`}>
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
@@ -303,18 +318,34 @@ export function CrewCompanyFormsHome({
                             </div>
                             <button
                               type="button"
-                              className="rounded-md border border-blue-700 bg-white px-3 py-1.5 text-sm font-semibold text-blue-800 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                              disabled={signoffBlocked}
+                              className="rounded-md border border-blue-700 bg-white px-3 py-1.5 text-sm font-semibold text-blue-800 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
                               onClick={() => {
+                                if (signoffBlocked) return;
                                 setStartError(null);
                                 setActivePicker(activePicker === group.subjectRef ? null : group.subjectRef);
                               }}
                               aria-expanded={activePicker === group.subjectRef}
                             >
-                              {activePicker === group.subjectRef ? "Hide eligible forms" : "Choose a form"}
+                              {signoffBlocked ? "Form selection unavailable" : activePicker === group.subjectRef ? "Hide eligible forms" : "Choose a form"}
                             </button>
                           </div>
+                          {signoffBlocked && (
+                            <p className="mt-2 text-sm text-amber-900" role={requirementState?.isError ? "alert" : "status"}>
+                              {requirementState?.isLoading
+                                ? "Checking whether this form stage is available…"
+                                : requirementState?.isError
+                                  ? "Stage availability could not be verified. Manual form selection is disabled until the check can be loaded."
+                                  : !signoffCheck || signoffCheck.deferred || signoffCheck.outcome === "DEFERRED"
+                                    ? "Available once Relief Status is Planned or Confirmed."
+                                    : "Manual form selection is unavailable until the enforced at-sign-off check is completed."
+                              }
+                            </p>
+                          )}
                           {activePicker === group.subjectRef && (
                             <div className="mt-3 border-t border-blue-200 pt-3">
+                              {signoffBlocked && <p className="text-sm text-amber-900">Form selection is disabled while this stage check is unresolved.</p>}
+                              {!signoffBlocked && <>
                               {eligible.isLoading && <p role="status" className="text-sm text-slate-600">Loading eligible forms…</p>}
                               {eligible.error && (
                                 <p role="alert" className="text-sm text-rose-800">
@@ -363,6 +394,7 @@ export function CrewCompanyFormsHome({
                                   {startError.permission ? "You do not have permission to start or open this sign-off form." : `Sign-off form could not be opened: ${startError.message}`}
                                 </p>
                               )}
+                              </>}
                             </div>
                           )}
                         </div>

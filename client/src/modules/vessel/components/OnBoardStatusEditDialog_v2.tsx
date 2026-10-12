@@ -23,6 +23,7 @@ import { API_BASE_URL } from '@/config/api';
 import { SearchablePortCombobox } from "@/components/ui/SearchablePortCombobox";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SignoffCompanyForms } from "./SignoffCompanyForms";
+import { stageCheckBlocksActions, useAssignmentFormRequirements } from "@/modules/crew-pool/components/assignmentFormRequirementsQuery";
 
 const SIGN_OFF_REASONS = [
     "Contract Completed",
@@ -82,7 +83,7 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     planningData
 }) => {
     const { toast } = useToast();
-    const { userType } = usePermissions();
+    const { userType, permissions } = usePermissions();
     const queryClient = useQueryClient();
     const { getVesselName } = useVesselLookup();
     const [signoffFormsOpen, setSignoffFormsOpen] = useState(false);
@@ -93,7 +94,25 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
     const [evidenceNote, setEvidenceNote] = useState('');
     const [reconciling, setReconciling] = useState(false);
     const [verifiedAssignUuid, setVerifiedAssignUuid] = useState<string | null>(null);
+    const [deferReason, setDeferReason] = useState('');
+    const [deferringRelief, setDeferringRelief] = useState(false);
+    const [deferReliefError, setDeferReliefError] = useState('');
+    const [reliefDeferred, setReliefDeferred] = useState(false);
+    const signoffAssignmentUuid = planningData?.crewAssignUuid || verifiedAssignUuid || '';
+    const signoffRequirements = useAssignmentFormRequirements(signoffAssignmentUuid, open && Boolean(signoffAssignmentUuid));
+    const signoffFormsReady = signoffRequirements.isSuccess &&
+        !stageCheckBlocksActions(signoffRequirements.data, "at_sign_off");
     const isAdmin = userType?.toLowerCase() === 'admin';
+    const canDeferRelief = Boolean(
+        planningData?.planUuid &&
+        planningData?.crewAssignUuid &&
+        planningData?.reliefStatus !== 'Deferred' &&
+        !reliefDeferred &&
+        Boolean((planningData?.crewName || planningData?.onBoardCrewName)?.trim()) &&
+        permissions.some(permission =>
+            permission.menuName.trim().toLowerCase() === 'vessel' && permission.canedit,
+        ),
+    );
     const needsIncumbentLink = Boolean(
         planningData?.crewUuid && !planningData?.crewAssignUuid && !verifiedAssignUuid,
     );
@@ -121,6 +140,9 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
         setReviewedAssignUuid('');
         setEvidenceNote('');
         setVerifiedAssignUuid(null);
+        setDeferReason('');
+        setDeferReliefError('');
+        setReliefDeferred(false);
     }, [planningData?.planUuid, open]);
     React.useEffect(() => {
         setSignoffFormsOpen(false);
@@ -140,6 +162,44 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             toast({ title: 'Reconciliation failed', description: error?.message || 'Reload and review the assignment again.', variant: 'destructive' });
         } finally {
             setReconciling(false);
+        }
+    };
+
+    const deferRelief = async () => {
+        const reason = deferReason.trim();
+        if (!planningData?.planUuid || !canDeferRelief || !reason || deferringRelief) return;
+        setDeferringRelief(true);
+        setDeferReliefError('');
+        try {
+            await apiRequest(
+                'POST',
+                `/api/v2/vessel/planning/${encodeURIComponent(planningData.planUuid)}/defer-relief`,
+                { reason },
+            );
+            setReliefDeferred(true);
+            setDeferReason('');
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['/api/v2/vessel', vesselUuid, 'planning'] }),
+                queryClient.invalidateQueries({ queryKey: ['assignment-form-requirements'] }),
+                queryClient.invalidateQueries({ queryKey: ['crew-company-forms-home'] }),
+                queryClient.invalidateQueries({ queryKey: ['crew-company-signoff-eligible'] }),
+                queryClient.invalidateQueries({ queryKey: ['joining-company-form-context'] }),
+                queryClient.invalidateQueries({ queryKey: ['joining-company-form-eligible'] }),
+                queryClient.invalidateQueries({ queryKey: ['joining-company-form-history'] }),
+                queryClient.invalidateQueries({ queryKey: ['onboard-company-form-history'] }),
+                queryClient.invalidateQueries({ queryKey: ['onboard-company-form-eligible'] }),
+                queryClient.invalidateQueries({ queryKey: ['onboard-company-form-counts'] }),
+                queryClient.invalidateQueries({ queryKey: ['signoff-company-form-context'] }),
+                queryClient.invalidateQueries({ queryKey: ['signoff-company-form-eligible'] }),
+                queryClient.invalidateQueries({ queryKey: ['signoff-company-form-history'] }),
+            ]);
+            toast({ title: 'Relief deferred', description: 'The reason was recorded. The reliever assignment remains unchanged.' });
+        } catch (error: any) {
+            const message = error instanceof Error ? error.message : 'Unable to defer relief. Please try again.';
+            setDeferReliefError(message);
+            toast({ title: 'Relief could not be deferred', description: message, variant: 'destructive' });
+        } finally {
+            setDeferringRelief(false);
         }
     };
     
@@ -186,6 +246,12 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
             contractEndRangeEndMonths: undefined,
         }
     });
+
+    React.useEffect(() => {
+        if (reliefDeferred) {
+            form.setValue('reliefStatus', 'Deferred', { shouldDirty: true, shouldValidate: true });
+        }
+    }, [reliefDeferred, form]);
 
     React.useEffect(() => {
         if (open && planningData) {
@@ -589,16 +655,60 @@ export const OnBoardStatusEditDialog_v2: React.FC<OnBoardStatusEditDialogV2Props
                         type="button"
                         variant="outline"
                         data-testid="button-open-signoff-forms"
+                        disabled={!signoffFormsReady}
                         onClick={() => setSignoffFormsOpen(true)}
                     >
                         Sign-off forms
                     </Button>
+                )}
+                {isOnboardCrewAssigned && !signoffFormsReady && (
+                    <p className="text-sm text-amber-900" role={signoffRequirements.isError ? "alert" : "status"}>
+                        Available once Relief Status is Planned or Confirmed.
+                    </p>
                 )}
 
                 {!isOnboardCrewAssigned && (
                     <p className="text-xs text-amber-600 mt-2" data-testid="text-no-onboard-crew-message">
                         No onboard crew available. Crew must first complete Sign On from Reliever section.
                     </p>
+                )}
+
+                {canDeferRelief && (
+                    <section className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4" data-testid="defer-relief-action">
+                        <div>
+                            <h3 className="font-semibold text-amber-950">Defer relief</h3>
+                            <p className="mt-1 text-sm text-amber-900">Record why this incumbent crew member is not ready to be relieved. This does not unassign the reliever.</p>
+                        </div>
+                        {reliefDeferred ? (
+                            <p role="status" className="text-sm font-medium text-emerald-900">Relief deferral recorded. The reliever assignment remains in place.</p>
+                        ) : (
+                            <>
+                                <label className="block text-sm font-medium text-slate-800" htmlFor="defer-relief-reason">
+                                    Written reason <span aria-hidden="true">*</span>
+                                    <textarea
+                                        id="defer-relief-reason"
+                                        className="mt-1 min-h-24 w-full rounded-md border border-amber-300 bg-white p-2 text-sm"
+                                        maxLength={2000}
+                                        required
+                                        value={deferReason}
+                                        onChange={(event) => setDeferReason(event.target.value)}
+                                        placeholder="Explain why relief is being deferred."
+                                        disabled={deferringRelief}
+                                    />
+                                </label>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    data-testid="button-defer-relief"
+                                    disabled={!deferReason.trim() || deferringRelief}
+                                    onClick={() => void deferRelief()}
+                                >
+                                    {deferringRelief ? 'Recording…' : 'Defer relief'}
+                                </Button>
+                                {deferReliefError && <p role="alert" className="text-sm text-destructive">{deferReliefError}</p>}
+                            </>
+                        )}
+                    </section>
                 )}
 
                 {needsIncumbentLink && (

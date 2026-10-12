@@ -264,7 +264,7 @@ export const vesselPlanningController = {
       if (error.message?.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
-      if (error.message?.includes("Travel End date cannot be filled before Sign Off")) {
+      if (error.message?.includes("Travel End date cannot be filled before Sign Off") || error.message?.includes("Use Defer relief")) {
         return res.status(400).json({ error: error.message });
       }
       if (error.message?.includes("assignment is unlinked") ||

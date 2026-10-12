@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CompanySubmissionRenderer } from "@/components/configured-form/companySubmissionContract";
 import type { CompanyFormSubmissionSummary } from "@shared/v2/forms-engine/submissionRenderContract";
 import { AssignmentFormRequirements } from "@/modules/crew-pool/components/AssignmentFormRequirements";
+import { stageCheckBlocksActions, stageCheckFor, useAssignmentFormRequirements } from "@/modules/crew-pool/components/assignmentFormRequirementsQuery";
 
 type EligibleForm = {
   formUuid: string;
@@ -89,6 +90,19 @@ function SignoffCompanyFormsSession({ context }: { context: SignoffCompanyFormsC
     retry: false,
     staleTime: 0,
   });
+  const assignmentRequirements = useAssignmentFormRequirements(context.assignmentUuid, previouslyVerified);
+  const signoffCheck = stageCheckFor(assignmentRequirements.data, "at_sign_off");
+  const formStageBlocked = !previouslyVerified || assignmentRequirements.isLoading || assignmentRequirements.isError ||
+    stageCheckBlocksActions(assignmentRequirements.data, "at_sign_off");
+  const formStageMessage = !previouslyVerified
+    ? "Manual form selection is available after the incumbent assignment is verified."
+    : assignmentRequirements.isError
+      ? "Form stage availability could not be verified. Manual form selection is disabled until the check can be loaded."
+      : assignmentRequirements.isLoading
+        ? "Checking at-sign-off form stage availability…"
+        : !signoffCheck || signoffCheck.deferred || signoffCheck.outcome === "DEFERRED"
+          ? "Available once Relief Status is Planned or Confirmed."
+          : "Manual form selection is unavailable until the enforced at-sign-off check is completed.";
   useEffect(() => {
     if (verification.isSuccess && verification.isFetchedAfterMount && !verification.isFetching) setPreviouslyVerified(true);
   }, [verification.isSuccess, verification.isFetchedAfterMount, verification.isFetching]);
@@ -121,7 +135,7 @@ function SignoffCompanyFormsSession({ context }: { context: SignoffCompanyFormsC
     eligible.isSuccess && !eligible.isFetching && history.isSuccess && !history.isFetching;
 
   async function startOrResume() {
-    if (!chosen || !ready || creating.current) return;
+    if (!chosen || !ready || formStageBlocked || creating.current) return;
     creating.current = true;
     setBusy(true);
     setActionError(null);
@@ -173,17 +187,18 @@ function SignoffCompanyFormsSession({ context }: { context: SignoffCompanyFormsC
     {verification.error && <p role="alert" className="text-sm text-destructive">{verification.error.message}</p>}
     {eligible.error && <p role="alert" className="text-sm text-destructive">{eligible.error.message}</p>}
     {history.error && <p role="alert" className="text-sm text-destructive">{history.error.message}</p>}
+    {formStageBlocked && <p role={assignmentRequirements.isError ? "alert" : "status"} className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{formStageMessage}</p>}
     {eligible.isFetching && <p role="status" className="text-sm">Loading released at-sign-off forms…</p>}
-    {ready && forms.length === 0 && <p className="text-sm text-muted-foreground">No released, lifecycle-valid at-sign-off forms are eligible for this assignment.</p>}
-    {ready && forms.length > 0 && <div className="space-y-2">
+    {ready && !formStageBlocked && forms.length === 0 && <p className="text-sm text-muted-foreground">No released, lifecycle-valid at-sign-off forms are eligible for this assignment.</p>}
+    {ready && (forms.length > 0 || formStageBlocked) && <div className="space-y-2">
       <label htmlFor="signoff-form-version" className="text-sm font-medium">Select a released form and version</label>
       <select id="signoff-form-version" data-testid="select-signoff-form-version"
         className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-        value={selectedVersion} onChange={(event) => setSelectedVersion(event.target.value)} disabled={busy}>
+        value={selectedVersion} onChange={(event) => setSelectedVersion(event.target.value)} disabled={busy || formStageBlocked}>
         <option value="">Select a form…</option>
         {forms.map((form) => <option key={form.formVersionUuid} value={form.formVersionUuid}>{form.formName} — version {form.versionNo}</option>)}
       </select>
-      <Button type="button" data-testid="button-start-signoff-form" disabled={!chosen || busy} onClick={() => void startOrResume()}>
+      <Button type="button" data-testid="button-start-signoff-form" disabled={!chosen || busy || formStageBlocked} onClick={() => void startOrResume()}>
         {busy ? "Opening…" : existing ? "Open existing form" : "Start selected form"}
       </Button>
     </div>}

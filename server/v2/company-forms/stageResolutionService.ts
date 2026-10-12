@@ -158,7 +158,7 @@ export async function resolveStageEvent(eventUuid: string, actor: string, execut
       const decisions: RequirementDecision[] = [];
       for (const { versionUuid, policy } of snapshot.candidates) {
         if (!initial.business_date || !policy.effectiveFrom || policy.effectiveFrom > dateOnly(initial.business_date)) continue;
-        const result = evaluateRule(policy, snapshot.facts!);
+        const result = evaluateRule({ mode: policy.mode, sets: policy.sets }, snapshot.facts!);
         if (result.outcome === "applies" || result.outcome === "unresolved") decisions.push({
           formVersionUuid: versionUuid, status: result.outcome === "applies" ? "OUTSTANDING" : "UNRESOLVED",
           matchedSetUuids: (policy.sets ?? []).filter((_set, i) => result.sets[i]?.outcome === "applies").map(s => s.setUuid),

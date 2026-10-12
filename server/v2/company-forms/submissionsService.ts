@@ -1,6 +1,6 @@
 import type { Request } from "express";
 import { resolveStageEvent } from "./stageResolutionService";
-import { stageStatus } from "./stageEventRepository";
+import { stageStatus, assertStageReady } from "./stageEventRepository";
 import { eq } from "drizzle-orm";
 import { masterUsers } from "../../../shared/schema";
 import { ownsCompanyFormSignature } from "./signatureOwnership";
@@ -1066,6 +1066,7 @@ export class CompanyFormSubmissionsService {
     }
 
     if (!adapter.canStart(subject.context)) return [];
+    if (input.subjectType === "crew_assignment") await assertStageReady(input.subjectRef, stageKey);
     const eligible = await this.repository.findEligibleForms(input.subjectType, stageKey);
     const required = (await getDb().execute(sql`SELECT form_uuid FROM frm_requirements
       WHERE subject_type=${input.subjectType} AND subject_ref=${input.subjectRef}
@@ -1111,7 +1112,9 @@ export class CompanyFormSubmissionsService {
     await this.authorize(adapter, principal, "list_submissions", subject.context);
     const data = await readRequirements(input.subjectType, input.subjectRef);
     const outstandingEligible = adapter.isOutstanding(subject.context);
-    return { ...data, stageChecks: input.subjectType === "crew_assignment" ? await stageStatus(input.subjectRef) : null, outstandingEligible,
+    let canRetry = false;
+    try { await this.authorize(adapter, principal, "create_submission", subject.context); canRetry = true; } catch { /* view does not imply Fill in */ }
+    return { ...data, stageChecks: input.subjectType === "crew_assignment" ? { ...await stageStatus(input.subjectRef), canRetry } : null, outstandingEligible,
       activeRequirements: outstandingEligible
         ? data.requirements.filter((r: any) => ["OUTSTANDING", "STARTED", "UNRESOLVED"].includes(r.status)) : [] };
   }

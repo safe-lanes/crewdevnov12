@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CompanySubmissionRenderer } from "@/components/configured-form/companySubmissionContract";
 import type { CompanyFormSubmissionSummary } from "@shared/v2/forms-engine/submissionRenderContract";
 import { AssignmentFormRequirements } from "@/modules/crew-pool/components/AssignmentFormRequirements";
+import { stageCheckBlocksActions, useAssignmentFormRequirements } from "@/modules/crew-pool/components/assignmentFormRequirementsQuery";
 
 type EligibleForm = {
   formUuid: string;
@@ -79,6 +80,9 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
     retry: false,
     staleTime: 0,
   });
+  const assignmentRequirements = useAssignmentFormRequirements(context.assignmentUuid, previouslyVerified);
+  const beforeJoiningBlocked = !previouslyVerified || assignmentRequirements.isLoading || assignmentRequirements.isError ||
+    stageCheckBlocksActions(assignmentRequirements.data, "before_joining");
   useEffect(() => {
     if (verification.isSuccess && verification.isFetchedAfterMount && !verification.isFetching) setPreviouslyVerified(true);
   }, [verification.isSuccess, verification.isFetchedAfterMount, verification.isFetching]);
@@ -106,7 +110,7 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
     eligible.isSuccess && !eligible.isFetching && history.isSuccess && !history.isFetching;
 
   async function startOrResume() {
-    if (!chosen || !ready || creating.current) return;
+    if (!chosen || !ready || beforeJoiningBlocked || creating.current) return;
     creating.current = true;
     setBusy(true);
     setActionError(null);
@@ -146,17 +150,21 @@ function JoiningCompanyFormsSession({ context }: { context: Context }) {
     {verification.error && <p role="alert" className="text-destructive">{verification.error.message}</p>}
     {eligible.error && <p role="alert" className="text-destructive">{eligible.error.message}</p>}
     {history.error && <p role="alert" className="text-destructive">{history.error.message}</p>}
+    {previouslyVerified && assignmentRequirements.isError && <p role="alert" className="text-destructive">Form stage availability could not be verified. Starting a manual form is disabled until the check can be loaded.</p>}
+    {previouslyVerified && assignmentRequirements.isSuccess && stageCheckBlocksActions(assignmentRequirements.data, "before_joining") && <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+      Required form entry is unavailable until the enforced before-joining check is completed.
+    </p>}
     {eligible.isFetching && <p role="status">Loading released before-joining forms…</p>}
-    {ready && forms.length === 0 && <p>No released, lifecycle-valid before-joining forms are eligible for this assignment.</p>}
-    {ready && forms.length > 0 && <div className="space-y-2">
+    {ready && !beforeJoiningBlocked && forms.length === 0 && <p>No released, lifecycle-valid before-joining forms are eligible for this assignment.</p>}
+    {ready && (forms.length > 0 || beforeJoiningBlocked) && <div className="space-y-2">
       <label htmlFor="joining-form-version" className="text-sm font-medium">Select a released form and version</label>
       <select id="joining-form-version" data-testid="select-joining-form-version"
-        className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-        value={selectedVersion} onChange={(event) => setSelectedVersion(event.target.value)} disabled={busy}>
+         className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+         value={selectedVersion} onChange={(event) => setSelectedVersion(event.target.value)} disabled={busy || beforeJoiningBlocked}>
         <option value="">Select a form…</option>
         {forms.map((form) => <option key={form.formVersionUuid} value={form.formVersionUuid}>{form.formName} — version {form.versionNo}</option>)}
       </select>
-      <Button type="button" data-testid="button-start-joining-form" disabled={!chosen || busy}
+       <Button type="button" data-testid="button-start-joining-form" disabled={!chosen || busy || beforeJoiningBlocked}
         onClick={() => void startOrResume()}>
         {busy ? "Opening…" : existing ? "Open existing form" : "Start selected form"}
       </Button>

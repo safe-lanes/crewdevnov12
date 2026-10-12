@@ -416,9 +416,8 @@ export class VesselPlanningRepository {
     return results[0];
   }
 
-  async create(data: Omit<InsertVesselPlanningV2, "planUuid">): Promise<VesselPlanningV2> {
-    const db = getDb();
-    const results = await db
+  async create(data: Omit<InsertVesselPlanningV2, "planUuid">, executor: any = getDb()): Promise<VesselPlanningV2> {
+    const results = await executor
       .insert(vesselPlanningV2)
       .values({
         planUuid: uuidv4(),
