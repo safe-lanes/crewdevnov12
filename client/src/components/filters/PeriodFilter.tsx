@@ -219,7 +219,8 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', u
     }
     
     if (value.mode === 'date-range' && value.dateFrom && value.dateTo) {
-      return `${format(value.dateFrom, 'dd/MM/yy')} - ${format(value.dateTo, 'dd/MM/yy')}`;
+      const rangeFormat = rangeMode === 'month' ? 'MMM-yyyy' : 'dd-MMM-yyyy';
+      return `${format(value.dateFrom, rangeFormat)} - ${format(value.dateTo, rangeFormat)}`;
     }
 
     if (placeholder) return placeholder;
@@ -231,7 +232,7 @@ export const PeriodFilter = ({ value, onChange, className, rangeMode = 'date', u
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className={`h-8 ${placeholder ? 'w-48' : 'w-40'} justify-between text-xs text-[#0f172a] bg-white dark:bg-neutral-900 border-gray-300 dark:border-gray-600 ${className}`}
+          className={`h-8 ${value?.mode === 'date-range' && value.dateFrom && value.dateTo ? (rangeMode === 'month' ? 'w-48' : 'w-64') : (placeholder ? 'w-48' : 'w-40')} justify-between text-xs text-[#0f172a] bg-white dark:bg-neutral-900 border-gray-300 dark:border-gray-600 ${className}`}
           data-testid="period-filter-trigger"
         >
           <span>{getDisplayText()}</span>
