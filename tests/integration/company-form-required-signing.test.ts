@@ -8,7 +8,7 @@ describe("required before-joining form: representative, witnessed seafarer, then
   afterAll(async () => { await requirementPool.end(); });
 
   it("uses the captured contract UUID, not the mutable crew rank, and completes the pinned requirement", async () => {
-    const f = await createRequirementFixture("before_joining", { signatures: true });
+    const f = await createRequirementFixture("before_joining", { signatures: true, rankSystemField: true });
     await f.record("required-signing-regression", [{
       formVersionUuid: f.version.fvUuid, status: "OUTSTANDING", matchedSetUuids: f.matchedSetUuids, values: {},
     }]);
@@ -46,10 +46,14 @@ describe("required before-joining form: representative, witnessed seafarer, then
     retainFixtureReferences("required dual-signature regression retained children", signatures);
     expect(signatures).toHaveLength(2);
     expect(signatures.find(s => s.signature_type === "seafarer").signer_rank).toBe(f.rank.name);
+    const snapshot = (await requirementPool.query(`SELECT value,system_value FROM frm_company_submission_system_snapshots
+      WHERE submission_uuid=$1 AND field_key='rank'`, [submission])).rows[0];
+    expect(snapshot.value).toBe(f.rank.name);
+    expect(snapshot.system_value).toBe(f.rank.ar_uuid);
   });
 
-  it("refuses an unresolved captured contract rank without falling back to the crew rank or stored label", async () => {
-    const f = await createRequirementFixture("before_joining", { signatures: true, unresolvedContractRank: true });
+  it("saves missing rank as Not recorded, completes, and keeps signature and System field frozen after later capture", async () => {
+    const f = await createRequirementFixture("before_joining", { signatures: true, unresolvedContractRank: true, rankSystemField: true });
     await f.record("required-signing-unknown-rank", [{
       formVersionUuid: f.version.fvUuid, status: "OUTSTANDING",
       matchedSetUuids: f.matchedSetUuids, values: {},
@@ -62,15 +66,27 @@ describe("required before-joining form: representative, witnessed seafarer, then
     expect(started.status).toBe(201);
     const submission = started.body.submissionUuid;
     retainFixtureReferences("required signing unknown-rank submission", [submission, requirement]);
-    const result = await requirementApi.post(`${prefix}/${submission}/sections/${f.section}/signatures`)
-      .set("Authorization", `Bearer ${requirementToken}`)
-      .send({ signatureType: "seafarer", method: "witnessed", seafarerPresent: true, data: PNG });
-    expect(result.status).toBe(400);
-    expect(result.body.error).toBe("RANK_NOT_ELIGIBLE");
-    expect(result.body.message).toContain("Ask your administrator");
-    expect(result.body.message).toContain("captured contract rank");
-    expect((await requirementPool.query("SELECT status FROM frm_requirements WHERE requirement_uuid=$1", [requirement])).rows[0].status).toBe("STARTED");
-    expect((await requirementPool.query(`SELECT count(*)::int AS count FROM frm_section_signatures g
-      JOIN frm_section_states st USING(section_state_uuid) WHERE st.submission_uuid=$1`, [submission])).rows[0].count).toBe(0);
+    const section = `${prefix}/${submission}/sections/${f.section}`;
+    for (const signature of [
+      { signatureType: "officer", method: "officer" },
+      { signatureType: "seafarer", method: "witnessed", seafarerPresent: true },
+    ]) {
+      const result = await requirementApi.post(`${section}/signatures`).set("Authorization", `Bearer ${requirementToken}`)
+        .send({ ...signature, data: PNG });
+      expect(result.status, JSON.stringify(result.body)).toBe(201);
+    }
+    const submit = await requirementApi.post(`${section}/submit`).set("Authorization", `Bearer ${requirementToken}`).send({});
+    expect(submit.status, JSON.stringify(submit.body)).toBe(200);
+    expect(submit.body.completed).toBe(true);
+    await requirementPool.query(`UPDATE crew_assignment_rule_context SET contract_rank_uuid=$2,contract_rank_label=$3
+      WHERE assign_uuid=$1`, [f.assignUuid, f.rank.ar_uuid, f.rank.name]);
+    const signature = (await requirementPool.query(`SELECT g.* FROM frm_section_signatures g JOIN frm_section_states st
+      USING(section_state_uuid) WHERE st.submission_uuid=$1 AND g.signature_type='seafarer'`, [submission])).rows[0];
+    retainFixtureReferences("missing rank witnessed signature frozen after capture", [signature]);
+    expect(signature.signer_rank).toBe("Not recorded");
+    const detail = await requirementApi.get(`${prefix}/${submission}/render`).set("Authorization", `Bearer ${requirementToken}`);
+    expect(detail.status).toBe(200);
+    expect(detail.body.systemFields.find((field: any) => field.key === "rank").value).toBe("Not recorded");
+    expect((await requirementPool.query("SELECT status FROM frm_requirements WHERE requirement_uuid=$1", [requirement])).rows[0].status).toBe("COMPLETED");
   });
 });

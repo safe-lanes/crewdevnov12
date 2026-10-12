@@ -15,7 +15,7 @@ export const requirementApi = request("http://127.0.0.1:5000");
 export const formCall = (method: "get" | "post" | "put", path: string, body: object = {}) =>
   requirementApi[method](`/api/v2/admin${path}`).set("Authorization", `Bearer ${requirementToken}`).send(body);
 
-export async function createRequirementFixture(stageKey = "before_joining", options: { signatures?: boolean; unresolvedContractRank?: boolean } = {}) {
+export async function createRequirementFixture(stageKey = "before_joining", options: { signatures?: boolean; unresolvedContractRank?: boolean; rankSystemField?: boolean } = {}) {
   if (process.env.NODE_ENV === "production") throw new Error("Fixture harness is not permitted in production");
   const crewUuid = randomUUID(), assignUuid = randomUUID(), formUuid = randomUUID(), templatePart = randomUUID();
   retainFixtureReferences("requirement harness roots", [crewUuid, assignUuid, formUuid, templatePart]);
@@ -52,6 +52,12 @@ export async function createRequirementFixture(stageKey = "before_joining", opti
     VALUES($1,$2,$3,'REQ','Form evidence','seafarer',$4,$4)`, [section, v.fvUuid, part, options.signatures ?? false]);
   await requirementPool.query(`INSERT INTO frm_questions(question_uuid,section_uuid,question_code,question_text,response_type)
     VALUES($1,$2,'ANSWER','Retained requirement evidence',$3)`, [question, section, options.signatures ? "content" : "free_text"]);
+  if (options.rankSystemField) {
+    const rankQuestion = randomUUID();
+    retainFixtureReferences("required signing contract rank System field", [rankQuestion]);
+    await requirementPool.query(`INSERT INTO frm_questions(question_uuid,section_uuid,question_code,question_text,response_type,system_field_key)
+      VALUES($1,$2,'CONTRACT_RANK','Contract rank at signing','system_field','rank')`, [rankQuestion, section]);
+  }
   const policy = await formCall("put", `/form-versions/${v.id}/applicability`, options.signatures ? {
     mode: "conditional", obligation: "mandatory", sets: [
       { conditions: [{ dimensionKey: "vessel", operator: "in", value: [vessel.vessel_uuid] }] },

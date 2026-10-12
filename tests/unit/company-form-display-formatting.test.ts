@@ -18,34 +18,33 @@ describe("Company Form readable system values", () => {
     expect(await adapter.resolveSystemField("sign_on_date", subject, { ...context, raw: true })).toBe("2026-10-15");
   });
   it("returns the master rank name and separately resolves the code, never guessing", async () => {
-    const rows = [[{ presentRank: "R017" }], [{ rank: "Pumpman" }], [{ presentRank: "R017" }]];
-    const executor: any = { select: () => executor, from: () => executor, where: () => executor, limit: async () => rows.shift() };
+    const uuid = "11111111-1111-4111-8111-111111111111";
+    const executor: any = { execute: async () => ({ rows: [{ contract_rank_uuid: uuid, rank: "Pumpman" }] }) };
     const adapter = createCrewAssignmentSubject();
     const context = { submission: { dateOfDeclaration: null } };
     expect(await adapter.resolveSystemField("rank", { crewUuid: "synthetic" } as any, context, executor)).toBe("Pumpman");
-    expect(await adapter.resolveSystemField("rank", { crewUuid: "synthetic" } as any, { ...context, raw: true }, executor)).toBe("R017");
+    expect(await adapter.resolveSystemField("rank", { crewUuid: "synthetic" } as any, { ...context, raw: true }, executor)).toBe(uuid);
   });
 
-  it.each(["11111111-1111-4111-8111-111111111111", "R017"])(
-    "resolves a base-rank UUID or ID only through an eligible master: %s",
-    async reference => {
-      const rows = [[{ presentRank: reference }], [], [{ rank: "Pumpman" }]];
-      const executor: any = { select: () => executor, from: () => executor, where: () => executor, limit: async () => rows.shift() };
+  it.each([{ rows: [] }, { rows: [{ contract_rank_uuid: null, contract_rank_label: "Pumpman", rank: null }] }])(
+    "shows Not recorded when no contract rank is captured: %j",
+    async ({ rows }) => {
+      const executor: any = { execute: async () => ({ rows }) };
       expect(await createCrewAssignmentSubject().resolveSystemField("rank", { crewUuid: "synthetic" } as any,
-        { submission: { dateOfDeclaration: null } }, executor)).toBe("Pumpman");
+        { submission: { dateOfDeclaration: null } }, executor)).toBe("Not recorded");
     },
   );
 
   it("does not match a crew profile rank by display label", async () => {
-    const rows = [[{ presentRank: "Pumpman" }], [], []];
-    const executor: any = { select: () => executor, from: () => executor, where: () => executor, limit: async () => rows.shift() };
-    await expect(createCrewAssignmentSubject().resolveSystemField("rank", { crewUuid: "synthetic" } as any,
-      { submission: { dateOfDeclaration: null } }, executor)).rejects.toMatchObject({ statusCode: 400, code: "RANK_NOT_ELIGIBLE" });
+    const executor: any = { execute: async () => ({ rows: [] }), select: () => { throw Error("Mutable profile must not be read"); } };
+    expect(await createCrewAssignmentSubject().resolveSystemField("rank", { crewUuid: "synthetic" } as any,
+      { submission: { dateOfDeclaration: null } }, executor)).toBe("Not recorded");
   });
 
   it("refuses ambiguous masters instead of choosing a signature identity", async () => {
-    const rows = [[{ presentRank: "R017" }], [{ rank: "Pumpman" }, { rank: "Pumpman" }]];
-    const executor: any = { select: () => executor, from: () => executor, where: () => executor, limit: async () => rows.shift() };
+    const executor: any = { execute: async () => ({ rows: [
+      { contract_rank_uuid: "uuid", rank: "Pumpman" }, { contract_rank_uuid: "uuid", rank: "Pumpman" },
+    ] }) };
     await expect(createCrewAssignmentSubject().resolveSystemField("rank", { crewUuid: "synthetic" } as any,
       { submission: { dateOfDeclaration: null } }, executor)).rejects.toMatchObject({
       statusCode: 400, code: "RANK_NOT_ELIGIBLE",

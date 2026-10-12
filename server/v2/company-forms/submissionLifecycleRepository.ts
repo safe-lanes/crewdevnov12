@@ -454,6 +454,7 @@ export class CompanyFormSubmissionLifecycleRepository {
         ? await declaration.resolveIdentity({
           principal: input.actor,
           subject: subject.context,
+          submissionUuid: submission.submissionUuid,
           method: input.method,
           executor: tx,
         })

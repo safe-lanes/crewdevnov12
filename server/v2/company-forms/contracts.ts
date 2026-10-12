@@ -95,6 +95,7 @@ export type SubjectSignatoryDeclaration = {
   resolveIdentity?: (input: {
     principal: CompanyFormPrincipal;
     subject: unknown;
+    submissionUuid?: string;
     method: "officer" | "authenticated" | "witnessed" | "vessel_management";
     executor: unknown;
   }) => Promise<{ name: string | null; rank: string | null }>;

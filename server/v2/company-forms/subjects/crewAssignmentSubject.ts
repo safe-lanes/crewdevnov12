@@ -1,6 +1,5 @@
 import { assertStageReady } from "../stageEventRepository";
-import { and, eq, or, sql } from "drizzle-orm";
-import { admAvailableRanksV2, admCompanyRanksV2 } from "../../../../shared/v2/admin/schema";
+import { and, eq, sql } from "drizzle-orm";
 import { sailDate } from "../../../../shared/v2/forms-engine/displayFormatting";
 import {
   masterNationalities,
@@ -203,12 +202,12 @@ async function resolveCrewSystemField(
   if (key === "sign_on_date") return context.raw || !subject.signOnDate ? subject.signOnDate : sailDate(subject.signOnDate);
 
   const db = executor;
-  if (key === "seafarer_name" || key === "rank" || key === "nationality") {
+  if (key === "rank") return resolveSigningContractRank(subject, executor, context.raw);
+  if (key === "seafarer_name" || key === "nationality") {
     const crewRows = await db.select({
       firstName: crewMembersV2.firstName,
       middleName: crewMembersV2.middleName,
       familyName: crewMembersV2.familyName,
-      presentRank: key === "rank" ? crewMembersV2.presentRank : sql<string | null>`NULL`,
       nationalityUuid: crewMembersV2.nationalityUuid,
     }).from(crewMembersV2)
       .where(eq(crewMembersV2.crewUuid, subject.crewUuid))
@@ -220,34 +219,6 @@ async function resolveCrewSystemField(
         .map((part) => part?.trim())
         .filter(Boolean)
         .join(" ") || null;
-    }
-    if (key === "rank") {
-      if (context.raw || !crew.presentRank) return crew.presentRank;
-      // System-field references resolve by identifier only, never by name.
-      const ranks = await db.select({ rank: admCompanyRanksV2.rank })
-        .from(admCompanyRanksV2).where(and(
-          or(
-            eq(admCompanyRanksV2.rankId, crew.presentRank),
-            eq(admCompanyRanksV2.crUuid, crew.presentRank),
-            eq(admCompanyRanksV2.id, crew.presentRank),
-          ),
-          eq(admCompanyRanksV2.isDeleted, false),
-          eq(admCompanyRanksV2.isRoleRow, false),
-        )).limit(2);
-      if (ranks.length === 1) return ranks[0].rank;
-      if (!ranks.length) {
-        const available = await db.select({ rank: admAvailableRanksV2.name })
-          .from(admAvailableRanksV2).where(and(
-            or(eq(admAvailableRanksV2.arUuid, crew.presentRank),
-              eq(admAvailableRanksV2.rankId, crew.presentRank)),
-            eq(admAvailableRanksV2.isDeleted, false),
-          )).limit(2);
-        if (available.length === 1) return available[0].rank;
-      }
-      throw new CompanyFormValidationError(
-        "The seafarer's rank cannot be matched to the rank list. Ask your administrator to check the crew rank, then try again.",
-        "RANK_NOT_ELIGIBLE",
-      );
     }
     if (!crew.nationalityUuid) return null;
     const nationalityRows = await db.select({ nationality: masterNationalities.nationality })
@@ -273,12 +244,13 @@ async function resolveCrewSystemField(
 }
 
 /** Signing is assignment-bound; the mutable crew profile is not its rank authority. */
-async function resolveSigningContractRank(subject: CrewAssignmentSubject, executor: any): Promise<string> {
-  const rows = (await executor.execute(sql`SELECT r.name AS rank
+async function resolveSigningContractRank(subject: CrewAssignmentSubject, executor: any, raw = false): Promise<string> {
+  const rows = (await executor.execute(sql`SELECT c.contract_rank_uuid,r.name AS rank
     FROM crew_assignment_rule_context c
-    JOIN adm_available_ranks_v2 r ON r.ar_uuid=c.contract_rank_uuid
-    WHERE c.assign_uuid=${subject.assignUuid} AND NOT r.is_deleted`)).rows;
-  if (rows.length === 1 && rows[0].rank?.trim()) return rows[0].rank;
+    LEFT JOIN adm_available_ranks_v2 r ON r.ar_uuid=c.contract_rank_uuid AND NOT r.is_deleted
+    WHERE c.assign_uuid=${subject.assignUuid} FOR SHARE OF c`)).rows;
+  if (!rows.length || (rows.length === 1 && !rows[0].contract_rank_uuid)) return "Not recorded";
+  if (rows.length === 1 && rows[0].rank?.trim()) return raw ? rows[0].contract_rank_uuid : rows[0].rank;
   throw new CompanyFormValidationError(
     "The assignment's captured contract rank cannot be verified. Ask your administrator to check the assignment's deployment rank, then try again.",
     "RANK_NOT_ELIGIBLE",
@@ -534,15 +506,21 @@ export function createCrewAssignmentSubject(
         methods: ["authenticated", "witnessed"],
         methodsByActor: { seafarer: ["authenticated"], office: ["witnessed"], vessel: ["witnessed"] },
         resolveWitnessIdentity: (principal, executor) => principal.kind === "vessel" ? captureVesselSigner(principal, executor) : Promise.resolve(null),
-        resolveIdentity: async ({ subject, executor }) => {
+        resolveIdentity: async ({ subject, executor, submissionUuid }) => {
           const crewSubject = subject as CrewAssignmentSubject;
           const context: SystemFieldResolutionContext = {
             submission: { dateOfDeclaration: null },
             executor,
           };
+          // A first signature may already have frozen missing rank before a later
+          // Deploy capture. Keep this form's witnessed identity aligned with it.
+          const missingSnapshot = submissionUuid ? (await (executor as any).execute(sql`
+            SELECT 1 FROM frm_company_submission_system_snapshots
+            WHERE submission_uuid=${submissionUuid} AND field_key='rank'
+              AND value='Not recorded' AND NOT is_deleted LIMIT 1`)).rows.length > 0 : false;
           const [name, rank] = await Promise.all([
             resolveCrewSystemField("seafarer_name", crewSubject, context, executor),
-            resolveSigningContractRank(crewSubject, executor),
+            missingSnapshot ? Promise.resolve("Not recorded") : resolveSigningContractRank(crewSubject, executor),
           ]);
           return { name, rank };
         },
