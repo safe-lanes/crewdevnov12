@@ -20160,3 +20160,19 @@ The closing journey edits registered draft identities only; it never creates an 
 - Retained test context (2026-10-12T09:28:20.932Z): verified-history/cf_verified_history_49c8a438; target registered_fixture_context; references `6cbe4e97-38ee-4b61-8615-d43f579aa21d`, `8038704c-6e0e-41d2-860c-4d7e10420dd4`, `24353ffe-343d-457a-b25d-a781d3d40416`, `04d12d5f-3173-44f9-aab9-2bfadb91abbb`, `70b2400a-d14d-4fef-96be-9bab869b008e`, `c47715e3-e9b9-41f6-876f-fbdcb68da8a5`, `0d571225-68eb-4408-a351-7c87729d6793`, `1268e920-6c25-4b38-9d6b-8d2096986c15`, `9504bb51-75a0-41b6-b945-543fc9781a87`, `709df908-4370-4c02-b872-efa9efe60dd8`.
 
 - Retained test context (2026-10-12T09:28:43.715Z): tests/unit/fixture-retention.test.ts; target crew_assignments; references schema/context retained (no UUID parameters).
+
+- Retained test context (2026-10-12T10:08:46.621Z): crew-import/cf_crew_import_3f6b9536/schema; target registered_fixture_context; references `055fb041-b8d7-42b3-8b94-fd30b1190d56`.
+
+- Retained test context (2026-10-12T10:10:06.211Z): crew-import/cf_crew_import_1c05c747/schema; target registered_fixture_context; references `055fb041-b8d7-42b3-8b94-fd30b1190d56`.
+
+- Retained test context (2026-10-12T10:10:06.215Z): crew-import/cf_crew_import_1c05c747/retained; target registered_fixture_context; references `cec65ec0-e394-4ad7-b1e0-566093c4102a`, `7964ea50-8189-45b9-9396-65a652916e05`, `7316d94b-e704-4cfb-b55d-1fb8a3c94472`.
+
+- Retained test context (2026-10-12T10:10:06.437Z): crew-import/cf_crew_import_1c05c747/result; target registered_fixture_context; references `eef17b63-44ed-40db-97f0-b053439aedfa`, `65ce2f92-1f57-451d-b0ca-932bde89769a`.
+
+- Retained test context (2026-10-12T10:10:06.510Z): crew-import/cf_crew_import_1c05c747/retained; target registered_fixture_context; references `21bd1334-fdad-4d17-808a-30a6da63f863`, `acc80e1f-e165-4d74-b961-2a7f6c0324cf`, `d9ec1652-bd12-4e9a-8e86-760adfb0e4f2`, `5e8492d1-7c88-4dd7-b699-249029638a33`.
+
+- Retained test context (2026-10-12T10:10:06.602Z): crew-import/cf_crew_import_1c05c747/result; target registered_fixture_context; references `a5e6265f-6b5c-4beb-a0ef-5ae162881c93`, `5e8492d1-7c88-4dd7-b699-249029638a33`.
+
+- Retained test context (2026-10-12T10:10:06.606Z): crew-import/cf_crew_import_1c05c747/retained; target registered_fixture_context; references `97321f28-37a2-4817-b5d0-548c39601190`, `20901229-4982-481c-89fa-abba082b8530`, `08da22fb-5eab-4dc9-bf74-d74f58062a99`, `d68d6747-8c8f-45d8-ba60-f0498f79b97b`.
+
+- Retained test context (2026-10-12T10:10:06.665Z): crew-import/cf_crew_import_1c05c747/result; target registered_fixture_context; references `ad636435-b90d-4330-b47b-73f016e99187`, `d68d6747-8c8f-45d8-ba60-f0498f79b97b`.

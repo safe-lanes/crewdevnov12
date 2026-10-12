@@ -8,6 +8,7 @@ import { vesselPlanningV2 } from "../../../../shared/v2/vessel/schema";
 import { vesselRevisionsService } from "../../admin/services/vesselRevisionsService";
 import { vesselDraftsService } from "../../admin/services/vesselDraftsService";
 import { vesselPlanningRepository } from "../repositories/vesselPlanningRepository";
+import { recordImportedCompanyService, type ImportSeaServiceOutcome } from "./crewImportSeaService";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { parseDateString } from "../utils/dateUtils";
 import { resolveAssignmentVesselUuid } from "../../crew-pool/services/assignmentVesselValidation";
@@ -30,6 +31,8 @@ export interface HierarchyImportResult {
 }
 
 export interface AssignmentsImportResult {
+  importedAssignmentUuids: string[];
+  seaService: ImportSeaServiceOutcome[];
   totalRowsProcessed: number;
   primaryAssignedCount: number;
   secondaryAssignedCount: number;
@@ -637,6 +640,8 @@ export async function importCrewAssignments(
   auditUserUuid?: string,
 ): Promise<AssignmentsImportResult> {
   const result: AssignmentsImportResult = {
+    importedAssignmentUuids: [],
+    seaService: [],
     totalRowsProcessed: 0,
     primaryAssignedCount: 0,
     secondaryAssignedCount: 0,
@@ -1356,6 +1361,12 @@ export async function importCrewAssignments(
           matchedSlot.relieverCrewUuid = crew.crewUuid;
           matchedSlot.relieverAssignUuid = assignmentUuid;
         }
+        result.importedAssignmentUuids.push(assignmentUuid);
+        if (isPrimary) {
+          const service = await recordImportedCompanyService(tx, assignmentUuid, matchedSlot.planUuid, auditUserUuid);
+          result.seaService.push(service);
+          if (service.reason) result.warnings.push(`Row ${item.rowNumber}, ${item.employeeId}: ${service.reason}`);
+        }
       }
     });
 
@@ -1366,6 +1377,8 @@ export async function importCrewAssignments(
     result.primaryAssignedCount = 0;
     result.secondaryAssignedCount = 0;
     result.alreadyImportedCount = 0;
+    result.importedAssignmentUuids = [];
+    result.seaService = [];
 
     const rawMsg = err.message || String(err);
     let userFriendlyMsg = rawMsg;

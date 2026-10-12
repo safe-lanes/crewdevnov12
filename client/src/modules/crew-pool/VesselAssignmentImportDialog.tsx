@@ -608,6 +608,12 @@ export function VesselAssignmentImportDialog({ isOpen, onClose }: VesselAssignme
                 <div className="mb-3 text-xs bg-white p-3 rounded border border-[#e2e8f0] text-gray-700 space-y-1">
                   <p>• Primary Onboard Assigned: <span className="font-semibold text-emerald-600">{stage2Result.primaryAssignedCount}</span></p>
                   <p>• Secondary Relievers Assigned: <span className="font-semibold text-blue-600">{stage2Result.secondaryAssignedCount}</span></p>
+                  {stage2Result.seaService && <p>Company sea service: {stage2Result.seaService.filter((r: any) => r.status === "CREATED").length} added,
+                    {" "}{stage2Result.seaService.filter((r: any) => r.status === "ALREADY_PRESENT").length} already present,
+                    {" "}{stage2Result.seaService.filter((r: any) => r.status === "REVIEW").length} need review.</p>}
+                  {stage2Result.warnings?.length > 0 && <div role="status" className="mt-2 text-amber-800 space-y-1">
+                    {stage2Result.warnings.map((warning: string, i: number) => <p key={i}>{warning}</p>)}
+                  </div>}
                   {stage2Result.skippedCount > 0 && (
                     <p>• Skipped Rows: <span className="font-semibold text-amber-600">{stage2Result.skippedCount}</span></p>
                   )}
