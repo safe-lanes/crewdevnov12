@@ -29,6 +29,7 @@ import { generateDrugAlcoholTestPDF } from '@/lib/generateDrugAlcoholTestPDF';
 import { useToast } from '@/hooks/use-toast';
 import { drugsAlcoholApiV2 } from './api/drugsAlcoholApiV2';
 import { DaDateInput } from './DaDateInput';
+import { DaExternalResultsDateTimeInput } from './DaExternalResultsDateTimeInput';
 import {
   FormattedDateInput,
   parseManualDate,
@@ -933,15 +934,12 @@ export function DrugAlcoholTestForm_v2({
   const externalResultsMinDate = useMemo(() => {
     if (selectedTestType === 'post-incident') {
       const dateParts = [alcoholTestDateTime, drugTestDateTime]
-        .filter((v): v is string => !!v)
-        .map((v) => v.split('T')[0]);
+        .filter((v): v is string => !!v);
 
       return dateParts.length ? dateParts.sort()[0] : undefined;
     }
 
-    return dateTimeTestCompleted
-      ? dateTimeTestCompleted.split('T')[0]
-      : undefined;
+    return dateTimeTestCompleted || undefined;
   }, [
     selectedTestType,
     dateTimeTestCompleted,
@@ -1454,24 +1452,13 @@ export function DrugAlcoholTestForm_v2({
                             <FormItem>
                               <FormLabel className="text-xs text-gray-500 tracking-wide">Date External Test Results received</FormLabel>
                               <FormControl>
-                                <DaDateInput
+                                <DaExternalResultsDateTimeInput
                                   {...field}
                                   value={field.value ?? ''}
                                   label="Date external test results received"
                                   disabled={isFormLocked}
                                   min={externalResultsMinDate}
-                                  beforeMinMessage="Date External Test Results received date cannot be before Date & Time Test completed"
-                                  onChange={(event) => {
-                                    const value = event.target.value;
-                                    if (
-                                      externalResultsMinDate &&
-                                      value &&
-                                      value < externalResultsMinDate
-                                    ) {
-                                      return;
-                                    }
-                                    field.onChange(event);
-                                  }}
+                                  onChange={field.onChange}
                                   className="bg-[#ffffff]"
                                   data-testid="input-externalTestResultsDate"
                                 />
